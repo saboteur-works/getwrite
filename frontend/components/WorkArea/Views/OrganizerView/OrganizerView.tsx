@@ -5,7 +5,7 @@ import type {
   MetadataField,
   ResourceRef,
 } from "../../../../src/lib/models/types";
-import OrganizerCard from "./OrganizerCard";
+import OrganizerCard, { type OrganizerCardProps } from "./OrganizerCard";
 import OrganizerFilterBar from "./OrganizerFilterBar";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import {
@@ -34,6 +34,96 @@ import {
   initialOrganizerFilterState,
   filterChildren,
 } from "./organizerFilters";
+import { useOrganizerCardReorder } from "./useOrganizerCardReorder";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+/** Pointer movement (px) required before a drag starts, so an imprecise
+ * click on the handle doesn't register as a drag attempt. */
+const DRAG_ACTIVATION_DISTANCE = 8;
+
+/** Copy shown as the drag handle's disabled-reason hint while a filter is active (FR-6). */
+const DRAG_DISABLED_WHILE_FILTERED_REASON = "Clear filters to reorder cards";
+
+/**
+ * Wraps a single `OrganizerCard` with `@dnd-kit/sortable`'s `useSortable`,
+ * translating its returned ref/attributes/listeners/transform into the
+ * card's own Task-2 drag props. Kept as a small local component (rather than
+ * inlined in the `.map(...)` below) since `useSortable` is a hook and must be
+ * called once per rendered card.
+ */
+function SortableOrganizerCard({
+  childId,
+  disabled,
+  disabledReason,
+  ...cardProps
+}: { childId: string; disabled: boolean; disabledReason?: string } & Omit<
+  OrganizerCardProps,
+  | "cardRef"
+  | "dragHandleAttributes"
+  | "dragHandleListeners"
+  | "dragStyle"
+  | "isDragDisabled"
+  | "dragDisabledReason"
+>): JSX.Element {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: childId, disabled });
+
+  // While this card is the one being dragged, its own slot fades to a
+  // placeholder — the moving visual the user tracks is the `DragOverlay`
+  // copy rendered separately, not this in-flow element (avoids the grid
+  // reflowing visibly underneath a transform-following-pointer element).
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : undefined,
+  };
+
+  return (
+    <OrganizerCard
+      {...cardProps}
+      cardRef={setNodeRef}
+      dragHandleAttributes={attributes}
+      dragHandleListeners={listeners}
+      dragStyle={dragStyle}
+      isDragDisabled={disabled}
+      dragDisabledReason={disabled ? disabledReason : undefined}
+    />
+  );
+}
+
+/**
+ * Best-effort display title fallback chain for a resource, mirroring
+ * `OrganizerCard.tsx`'s own `title` derivation exactly, so a drag-end
+ * announcement (FR-8) names the same title the card itself renders.
+ */
+function resolveCardTitle(resource: AnyResource): string {
+  return (resource as { title?: string }).title ?? resource.name ?? "Untitled";
+}
 
 /** Narrows a `MetadataValue` entry to a `ResourceRef`'s `name`, if it is one. */
 function asResourceRefName(value: unknown): string | undefined {
@@ -96,6 +186,12 @@ export default function OrganizerView({
   // generated internal id) — see `selectActiveProjectDirectoryId`'s doc
   // comment in `projectsSlice.ts`.
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
+  // Mirrors `ResourceTree.tsx`'s own `currentProject` selection — the
+  // `{ id, rootPath }` shape `useOrganizerCardReorder`'s `persistReorder`
+  // dispatch needs, distinct from the directory-basename `projectId` above.
+  const currentProject = useAppSelector(
+    (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
+  );
 
   const [isShowingBody, setIsShowingBody] = React.useState(showBody);
   // Text content for `text-excerpt` cards, fetched on demand for the visible
@@ -262,6 +358,107 @@ export default function OrganizerView({
     dispatch(setSelectedResourceId(id));
   };
 
+  // Task 3's reorder function, scoped to the currently browsed folder. Called
+  // unconditionally (not just when `selectedFolder` exists) per the rules of
+  // hooks; `browsedFolderId` falls back to `""` when nothing is browsed, at
+  // which point `allChildren` is also empty and the returned function is
+  // simply never invoked.
+  const reorderChildren = useOrganizerCardReorder({
+    dispatch,
+    currentProject,
+    projectDirectoryId: projectId,
+    browsedFolderId: selectedFolder?.id ?? "",
+    allChildren,
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const allChildIds = allChildren.map((child) => child.id);
+
+  // Id (and measured width) of the card currently being dragged, if any —
+  // drives the `DragOverlay` below. Pointer and keyboard drags both go
+  // through `onDragStart`/`onDragEnd`/`onDragCancel`. The width is captured
+  // from the dragged element's own rect at drag start, since `DragOverlay`
+  // portals outside the grid and so cannot otherwise inherit the grid
+  // column's width — without it, the overlay's card shrinks to its content's
+  // intrinsic (narrow) width instead of matching the card it's lifted from.
+  const [activeDragId, setActiveDragId] = React.useState<string | null>(null);
+  const [activeDragWidth, setActiveDragWidth] = React.useState<number | null>(
+    null,
+  );
+  const activeDragChild = activeDragId
+    ? (allChildren.find((child) => child.id === activeDragId) ?? null)
+    : null;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+    setActiveDragWidth(event.active.rect.current.initial?.width ?? null);
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+    setActiveDragWidth(null);
+  };
+
+  // FR-4: this handler touches only the reorder path — it never dispatches
+  // `dispatchFilter` or otherwise reads/writes `filterState`/
+  // `visibleChildren`.
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
+    setActiveDragWidth(null);
+    if (isAnyFilterActive) return;
+
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = allChildIds.indexOf(String(active.id));
+    const newIndex = allChildIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newOrder = arrayMove(allChildIds, oldIndex, newIndex);
+    reorderChildren(newOrder);
+  };
+
+  // FR-8: announces a completed keyboard (or pointer) reorder to assistive
+  // technology, mirroring `handleDragEnd`'s own no-op conditions exactly so
+  // no announcement fires for a disabled-by-filter, no-drop-target, or
+  // dropped-without-moving drag. The announcement text is derived entirely
+  // from data already in scope here (`allChildren`/`allChildIds`) — no new
+  // fetch or store read is introduced for it. `onDragStart`/`onDragOver`/
+  // `onDragCancel` are required by `@dnd-kit/core`'s `Announcements` type
+  // but produce no announcement of their own — FR-8 only requires one on a
+  // completed reorder.
+  const announcements: Announcements = {
+    onDragStart: () => undefined,
+    onDragOver: () => undefined,
+    onDragCancel: () => undefined,
+    onDragEnd({ active, over }) {
+      if (isAnyFilterActive) return undefined;
+      if (!over || active.id === over.id) return undefined;
+
+      const oldIndex = allChildIds.indexOf(String(active.id));
+      const newIndex = allChildIds.indexOf(String(over.id));
+      if (oldIndex === -1 || newIndex === -1) return undefined;
+
+      const newOrder = arrayMove(allChildIds, oldIndex, newIndex);
+      const movedChild = allChildren.find(
+        (child) => child.id === String(active.id),
+      );
+      if (!movedChild) return undefined;
+
+      const title = resolveCardTitle(movedChild);
+      const position = newOrder.indexOf(String(active.id)) + 1;
+      return `${title} moved to position ${position} of ${newOrder.length}`;
+    },
+  };
+
   return (
     <div className={`p-4 overflow-y-scroll h-[calc(100vh-12rem)] ${className}`}>
       <div className="flex items-center justify-between mb-4">
@@ -306,23 +503,66 @@ export default function OrganizerView({
           No cards match the current filters.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {visibleChildren.map((child) => (
-            <OrganizerCard
-              key={child.id}
-              resource={child}
-              showBody={isShowingBody}
-              body={resolveOrganizerCardBody(child, cardBodyConfig, {
-                notesEnabled: isNotesEnabled,
-                textExcerpt: excerpts[child.id],
-              })}
-              defaultStatus={defaultStatus}
-              isSelected={child.id === selectedResourceId}
-              onOpen={() => handleOpen(child.id)}
-              onSelect={() => handleSelect(child.id)}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+          accessibility={{ announcements }}
+        >
+          <SortableContext items={allChildIds} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {visibleChildren.map((child) => (
+                <SortableOrganizerCard
+                  key={child.id}
+                  childId={child.id}
+                  resource={child}
+                  showBody={isShowingBody}
+                  body={resolveOrganizerCardBody(child, cardBodyConfig, {
+                    notesEnabled: isNotesEnabled,
+                    textExcerpt: excerpts[child.id],
+                  })}
+                  defaultStatus={defaultStatus}
+                  isSelected={child.id === selectedResourceId}
+                  onOpen={() => handleOpen(child.id)}
+                  onSelect={() => handleSelect(child.id)}
+                  disabled={isAnyFilterActive}
+                  disabledReason={DRAG_DISABLED_WHILE_FILTERED_REASON}
+                />
+              ))}
+            </div>
+          </SortableContext>
+          {/* Renders the actively-dragged card in a floating portal,
+           * independent of document flow — the sortable card in its
+           * original grid slot fades out instead (see
+           * `SortableOrganizerCard`'s `isDragging` handling) rather than
+           * also tracking the pointer/keyboard move itself, which
+           * previously caused the whole grid to visibly reflow underneath
+           * the moving card. Fires for both pointer and keyboard drags
+           * (`onDragStart` is sensor-agnostic); dnd-kit positions the
+           * overlay at the active item's computed rect either way. */}
+          <DragOverlay>
+            {activeDragChild ? (
+              <div style={{ width: activeDragWidth ?? undefined }}>
+                <OrganizerCard
+                  resource={activeDragChild}
+                  showBody={isShowingBody}
+                  body={resolveOrganizerCardBody(
+                    activeDragChild,
+                    cardBodyConfig,
+                    {
+                      notesEnabled: isNotesEnabled,
+                      textExcerpt: excerpts[activeDragChild.id],
+                    },
+                  )}
+                  defaultStatus={defaultStatus}
+                  isSelected={activeDragChild.id === selectedResourceId}
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );
