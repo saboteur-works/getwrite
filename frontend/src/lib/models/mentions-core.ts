@@ -470,10 +470,127 @@ export async function getEntityCooccurrence(
   return result;
 }
 
+/**
+ * One other entity a given entity is mentioned near, in a specific resource
+ * where both are mentioned, for the entity relationship graph's
+ * `proximityMentions` connection type (`specs/features/entity-graph-
+ * connections-persistence-focal-point.md` FR-4, OQ-5).
+ *
+ * `weight` is the **averaged character-offset distance** across every
+ * (this-entity-mention, other-entity-mention) pair within `resourceId` — not
+ * the nearest pair only (OQ-5's resolution: given entity A's offsets
+ * `[10, 50]` and entity B's offsets `[20, 200]` in the same resource, every
+ * one of the four pairwise distances `|10-20|, |10-200|, |50-20|, |50-200|`
+ * is computed and averaged, not just the minimum). `weight` is a **raw
+ * average distance in characters**: a *smaller* number means the two
+ * entities' mentions cluster more closely together in that resource (a
+ * *stronger* connection), and a *larger* number means they are far apart on
+ * average (a *weaker* connection). Callers that render this as a visual
+ * encoding (Task 8) must invert it themselves (e.g. thinner/lighter stroke
+ * for a larger `weight`) — this function does not pre-invert the number,
+ * since "distance" is the more natural unit to store and test against.
+ */
+export type ProximityMentionEdge = {
+  entityId: string;
+  resourceId: string;
+  weight: number;
+};
+
+/**
+ * Returns, for every declared entity, every other declared entity it is
+ * mentioned alongside in at least one shared resource, with one entry **per
+ * shared resource** (not aggregated across resources the way
+ * {@link getEntityCooccurrence}'s `count`/`resourceIds` are) — FR-4 calls for
+ * "a weighted edge ... for every resource in which both are mentioned", so a
+ * pair sharing two resources produces two entries, each with its own
+ * resource-scoped `weight`.
+ *
+ * Mirrors {@link getEntityCooccurrence}'s precedent for reading the mention
+ * index — loads it once via {@link loadMentionIndex} and groups its
+ * `MentionRecord`s by their own `resourceId` key, no second read or
+ * inversion — but additionally consults each record's `offsets` (which
+ * `getEntityCooccurrence` deliberately does not) to compute the
+ * averaged-distance weight described on {@link ProximityMentionEdge}.
+ *
+ * Pairs are unordered but **not symmetrized into a single entry**: as with
+ * `getEntityCooccurrence`, if A is mentioned near B in a resource, B's own
+ * entry array includes the mirrored entry for A in that same resource (same
+ * `resourceId`, same `weight` — the averaged distance is symmetric by
+ * construction), but each entity's array only ever lists the *other* entity,
+ * never itself (no self-pairs, matching `getEntityCooccurrence`'s FR-3
+ * precedent).
+ *
+ * An entity mentioned in a resource together with no other declared entity's
+ * mention contributes no entries there. An entity that never shares a
+ * resource with any other declared entity's mention anywhere is omitted from
+ * the returned map entirely. Returns `{}` when the project has no mention
+ * index yet.
+ */
+export async function getProximityMentionEdges(
+  projectRoot: string,
+): Promise<Record<string, ProximityMentionEdge[]>> {
+  const index = await loadMentionIndex(projectRoot);
+
+  const result: Record<string, ProximityMentionEdge[]> = {};
+  const appendEdge = (
+    entityId: string,
+    otherId: string,
+    resourceId: string,
+    weight: number,
+  ): void => {
+    const entries = result[entityId] ?? [];
+    entries.push({ entityId: otherId, resourceId, weight });
+    result[entityId] = entries;
+  };
+
+  for (const [resourceId, records] of Object.entries(index)) {
+    // One record per (resource, entity) under normal operation, but fold by
+    // entityId defensively (mirroring getEntityCooccurrence's own dedup via
+    // Set) so a duplicate record never double-counts offsets.
+    const offsetsByEntity = new Map<string, number[]>();
+    for (const record of records) {
+      const existing = offsetsByEntity.get(record.entityId);
+      if (existing) {
+        existing.push(...record.offsets);
+      } else {
+        offsetsByEntity.set(record.entityId, [...record.offsets]);
+      }
+    }
+
+    const entityIds = Array.from(offsetsByEntity.keys()).sort();
+    for (let i = 0; i < entityIds.length; i++) {
+      for (let j = i + 1; j < entityIds.length; j++) {
+        const a = entityIds[i];
+        const b = entityIds[j];
+        if (a === undefined || b === undefined) continue;
+        const aOffsets = offsetsByEntity.get(a) ?? [];
+        const bOffsets = offsetsByEntity.get(b) ?? [];
+        if (aOffsets.length === 0 || bOffsets.length === 0) continue;
+
+        let totalDistance = 0;
+        let pairCount = 0;
+        for (const aOffset of aOffsets) {
+          for (const bOffset of bOffsets) {
+            totalDistance += Math.abs(aOffset - bOffset);
+            pairCount += 1;
+          }
+        }
+        const weight = totalDistance / pairCount;
+
+        appendEdge(a, b, resourceId, weight);
+        appendEdge(b, a, resourceId, weight);
+      }
+    }
+  }
+
+  return result;
+}
+
 const mentionsCore = {
   getResourceMentions,
   getEntityMentionedIn,
   getProjectMentionCounts,
   getEntityCooccurrence,
+  getProximityMentionEdges,
 };
 export default mentionsCore;
