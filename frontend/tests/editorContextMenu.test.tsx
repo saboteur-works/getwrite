@@ -606,6 +606,119 @@ describe("EditorContextMenu", () => {
     });
   });
 
+  describe("Dismissing the menu must not scroll the viewport to the cursor (regression)", () => {
+    // Root cause (confirmed by reading @radix-ui/react-focus-scope's source,
+    // not assumed): Radix's `ContextMenuContent` wraps its content in a
+    // `FocusScope` that, on unmount, dispatches a real, non-bubbling
+    // `"focusScope.autoFocusOnUnmount"` CustomEvent at the content's own DOM
+    // node. Unless that event's `defaultPrevented` is true, the FocusScope's
+    // cleanup then calls `.focus()` on whatever element had focus before the
+    // menu opened — here, the ProseMirror contenteditable, since the editor
+    // is normally focused at the moment of a right-click. That native
+    // `focus` event reaching `.ProseMirror` is what prosemirror-view's own
+    // `handlers.focus` responds to by syncing the browser's native Selection
+    // Range onto the document's current ProseMirror selection
+    // (`selectionToDOM`), and it is *that* — not any `.focus()` call this
+    // component makes itself — that the browser scrolls into view,
+    // producing the reported jump. `EditorContextMenu`'s `onCloseAutoFocus`
+    // prop (passed straight through to Radix's `ContextMenuContent`, which
+    // forwards it to the same FocusScope as `onUnmountAutoFocus`) is the
+    // fix: it must call `event.preventDefault()` so this restoration never
+    // runs on a plain dismiss. This is asserted directly against the real
+    // event Radix dispatches, not a guess about `editor.commands.focus` or
+    // a simulated scroll (jsdom does not implement real scrolling).
+    function openMenuAndSettle(target: HTMLElement) {
+      openMenu(target);
+      act(() => vi.runAllTimers());
+    }
+
+    it("Escape dismissal (no action chosen) prevents Radix's default focus-restoration event", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.focus();
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+      const menuEl = screen.getByRole("menu");
+
+      let captured: Event | null = null;
+      menuEl.addEventListener(
+        "focusScope.autoFocusOnUnmount",
+        (event: Event) => {
+          captured = event;
+        },
+      );
+
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+      act(() => vi.runAllTimers());
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(captured).not.toBeNull();
+      expect((captured as unknown as Event).defaultPrevented).toBe(true);
+    });
+
+    it("onOpenChange(false) without any item activated also prevents the restoration event", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.focus();
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+      const menuEl = screen.getByRole("menu");
+
+      let captured: Event | null = null;
+      menuEl.addEventListener(
+        "focusScope.autoFocusOnUnmount",
+        (event: Event) => {
+          captured = event;
+        },
+      );
+
+      // Simulates a click outside the menu (Radix's `onInteractOutside` ->
+      // `onOpenChange(false)` path), not Escape, to cover both of the two
+      // dismiss-without-acting routes named in the bug report.
+      fireEvent.pointerDown(document.body);
+      fireEvent.pointerUp(document.body);
+      act(() => vi.runAllTimers());
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(captured).not.toBeNull();
+      expect((captured as unknown as Event).defaultPrevented).toBe(true);
+    });
+
+    it("still restores focus to the editor (without the prevented default) so a keyboard user can keep typing after Escape (FR-6)", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.focus();
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+      act(() => vi.runAllTimers());
+
+      expect(editor.isFocused).toBe(true);
+    });
+
+    it("choosing a real action (Bold) still focuses the editor normally, matching the toolbar's own behavior (no regression to FR-4)", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+      fireEvent.click(screen.getByText("Bold"));
+      act(() => vi.runAllTimers());
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(editor.isActive("bold")).toBe(true);
+      expect(editor.isFocused).toBe(true);
+    });
+  });
+
   describe("Shared ContextMenu styling (FR-7)", () => {
     // ResourceContextMenu.tsx renders its ContextMenuContent with
     // className="resource-context-menu ${className}" and every item with

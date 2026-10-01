@@ -214,6 +214,44 @@ export default function EditorContextMenu({
     isMenuOpenRef.current = open;
   }, []);
 
+  // Radix's default close behavior restores DOM focus to whatever had it
+  // before the menu opened — typically the ProseMirror contenteditable
+  // itself, since the editor is usually focused at the moment of a
+  // right-click. That restoration fires the DOM's native `focus` event on
+  // `.ProseMirror`, and prosemirror-view's own `focus` handler
+  // (`handlers.focus` in `prosemirror-view`) responds by syncing the
+  // browser's native selection to the document's current ProseMirror
+  // selection (`selectionToDOM`) whenever the two have drifted — which they
+  // always have here, since the DOM selection was never inside the
+  // ProseMirror content area while the Radix menu/portal held focus.
+  // Re-establishing a native Selection Range is what the browser scrolls
+  // into view, producing the reported jump — not any `.focus()` call this
+  // component makes itself (those only run from an actually-activated menu
+  // item, mirroring the toolbar's own `editor.chain().focus()....run()`
+  // convention, and are fine to scroll). Preventing Radix's default here
+  // stops the spurious restoration on a plain dismiss (Escape, click
+  // outside, or `onOpenChange(false)` with no action chosen). When an
+  // action *was* chosen, its own handler already focused the editor (with
+  // its normal scroll-into-view behavior) before the menu finished closing,
+  // so `editor.isFocused` is already true and the fallback below is a
+  // no-op; when nothing was chosen, it quietly returns focus to the editor
+  // without scrolling, so a keyboard user who dismissed with Escape can
+  // keep typing (FR-6) without losing their scroll position.
+  const handleCloseAutoFocus = React.useCallback(
+    (event: Event) => {
+      event.preventDefault();
+      // Radix's FocusScope defers this event to a macrotask (a bare
+      // `setTimeout(..., 0)`), so it can still fire after the editor itself
+      // has been torn down (e.g. the owning component unmounting around the
+      // same time the menu closes) — guard against acting on a destroyed
+      // editor instance.
+      if (!editor.isDestroyed && !editor.isFocused) {
+        editor.commands.focus(undefined, { scrollIntoView: false });
+      }
+    },
+    [editor],
+  );
+
   const handleCopy = React.useCallback(() => {
     const { from, to } = captured;
     const text = editor.state.doc.textBetween(from, to, "\n");
@@ -287,6 +325,7 @@ export default function EditorContextMenu({
       <ContextMenuContent
         aria-label="Editor options"
         className="resource-context-menu"
+        onCloseAutoFocus={handleCloseAutoFocus}
       >
         <ContextMenuItem
           className="resource-context-menu-item"
