@@ -60,13 +60,17 @@ export interface OrganizerCardProps {
    */
   isSelected?: boolean;
   /**
-   * Ref callback for the card's dedicated drag handle element, typically a
-   * caller's `@dnd-kit/sortable` `useSortable().setNodeRef` (or a wrapper
-   * around it). The card never imports `@dnd-kit` itself; this prop exists
-   * purely to let a drag-and-drop-aware caller attach its own ref to the
-   * handle without the card knowing what library produced it.
+   * Ref callback for the card's own root element, typically a caller's
+   * `@dnd-kit/sortable` `useSortable().setNodeRef`. Applied to the outer
+   * `Card`, not the drag handle — dnd-kit measures and transforms whatever
+   * element holds this ref, so it must be the whole card (matching the
+   * `dragStyle` transform below) even though the handle is the only element
+   * that receives {@link dragHandleAttributes}/{@link dragHandleListeners}.
+   * The card never imports `@dnd-kit` itself; this prop exists purely to let
+   * a drag-and-drop-aware caller attach its own ref without the card knowing
+   * what library produced it.
    */
-  dragHandleRef?: (element: HTMLElement | null) => void;
+  cardRef?: (element: HTMLElement | null) => void;
   /**
    * DOM attributes to spread onto the drag handle, typically a caller's
    * `@dnd-kit/sortable` `useSortable().attributes`. Ignored while
@@ -144,7 +148,7 @@ export default function OrganizerCard({
   onSelect,
   defaultStatus = "",
   isSelected = false,
-  dragHandleRef,
+  cardRef,
   dragHandleAttributes,
   dragHandleListeners,
   dragStyle,
@@ -182,6 +186,7 @@ export default function OrganizerCard({
   return (
     <Card
       as="article"
+      ref={cardRef}
       className={`h-48 border${isSelected ? " resource-tree-item--selected" : ""}`}
       style={composedStyle}
       aria-labelledby={`res-${resource.id}-title`}
@@ -191,7 +196,6 @@ export default function OrganizerCard({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              ref={dragHandleRef}
               className={`flex items-center justify-center p-0.5 -m-0.5 rounded text-gw-secondary hover:text-gw-primary transition-colors duration-150${
                 isDragDisabled
                   ? " opacity-40 cursor-not-allowed"

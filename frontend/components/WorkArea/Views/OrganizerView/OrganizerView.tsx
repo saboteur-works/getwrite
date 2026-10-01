@@ -77,7 +77,7 @@ function SortableOrganizerCard({
   ...cardProps
 }: { childId: string; disabled: boolean; disabledReason?: string } & Omit<
   OrganizerCardProps,
-  | "dragHandleRef"
+  | "cardRef"
   | "dragHandleAttributes"
   | "dragHandleListeners"
   | "dragStyle"
@@ -106,7 +106,7 @@ function SortableOrganizerCard({
   return (
     <OrganizerCard
       {...cardProps}
-      dragHandleRef={setNodeRef}
+      cardRef={setNodeRef}
       dragHandleAttributes={attributes}
       dragHandleListeners={listeners}
       dragStyle={dragStyle}
@@ -382,20 +382,29 @@ export default function OrganizerView({
 
   const allChildIds = allChildren.map((child) => child.id);
 
-  // Id of the card currently being dragged, if any — drives the
-  // `DragOverlay` below. Pointer and keyboard drags both go through
-  // `onDragStart`/`onDragEnd`/`onDragCancel`.
+  // Id (and measured width) of the card currently being dragged, if any —
+  // drives the `DragOverlay` below. Pointer and keyboard drags both go
+  // through `onDragStart`/`onDragEnd`/`onDragCancel`. The width is captured
+  // from the dragged element's own rect at drag start, since `DragOverlay`
+  // portals outside the grid and so cannot otherwise inherit the grid
+  // column's width — without it, the overlay's card shrinks to its content's
+  // intrinsic (narrow) width instead of matching the card it's lifted from.
   const [activeDragId, setActiveDragId] = React.useState<string | null>(null);
+  const [activeDragWidth, setActiveDragWidth] = React.useState<number | null>(
+    null,
+  );
   const activeDragChild = activeDragId
     ? (allChildren.find((child) => child.id === activeDragId) ?? null)
     : null;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(String(event.active.id));
+    setActiveDragWidth(event.active.rect.current.initial?.width ?? null);
   };
 
   const handleDragCancel = () => {
     setActiveDragId(null);
+    setActiveDragWidth(null);
   };
 
   // FR-4: this handler touches only the reorder path — it never dispatches
@@ -403,6 +412,7 @@ export default function OrganizerView({
   // `visibleChildren`.
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveDragId(null);
+    setActiveDragWidth(null);
     if (isAnyFilterActive) return;
 
     const { active, over } = event;
@@ -534,20 +544,22 @@ export default function OrganizerView({
            * overlay at the active item's computed rect either way. */}
           <DragOverlay>
             {activeDragChild ? (
-              <OrganizerCard
-                resource={activeDragChild}
-                showBody={isShowingBody}
-                body={resolveOrganizerCardBody(
-                  activeDragChild,
-                  cardBodyConfig,
-                  {
-                    notesEnabled: isNotesEnabled,
-                    textExcerpt: excerpts[activeDragChild.id],
-                  },
-                )}
-                defaultStatus={defaultStatus}
-                isSelected={activeDragChild.id === selectedResourceId}
-              />
+              <div style={{ width: activeDragWidth ?? undefined }}>
+                <OrganizerCard
+                  resource={activeDragChild}
+                  showBody={isShowingBody}
+                  body={resolveOrganizerCardBody(
+                    activeDragChild,
+                    cardBodyConfig,
+                    {
+                      notesEnabled: isNotesEnabled,
+                      textExcerpt: excerpts[activeDragChild.id],
+                    },
+                  )}
+                  defaultStatus={defaultStatus}
+                  isSelected={activeDragChild.id === selectedResourceId}
+                />
+              </div>
             ) : null}
           </DragOverlay>
         </DndContext>

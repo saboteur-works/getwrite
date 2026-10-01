@@ -108,7 +108,7 @@ describe("a11y: OrganizerCard drag handle", () => {
         resource={res}
         showBody={true}
         onSelect={vi.fn()}
-        dragHandleRef={vi.fn()}
+        cardRef={vi.fn()}
         dragHandleAttributes={{ "aria-roledescription": "sortable" }}
         dragHandleListeners={{ onPointerDown: vi.fn() }}
       />,
@@ -123,7 +123,7 @@ describe("a11y: OrganizerCard drag handle", () => {
         resource={res}
         showBody={true}
         onSelect={vi.fn()}
-        dragHandleRef={vi.fn()}
+        cardRef={vi.fn()}
         dragHandleAttributes={{ "aria-roledescription": "sortable" }}
         dragHandleListeners={{ onPointerDown: vi.fn() }}
         isDragDisabled={true}
