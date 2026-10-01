@@ -258,6 +258,13 @@ const nextConfig = {
           // — same rule as above.
           "../../store/transport/native-entity-graph-settings-backend":
             "./src/store/transport/native-entity-graph-settings-backend.web-stub",
+          // entity-graph-positions Task 12: lib/api/entity-graph-positions.ts
+          // also lives in src/lib/api/, so its dynamic import's literal
+          // specifier is
+          // "../../store/transport/native-entity-graph-positions-backend" —
+          // same rule as above.
+          "../../store/transport/native-entity-graph-positions-backend":
+            "./src/store/transport/native-entity-graph-positions-backend.web-stub",
         },
   },
 };

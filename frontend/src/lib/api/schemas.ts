@@ -686,3 +686,24 @@ export const SharedMetadataEdgesResponseSchema = z.array(
     sharedFieldKeys: z.array(z.string()),
   }),
 );
+
+// ---------------------------------------------------------------------------
+// Feature 68 Task 12 — response schemas for the entity-graph node position
+// persistence transport. Matches `entity-graph-positions.ts`'s
+// `EntityGraphPositionRecord` shape exactly (`{ entityId, x, y,
+// connectionTypesSnapshot, savedAt }`). `EntityGraphPositionRecordResponseSchema`
+// backs the PUT/POST single-record response;
+// `EntityGraphPositionsListResponseSchema` backs the GET list response.
+// ---------------------------------------------------------------------------
+
+export const EntityGraphPositionRecordResponseSchema = z.object({
+  entityId: z.string(),
+  x: z.number(),
+  y: z.number(),
+  connectionTypesSnapshot: z.array(z.string()),
+  savedAt: z.string(),
+});
+
+export const EntityGraphPositionsListResponseSchema = z.array(
+  EntityGraphPositionRecordResponseSchema,
+);
