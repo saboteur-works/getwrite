@@ -163,9 +163,34 @@ export function isPositionInvalidated(
   return false;
 }
 
+/**
+ * Removes any persisted position record naming `entityId`, as a no-op when
+ * none exists (Task 14, FR-12). Called unconditionally whenever an entity is
+ * removed/un-declared — unlike `removeEntityRelationshipsForEntity`, which
+ * is an opt-in checkbox on that same flow, dropping a now-meaningless graph
+ * position carries no data-loss risk worth confirming, so no dialog step or
+ * checkbox gates this call.
+ *
+ * The entire read-modify-write sequence runs inside a single `withMetaLock`
+ * call, mirroring {@link saveEntityGraphPosition}'s own pattern, so a
+ * concurrent save/removal for the same entity cannot interleave.
+ */
+export async function removeEntityGraphPositionForEntity(
+  projectRoot: string,
+  entityId: string,
+): Promise<void> {
+  return withMetaLock(projectRoot, async () => {
+    const records = await loadEntityGraphPositions(projectRoot);
+    const next = records.filter((existing) => existing.entityId !== entityId);
+    if (next.length === records.length) return;
+    await persistEntityGraphPositions(projectRoot, next);
+  });
+}
+
 const entityGraphPositions = {
   loadEntityGraphPositions,
   saveEntityGraphPosition,
   isPositionInvalidated,
+  removeEntityGraphPositionForEntity,
 };
 export default entityGraphPositions;

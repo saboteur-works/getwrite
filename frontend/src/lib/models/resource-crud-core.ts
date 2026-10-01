@@ -58,6 +58,7 @@ import { writeRevision, listRevisions } from "./revision";
 import { resolveInitialRevisionName } from "./resource-revision";
 import { readSidecar, writeSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
+import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
 import { getSchema } from "./metadata-schema";
 import {
@@ -447,6 +448,19 @@ export async function updateSidecarCore(
     resourceId,
     merged as Record<string, MetadataValue>,
   );
+
+  // Task 14 (FR-12): un-declaring an entity (clearing `entityKind`) also
+  // drops any saved entity-graph node position for it, unconditionally —
+  // no checkbox, no confirmation, unlike the opt-in relationship-edge
+  // removal on the same `RemoveEntityControl.tsx` flow. Hooked here, at the
+  // server-side sidecar-clear core, rather than in the client-side control,
+  // so every caller that clears `entityKind` through this path (the UI's
+  // Remove Entity control, `EntitySection.tsx`'s direct Entity Kind clear,
+  // the native in-process transport, or any future caller) gets this
+  // cleanup automatically.
+  if (clearKeys?.includes("entityKind")) {
+    await removeEntityGraphPositionForEntity(projectRoot, resourceId);
+  }
 }
 
 // ---------------------------------------------------------------------------

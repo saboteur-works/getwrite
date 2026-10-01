@@ -6,6 +6,7 @@ import {
   loadEntityGraphPositions,
   saveEntityGraphPosition,
   isPositionInvalidated,
+  removeEntityGraphPositionForEntity,
   type EntityGraphPositionRecord,
 } from "../../src/lib/models/entity-graph-positions";
 
@@ -99,6 +100,57 @@ describe("saveEntityGraphPosition", () => {
     expect(loaded).toHaveLength(2);
     expect(loaded.find((r) => r.entityId === ENTITY_ID)).toEqual(a);
     expect(loaded.find((r) => r.entityId === OTHER_ENTITY_ID)).toEqual(b);
+    await removeDirRetry(tmp);
+  });
+});
+
+describe("removeEntityGraphPositionForEntity", () => {
+  it("removes an entity's saved position, leaving no surviving record", async () => {
+    const tmp = await makeTmp();
+    await saveEntityGraphPosition(tmp, ENTITY_ID, 10, 20, ["authored"]);
+
+    await removeEntityGraphPositionForEntity(tmp, ENTITY_ID);
+
+    const loaded = await loadEntityGraphPositions(tmp);
+    expect(loaded.find((r) => r.entityId === ENTITY_ID)).toBeUndefined();
+    expect(loaded).toEqual([]);
+    await removeDirRetry(tmp);
+  });
+
+  it("leaves a different entity's record untouched", async () => {
+    const tmp = await makeTmp();
+    const other = await saveEntityGraphPosition(tmp, OTHER_ENTITY_ID, 3, 4, [
+      "authored",
+    ]);
+    await saveEntityGraphPosition(tmp, ENTITY_ID, 1, 1, ["authored"]);
+
+    await removeEntityGraphPositionForEntity(tmp, ENTITY_ID);
+
+    const loaded = await loadEntityGraphPositions(tmp);
+    expect(loaded).toEqual([other]);
+    await removeDirRetry(tmp);
+  });
+
+  it("is a no-op, not an error, when no file exists yet", async () => {
+    const tmp = await makeTmp();
+    await expect(
+      removeEntityGraphPositionForEntity(tmp, ENTITY_ID),
+    ).resolves.toBeUndefined();
+    const loaded = await loadEntityGraphPositions(tmp);
+    expect(loaded).toEqual([]);
+    await removeDirRetry(tmp);
+  });
+
+  it("is a no-op when the file exists but names no matching entityId", async () => {
+    const tmp = await makeTmp();
+    const other = await saveEntityGraphPosition(tmp, OTHER_ENTITY_ID, 3, 4, [
+      "authored",
+    ]);
+
+    await removeEntityGraphPositionForEntity(tmp, ENTITY_ID);
+
+    const loaded = await loadEntityGraphPositions(tmp);
+    expect(loaded).toEqual([other]);
     await removeDirRetry(tmp);
   });
 });
