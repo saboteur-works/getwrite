@@ -11,8 +11,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import EntityGraphAccessibleList from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphAccessibleList";
 import type {
   EntityGraphAuthoredEdge,
+  EntityGraphBacklinkGraphEdge,
   EntityGraphCooccurrenceEdge,
   EntityGraphNode,
+  EntityGraphProximityMentionGraphEdge,
+  EntityGraphSharedMetadataGraphEdge,
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 
 const nodes: EntityGraphNode[] = [
@@ -163,5 +166,57 @@ describe("EntityGraphAccessibleList", () => {
     expect(screen.getByRole("list", { name: "Entity nodes" })).toBeTruthy();
     expect(screen.getByRole("list", { name: "Entity edges" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Anna" })).toBeTruthy();
+  });
+});
+
+describe("EntityGraphAccessibleList — new edge kinds (Feature 68 Task 7 minimal fix)", () => {
+  const backlinkEdge: EntityGraphBacklinkGraphEdge = {
+    kind: "backlinks",
+    entityIds: ["e-anna", "e-bob"],
+  };
+  const proximityMentionEdge: EntityGraphProximityMentionGraphEdge = {
+    kind: "proximityMentions",
+    entityIdA: "e-anna",
+    entityIdB: "e-carl",
+    resourceId: "res-1",
+    weight: 17,
+  };
+  const sharedMetadataEdge: EntityGraphSharedMetadataGraphEdge = {
+    kind: "sharedMetadata",
+    entityIdA: "e-bob",
+    entityIdB: "e-carl",
+    sharedTagIds: ["tag-1"],
+    sharedFieldKeys: ["role"],
+  };
+
+  it("renders exactly one <li> per new-kind edge, without throwing", () => {
+    expect(() =>
+      render(
+        <EntityGraphAccessibleList
+          nodes={nodes}
+          edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
+        />,
+      ),
+    ).not.toThrow();
+
+    const items = screen.getAllByTestId("entity-graph-edge-item");
+    expect(items).toHaveLength(3);
+  });
+
+  it("never mis-describes a new-kind edge as an authored relationship", () => {
+    render(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
+      />,
+    );
+
+    const list = screen.getByTestId("entity-graph-edge-list");
+    // `describeAuthoredEdge` renders a "→" direction indicator; no new-kind
+    // edge's description includes one.
+    expect(list.textContent).not.toMatch(/→/);
+    expect(list.textContent).toContain("linked by a backlink");
+    expect(list.textContent).toContain("mentioned close together");
+    expect(list.textContent).toContain("share");
   });
 });

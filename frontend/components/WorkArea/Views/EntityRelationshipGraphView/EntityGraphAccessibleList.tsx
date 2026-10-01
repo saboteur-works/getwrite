@@ -5,7 +5,10 @@ import type {
 } from "./EntityRelationshipGraphView";
 import {
   describeAuthoredEdge,
+  describeBacklinkEdge,
   describeCooccurrenceEdge,
+  describeProximityMentionEdge,
+  describeSharedMetadataEdge,
 } from "./edgeDescriptions";
 
 export interface EntityGraphAccessibleListProps {
@@ -92,32 +95,92 @@ export default function EntityGraphAccessibleList({
       </ul>
       <ul aria-label="Entity edges" data-testid="entity-graph-edge-list">
         {edges.map((edge) => {
-          if (edge.kind === "cooccurrence") {
-            const key = `cooccurrence-${edge.entityIdA}-${edge.entityIdB}`;
-            return (
-              <li key={key} data-testid="entity-graph-edge-item">
-                {describeCooccurrenceEdge(
-                  nameById,
-                  edge.entityIdA,
-                  edge.entityIdB,
-                  edge.sharedResourceCount,
-                )}
-              </li>
-            );
+          // Exhaustive per-kind rendering (Feature 68, Task 7 minimal fix):
+          // a non-exhaustive version here previously fell through to the
+          // `authored`-shaped branch for any unhandled kind, which would
+          // read `.id`/`.sourceEntityId`/`.targetEntityId` off an edge that
+          // doesn't have them and mis-describe it as authored. The three new
+          // kinds below (`backlinks`, `proximityMentions`, `sharedMetadata`)
+          // render via Task 5's own description functions — correct, but
+          // without Task 9's fuller accessible-list treatment (e.g. any
+          // additional grouping/labelling Task 9 may add), which remains
+          // that task's scope.
+          switch (edge.kind) {
+            case "cooccurrence":
+              return (
+                <li
+                  key={`cooccurrence-${edge.entityIdA}-${edge.entityIdB}`}
+                  data-testid="entity-graph-edge-item"
+                >
+                  {describeCooccurrenceEdge(
+                    nameById,
+                    edge.entityIdA,
+                    edge.entityIdB,
+                    edge.sharedResourceCount,
+                  )}
+                </li>
+              );
+            case "authored":
+              return (
+                <li
+                  key={`authored-${edge.id}`}
+                  data-testid="entity-graph-edge-item"
+                >
+                  {describeAuthoredEdge(
+                    nameById,
+                    edge.sourceEntityId,
+                    edge.targetEntityId,
+                    edge.relationshipType,
+                  )}
+                </li>
+              );
+            case "backlinks":
+              return (
+                <li
+                  key={`backlinks-${edge.entityIds[0]}-${edge.entityIds[1]}`}
+                  data-testid="entity-graph-edge-item"
+                >
+                  {describeBacklinkEdge(
+                    nameById,
+                    edge.entityIds[0],
+                    edge.entityIds[1],
+                  )}
+                </li>
+              );
+            case "proximityMentions":
+              return (
+                <li
+                  key={`proximityMentions-${edge.entityIdA}-${edge.entityIdB}-${edge.resourceId}`}
+                  data-testid="entity-graph-edge-item"
+                >
+                  {describeProximityMentionEdge(
+                    nameById,
+                    edge.entityIdA,
+                    edge.entityIdB,
+                    edge.weight,
+                  )}
+                </li>
+              );
+            case "sharedMetadata":
+              return (
+                <li
+                  key={`sharedMetadata-${edge.entityIdA}-${edge.entityIdB}`}
+                  data-testid="entity-graph-edge-item"
+                >
+                  {/* Task 7 minimal fix: raw tag ids/field keys, not yet
+                      resolved to display labels — full id-to-label
+                      resolution is Task 9's scope, per
+                      `describeSharedMetadataEdge`'s own doc comment. */}
+                  {describeSharedMetadataEdge(
+                    nameById,
+                    edge.entityIdA,
+                    edge.entityIdB,
+                    edge.sharedTagIds,
+                    edge.sharedFieldKeys,
+                  )}
+                </li>
+              );
           }
-          return (
-            <li
-              key={`authored-${edge.id}`}
-              data-testid="entity-graph-edge-item"
-            >
-              {describeAuthoredEdge(
-                nameById,
-                edge.sourceEntityId,
-                edge.targetEntityId,
-                edge.relationshipType,
-              )}
-            </li>
-          );
         })}
       </ul>
     </div>

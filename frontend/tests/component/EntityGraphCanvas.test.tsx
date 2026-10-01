@@ -1568,6 +1568,86 @@ describe("EntityGraphCanvas", () => {
       }
     });
   });
+
+  describe("new edge kinds (Feature 68 Task 7 minimal fix)", () => {
+    const NEW_KIND_EDGES: EntityGraphEdge[] = [
+      { kind: "backlinks", entityIds: ["e-1", "e-2"] },
+      {
+        kind: "proximityMentions",
+        entityIdA: "e-2",
+        entityIdB: "e-3",
+        resourceId: "res-1",
+        weight: 42,
+      },
+      {
+        kind: "sharedMetadata",
+        entityIdA: "e-1",
+        entityIdB: "e-3",
+        sharedTagIds: ["tag-1"],
+        sharedFieldKeys: [],
+      },
+    ];
+
+    it("renders one edge element per new-kind edge without throwing (regression: d3-force 'node not found')", () => {
+      // Before the Task 7 fix, `edgeEndpoints`'s non-exhaustive narrowing
+      // resolved a new-kind edge's endpoints to `undefined`, which made
+      // `forceLink`'s `.id()` lookup fail inside `d3-force` with
+      // "Error: node not found: undefined" the first time the simulation
+      // advanced a tick. This asserts the render (and therefore
+      // `computeGraphLayout`'s simulation) completes cleanly.
+      expect(() =>
+        render(<EntityGraphCanvas nodes={NODES} edges={NEW_KIND_EDGES} />),
+      ).not.toThrow();
+
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      expect(edgeElements).toHaveLength(NEW_KIND_EDGES.length);
+    });
+
+    it("resolves both real node endpoints for every new edge kind, never a position fallback", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={NEW_KIND_EDGES} />);
+
+      // If an endpoint had resolved to `undefined`, `computeGraphLayout`
+      // falls back to the canvas center for that endpoint (see its
+      // `?? width / 2` / `?? height / 2`), which every one of these fixture
+      // edges would coincidentally also do if both ends collapsed to the
+      // exact center — so this also cross-checks against
+      // `computeGraphLayout`'s own node positions directly.
+      const { positionedEdges, positionedNodes } = computeGraphLayout(
+        NODES,
+        NEW_KIND_EDGES,
+      );
+      const positionById = new Map(
+        positionedNodes.map((n) => [n.entityId, { x: n.x, y: n.y }]),
+      );
+
+      expect(positionedEdges).toHaveLength(NEW_KIND_EDGES.length);
+      const expectedEndpointsByKey: Record<string, [string, string]> = {
+        "backlinks:e-1:e-2": ["e-1", "e-2"],
+        "proximityMentions:e-2:e-3:res-1": ["e-2", "e-3"],
+        "sharedMetadata:e-1:e-3": ["e-1", "e-3"],
+      };
+      for (const edge of positionedEdges) {
+        const [sourceId, targetId] = expectedEndpointsByKey[edge.key];
+        expect(edge.x1).toBe(positionById.get(sourceId)?.x);
+        expect(edge.y1).toBe(positionById.get(sourceId)?.y);
+        expect(edge.x2).toBe(positionById.get(targetId)?.x);
+        expect(edge.y2).toBe(positionById.get(targetId)?.y);
+      }
+    });
+
+    it("never describes a new-kind edge's tooltip as an authored relationship", async () => {
+      for (const edge of NEW_KIND_EDGES) {
+        const { unmount } = render(
+          <EntityGraphCanvas nodes={NODES} edges={[edge]} />,
+        );
+        const hitTarget = screen.getByTestId("entity-graph-edge-hit-target");
+        fireEvent.mouseEnter(hitTarget, { clientX: 1, clientY: 1 });
+        const tooltip = await screen.findByTestId("entity-graph-edge-tooltip");
+        expect(tooltip.textContent).not.toMatch(/→/);
+        unmount();
+      }
+    });
+  });
 });
 
 describe("chooseTooltipPlacement (entity-graph-edge-tooltips, FR-10)", () => {

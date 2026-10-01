@@ -653,3 +653,36 @@ export const EntityGraphSettingsResponseSchema = z.object({
   entityGraphConnectionTypes: z.array(z.string()),
   entityGraphFocalHopRadius: z.number(),
 });
+
+// ---------------------------------------------------------------------------
+// Feature 68 Task 7 — response schemas for the three new entity-graph edge
+// derivations wired into `EntityRelationshipGraphView.tsx`. Each matches its
+// model-layer type exactly (`backlinks.ts`'s `EntityBacklinkEdge`,
+// `mentions-core.ts`'s `ProximityMentionEdge` keyed per-entity exactly like
+// `EntityCooccurrenceResponseSchema` above, and `entity-shared-metadata.ts`'s
+// `SharedMetadataEdge`).
+// ---------------------------------------------------------------------------
+
+export const EntityBacklinkEdgesResponseSchema = z.array(
+  z.object({ entityIds: z.tuple([z.string(), z.string()]) }),
+);
+
+const ProximityMentionEdgeSchema = z.object({
+  entityId: z.string(),
+  resourceId: z.string(),
+  weight: z.number(),
+});
+
+export const ProximityMentionEdgesResponseSchema = z.record(
+  z.string(),
+  z.array(ProximityMentionEdgeSchema),
+);
+
+export const SharedMetadataEdgesResponseSchema = z.array(
+  z.object({
+    entityIdA: z.string(),
+    entityIdB: z.string(),
+    sharedTagIds: z.array(z.string()),
+    sharedFieldKeys: z.array(z.string()),
+  }),
+);

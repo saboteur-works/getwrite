@@ -15,7 +15,10 @@ import type {
 } from "./EntityRelationshipGraphView";
 import {
   describeAuthoredEdge,
+  describeBacklinkEdge,
   describeCooccurrenceEdge,
+  describeProximityMentionEdge,
+  describeSharedMetadataEdge,
 } from "./edgeDescriptions";
 import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
 import Button from "../../../common/UI/Button";
@@ -162,24 +165,49 @@ function cooccurrenceStrokeWidth(count: number): number {
 
 /**
  * Returns the two entity ids an edge connects, regardless of edge kind — a
- * co-occurrence edge's unordered pair or an authored edge's directed pair.
+ * co-occurrence edge's unordered pair, an authored edge's directed pair, a
+ * backlink edge's `entityIds` tuple, or a proximity-mention/shared-metadata
+ * edge's `entityIdA`/`entityIdB` pair (Feature 68, Task 7 minimal fix: this
+ * `switch` must stay exhaustive — a non-exhaustive version here is exactly
+ * what let a new-kind edge resolve to `undefined` endpoints and crash
+ * `d3-force`'s link force with "node not found: undefined").
  */
 function edgeEndpoints(edge: EntityGraphEdge): [string, string] {
-  return edge.kind === "cooccurrence"
-    ? [edge.entityIdA, edge.entityIdB]
-    : [edge.sourceEntityId, edge.targetEntityId];
+  switch (edge.kind) {
+    case "cooccurrence":
+      return [edge.entityIdA, edge.entityIdB];
+    case "authored":
+      return [edge.sourceEntityId, edge.targetEntityId];
+    case "backlinks":
+      return edge.entityIds;
+    case "proximityMentions":
+    case "sharedMetadata":
+      return [edge.entityIdA, edge.entityIdB];
+  }
 }
 
 /**
  * A stable, unique key for an edge — used both as the React list key and as
  * the `forceLink` link's own identity. An authored edge already carries a
- * unique `id`; a co-occurrence edge has none, so its key is derived from its
- * (already-canonicalized, per `EntityRelationshipGraphView`) unordered pair.
+ * unique `id`; every other kind has none, so its key is derived from its
+ * (already-canonicalized, per `EntityRelationshipGraphView`) unordered pair
+ * — a proximity-mention edge's pair is additionally scoped by `resourceId`
+ * since a pair sharing more than one resource produces one edge per
+ * resource (Feature 68, Task 7).
  */
 function edgeKey(edge: EntityGraphEdge): string {
-  return edge.kind === "authored"
-    ? `authored:${edge.id}`
-    : `cooccurrence:${edge.entityIdA}:${edge.entityIdB}`;
+  switch (edge.kind) {
+    case "authored":
+      return `authored:${edge.id}`;
+    case "cooccurrence":
+      return `cooccurrence:${edge.entityIdA}:${edge.entityIdB}`;
+    case "backlinks":
+      return `backlinks:${edge.entityIds[0]}:${edge.entityIds[1]}`;
+    case "proximityMentions":
+      return `proximityMentions:${edge.entityIdA}:${edge.entityIdB}:${edge.resourceId}`;
+    case "sharedMetadata":
+      return `sharedMetadata:${edge.entityIdA}:${edge.entityIdB}`;
+  }
 }
 
 /**
@@ -221,19 +249,50 @@ function describeEdge(
   edge: EntityGraphEdge,
   nameById: Map<string, string>,
 ): string {
-  return edge.kind === "authored"
-    ? describeAuthoredEdge(
+  switch (edge.kind) {
+    case "authored":
+      return describeAuthoredEdge(
         nameById,
         edge.sourceEntityId,
         edge.targetEntityId,
         edge.relationshipType,
-      )
-    : describeCooccurrenceEdge(
+      );
+    case "cooccurrence":
+      return describeCooccurrenceEdge(
         nameById,
         edge.entityIdA,
         edge.entityIdB,
         edge.sharedResourceCount,
       );
+    case "backlinks":
+      return describeBacklinkEdge(
+        nameById,
+        edge.entityIds[0],
+        edge.entityIds[1],
+      );
+    case "proximityMentions":
+      return describeProximityMentionEdge(
+        nameById,
+        edge.entityIdA,
+        edge.entityIdB,
+        edge.weight,
+      );
+    case "sharedMetadata":
+      // Task 7 minimal fix: passes raw tag ids/field keys rather than
+      // resolving them to display labels first, unlike the doc comment on
+      // `describeSharedMetadataEdge` (`edgeDescriptions.ts`) assumes a real
+      // caller will do — full id-to-label resolution plus the rest of this
+      // edge kind's visual treatment is explicitly Task 8/9's scope, not
+      // this minimal typecheck/crash fix's. This still produces a safe,
+      // non-"authored" string.
+      return describeSharedMetadataEdge(
+        nameById,
+        edge.entityIdA,
+        edge.entityIdB,
+        edge.sharedTagIds,
+        edge.sharedFieldKeys,
+      );
+  }
 }
 
 /**
@@ -1064,10 +1123,18 @@ export default function EntityGraphCanvas({
             {positionedEdges.map((positioned) => {
               const { edge } = positioned;
               const isAuthored = edge.kind === "authored";
+              // The three Feature 68 Task 7 kinds (`backlinks`,
+              // `proximityMentions`, `sharedMetadata`) render with the same
+              // fixed, undirected stroke width as an authored edge's own
+              // fixed width for now — a minimal, crash-free placeholder.
+              // Each kind getting its own distinct dash pattern /
+              // directedness / opacity-or-width encoding (so all five kinds
+              // stay visually distinguishable at once) is Task 8's explicit
+              // scope, not this fix's.
               const strokeWidth =
-                edge.kind === "authored"
-                  ? AUTHORED_EDGE_STROKE_WIDTH
-                  : cooccurrenceStrokeWidth(edge.sharedResourceCount);
+                edge.kind === "cooccurrence"
+                  ? cooccurrenceStrokeWidth(edge.sharedResourceCount)
+                  : AUTHORED_EDGE_STROKE_WIDTH;
               // Resolve each endpoint from the live position override for
               // that entity, if one exists, else `computeGraphLayout`'s own
               // fixed x1/y1/x2/y2 (entity-graph-node-dragging, FR-3). This
