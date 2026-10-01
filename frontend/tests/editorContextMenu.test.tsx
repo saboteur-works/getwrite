@@ -78,9 +78,19 @@ function findImagePos(editor: Editor): number {
   return foundPos;
 }
 
+let clipboardReadText: ReturnType<typeof vi.fn>;
+let clipboardWriteText: ReturnType<typeof vi.fn>;
+
 describe("EditorContextMenu", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    clipboardReadText = vi.fn().mockResolvedValue("");
+    clipboardWriteText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { readText: clipboardReadText, writeText: clipboardWriteText },
+      writable: true,
+      configurable: true,
+    });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -143,5 +153,104 @@ describe("EditorContextMenu", () => {
     expect(wasNotCancelled).toBe(true);
     // And Radix's own menu never opened.
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("renders Cut, Copy, and Paste grayed out (not omitted) for a collapsed cursor", () => {
+    const { editor } = renderWithContent();
+    act(() => {
+      editor.commands.setTextSelection(1);
+    });
+
+    openMenu(screen.getByTestId("prosemirror"));
+    act(() => vi.runAllTimers());
+
+    expect(screen.getByText("Cut").closest("[data-disabled]")).toBeTruthy();
+    expect(screen.getByText("Copy").closest("[data-disabled]")).toBeTruthy();
+    expect(screen.getByText("Paste").closest("[data-disabled]")).toBeFalsy();
+  });
+
+  it("renders Cut and Copy enabled with a non-empty text selection (FR-2, FR-3)", () => {
+    const { editor } = renderWithContent();
+    act(() => {
+      editor.commands.setTextSelection({ from: 1, to: 5 });
+    });
+
+    openMenu(screen.getByTestId("prosemirror"));
+    act(() => vi.runAllTimers());
+
+    expect(screen.getByText("Cut").closest("[data-disabled]")).toBeFalsy();
+    expect(screen.getByText("Copy").closest("[data-disabled]")).toBeFalsy();
+  });
+
+  it("Cut and Paste render disabled when the editor is read-only", () => {
+    const { editor } = renderWithContent();
+    act(() => {
+      editor.commands.setTextSelection({ from: 1, to: 5 });
+      editor.setEditable(false);
+    });
+
+    openMenu(screen.getByTestId("prosemirror"));
+    act(() => vi.runAllTimers());
+
+    expect(screen.getByText("Cut").closest("[data-disabled]")).toBeTruthy();
+    expect(screen.getByText("Paste").closest("[data-disabled]")).toBeTruthy();
+    // Copy is unaffected by read-only — only emptiness gates it.
+    expect(screen.getByText("Copy").closest("[data-disabled]")).toBeFalsy();
+  });
+
+  it("Copy writes the selected text to the clipboard without modifying the document (FR-3)", async () => {
+    const { editor } = renderWithContent();
+    act(() => {
+      editor.commands.setTextSelection({ from: 1, to: 5 });
+    });
+    const before = editor.getText();
+
+    openMenu(screen.getByTestId("prosemirror"));
+    act(() => vi.runAllTimers());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Copy"));
+    });
+
+    expect(clipboardWriteText).toHaveBeenCalledWith("Some");
+    expect(editor.getText()).toBe(before);
+  });
+
+  it("Cut copies the selected text to the clipboard and deletes it, matching Cmd/Ctrl+X's resulting document (FR-2)", async () => {
+    const { editor } = renderWithContent();
+    act(() => {
+      editor.commands.setTextSelection({ from: 1, to: 5 });
+    });
+
+    openMenu(screen.getByTestId("prosemirror"));
+    act(() => vi.runAllTimers());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Cut"));
+    });
+
+    expect(clipboardWriteText).toHaveBeenCalledWith("Some");
+    // Deleting ProseMirror positions 1-5 ("Some") from "Some document text"
+    // leaves " document text" — identical to what a native Cmd/Ctrl+X would
+    // produce for the same selection.
+    expect(editor.getText()).toBe(" document text");
+  });
+
+  it("Paste replaces a non-empty captured selection with clipboard content at the captured range (FR-2, FR-3)", async () => {
+    clipboardReadText.mockResolvedValue("REPLACED");
+    const { editor } = renderWithContent();
+    act(() => {
+      editor.commands.setTextSelection({ from: 1, to: 5 });
+    });
+
+    openMenu(screen.getByTestId("prosemirror"));
+    act(() => vi.runAllTimers());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Paste"));
+    });
+
+    expect(clipboardReadText).toHaveBeenCalled();
+    expect(editor.getText()).toBe("REPLACED document text");
   });
 });

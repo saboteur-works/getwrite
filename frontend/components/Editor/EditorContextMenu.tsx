@@ -27,18 +27,36 @@
  * defensive refresh and to freeze the `from`/`to`/empty/read-only details
  * Tasks 4-6 will read to decide which menu items to enable.
  *
- * `ContextMenuContent` stays empty — the clipboard/formatting/select-all
- * actions (Tasks 4-6) and the Markdown-source-mode guard (Task 7) land in
- * later tasks against this same file.
+ * Task 4 (FR-2, FR-3) adds Cut/Copy/Paste `ContextMenuItem`s, operating on
+ * the captured ProseMirror range (`captured.from`/`captured.to`) rather than
+ * whatever `editor.state.selection` happens to be when the item is actually
+ * activated — Radix's `onSelect` fires asynchronously after the native
+ * `contextmenu` event, so the live selection could have moved on by then
+ * (the same rationale Task 3's doc comment above gives for capturing a
+ * `CapturedEditorSelection` snapshot in the first place). Each handler
+ * re-applies the captured range via `editor.chain().focus().setTextSelection(...)`
+ * before acting, mirroring `EditContextMenu.tsx`'s own
+ * capture-then-restore-then-act pattern for plain `<input>`/`<textarea>`
+ * fields, adapted to ProseMirror's selection/command API rather than
+ * `setSelectionRange`/`execCommand`. Copy/Cut read the selected text via
+ * `editor.state.doc.textBetween(from, to, "\n")` and write it with
+ * `navigator.clipboard.writeText`; Cut then deletes the range with
+ * `deleteSelection()`. Paste reads `navigator.clipboard.readText()` and
+ * inserts it at the captured range with `insertContent`, which replaces a
+ * non-collapsed selection the same way typing over a selection would.
+ * Formatting/Select All/Markdown-source-mode gating remain out of scope
+ * (Tasks 5-7, same file, later).
  */
 "use client";
 
 import * as React from "react";
 import type { Editor } from "@tiptap/core";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { Scissors, Copy, Clipboard } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuItem,
   ContextMenuTrigger,
 } from "../common/UI/ContextMenu";
 
@@ -102,6 +120,49 @@ export default function EditorContextMenu({
     setCaptured(captureEditorSelection(editor));
   }, [editor]);
 
+  const handleCopy = React.useCallback(() => {
+    const { from, to } = captured;
+    const text = editor.state.doc.textBetween(from, to, "\n");
+    if (!text) return;
+    void navigator.clipboard.writeText(text);
+  }, [editor, captured]);
+
+  const handleCut = React.useCallback(() => {
+    const { from, to } = captured;
+    const text = editor.state.doc.textBetween(from, to, "\n");
+    const run = () => {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from, to })
+        .deleteSelection()
+        .run();
+    };
+    if (!text) {
+      run();
+      return;
+    }
+    void navigator.clipboard.writeText(text).then(run, run);
+  }, [editor, captured]);
+
+  const handlePaste = React.useCallback(() => {
+    const { from, to } = captured;
+    void navigator.clipboard
+      .readText()
+      .then((text) => {
+        if (!text) return;
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from, to })
+          .insertContent(text)
+          .run();
+      })
+      .catch(() => {
+        // No clipboard permission/content available — nothing to paste.
+      });
+  }, [editor, captured]);
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild disabled={captured.isNodeSelection}>
@@ -112,7 +173,32 @@ export default function EditorContextMenu({
       <ContextMenuContent
         aria-label="Editor options"
         className="resource-context-menu"
-      />
+      >
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          disabled={captured.isEmpty || captured.readOnly}
+          onSelect={handleCut}
+        >
+          <Scissors size={14} className="resource-context-menu-item-icon" />
+          Cut
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          disabled={captured.isEmpty}
+          onSelect={handleCopy}
+        >
+          <Copy size={14} className="resource-context-menu-item-icon" />
+          Copy
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          disabled={captured.readOnly}
+          onSelect={handlePaste}
+        >
+          <Clipboard size={14} className="resource-context-menu-item-icon" />
+          Paste
+        </ContextMenuItem>
+      </ContextMenuContent>
     </ContextMenu>
   );
 }
