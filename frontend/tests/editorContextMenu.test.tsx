@@ -378,4 +378,231 @@ describe("EditorContextMenu", () => {
       ).toBeFalsy();
     });
   });
+
+  describe("Keyboard operability (FR-6, Task 8)", () => {
+    // Radix's `ContextMenuTrigger` only opens on a native `contextmenu` event
+    // (right-click, or its OS-level keyboard equivalents like Shift+F10/the
+    // Menu key — none of which jsdom can simulate), so the menu is opened
+    // the same way every other test in this file opens it: dispatching
+    // `contextmenu` directly via `openMenu`. Everything after that point —
+    // arrow navigation, Enter/Space activation, Escape dismissal — is real
+    // keyboard interaction, dispatched via `fireEvent.keyDown` at whatever
+    // element currently has focus (`document.activeElement`), exactly
+    // mirroring how a browser delivers a real keypress: to the focused
+    // element, which then bubbles.
+    //
+    // `@testing-library/user-event`'s `.keyboard()` was tried first and
+    // rejected for two independently-confirmed, measured reasons: (1) under
+    // this file's `beforeEach`-installed fake timers (needed so
+    // `vi.runAllTimers()` can flush Radix's DismissableLayer pointerdown
+    // setTimeout and actually open the menu), a single `user.keyboard("{Arro
+    // wDown}")` call never resolves, even with `advanceTimers` configured to
+    // `vi.advanceTimersByTime` — confirmed by a timeout on every test that
+    // tried it; and (2) merely calling `userEvent.setup()` unconditionally
+    // replaces `navigator.clipboard` with its own stub
+    // (`@testing-library/user-event`'s `Clipboard.js`: "Clipboard is not
+    // available in jsdom"), clobbering this file's own
+    // `navigator.clipboard` mock that the existing Copy/Cut/Paste tests
+    // above depend on — confirmed by logging object identity before/after
+    // `userEvent.setup()`. `fireEvent.keyDown` has neither problem and is
+    // already this file's (and `resourceContextMenu.test.tsx`'s sibling
+    // `editContextMenu.test.tsx`'s) established low-level event-dispatch
+    // convention for everything else.
+    function openMenuAndSettle(target: HTMLElement) {
+      openMenu(target);
+      act(() => vi.runAllTimers());
+    }
+
+    function pressKey(key: string) {
+      const target = document.activeElement ?? document.body;
+      fireEvent.keyDown(target, { key });
+      // Radix's RovingFocusGroup schedules the actual DOM `.focus()` call
+      // for the next item via a timer rather than moving focus
+      // synchronously inside the keydown handler (measured: without this,
+      // `document.activeElement` never advances past the first item no
+      // matter how many ArrowDowns are dispatched). Each call site below
+      // wraps `pressKey` in `act(...)` so this flush is reflected in a
+      // settled render before the next assertion/keypress.
+      vi.runAllTimers();
+    }
+
+    const ORDERED_ITEM_LABELS = [
+      "Cut",
+      "Copy",
+      "Paste",
+      "Bold",
+      "Italic",
+      "Underline",
+      "Strikethrough",
+      "Inline Code",
+      "Select All",
+    ];
+
+    it("ArrowDown visits every item in document order when none are disabled, then stops at the last (no wraparound)", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+
+      const items = screen.getAllByRole("menuitem");
+      expect(items.map((item: HTMLElement) => item.textContent)).toEqual(
+        ORDERED_ITEM_LABELS,
+      );
+
+      // Focus starts on the menu's own content wrapper (role="menu"), not an
+      // item, so the first ArrowDown moves onto the first item (Cut). One
+      // ArrowDown per item visits each in turn.
+      const visited: string[] = [];
+      for (let i = 0; i < ORDERED_ITEM_LABELS.length; i += 1) {
+        act(() => pressKey("ArrowDown"));
+        visited.push(document.activeElement?.textContent ?? "");
+      }
+      expect(visited).toEqual(ORDERED_ITEM_LABELS);
+
+      // Radix's roving-focus menu does not cycle past the last item back to
+      // the first (measured here, not assumed) — one more ArrowDown leaves
+      // focus on the last item (Select All).
+      act(() => pressKey("ArrowDown"));
+      expect(document.activeElement?.textContent).toBe("Select All");
+    });
+
+    it("ArrowDown skips disabled items entirely (they are never focused), visiting only the enabled ones in order", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+        editor.setEditable(false);
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+
+      // Read-only: Cut and Paste are disabled; Copy and every formatting
+      // item plus Select All remain enabled (per the behavior already
+      // asserted elsewhere in this file). Confirm the mix is as expected
+      // before relying on it below. Disabled items still render in the DOM
+      // (not omitted) — `getAllByRole("menuitem")` still finds all 9.
+      expect(screen.getByText("Cut").closest("[data-disabled]")).toBeTruthy();
+      expect(screen.getByText("Paste").closest("[data-disabled]")).toBeTruthy();
+      expect(screen.getByText("Copy").closest("[data-disabled]")).toBeFalsy();
+      expect(screen.getAllByRole("menuitem")).toHaveLength(
+        ORDERED_ITEM_LABELS.length,
+      );
+
+      // Measured (not assumed): Radix's own ContextMenu/ContextMenuItem
+      // roving-focus navigation never moves focus onto a disabled item at
+      // all — it is skipped outright, rather than being a reachable stop
+      // that's merely inert on activation. That is a *stronger* guarantee
+      // of FR-6 ("Enter/Space on a disabled item does nothing") than the
+      // literal letter of the task description assumed: a disabled item can
+      // never receive keyboard focus via arrow navigation in the first
+      // place, so there is no focused-disabled-item state for Enter/Space
+      // to be a no-op on.
+      const enabledLabelsInOrder = [
+        "Copy",
+        "Bold",
+        "Italic",
+        "Underline",
+        "Strikethrough",
+        "Inline Code",
+        "Select All",
+      ];
+      const visited: string[] = [];
+      for (let i = 0; i < enabledLabelsInOrder.length; i += 1) {
+        act(() => pressKey("ArrowDown"));
+        visited.push(document.activeElement?.textContent ?? "");
+      }
+      expect(visited).toEqual(enabledLabelsInOrder);
+      expect(visited).not.toContain("Cut");
+      expect(visited).not.toContain("Paste");
+    });
+
+    it("dispatching Enter/Space directly at a disabled item (Cut, read-only) has no effect, defending the no-op guarantee independent of how focus got there", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+        editor.setEditable(false);
+      });
+      const before = editor.getText();
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+
+      const cutItem = screen
+        .getByText("Cut")
+        .closest('[role="menuitem"]') as HTMLElement;
+      expect(cutItem.getAttribute("aria-disabled")).toBe("true");
+
+      act(() => {
+        cutItem.focus();
+      });
+      fireEvent.keyDown(cutItem, { key: "Enter" });
+      fireEvent.keyDown(cutItem, { key: " " });
+
+      // Nothing happened: the editor is unchanged, the clipboard was never
+      // touched, and the menu is still open — activating a disabled item is
+      // a no-op, not a close.
+      expect(editor.getText()).toBe(before);
+      expect(clipboardWriteText).not.toHaveBeenCalled();
+      expect(screen.getByRole("menu")).toBeTruthy();
+    });
+
+    it("Enter activates the focused enabled item (Copy), matching a mouse click's effect", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+
+      // Cut, Copy are the first two items; move focus to Copy.
+      act(() => pressKey("ArrowDown"));
+      act(() => pressKey("ArrowDown"));
+      expect(document.activeElement?.textContent).toBe("Copy");
+
+      act(() => pressKey("Enter"));
+
+      expect(clipboardWriteText).toHaveBeenCalledWith("Some");
+      // Activating a menu item closes the menu, mirroring a mouse click.
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("Space activates the focused enabled item (Select All), matching a mouse click's effect", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+
+      const selectAllIndex = ORDERED_ITEM_LABELS.indexOf("Select All");
+      for (let i = 0; i <= selectAllIndex; i += 1) {
+        act(() => pressKey("ArrowDown"));
+      }
+      expect(document.activeElement?.textContent).toBe("Select All");
+
+      act(() => pressKey(" "));
+
+      expect(editor.state.selection.from).toBe(0);
+      expect(editor.state.selection.to).toBe(editor.state.doc.content.size);
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("Escape dismisses the menu without activating anything", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+      const before = editor.getText();
+
+      openMenuAndSettle(screen.getByTestId("prosemirror"));
+      expect(screen.getByRole("menu")).toBeTruthy();
+
+      act(() => pressKey("ArrowDown"));
+      act(() => pressKey("Escape"));
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(editor.getText()).toBe(before);
+      expect(clipboardWriteText).not.toHaveBeenCalled();
+    });
+  });
 });
