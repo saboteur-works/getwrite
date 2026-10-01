@@ -47,7 +47,7 @@ confirms `filterToKnownConnectionTypes` drops an unrecognized key without
 throwing.
 **Depends on:** none
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Backlink edge derivation
 **What:** Adds `getEntityBacklinkEdges` to `backlinks.ts` — for every
@@ -62,7 +62,7 @@ edge; entities with no backlinked resource produce none; a backlink between
 two resources neither of which belongs to a declared entity is ignored.
 **Depends on:** none
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Proximity-mentions edge derivation
 **What:** Adds a new exported function to `mentions-core.ts` (alongside
@@ -80,7 +80,7 @@ the nearest pair used; two entities not mentioned in any common resource
 produce no edge.
 **Depends on:** none
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Shared-metadata edge derivation
 **What:** New module `entity-shared-metadata.ts` that reads both `tags.ts`
@@ -98,7 +98,7 @@ value produces an edge; entities sharing nothing produce no edge; neither
 domain.
 **Depends on:** none
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Edge description functions for the three new edge kinds
 **What:** Adds `describeBacklinkEdge`, `describeProximityMentionEdge`, and
@@ -116,7 +116,7 @@ unit tests, and produce distinct, legible text for each new edge kind
 descriptions).
 **Depends on:** Tasks 2, 3, 4 (needs each new edge's data shape to describe)
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Entity-graph settings transport (connection types + hop radius)
 **What:** A new `createTransport`-backed module exposing read/write for a
@@ -143,7 +143,7 @@ connection-type key is rejected or filtered consistently with Task 1's
 `filterToKnownConnectionTypes`.
 **Depends on:** Task 1
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Graph data assembly — wire in the new edge kinds
 **What:** Extends `EntityRelationshipGraphView.tsx`'s `EntityGraphEdge`
@@ -163,7 +163,7 @@ new fetch of unrelated data; a project with no explicit
 `cooccurrence` edges, matching Feature 39's prior behavior.
 **Depends on:** Tasks 1, 2, 3, 4, 6
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Canvas visual encoding for up to five simultaneous edge kinds
 **What:** Extends `EntityGraphCanvas.tsx`'s edge rendering so each of the
@@ -182,7 +182,7 @@ glance even when both are active simultaneously; no new use of
 `--color-gw-red` is introduced (reserved-red constraint).
 **Depends on:** Task 7
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Accessible-list rendering for the three new edge kinds
 **What:** Extends `EntityGraphAccessibleList.tsx`'s edge `<ul>` to render an
@@ -198,7 +198,7 @@ Task 5 description function's output; existing authored/cooccurrence
 rendering is unchanged.
 **Depends on:** Tasks 5, 7
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Connection-type and hop-radius settings panel
 **What:** A new panel, reachable from the graph view itself near the
@@ -219,7 +219,7 @@ page reload; the panel is keyboard-operable and passes the repo's existing
 a11y test conventions.
 **Depends on:** Task 6
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Position persistence model
 **What:** New model module persisting drag-authored node positions to
@@ -242,7 +242,7 @@ unit tests for both cases; a missing file returns `[]` rather than throwing
 (ENOENT tolerance, matching `loadEntityRelationships`).
 **Depends on:** Task 1
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Position persistence transport
 **What:** `createTransport`-backed read/write for
@@ -262,7 +262,7 @@ covered by a test mirroring the existing
 `*-native-web-parity.test.ts` precedent.
 **Depends on:** Task 11
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Canvas wiring — read persisted position at mount, write on drag end
 **What:** `EntityGraphCanvas.tsx` seeds `nodePositionOverrides` at mount from
@@ -285,7 +285,7 @@ transport; a reload (simulated in tests by remounting with the same
 persisted data) reproduces the dragged position.
 **Depends on:** Tasks 12, 7
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Drop position record on entity removal
 **What:** When an entity is deleted or un-declared (Feature 42's
@@ -305,7 +305,7 @@ checkbox behavior; covered by a test that an entity with a saved position,
 once removed, has no surviving position record.
 **Depends on:** Task 11
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Focal-point state, selection gesture, and hint affordance
 **What:** Adds focal-point selection as component state in
@@ -333,7 +333,7 @@ node on pointer hover, confirmed by a test asserting its presence/absence on
 hover state change.
 **Depends on:** Task 7
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Hop-radius BFS computation and dim/hide rendering
 **What:** Given an active `focalEntityId` and the hop-radius value from Task
@@ -357,7 +357,7 @@ restores full, unemphasized rendering; changing the hop-radius setting
 a focal-point reselection.
 **Depends on:** Tasks 15, 10
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Accessible-list focal-point controls and hop-radius disclosure
 **What:** Adds a "Set as focal point" control per node (alongside its
@@ -380,7 +380,7 @@ alone); a test confirms a node marked hop-hidden on the canvas still fires
 `onNodeActivated` when its accessible-list activation button is used.
 **Depends on:** Tasks 15, 16
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: End-to-end verification pass
 **What:** A manual (or Playwright E2E, following this repo's existing
