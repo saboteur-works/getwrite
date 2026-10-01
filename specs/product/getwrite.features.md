@@ -2201,7 +2201,7 @@ Organizer view" effort per the owner's own framing — further Organizer
 enhancements are expected as later, separate features, not folded into
 this one's scope.
 
-### Feature 66: Organizer view — drag-and-drop card reordering — Not started
+### Feature 66: Organizer view — drag-and-drop card reordering — Shipped
 
 **Value:** A plain-file writer reorders cards in the Organizer view's card
 grid directly by dragging, instead of having no way to change card order
@@ -2214,24 +2214,47 @@ WCAG 2.1 AA target; persistence of the resulting order.
 **User stories:** None.
 **Depends on:** Feature 65
 **Branch suggestion:** feat/organizer-card-drag-reorder
-**Notes:** Not started. This is the second increment of the same
-open-ended "enhance the Organizer view" effort Feature 65 began — Feature
-65's own Notes flagged further Organizer enhancements as later, separate
-features, and this is one of them. `@dnd-kit` was chosen this session over
-`react-beautiful-dnd`/`@hello-pangea/dnd`, `react-dnd`, Pragmatic
-drag-and-drop, and `react-sortablejs` after a short library survey: it is
-designed for React 19, is headless (no DOM manipulation outside React), and
-has built-in keyboard accessibility — relevant since this repo targets WCAG
-2.1 AA and already has precedent for keyboard+touch parity in the entity
-relationship graph's node-dragging feature (see this document's Feature 39
-entry family and `docs/standards/accessibility.md`). No existing functional
-requirement in `specs/product/getwrite.md` covers Organizer card reordering,
-so this feature owns none of its own (per "Requirements covered"/"User
-stories" above), matching Feature 65's precedent. Unresolved, left for the
-feature spec's own Open Questions (not decided here): where the resulting
-card order is persisted (e.g. `orderIndex` on the resource/folder tree vs.
-a view-local ordering) and how it interacts with the existing tree-position
-ordering other views (e.g. compile) already rely on.
+**Notes:** Shipped, merged to main via PR #251 (merge commit `3d687696`).
+This is the second increment of the same open-ended "enhance the Organizer
+view" effort Feature 65 began — Feature 65's own Notes flagged further
+Organizer enhancements as later, separate features, and this is one of them.
+`@dnd-kit` was chosen this session over `react-beautiful-dnd`/
+`@hello-pangea/dnd`, `react-dnd`, Pragmatic drag-and-drop, and
+`react-sortablejs` after a short library survey: it is designed for React
+19, is headless (no DOM manipulation outside React), and has built-in
+keyboard accessibility — relevant since this repo targets WCAG 2.1 AA and
+already has precedent for keyboard+touch parity in the entity relationship
+graph's node-dragging feature (see this document's Feature 39 entry family
+and `docs/standards/accessibility.md`). No existing functional requirement
+in `specs/product/getwrite.md` covers Organizer card reordering, so this
+feature owns none of its own (per "Requirements covered"/"User stories"
+above), matching Feature 65's precedent.
+
+What shipped: pointer- and keyboard-operable drag-and-drop reordering of
+Organizer cards via a dedicated grip-icon drag handle, distinct from the
+card's existing title-select and Open controls. Reordering reuses the
+existing shared `orderIndex` reorder transport — the same mechanism the
+sidebar resource tree already uses for its own drag-and-drop reordering —
+so the feature adds no new transport code of its own. Reordering is
+disabled whenever any Organizer filter is active, with a visible reason
+shown to the writer. A completed keyboard-driven reorder is announced to
+assistive technology via `@dnd-kit`'s announcements callback, satisfying
+WCAG 2.1 AA Success Criterion 4.1.3 (Status Messages).
+
+Two rounds of post-implementation smoothness fixes followed, both genuine
+UX-quality corrections surfaced by live testing rather than process
+failures: (a) the `DndContext` had no `collisionDetection` configured
+(defaulting to `rectIntersection`) and no `DragOverlay`, so the grid
+visibly reflowed under the dragged card during a drag — fixed by adding
+`closestCenter` collision detection, a `DragOverlay`, and an 8px
+pointer-activation threshold; (b) a deeper bug found while verifying fix
+(a) live — `useSortable`'s `setNodeRef` had been wired to the 18x18px grip
+handle rather than to the whole card, so `@dnd-kit` measured and
+transformed that tiny handle box for every rect-based calculation
+(collision detection, drag transform, `DragOverlay` sizing) instead of the
+real card — fixed by moving the ref to the card itself and keeping only
+`listeners`/`attributes` on the handle, matching `@dnd-kit`'s own
+documented drag-handle pattern.
 
 ---
 
@@ -2378,7 +2401,7 @@ ordering other views (e.g. compile) already rely on.
   57, 58, 59, 60, 61, 62, 64, 65, 66 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 66. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
