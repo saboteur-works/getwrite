@@ -401,7 +401,7 @@ the manual check performed in its place, following the
 `entity-graph-node-dragging` feature's own documented precedent.
 **Depends on:** Tasks 8, 9, 10, 13, 14, 17
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 

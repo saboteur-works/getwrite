@@ -8,6 +8,7 @@ import Input from "../../../common/UI/Input";
 import {
   getEntityGraphSettings,
   setEntityGraphSettings,
+  type EntityGraphSettings,
 } from "../../../../src/lib/api/entity-graph-settings";
 import {
   KNOWN_ENTITY_GRAPH_CONNECTION_TYPES,
@@ -19,6 +20,21 @@ export interface EntityGraphSettingsPanelProps {
   projectId: string;
   /** Optional className for the outer wrapper. */
   className?: string;
+  /**
+   * Invoked with the server's own saved settings every time a toggle or the
+   * hop-radius field persists successfully (Feature 68, Task 18 follow-up).
+   * This panel is rendered inside `EntityGraphCanvas`, one level below
+   * `EntityRelationshipGraphView.tsx`'s own `connectionTypes`/
+   * `focalHopRadius` state that drives `graphData`'s edge filtering and the
+   * hop-radius BFS — without this callback, a change made here had no way to
+   * reach that state, so `graphData` only ever picked up a new setting on
+   * the next full remount/reload rather than live, contradicting Task 10's
+   * own "reflected in graphData without a page reload" requirement. Omitted
+   * in a context with no such parent (e.g. a Storybook story or a unit test
+   * exercising this panel standalone), in which case this panel's own
+   * already-correct persist-and-reflect-locally behavior is unaffected.
+   */
+  onSettingsSaved?: (settings: EntityGraphSettings) => void;
 }
 
 /**
@@ -72,6 +88,7 @@ function parseHopRadius(draft: string): number | undefined {
 export default function EntityGraphSettingsPanel({
   projectId,
   className = "",
+  onSettingsSaved,
 }: EntityGraphSettingsPanelProps): JSX.Element {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
@@ -125,6 +142,7 @@ export default function EntityGraphSettingsPanel({
         setConnectionTypes(saved.entityGraphConnectionTypes);
         setHopRadiusDraft(String(saved.entityGraphFocalHopRadius));
         setStatusMessage("Graph settings saved.");
+        onSettingsSaved?.(saved);
       } catch (err) {
         setErrorMessage(
           err instanceof Error && err.message
@@ -135,7 +153,7 @@ export default function EntityGraphSettingsPanel({
         setIsSaving(false);
       }
     },
-    [projectId],
+    [projectId, onSettingsSaved],
   );
 
   const handleToggleConnectionType = (

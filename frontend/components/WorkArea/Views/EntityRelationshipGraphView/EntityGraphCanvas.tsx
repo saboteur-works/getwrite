@@ -24,6 +24,7 @@ import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
 import { computeHopDistances } from "./entityGraphHopDistance";
 import Button from "../../../common/UI/Button";
 import EntityGraphSettingsPanel from "./EntityGraphSettingsPanel";
+import type { EntityGraphSettings } from "../../../../src/lib/api/entity-graph-settings";
 import {
   getEntityGraphPositions,
   saveEntityGraphPosition,
@@ -196,6 +197,22 @@ export interface EntityGraphCanvasProps {
    * focal-point-selection time.
    */
   focalHopRadius?: number;
+  /**
+   * Invoked with the server's own saved settings every time Task 10's
+   * settings panel (rendered inside this canvas) persists a connection-type
+   * toggle or hop-radius change (Feature 68, Task 18 follow-up). Threaded
+   * straight through to `EntityGraphSettingsPanel`'s identically-shaped
+   * `onSettingsSaved` prop — see that prop's own doc comment for why this
+   * exists: without it, `EntityRelationshipGraphView.tsx`'s own
+   * `connectionTypes`/`focalHopRadius` state (which drives `graphData`'s
+   * edge filtering and this canvas's hop-radius BFS) had no way to learn
+   * that a setting saved here had changed, so a toggle only took visible
+   * effect after a full remount/reload rather than live. Omitted when no
+   * caller needs it (e.g. a story or a unit test rendering this canvas
+   * standalone), in which case the settings panel's own persist-and-reflect-
+   * locally behavior is unaffected.
+   */
+  onSettingsSaved?: (settings: EntityGraphSettings) => void;
 }
 
 /**
@@ -794,6 +811,7 @@ export default function EntityGraphCanvas({
   focalEntityId,
   onFocalEntityChange,
   focalHopRadius = DEFAULT_FOCAL_HOP_RADIUS,
+  onSettingsSaved,
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
@@ -1666,7 +1684,10 @@ export default function EntityGraphCanvas({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       {projectId ? (
         <div style={{ position: "absolute", top: 8, right: 52, zIndex: 1 }}>
-          <EntityGraphSettingsPanel projectId={projectId} />
+          <EntityGraphSettingsPanel
+            projectId={projectId}
+            onSettingsSaved={onSettingsSaved}
+          />
         </div>
       ) : null}
       <Button
