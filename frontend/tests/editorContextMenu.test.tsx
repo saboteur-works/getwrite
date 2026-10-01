@@ -605,4 +605,130 @@ describe("EditorContextMenu", () => {
       expect(clipboardWriteText).not.toHaveBeenCalled();
     });
   });
+
+  describe("Shared ContextMenu styling (FR-7)", () => {
+    // ResourceContextMenu.tsx renders its ContextMenuContent with
+    // className="resource-context-menu ${className}" and every item with
+    // "resource-context-menu-item" (+ "resource-context-menu-item-icon" on
+    // its leading icon); EditContextMenu.tsx follows the same convention.
+    // EditorContextMenu.tsx reuses those exact class names rather than
+    // inventing its own, so this menu is visually styled identically to the
+    // two other context menus already in the app. This is confirmed here
+    // directly rather than left to the earlier tasks' incidental use of
+    // these class names as CSS selectors (e.g. the source-mode-gating
+    // suite's ".resource-context-menu" absence checks).
+    it("renders the menu content and every item with the resource-context-menu class names ResourceContextMenu/EditContextMenu also use", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("resource-context-menu");
+
+      const items = screen.getAllByRole("menuitem");
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        expect(item.className).toContain("resource-context-menu-item");
+      }
+    });
+  });
+
+  describe("Captured-selection stability across Radix's open/focus handling (Task 1 spike regression, FR-2/FR-3/FR-9)", () => {
+    // Task 1's spike investigated whether a ProseMirror selection captured
+    // inside the native `contextmenu` handler survives Radix's own
+    // trigger/portal/focus-management work unchanged, before Tasks 4-6 ever
+    // relied on that captured snapshot being trustworthy. This test is the
+    // permanent regression guard for that finding: it opens the menu with a
+    // real captured range, lets Radix's own focus/portal machinery run
+    // (moving DOM focus onto the menu content, exactly as it does for every
+    // other test in this file once `vi.runAllTimers()` flushes its
+    // DismissableLayer setup), and only then activates Copy — asserting the
+    // action still used the range captured at contextmenu time, not
+    // whatever (if anything) the live selection drifted to as a side effect
+    // of that focus move. A future Radix/TipTap upgrade that disrupts the
+    // capture-in-the-contextmenu-handler assumption (`captureEditorSelection`
+    // in `EditorContextMenu.tsx`) would show up here as a wrong clipboard
+    // value.
+    it("Copy still acts on the range captured at contextmenu time after Radix's own open/focus handling has run", async () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 }); // "Some"
+      });
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      // Radix's roving-focus menu moves real DOM focus onto its content
+      // element once open; simulate that focus move explicitly rather than
+      // assuming it happened silently.
+      const menu = screen.getByRole("menu");
+      act(() => {
+        menu.focus();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Copy"));
+      });
+
+      expect(clipboardWriteText).toHaveBeenCalledWith("Some");
+    });
+
+    // A stronger, explicitly adversarial version of the same guarantee: the
+    // live ProseMirror selection changes to a *different* range after the
+    // menu has opened (captured-at-contextmenu-time: "Some", from 1 to 5)
+    // but before the item is activated, simulating any later cause of a
+    // live selection change while the menu is still open (not just Radix's
+    // own focus handling, which the test above already covers and which
+    // does not itself move the editor's ProseMirror selection in practice).
+    // `EditorContextMenu.tsx`'s own doc comment states the intended contract
+    // explicitly: Cut/Copy/Paste "operate on the captured ProseMirror range
+    // ... rather than whatever `editor.state.selection` happens to be when
+    // the item is actually activated."
+    //
+    // Measured (not assumed): today this assertion currently fails. The
+    // component's Task 3 effect
+    // (`editor.on("selectionUpdate", syncSelection)` /
+    // `editor.on("transaction", syncSelection)`) stays subscribed for the
+    // menu's entire open lifetime, not just up to the moment the
+    // `contextmenu` event fires — so any later live selection change
+    // re-fires `syncSelection` and overwrites the `captured` state the
+    // `contextmenu` handler had frozen, contradicting the doc comment's own
+    // stated guarantee. `it.fails` below records that measured, current
+    // behavior precisely (a failing assertion of the intended contract) so
+    // the suite stays green while the gap stays visible, rather than
+    // silently passing a weaker assertion or omitting this case. See this
+    // task's final report for the precise finding filed for the
+    // orchestrator to triage; `EditorContextMenu.tsx` is deliberately left
+    // unmodified by this test-only task.
+    it.fails(
+      "[KNOWN GAP — see task report] Copy still acts on the range captured at contextmenu time even after a later, unrelated live selection change",
+      async () => {
+        const { editor } = renderWithContent();
+        act(() => {
+          editor.commands.setTextSelection({ from: 1, to: 5 }); // "Some"
+        });
+
+        openMenu(screen.getByTestId("prosemirror"));
+        act(() => vi.runAllTimers());
+
+        // The live selection moves on to a different range while the menu
+        // is still open, before Copy is activated.
+        act(() => {
+          editor.commands.setTextSelection({ from: 6, to: 14 }); // "document"
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByText("Copy"));
+        });
+
+        // Intended contract: still the range captured at contextmenu time
+        // ("Some"), not the live selection at click time ("document").
+        expect(clipboardWriteText).toHaveBeenCalledWith("Some");
+      },
+    );
+  });
 });
