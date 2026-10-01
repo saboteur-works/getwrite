@@ -63,8 +63,22 @@
  * (`components/common/UI/ContextMenu/ContextMenu.tsx`) have no
  * checkbox/toggle variant, so active state is rendered as a checkmark glyph
  * on a plain `ContextMenuItem` rather than a dedicated toggle component.
- * Select All/Markdown-source-mode gating remain out of scope (Tasks 6-7,
- * same file, later).
+ * Task 6 (FR-5) adds a "Select All" `ContextMenuItem` below the formatting
+ * items (its own separator above it, mirroring the clipboard/formatting
+ * separator already in place). It has no existing toolbar command to reuse
+ * (`toolbar-command-schema.ts`'s "Text Formatting" group has no `selectAll`
+ * entry), so it calls TipTap core's own `editor.chain().focus().selectAll().run()`
+ * directly, matching every other item's `editor.chain().focus()....run()`
+ * convention. It acts on the whole document regardless of what was
+ * captured, so — unlike Cut/Copy/Paste — it never reads `captured.from`/`to`/
+ * `isEmpty`/`isNodeSelection`. It is also left enabled on a read-only editor:
+ * the formatting items above it are already unaffected by read-only (a
+ * read-only editor can still have its marks toggled from this menu), and
+ * selecting all text to copy it is a reasonable thing to want to do on a
+ * document you can't edit — so, unlike Cut/Paste, read-only is not treated
+ * as a reason to disable it.
+ * Markdown-source-mode gating remains out of scope (Task 7, same file,
+ * later).
  */
 "use client";
 
@@ -82,6 +96,7 @@ import {
   Strikethrough,
   Code,
   Check,
+  TextSelect,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -223,6 +238,10 @@ export default function EditorContextMenu({
     [editor, captured, menuBarState],
   );
 
+  const handleSelectAll = React.useCallback(() => {
+    editor.chain().focus().selectAll().run();
+  }, [editor]);
+
   const handlePaste = React.useCallback(() => {
     const { from, to } = captured;
     void navigator.clipboard
@@ -317,6 +336,14 @@ export default function EditorContextMenu({
           state={menuBarState}
           onRun={runTextFormattingCommand}
         />
+        <ContextMenuSeparator className="resource-context-menu-separator" />
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          onSelect={handleSelectAll}
+        >
+          <TextSelect size={14} className="resource-context-menu-item-icon" />
+          Select All
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

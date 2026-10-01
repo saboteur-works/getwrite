@@ -338,4 +338,44 @@ describe("EditorContextMenu", () => {
       expect(isBoldDisabled).toBe(!toolbarCanBold);
     });
   });
+
+  describe("Select All (FR-5, Task 6)", () => {
+    it("selects the entire multi-paragraph document's text content, not just the originally captured range", async () => {
+      const editor = mountEditor(
+        "<p>First paragraph.</p><p>Second paragraph.</p><p>Third paragraph.</p>",
+      );
+      render(
+        <EditorContextMenu editor={editor}>
+          <EditorContent editor={editor} data-testid="prosemirror" />
+        </EditorContextMenu>,
+      );
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Select All"));
+      });
+
+      expect(editor.state.selection.from).toBe(0);
+      expect(editor.state.selection.to).toBe(editor.state.doc.content.size);
+    });
+
+    it("renders Select All enabled even when the editor is read-only", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.setEditable(false);
+      });
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      expect(
+        screen.getByText("Select All").closest("[data-disabled]"),
+      ).toBeFalsy();
+    });
+  });
 });
