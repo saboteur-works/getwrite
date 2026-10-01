@@ -1648,6 +1648,204 @@ describe("EntityGraphCanvas", () => {
       }
     });
   });
+
+  describe("five-kind visual encoding (Feature 68, Task 8, FR-6/OQ-5)", () => {
+    const ALL_FIVE_KIND_EDGES: EntityGraphEdge[] = [
+      {
+        kind: "authored",
+        id: "rel-1",
+        sourceEntityId: "e-1",
+        targetEntityId: "e-2",
+        relationshipType: "allies with",
+      },
+      {
+        kind: "cooccurrence",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        sharedResourceCount: 3,
+      },
+      { kind: "backlinks", entityIds: ["e-1", "e-2"] },
+      {
+        kind: "proximityMentions",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        resourceId: "res-1",
+        weight: 10,
+      },
+      {
+        kind: "sharedMetadata",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        sharedTagIds: ["tag-1"],
+        sharedFieldKeys: [],
+      },
+    ];
+
+    function edgeByKind(
+      elements: HTMLElement[],
+      kind: EntityGraphEdge["kind"],
+    ): HTMLElement {
+      const found = elements.find(
+        (el) => el.getAttribute("data-edge-kind") === kind,
+      );
+      if (!found) throw new Error(`No edge element found for kind "${kind}"`);
+      return found;
+    }
+
+    it("gives every one of the five edge kinds its own dash pattern (or solid, for authored), with no two sharing one", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      expect(edgeElements).toHaveLength(ALL_FIVE_KIND_EDGES.length);
+
+      const dashByKind = new Map<string, string | null>();
+      for (const kind of [
+        "authored",
+        "cooccurrence",
+        "backlinks",
+        "proximityMentions",
+        "sharedMetadata",
+      ] as const) {
+        dashByKind.set(
+          kind,
+          edgeByKind(edgeElements, kind).getAttribute("stroke-dasharray"),
+        );
+      }
+
+      const dashValues = Array.from(dashByKind.values());
+      // Every pairwise combination differs by dash pattern alone — a plain
+      // `Set` dedupe is sufficient proof since there are only 5 elements.
+      expect(new Set(dashValues).size).toBe(dashValues.length);
+    });
+
+    it("renders every undirected kind (backlinks, proximityMentions, sharedMetadata) with no arrowhead marker", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+
+      for (const kind of [
+        "backlinks",
+        "proximityMentions",
+        "sharedMetadata",
+      ] as const) {
+        expect(
+          edgeByKind(edgeElements, kind).getAttribute("marker-end"),
+        ).toBeNull();
+      }
+      expect(
+        edgeByKind(edgeElements, "authored").getAttribute("marker-end"),
+      ).toBeTruthy();
+    });
+
+    it("renders a proximityMentions edge at reduced opacity relative to a full-opacity cooccurrence edge, so the two weighted kinds never look identical", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+
+      const cooccurrenceOpacity = Number(
+        edgeByKind(edgeElements, "cooccurrence").getAttribute("opacity") ?? "1",
+      );
+      const proximityOpacity = Number(
+        edgeByKind(edgeElements, "proximityMentions").getAttribute("opacity"),
+      );
+
+      expect(cooccurrenceOpacity).toBe(1);
+      expect(proximityOpacity).toBeLessThan(cooccurrenceOpacity);
+
+      // The two must also be distinguishable without relying on opacity
+      // alone (dash pattern already differs per the test above), and
+      // crucially proximityMentions must not fall back to cooccurrence's own
+      // thickness-scaling signal.
+      const cooccurrenceWidth = Number(
+        edgeByKind(edgeElements, "cooccurrence").getAttribute("stroke-width"),
+      );
+      const proximityWidth = Number(
+        edgeByKind(edgeElements, "proximityMentions").getAttribute(
+          "stroke-width",
+        ),
+      );
+      expect(proximityWidth).not.toBe(cooccurrenceWidth);
+    });
+
+    it("decreases a proximityMentions edge's opacity monotonically as its weight (distance) grows", () => {
+      const closeEdge: EntityGraphEdge = {
+        kind: "proximityMentions",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        resourceId: "res-close",
+        weight: 10,
+      };
+      const farEdge: EntityGraphEdge = {
+        kind: "proximityMentions",
+        entityIdA: "e-1",
+        entityIdB: "e-3",
+        resourceId: "res-far",
+        weight: 5000,
+      };
+
+      render(<EntityGraphCanvas nodes={NODES} edges={[closeEdge, farEdge]} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      expect(edgeElements).toHaveLength(2);
+
+      const closeOpacity = Number(edgeElements[0].getAttribute("opacity"));
+      const farOpacity = Number(edgeElements[1].getAttribute("opacity"));
+
+      expect(closeOpacity).toBeGreaterThan(farOpacity);
+      // Never fades out entirely — a floor keeps a distant pair's edge
+      // visible.
+      expect(farOpacity).toBeGreaterThan(0);
+    });
+
+    it("keeps backlinks and sharedMetadata edges at fixed, non-varying stroke width regardless of their own data", () => {
+      const twoBacklinks: EntityGraphEdge[] = [
+        { kind: "backlinks", entityIds: ["e-1", "e-2"] },
+        { kind: "backlinks", entityIds: ["e-1", "e-3"] },
+      ];
+      const twoSharedMetadata: EntityGraphEdge[] = [
+        {
+          kind: "sharedMetadata",
+          entityIdA: "e-1",
+          entityIdB: "e-2",
+          sharedTagIds: ["tag-1"],
+          sharedFieldKeys: [],
+        },
+        {
+          kind: "sharedMetadata",
+          entityIdA: "e-1",
+          entityIdB: "e-3",
+          sharedTagIds: ["tag-1", "tag-2", "tag-3"],
+          sharedFieldKeys: ["field-a", "field-b"],
+        },
+      ];
+
+      const { unmount } = render(
+        <EntityGraphCanvas nodes={NODES} edges={twoBacklinks} />,
+      );
+      const backlinkWidths = screen
+        .getAllByTestId("entity-graph-edge")
+        .map((el: HTMLElement) => el.getAttribute("stroke-width"));
+      expect(backlinkWidths[0]).toBe(backlinkWidths[1]);
+      unmount();
+
+      render(<EntityGraphCanvas nodes={NODES} edges={twoSharedMetadata} />);
+      const sharedMetadataWidths = screen
+        .getAllByTestId("entity-graph-edge")
+        .map((el: HTMLElement) => el.getAttribute("stroke-width"));
+      expect(sharedMetadataWidths[0]).toBe(sharedMetadataWidths[1]);
+    });
+
+    it("uses no reserved red (#D44040) for any of the three new edge kinds, including via opacity-bearing style", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      for (const kind of [
+        "backlinks",
+        "proximityMentions",
+        "sharedMetadata",
+      ] as const) {
+        const el = edgeByKind(edgeElements, kind);
+        const style = el.getAttribute("style") ?? "";
+        expect(style.toLowerCase()).not.toContain(RESERVED_RED_HEX);
+        expect(style.toLowerCase()).not.toContain("--color-gw-red");
+      }
+    });
+  });
 });
 
 describe("chooseTooltipPlacement (entity-graph-edge-tooltips, FR-10)", () => {

@@ -123,6 +123,95 @@ const COOCCURRENCE_STROKE_WIDTH_SCALE = 1.4;
 const COOCCURRENCE_DASH_ARRAY = "5 4";
 
 /**
+ * Fixed stroke width for a backlinks edge (Feature 68, Task 8). It carries no
+ * weight to scale by — `getEntityBacklinkEdges` already collapses a
+ * bidirectional backlink into one unordered pair with no count — so, like an
+ * authored edge, its width never varies.
+ */
+const BACKLINKS_EDGE_STROKE_WIDTH = 1.5;
+
+/**
+ * Dash pattern for a backlinks edge: a long dash followed by a short dash
+ * (dash-dot), deliberately distinct in silhouette from co-occurrence's even
+ * "5 4" dashing, an authored edge's unbroken solid line, and the two dash
+ * patterns below (Feature 68, Task 8, FR-6).
+ */
+const BACKLINKS_DASH_ARRAY = "10 4 2 4";
+
+/**
+ * Fixed stroke width for a shared-metadata edge (Feature 68, Task 8). Like
+ * backlinks, it carries no numeric weight worth scaling by — the spec notes a
+ * shared-tag/-field count *could* drive thickness but does not require it —
+ * so this stays fixed.
+ */
+const SHARED_METADATA_EDGE_STROKE_WIDTH = 1.5;
+
+/**
+ * Dash pattern for a shared-metadata edge: short, evenly spaced dashes,
+ * distinct from every other kind's pattern (Feature 68, Task 8, FR-6).
+ */
+const SHARED_METADATA_DASH_ARRAY = "3 3";
+
+/**
+ * Fixed stroke width for a proximity-mentions edge (Feature 68, Task 8,
+ * FR-6/OQ-5). Its `weight` is deliberately encoded as opacity instead (see
+ * `proximityMentionOpacity` below), specifically so this kind never looks
+ * identical to co-occurrence's thickness-scaled edges when both are active at
+ * once — the two are the only weighted kinds, and thickness is already
+ * co-occurrence's signal.
+ */
+const PROXIMITY_MENTION_EDGE_STROKE_WIDTH = 1.5;
+
+/**
+ * Dash pattern for a proximity-mentions edge: fine, closely spaced dots,
+ * distinct from every other kind's pattern (Feature 68, Task 8, FR-6).
+ */
+const PROXIMITY_MENTION_DASH_ARRAY = "1 3";
+
+/** Opacity used for every edge kind except proximity-mentions. */
+const FULL_EDGE_OPACITY = 1;
+
+/**
+ * The least-opaque a proximity-mentions edge is ever rendered, regardless of
+ * how large its `weight` (raw average character-offset distance) is — a
+ * floor so a very distant pair's edge stays faintly visible rather than
+ * disappearing (Feature 68, Task 8, FR-6).
+ */
+const PROXIMITY_MENTION_MIN_OPACITY = 0.25;
+
+/**
+ * The `weight` value (and anything at or above it) at which a proximity-
+ * mentions edge's opacity bottoms out at `PROXIMITY_MENTION_MIN_OPACITY`.
+ * This is a starting value, not a measured one — proximity-mention weight is
+ * a raw character-offset distance with no natural upper bound, so some
+ * threshold has to be chosen to normalize it into an opacity range; tuning it
+ * is a one-line change here, mirroring `DRAG_CLICK_THRESHOLD_PX`'s own
+ * unmeasured-starting-value precedent in this file.
+ */
+const PROXIMITY_MENTION_WEIGHT_OPACITY_FLOOR = 2000;
+
+/**
+ * Computes a proximity-mentions edge's opacity from its `weight` (Feature 68,
+ * Task 8, FR-6/OQ-5): monotonically *decreasing* in `weight` — a larger raw
+ * average character-offset distance (a weaker, more distant connection) never
+ * produces an equal-or-more-opaque line than a smaller one — clamped to
+ * `[PROXIMITY_MENTION_MIN_OPACITY, FULL_EDGE_OPACITY]`. Deliberately opacity,
+ * not stroke width: `cooccurrenceStrokeWidth` already owns thickness as a
+ * weight signal for a different edge kind, and OQ-5 requires the two weighted
+ * kinds to stay visually distinguishable even when both are active at once.
+ */
+function proximityMentionOpacity(weight: number): number {
+  const clampedWeight = Math.min(
+    Math.max(weight, 0),
+    PROXIMITY_MENTION_WEIGHT_OPACITY_FLOOR,
+  );
+  const t = clampedWeight / PROXIMITY_MENTION_WEIGHT_OPACITY_FLOOR;
+  return (
+    FULL_EDGE_OPACITY - t * (FULL_EDGE_OPACITY - PROXIMITY_MENTION_MIN_OPACITY)
+  );
+}
+
+/**
  * Stroke width of the invisible hit-target line rendered behind every edge
  * (Task 4 of entity-graph-edge-tooltips). Both an authored edge's fixed
  * 1.5px stroke and a co-occurrence edge's log-scaled stroke are too thin to
@@ -173,6 +262,67 @@ function cooccurrenceStrokeWidth(count: number): number {
     COOCCURRENCE_MIN_STROKE_WIDTH +
     Math.log2(Math.max(count, 0) + 1) * COOCCURRENCE_STROKE_WIDTH_SCALE
   );
+}
+
+/**
+ * Resolves an edge's rendered `strokeWidth` by kind (Feature 68, Task 8).
+ * Co-occurrence is the only kind whose width varies (by shared-resource
+ * count, via `cooccurrenceStrokeWidth`); every other kind — including
+ * proximity-mentions, which encodes its own weight as opacity instead — has a
+ * fixed width.
+ */
+function edgeStrokeWidth(edge: EntityGraphEdge): number {
+  switch (edge.kind) {
+    case "cooccurrence":
+      return cooccurrenceStrokeWidth(edge.sharedResourceCount);
+    case "authored":
+      return AUTHORED_EDGE_STROKE_WIDTH;
+    case "backlinks":
+      return BACKLINKS_EDGE_STROKE_WIDTH;
+    case "proximityMentions":
+      return PROXIMITY_MENTION_EDGE_STROKE_WIDTH;
+    case "sharedMetadata":
+      return SHARED_METADATA_EDGE_STROKE_WIDTH;
+  }
+}
+
+/**
+ * Resolves an edge's rendered `strokeDasharray` by kind (Feature 68, Task 8,
+ * FR-6): `undefined` (solid) for an authored edge, and a distinct dash
+ * pattern for each of the four undirected kinds, so every pairwise
+ * combination among all five kinds is distinguishable by dash pattern alone,
+ * even before directedness or opacity/width are taken into account.
+ */
+function edgeDashArray(edge: EntityGraphEdge): string | undefined {
+  switch (edge.kind) {
+    case "authored":
+      return undefined;
+    case "cooccurrence":
+      return COOCCURRENCE_DASH_ARRAY;
+    case "backlinks":
+      return BACKLINKS_DASH_ARRAY;
+    case "proximityMentions":
+      return PROXIMITY_MENTION_DASH_ARRAY;
+    case "sharedMetadata":
+      return SHARED_METADATA_DASH_ARRAY;
+  }
+}
+
+/**
+ * Resolves an edge's rendered `opacity` by kind (Feature 68, Task 8,
+ * FR-6/OQ-5). Only a proximity-mentions edge varies, by its own `weight` via
+ * `proximityMentionOpacity`; every other kind renders at full opacity.
+ */
+function edgeOpacity(edge: EntityGraphEdge): number {
+  switch (edge.kind) {
+    case "proximityMentions":
+      return proximityMentionOpacity(edge.weight);
+    case "authored":
+    case "cooccurrence":
+    case "backlinks":
+    case "sharedMetadata":
+      return FULL_EDGE_OPACITY;
+  }
 }
 
 /**
@@ -446,6 +596,17 @@ export function computeGraphLayout(
  * `--color-gw-red`/`#D44040`. Pan, zoom, and click-selection are not wired
  * yet (Task 6's scope, landing on this same file next) — this task's
  * changes are confined to the edges `<g>` and the new `<defs>`/`<marker>`.
+ *
+ * Extended per-kind visual encoding for all five edge kinds (Feature 68,
+ * Task 8, FR-6/OQ-5): `backlinks`, `proximityMentions`, and `sharedMetadata`
+ * each render undirected (no arrowhead) with their own distinct dash pattern
+ * — see `edgeDashArray` — so every pairwise combination among all five kinds
+ * is distinguishable by dash pattern alone. `proximityMentions` additionally
+ * varies its opacity (not width) with its own `weight`, via
+ * `proximityMentionOpacity`, specifically so it never looks identical to
+ * `cooccurrence`'s thickness-scaled edges when both are active at once — the
+ * two are the only weighted kinds in this set. No new use of
+ * `--color-gw-red` is introduced by any of this.
  *
  * Theming uses this repo's `--color-gw-*` CSS custom properties (brand
  * tokens), the same tokens `EntityRosterRow.tsx` uses inline for its own
@@ -1141,18 +1302,23 @@ export default function EntityGraphCanvas({
             {positionedEdges.map((positioned) => {
               const { edge } = positioned;
               const isAuthored = edge.kind === "authored";
-              // The three Feature 68 Task 7 kinds (`backlinks`,
-              // `proximityMentions`, `sharedMetadata`) render with the same
-              // fixed, undirected stroke width as an authored edge's own
-              // fixed width for now — a minimal, crash-free placeholder.
-              // Each kind getting its own distinct dash pattern /
-              // directedness / opacity-or-width encoding (so all five kinds
-              // stay visually distinguishable at once) is Task 8's explicit
-              // scope, not this fix's.
-              const strokeWidth =
-                edge.kind === "cooccurrence"
-                  ? cooccurrenceStrokeWidth(edge.sharedResourceCount)
-                  : AUTHORED_EDGE_STROKE_WIDTH;
+              // Per-kind visual encoding (Feature 68, Task 8, FR-6/OQ-5): see
+              // `edgeStrokeWidth`/`edgeDashArray`/`edgeOpacity` above for the
+              // full rationale per kind. In short — authored: solid, fixed
+              // width, directed (arrowhead, below); cooccurrence: dashed
+              // "5 4", undirected, width scales with sharedResourceCount;
+              // backlinks: dash-dot "10 4 2 4", undirected, fixed width;
+              // proximityMentions: fine dots "1 3", undirected, fixed width,
+              // opacity scales (inversely) with weight — opacity rather than
+              // width, so it never looks identical to cooccurrence's
+              // thickness-scaled edges when both are active; sharedMetadata:
+              // short even dashes "3 3", undirected, fixed width. Every
+              // pairwise combination among the five kinds differs by dash
+              // pattern alone, before directedness or opacity are even
+              // considered.
+              const strokeWidth = edgeStrokeWidth(edge);
+              const dashArray = edgeDashArray(edge);
+              const opacity = edgeOpacity(edge);
               // Resolve each endpoint from the live position override for
               // that entity, if one exists, else `computeGraphLayout`'s own
               // fixed x1/y1/x2/y2 (entity-graph-node-dragging, FR-3). This
@@ -1187,9 +1353,8 @@ export default function EntityGraphCanvas({
                     x2={target.x}
                     y2={target.y}
                     strokeWidth={strokeWidth}
-                    strokeDasharray={
-                      isAuthored ? undefined : COOCCURRENCE_DASH_ARRAY
-                    }
+                    strokeDasharray={dashArray}
+                    opacity={opacity}
                     markerEnd={isAuthored ? `url(#${arrowheadId})` : undefined}
                     style={{ stroke: "var(--color-gw-secondary)" }}
                   />
