@@ -2364,6 +2364,121 @@ describe("EntityGraphCanvas", () => {
       ).toBeNull();
     });
   });
+
+  describe("hop-radius dimming (Feature 68, Task 16)", () => {
+    // NODES/EDGES form a chain: e-1 -(cooccurrence)- e-2 -(authored)- e-3.
+    // With e-1 as the focal point: e-1 is 0 hops, e-2 is 1 hop, e-3 is 2 hops.
+
+    it("renders every node/edge at full opacity when no focal point is set", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      for (const node of screen.getAllByTestId("entity-graph-node")) {
+        expect(node.getAttribute("data-focal-dimmed")).toBe("false");
+        expect(node.getAttribute("opacity")).toBe("1");
+      }
+      for (const edge of screen.getAllByTestId("entity-graph-edge")) {
+        expect(edge.getAttribute("data-focal-dimmed")).toBe("false");
+      }
+    });
+
+    it("dims a node whose hop distance from the focal point exceeds the configured radius", () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+
+      const [first, second, third] = screen.getAllByTestId("entity-graph-node");
+      // e-1 (the focal point itself, 0 hops) and e-2 (1 hop) are in range.
+      expect(first.getAttribute("data-focal-dimmed")).toBe("false");
+      expect(second.getAttribute("data-focal-dimmed")).toBe("false");
+      // e-3 is 2 hops away, outside a radius of 1.
+      expect(third.getAttribute("data-focal-dimmed")).toBe("true");
+      expect(Number(third.getAttribute("opacity"))).toBeLessThan(1);
+    });
+
+    it("dims an edge when either of its endpoints falls outside the hop radius", () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+
+      const edges = screen.getAllByTestId("entity-graph-edge");
+      const cooccurrenceEdge = edges.find(
+        (edge: HTMLElement) =>
+          edge.getAttribute("data-edge-kind") === "cooccurrence",
+      );
+      const authoredEdge = edges.find(
+        (edge: HTMLElement) =>
+          edge.getAttribute("data-edge-kind") === "authored",
+      );
+      // e-1 <-> e-2: both endpoints within radius 1.
+      expect(cooccurrenceEdge?.getAttribute("data-focal-dimmed")).toBe("false");
+      // e-2 <-> e-3: e-3 is outside radius 1, so this edge is dimmed too.
+      expect(authoredEdge?.getAttribute("data-focal-dimmed")).toBe("true");
+    });
+
+    it("widens emphasis to every reachable node when the hop radius is increased, with no focal-point reselection", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+      const [, , thirdBefore] = screen.getAllByTestId("entity-graph-node");
+      expect(thirdBefore.getAttribute("data-focal-dimmed")).toBe("true");
+
+      rerender(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={2}
+        />,
+      );
+
+      const [, , thirdAfter] = screen.getAllByTestId("entity-graph-node");
+      expect(thirdAfter.getAttribute("data-focal-dimmed")).toBe("false");
+    });
+
+    it("restores full, unemphasized rendering once the focal point is cleared", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+      const [, , thirdBefore] = screen.getAllByTestId("entity-graph-node");
+      expect(thirdBefore.getAttribute("data-focal-dimmed")).toBe("true");
+
+      rerender(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId={null}
+          focalHopRadius={1}
+        />,
+      );
+
+      for (const node of screen.getAllByTestId("entity-graph-node")) {
+        expect(node.getAttribute("data-focal-dimmed")).toBe("false");
+      }
+      for (const edge of screen.getAllByTestId("entity-graph-edge")) {
+        expect(edge.getAttribute("data-focal-dimmed")).toBe("false");
+      }
+    });
+  });
 });
 
 describe("chooseTooltipPlacement (entity-graph-edge-tooltips, FR-10)", () => {

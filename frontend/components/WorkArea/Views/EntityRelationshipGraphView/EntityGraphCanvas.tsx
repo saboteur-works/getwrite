@@ -21,6 +21,7 @@ import {
   describeSharedMetadataEdge,
 } from "./edgeDescriptions";
 import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
+import { computeHopDistances } from "./entityGraphHopDistance";
 import Button from "../../../common/UI/Button";
 import EntityGraphSettingsPanel from "./EntityGraphSettingsPanel";
 import {
@@ -33,6 +34,37 @@ import "./entityGraphTooltipOverlay.css";
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 560;
 const NODE_RADIUS = 22;
+
+/**
+ * Default focal hop radius (Feature 68, Task 16), used only when the caller
+ * omits the `focalHopRadius` prop entirely. Mirrors
+ * `entity-graph-settings-core.ts`'s own `DEFAULT_ENTITY_GRAPH_FOCAL_HOP_RADIUS`
+ * value (`1`) without importing that server-only module into this client
+ * component — `EntityRelationshipGraphView.tsx` is expected to pass the
+ * project's actual configured value down once it has fetched it (it already
+ * fetches the rest of this project's entity-graph settings in the same
+ * effect), so this constant is only ever the pre-fetch/no-project fallback.
+ */
+const DEFAULT_FOCAL_HOP_RADIUS = 1;
+
+/**
+ * Opacity applied to a node or edge that falls outside the focal point's
+ * configured hop radius (Feature 68, Task 16). Dimming — not hiding — is the
+ * deliberate choice here: an SVG element's `opacity` does not affect pointer
+ * events or keyboard focusability, so a dimmed node stays exactly as
+ * selectable/activatable/draggable as before, and a dimmed edge's hit-target
+ * still shows its tooltip on hover/tap. That matters for two reasons this
+ * task's own spec calls out: (1) it keeps the accessible list's reachability
+ * fully independent of canvas visual state (FR-20/Task 17 — hop-filter
+ * suppression must be canvas-only) without this component needing to do
+ * anything special to achieve that, since nothing here touches DOM presence,
+ * and (2) hiding would have to also strip interactivity (or leave a
+ * confusingly half-interactive "invisible but clickable" element behind),
+ * which dimming avoids entirely. Not `0` — a radius-excluded node/edge is
+ * still present, just de-emphasized, so a writer can still see roughly how
+ * large/connected the rest of the graph is.
+ */
+const FOCAL_HOP_DIM_OPACITY = 0.15;
 
 /**
  * Fixed number of synchronous `simulation.tick()` calls run before the
@@ -151,6 +183,19 @@ export interface EntityGraphCanvasProps {
    * displayed value to change.
    */
   onFocalEntityChange?: (focalEntityId: string | null) => void;
+  /**
+   * The project's configured focal hop radius (Feature 68, Task 10/16,
+   * FR-17/FR-21) — how many hops from the focal point a node/edge must stay
+   * within to render at full opacity. Defaults to `DEFAULT_FOCAL_HOP_RADIUS`
+   * (`1`) when omitted, matching Task 10's own settings default. Has no
+   * effect at all while no focal point is set (`resolvedFocalEntityId` is
+   * `null`) — every node/edge renders exactly as it did before this task in
+   * that case. Changing this value immediately changes which nodes/edges are
+   * emphasized on the very next render, with no need to reselect the focal
+   * point — it is read fresh on every render, not captured at
+   * focal-point-selection time.
+   */
+  focalHopRadius?: number;
 }
 
 /**
@@ -748,6 +793,7 @@ export default function EntityGraphCanvas({
   activeConnectionTypes = [],
   focalEntityId,
   onFocalEntityChange,
+  focalHopRadius = DEFAULT_FOCAL_HOP_RADIUS,
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
@@ -849,6 +895,34 @@ export default function EntityGraphCanvas({
   const resolvedFocalEntityId = isFocalEntityControlled
     ? (focalEntityId ?? null)
     : internalFocalEntityId;
+
+  // Hop-radius BFS (Feature 68, Task 16, FR-17/OQ-2): a standard full-graph
+  // BFS, recomputed only when `nodes`, `edges`, or the resolved focal entity
+  // changes — never on a pan/zoom/drag re-render, since none of those three
+  // dependencies change for those gestures. Empty (every lookup falls back to
+  // `Infinity` below) whenever `resolvedFocalEntityId` is `null`, which is
+  // exactly what keeps every node/edge at full, unemphasized opacity when no
+  // focal point is set (see `isWithinFocalHopRadius` below).
+  const hopDistances = React.useMemo(
+    () => computeHopDistances(nodes, edges, resolvedFocalEntityId),
+    [nodes, edges, resolvedFocalEntityId],
+  );
+
+  // Whether a given entity's node is within the configured hop radius of the
+  // current focal point (Feature 68, Task 16, FR-17). A node absent from
+  // `hopDistances` (unreachable from the focal point, or no focal point set
+  // at all) is treated as `Infinity` hops away, per `computeHopDistances`'s
+  // own documented convention. Read fresh on every render against the live
+  // `focalHopRadius` prop, so changing the hop-radius setting re-emphasizes
+  // the graph immediately without any focal-point reselection.
+  const isWithinFocalHopRadius = React.useCallback(
+    (entityId: string): boolean => {
+      if (resolvedFocalEntityId === null) return true;
+      const distance = hopDistances.get(entityId) ?? Infinity;
+      return distance <= focalHopRadius;
+    },
+    [resolvedFocalEntityId, hopDistances, focalHopRadius],
+  );
 
   // Resolves a node's current rendered position (live drag override, else
   // `computeGraphLayout`'s own settled x/y) and re-centers the camera on it
@@ -1679,7 +1753,6 @@ export default function EntityGraphCanvas({
               // considered.
               const strokeWidth = edgeStrokeWidth(edge);
               const dashArray = edgeDashArray(edge);
-              const opacity = edgeOpacity(edge);
               // Resolve each endpoint from the live position override for
               // that entity, if one exists, else `computeGraphLayout`'s own
               // fixed x1/y1/x2/y2 (entity-graph-node-dragging, FR-3). This
@@ -1690,6 +1763,22 @@ export default function EntityGraphCanvas({
               // on `computeGraphLayout` to rerun (which it never does for a
               // drag; FR-2).
               const [sourceEntityId, targetEntityId] = edgeEndpoints(edge);
+              // Hop-radius dimming (Feature 68, Task 16, FR-17/FR-20): an
+              // edge is within the focal radius only when BOTH its endpoints
+              // are — a dangling edge reaching just outside the radius is
+              // de-emphasized along with the node it reaches, rather than
+              // rendered as if it stopped short. Multiplied onto the edge's
+              // own per-kind opacity (`edgeOpacity`) rather than replacing it,
+              // so a dimmed proximity-mentions edge's own weight-based
+              // opacity is still visible, just scaled down further. A `1`
+              // multiplier (no focal point set, or both endpoints in range)
+              // leaves every edge's existing opacity completely unchanged.
+              const isEdgeWithinFocalHopRadius =
+                isWithinFocalHopRadius(sourceEntityId) &&
+                isWithinFocalHopRadius(targetEntityId);
+              const opacity =
+                edgeOpacity(edge) *
+                (isEdgeWithinFocalHopRadius ? 1 : FOCAL_HOP_DIM_OPACITY);
               const source = resolveEntityPosition(
                 sourceEntityId,
                 layoutPositionById.get(sourceEntityId),
@@ -1709,6 +1798,9 @@ export default function EntityGraphCanvas({
                   <line
                     data-testid="entity-graph-edge"
                     data-edge-kind={positioned.edge.kind}
+                    data-focal-dimmed={
+                      isEdgeWithinFocalHopRadius ? "false" : "true"
+                    }
                     x1={source.x}
                     y1={source.y}
                     x2={target.x}
@@ -1755,6 +1847,13 @@ export default function EntityGraphCanvas({
               const isSelected = node.entityId === selectedNodeId;
               const isFocalPoint = node.entityId === resolvedFocalEntityId;
               const isHovered = node.entityId === hoveredNodeId;
+              // Hop-radius dimming (Feature 68, Task 16, FR-17/FR-20): `true`
+              // (full opacity) whenever no focal point is set at all, so a
+              // dragless, focal-point-less render is pixel-for-pixel
+              // unchanged from before this task.
+              const isNodeWithinFocalHopRadius = isWithinFocalHopRadius(
+                node.entityId,
+              );
               // Resolved position (entity-graph-node-dragging, FR-2): a live
               // drag override for this node if one exists, else
               // `computeGraphLayout`'s own settled `x`/`y`.
@@ -1767,16 +1866,24 @@ export default function EntityGraphCanvas({
                   data-testid="entity-graph-node"
                   data-entity-id={node.entityId}
                   data-selected={isSelected ? "true" : "false"}
-                  // Focal-point extension point (Feature 68, Task 15/16):
-                  // exposes which node (if any) is the current focal point as
-                  // a data attribute, mirroring `data-selected`'s own
-                  // precedent, without this task implementing any dimming or
-                  // hiding of other nodes based on it — that is Task 16's own
-                  // scope (hop-radius BFS + dim/hide rendering), which can
-                  // read `resolvedFocalEntityId` and this attribute directly
-                  // rather than this task guessing at its visual treatment.
                   data-focal-point={isFocalPoint ? "true" : "false"}
+                  // Hop-radius dim state (Feature 68, Task 16): set on the
+                  // node's own `<g>` — rather than, say, a separate wrapping
+                  // element — and implemented as the `opacity` style below
+                  // rather than `display`/`visibility`, so every existing
+                  // interaction (click/keyboard activation, drag, hover hint)
+                  // keeps working completely unchanged on a dimmed node; only
+                  // its rendered opacity differs (FR-20: canvas-only
+                  // de-emphasis, never a change to what's selectable/focusable,
+                  // and never anything the accessible list's own independent
+                  // reachability has to account for).
+                  data-focal-dimmed={
+                    isNodeWithinFocalHopRadius ? "false" : "true"
+                  }
                   transform={`translate(${resolvedX}, ${resolvedY})`}
+                  opacity={
+                    isNodeWithinFocalHopRadius ? 1 : FOCAL_HOP_DIM_OPACITY
+                  }
                   onPointerDown={(event) =>
                     handleNodePointerDown(event, node.entityId, node.x, node.y)
                   }
