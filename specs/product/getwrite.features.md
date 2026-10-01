@@ -2256,6 +2256,42 @@ real card — fixed by moving the ref to the card itself and keeping only
 `listeners`/`attributes` on the handle, matching `@dnd-kit`'s own
 documented drag-handle pattern.
 
+### Feature 67: Editor context menu — Shipped
+
+**Value:** A writer right-clicking inside the editor's document text gets
+an app-aware menu offering clipboard and formatting actions, instead of
+falling through to the browser's native menu, which offers neither and is
+visually inconsistent with the rest of the app.
+**Vertical slice:** A new `EditorContextMenu` component, built on the
+shared shadcn/Radix `ContextMenu` primitive (`ResourceContextMenu`'s and
+`EditContextMenu`'s own primitive), wired into `TipTapEditor.tsx` around
+the rendered `.ProseMirror` content area; Cut/Copy/Paste and
+Bold/Italic/Underline/Strikethrough/Inline Code/Select All items, each
+routed through the same commands the toolbar already uses
+(`toolbar-command-schema.ts`); gating so the menu only opens for a plain
+`TextSelection` (a `NodeSelection` — image, table cell, math node — falls
+back to the browser's native menu) and never opens in Markdown source
+mode; Storybook story and accessibility/unit test coverage.
+**Requirements covered:** None of its own.
+**User stories:** None.
+**Depends on:** none
+**Branch suggestion:** feature/editor-context-menu
+**Notes:** Shipped on branch `feature/editor-context-menu` (not yet merged
+to `main` as of this entry). `specs/features/editor-context-menu.md` and
+its `tasks.md` are the authoritative record of the shipped scope. This is
+a new, independent component scoped to the TipTap rich-text surface only —
+explicitly not a reuse or extension of `ResourceContextMenu` (the resource
+tree's context menu, Feature 19) or `EditContextMenu` (the generic plain
+`<input>`/`<textarea>` menu) — distinguished from both since neither
+previously reached the rich-text editing surface itself. Desktop-pointer-
+only for this iteration: no Android/touch long-press equivalent ships
+here, a deliberate scope decision recorded in the spec's Non-goals rather
+than an oversight. No existing functional requirement in
+`specs/product/getwrite.md` covers an editor-surface context menu, so this
+feature owns none of its own (per "Requirements covered"/"User stories"
+above), matching Feature 65/66's precedent for UI-polish features with no
+FR of their own.
+
 ---
 
 ## Coverage check

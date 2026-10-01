@@ -30,6 +30,7 @@ import type { Editor } from "@tiptap/core";
 import debounce from "lodash/debounce";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
+import EditorContextMenu from "./Editor/EditorContextMenu";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
 import { loadDocumentIntoEditor } from "./Editor/loadDocumentIntoEditor";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
@@ -614,11 +615,13 @@ export default function TipTapEditor({
               editor={editor}
               onToggleSource={readonly ? undefined : requestSwitchToSource}
             />
-            <EditorContent
-              editor={editor}
-              id={id}
-              className="tiptap tiptap-editor-content"
-            />
+            <EditorContextMenu editor={editor}>
+              <EditorContent
+                editor={editor}
+                id={id}
+                className="tiptap tiptap-editor-content"
+              />
+            </EditorContextMenu>
           </>
         )}
         <MarkdownSwitchWarningModal

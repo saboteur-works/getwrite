@@ -49,35 +49,41 @@ function computeLayouts(
     const leftPct = dateToPercent(startMs, axisBounds.start, axisBounds.end);
     const rawWidthPct = ((endMs - startMs) / spanMs) * 100;
     const widthPct = Math.max(0.01, rawWidthPct);
-    return { item, leftPct, rawWidthPct, widthPct };
+    return { item, startMs, endMs, leftPct, rawWidthPct, widthPct };
   });
 
-  const sorted = raw.slice().sort((a, b) => a.leftPct - b.leftPct);
+  const sorted = raw
+    .slice()
+    .sort((a, b) => a.startMs - b.startMs || a.leftPct - b.leftPct);
 
-  const laneEnds: number[] = [];
+  // Lane assignment is based on each chip's real start/end timestamps, not
+  // its rendered pixel position. A pixel-space test would make the lane
+  // count depend on zoom level and on minimum-width rendering (pins/pills),
+  // pushing chronologically back-to-back (non-overlapping) scenes into
+  // separate lanes just because they render close together. A lane is
+  // reused once its last occupant's end is at or before the new chip's
+  // start — true touching is not overlap.
+  const laneEndsMs: number[] = [];
 
-  return sorted.map(({ item, leftPct, rawWidthPct, widthPct }) => {
-    const physicalPx = (rawWidthPct / 100) * trackWidthPx;
+  return sorted.map(
+    ({ item, startMs, endMs, leftPct, rawWidthPct, widthPct }) => {
+      const physicalPx = (rawWidthPct / 100) * trackWidthPx;
 
-    const variant: ChipVariant = isPin(item, physicalPx)
-      ? "pin"
-      : physicalPx < 48
-        ? "pill"
-        : "bar";
+      const variant: ChipVariant = isPin(item, physicalPx)
+        ? "pin"
+        : physicalPx < 48
+          ? "pill"
+          : "bar";
 
-    const renderedWidthPx = variant === "pin" ? 2 : physicalPx;
+      let lane = laneEndsMs.findIndex((end) => end <= startMs);
+      if (lane === -1) lane = laneEndsMs.length;
+      laneEndsMs[lane] = Math.max(endMs, startMs);
 
-    const leftPx = (leftPct / 100) * trackWidthPx;
-    const rightPx = leftPx + renderedWidthPx;
+      const topOffset = lane * LANE_SLOT;
 
-    let lane = laneEnds.findIndex((end) => end + 6 <= leftPx);
-    if (lane === -1) lane = laneEnds.length;
-    laneEnds[lane] = rightPx;
-
-    const topOffset = lane * LANE_SLOT;
-
-    return { item, leftPct, widthPct, variant, lane, topOffset };
-  });
+      return { item, leftPct, widthPct, variant, lane, topOffset };
+    },
+  );
 }
 
 /** Render gap labels in lane 0 for gaps wider than 5% of the axis span. */

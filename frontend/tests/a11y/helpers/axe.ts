@@ -34,12 +34,26 @@ import axe, { type Result } from "axe-core";
  *
  * On failure, throws with each violation's rule id and affected target
  * selector(s) listed, rather than a bare pass/fail.
+ *
+ * `additionalDisabledRuleIds` lets a call site disable further best-practice
+ * (non-WCAG-success-criterion) rules for a measured, documented reason of
+ * its own, the same way `color-contrast`/`aria-hidden-focus` are disabled
+ * here by default — e.g. `editorContextMenu.a11y.test.tsx` disables `region`
+ * because mounting just the menu (not the full app shell with its own
+ * landmarks) makes axe-core's "content must be in a landmark" best-practice
+ * check fire against test-harness isolation, not a real page defect.
  */
-export async function runAxe(container: HTMLElement): Promise<void> {
+export async function runAxe(
+  container: HTMLElement,
+  additionalDisabledRuleIds: string[] = [],
+): Promise<void> {
   const results = await axe.run(container, {
     rules: {
       "color-contrast": { enabled: false },
       "aria-hidden-focus": { enabled: false },
+      ...Object.fromEntries(
+        additionalDisabledRuleIds.map((id) => [id, { enabled: false }]),
+      ),
     },
   });
 

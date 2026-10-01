@@ -161,6 +161,31 @@ describe("Timeline", () => {
     expect(screen.getByText("200%")).toBeInTheDocument();
   });
 
+  it("back-to-back, non-overlapping scenes stay in a single lane", () => {
+    // Scene One ends exactly when Scene Two starts — touching, not
+    // overlapping — so both should pack into lane 0 and the row should stay
+    // at its single-lane minimum height.
+    const items: TimelineItem[] = [
+      makeItem("1", "Scene One", "2024-01-01", { endDate: "2024-01-10" }),
+      makeItem("2", "Scene Two", "2024-01-10", { endDate: "2024-01-20" }),
+    ];
+    render(<Timeline items={items} />);
+    const track = screen.getByRole("list", { name: "timeline items" });
+    expect(track.style.height).toBe("56px");
+  });
+
+  it("genuinely overlapping scenes are pushed onto separate lanes", () => {
+    // Scene Two starts before Scene One ends — a real date overlap — so a
+    // second lane is required and the row grows taller.
+    const items: TimelineItem[] = [
+      makeItem("1", "Scene One", "2024-01-01", { endDate: "2024-01-10" }),
+      makeItem("2", "Scene Two", "2024-01-05", { endDate: "2024-01-15" }),
+    ];
+    render(<Timeline items={items} />);
+    const track = screen.getByRole("list", { name: "timeline items" });
+    expect(track.style.height).toBe("96px");
+  });
+
   it("POV filter pills render when povNames are passed", () => {
     render(
       <Timeline
