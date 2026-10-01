@@ -44,21 +44,83 @@
  * `deleteSelection()`. Paste reads `navigator.clipboard.readText()` and
  * inserts it at the captured range with `insertContent`, which replaces a
  * non-collapsed selection the same way typing over a selection would.
- * Formatting/Select All/Markdown-source-mode gating remain out of scope
- * (Tasks 5-7, same file, later).
+ * Task 5 (FR-4) adds Bold/Italic/Underline/Strikethrough/Inline Code
+ * `ContextMenuItem`s below Cut/Copy/Paste. Rather than re-deriving the
+ * toggle/active/disabled logic, each item reuses the exact command objects
+ * already registered in `MenuBar/toolbar-command-schema.ts`'s "Text
+ * Formatting" group (`findToolbarTextFormattingCommand`) — the same `run`,
+ * `isActive`, and `isDisabled` functions the toolbar's own buttons invoke —
+ * so behavior can never drift between the toolbar and this menu. `run`
+ * itself always acts on `editor.state.selection` (e.g.
+ * `editor.chain().focus().toggleBold().run()`), so each handler first
+ * re-applies the captured range via `setTextSelection` (mirroring Task 4's
+ * capture-then-restore-then-act pattern) and *then* invokes the toolbar
+ * command's unmodified `run`. `isActive`/`isDisabled` read `MenuBarState`
+ * (`menuBarState.tsx`'s `menuBarStateSelector`), the identical derived state
+ * object the toolbar itself renders from; it's recomputed on every render so
+ * it stays in sync with the selection-tracking effect already in place from
+ * Task 3. The shared `ContextMenu`/`ContextMenuItem` primitives
+ * (`components/common/UI/ContextMenu/ContextMenu.tsx`) have no
+ * checkbox/toggle variant, so active state is rendered as a checkmark glyph
+ * on a plain `ContextMenuItem` rather than a dedicated toggle component.
+ * Select All/Markdown-source-mode gating remain out of scope (Tasks 6-7,
+ * same file, later).
  */
 "use client";
 
 import * as React from "react";
 import type { Editor } from "@tiptap/core";
+import type { EditorStateSnapshot } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
-import { Scissors, Copy, Clipboard } from "lucide-react";
+import {
+  Scissors,
+  Copy,
+  Clipboard,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Code,
+  Check,
+} from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../common/UI/ContextMenu";
+import {
+  toolbarCommandSchema,
+  type ToolbarIconCommand,
+} from "./MenuBar/toolbar-command-schema";
+import {
+  menuBarStateSelector,
+  type MenuBarState,
+} from "./MenuBar/menuBarState";
+
+/**
+ * Looks up a `ToolbarIconCommand` by its `id` from the "Text Formatting"
+ * group in `toolbarCommandSchema` (FR-4). Reuses the exact command object
+ * the toolbar itself renders from, so this menu's run/isActive/isDisabled
+ * logic can never drift from the toolbar's.
+ */
+function findToolbarTextFormattingCommand(id: string): ToolbarIconCommand {
+  const group = toolbarCommandSchema.find(
+    (g) => g.groupId === "text-formatting-controls",
+  );
+  const item = group?.items.find((candidate) => candidate.id === id);
+  if (!item || item.kind !== "icon") {
+    throw new Error(`Toolbar text-formatting command not found: ${id}`);
+  }
+  return item;
+}
+
+const BOLD_COMMAND = findToolbarTextFormattingCommand("bold");
+const ITALIC_COMMAND = findToolbarTextFormattingCommand("italic");
+const UNDERLINE_COMMAND = findToolbarTextFormattingCommand("underline");
+const STRIKETHROUGH_COMMAND = findToolbarTextFormattingCommand("strikethrough");
+const INLINE_CODE_COMMAND = findToolbarTextFormattingCommand("inline-code");
 
 export interface EditorContextMenuProps {
   /** The editor's rendered content area (TipTap's `EditorContent`). */
@@ -145,6 +207,22 @@ export default function EditorContextMenu({
     void navigator.clipboard.writeText(text).then(run, run);
   }, [editor, captured]);
 
+  // Recomputed fresh on every render — this component already re-renders on
+  // every `selectionUpdate`/`transaction` (Task 3's effect), so this stays in
+  // sync with the editor the same way MenuBar's `useEditorState` does.
+  const menuBarState = menuBarStateSelector({
+    editor,
+  } as EditorStateSnapshot<Editor>);
+
+  const runTextFormattingCommand = React.useCallback(
+    (command: ToolbarIconCommand) => {
+      const { from, to } = captured;
+      editor.chain().focus().setTextSelection({ from, to }).run();
+      command.run({ editor, state: menuBarState });
+    },
+    [editor, captured, menuBarState],
+  );
+
   const handlePaste = React.useCallback(() => {
     const { from, to } = captured;
     void navigator.clipboard
@@ -198,7 +276,91 @@ export default function EditorContextMenu({
           <Clipboard size={14} className="resource-context-menu-item-icon" />
           Paste
         </ContextMenuItem>
+        <ContextMenuSeparator className="resource-context-menu-separator" />
+        <TextFormattingMenuItem
+          command={BOLD_COMMAND}
+          label="Bold"
+          icon={Bold}
+          editor={editor}
+          state={menuBarState}
+          onRun={runTextFormattingCommand}
+        />
+        <TextFormattingMenuItem
+          command={ITALIC_COMMAND}
+          label="Italic"
+          icon={Italic}
+          editor={editor}
+          state={menuBarState}
+          onRun={runTextFormattingCommand}
+        />
+        <TextFormattingMenuItem
+          command={UNDERLINE_COMMAND}
+          label="Underline"
+          icon={Underline}
+          editor={editor}
+          state={menuBarState}
+          onRun={runTextFormattingCommand}
+        />
+        <TextFormattingMenuItem
+          command={STRIKETHROUGH_COMMAND}
+          label="Strikethrough"
+          icon={Strikethrough}
+          editor={editor}
+          state={menuBarState}
+          onRun={runTextFormattingCommand}
+        />
+        <TextFormattingMenuItem
+          command={INLINE_CODE_COMMAND}
+          label="Inline Code"
+          icon={Code}
+          editor={editor}
+          state={menuBarState}
+          onRun={runTextFormattingCommand}
+        />
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+interface TextFormattingMenuItemProps {
+  command: ToolbarIconCommand;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  editor: Editor;
+  state: MenuBarState;
+  onRun: (command: ToolbarIconCommand) => void;
+}
+
+/**
+ * Renders a single Bold/Italic/Underline/Strikethrough/Inline Code item
+ * (FR-4), reusing a toolbar command's own `isActive`/`isDisabled` predicates
+ * so the menu's active/disabled data can never drift from the toolbar's.
+ * Active state is shown as a leading checkmark since the shared
+ * `ContextMenuItem` primitive has no checkbox/toggle variant to opt into.
+ */
+function TextFormattingMenuItem({
+  command,
+  label,
+  icon: Icon,
+  editor,
+  state,
+  onRun,
+}: TextFormattingMenuItemProps) {
+  const isActive = command.isActive?.({ editor, state }) ?? false;
+  const isDisabled = command.isDisabled?.({ editor, state }) ?? false;
+
+  return (
+    <ContextMenuItem
+      className="resource-context-menu-item"
+      disabled={isDisabled}
+      onSelect={() => onRun(command)}
+    >
+      {isActive ? (
+        <Check size={14} className="resource-context-menu-item-icon" />
+      ) : (
+        <Icon size={14} className="resource-context-menu-item-icon" />
+      )}
+      {label}
+    </ContextMenuItem>
   );
 }

@@ -253,4 +253,89 @@ describe("EditorContextMenu", () => {
     expect(clipboardReadText).toHaveBeenCalled();
     expect(editor.getText()).toBe("REPLACED document text");
   });
+
+  describe("Bold/Italic/Underline/Strikethrough/Inline Code (FR-4, Task 5)", () => {
+    const formattingCases: Array<{ label: string; markName: string }> = [
+      { label: "Bold", markName: "bold" },
+      { label: "Italic", markName: "italic" },
+      { label: "Underline", markName: "underline" },
+      { label: "Strikethrough", markName: "strike" },
+      { label: "Inline Code", markName: "code" },
+    ];
+
+    for (const { label, markName } of formattingCases) {
+      it(`toggles the ${markName} mark over the captured range, matching the toolbar's own toggle${markName === "strike" ? "Strike" : markName === "code" ? "Code" : markName[0].toUpperCase() + markName.slice(1)} command`, async () => {
+        const { editor } = renderWithContent();
+        act(() => {
+          editor.commands.setTextSelection({ from: 1, to: 5 });
+        });
+
+        openMenu(screen.getByTestId("prosemirror"));
+        act(() => vi.runAllTimers());
+
+        expect(editor.isActive(markName)).toBe(false);
+
+        await act(async () => {
+          fireEvent.click(screen.getByText(label));
+        });
+
+        // Toggling turned the mark on across the captured range (1-5), the
+        // same document state `editor.chain().focus().setTextSelection({from:1,to:5}).toggle<Mark>().run()`
+        // (the toolbar's own call convention) would produce.
+        act(() => editor.commands.setTextSelection({ from: 1, to: 5 }));
+        expect(editor.isActive(markName)).toBe(true);
+      });
+    }
+
+    it("renders Bold checked (active) for a selection already fully bold", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+        editor.commands.toggleBold();
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+      });
+      expect(editor.isActive("bold")).toBe(true);
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      // Active state is rendered as a leading checkmark rather than the
+      // format glyph (no checkbox primitive in the shared ContextMenu).
+      const boldItem = screen
+        .getByText("Bold")
+        .closest('[role="menuitem"]') as HTMLElement;
+      expect(boldItem.querySelector("svg.lucide-check")).toBeTruthy();
+    });
+
+    it("Bold/Italic/Underline/Strikethrough/Inline Code are unaffected by read-only, mirroring the toolbar's own canBold/canItalic/... gating (which never checks editability)", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection({ from: 1, to: 5 });
+        editor.setEditable(false);
+      });
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      for (const { label } of formattingCases) {
+        expect(screen.getByText(label).closest("[data-disabled]")).toBeFalsy();
+      }
+    });
+
+    it("renders Bold disabled for a collapsed cursor exactly when the toolbar's own canBold predicate says so", () => {
+      const { editor } = renderWithContent();
+      act(() => {
+        editor.commands.setTextSelection(1);
+      });
+      const toolbarCanBold = editor.can().chain().toggleBold().run();
+
+      openMenu(screen.getByTestId("prosemirror"));
+      act(() => vi.runAllTimers());
+
+      const isBoldDisabled = Boolean(
+        screen.getByText("Bold").closest("[data-disabled]"),
+      );
+      expect(isBoldDisabled).toBe(!toolbarCanBold);
+    });
+  });
 });
