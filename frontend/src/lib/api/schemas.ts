@@ -638,3 +638,18 @@ export const RevisionSettingsApiResponseSchema = z.object({
   defaultRevisionName: z.string().optional(),
   error: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// EntityGraphSettingsResponseSchema — Feature 68 Task 6 (entity-graph
+// settings transport). Matches `entity-graph-settings-core.ts`'s
+// `EntityGraphSettings` shape exactly: `{ entityGraphConnectionTypes:
+// string[]; entityGraphFocalHopRadius: number }`. Both fields are required
+// here (unlike the optional-on-clear goal schemas above) since the core
+// always returns the project's *effective* settings, defaults filled in —
+// there is no "absent" case on this response.
+// ---------------------------------------------------------------------------
+
+export const EntityGraphSettingsResponseSchema = z.object({
+  entityGraphConnectionTypes: z.array(z.string()),
+  entityGraphFocalHopRadius: z.number(),
+});
