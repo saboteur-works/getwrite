@@ -33,6 +33,11 @@ vi.mock("../../src/lib/api/entity-relationships", () => ({
   removeEntityRelationship: vi.fn(),
 }));
 vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
+// `EntityGraphAccessibleList` (Task 9) fetches the project's tag list itself
+// to resolve a `sharedMetadata` edge's raw ids to display labels; this view
+// doesn't exercise that edge kind, so a resolved-to-`[]` stub is enough to
+// keep the real `fetch` call out of this test file's jsdom environment.
+vi.mock("../../src/lib/api/tags", () => ({ listTags: vi.fn() }));
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
@@ -42,6 +47,7 @@ import {
   removeEntityRelationship,
 } from "../../src/lib/api/entity-relationships";
 import { updateSidecar } from "../../src/lib/api/resources";
+import { listTags } from "../../src/lib/api/tags";
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityCooccurrence = vi.mocked(getEntityCooccurrence);
@@ -49,6 +55,7 @@ const mockedListEntityRelationships = vi.mocked(listEntityRelationships);
 const mockedCreateEntityRelationship = vi.mocked(createEntityRelationship);
 const mockedRemoveEntityRelationship = vi.mocked(removeEntityRelationship);
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
+const mockedListTags = vi.mocked(listTags);
 
 const PROJECT_ID = "proj-entity-graph";
 
@@ -62,6 +69,7 @@ async function setupStore(
   entitiesEnabled = true,
 ) {
   mockedGetEntityAliasTable.mockResolvedValue(aliasTable);
+  mockedListTags.mockResolvedValue([]);
   const store = makeStore();
   store.dispatch(
     setProject({

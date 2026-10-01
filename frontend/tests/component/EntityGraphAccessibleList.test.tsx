@@ -1,13 +1,14 @@
 /**
  * Component tests for `EntityGraphAccessibleList` (entity-relationship-graph
- * Task 8) — the FR-11 synchronized accessible list: a semantic, alphabetized
- * (OQ-7) node list of native buttons, and a semantic, non-interactive edge
- * list disclosing each edge's kind, direction/type, and (for co-occurrence)
- * its shared-resource count as literal text (FR-12).
+ * Task 8, extended by Task 9) — the FR-11 synchronized accessible list: a
+ * semantic, alphabetized (OQ-7) node list of native buttons, and a semantic,
+ * non-interactive edge list disclosing each edge's kind, direction/type, and
+ * (for co-occurrence) its shared-resource count as literal text (FR-12).
  */
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
 import EntityGraphAccessibleList from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityGraphAccessibleList";
 import type {
   EntityGraphAuthoredEdge,
@@ -17,6 +18,59 @@ import type {
   EntityGraphProximityMentionGraphEdge,
   EntityGraphSharedMetadataGraphEdge,
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
+import { makeStore } from "../../src/store/store";
+import {
+  setProject,
+  setSelectedProjectId,
+} from "../../src/store/projectsSlice";
+import type { MetadataSchema } from "../../src/lib/models/types";
+
+vi.mock("../../src/lib/api/tags", () => ({ listTags: vi.fn() }));
+
+import { listTags } from "../../src/lib/api/tags";
+
+const mockedListTags = vi.mocked(listTags);
+
+const PROJECT_ID = "proj-entity-graph-accessible-list";
+
+/**
+ * Builds a store with the given project set active, mirroring
+ * `EntityRelationshipGraphView.test.tsx`'s `setupStore` helper — this
+ * component reads the active project's directory id and metadata schema
+ * directly (Task 9) rather than taking them as props.
+ */
+function setupStore(metadataSchema?: MetadataSchema) {
+  const store = makeStore();
+  store.dispatch(
+    setProject({
+      id: PROJECT_ID,
+      name: "Entity Graph Project",
+      rootPath: `/tmp/${PROJECT_ID}`,
+      folders: [],
+      resources: [],
+      metadataSchema,
+    } as never),
+  );
+  store.dispatch(setSelectedProjectId(PROJECT_ID));
+  return store;
+}
+
+/** Renders the component wrapped in a Redux `Provider`, as it is in production. */
+function renderWithStore(
+  ui: React.ReactElement,
+  metadataSchema?: MetadataSchema,
+) {
+  const store = setupStore(metadataSchema);
+  return render(<Provider store={store}>{ui}</Provider>);
+}
+
+beforeEach(() => {
+  mockedListTags.mockResolvedValue([]);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const nodes: EntityGraphNode[] = [
   { entityId: "e-carl", name: "Carl", entityKind: "character" },
@@ -41,7 +95,7 @@ const authoredEdge: EntityGraphAuthoredEdge = {
 
 describe("EntityGraphAccessibleList", () => {
   it("renders one node button per entity, alphabetically ordered regardless of input order (OQ-7)", () => {
-    render(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
+    renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
 
     const buttons = screen.getAllByRole("button");
     expect(buttons).toHaveLength(3);
@@ -54,7 +108,7 @@ describe("EntityGraphAccessibleList", () => {
 
   it("calls onNodeActivated with the entityId when a node button is clicked", () => {
     const onNodeActivated = vi.fn();
-    render(
+    renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -70,7 +124,7 @@ describe("EntityGraphAccessibleList", () => {
 
   it("calls onNodeActivated on native button Enter/Space keyboard activation", () => {
     const onNodeActivated = vi.fn();
-    render(
+    renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -91,7 +145,7 @@ describe("EntityGraphAccessibleList", () => {
   });
 
   it("renders a co-occurrence edge entry with both entity names and the literal shared-resource count", () => {
-    render(
+    renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={[cooccurrenceEdge]} />,
     );
 
@@ -102,7 +156,9 @@ describe("EntityGraphAccessibleList", () => {
   });
 
   it("renders an authored edge entry with both names, a direction indicator, and the relationship type", () => {
-    render(<EntityGraphAccessibleList nodes={nodes} edges={[authoredEdge]} />);
+    renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[authoredEdge]} />,
+    );
 
     const list = screen.getByTestId("entity-graph-edge-list");
     expect(list.textContent).toContain("Anna");
@@ -112,7 +168,7 @@ describe("EntityGraphAccessibleList", () => {
   });
 
   it("gives an edge-list entry no interactive role", () => {
-    render(
+    renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[cooccurrenceEdge, authoredEdge]}
@@ -139,14 +195,16 @@ describe("EntityGraphAccessibleList", () => {
       entityIdB: "e-ghost",
       sharedResourceCount: 1,
     };
-    render(<EntityGraphAccessibleList nodes={nodes} edges={[danglingEdge]} />);
+    renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[danglingEdge]} />,
+    );
 
     const list = screen.getByTestId("entity-graph-edge-list");
     expect(list.textContent).toContain("Unknown entity");
   });
 
   it("is visually hidden without leaving the accessibility tree", () => {
-    render(
+    renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[cooccurrenceEdge, authoredEdge]}
@@ -191,7 +249,7 @@ describe("EntityGraphAccessibleList — new edge kinds (Feature 68 Task 7 minima
 
   it("renders exactly one <li> per new-kind edge, without throwing", () => {
     expect(() =>
-      render(
+      renderWithStore(
         <EntityGraphAccessibleList
           nodes={nodes}
           edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
@@ -204,7 +262,7 @@ describe("EntityGraphAccessibleList — new edge kinds (Feature 68 Task 7 minima
   });
 
   it("never mis-describes a new-kind edge as an authored relationship", () => {
-    render(
+    renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
@@ -218,5 +276,68 @@ describe("EntityGraphAccessibleList — new edge kinds (Feature 68 Task 7 minima
     expect(list.textContent).toContain("linked by a backlink");
     expect(list.textContent).toContain("mentioned close together");
     expect(list.textContent).toContain("share");
+  });
+});
+
+describe("EntityGraphAccessibleList — shared-metadata label resolution (Task 9)", () => {
+  const sharedMetadataEdge: EntityGraphSharedMetadataGraphEdge = {
+    kind: "sharedMetadata",
+    entityIdA: "e-bob",
+    entityIdB: "e-carl",
+    sharedTagIds: ["tag-1"],
+    sharedFieldKeys: ["role"],
+  };
+
+  const metadataSchema: MetadataSchema = {
+    groups: [
+      {
+        id: "group-1",
+        label: "Details",
+        fields: [
+          { key: "role", label: "Role", type: "text" },
+          { key: "other-field", label: "Other Field", type: "text" },
+        ],
+      },
+    ],
+  };
+
+  it("resolves sharedTagIds/sharedFieldKeys to display labels, never raw ids, once tags/schema are available", async () => {
+    mockedListTags.mockResolvedValue([
+      { id: "tag-1", name: "Antagonist" },
+      { id: "tag-2", name: "Minor" },
+    ]);
+
+    renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[sharedMetadataEdge]} />,
+      metadataSchema,
+    );
+
+    await waitFor(() => {
+      const list = screen.getByTestId("entity-graph-edge-list");
+      expect(list.textContent).toContain("Antagonist");
+      expect(list.textContent).toContain("Role");
+    });
+
+    const list = screen.getByTestId("entity-graph-edge-list");
+    expect(list.textContent).not.toContain("tag-1");
+    expect(list.textContent).not.toContain("role");
+  });
+
+  it("falls back to the raw id/key when a tag or field can't be resolved, without throwing", async () => {
+    mockedListTags.mockResolvedValue([]); // tag-1 not found
+
+    renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[sharedMetadataEdge]} />,
+      // No metadata schema fields supplied either, so "role" can't resolve.
+      { groups: [] },
+    );
+
+    await waitFor(() => {
+      expect(mockedListTags).toHaveBeenCalledWith(PROJECT_ID);
+    });
+
+    const list = screen.getByTestId("entity-graph-edge-list");
+    expect(list.textContent).toContain("tag-1");
+    expect(list.textContent).toContain("role");
   });
 });

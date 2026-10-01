@@ -1,4 +1,11 @@
 import React from "react";
+import useAppSelector from "../../../../src/store/hooks";
+import {
+  selectActiveProjectDirectoryId,
+  selectActiveProjectMetadataSchema,
+} from "../../../../src/store/projectsSlice";
+import { listTags } from "../../../../src/lib/api/tags";
+import type { Tag } from "../../../../src/lib/models/types";
 import type {
   EntityGraphEdge,
   EntityGraphNode,
@@ -47,8 +54,13 @@ function sortNodesByName(nodes: EntityGraphNode[]): EntityGraphNode[] {
  *
  * Rendered by `EntityRelationshipGraphView.tsx` alongside `EntityGraphCanvas`,
  * from the same node and edge data, so the two stay in step. It takes that
- * data as props and holds no fetching or selection state of its own, which is
- * also what lets its tests drive it directly from fixtures.
+ * node/edge data as props and does no fetching of its own for most of it,
+ * which is what lets most of its tests drive it directly from fixtures — the
+ * one exception (Task 9) is the active project's tag list and metadata
+ * schema, read directly via Redux/`listTags` to resolve a `sharedMetadata`
+ * edge's raw `sharedTagIds`/`sharedFieldKeys` to display labels before
+ * handing them to `describeSharedMetadataEdge`, since that data isn't
+ * threaded through `EntityGraphEdge` itself.
  *
  * The list is visually hidden (`sr-only`), not removed: it is FR-10's
  * designated accessibility mechanism — "MUST be satisfied by the synchronized
@@ -79,6 +91,87 @@ export default function EntityGraphAccessibleList({
 
   const sortedNodes = React.useMemo(() => sortNodesByName(nodes), [nodes]);
 
+  // Task 9: `EntityGraphSharedMetadataGraphEdge` (Task 7, `EntityRelationshipGraphView.tsx`)
+  // still carries raw `sharedTagIds`/`sharedFieldKeys`, not display labels —
+  // confirmed directly against that file and against `EntityGraphCanvas.tsx`'s
+  // own "Task 8/9's scope" doc comment at its `sharedMetadata` case. Since
+  // `describeSharedMetadataEdge` (`edgeDescriptions.ts`) expects
+  // already-resolved label strings, this component resolves them itself
+  // rather than rendering raw ids as user-facing text. It reads the active
+  // project's tag list and metadata schema directly (the same
+  // `selectActiveProjectDirectoryId`/`listTags` pattern `TagsSection.tsx` and
+  // `EntityRelationshipGraphView.tsx` already use) rather than taking them as
+  // props, since this task's scope excludes changing
+  // `EntityRelationshipGraphView.tsx`'s own props/wiring.
+  const projectId = useAppSelector((s) => selectActiveProjectDirectoryId(s));
+  const metadataSchema = useAppSelector((s) =>
+    selectActiveProjectMetadataSchema(s),
+  );
+
+  const fieldLabelByKey = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of metadataSchema.groups) {
+      for (const field of group.fields) {
+        map.set(field.key, field.label);
+      }
+    }
+    return map;
+  }, [metadataSchema]);
+
+  const [tags, setTags] = React.useState<Tag[]>([]);
+
+  React.useEffect(() => {
+    if (!projectId) {
+      setTags([]);
+      return;
+    }
+    let isCancelled = false;
+    // `listTags` only degrades to `[]` for a non-ok HTTP response — a thrown
+    // network/fetch error propagates uncaught (`tags.ts`'s existing
+    // contract), so this `.catch()` is required, mirroring
+    // `TagsSection.tsx`'s identical `listTags(...).then(...).catch(...)`
+    // pattern, not optional defensiveness.
+    void listTags(projectId)
+      .then((result) => {
+        if (!isCancelled) setTags(result);
+      })
+      .catch(() => {
+        if (!isCancelled) setTags([]);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [projectId]);
+
+  const tagLabelById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const tag of tags) {
+      map.set(tag.id, tag.name);
+    }
+    return map;
+  }, [tags]);
+
+  /**
+   * Resolves a shared-metadata edge's raw tag ids / field keys to display
+   * labels, falling back to the raw id/key itself when it names a tag or
+   * field no longer in the project's current tag list / metadata schema
+   * (e.g. deleted since the edge was computed) — degraded but still legible,
+   * mirroring `resolveEntityName`'s "Unknown entity" fallback precedent of
+   * never throwing on a stale reference.
+   */
+  const resolveSharedMetadataLabels = React.useCallback(
+    (
+      sharedTagIds: string[],
+      sharedFieldKeys: string[],
+    ): { sharedTagLabels: string[]; sharedFieldLabels: string[] } => ({
+      sharedTagLabels: sharedTagIds.map((id) => tagLabelById.get(id) ?? id),
+      sharedFieldLabels: sharedFieldKeys.map(
+        (key) => fieldLabelByKey.get(key) ?? key,
+      ),
+    }),
+    [tagLabelById, fieldLabelByKey],
+  );
+
   return (
     <div className="sr-only" data-testid="entity-graph-accessible-list">
       <ul aria-label="Entity nodes" data-testid="entity-graph-node-list">
@@ -95,16 +188,14 @@ export default function EntityGraphAccessibleList({
       </ul>
       <ul aria-label="Entity edges" data-testid="entity-graph-edge-list">
         {edges.map((edge) => {
-          // Exhaustive per-kind rendering (Feature 68, Task 7 minimal fix):
-          // a non-exhaustive version here previously fell through to the
-          // `authored`-shaped branch for any unhandled kind, which would
-          // read `.id`/`.sourceEntityId`/`.targetEntityId` off an edge that
-          // doesn't have them and mis-describe it as authored. The three new
-          // kinds below (`backlinks`, `proximityMentions`, `sharedMetadata`)
-          // render via Task 5's own description functions — correct, but
-          // without Task 9's fuller accessible-list treatment (e.g. any
-          // additional grouping/labelling Task 9 may add), which remains
-          // that task's scope.
+          // Exhaustive per-kind rendering (Feature 68, Task 7 minimal fix,
+          // extended by Task 9): a non-exhaustive version here previously
+          // fell through to the `authored`-shaped branch for any unhandled
+          // kind, which would read `.id`/`.sourceEntityId`/`.targetEntityId`
+          // off an edge that doesn't have them and mis-describe it as
+          // authored. Every kind below renders via Task 5's own description
+          // functions, so the canvas tooltip and this list's text can never
+          // drift apart for any edge kind (FR-6).
           switch (edge.kind) {
             case "cooccurrence":
               return (
@@ -161,25 +252,27 @@ export default function EntityGraphAccessibleList({
                   )}
                 </li>
               );
-            case "sharedMetadata":
+            case "sharedMetadata": {
+              const { sharedTagLabels, sharedFieldLabels } =
+                resolveSharedMetadataLabels(
+                  edge.sharedTagIds,
+                  edge.sharedFieldKeys,
+                );
               return (
                 <li
                   key={`sharedMetadata-${edge.entityIdA}-${edge.entityIdB}`}
                   data-testid="entity-graph-edge-item"
                 >
-                  {/* Task 7 minimal fix: raw tag ids/field keys, not yet
-                      resolved to display labels — full id-to-label
-                      resolution is Task 9's scope, per
-                      `describeSharedMetadataEdge`'s own doc comment. */}
                   {describeSharedMetadataEdge(
                     nameById,
                     edge.entityIdA,
                     edge.entityIdB,
-                    edge.sharedTagIds,
-                    edge.sharedFieldKeys,
+                    sharedTagLabels,
+                    sharedFieldLabels,
                   )}
                 </li>
               );
+            }
           }
         })}
       </ul>
