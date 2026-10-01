@@ -395,6 +395,35 @@ describe("EntityGraphCanvas", () => {
     expect(afterManyZoomOut.scale).toBeGreaterThanOrEqual(0.25);
   });
 
+  it("resets pan and zoom to the default framing when the reset-view button is clicked", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const svg = screen.getByTestId("entity-graph-canvas");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+
+    // Pan via a background drag, then zoom via wheel, so both pan and scale
+    // have drifted from their defaults before the reset is exercised.
+    fireEvent.mouseDown(screen.getByTestId("entity-graph-canvas-background"), {
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.mouseMove(window, { clientX: 150, clientY: 130 });
+    fireEvent.mouseUp(window);
+    fireEvent.wheel(svg, { deltaY: -100 });
+
+    const drifted = parseViewportTransform(viewport);
+    expect(drifted.x).not.toBe(0);
+    expect(drifted.y).not.toBe(0);
+    expect(drifted.scale).not.toBe(1);
+
+    fireEvent.click(screen.getByTestId("entity-graph-reset-view"));
+
+    const reset = parseViewportTransform(viewport);
+    expect(reset.x).toBe(0);
+    expect(reset.y).toBe(0);
+    expect(reset.scale).toBe(1);
+  });
+
   it("anchors a wheel zoom on the pointer, keeping the graph point under the cursor fixed", () => {
     render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 

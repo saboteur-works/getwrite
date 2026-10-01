@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Maximize2 } from "lucide-react";
 import {
   forceCenter,
   forceCollide,
@@ -17,6 +18,7 @@ import {
   describeCooccurrenceEdge,
 } from "./edgeDescriptions";
 import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
+import Button from "../../../common/UI/Button";
 import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
@@ -780,6 +782,18 @@ export default function EntityGraphCanvas({
     [onNodeActivated],
   );
 
+  // Resets pan/zoom back to the canvas's own default framing (Entity Graph
+  // canvas-sizing polish, reset-view minifix). `computeGraphLayout` always
+  // settles its simulation centered on `width/2, height/2` at an implicit
+  // 1:1 scale, so pan `{0, 0}` and scale `1` is exactly that framing — no
+  // separate "fit to bounds" computation is needed. Node drag overrides and
+  // the current selection are left untouched: this resets the camera, not
+  // the graph's own layout.
+  const handleResetView = React.useCallback(() => {
+    setPan({ x: 0, y: 0 });
+    setScale(1);
+  }, []);
+
   // A node's `click`: suppressed when it is the click that ends a gesture
   // just classified as a drag past the threshold (entity-graph-node-
   // dragging, FR-6), otherwise an ordinary activation. The flag is consumed
@@ -981,7 +995,18 @@ export default function EntityGraphCanvas({
       : null;
 
   return (
-    <>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <Button
+        type="button"
+        variant="icon"
+        aria-label="Reset view"
+        title="Reset view"
+        data-testid="entity-graph-reset-view"
+        onClick={handleResetView}
+        style={{ position: "absolute", top: 8, right: 8, zIndex: 1 }}
+      >
+        <Maximize2 size={14} />
+      </Button>
       <svg
         ref={svgRef}
         /* Not `role="img"`. Every node `<g>` inside is `tabIndex={0}`
@@ -1190,6 +1215,6 @@ export default function EntityGraphCanvas({
           {describeEdge(activeTooltip.edge, nameById)}
         </div>
       )}
-    </>
+    </div>
   );
 }
