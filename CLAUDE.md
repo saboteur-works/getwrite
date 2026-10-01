@@ -127,7 +127,7 @@ frontend/
   components/            # Feature-organized React components
     Layout/              # AppShell + shell controllers
     Auth/                # Login/signup/verify/reset UI (hosted auth only)
-    Editor/              # TipTap rich text editor (+ TipTapEditor.tsx entry)
+    Editor/              # TipTap rich text editor (+ TipTapEditor.tsx entry, EditorContextMenu)
     ResourceTree/        # Tree, context menu, create/rename modals, SmartFolders
     WorkArea/            # EditView / DataView / DiffView + Views/{Organizer,Timeline,EntityRoster,EntityRelationshipGraph,TrashView}
     SearchBar/ Sidebar/ Start/ Timeline/ QueryBuilder/ SchemaManager/
