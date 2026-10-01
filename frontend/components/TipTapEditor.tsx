@@ -615,7 +615,7 @@ export default function TipTapEditor({
               editor={editor}
               onToggleSource={readonly ? undefined : requestSwitchToSource}
             />
-            <EditorContextMenu>
+            <EditorContextMenu editor={editor}>
               <EditorContent
                 editor={editor}
                 id={id}
