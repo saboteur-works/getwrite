@@ -22,6 +22,7 @@ import {
 } from "./edgeDescriptions";
 import { chooseTooltipPlacement } from "./edgeTooltipPlacement";
 import Button from "../../../common/UI/Button";
+import EntityGraphSettingsPanel from "./EntityGraphSettingsPanel";
 import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
@@ -85,6 +86,17 @@ export interface EntityGraphCanvasProps {
    * a roster row's click both is the row and its only interaction.
    */
   onNodeActivated?: (entityId: string) => void;
+  /**
+   * Server-validated id of the active project (directory basename), used only
+   * to render the connection-type/hop-radius settings panel (Feature 68, Task
+   * 10) — never passed on to layout or rendering. When omitted, no settings
+   * toggle is rendered (e.g. in a test or Storybook context with no real
+   * project). NOTE: as of this task, `EntityRelationshipGraphView.tsx` does
+   * not yet pass this prop down to `EntityGraphCanvas` — that wiring is a
+   * follow-up integration step for whichever task next touches that file
+   * (see Task 10's handback report).
+   */
+  projectId?: string;
 }
 
 /**
@@ -501,6 +513,7 @@ export default function EntityGraphCanvas({
   height = DEFAULT_HEIGHT,
   className = "",
   onNodeActivated,
+  projectId,
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
@@ -1055,6 +1068,11 @@ export default function EntityGraphCanvas({
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      {projectId ? (
+        <div style={{ position: "absolute", top: 8, right: 52, zIndex: 1 }}>
+          <EntityGraphSettingsPanel projectId={projectId} />
+        </div>
+      ) : null}
       <Button
         type="button"
         variant="icon"
