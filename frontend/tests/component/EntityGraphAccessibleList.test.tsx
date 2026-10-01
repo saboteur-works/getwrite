@@ -94,10 +94,10 @@ const authoredEdge: EntityGraphAuthoredEdge = {
 };
 
 describe("EntityGraphAccessibleList", () => {
-  it("renders one node button per entity, alphabetically ordered regardless of input order (OQ-7)", () => {
+  it("renders one activation button per entity, alphabetically ordered regardless of input order (OQ-7)", () => {
     renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
 
-    const buttons = screen.getAllByRole("button");
+    const buttons = screen.getAllByTestId("entity-graph-node-activate-button");
     expect(buttons).toHaveLength(3);
     expect(buttons.map((b: HTMLElement) => b.textContent)).toEqual([
       "Anna",
@@ -224,6 +224,149 @@ describe("EntityGraphAccessibleList", () => {
     expect(screen.getByRole("list", { name: "Entity nodes" })).toBeTruthy();
     expect(screen.getByRole("list", { name: "Entity edges" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Anna" })).toBeTruthy();
+  });
+});
+
+describe("EntityGraphAccessibleList — focal-point controls and hop-radius disclosure (Feature 68 Task 17)", () => {
+  // A 3-hop chain: e-anna (0) - e-bob (1) - e-carl (2), via cooccurrence
+  // edges, so a hop radius of 1 puts e-carl outside the radius from e-anna.
+  const chainEdges: EntityGraphCooccurrenceEdge[] = [
+    {
+      kind: "cooccurrence",
+      entityIdA: "e-anna",
+      entityIdB: "e-bob",
+      sharedResourceCount: 1,
+    },
+    {
+      kind: "cooccurrence",
+      entityIdA: "e-bob",
+      entityIdB: "e-carl",
+      sharedResourceCount: 1,
+    },
+  ];
+
+  it("renders a 'Set as focal point' button per node, distinct from the activation button", () => {
+    renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
+
+    const setFocalButtons = screen.getAllByTestId(
+      "entity-graph-node-set-focal-button",
+    );
+    expect(setFocalButtons).toHaveLength(3);
+  });
+
+  it("calls onSetFocalPoint (not onNodeActivated) when a node's 'Set as focal point' button is clicked", () => {
+    const onNodeActivated = vi.fn();
+    const onSetFocalPoint = vi.fn();
+    renderWithStore(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={[]}
+        onNodeActivated={onNodeActivated}
+        onSetFocalPoint={onSetFocalPoint}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Set Anna as focal point" }),
+    );
+
+    expect(onSetFocalPoint).toHaveBeenCalledTimes(1);
+    expect(onSetFocalPoint).toHaveBeenCalledWith("e-anna");
+    expect(onNodeActivated).not.toHaveBeenCalled();
+  });
+
+  it("renders a header 'Clear focal point' button, disabled when no focal point is set", () => {
+    renderWithStore(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={[]}
+        focalEntityId={null}
+      />,
+    );
+
+    const clearButton = screen.getByTestId(
+      "entity-graph-clear-focal-point-button",
+    );
+    expect(clearButton).toBeDisabled();
+    expect(
+      screen.getByTestId("entity-graph-focal-point-status").textContent,
+    ).toBe("No focal point set.");
+  });
+
+  it("enables the header 'Clear focal point' button and discloses the current focal point's name when one is set", () => {
+    const onClearFocalPoint = vi.fn();
+    renderWithStore(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={[]}
+        focalEntityId="e-anna"
+        onClearFocalPoint={onClearFocalPoint}
+      />,
+    );
+
+    const clearButton = screen.getByTestId(
+      "entity-graph-clear-focal-point-button",
+    );
+    expect(clearButton).not.toBeDisabled();
+    expect(
+      screen.getByTestId("entity-graph-focal-point-status").textContent,
+    ).toContain("Anna");
+
+    fireEvent.click(clearButton);
+    expect(onClearFocalPoint).toHaveBeenCalledTimes(1);
+  });
+
+  it("discloses each node's inside/outside hop-radius status as text when a focal point is set", () => {
+    renderWithStore(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={chainEdges}
+        focalEntityId="e-anna"
+        focalHopRadius={1}
+      />,
+    );
+
+    const items = screen.getAllByTestId("entity-graph-node-item");
+    const statusFor = (name: string): string | undefined =>
+      items
+        .find((item: HTMLElement) => item.textContent?.includes(name))
+        ?.querySelector('[data-testid="entity-graph-node-focal-status"]')
+        ?.textContent ?? undefined;
+
+    expect(statusFor("Anna")).toContain("focal point");
+    expect(statusFor("Bob")).toContain("within focal radius");
+    expect(statusFor("Carl")).toContain("outside focal radius");
+  });
+
+  it("renders no hop-status disclosure at all when no focal point is set", () => {
+    renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={chainEdges} />,
+    );
+
+    expect(screen.queryByTestId("entity-graph-node-focal-status")).toBeNull();
+  });
+
+  it("still fires onNodeActivated for a node outside the active hop radius — accessible-list reachability is independent of canvas dimming (FR-20/OQ-10)", () => {
+    const onNodeActivated = vi.fn();
+    renderWithStore(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={chainEdges}
+        onNodeActivated={onNodeActivated}
+        focalEntityId="e-anna"
+        focalHopRadius={1}
+      />,
+    );
+
+    // e-carl is 2 hops from the focal point e-anna, outside a radius of 1 —
+    // on the canvas this node would render dimmed (`EntityGraphCanvas.tsx`'s
+    // `FOCAL_HOP_DIM_OPACITY`). This component never reads that visual
+    // state, so its own activation button for the same node must still work
+    // exactly as it would for any in-radius node.
+    fireEvent.click(screen.getByRole("button", { name: "Carl" }));
+
+    expect(onNodeActivated).toHaveBeenCalledTimes(1);
+    expect(onNodeActivated).toHaveBeenCalledWith("e-carl");
   });
 });
 

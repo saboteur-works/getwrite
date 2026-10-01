@@ -17,6 +17,17 @@ import {
   describeProximityMentionEdge,
   describeSharedMetadataEdge,
 } from "./edgeDescriptions";
+import { computeHopDistances } from "./entityGraphHopDistance";
+
+/**
+ * Default focal hop radius used only when the caller omits the
+ * `focalHopRadius` prop entirely — mirrors `EntityGraphCanvas.tsx`'s own
+ * `DEFAULT_FOCAL_HOP_RADIUS` (`1`) without importing a canvas-local
+ * constant into this component. `EntityRelationshipGraphView.tsx` is
+ * expected to pass the project's actual configured value down, exactly as
+ * it already does for `EntityGraphCanvas`.
+ */
+const DEFAULT_FOCAL_HOP_RADIUS = 1;
 
 export interface EntityGraphAccessibleListProps {
   nodes: EntityGraphNode[];
@@ -27,6 +38,38 @@ export interface EntityGraphAccessibleListProps {
    * with that node's `entityId`.
    */
   onNodeActivated?: (entityId: string) => void;
+  /**
+   * The id of the entity currently acting as the graph's focal point
+   * (Feature 68, Task 17, FR-15/FR-20), or `null`/`undefined` for "no focal
+   * point set". Expected to be the same lifted value
+   * `EntityRelationshipGraphView.tsx` passes to `EntityGraphCanvas`'s own
+   * `focalEntityId` prop, so both surfaces always agree on which node (if
+   * any) is the focal point.
+   */
+  focalEntityId?: string | null;
+  /**
+   * Invoked by a node's "Set as focal point" button with that node's
+   * `entityId` (FR-15/FR-18). Distinct from `onNodeActivated` — activating a
+   * node still navigates to its resource; setting the focal point does not.
+   */
+  onSetFocalPoint?: (entityId: string) => void;
+  /**
+   * Invoked by the header's "Clear focal point" button (FR-19). Takes no
+   * argument — clearing always sets the focal point back to `null`.
+   */
+  onClearFocalPoint?: () => void;
+  /**
+   * The project's configured focal hop radius (Feature 68, Task 16/17,
+   * FR-17/FR-20) — how many hops from the focal point a node must stay
+   * within to be disclosed as "within focal radius" rather than "outside
+   * focal radius". Defaults to `DEFAULT_FOCAL_HOP_RADIUS` (`1`) when
+   * omitted, matching `EntityGraphCanvas.tsx`'s own default. Has no effect
+   * on activation: a node outside the radius remains fully reachable and
+   * activatable through this list regardless of hop status or the canvas's
+   * own dimmed rendering (FR-20/OQ-10) — this component never reads or
+   * reacts to the canvas's visual state.
+   */
+  focalHopRadius?: number;
 }
 
 /**
@@ -51,6 +94,18 @@ function sortNodesByName(nodes: EntityGraphNode[]): EntityGraphNode[] {
  * plus a semantic, non-interactive edge list disclosing each edge's kind,
  * direction/type, and — for a co-occurrence edge — its shared-resource
  * count (FR-12) as literal text.
+ *
+ * As of Feature 68 Task 17, each node `<li>` carries a second button —
+ * "Set {name} as focal point" — alongside its existing activation button,
+ * and a header above the node list exposes a "Clear focal point" button
+ * plus the current focal point's name as literal text (FR-15/FR-19/FR-20).
+ * Every node also discloses its hop-distance relationship to the active
+ * focal point as literal text ("focal point" / "within focal radius" /
+ * "outside focal radius"), re-derived via the shared, pure
+ * `computeHopDistances` helper rather than read off the canvas's own
+ * rendering — this list never consults the canvas's visual (dimmed/hidden)
+ * state, so a node the canvas dims for being outside the hop radius remains
+ * exactly as reachable and activatable here as any other node (FR-20/OQ-10).
  *
  * Rendered by `EntityRelationshipGraphView.tsx` alongside `EntityGraphCanvas`,
  * from the same node and edge data, so the two stay in step. It takes that
@@ -80,6 +135,10 @@ export default function EntityGraphAccessibleList({
   nodes,
   edges,
   onNodeActivated,
+  focalEntityId = null,
+  onSetFocalPoint,
+  onClearFocalPoint,
+  focalHopRadius = DEFAULT_FOCAL_HOP_RADIUS,
 }: EntityGraphAccessibleListProps): JSX.Element {
   const nameById = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -90,6 +149,41 @@ export default function EntityGraphAccessibleList({
   }, [nodes]);
 
   const sortedNodes = React.useMemo(() => sortNodesByName(nodes), [nodes]);
+
+  // Feature 68, Task 17 (FR-17/FR-20): re-derives the same BFS hop distances
+  // `EntityGraphCanvas.tsx` uses to decide dimming, via the shared pure
+  // `computeHopDistances` helper — never duplicated here. `edges` is already
+  // filtered to the graph's active connection-type set by
+  // `EntityRelationshipGraphView.tsx`'s own `graphData` memo, mirroring that
+  // module's own documented expectation.
+  const hopDistances = React.useMemo(
+    () => computeHopDistances(nodes, edges, focalEntityId),
+    [nodes, edges, focalEntityId],
+  );
+
+  const focalPointName =
+    focalEntityId !== null
+      ? (nameById.get(focalEntityId) ?? "Unknown entity")
+      : null;
+
+  /**
+   * Discloses a node's relationship to the current focal point as literal
+   * text (FR-20) — never conveyed by styling alone, since this list has no
+   * visual styling to convey it with in the first place (it is `sr-only`).
+   * Returns `null` (no suffix at all) when no focal point is set, matching
+   * the canvas's own "no effect while no focal point is set" behavior.
+   */
+  const describeFocalStatus = React.useCallback(
+    (entityId: string): string | null => {
+      if (focalEntityId === null) return null;
+      if (entityId === focalEntityId) return "focal point";
+      const distance = hopDistances.get(entityId) ?? Infinity;
+      return distance <= focalHopRadius
+        ? "within focal radius"
+        : "outside focal radius";
+    },
+    [focalEntityId, hopDistances, focalHopRadius],
+  );
 
   // Task 9: `EntityGraphSharedMetadataGraphEdge` (Task 7, `EntityRelationshipGraphView.tsx`)
   // still carries raw `sharedTagIds`/`sharedFieldKeys`, not display labels —
@@ -174,17 +268,48 @@ export default function EntityGraphAccessibleList({
 
   return (
     <div className="sr-only" data-testid="entity-graph-accessible-list">
+      <div data-testid="entity-graph-focal-point-header">
+        <p data-testid="entity-graph-focal-point-status">
+          {focalPointName !== null
+            ? `Current focal point: ${focalPointName}.`
+            : "No focal point set."}
+        </p>
+        <button
+          type="button"
+          data-testid="entity-graph-clear-focal-point-button"
+          disabled={focalEntityId === null}
+          onClick={() => onClearFocalPoint?.()}
+        >
+          Clear focal point
+        </button>
+      </div>
       <ul aria-label="Entity nodes" data-testid="entity-graph-node-list">
-        {sortedNodes.map((node) => (
-          <li key={node.entityId} data-testid="entity-graph-node-item">
-            <button
-              type="button"
-              onClick={() => onNodeActivated?.(node.entityId)}
-            >
-              {node.name}
-            </button>
-          </li>
-        ))}
+        {sortedNodes.map((node) => {
+          const focalStatus = describeFocalStatus(node.entityId);
+          return (
+            <li key={node.entityId} data-testid="entity-graph-node-item">
+              <button
+                type="button"
+                data-testid="entity-graph-node-activate-button"
+                onClick={() => onNodeActivated?.(node.entityId)}
+              >
+                {node.name}
+              </button>
+              <button
+                type="button"
+                data-testid="entity-graph-node-set-focal-button"
+                onClick={() => onSetFocalPoint?.(node.entityId)}
+              >
+                {`Set ${node.name} as focal point`}
+              </button>
+              {focalStatus !== null && (
+                <span data-testid="entity-graph-node-focal-status">
+                  {`(${focalStatus})`}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
       <ul aria-label="Entity edges" data-testid="entity-graph-edge-list">
         {edges.map((edge) => {
