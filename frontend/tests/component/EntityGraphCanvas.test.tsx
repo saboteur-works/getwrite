@@ -8,6 +8,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -2139,6 +2140,228 @@ describe("EntityGraphCanvas", () => {
         expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
       );
       await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
+    });
+  });
+
+  describe("focal-point selection (Feature 68, Task 15)", () => {
+    it("still activates the node on a plain click — selection toggle and onNodeActivated are both completely unaffected", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first);
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+      // A plain click must not also set a focal point.
+      expect(first.getAttribute("data-focal-point")).toBe("false");
+    });
+
+    it("sets the focal point on a shift-click without toggling selection or calling onNodeActivated", () => {
+      const onNodeActivated = vi.fn();
+      const onFocalEntityChange = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+          onFocalEntityChange={onFocalEntityChange}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first, { shiftKey: true });
+
+      expect(onNodeActivated).not.toHaveBeenCalled();
+      expect(first.getAttribute("data-selected")).toBe("false");
+      expect(first.getAttribute("data-focal-point")).toBe("true");
+      expect(onFocalEntityChange).toHaveBeenCalledTimes(1);
+      expect(onFocalEntityChange).toHaveBeenCalledWith("e-1");
+    });
+
+    it("centers the viewport's pan on the shift-clicked node without changing scale", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const viewport = screen.getByTestId("entity-graph-viewport");
+      const beforeScale = parseViewportTransform(viewport).scale;
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      const { x: nodeX, y: nodeY } = parseNodeTransform(first);
+
+      fireEvent.click(first, { shiftKey: true });
+
+      const after = parseViewportTransform(viewport);
+      expect(after.scale).toBe(beforeScale);
+      // pan = center - node * scale (width/height default to 800/560).
+      expect(after.x).toBeCloseTo(400 - nodeX * after.scale);
+      expect(after.y).toBeCloseTo(280 - nodeY * after.scale);
+    });
+
+    it("reassigns the focal point to a different node on a second shift-click gesture, with no clear step required first", () => {
+      const onFocalEntityChange = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onFocalEntityChange={onFocalEntityChange}
+        />,
+      );
+
+      const [first, second] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first, { shiftKey: true });
+      expect(first.getAttribute("data-focal-point")).toBe("true");
+
+      fireEvent.click(second, { shiftKey: true });
+
+      expect(first.getAttribute("data-focal-point")).toBe("false");
+      expect(second.getAttribute("data-focal-point")).toBe("true");
+      expect(onFocalEntityChange).toHaveBeenCalledTimes(2);
+      expect(onFocalEntityChange).toHaveBeenNthCalledWith(1, "e-1");
+      expect(onFocalEntityChange).toHaveBeenNthCalledWith(2, "e-2");
+    });
+
+    it("resets focalEntityId to null when controlled from outside via the focalEntityId prop, exposing a clear action for a future caller", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas nodes={NODES} edges={EDGES} focalEntityId="e-1" />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      expect(first.getAttribute("data-focal-point")).toBe("true");
+
+      rerender(
+        <EntityGraphCanvas nodes={NODES} edges={EDGES} focalEntityId={null} />,
+      );
+
+      expect(first.getAttribute("data-focal-point")).toBe("false");
+    });
+
+    it("sets the focal point via a long-press that stays stationary past the duration threshold", () => {
+      vi.useFakeTimers();
+      try {
+        const onFocalEntityChange = vi.fn();
+        const onNodeActivated = vi.fn();
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            onFocalEntityChange={onFocalEntityChange}
+            onNodeActivated={onNodeActivated}
+          />,
+        );
+
+        const [target] = screen.getAllByTestId("entity-graph-node");
+        fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+
+        expect(onFocalEntityChange).toHaveBeenCalledTimes(1);
+        expect(onFocalEntityChange).toHaveBeenCalledWith("e-1");
+        expect(target.getAttribute("data-focal-point")).toBe("true");
+
+        fireEvent.pointerUp(window);
+        // A trailing click (as a real browser fires after pointerup) must be
+        // suppressed, the same way a drag-past-threshold already suppresses
+        // it — a long-press must not also activate the node.
+        fireEvent.click(target);
+        expect(onNodeActivated).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not set a focal point via long-press once the gesture has moved past the drag threshold", () => {
+      vi.useFakeTimers();
+      try {
+        const onFocalEntityChange = vi.fn();
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            onFocalEntityChange={onFocalEntityChange}
+          />,
+        );
+
+        const [target] = screen.getAllByTestId("entity-graph-node");
+        fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+        fireEvent.pointerMove(window, {
+          clientX: 100 + DRAG_CLICK_THRESHOLD_PX + 20,
+          clientY: 100 + DRAG_CLICK_THRESHOLD_PX + 12,
+        });
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+
+        expect(onFocalEntityChange).not.toHaveBeenCalled();
+        fireEvent.pointerUp(window);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not set a focal point via long-press once the pointer has been released before the duration elapses", () => {
+      vi.useFakeTimers();
+      try {
+        const onFocalEntityChange = vi.fn();
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            onFocalEntityChange={onFocalEntityChange}
+          />,
+        );
+
+        const [target] = screen.getAllByTestId("entity-graph-node");
+        fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+        fireEvent.pointerUp(window);
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+
+        expect(onFocalEntityChange).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("shows the hint affordance icon only while a node is hovered, not before or after", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      expect(
+        target.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).toBeNull();
+
+      fireEvent.mouseEnter(target);
+      expect(
+        target.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).not.toBeNull();
+
+      fireEvent.mouseLeave(target);
+      expect(
+        target.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).toBeNull();
+    });
+
+    it("shows the hint affordance on only the hovered node, not every node", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [first, second] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseEnter(first);
+
+      expect(
+        first.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).not.toBeNull();
+      expect(
+        second.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).toBeNull();
     });
   });
 });

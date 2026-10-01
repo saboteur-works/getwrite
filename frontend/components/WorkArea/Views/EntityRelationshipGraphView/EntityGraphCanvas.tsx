@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Target } from "lucide-react";
 import {
   forceCenter,
   forceCollide,
@@ -118,6 +118,39 @@ export interface EntityGraphCanvasProps {
    * does not retrigger the position fetch below.
    */
   activeConnectionTypes?: string[];
+  /**
+   * The id of the entity currently acting as the graph's focal point
+   * (Feature 68, Task 15/16/17, FR-15/FR-16/FR-18/FR-19), or `null` for "no
+   * focal point set". This is a classic controlled/uncontrolled hybrid, the
+   * same shape a controlled `<input>` uses: when this prop is provided
+   * (including explicitly `null`), the canvas treats focal-point state as
+   * owned by the caller — every focal-point gesture still fires
+   * `onFocalEntityChange` exactly the same way, but the value rendered and
+   * centered on is this prop, not an internal mirror. When the prop is
+   * omitted entirely (`undefined`), the canvas manages `focalEntityId` as its
+   * own internal state, mirroring how `selectedNodeId` already works. This
+   * hybrid is what keeps Task 15 fully self-contained — `EntityGraphCanvas`
+   * needs no caller to pass anything new to behave correctly — while still
+   * giving Task 17's accessible-list "clear focal point" header control a
+   * clean way to drive this component from outside: that control is expected
+   * to lift this value into its own parent's state and pass `null` down
+   * through this same prop to clear it, rather than reaching into the
+   * canvas's internals.
+   */
+  focalEntityId?: string | null;
+  /**
+   * Invoked whenever the focal point changes — set by a shift-click (desktop)
+   * or long-press (touch) gesture on a node (FR-15), reassigned to a
+   * different node by the identical gesture with no separate clear step
+   * required first (FR-18), or cleared back to `null` (FR-19, expected to be
+   * driven by Task 17's accessible-list header control once it exists).
+   * Called with the new `focalEntityId` (or `null`). In controlled mode (see
+   * `focalEntityId` above) this is the caller's only signal that a gesture
+   * happened — the canvas does not also mutate its own copy — so a
+   * controlling parent MUST update its own state in response for the
+   * displayed value to change.
+   */
+  onFocalEntityChange?: (focalEntityId: string | null) => void;
 }
 
 /**
@@ -271,6 +304,22 @@ function clampScale(value: number): number {
  * manual-verification.md. Tuning it is a one-line change here.
  */
 const DRAG_CLICK_THRESHOLD_PX = 4;
+
+/**
+ * Minimum duration, in milliseconds, a pointer must stay down on a node —
+ * without moving past `DRAG_CLICK_THRESHOLD_PX` — before that gesture is
+ * reclassified as a long-press focal-point gesture rather than an ordinary
+ * tap (Feature 68, Task 15, FR-15). This is a *duration* threshold, tracked
+ * by a timer started at `pointerdown`, layered alongside — not replacing —
+ * the existing *movement*-based `DRAG_CLICK_THRESHOLD_PX` distinction above:
+ * a long-press is stationary (never exceeds the movement threshold) but held
+ * for this long, whereas a drag moves past the movement threshold regardless
+ * of how long it takes. Like `DRAG_CLICK_THRESHOLD_PX` itself, this is a
+ * starting value, not a measured one — a typical long-press duration, not yet
+ * hand-checked on a physical device (deferred to Task 18's end-to-end pass
+ * per this feature's own task list). Tuning it is a one-line change here.
+ */
+const LONG_PRESS_DURATION_MS = 500;
 
 /**
  * Computes a co-occurrence edge's `strokeWidth` from its `sharedResourceCount`
@@ -697,6 +746,8 @@ export default function EntityGraphCanvas({
   onNodeActivated,
   projectId,
   activeConnectionTypes = [],
+  focalEntityId,
+  onFocalEntityChange,
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
@@ -742,6 +793,16 @@ export default function EntityGraphCanvas({
     null,
   );
 
+  // Which node, if any, currently has pointer hover (Feature 68, Task 15,
+  // OQ-9): drives the hint affordance's visibility — a small icon shown only
+  // on hover to surface the shift-click/long-press modifier gesture, this
+  // task's own first-pass resolution of OQ-9. Desktop-hover-only by design
+  // (mouse `pointerenter`/`pointerleave`): a touch gesture has no hover
+  // state to show a hint during, so the hint is simply never shown on touch —
+  // a long-press is discoverable on touch some other way (out of this task's
+  // scope), not through this affordance.
+  const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
+
   // Live, drag-authored node position overrides, keyed by `entityId`
   // (entity-graph-node-dragging, FR-2/FR-7, OQ-2). Mirrors the
   // `selectedNodeId`/`pan`/`scale` precedent exactly: plain component state,
@@ -772,6 +833,83 @@ export default function EntityGraphCanvas({
   activeConnectionTypesKeyRef.current = activeConnectionTypesKey;
   const nodePositionOverridesRef = React.useRef(nodePositionOverrides);
   nodePositionOverridesRef.current = nodePositionOverrides;
+
+  // Focal-point state (Feature 68, Task 15, FR-15/FR-16/FR-18/FR-19): a
+  // controlled/uncontrolled hybrid identical in shape to a controlled
+  // `<input>` — see `focalEntityId`'s own doc comment on the props interface
+  // above for the full rationale. `internalFocalEntityId` is this
+  // component's own state, used only when the caller has not supplied the
+  // `focalEntityId` prop at all (`undefined`, not merely falsy — an explicit
+  // `null` from a controlling parent is a real, meaningful "no focal point"
+  // value in controlled mode, not a signal to fall back to internal state).
+  const [internalFocalEntityId, setInternalFocalEntityId] = React.useState<
+    string | null
+  >(null);
+  const isFocalEntityControlled = focalEntityId !== undefined;
+  const resolvedFocalEntityId = isFocalEntityControlled
+    ? (focalEntityId ?? null)
+    : internalFocalEntityId;
+
+  // Resolves a node's current rendered position (live drag override, else
+  // `computeGraphLayout`'s own settled x/y) and re-centers the camera on it
+  // by solving the same `p = pan + g * scale` mapping the wheel-zoom handler
+  // above derives, for `pan`, holding the canvas's own center point fixed as
+  // `p` and the node's position fixed as `g` (FR-16). Deliberately leaves
+  // `scale` untouched — FR-16 is pan-only, no implied zoom change. Reads
+  // `nodePositionOverrides`/`scale` directly (not via a ref) since, unlike
+  // the long-lived pointer-event effect below, this callback is a plain
+  // `useCallback` recreated every render and so never sees a stale closure.
+  const centerOnNode = React.useCallback(
+    (entityId: string): void => {
+      const layoutPosition = layoutPositionById.get(entityId);
+      const override = nodePositionOverrides.get(entityId);
+      const resolved = override ?? layoutPosition;
+      if (!resolved) return;
+      setPan({
+        x: width / 2 - resolved.x * scale,
+        y: height / 2 - resolved.y * scale,
+      });
+    },
+    [layoutPositionById, nodePositionOverrides, scale, width, height],
+  );
+
+  // Updates focal-point state (internal, unless controlled — see
+  // `isFocalEntityControlled` above) and always reports the change via
+  // `onFocalEntityChange`, regardless of control mode, so a controlling
+  // parent and an uncontrolled caller both learn about every change the same
+  // way.
+  const setFocalPoint = React.useCallback(
+    (entityId: string | null): void => {
+      if (!isFocalEntityControlled) {
+        setInternalFocalEntityId(entityId);
+      }
+      onFocalEntityChange?.(entityId);
+    },
+    [isFocalEntityControlled, onFocalEntityChange],
+  );
+
+  // The single entry point for both focal-point gestures (shift-click and
+  // long-press, FR-15): sets the new focal point, then centers the camera on
+  // it. Reassigning to a different node goes through this exact same path
+  // with no separate clear step (FR-18) — there is nothing here that
+  // requires `resolvedFocalEntityId` to be `null` first.
+  const handleFocalPointGesture = React.useCallback(
+    (entityId: string): void => {
+      setFocalPoint(entityId);
+      centerOnNode(entityId);
+    },
+    [setFocalPoint, centerOnNode],
+  );
+
+  // Timer backing the long-press half of the focal-point gesture (FR-15,
+  // touch): started at a node's `pointerdown`, cleared the moment that same
+  // gesture's movement crosses `DRAG_CLICK_THRESHOLD_PX` (so a drag can never
+  // also fire a long-press) or the pointer is released/cancelled before the
+  // duration elapses. A ref, not state — this is a scheduling handle, not a
+  // value the render output depends on.
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Seeds `nodePositionOverrides` from any persisted, non-invalidated
   // position record at mount (Task 13, FR-9/FR-11), instead of leaving every
@@ -853,6 +991,14 @@ export default function EntityGraphCanvas({
     startX: number;
     startY: number;
     exceededThreshold: boolean;
+    // Set by the long-press timer (Feature 68, Task 15, FR-15) once it fires
+    // for this gesture. Tracked on the gesture record itself, not written
+    // straight to `justDraggedPastThresholdRef` below, because
+    // `handlePointerEnd` unconditionally *recomputes* that ref from
+    // `exceededThreshold` on every release — writing to it early would just
+    // be overwritten back to `false` by that recomputation for a long-press,
+    // whose movement never exceeded the drag threshold.
+    longPressFired: boolean;
   } | null>(null);
 
   // Whether the gesture that most recently ended crossed the click/drag
@@ -902,9 +1048,41 @@ export default function EntityGraphCanvas({
         startX: override?.x ?? layoutX,
         startY: override?.y ?? layoutY,
         exceededThreshold: false,
+        longPressFired: false,
       };
+
+      // Starts (or restarts, superseding any still-pending timer from a
+      // prior gesture on another node) the long-press duration timer
+      // (FR-15). If this same pointer is still down on this same node, and
+      // has not moved past the movement threshold, once the timer elapses —
+      // see the movement-threshold cancellation in `handlePointerMove` and
+      // the release/cancel cancellation in `handlePointerEnd` below — the
+      // gesture is reclassified as a long-press: it fires the focal-point
+      // gesture and marks the upcoming native `click` (if one follows) for
+      // suppression via the same `justDraggedPastThresholdRef` flag a drag
+      // past the threshold already uses, since the two cases need identical
+      // handling at that point (don't let the next click also activate the
+      // node).
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      const { pointerId } = event;
+      longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null;
+        const drag = nodeDragRef.current;
+        if (
+          !drag ||
+          drag.entityId !== entityId ||
+          drag.pointerId !== pointerId ||
+          drag.exceededThreshold
+        ) {
+          return;
+        }
+        drag.longPressFired = true;
+        handleFocalPointGesture(entityId);
+      }, LONG_PRESS_DURATION_MS);
     },
-    [nodePositionOverrides],
+    [nodePositionOverrides, handleFocalPointGesture],
   );
 
   // The wheel handler needs both the current `scale` and the current `pan` to
@@ -970,6 +1148,14 @@ export default function EntityGraphCanvas({
         const rawDeltaY = event.clientY - nodeDrag.startClientY;
         if (Math.hypot(rawDeltaX, rawDeltaY) > DRAG_CLICK_THRESHOLD_PX) {
           nodeDrag.exceededThreshold = true;
+          // A gesture that becomes a drag can never also become a long-press
+          // (FR-15's long-press is stationary by definition) — cancel the
+          // pending timer the moment it's disqualified, rather than letting
+          // it fire later and check `exceededThreshold` on its own.
+          if (longPressTimerRef.current !== null) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+          }
         }
       }
 
@@ -999,14 +1185,30 @@ export default function EntityGraphCanvas({
     const handlePointerEnd = (event: PointerEvent): void => {
       const nodeDrag = nodeDragRef.current;
       if (!nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+      // A release or cancel before the long-press timer elapses means the
+      // gesture ended before it could ever qualify as a long-press — cancel
+      // the timer so it never fires for a pointer that is no longer down.
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
       // Stash the outcome before clearing `nodeDragRef` (entity-graph-node-
-      // dragging, FR-6): `pointerup` fires before the browser's native
-      // `click` on the same element, so `handleNodeClick` needs a way to see
-      // "this release just finished a drag" after `nodeDragRef.current` has
-      // already gone back to null. A `pointercancel` is never followed by a
-      // click, so it records no drag outcome.
+      // dragging, FR-6; extended by Feature 68, Task 15 for a completed
+      // long-press): `pointerup` fires before the browser's native `click` on
+      // the same element, so `handleNodeClick` needs a way to see "this
+      // release just finished a drag or a long-press" after
+      // `nodeDragRef.current` has already gone back to null. A
+      // `pointercancel` is never followed by a click, so it records no
+      // outcome for either case. A completed long-press (`longPressFired`)
+      // suppresses the next click the same way a drag past the threshold
+      // does, even though `exceededThreshold` is false for a long-press by
+      // definition (it is stationary) — without this `||`, this
+      // unconditional recomputation on every release would otherwise
+      // overwrite back to `false` the flag the long-press timer itself
+      // already set on the gesture record.
       justDraggedPastThresholdRef.current =
-        event.type === "pointerup" && nodeDrag.exceededThreshold;
+        event.type === "pointerup" &&
+        (nodeDrag.exceededThreshold || nodeDrag.longPressFired);
       nodeDragRef.current = null;
 
       // Persists the released position once a real drag gesture (not a
@@ -1061,6 +1263,12 @@ export default function EntityGraphCanvas({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerEnd);
       window.removeEventListener("pointercancel", handlePointerEnd);
+      // Drops any still-pending long-press timer on unmount so it never
+      // fires against a component instance that no longer exists.
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
     };
   }, [width, height]);
 
@@ -1161,17 +1369,26 @@ export default function EntityGraphCanvas({
 
   // A node's `click`: suppressed when it is the click that ends a gesture
   // just classified as a drag past the threshold (entity-graph-node-
-  // dragging, FR-6), otherwise an ordinary activation. The flag is consumed
-  // so it applies to that one click only.
+  // dragging, FR-6) or a completed long-press (Feature 68, Task 15, FR-15),
+  // otherwise an ordinary activation — UNLESS the click itself carries the
+  // shift modifier, which is a wholly separate gesture: it sets the focal
+  // point and returns, never calling `handleNodeActivate`, so a plain click's
+  // existing select-and-navigate behavior (toggling `selectedNodeId`, calling
+  // `onNodeActivated`) is completely unaffected by this branch. The
+  // suppression flag is consumed so it applies to that one click only.
   const handleNodeClick = React.useCallback(
-    (entityId: string) => {
+    (event: React.MouseEvent<SVGGElement>, entityId: string) => {
       if (justDraggedPastThresholdRef.current) {
         justDraggedPastThresholdRef.current = false;
         return;
       }
+      if (event.shiftKey) {
+        handleFocalPointGesture(entityId);
+        return;
+      }
       handleNodeActivate(entityId);
     },
-    [handleNodeActivate],
+    [handleNodeActivate, handleFocalPointGesture],
   );
 
   const handleNodeKeyDown = React.useCallback(
@@ -1184,6 +1401,18 @@ export default function EntityGraphCanvas({
     },
     [handleNodeActivate],
   );
+
+  // Hint-affordance hover tracking (Feature 68, Task 15, OQ-9): mouse-only
+  // (`onMouseEnter`/`onMouseLeave`, not Pointer Events) since the hint is a
+  // desktop-only discoverability aid for the shift-click modifier — it has no
+  // analogous "show before you commit" moment on touch, where the gesture
+  // (long-press) is discovered by holding, not hovering.
+  const handleNodeMouseEnter = React.useCallback((entityId: string) => {
+    setHoveredNodeId(entityId);
+  }, []);
+  const handleNodeMouseLeave = React.useCallback((entityId: string) => {
+    setHoveredNodeId((current) => (current === entityId ? null : current));
+  }, []);
 
   // Hover-in on an edge's hit-target (desktop pointer devices, FR-1): opens
   // that edge's tooltip, marked "hover"-sourced so only `onMouseLeave`
@@ -1524,6 +1753,8 @@ export default function EntityGraphCanvas({
           <g data-testid="entity-graph-nodes">
             {positionedNodes.map((node) => {
               const isSelected = node.entityId === selectedNodeId;
+              const isFocalPoint = node.entityId === resolvedFocalEntityId;
+              const isHovered = node.entityId === hoveredNodeId;
               // Resolved position (entity-graph-node-dragging, FR-2): a live
               // drag override for this node if one exists, else
               // `computeGraphLayout`'s own settled `x`/`y`.
@@ -1536,12 +1767,23 @@ export default function EntityGraphCanvas({
                   data-testid="entity-graph-node"
                   data-entity-id={node.entityId}
                   data-selected={isSelected ? "true" : "false"}
+                  // Focal-point extension point (Feature 68, Task 15/16):
+                  // exposes which node (if any) is the current focal point as
+                  // a data attribute, mirroring `data-selected`'s own
+                  // precedent, without this task implementing any dimming or
+                  // hiding of other nodes based on it — that is Task 16's own
+                  // scope (hop-radius BFS + dim/hide rendering), which can
+                  // read `resolvedFocalEntityId` and this attribute directly
+                  // rather than this task guessing at its visual treatment.
+                  data-focal-point={isFocalPoint ? "true" : "false"}
                   transform={`translate(${resolvedX}, ${resolvedY})`}
                   onPointerDown={(event) =>
                     handleNodePointerDown(event, node.entityId, node.x, node.y)
                   }
-                  onClick={() => handleNodeClick(node.entityId)}
+                  onClick={(event) => handleNodeClick(event, node.entityId)}
                   onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
+                  onMouseEnter={() => handleNodeMouseEnter(node.entityId)}
+                  onMouseLeave={() => handleNodeMouseLeave(node.entityId)}
                   tabIndex={0}
                   role="button"
                   aria-label={node.name}
@@ -1572,6 +1814,44 @@ export default function EntityGraphCanvas({
                   >
                     {node.name}
                   </text>
+                  {isHovered ? (
+                    // Hint affordance (Feature 68, Task 15, OQ-9 first pass):
+                    // a small icon shown only on hover, surfacing the
+                    // shift-click/long-press modifier gesture non-color-only
+                    // (docs/standards/accessibility.md) — an icon shape, not
+                    // a color change. `aria-hidden` since it is a redundant,
+                    // discoverability-only hint with no hover-equivalent
+                    // keyboard path (mirroring the edge tooltip's own
+                    // keyboard-inaccessibility, which the accessible list,
+                    // not this hint, already covers); `<title>` still gives a
+                    // native tooltip on a sighted mouse user's own hover.
+                    <g
+                      data-testid="entity-graph-node-focal-hint"
+                      aria-hidden="true"
+                      transform={`translate(${NODE_RADIUS - 6}, ${-(NODE_RADIUS - 6)})`}
+                    >
+                      <circle
+                        r={9}
+                        strokeWidth={1}
+                        style={{
+                          fill: "var(--color-gw-chrome)",
+                          stroke: "var(--color-gw-border-md)",
+                        }}
+                      />
+                      <Target
+                        width={12}
+                        height={12}
+                        x={-6}
+                        y={-6}
+                        style={{ color: "var(--color-gw-primary)" }}
+                      >
+                        <title>
+                          Shift-click or long-press to set this entity as the
+                          graph&apos;s focal point
+                        </title>
+                      </Target>
+                    </g>
+                  ) : null}
                 </g>
               );
             })}
