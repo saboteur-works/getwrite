@@ -285,11 +285,89 @@ export async function removeResourceFromBacklinks(
   await persistBacklinks(projectRoot, index);
 }
 
+/**
+ * One derived edge between two declared entities, found via an explicit
+ * backlink between their own underlying resources. `entityIds` is an
+ * unordered pair, normalized lexicographically, so a bidirectional backlink
+ * (A links to B and B links to A) collapses to the same single edge rather
+ * than producing two.
+ */
+export type EntityBacklinkEdge = { entityIds: [string, string] };
+
+/**
+ * Returns the set of ids for resources with a non-empty sidecar `entityKind`
+ * — i.e. declared entities, per `entity-alias-table.ts`'s `buildEntityAliasTable`
+ * precedent — scanning every resource under `projectRoot` and tolerating a
+ * per-resource sidecar read failure by skipping that resource, exactly as
+ * `buildResolverMaps` above does.
+ */
+async function collectDeclaredEntityIds(
+  projectRoot: string,
+  ids: string[],
+): Promise<Set<string>> {
+  const entityIds = new Set<string>();
+  for (const id of ids) {
+    let sidecar;
+    try {
+      sidecar = await readSidecar(projectRoot, id);
+    } catch {
+      continue;
+    }
+    if (!sidecar) continue;
+    const entityKind = sidecar["entityKind"];
+    if (typeof entityKind === "string" && entityKind.length > 0) {
+      entityIds.add(id);
+    }
+  }
+  return entityIds;
+}
+
+/**
+ * Derives one edge per pair of declared entities (resources with a
+ * non-empty sidecar `entityKind`) whose own underlying resources are linked
+ * by an explicit backlink (`meta/backlinks.json`, `loadBacklinks`), in
+ * either direction (FR-3, Feature 68).
+ *
+ * Reads only the already-persisted backlink index — no new backlink data is
+ * computed or authored here. A backlink between two resources where either
+ * (or both) is not a declared entity is ignored. A backlink that exists in
+ * both directions between the same entity pair still yields exactly one
+ * edge, since the pair, not the direction, is what this function reports.
+ */
+export async function getEntityBacklinkEdges(
+  projectRoot: string,
+): Promise<EntityBacklinkEdge[]> {
+  const ids = await listResourceIds(projectRoot);
+  const entityIds = await collectDeclaredEntityIds(projectRoot, ids);
+  const backlinkIndex = await loadBacklinks(projectRoot);
+
+  const seenPairs = new Set<string>();
+  const edges: EntityBacklinkEdge[] = [];
+
+  for (const [sourceId, targetIds] of Object.entries(backlinkIndex)) {
+    if (!entityIds.has(sourceId)) continue;
+    for (const targetId of targetIds) {
+      if (targetId === sourceId) continue;
+      if (!entityIds.has(targetId)) continue;
+
+      const pair: [string, string] =
+        sourceId < targetId ? [sourceId, targetId] : [targetId, sourceId];
+      const key = `${pair[0]}|${pair[1]}`;
+      if (seenPairs.has(key)) continue;
+      seenPairs.add(key);
+      edges.push({ entityIds: pair });
+    }
+  }
+
+  return edges;
+}
+
 const backlinks = {
   listResourceIds,
   computeBacklinks,
   persistBacklinks,
   loadBacklinks,
   removeResourceFromBacklinks,
+  getEntityBacklinkEdges,
 };
 export default backlinks;
