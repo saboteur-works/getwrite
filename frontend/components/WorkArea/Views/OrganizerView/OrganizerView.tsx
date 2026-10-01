@@ -36,13 +36,16 @@ import {
 } from "./organizerFilters";
 import { useOrganizerCardReorder } from "./useOrganizerCardReorder";
 import {
+  closestCenter,
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type Announcements,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -52,6 +55,10 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+/** Pointer movement (px) required before a drag starts, so an imprecise
+ * click on the handle doesn't register as a drag attempt. */
+const DRAG_ACTIVATION_DISTANCE = 8;
 
 /** Copy shown as the drag handle's disabled-reason hint while a filter is active (FR-6). */
 const DRAG_DISABLED_WHILE_FILTERED_REASON = "Clear filters to reorder cards";
@@ -77,12 +84,23 @@ function SortableOrganizerCard({
   | "isDragDisabled"
   | "dragDisabledReason"
 >): JSX.Element {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: childId, disabled });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: childId, disabled });
 
+  // While this card is the one being dragged, its own slot fades to a
+  // placeholder — the moving visual the user tracks is the `DragOverlay`
+  // copy rendered separately, not this in-flow element (avoids the grid
+  // reflowing visibly underneath a transform-following-pointer element).
   const dragStyle: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.4 : undefined,
   };
 
   return (
@@ -354,7 +372,9 @@ export default function OrganizerView({
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -362,10 +382,27 @@ export default function OrganizerView({
 
   const allChildIds = allChildren.map((child) => child.id);
 
+  // Id of the card currently being dragged, if any — drives the
+  // `DragOverlay` below. Pointer and keyboard drags both go through
+  // `onDragStart`/`onDragEnd`/`onDragCancel`.
+  const [activeDragId, setActiveDragId] = React.useState<string | null>(null);
+  const activeDragChild = activeDragId
+    ? (allChildren.find((child) => child.id === activeDragId) ?? null)
+    : null;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+  };
+
   // FR-4: this handler touches only the reorder path — it never dispatches
   // `dispatchFilter` or otherwise reads/writes `filterState`/
   // `visibleChildren`.
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
     if (isAnyFilterActive) return;
 
     const { active, over } = event;
@@ -458,7 +495,10 @@ export default function OrganizerView({
       ) : (
         <DndContext
           sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
           accessibility={{ announcements }}
         >
           <SortableContext items={allChildIds} strategy={rectSortingStrategy}>
@@ -483,6 +523,33 @@ export default function OrganizerView({
               ))}
             </div>
           </SortableContext>
+          {/* Renders the actively-dragged card in a floating portal,
+           * independent of document flow — the sortable card in its
+           * original grid slot fades out instead (see
+           * `SortableOrganizerCard`'s `isDragging` handling) rather than
+           * also tracking the pointer/keyboard move itself, which
+           * previously caused the whole grid to visibly reflow underneath
+           * the moving card. Fires for both pointer and keyboard drags
+           * (`onDragStart` is sensor-agnostic); dnd-kit positions the
+           * overlay at the active item's computed rect either way. */}
+          <DragOverlay>
+            {activeDragChild ? (
+              <OrganizerCard
+                resource={activeDragChild}
+                showBody={isShowingBody}
+                body={resolveOrganizerCardBody(
+                  activeDragChild,
+                  cardBodyConfig,
+                  {
+                    notesEnabled: isNotesEnabled,
+                    textExcerpt: excerpts[activeDragChild.id],
+                  },
+                )}
+                defaultStatus={defaultStatus}
+                isSelected={activeDragChild.id === selectedResourceId}
+              />
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
     </div>
