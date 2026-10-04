@@ -31,6 +31,10 @@
  */
 import { z } from "zod";
 import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
+import {
+  EntityGraphKindColorSlotSchema,
+  EntityGraphKindShapeSchema,
+} from "../models/entity-graph-kind-styles";
 
 // ---------------------------------------------------------------------------
 // Shared metadata-value schema
@@ -706,4 +710,29 @@ export const EntityGraphPositionRecordResponseSchema = z.object({
 
 export const EntityGraphPositionsListResponseSchema = z.array(
   EntityGraphPositionRecordResponseSchema,
+);
+
+// ---------------------------------------------------------------------------
+// Feature 69 Task 4 — response schemas for the entity-graph kind-style
+// (color-slot/shape) mapping transport. Matches
+// `entity-graph-kind-styles.ts`'s `EntityGraphKindStyleRecord` shape exactly
+// (`{ entityKind, color, shape }`). `color` reuses the same fixed token-slot
+// enum Task 2 defines (`ENTITY_KIND_COLOR_SLOTS`) rather than a loose
+// `z.string()`, so a `#rrggbb`/`#rgb`-shaped (or any other arbitrary) value
+// is rejected at the transport boundary, never just at the model layer.
+// `shape` is the same fixed six-shape enum Task 2 reuses from
+// `entityKindShapes.ts`'s `ENTITY_KIND_SHAPE_NAMES`.
+// `EntityGraphKindStyleRecordResponseSchema` backs the PUT single-record
+// response; `EntityGraphKindStylesListResponseSchema` backs the GET list
+// response.
+// ---------------------------------------------------------------------------
+
+export const EntityGraphKindStyleRecordResponseSchema = z.object({
+  entityKind: z.string(),
+  color: EntityGraphKindColorSlotSchema,
+  shape: EntityGraphKindShapeSchema,
+});
+
+export const EntityGraphKindStylesListResponseSchema = z.array(
+  EntityGraphKindStyleRecordResponseSchema,
 );
