@@ -73,7 +73,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Opening the modal with a project that has declared entities of kinds both configured and unconfigured shows both sections correctly populated; editing a configured kind's color or shape persists via Task 4 and the modal's own state reflects the save without a reload; saving a kind from the "new/unmapped" section moves it into the main row list without a reload (OQ-4); the color swatch and shape picker only ever offer Task 1's token set / six-shape set, never an arbitrary value.
 **Depends on:** Task 4, Task 1
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 **Notes:** Non-goal explicitly excludes redesigning `TagsManagerModal.tsx` itself — this task only models structure on it (its layout/list/row-action conventions), not its code.
 
 ### Task 7: Customization modal — static legend and graph-view entry point
@@ -90,7 +90,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Two nodes of different `entityKind` with no configured mapping render with visibly different shapes (verified against Task 5's hash); a node whose kind has a saved mapping renders exactly that color+shape; changing a mapping in Task 6's modal updates the canvas's rendering without a reload (FR-4); existing node interactions (selection ring, drag, activation, focal-point dimming) are unchanged by this task — only the node's own fill/outline shape changes, not its hit-testing or transform logic; node color is applied exclusively via inline `style={{ fill: "var(--entity-kind-N)" }}`, with no JS object/array mapping a slot to a hex string anywhere in the diff; `pnpm run check:no-hex` (the CI `hex-color-check` job, `frontend/scripts/check-no-hardcoded-hex.mjs`) passes against this task's changes with no new `GW-HEX-EXEMPT` marker introduced.
 **Depends on:** Task 4, Task 5, Task 1
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Canvas — node hover/tap tooltip discloses kind mapping
 **What:** Extends the canvas's existing edge-hover tooltip mechanism (`entityGraphTooltipOverlay.css`, the edge-hover pattern in `EntityGraphCanvas.tsx`) to nodes: hovering (mouse) or tapping (touch) a node shows a tooltip disclosing that node's `entityKind` and its current color/shape mapping (FR-7).
