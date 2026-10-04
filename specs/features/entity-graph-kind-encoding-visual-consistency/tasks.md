@@ -139,7 +139,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Every non-token color value in the edge-rendering code path is replaced with a `--color-gw-*` token; the five edge kinds' existing dash-pattern/width/opacity distinctions (Feature 68) are visually unchanged; `--color-gw-red` is not used for any edge.
 **Depends on:** Task 13
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Owner sign-off checkpoint — edges
 **What:** Presents the restyled edge chrome (Task 14) to the product owner for incremental qualitative sign-off before settings-panel/reset-view restyling (Task 16) begins.
