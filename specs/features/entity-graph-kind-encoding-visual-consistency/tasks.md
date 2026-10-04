@@ -106,7 +106,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Every node's accessible-list entry includes its `entityKind` as readable text (an entity with no declared kind — should that be possible in this view — is handled with an explicit "no kind" label rather than an empty or missing string); existing focal-point/hop-radius disclosure text is unchanged by this addition.
 **Depends on:** none (node data already carries `entityKind`)
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: End-to-end verification — kind encoding
 **What:** A verification pass confirming the kind-encoding half of the feature (FR-1–10) works coherently across all three disclosure channels and both runtime paths: legend, canvas tooltip, and accessible list agree on the same mapping for a given kind; the `entities`-flag gate holds; the native transport backend is exercised, not just the HTTP path.
