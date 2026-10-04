@@ -49,7 +49,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** `GET ?projectId=` returns every persisted kind-style record for the project; `PUT` upserts one kind's color-slot reference/shape (per Task 2, the color field is always a token-slot reference such as `"entity-kind-0"`, never a raw hex string) and returns the saved record; both validate `projectId` via the standard `validateProjectId`/`respondInvalidProjectId` guard and resolve the project root the same way the positions route does (no client-supplied `projectRoot`).
 **Depends on:** Task 2
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Kind-style transport triad (`createTransport` + native backend + web-stub + response validation)
 **What:** Adds the full ADR-021 transport triad for the kind-style mapping — `lib/api/entity-graph-kind-styles.ts` (HTTP transport, `createTransport`-resolved, validating its HTTP response body per the FR-9/Feature 48-51 precedent), `store/transport/native-entity-graph-kind-styles-backend.ts` (in-process native backend over Task 2's model functions), and its `.web-stub.ts` counterpart — mirroring `entity-graph-positions.ts`/`lib/api/entity-graph-positions.ts`/`native-entity-graph-positions-backend.ts` exactly, including the reject-on-any-failure contract (a failed read must never read as "no styles configured yet").
