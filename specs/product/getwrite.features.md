@@ -2393,6 +2393,75 @@ back to this entry.
 
 ---
 
+### Feature 69: Entity graph kind encoding and visual-consistency pass — Not started
+
+**Value:** A novelist glancing at the entity relationship graph (Feature 39)
+can tell a character node from a place or faction node at a glance, by color
+and shape together rather than by reading labels one at a time, and
+customizes that per-kind mapping to match how they think about their own
+story's cast; separately, the graph's chrome — nodes, edges, canvas,
+settings panel, reset-view control, and tooltip overlay — stops looking
+visually bolted-on and reads as part of the same product as everything
+around it.
+**Vertical slice:** Data layer: a new per-project, writer-customizable
+mapping from each `entityKind` in use to a color and a shape, persisted
+alongside the other per-project graph configuration Feature 68 introduced.
+Interface: a new dedicated kind-to-color/shape customization modal,
+structurally modeled on the existing tag-management modal
+(`TagsManagerModal.tsx`) — listing each kind currently in use with a color
+swatch and a shape picker — opened from the graph view; `EntityGraphCanvas.tsx`
+rendering each node's color and shape from that mapping, with color never
+standing alone as the only encoding of kind; a deterministic, hash-assigned
+shape paired with a neutral default color for any kind with no assigned
+mapping yet, so every unmapped kind stays immediately distinct from every
+other without requiring writer action first, mirroring this product's
+existing tag-color convention; legibility carried by two complementary
+mechanisms — a static legend inside the new customization modal as the full
+reference, and a canvas node tooltip mirroring the existing edge-tooltip
+overlay (`entityGraphTooltipOverlay.css`) for an in-context, at-a-glance
+lookup — plus the entity's kind disclosed as text in the synchronized
+accessible list (`EntityGraphAccessibleList.tsx`), extending the precedent
+`edgeDescriptions.ts` already sets for edge-kind disclosure. Separately, and
+scoped narrowly: a visual-consistency pass over the graph's own already-
+existing rendered chrome — node style, edge style, canvas background, the
+settings panel and reset-view button (`EntityGraphSettingsPanel.tsx` and its
+neighbouring controls), and the tooltip overlay — bringing each into
+alignment with this product's `--color-gw-*` brand token system, IBM Plex
+Sans/Mono/Serif typography, the reserved-red constraint, and dark/light mode
+support; this pass changes no interaction model, adds no new chrome, and
+presents no new information — it restyles what already renders. Both pieces
+ride the existing per-project `entities` feature flag and introduce no flag
+of their own.
+**Requirements covered:** FR-52, FR-53
+**User stories:** US-17
+**Depends on:** Feature 68
+**Branch suggestion:** feat/entity-graph-kind-encoding-visual-consistency
+**Notes:** Not started. This is a grouped feature by explicit owner
+decision, not this document's default one-FR-one-feature bundling: FR-52
+(kind-driven node color/shape encoding) and FR-53 (the chrome
+visual-consistency pass) were decided in the same 2026-10-01 planning
+conversation that produced Feature 68's FR-39/FR-40/FR-51 grouping, but were
+deliberately deferred out of that round rather than built with it — this
+entry is where that deferred pair lands. It depends on Feature 68 because
+both requirements build on the same `EntityGraphCanvas.tsx`/
+`EntityRelationshipGraphView.tsx`/`EntityGraphSettingsPanel.tsx` surface
+Feature 68 ships, and FR-53 explicitly names Feature 68's own settings-panel
+and reset-view chrome as part of its scope. Key resolved decisions this
+entry's Vertical slice reflects, each settled at Gate 1 triage 2026-10-01
+and detailed in the product spec: OQ-53 (resolved) — the per-kind mapping is
+customized through a new dedicated modal modeled on the tag-management
+modal, not an inline graph-view control; OQ-54 (resolved) — the
+unmapped-kind default is a deterministic hash-assigned shape paired with a
+neutral color, not the reverse; OQ-55 (resolved) — legibility is carried by
+both a legend and a node tooltip together, not either alone, plus the
+accessible-list kind disclosure; OQ-56 (resolved) — FR-53's "done" bar is
+qualitative owner sign-off against a built implementation, not a predefined
+checklist, which means this feature's eventual task list must include an
+explicit review/sign-off step near the end of the work rather than treating
+completion as self-certifiable against fixed criteria.
+
+---
+
 ## Coverage check
 
 - Requirements covered:
@@ -2449,11 +2518,13 @@ back to this entry.
   - FR-49: Feature 62
   - FR-50: Feature 59 (owner; Features 60, 61 and 62 follow it for their own transports)
   - FR-51: Feature 68
+  - FR-52: Feature 69
+  - FR-53: Feature 69
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 68
+- Total features: 69
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
