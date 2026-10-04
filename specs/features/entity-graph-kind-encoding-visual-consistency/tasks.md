@@ -31,7 +31,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The new token set exists with distinct light-mode (higher-contrast) and dark-mode (softer) values for a slot count the implementor judges sufficient (the spec does not fix a slot count, only that both modes exist and mirror the Timeline palette's structure); the six-shape module exports one renderable definition per shape, each visually distinct at the node's existing render size, with no project-configurable extension point (OQ-1 forecloses that).
 **Depends on:** none
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 **Notes:** Concrete token hex values and the exact shape geometry are implementation-level choices the spec deliberately left open (OQ-1/OQ-2 fix the *shape set* and *that a new namespace exists*, not literal values). Per the task-breakdown guidance, propose concrete values here but treat them as provisional until exercised in Task 20's holistic sign-off — a color/shape choice that reads wrong once real data is on screen is a legitimate reason to revisit this task's output later, not a sign this task did something wrong. Declaring the `--entity-kind-*` hex values as CSS custom-property declarations in `getwrite-utilities.css` is exactly the exemption Rule 1 of `frontend/scripts/check-no-hardcoded-hex.mjs` covers (a `--some-var: #hex` declaration itself), so this task needs no `GW-HEX-EXEMPT` marker — only Task 8's later JS-side consumption of these tokens must avoid a raw hex literal.
 
 ### Task 2: Kind-style persistence model module
