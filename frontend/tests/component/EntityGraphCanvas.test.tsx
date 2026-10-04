@@ -287,6 +287,29 @@ describe("EntityGraphCanvas", () => {
     }
   });
 
+  it("renders every edge's stroke and the arrowhead marker's fill via the --color-gw-secondary brand token (Feature 69, Task 14)", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    expect(edgeElements.length).toBeGreaterThan(0);
+    for (const el of edgeElements) {
+      expect((el as HTMLElement).style.stroke).toBe(
+        "var(--color-gw-secondary)",
+      );
+    }
+
+    const authoredEdge = edgeElements.find(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "authored",
+    );
+    const authoredMarkerEnd = authoredEdge!.getAttribute("marker-end");
+    const markerId = authoredMarkerEnd!.slice(5, -1);
+    const markerEl = document.getElementById(markerId);
+    const markerPath = markerEl?.querySelector("path");
+    expect((markerPath as unknown as HTMLElement)?.style.fill).toBe(
+      "var(--color-gw-secondary)",
+    );
+  });
+
   it("distinguishes a co-occurrence edge from an authored edge by a non-colour cue (dash pattern)", () => {
     render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
