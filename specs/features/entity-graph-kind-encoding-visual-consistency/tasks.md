@@ -147,7 +147,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The product owner has reviewed a built, running implementation of the restyled edges (alongside the already-signed-off nodes) and explicitly signed off, or requested changes that reopen Task 14.
 **Depends on:** Task 14
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Visual-consistency pass — restyle settings panel and reset-view chrome
 **What:** Restyles `EntityGraphSettingsPanel.tsx` and its neighboring reset-view button to brand tokens and IBM Plex typography in place of any non-token value, without adding, removing, or renaming any control or changing what information it presents (FR-11, FR-12).
