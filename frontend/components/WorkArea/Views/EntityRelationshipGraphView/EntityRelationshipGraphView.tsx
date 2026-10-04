@@ -34,6 +34,10 @@ import {
   type SharedMetadataEdge,
 } from "../../../../src/lib/api/entity-shared-metadata-edges";
 import {
+  getEntityGraphKindStyles,
+  type EntityGraphKindStyleRecord,
+} from "../../../../src/lib/api/entity-graph-kind-styles";
+import {
   DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
   filterToKnownConnectionTypes,
 } from "../../../../src/lib/models/entity-graph-connection-types";
@@ -326,6 +330,17 @@ export default function EntityRelationshipGraphView({
   const [sharedMetadataEdges, setSharedMetadataEdges] = React.useState<
     SharedMetadataEdge[]
   >([]);
+  // Feature 69, Task 8: the project's persisted entity-kind color/shape
+  // style mapping, fetched alongside this view's other project-scoped reads
+  // and threaded straight through to `EntityGraphCanvas` as `kindStyles`.
+  // Re-fetched whenever `projectId` changes, the same minimal seam Task 6/7's
+  // customization modal is expected to trigger a refetch through once it
+  // exists (e.g. by calling this same fetch again after a save) — this task
+  // does not build that trigger itself, only makes sure the data path isn't
+  // dead-ended (see this task's own "Report back" instructions).
+  const [kindStyles, setKindStyles] = React.useState<
+    EntityGraphKindStyleRecord[]
+  >([]);
   const [connectionTypes, setConnectionTypes] = React.useState<string[]>(
     DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
   );
@@ -352,6 +367,7 @@ export default function EntityRelationshipGraphView({
       setBacklinkEdges([]);
       setProximityMentions({});
       setSharedMetadataEdges([]);
+      setKindStyles([]);
       setConnectionTypes(DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES);
       setFocalHopRadius(1);
       return;
@@ -372,6 +388,20 @@ export default function EntityRelationshipGraphView({
     void getEntitySharedMetadataEdges(projectId).then((result) => {
       if (!isCancelled) setSharedMetadataEdges(result);
     });
+    void getEntityGraphKindStyles(projectId)
+      .then((result) => {
+        if (!isCancelled) setKindStyles(result);
+      })
+      .catch((err: unknown) => {
+        // `getEntityGraphKindStyles` rejects on any failure rather than
+        // degrading (see its own module doc). Falling back to `[]` here
+        // keeps this view's own degrade-gracefully posture for its other
+        // non-settings reads — every node then renders via Task 5's
+        // deterministic fallback style rather than this view throwing or
+        // leaving the graph unrendered.
+        console.error("Failed to load the entity-graph kind styles.", err);
+        if (!isCancelled) setKindStyles([]);
+      });
     void getEntityGraphSettings(projectId)
       .then((settings: EntityGraphSettings) => {
         if (!isCancelled) {
@@ -489,6 +519,7 @@ export default function EntityRelationshipGraphView({
               onNodeActivated={onEntityActivated}
               projectId={projectId ?? undefined}
               activeConnectionTypes={activeConnectionTypes}
+              kindStyles={kindStyles}
               focalEntityId={focalEntityId}
               onFocalEntityChange={setFocalEntityId}
               focalHopRadius={focalHopRadius}

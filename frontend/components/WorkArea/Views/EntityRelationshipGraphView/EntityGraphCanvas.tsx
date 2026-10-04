@@ -30,6 +30,9 @@ import {
   saveEntityGraphPosition,
 } from "../../../../src/lib/api/entity-graph-positions";
 import { isPositionInvalidated } from "../../../../src/lib/models/entity-graph-position-invalidation";
+import type { EntityGraphKindStyleRecord } from "../../../../src/lib/api/entity-graph-kind-styles";
+import { getEntityKindShapeGeometry } from "./entityKindShapes";
+import { getEntityKindFallbackStyle } from "../../../../src/lib/models/entity-kind-fallback-style";
 import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
@@ -213,6 +216,25 @@ export interface EntityGraphCanvasProps {
    * locally behavior is unaffected.
    */
   onSettingsSaved?: (settings: EntityGraphSettings) => void;
+  /**
+   * The project's persisted entity-kind color/shape style mapping (Feature
+   * 69, Task 8, FR-1/FR-4). Resolved to a `Map` keyed by `entityKind`
+   * internally; passed as a plain array here so a caller (`EntityRelationship-
+   * GraphView.tsx`) can fetch-and-pass it the same way it already threads
+   * `activeConnectionTypes` down, with no new per-render allocation
+   * requirement on the caller's part. Defaults to an empty array, matching
+   * "no kind has a saved mapping yet" rather than guessing a default — every
+   * node then renders via `getEntityKindFallbackStyle`'s deterministic
+   * hash-assigned shape and neutral color (FR-5).
+   *
+   * Deliberately a plain prop, not cached/memoized inside this component
+   * beyond a `useMemo` keyed on this same array: a parent that re-fetches
+   * after a Task 6 modal save and passes a new array down causes this
+   * component's node styling to update on its very next render, with no
+   * reload required (FR-4) — this component never freezes a copy of the
+   * mapping anywhere that would block that.
+   */
+  kindStyles?: EntityGraphKindStyleRecord[];
 }
 
 /**
@@ -812,11 +834,25 @@ export default function EntityGraphCanvas({
   onFocalEntityChange,
   focalHopRadius = DEFAULT_FOCAL_HOP_RADIUS,
   onSettingsSaved,
+  kindStyles = [],
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
     [nodes, edges, width, height],
   );
+
+  // Entity kind -> persisted color-slot/shape style (Feature 69, Task 8,
+  // FR-1/FR-4), keyed by `entityKind` for O(1) per-node lookup in the render
+  // loop below. Recomputed whenever the caller passes a new `kindStyles`
+  // array — e.g. after Task 6's customization modal saves a change — so a
+  // save is reflected here on the very next render with no reload.
+  const kindStyleByKind = React.useMemo(() => {
+    const map = new Map<string, EntityGraphKindStyleRecord>();
+    for (const record of kindStyles) {
+      map.set(record.entityKind, record);
+    }
+    return map;
+  }, [kindStyles]);
 
   // Entity id -> display name, built from the same positioned nodes the
   // canvas already renders (Task 5) — the sole lookup `describeEdge` needs,
@@ -1881,6 +1917,20 @@ export default function EntityGraphCanvas({
               const override = nodePositionOverrides.get(node.entityId);
               const resolvedX = override?.x ?? node.x;
               const resolvedY = override?.y ?? node.y;
+              // Per-kind color+shape resolution (Feature 69, Task 8,
+              // FR-1/FR-4/FR-5): a persisted mapping for this node's
+              // `entityKind`, if one exists, else Task 5's deterministic
+              // hash-assigned fallback shape paired with the neutral default
+              // color. Both are always resolved together from the same
+              // source — there is no path here that applies one without the
+              // other.
+              const kindStyle =
+                kindStyleByKind.get(node.entityKind) ??
+                getEntityKindFallbackStyle(node.entityKind);
+              const shapeGeometry = getEntityKindShapeGeometry(
+                kindStyle.shape,
+                NODE_RADIUS,
+              );
               return (
                 <g
                   key={node.entityId}
@@ -1926,14 +1976,38 @@ export default function EntityGraphCanvas({
                       style={{ stroke: "var(--color-gw-primary)" }}
                     />
                   ) : null}
-                  <circle
-                    r={NODE_RADIUS}
-                    strokeWidth={1.5}
-                    style={{
-                      fill: "var(--color-gw-chrome2)",
-                      stroke: "var(--color-gw-border-md)",
-                    }}
-                  />
+                  {/*
+                  Node shape+color (Feature 69, Task 8, FR-1/FR-4): drawn from
+                  `shapeGeometry` (Task 1's fixed six-shape set, resolved
+                  above via the persisted kind-style mapping or Task 5's
+                  deterministic fallback) rather than always rendering a
+                  circle. `kind-style`'s color is a token-slot reference
+                  (e.g. `"entity-kind-0"`, or `"entity-kind-default"` for the
+                  fallback) resolved to its CSS custom property name at render
+                  time via inline `style={{ fill: ... }}` — mirroring every
+                  other `--color-gw-*` fill/stroke usage in this file — never
+                  a JS object/array mapping a slot index to a literal hex
+                  value.
+                */}
+                  {shapeGeometry.kind === "circle" ? (
+                    <circle
+                      r={shapeGeometry.radius}
+                      strokeWidth={1.5}
+                      style={{
+                        fill: `var(--${kindStyle.color})`,
+                        stroke: "var(--color-gw-border-md)",
+                      }}
+                    />
+                  ) : (
+                    <path
+                      d={shapeGeometry.d}
+                      strokeWidth={1.5}
+                      style={{
+                        fill: `var(--${kindStyle.color})`,
+                        stroke: "var(--color-gw-border-md)",
+                      }}
+                    />
+                  )}
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"

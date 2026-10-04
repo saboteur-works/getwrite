@@ -52,6 +52,11 @@ import type {
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 import * as edgeDescriptions from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeDescriptions";
 import {
+  hashEntityKindToShapeName,
+  getEntityKindShapeGeometry,
+} from "../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
+import type { EntityGraphKindStyleRecord } from "../../src/lib/api/entity-graph-kind-styles";
+import {
   describeAuthoredEdge,
   describeCooccurrenceEdge,
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeDescriptions";
@@ -79,6 +84,29 @@ const EDGES: EntityGraphEdge[] = [
 ];
 
 const RESERVED_RED_HEX = "#d44040";
+
+/**
+ * Mirrors the source file's own `NODE_RADIUS` (currently `22`, not exported)
+ * — used only to compute the expected shape geometry a test asserts against,
+ * never to assert on the constant's own value.
+ */
+const NODE_RADIUS_FOR_TEST = 22;
+
+/**
+ * Extracts a non-circle shape's `d` string, throwing if the shape resolves
+ * to the circle geometry instead — a test-only narrowing helper so call
+ * sites below don't need to repeat the `kind === "path"` check themselves.
+ */
+function expectedShapePathD(
+  shape: Parameters<typeof getEntityKindShapeGeometry>[0],
+  boundingRadius: number,
+): string {
+  const geometry = getEntityKindShapeGeometry(shape, boundingRadius);
+  if (geometry.kind !== "path") {
+    throw new Error(`Expected a path geometry for shape "${shape}"`);
+  }
+  return geometry.d;
+}
 
 const mockedGetEntityGraphPositions = vi.mocked(getEntityGraphPositions);
 const mockedSaveEntityGraphPosition = vi.mocked(saveEntityGraphPosition);
@@ -2477,6 +2505,193 @@ describe("EntityGraphCanvas", () => {
       for (const edge of screen.getAllByTestId("entity-graph-edge")) {
         expect(edge.getAttribute("data-focal-dimmed")).toBe("false");
       }
+    });
+  });
+
+  describe("per-kind node color and shape rendering (Feature 69, Task 8, FR-1/FR-4/FR-5)", () => {
+    /** Finds a node's own fill/shape element — either a `<circle>` or a `<path>`. */
+    function getNodeShapeElement(node: HTMLElement): HTMLElement {
+      const el = node.querySelector(
+        ':scope > circle:not([data-testid="entity-graph-node-selection-ring"]), :scope > path',
+      );
+      if (!el) throw new Error("No node shape element found");
+      return el as HTMLElement;
+    }
+
+    it("renders a node whose kind has a saved mapping with exactly that configured color and shape", () => {
+      const kindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-2", shape: "star" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={kindStyles}
+        />,
+      );
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const anna = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+      );
+      expect(anna).toBeDefined();
+      const shapeEl = getNodeShapeElement(anna!);
+
+      expect(shapeEl.tagName.toLowerCase()).toBe("path");
+      expect(shapeEl.style.fill).toBe("var(--entity-kind-2)");
+      expect(shapeEl.getAttribute("d")).toBe(
+        expectedShapePathD("star", NODE_RADIUS_FOR_TEST),
+      );
+    });
+
+    it("renders a node whose kind has no configured mapping with Task 5's deterministic fallback shape and the neutral default color", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const castle = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-3",
+      );
+      expect(castle).toBeDefined();
+      const shapeEl = getNodeShapeElement(castle!);
+
+      const expectedShape = hashEntityKindToShapeName("place");
+      const expectedGeometry = getEntityKindShapeGeometry(
+        expectedShape,
+        NODE_RADIUS_FOR_TEST,
+      );
+      expect(shapeEl.style.fill).toBe("var(--entity-kind-default)");
+      if (expectedGeometry.kind === "circle") {
+        expect(shapeEl.tagName.toLowerCase()).toBe("circle");
+      } else {
+        expect(shapeEl.tagName.toLowerCase()).toBe("path");
+        expect(shapeEl.getAttribute("d")).toBe(expectedGeometry.d);
+      }
+    });
+
+    it("renders two unmapped kinds with visibly different shapes, matching Task 5's hash", () => {
+      const nodesWithDistinctKinds: EntityGraphNode[] = [
+        { entityId: "n-1", name: "Alpha", entityKind: "character" },
+        { entityId: "n-2", name: "Beta", entityKind: "place" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={nodesWithDistinctKinds}
+          edges={[]}
+          kindStyles={[]}
+        />,
+      );
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const alpha = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "n-1",
+      );
+      const beta = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "n-2",
+      );
+      expect(alpha).toBeDefined();
+      expect(beta).toBeDefined();
+
+      const alphaShape = hashEntityKindToShapeName("character");
+      const betaShape = hashEntityKindToShapeName("place");
+      // Fixture sanity: this assertion is only meaningful if the two
+      // fixture kinds actually hash to different shapes.
+      expect(alphaShape).not.toBe(betaShape);
+
+      // A direct geometry comparison is the real assertion — tag name alone
+      // cannot distinguish two different `path`-kind shapes, and a `circle`
+      // vs. `path` tag-name difference alone wouldn't tell us the shapes
+      // differ for the right reason.
+      const alphaGeometry = getEntityKindShapeGeometry(
+        alphaShape,
+        NODE_RADIUS_FOR_TEST,
+      );
+      const betaGeometry = getEntityKindShapeGeometry(
+        betaShape,
+        NODE_RADIUS_FOR_TEST,
+      );
+      expect(alphaGeometry).not.toEqual(betaGeometry);
+    });
+
+    it("updates a node's rendered color and shape when the kindStyles prop changes, with no reload (FR-4)", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />,
+      );
+
+      const before = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      const beforeShapeEl = getNodeShapeElement(before);
+      const beforeFill = beforeShapeEl.style.fill;
+
+      const updatedKindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-5", shape: "square" },
+      ];
+      rerender(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={updatedKindStyles}
+        />,
+      );
+
+      const after = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      const afterShapeEl = getNodeShapeElement(after);
+
+      expect(afterShapeEl.style.fill).toBe("var(--entity-kind-5)");
+      expect(afterShapeEl.style.fill).not.toBe(beforeFill);
+      expect(afterShapeEl.tagName.toLowerCase()).toBe("path");
+      expect(afterShapeEl.getAttribute("d")).toBe(
+        expectedShapePathD("square", NODE_RADIUS_FOR_TEST),
+      );
+    });
+
+    it("leaves every existing node interaction — selection ring, drag, activation, focal-point dimming — unaffected by kind styling", () => {
+      const onNodeActivated = vi.fn();
+      const kindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-1", shape: "triangle" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={kindStyles}
+          onNodeActivated={onNodeActivated}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const [first] = nodeElements;
+      expect(first.getAttribute("data-entity-id")).toBe("e-1");
+
+      // Activation + selection still work.
+      fireEvent.click(first);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+      expect(
+        first.querySelector('[data-testid="entity-graph-node-selection-ring"]'),
+      ).not.toBeNull();
+
+      // Focal-point dimming still applies to the out-of-radius node.
+      const third = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-3",
+      )!;
+      expect(third.getAttribute("data-focal-dimmed")).toBe("true");
+
+      // Drag still repositions the node.
+      const before = parseNodeTransform(first);
+      fireEvent.pointerDown(first, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { clientX: 30, clientY: 20 });
+      const afterDrag = parseNodeTransform(first);
+      expect(afterDrag.x).not.toBeCloseTo(before.x);
+      fireEvent.pointerUp(window);
     });
   });
 });
