@@ -82,7 +82,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The legend lists every kind currently represented in the project (configured or not) with its live color+shape; the entry-point control is present and opens the modal only when `selectIsFeatureEnabled(..., "entities")` is true, mirroring how other `entities`-gated controls in this view are already conditioned; the control does not render at all when the flag is off.
 **Depends on:** Task 6
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Canvas — per-kind node color and shape rendering
 **What:** Changes each node's SVG rendering in `EntityGraphCanvas.tsx` from a uniform circle to a shape drawn from Task 1's six-shape set, colored from Task 4's persisted kind-style mapping when one exists for that node's `entityKind`, or Task 5's deterministic hash-assigned fallback shape + neutral color otherwise — both color and shape always applied together, never either alone (FR-1). Node color MUST be applied via an inline `style={{ fill: "var(--entity-kind-N)" }}` (resolving the persisted token-slot reference to its CSS custom property name at render time), mirroring the exact pattern this same file already uses for `--color-gw-secondary`/`--color-gw-primary` elsewhere (e.g. its existing edge/node `style={{ fill: ... }}` / `style={{ stroke: ... }}` usages) — never a JS lookup object/array mapping slot index to a literal hex string, which would itself fail `frontend/scripts/check-no-hardcoded-hex.mjs` (the CI `hex-color-check` job) despite the goal being to eliminate hardcoded hex.
@@ -98,7 +98,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Hovering a node on desktop and tapping a node on touch both show a tooltip naming the entity's kind and describing its mapping (e.g. "character — teal diamond"); the tooltip dismisses on the same hover-leave/second-tap rules the existing edge tooltip already uses; no existing edge-tooltip behavior regresses.
 **Depends on:** Task 8
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Accessible list — disclose entity kind as text
 **What:** Extends `EntityGraphAccessibleList.tsx` so each node's list entry discloses that entity's `entityKind` as plain text, extending the precedent `edgeDescriptions.ts` already sets for edge-kind disclosure (FR-8).
@@ -122,7 +122,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Every non-token color/typography value in the node-rendering code path (selection ring, hover hint, label text) is replaced with a `--color-gw-*` token or IBM Plex font reference; `--color-gw-red` is not newly introduced for decoration; no interaction, control, or information changes.
 **Depends on:** Task 8
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Owner sign-off checkpoint — nodes
 **What:** Presents the restyled node chrome (Task 12) to the product owner, alongside Task 8's kind-encoding rendering, for incremental qualitative sign-off per FR-14/OQ-7, before edge restyling (Task 14) begins.
