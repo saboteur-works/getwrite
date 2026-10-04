@@ -57,7 +57,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** `getEntityGraphKindStyles`/`saveEntityGraphKindStyle` resolve correctly on both the HTTP path (validated response, rejects on malformed body) and a native-path unit test using the in-process backend; the web-stub throws if ever reached, matching the positions precedent; the new alias entry is present in `next.config.mjs` alongside the existing native-backend aliases; the new response schemas validate the color field as a token-slot reference (per Task 2 — a string/integer slot identifier such as `"entity-kind-0"`), never a raw hex string, so no hex color literal crosses the transport boundary at any point in this triad.
 **Depends on:** Task 2, Task 3
 **Estimate:** 5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Deterministic fallback shape hash utility
 **What:** Adds a pure, dependency-free function computing an unmapped `entityKind`'s deterministic fallback shape via a standard string hash (djb2 or FNV-1a) over the raw `entityKind` string, modulo six, paired with a fixed neutral default color — stable across reloads, devices, and discovery order (FR-5, OQ-3).
