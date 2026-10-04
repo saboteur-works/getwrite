@@ -233,6 +233,96 @@ describe("EntityKindStylesModal", () => {
     );
   });
 
+  it("legend lists every kind in use, configured or not, with its live color+shape (Task 7, FR-6)", async () => {
+    mockGet.mockResolvedValue([
+      { entityKind: "character", color: "entity-kind-2", shape: "diamond" },
+    ]);
+
+    render(
+      <EntityKindStylesModal
+        isOpen
+        projectId="p1"
+        declaredEntityKinds={["character", "place"]}
+        onClose={() => {}}
+      />,
+    );
+
+    const legend = await screen.findByTestId("entity-kind-styles-legend");
+    expect(
+      screen.getByTestId("entity-kind-styles-legend-row-character"),
+    ).toHaveTextContent("Color 3, Diamond");
+    expect(
+      screen.getByTestId("entity-kind-styles-legend-row-place"),
+    ).toHaveTextContent("Default color");
+    expect(legend.children).toHaveLength(2);
+  });
+
+  it("legend reflects a save moving a kind from unmapped into configured, without a reload", async () => {
+    mockGet.mockResolvedValue([]);
+    mockSave.mockResolvedValue({
+      entityKind: "place",
+      color: "entity-kind-1",
+      shape: "square",
+    });
+
+    render(
+      <EntityKindStylesModal
+        isOpen
+        projectId="p1"
+        declaredEntityKinds={["place"]}
+        onClose={() => {}}
+      />,
+    );
+
+    await screen.findByTestId("unmapped-kind-row-place");
+    expect(
+      screen.getByTestId("entity-kind-styles-legend-row-place"),
+    ).toHaveTextContent("Default color");
+
+    fireEvent.click(screen.getByRole("button", { name: /save style/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("entity-kind-styles-legend-row-place"),
+      ).toHaveTextContent("Color 2, Square"),
+    );
+  });
+
+  it("calls onStylesChanged with the saved record after a successful save", async () => {
+    mockGet.mockResolvedValue([
+      { entityKind: "character", color: "entity-kind-0", shape: "circle" },
+    ]);
+    mockSave.mockResolvedValue({
+      entityKind: "character",
+      color: "entity-kind-5",
+      shape: "circle",
+    });
+    const onStylesChanged = vi.fn();
+
+    render(
+      <EntityKindStylesModal
+        isOpen
+        projectId="p1"
+        declaredEntityKinds={["character"]}
+        onClose={() => {}}
+        onStylesChanged={onStylesChanged}
+      />,
+    );
+
+    await screen.findByTestId("configured-kind-row-character");
+    fireEvent.change(screen.getByLabelText("character color"), {
+      target: { value: "entity-kind-5" },
+    });
+
+    await waitFor(() =>
+      expect(onStylesChanged).toHaveBeenCalledWith({
+        entityKind: "character",
+        color: "entity-kind-5",
+        shape: "circle",
+      }),
+    );
+  });
+
   it("does not fetch when closed", () => {
     render(
       <EntityKindStylesModal

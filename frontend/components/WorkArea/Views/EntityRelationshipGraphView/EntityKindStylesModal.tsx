@@ -56,7 +56,10 @@ import {
   type EntityGraphKindStyleRecord,
 } from "../../../../src/lib/api/entity-graph-kind-styles";
 import { ENTITY_KIND_COLOR_SLOTS } from "../../../../src/lib/models/entity-graph-kind-styles";
-import { getEntityKindFallbackStyle } from "../../../../src/lib/models/entity-kind-fallback-style";
+import {
+  getEntityKindFallbackStyle,
+  ENTITY_KIND_DEFAULT_COLOR_SLOT,
+} from "../../../../src/lib/models/entity-kind-fallback-style";
 import { toastService } from "../../../../src/lib/toast-service";
 import {
   ENTITY_KIND_SHAPE_NAMES,
@@ -77,6 +80,15 @@ export interface EntityKindStylesModalProps {
    */
   declaredEntityKinds: string[];
   onClose: () => void;
+  /**
+   * Feature 69, Task 7: invoked after a style save succeeds (either a
+   * configured-row edit or a new/unmapped "Save style" action), so the host
+   * view can re-fetch its own `kindStyles` state and pass the refreshed
+   * array down to `EntityGraphCanvas` — without this, a save here would only
+   * reach the canvas after a reload (FR-4). Optional so this modal remains
+   * usable (e.g. in Storybook) without a host that cares about the refresh.
+   */
+  onStylesChanged?: (saved: EntityGraphKindStyleRecord) => void;
 }
 
 const FIRST_COLOR_SLOT: EntityGraphKindColorSlot = ENTITY_KIND_COLOR_SLOTS[0];
@@ -89,6 +101,20 @@ function colorSlotLabel(slot: EntityGraphKindColorSlot): string {
 
 function shapeLabel(shape: EntityKindShapeName): string {
   return shape.charAt(0).toUpperCase() + shape.slice(1);
+}
+
+/**
+ * A readable label for any persisted-or-fallback color-slot reference,
+ * including the neutral `entity-kind-default` fallback slot (Task 5) that
+ * `colorSlotLabel` above doesn't cover, since that slot is never a valid
+ * persisted value and never offered by `ColorSelect`.
+ */
+function legendColorLabel(colorSlot: string): string {
+  if (colorSlot === ENTITY_KIND_DEFAULT_COLOR_SLOT) return "Default color";
+  const index = ENTITY_KIND_COLOR_SLOTS.indexOf(
+    colorSlot as EntityGraphKindColorSlot,
+  );
+  return index === -1 ? colorSlot : `Color ${index + 1}`;
 }
 
 /** Resolves a persisted token-slot reference to its CSS custom property. */
@@ -216,6 +242,7 @@ export default function EntityKindStylesModal({
   projectId,
   declaredEntityKinds,
   onClose,
+  onStylesChanged,
 }: EntityKindStylesModalProps): JSX.Element {
   const [records, setRecords] = React.useState<
     EntityGraphKindStyleRecord[] | null
@@ -311,6 +338,7 @@ export default function EntityKindStylesModal({
           delete next[kind];
           return next;
         });
+        onStylesChanged?.(saved);
       } catch (err) {
         const message =
           err instanceof Error && err.message
@@ -326,8 +354,33 @@ export default function EntityKindStylesModal({
         });
       }
     },
-    [projectId],
+    [projectId, onStylesChanged],
   );
+
+  const legendKinds = React.useMemo(() => {
+    const seen = new Set<string>();
+    const entries: {
+      kind: string;
+      color: string;
+      shape: EntityKindShapeName;
+    }[] = [];
+    for (const record of configuredKinds) {
+      if (seen.has(record.entityKind)) continue;
+      seen.add(record.entityKind);
+      entries.push({
+        kind: record.entityKind,
+        color: record.color,
+        shape: record.shape,
+      });
+    }
+    for (const kind of newUnmappedKinds) {
+      if (seen.has(kind)) continue;
+      seen.add(kind);
+      const fallback = getEntityKindFallbackStyle(kind);
+      entries.push({ kind, color: fallback.color, shape: fallback.shape });
+    }
+    return entries.sort((a, b) => a.kind.localeCompare(b.kind));
+  }, [configuredKinds, newUnmappedKinds]);
 
   return (
     <Dialog
@@ -548,6 +601,44 @@ export default function EntityKindStylesModal({
                       </li>
                     );
                   })}
+                </ul>
+              )}
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-sm font-semibold text-gw-primary">
+                Legend
+              </h3>
+              <p className="mb-2 text-sm text-gw-secondary">
+                Every kind currently in use in this project, with its live color
+                and shape — the authoritative full reference, including a kind
+                still on its default style.
+              </p>
+              {legendKinds.length === 0 ? (
+                <p className="text-sm text-gw-secondary">
+                  No entity kind is in use in this project yet.
+                </p>
+              ) : (
+                <ul
+                  className="flex flex-col gap-1"
+                  data-testid="entity-kind-styles-legend"
+                >
+                  {legendKinds.map((entry) => (
+                    <li
+                      key={entry.kind}
+                      className="flex items-center gap-3"
+                      data-testid={`entity-kind-styles-legend-row-${entry.kind}`}
+                    >
+                      <ShapeIcon shape={entry.shape} colorSlot={entry.color} />
+                      <span className="text-sm text-gw-primary">
+                        {entry.kind}
+                      </span>
+                      <span className="text-xs text-gw-secondary">
+                        {legendColorLabel(entry.color)},{" "}
+                        {shapeLabel(entry.shape)}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               )}
             </section>
