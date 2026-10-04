@@ -155,7 +155,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** Every non-token color/typography value in the settings panel and reset-view button is replaced with a `--color-gw-*` token/IBM Plex reference; the panel's existing controls (connection-type toggles, hop-radius field) are functionally and informationally unchanged; both dark and light mode render correctly (FR-13).
 **Depends on:** Task 15
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Owner sign-off checkpoint — settings panel and reset-view
 **What:** Presents the restyled settings panel/reset-view chrome (Task 16) to the product owner for incremental qualitative sign-off before tooltip-overlay restyling (Task 18) begins.
