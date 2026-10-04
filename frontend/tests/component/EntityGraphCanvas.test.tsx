@@ -1557,15 +1557,21 @@ describe("EntityGraphCanvas", () => {
       }
     });
 
-    it("never shows a tooltip when hovering a node (FR-8)", () => {
+    // Supersedes this describe block's own prior "never shows a tooltip when
+    // hovering a node (FR-8)" test from entity-graph-edge-tooltips: Feature
+    // 69, Task 9 (FR-7) deliberately extends the identical mechanism to
+    // nodes — see the "node kind tooltip" describe block below for that
+    // behavior's own coverage.
+    it("still shows the edge tooltip, not the node tooltip, when hovering an edge's hit-target rather than a node", () => {
       render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
-      const [firstNode] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseEnter(firstNode, { clientX: 5, clientY: 5 });
+      fireEvent.mouseEnter(getHitTargetFor("cooccurrence"), {
+        clientX: 10,
+        clientY: 20,
+      });
 
-      expect(
-        screen.queryByTestId("entity-graph-edge-tooltip"),
-      ).not.toBeInTheDocument();
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip).toHaveAttribute("data-tooltip-kind", "edge");
     });
 
     it("does not make an edge hit-target keyboard-focusable (FR-9)", () => {
@@ -1625,6 +1631,148 @@ describe("EntityGraphCanvas", () => {
         fireEvent.mouseLeave(hitTarget);
         fireEvent.click(hitTarget, { clientX: 1, clientY: 1 });
         fireEvent.click(hitTarget, { clientX: 1, clientY: 1 });
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe("node kind tooltip (Feature 69, Task 9, FR-7)", () => {
+    function getNodeFor(entityId: string): HTMLElement {
+      const node = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === entityId,
+        );
+      if (!node) throw new Error(`No node found for entityId "${entityId}"`);
+      return node;
+    }
+
+    it("shows a tooltip naming the entity's kind and its deterministic fallback color+shape mapping on hover", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.mouseEnter(getNodeFor("e-1"), { clientX: 10, clientY: 20 });
+
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip).toHaveAttribute("data-tooltip-kind", "node");
+      const expectedShape = hashEntityKindToShapeName("character");
+      expect(tooltip.textContent).toBe(
+        `Kind: character — default color ${expectedShape}`,
+      );
+    });
+
+    it("shows a tooltip naming the entity's kind and its configured color+shape mapping on hover", () => {
+      const kindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-2", shape: "star" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={kindStyles}
+        />,
+      );
+
+      fireEvent.mouseEnter(getNodeFor("e-1"), { clientX: 10, clientY: 20 });
+
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip.textContent).toBe("Kind: character — color 3 star");
+    });
+
+    it("shows the tooltip on a simulated tap, dismisses it on a second tap of the same node, and dismisses it on a tap elsewhere — the exact dismiss rules the edge tooltip already uses", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      const node = getNodeFor("e-1");
+
+      // A tap fires as a click event, same as a mouse click on touch input.
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      // A second tap on the same node dismisses it.
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+
+      // Re-open it, then dismiss via a tap elsewhere (the canvas background).
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      const background = screen.getByTestId("entity-graph-canvas-background");
+      fireEvent.click(background);
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("dismisses the hover-shown node tooltip on mouse leave", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      const node = getNodeFor("e-1");
+      fireEvent.mouseEnter(node, { clientX: 10, clientY: 20 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      fireEvent.mouseLeave(node);
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not dismiss a node's own existing selection/activation behavior when its tooltip is tapped open (no regression to click-to-select)", () => {
+      const handleActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={[]}
+          onNodeActivated={handleActivated}
+        />,
+      );
+
+      const node = getNodeFor("e-1");
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+      expect(node).toHaveAttribute("data-selected", "true");
+      expect(handleActivated).toHaveBeenCalledWith("e-1");
+    });
+
+    it("moves a tapped node tooltip to a second node without immediately dismissing it", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      fireEvent.click(getNodeFor("e-1"), { clientX: 1, clientY: 1 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip").textContent).toBe(
+        `Kind: character — default color ${hashEntityKindToShapeName("character")}`,
+      );
+
+      fireEvent.click(getNodeFor("e-3"), { clientX: 2, clientY: 2 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip").textContent).toBe(
+        `Kind: place — default color ${hashEntityKindToShapeName("place")}`,
+      );
+    });
+
+    it("introduces no new fetch call when hovering or tapping a node's tooltip", () => {
+      const fetchSpy = vi.fn();
+      const originalFetch = global.fetch;
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      try {
+        render(
+          <EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />,
+        );
+
+        const node = getNodeFor("e-1");
+        fireEvent.mouseEnter(node, { clientX: 1, clientY: 1 });
+        fireEvent.mouseMove(node, { clientX: 2, clientY: 2 });
+        fireEvent.mouseLeave(node);
+        fireEvent.click(node, { clientX: 1, clientY: 1 });
+        fireEvent.click(node, { clientX: 1, clientY: 1 });
 
         expect(fetchSpy).not.toHaveBeenCalled();
       } finally {
