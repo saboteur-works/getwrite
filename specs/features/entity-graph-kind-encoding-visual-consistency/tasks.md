@@ -130,7 +130,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The product owner has reviewed a built, running implementation of the restyled nodes and explicitly signed off — or requested changes, in which case Task 12 is reopened and this checkpoint repeats before Task 14 starts. Sign-off is not self-certified by an implementor against a checklist.
 **Depends on:** Task 12
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 **Notes:** This is a real gate, not a formality — Task 14 must not start until this is checked off with an actual owner sign-off, not an assumed one.
 
 ### Task 14: Visual-consistency pass — restyle edge chrome
