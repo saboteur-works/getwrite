@@ -24,7 +24,7 @@ import {
 } from "../../src/lib/api/entity-graph-kind-styles";
 import EntityKindStylesModal from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityKindStylesModal";
 import { ENTITY_KIND_SHAPE_NAMES } from "../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
-import { ENTITY_KIND_COLOR_SLOTS } from "../../src/lib/models/entity-graph-kind-styles";
+import { ENTITY_KIND_COLOR_SLOTS } from "../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
 
 const mockGet = vi.mocked(getEntityGraphKindStyles);
 const mockSave = vi.mocked(saveEntityGraphKindStyle);

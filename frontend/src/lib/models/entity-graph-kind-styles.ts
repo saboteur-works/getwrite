@@ -28,29 +28,28 @@
  * (`ENTITY_KIND_SHAPE_NAMES`, `entityKindShapes.ts`) and is not redeclared
  * here — the Zod enum is built directly from that exported tuple so the two
  * can never drift apart.
+ *
+ * Both `ENTITY_KIND_COLOR_SLOTS` and `ENTITY_KIND_SHAPE_NAMES` are imported
+ * from the pure, framework-free `entityKindShapes.ts` rather than declared
+ * here, so a client-facing module (e.g. `lib/api/schemas.ts`) can build its
+ * own schemas from the same constants without pulling this file's
+ * server-only imports (`node:path`, `io.ts`, `meta-locks.ts` — which
+ * transitively reach `node:async_hooks`) into a client bundle.
  */
 import path from "node:path";
 import { z } from "zod";
 import { atomicWriteFile, mkdir, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
-import { ENTITY_KIND_SHAPE_NAMES } from "../../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
+import {
+  ENTITY_KIND_COLOR_SLOTS,
+  ENTITY_KIND_SHAPE_NAMES,
+  type EntityKindColorSlot,
+} from "../../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
 
 const META_DIR = "meta";
 const KIND_STYLES_FILE = "entity-graph-kind-styles.json";
 
-/** The fixed token-slot names Task 1 defines in `getwrite-utilities.css`. */
-export const ENTITY_KIND_COLOR_SLOTS = [
-  "entity-kind-0",
-  "entity-kind-1",
-  "entity-kind-2",
-  "entity-kind-3",
-  "entity-kind-4",
-  "entity-kind-5",
-  "entity-kind-6",
-  "entity-kind-7",
-] as const;
-
-export type EntityGraphKindColorSlot = (typeof ENTITY_KIND_COLOR_SLOTS)[number];
+export type EntityGraphKindColorSlot = EntityKindColorSlot;
 
 /**
  * The color field's schema: a strict enum of the known token-slot names

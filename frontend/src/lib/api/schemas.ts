@@ -32,9 +32,9 @@
 import { z } from "zod";
 import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
 import {
-  EntityGraphKindColorSlotSchema,
-  EntityGraphKindShapeSchema,
-} from "../models/entity-graph-kind-styles";
+  ENTITY_KIND_COLOR_SLOTS,
+  ENTITY_KIND_SHAPE_NAMES,
+} from "../../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
 
 // ---------------------------------------------------------------------------
 // Shared metadata-value schema
@@ -717,20 +717,28 @@ export const EntityGraphPositionsListResponseSchema = z.array(
 // (color-slot/shape) mapping transport. Matches
 // `entity-graph-kind-styles.ts`'s `EntityGraphKindStyleRecord` shape exactly
 // (`{ entityKind, color, shape }`). `color` reuses the same fixed token-slot
-// enum Task 2 defines (`ENTITY_KIND_COLOR_SLOTS`) rather than a loose
-// `z.string()`, so a `#rrggbb`/`#rgb`-shaped (or any other arbitrary) value
-// is rejected at the transport boundary, never just at the model layer.
-// `shape` is the same fixed six-shape enum Task 2 reuses from
-// `entityKindShapes.ts`'s `ENTITY_KIND_SHAPE_NAMES`.
+// enum Task 2 defines (`ENTITY_KIND_COLOR_SLOTS`, imported from the pure
+// `entityKindShapes.ts` rather than the server-only model module — see this
+// file's header comment on transport/persistence separation) rather than a
+// loose `z.string()`, so a `#rrggbb`/`#rgb`-shaped (or any other arbitrary)
+// value is rejected at the transport boundary, never just at the model
+// layer. `shape` is the same fixed six-shape enum Task 2 reuses from
+// `entityKindShapes.ts`'s `ENTITY_KIND_SHAPE_NAMES`. Built as local
+// `z.enum(...)` schemas here (not imported) per this module's own
+// documented pattern of declaring every schema independently from the
+// persistence layer.
 // `EntityGraphKindStyleRecordResponseSchema` backs the PUT single-record
 // response; `EntityGraphKindStylesListResponseSchema` backs the GET list
 // response.
 // ---------------------------------------------------------------------------
 
+const EntityGraphKindColorSlotResponseSchema = z.enum(ENTITY_KIND_COLOR_SLOTS);
+const EntityGraphKindShapeResponseSchema = z.enum(ENTITY_KIND_SHAPE_NAMES);
+
 export const EntityGraphKindStyleRecordResponseSchema = z.object({
   entityKind: z.string(),
-  color: EntityGraphKindColorSlotSchema,
-  shape: EntityGraphKindShapeSchema,
+  color: EntityGraphKindColorSlotResponseSchema,
+  shape: EntityGraphKindShapeResponseSchema,
 });
 
 export const EntityGraphKindStylesListResponseSchema = z.array(

@@ -55,7 +55,7 @@ import {
   type EntityGraphKindColorSlot,
   type EntityGraphKindStyleRecord,
 } from "../../../../src/lib/api/entity-graph-kind-styles";
-import { ENTITY_KIND_COLOR_SLOTS } from "../../../../src/lib/models/entity-graph-kind-styles";
+import { ENTITY_KIND_COLOR_SLOTS } from "./entityKindShapes";
 import {
   getEntityKindFallbackStyle,
   ENTITY_KIND_DEFAULT_COLOR_SLOT,

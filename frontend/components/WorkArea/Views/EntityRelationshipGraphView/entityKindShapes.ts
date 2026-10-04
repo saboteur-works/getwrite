@@ -33,6 +33,29 @@ export const ENTITY_KIND_SHAPE_NAMES = [
 export type EntityKindShapeName = (typeof ENTITY_KIND_SHAPE_NAMES)[number];
 
 /**
+ * The fixed token-slot names Task 1 defines in `getwrite-utilities.css`
+ * (`--entity-kind-0` through `--entity-kind-7`). Lives in this pure,
+ * framework-free module (rather than the server-only
+ * `lib/models/entity-graph-kind-styles.ts` it was originally declared in) so
+ * both the persistence-layer model and the client-facing transport/response
+ * schemas can import it without pulling server-only Node builtins
+ * (`node:path`, `node:async_hooks` via `io.ts`/`meta-locks.ts`) into a
+ * client bundle.
+ */
+export const ENTITY_KIND_COLOR_SLOTS = [
+  "entity-kind-0",
+  "entity-kind-1",
+  "entity-kind-2",
+  "entity-kind-3",
+  "entity-kind-4",
+  "entity-kind-5",
+  "entity-kind-6",
+  "entity-kind-7",
+] as const;
+
+export type EntityKindColorSlot = (typeof ENTITY_KIND_COLOR_SLOTS)[number];
+
+/**
  * One shape's renderable geometry. `circle` has `kind: "circle"` and no `d`,
  * since an SVG `<circle>` element (radius only) is the natural, crisper way
  * to render a circle rather than approximating one with a `<path>`. Every
