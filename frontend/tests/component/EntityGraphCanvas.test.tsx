@@ -511,6 +511,17 @@ describe("EntityGraphCanvas", () => {
     expect(reset.scale).toBe(1);
   });
 
+  it("renders the reset-view button's chrome via --color-gw-* brand tokens, never a raw color value or the reserved red token (Feature 69, Task 16)", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const resetButton = screen.getByTestId("entity-graph-reset-view");
+    expect(resetButton.className).toMatch(/\bborder-gw-border\b/);
+    expect(resetButton.className).toMatch(/\btext-gw-secondary\b/);
+    expect(resetButton.className).not.toMatch(/gw-red/);
+    expect(resetButton.className).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+    expect(resetButton.className).not.toMatch(/rgba?\(/);
+  });
+
   it("anchors a wheel zoom on the pointer, keeping the graph point under the cursor fixed", () => {
     render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
