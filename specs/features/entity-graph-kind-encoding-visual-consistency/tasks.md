@@ -40,7 +40,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** `loadEntityGraphKindStyles` returns `[]` on ENOENT and rethrows on a malformed file; an upsert function sets/replaces one kind's style record in a single `withMetaLock` call; the record schema requires `entityKind`, a color **token-slot reference** (not a hex string — the schema must reject a `#rrggbb`-shaped value), and a shape value drawn from Task 1's six-shape set; a corrupt or hand-edited file fails loudly rather than silently degrading, matching `entity-graph-positions.ts`'s documented boundary-validation floor.
 **Depends on:** Task 1 (shape set as the schema's enum)
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 **Notes:** Per OQ-5, this explicitly does NOT touch `ProjectConfigSchema` or `entity-graph-settings-core.ts`'s scalar-field pattern — it is its own sibling file.
 
 ### Task 3: HTTP API route for kind-style mapping
@@ -65,7 +65,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The function returns the identical shape for the identical `entityKind` string across repeated calls and simulated "different device" (fresh module state) runs; a unit test asserts this for a representative sample of kind strings, including two kinds whose hashes collide onto the same shape (an accepted outcome per FR-5's own "zero writer action" framing, not a bug) and confirms the neutral default color is applied, not a Task 1 kind-token color.
 **Depends on:** Task 1
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Customization modal — row list, new/unmapped section, color/shape editing
 **What:** Adds the dedicated kind-to-color/shape customization modal, structurally modeled on `TagsManagerModal.tsx`: a main row list driven by every `entityKind` ever persisted in the kind-style mapping (not merely kinds currently in use), each row with a Task-1-token color swatch and a Task-1-shape picker constrained to the fixed six-shape set; plus a separate, live "new/unmapped" section surfacing any declared entity's `entityKind` in use but with no persisted mapping yet (OQ-4). Saving a row persists immediately via Task 4's transport.
