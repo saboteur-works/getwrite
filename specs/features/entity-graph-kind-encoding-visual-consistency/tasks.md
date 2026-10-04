@@ -114,7 +114,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** A manual or automated check confirms a single kind's color/shape mapping, once changed in the modal, reads identically in the legend, the canvas tooltip, and the accessible-list text with no reload; the native backend's `getEntityGraphKindStyles`/`saveEntityGraphKindStyle` are confirmed to exercise the same model functions as the HTTP route; the `entities` flag off hides every kind-encoding entry point added in Tasks 6–10.
 **Depends on:** Task 4, Task 6, Task 7, Task 8, Task 9, Task 10
 **Estimate:** 3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Visual-consistency pass — restyle node chrome
 **What:** Restyles the node rendering's non-kind-token visual elements (selection ring, hover hint affordance, label typography) in `EntityGraphCanvas.tsx` to use `--color-gw-*` brand tokens and IBM Plex Sans/Mono typography in place of any non-token value, without changing the node's own kind-driven fill/shape (Task 8) or any information it presents (FR-11, FR-12).
