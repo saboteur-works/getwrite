@@ -518,7 +518,7 @@ export default function EntityRelationshipGraphView({
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col ${className}`}
+      className={`mt-4 flex h-full min-h-0 flex-col ${className}`}
       data-testid="entity-relationship-graph-view"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
