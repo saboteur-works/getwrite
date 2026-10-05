@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Type, PenLine, Tag, LayoutList, Target } from "lucide-react";
+import { Type, PenLine, Tag, LayoutList, Target, Ban } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
   Tabs,
@@ -16,6 +16,7 @@ import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
 import DailyWordGoalField from "./DailyWordGoalField";
 import WordCountGoalField from "./WordCountGoalField";
+import NoiseWordsSettingsTab from "./NoiseWordsSettingsTab";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -44,7 +45,8 @@ type ProjectSettingsTab =
   | "default-revision-name"
   | "tags"
   | "metadata"
-  | "writing-goals";
+  | "writing-goals"
+  | "noise-words";
 
 interface ProjectSettingsTabOption {
   value: ProjectSettingsTab;
@@ -76,6 +78,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "tags", label: "Manage Tags", icon: Tag },
   { value: "metadata", label: "Metadata", icon: LayoutList },
   { value: "writing-goals", label: "Writing Goals", icon: Target },
+  { value: "noise-words", label: "Noise Words", icon: Ban },
 ];
 
 /**
@@ -222,6 +225,12 @@ export default function ProjectSettingsDialog({
                     initialGoal={initialWordCountGoal}
                   />
                 </>
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="noise-words" forceMount className={PANEL_CLASS}>
+              {projectId ? (
+                <NoiseWordsSettingsTab projectId={projectId} />
               ) : null}
             </TabsContent>
           </Tabs>

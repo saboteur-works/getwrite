@@ -15,6 +15,18 @@ vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
 vi.mock("../src/lib/api/word-count-goal", () => ({
   setWordCountGoal: vi.fn(),
 }));
+vi.mock("../src/lib/api/project-noise-words", () => ({
+  getNoiseWordLists: vi
+    .fn()
+    .mockResolvedValue({ customNoiseWords: [], excludedGlobalNoiseWords: [] }),
+  addCustomNoiseWord: vi.fn(),
+  removeCustomNoiseWord: vi.fn(),
+  excludeGlobalNoiseWord: vi.fn(),
+  unexcludeGlobalNoiseWord: vi.fn(),
+}));
+vi.mock("../src/lib/api/global-noise-words", () => ({
+  getGlobalNoiseWords: vi.fn().mockResolvedValue([]),
+}));
 
 function renderDialog(): void {
   const store = configureStore({
@@ -65,6 +77,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Manage Tags",
       "Metadata",
       "Writing Goals",
+      "Noise Words",
     ]);
   });
 
@@ -93,7 +106,13 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     const user = userEvent.setup();
     renderDialog();
     screen.getByRole("tab", { name: "Heading Styles" }).focus();
-    await user.keyboard("{End}");
+    // This tab rail is vertical (ArrowDown/ArrowUp, not ArrowRight/Left —
+    // see Tabs.tsx's `nextKey`), and Writing Goals is now second-to-last
+    // (Noise Words follows it), so arrow down five times from Heading
+    // Styles rather than {End}.
+    await user.keyboard(
+      "{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}",
+    );
     const tab = screen.getByRole("tab", { name: "Writing Goals" });
     expect(tab).toHaveFocus();
     expect(tab).toHaveAttribute("aria-selected", "true");

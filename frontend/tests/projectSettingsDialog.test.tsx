@@ -90,7 +90,7 @@ afterEach(() => {
 });
 
 describe("ProjectSettingsDialog", () => {
-  it("renders the 'Project Settings' title and 6 tabs, defaulting to Heading Styles", () => {
+  it("renders the 'Project Settings' title and 7 tabs, defaulting to Heading Styles", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
@@ -103,7 +103,7 @@ describe("ProjectSettingsDialog", () => {
     ).toBeInTheDocument();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(6);
+    expect(tabs).toHaveLength(7);
     expect(screen.getByRole("tab", { name: /Heading Styles/ })).toHaveAttribute(
       "aria-selected",
       "true",
