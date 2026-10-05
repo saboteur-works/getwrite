@@ -187,7 +187,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The product owner has reviewed the complete, assembled restyled graph (all four elements together, both dark and light mode, with kind-encoding from Tasks 1–11 also visible) and given explicit qualitative sign-off that the feature as a whole — not just its individual pieces — is complete; this sign-off is recorded as the feature's actual completion condition for FR-14, not a predefined checklist.
 **Depends on:** Task 12, Task 13, Task 14, Task 15, Task 16, Task 17, Task 18, Task 19
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 **Notes:** This task cannot be satisfied by an implementor's own judgment, however confident — FR-14's explicit text rules out self-certification against a checklist in place of this review.
 
 ## Summary
