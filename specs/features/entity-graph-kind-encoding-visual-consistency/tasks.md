@@ -163,7 +163,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The product owner has reviewed a built, running implementation of the restyled settings panel/reset-view (alongside the already-signed-off nodes and edges) and explicitly signed off, or requested changes that reopen Task 16.
 **Depends on:** Task 16
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Visual-consistency pass — restyle tooltip overlay, remove drop shadow
 **What:** Restyles `entityGraphTooltipOverlay.css` to brand tokens/typography and removes its `box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)` entirely, per the resolved OQ-6/D10 constraint, replacing it with a token-based, non-shadow elevation treatment that supports both dark and light mode (FR-11, FR-13). The identical shadow in `QueryBuilder/value-picker.css` is explicitly out of scope and must not be touched by this task.
