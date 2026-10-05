@@ -144,7 +144,11 @@ const ApiProjectFeatureFlagsSchema = z.object({
   entityHighlighting: z.boolean().optional(),
 });
 
-const ApiOrganizerCardBodySourceSchema = z.enum(["notes", "field"]);
+const ApiOrganizerCardBodySourceSchema = z.enum([
+  "none",
+  "text-excerpt",
+  "field",
+]);
 
 const ApiOrganizerCardBodyConfigSchema = z.object({
   source: ApiOrganizerCardBodySourceSchema,
