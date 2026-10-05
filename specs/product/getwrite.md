@@ -850,6 +850,49 @@ lost work.
   position/edges count (or don't) toward another visible node's hop
   distance. This requirement rides the existing `entities` feature flag and
   MUST NOT introduce a flag of its own, consistent with FR-39/FR-40. [US-17]
+- FR-52: On the entity relationship graph (FR-39), a node MUST be visually
+  distinguished by its declared entity's `entityKind` using both color and
+  shape together, not either alone. Status: Not started. This is new scope,
+  decided alongside the FR-39/FR-40/FR-51 grouped feature in the owner's
+  planning conversation but deliberately deferred out of that round rather
+  than built with it. Today every node on the graph renders identically
+  regardless of `entityKind` (`EntityGraphCanvas.tsx`) — the field is
+  captured (FR-35) and shown in the roster (FR-38) and an entity's own
+  sidebar, but plays no visual role on the graph itself. Because
+  `entityKind` is an open, per-project, writer-defined vocabulary rather
+  than a fixed enum (FR-35), the product cannot ship one fixed finite
+  color/shape palette; a per-project mapping from each kind in use to a
+  color and a shape MUST be writer-customizable, with a persisted default
+  treatment applied to any declared kind that has no assigned mapping yet.
+  Using color as one of the two encoding dimensions MUST NOT become the
+  graph's only way of conveying kind — this repeats, for node kind, the
+  same colour-only concern FR-39 already disallows for its edge types per
+  `docs/standards/accessibility.md`'s general discipline, and this
+  requirement MUST be implemented consistently with that constraint rather
+  than resolving it here. This requirement rides the existing per-project
+  `entities` feature flag and MUST NOT introduce a flag of its own,
+  consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-53): the per-kind color/shape mapping MUST be customizable through a new dedicated modal, structurally modeled on the existing tag-management modal, listing each kind in use with a color swatch and shape picker, opened from the graph view. Resolved 2026-10-01 (OQ-54): an entity whose kind has no assigned mapping yet MUST render with a deterministic, hash-assigned shape (ensuring every unmapped kind is immediately distinct from every other) paired with a neutral default color, mirroring this product's existing tag-color convention. Resolved 2026-10-01 (OQ-55): the encoding's legibility MUST be supported by both a static legend within the customization modal and a canvas node tooltip mirroring the existing edge-tooltip mechanism, in addition to the entity's kind being disclosed as text in the synchronized accessible list. [US-17]
+- FR-53: The entity relationship graph's (FR-39) own existing rendered
+  chrome — node style, edge style, canvas background, the settings panel
+  and reset-view button (`EntityGraphSettingsPanel.tsx` and its neighbouring
+  controls), and the tooltip overlay — SHOULD be brought into closer
+  alignment with this product's existing brand and typography system:
+  IBM Plex Sans/Mono/Serif, the `--color-gw-*` brand token system, the
+  reserved-red constraint (red is reserved for position/canonical-state
+  indicators, never decoration), and dark/light mode support (CLAUDE.md's
+  "Styling" section). Status: Not started. This is new scope, decided
+  alongside the FR-39/FR-40/FR-51 grouped feature in the owner's planning
+  conversation but deliberately deferred out of that round, in the owner's
+  own words: the graph "looks and feels clunky" as it stands. This
+  requirement is deliberately scoped narrowly to bringing the graph's own
+  already-existing rendered elements into token-compliance and visual
+  consistency with the rest of the product — it is not a license to redesign
+  the graph's interaction model, add new chrome, or change what information
+  it presents, and it does not assert a general "look nicer" claim with no
+  concrete scope. It does not specify a finished visual direction; that
+  belongs at the feature-spec rung. This requirement rides the existing
+  per-project `entities` feature flag and MUST NOT introduce a flag of its
+  own, consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-56): "done" for this pass is qualitative owner sign-off against a built implementation, not a predefined checklist — the feature spec and task breakdown for this requirement MUST include an explicit owner review/sign-off step rather than treating completion as self-certifiable against fixed criteria. [US-17]
 
 ### Later Requirements
 
@@ -2227,6 +2270,26 @@ pipeline lead's recommendation, made explicitly because resolving OQ-50 in
 the same pass removed the sequencing blocker the original OQ-52 options
 were built around.
 **Impact:** FR-51.
+
+**OQ-53 (resolved): Where does the per-project entity-kind-to-color/shape customization UI (FR-52) live, and what does it look like?**
+**Resolution:** A new dedicated modal, structurally modeled on `TagsManagerModal.tsx` — a list of kind rows, each with a color swatch and a shape picker — opened from the graph view itself (not folded into Project Settings, not an extension of `EntityGraphSettingsPanel.tsx`'s fixed-checklist pattern, which doesn't structurally fit an open, add/remove-row vocabulary).
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, following the pipeline lead's framing of the three options (extend `EntityGraphSettingsPanel`, a new dedicated modal, or fold into Project Settings) — the owner chose the dedicated-modal option specifically because it's the structurally consistent match for an open vocabulary, unlike the other two.
+**Impact:** FR-52.
+
+**OQ-54 (resolved): What is the default/fallback visual treatment (FR-52) for a declared entity whose `entityKind` has no assigned color/shape mapping yet — before a writer has customized anything, or for a newly introduced kind?**
+**Resolution:** A hybrid default: a deterministic shape — hash-assigned from a small fixed shape set so every unmapped kind is immediately visually distinct from every other unmapped kind with zero writer action — paired with a neutral/default color, consistent with this codebase's existing tag-color convention (`TagSchema.color` optional, unset renders as a neutral default rather than any deterministic per-tag color assignment). The reasoning for this specific split (deterministic shape, neutral color — not the reverse): shape is the more robust, colorblind-safe differentiator, so making it the dimension that's always automatically distinct serves FR-52's own "not color alone" requirement well by default, while color stays the dimension a writer is expected to actively customize (matching the existing tag precedent where color is the thing left unset until chosen).
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, following the pipeline lead's recommendation of this specific hybrid split (the owner chose "hybrid" without specifying the split direction; the pipeline lead proposed this one and it was accepted).
+**Impact:** FR-52.
+
+**OQ-55 (resolved): Does FR-52's kind-to-color/shape encoding require a legend (or equivalent disclosure) for the mapping to be legible, and if so, where does it render?**
+**Resolution:** Both of the two legibility mechanisms, not either alone: (a) a static legend disclosing every kind's color+shape mapping, rendered within the same new customization modal (OQ-53's resolution) as the authoritative full reference, AND (b) node tooltips on the canvas itself, mirroring the existing edge-tooltip mechanism (`entityGraphTooltipOverlay.css`, the hover/tap pattern `EntityGraphCanvas.tsx` already uses for edges) giving an at-a-glance per-node answer without leaving the canvas. These are complementary, not redundant: the legend is the complete reference, the tooltip is the in-context lookup. This is in addition to — not instead of — the accessibility-constraint resolution already established in this same triage round: `entityKind` text added to each node's entry in the synchronized accessible list (`EntityGraphAccessibleList.tsx`), extending the precedent `edgeDescriptions.ts` already sets for edge-kind disclosure.
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, choosing both named options rather than picking one.
+**Impact:** FR-52.
+
+**OQ-56 (resolved): What concretely counts as "done" for FR-53's visual-consistency pass?**
+**Resolution:** Qualitative owner sign-off against a built prototype/first implementation pass — not a predefined objective checklist. This means FR-53's task breakdown should produce a working implementation first and present it for the owner's review and approval, rather than defining fixed pass/fail acceptance criteria upfront; the feature spec and task list for this work should include an explicit review/sign-off step near the end of the work, not treat "done" as self-certifiable by an implementor against a checklist.
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, choosing the qualitative-sign-off option over the checklist or hybrid alternatives offered.
+**Impact:** FR-53.
 
 ## Out of Scope (Deferred)
 

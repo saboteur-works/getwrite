@@ -203,6 +203,35 @@ describe("EntityGraphAccessibleList", () => {
     expect(list.textContent).toContain("Unknown entity");
   });
 
+  it("discloses each node's entityKind as readable text (FR-8)", () => {
+    renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
+
+    const items = screen.getAllByTestId("entity-graph-node-item");
+    const kindFor = (name: string): string | undefined =>
+      items
+        .find((item: HTMLElement) => item.textContent?.includes(name))
+        ?.querySelector('[data-testid="entity-graph-node-kind"]')
+        ?.textContent ?? undefined;
+
+    expect(kindFor("Anna")).toContain("Kind: character");
+    expect(kindFor("Bob")).toContain("Kind: character");
+    expect(kindFor("Carl")).toContain("Kind: character");
+  });
+
+  it("discloses an explicit 'no kind' label rather than an empty/missing string for an entity with no declared kind", () => {
+    const nodesWithEmptyKind: EntityGraphNode[] = [
+      { entityId: "e-mystery", name: "Mystery", entityKind: "" },
+    ];
+    renderWithStore(
+      <EntityGraphAccessibleList nodes={nodesWithEmptyKind} edges={[]} />,
+    );
+
+    const item = screen.getByTestId("entity-graph-node-item");
+    expect(
+      item.querySelector('[data-testid="entity-graph-node-kind"]')?.textContent,
+    ).toContain("Kind: no kind");
+  });
+
   it("is visually hidden without leaving the accessibility tree", () => {
     renderWithStore(
       <EntityGraphAccessibleList

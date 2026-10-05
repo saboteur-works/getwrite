@@ -265,6 +265,13 @@ const nextConfig = {
           // same rule as above.
           "../../store/transport/native-entity-graph-positions-backend":
             "./src/store/transport/native-entity-graph-positions-backend.web-stub",
+          // entity-graph-kind-styles Task 4:
+          // lib/api/entity-graph-kind-styles.ts also lives in src/lib/api/,
+          // so its dynamic import's literal specifier is
+          // "../../store/transport/native-entity-graph-kind-styles-backend"
+          // — same rule as above.
+          "../../store/transport/native-entity-graph-kind-styles-backend":
+            "./src/store/transport/native-entity-graph-kind-styles-backend.web-stub",
         },
   },
 };

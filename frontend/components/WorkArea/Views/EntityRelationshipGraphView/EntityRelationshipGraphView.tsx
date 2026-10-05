@@ -34,12 +34,18 @@ import {
   type SharedMetadataEdge,
 } from "../../../../src/lib/api/entity-shared-metadata-edges";
 import {
+  getEntityGraphKindStyles,
+  type EntityGraphKindStyleRecord,
+} from "../../../../src/lib/api/entity-graph-kind-styles";
+import {
   DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
   filterToKnownConnectionTypes,
 } from "../../../../src/lib/models/entity-graph-connection-types";
 import type { EntityAliasEntry } from "../../../../src/lib/models/entity-alias-table";
 import EntityGraphCanvas from "./EntityGraphCanvas";
 import EntityGraphAccessibleList from "./EntityGraphAccessibleList";
+import EntityKindStylesModal from "./EntityKindStylesModal";
+import Button from "../../../common/UI/Button";
 
 export interface EntityRelationshipGraphViewProps {
   /** Optional className for the outer container. */
@@ -326,6 +332,17 @@ export default function EntityRelationshipGraphView({
   const [sharedMetadataEdges, setSharedMetadataEdges] = React.useState<
     SharedMetadataEdge[]
   >([]);
+  // Feature 69, Task 8: the project's persisted entity-kind color/shape
+  // style mapping, fetched alongside this view's other project-scoped reads
+  // and threaded straight through to `EntityGraphCanvas` as `kindStyles`.
+  // Re-fetched whenever `projectId` changes, the same minimal seam Task 6/7's
+  // customization modal is expected to trigger a refetch through once it
+  // exists (e.g. by calling this same fetch again after a save) — this task
+  // does not build that trigger itself, only makes sure the data path isn't
+  // dead-ended (see this task's own "Report back" instructions).
+  const [kindStyles, setKindStyles] = React.useState<
+    EntityGraphKindStyleRecord[]
+  >([]);
   const [connectionTypes, setConnectionTypes] = React.useState<string[]>(
     DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
   );
@@ -344,6 +361,26 @@ export default function EntityRelationshipGraphView({
   // receive this same `focalEntityId` value below, so setting it from either
   // surface updates both.
   const [focalEntityId, setFocalEntityId] = React.useState<string | null>(null);
+  // Feature 69, Task 7: the kind-style customization modal's own open/closed
+  // state. The modal is gated behind the `entities` flag at its one entry
+  // point below (the button), not inside the modal itself.
+  const [isKindStylesModalOpen, setIsKindStylesModalOpen] =
+    React.useState(false);
+
+  // Re-fetches the persisted kind-style mapping (the same read the mount
+  // effect below performs) so the canvas picks up a save made in
+  // `EntityKindStylesModal` without a reload (FR-4). Extracted to its own
+  // callback so both the mount effect and the modal's `onStylesChanged`
+  // callback can trigger it without duplicating the fetch-or-degrade logic.
+  const refetchKindStyles = React.useCallback(() => {
+    if (!projectId) return;
+    void getEntityGraphKindStyles(projectId)
+      .then((result) => setKindStyles(result))
+      .catch((err: unknown) => {
+        console.error("Failed to load the entity-graph kind styles.", err);
+        setKindStyles([]);
+      });
+  }, [projectId]);
 
   React.useEffect(() => {
     if (!projectId) {
@@ -352,6 +389,7 @@ export default function EntityRelationshipGraphView({
       setBacklinkEdges([]);
       setProximityMentions({});
       setSharedMetadataEdges([]);
+      setKindStyles([]);
       setConnectionTypes(DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES);
       setFocalHopRadius(1);
       return;
@@ -372,6 +410,20 @@ export default function EntityRelationshipGraphView({
     void getEntitySharedMetadataEdges(projectId).then((result) => {
       if (!isCancelled) setSharedMetadataEdges(result);
     });
+    void getEntityGraphKindStyles(projectId)
+      .then((result) => {
+        if (!isCancelled) setKindStyles(result);
+      })
+      .catch((err: unknown) => {
+        // `getEntityGraphKindStyles` rejects on any failure rather than
+        // degrading (see its own module doc). Falling back to `[]` here
+        // keeps this view's own degrade-gracefully posture for its other
+        // non-settings reads — every node then renders via Task 5's
+        // deterministic fallback style rather than this view throwing or
+        // leaving the graph unrendered.
+        console.error("Failed to load the entity-graph kind styles.", err);
+        if (!isCancelled) setKindStyles([]);
+      });
     void getEntityGraphSettings(projectId)
       .then((settings: EntityGraphSettings) => {
         if (!isCancelled) {
@@ -466,12 +518,34 @@ export default function EntityRelationshipGraphView({
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col ${className}`}
+      className={`mt-4 flex h-full min-h-0 flex-col ${className}`}
       data-testid="entity-relationship-graph-view"
     >
-      <h2 className="mb-4 text-gw-h2 font-semibold text-gw-secondary">
-        Relationship Graph
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-gw-h2 font-semibold text-gw-secondary">
+          Relationship Graph
+        </h2>
+        {isEntitiesEnabled ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="mr-2"
+            data-testid="entity-kind-styles-open-button"
+            onClick={() => setIsKindStylesModalOpen(true)}
+          >
+            Kind colors &amp; shapes
+          </Button>
+        ) : null}
+      </div>
+      {isEntitiesEnabled && projectId ? (
+        <EntityKindStylesModal
+          isOpen={isKindStylesModalOpen}
+          projectId={projectId}
+          declaredEntityKinds={graphData.nodes.map((node) => node.entityKind)}
+          onClose={() => setIsKindStylesModalOpen(false)}
+          onStylesChanged={refetchKindStyles}
+        />
+      ) : null}
       {isEmpty ? (
         <p data-testid="entity-relationship-graph-empty-state">
           No entities have been declared yet. Give a resource an entity kind to
@@ -489,6 +563,7 @@ export default function EntityRelationshipGraphView({
               onNodeActivated={onEntityActivated}
               projectId={projectId ?? undefined}
               activeConnectionTypes={activeConnectionTypes}
+              kindStyles={kindStyles}
               focalEntityId={focalEntityId}
               onFocalEntityChange={setFocalEntityId}
               focalHopRadius={focalHopRadius}

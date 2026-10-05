@@ -10,7 +10,7 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityRelationshipGraphView from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 import { makeStore } from "../../src/store/store";
@@ -46,6 +46,13 @@ vi.mock("../../src/lib/api/entity-graph-positions", () => ({
   getEntityGraphPositions: vi.fn(),
   saveEntityGraphPosition: vi.fn(),
 }));
+// Feature 69, Task 7/8: `EntityGraphCanvas` and the new kind-styles entry
+// point both read the kind-style mapping; mocked here for the same reason as
+// `entity-graph-positions` above, so no real `fetch` is attempted.
+vi.mock("../../src/lib/api/entity-graph-kind-styles", () => ({
+  getEntityGraphKindStyles: vi.fn(),
+  saveEntityGraphKindStyle: vi.fn(),
+}));
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
@@ -57,6 +64,7 @@ import {
 import { updateSidecar } from "../../src/lib/api/resources";
 import { listTags } from "../../src/lib/api/tags";
 import { getEntityGraphPositions } from "../../src/lib/api/entity-graph-positions";
+import { getEntityGraphKindStyles } from "../../src/lib/api/entity-graph-kind-styles";
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityCooccurrence = vi.mocked(getEntityCooccurrence);
@@ -66,6 +74,7 @@ const mockedRemoveEntityRelationship = vi.mocked(removeEntityRelationship);
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
 const mockedListTags = vi.mocked(listTags);
 const mockedGetEntityGraphPositions = vi.mocked(getEntityGraphPositions);
+const mockedGetEntityGraphKindStyles = vi.mocked(getEntityGraphKindStyles);
 
 const PROJECT_ID = "proj-entity-graph";
 
@@ -102,6 +111,8 @@ beforeEach(() => {
   // `vi.spyOn()` spies — so this is explicit to avoid cross-test leakage.
   mockedGetEntityGraphPositions.mockReset();
   mockedGetEntityGraphPositions.mockResolvedValue([]);
+  mockedGetEntityGraphKindStyles.mockReset();
+  mockedGetEntityGraphKindStyles.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -394,6 +405,130 @@ describe("EntityRelationshipGraphView", () => {
       expect(mockedUpdateSidecar).not.toHaveBeenCalled();
       expect(mockedCreateEntityRelationship).not.toHaveBeenCalled();
       expect(mockedRemoveEntityRelationship).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("kind-styles customization entry point (Feature 69, Task 7, FR-10)", () => {
+    const table: EntityAliasTable = {
+      entities: {
+        "e-anna": {
+          entityId: "e-anna",
+          entityKind: "character",
+          name: "Anna",
+          aliases: [],
+          terms: ["Anna"],
+        },
+      },
+      claimedBy: {},
+    };
+
+    beforeEach(() => {
+      mockedGetEntityCooccurrence.mockResolvedValue({});
+      mockedListEntityRelationships.mockResolvedValue([]);
+    });
+
+    it("renders the entry-point button when the entities flag is enabled", async () => {
+      const store = await setupStore(table, true);
+
+      render(
+        <Provider store={store}>
+          <EntityRelationshipGraphView />
+        </Provider>,
+      );
+
+      expect(
+        await screen.findByTestId("entity-kind-styles-open-button"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render the entry-point button when the entities flag is off", async () => {
+      const store = await setupStore(table, false);
+
+      render(
+        <Provider store={store}>
+          <EntityRelationshipGraphView />
+        </Provider>,
+      );
+
+      await screen.findByTestId("entity-graph-canvas");
+      expect(
+        screen.queryByTestId("entity-kind-styles-open-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the kind-styles modal when the entry-point button is clicked", async () => {
+      const store = await setupStore(table, true);
+
+      render(
+        <Provider store={store}>
+          <EntityRelationshipGraphView />
+        </Provider>,
+      );
+
+      const button = await screen.findByTestId(
+        "entity-kind-styles-open-button",
+      );
+      button.click();
+
+      expect(
+        await screen.findByText("Entity kind colors and shapes"),
+      ).toBeInTheDocument();
+    });
+
+    it("re-fetches kind styles after a save in the modal, so the canvas receives the refreshed list", async () => {
+      mockedGetEntityGraphKindStyles.mockResolvedValueOnce([]);
+      const store = await setupStore(table, true);
+
+      render(
+        <Provider store={store}>
+          <EntityRelationshipGraphView />
+        </Provider>,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphKindStyles).toHaveBeenCalledWith(PROJECT_ID),
+      );
+      const callsBeforeOpen = mockedGetEntityGraphKindStyles.mock.calls.length;
+
+      // Queued before opening: the modal's own `loadStyles` effect (which
+      // fires on open) consumes this, giving it an already-configured
+      // "character" row whose color select can be changed to trigger an
+      // immediate persist (FR-4's "configured row persists on change"
+      // behavior — the new/unmapped section instead requires an explicit
+      // "Save style" click, which this test isn't exercising).
+      mockedGetEntityGraphKindStyles.mockResolvedValueOnce([
+        { entityKind: "character", color: "entity-kind-0", shape: "circle" },
+      ]);
+
+      const openButton = await screen.findByTestId(
+        "entity-kind-styles-open-button",
+      );
+      openButton.click();
+
+      // The modal's own `loadStyles` effect fetches again on open.
+      await waitFor(() =>
+        expect(
+          mockedGetEntityGraphKindStyles.mock.calls.length,
+        ).toBeGreaterThan(callsBeforeOpen),
+      );
+      const callsAfterOpen = mockedGetEntityGraphKindStyles.mock.calls.length;
+
+      const { saveEntityGraphKindStyle } =
+        await import("../../src/lib/api/entity-graph-kind-styles");
+      vi.mocked(saveEntityGraphKindStyle).mockResolvedValue({
+        entityKind: "character",
+        color: "entity-kind-0",
+        shape: "circle",
+      });
+
+      const colorSelect = await screen.findByLabelText("character color");
+      fireEvent.change(colorSelect, { target: { value: "entity-kind-3" } });
+
+      await waitFor(() =>
+        expect(
+          mockedGetEntityGraphKindStyles.mock.calls.length,
+        ).toBeGreaterThan(callsAfterOpen),
+      );
     });
   });
 });

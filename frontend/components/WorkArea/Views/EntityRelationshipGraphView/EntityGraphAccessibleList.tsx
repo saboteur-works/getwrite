@@ -29,6 +29,29 @@ import { computeHopDistances } from "./entityGraphHopDistance";
  */
 const DEFAULT_FOCAL_HOP_RADIUS = 1;
 
+/**
+ * Label used when a node's `entityKind` is an empty string (Feature 69,
+ * FR-8) — this view only ever shows declared entities, which require a
+ * non-empty `entityKind` to be declared in the first place (see
+ * `EntitySidecarFieldsSchema`), so this is a defensive fallback for a case
+ * that should not occur in practice, not an expected state. An explicit
+ * label is used rather than omitting the disclosure entirely or rendering an
+ * empty/missing string, mirroring `UNKNOWN_ENTITY_LABEL`'s precedent in
+ * `edgeDescriptions.ts` of never silently dropping a disclosure.
+ */
+const NO_ENTITY_KIND_LABEL = "no kind";
+
+/**
+ * Composes a node's kind-disclosure text (Feature 69, FR-8): "Kind: <kind>",
+ * extending the precedent `edgeDescriptions.ts` already sets for edge-kind
+ * disclosure — the identical text appears in the canvas's own node
+ * tooltip/legend surfaces introduced by later Feature 69 tasks, so this
+ * wording is the one later tasks should reuse for consistency.
+ */
+function describeEntityKind(entityKind: string): string {
+  return `Kind: ${entityKind.trim() === "" ? NO_ENTITY_KIND_LABEL : entityKind}`;
+}
+
 export interface EntityGraphAccessibleListProps {
   nodes: EntityGraphNode[];
   edges: EntityGraphEdge[];
@@ -106,6 +129,13 @@ function sortNodesByName(nodes: EntityGraphNode[]): EntityGraphNode[] {
  * rendering — this list never consults the canvas's visual (dimmed/hidden)
  * state, so a node the canvas dims for being outside the hop radius remains
  * exactly as reachable and activatable here as any other node (FR-20/OQ-10).
+ *
+ * As of Feature 69 Task 10 (FR-8), each node `<li>` also discloses that
+ * entity's `entityKind` as literal text ("Kind: character"), extending the
+ * precedent `edgeDescriptions.ts` already sets for edge-kind disclosure. An
+ * entity with no declared kind — not expected in this view, since every node
+ * here is already a declared entity — is disclosed with an explicit "no
+ * kind" label rather than an empty or missing string.
  *
  * Rendered by `EntityRelationshipGraphView.tsx` alongside `EntityGraphCanvas`,
  * from the same node and edge data, so the two stay in step. It takes that
@@ -302,6 +332,9 @@ export default function EntityGraphAccessibleList({
               >
                 {`Set ${node.name} as focal point`}
               </button>
+              <span data-testid="entity-graph-node-kind">
+                {`(${describeEntityKind(node.entityKind)})`}
+              </span>
               {focalStatus !== null && (
                 <span data-testid="entity-graph-node-focal-status">
                   {`(${focalStatus})`}
