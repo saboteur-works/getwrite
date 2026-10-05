@@ -179,7 +179,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The product owner has reviewed a built, running implementation of the restyled tooltip overlay (alongside the already-signed-off nodes, edges, and settings panel) and explicitly signed off, or requested changes that reopen Task 18.
 **Depends on:** Task 18
 **Estimate:** 1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Final holistic owner sign-off
 **What:** A single final review, once all four restyled elements (nodes, edges, settings panel/reset-view, tooltip overlay) are complete and visible together in one running build, confirming the whole graph surface reads as part of the same product as the rest of GetWrite (FR-14/OQ-7's second, holistic sign-off requirement, distinct from and in addition to the four per-element checkpoints above).
