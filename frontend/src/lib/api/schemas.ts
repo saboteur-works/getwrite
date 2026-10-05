@@ -765,3 +765,13 @@ export const NoiseWordListsResponseSchema = z.object({
   customNoiseWords: z.array(z.string()),
   excludedGlobalNoiseWords: z.array(z.string()),
 });
+
+// ---------------------------------------------------------------------------
+// GlobalNoiseWordsResponseSchema — Entity Mention Noise Flagging, Task 11
+// (client transport collapse for the cross-project global noise-word list).
+// Matches `app/api/global-noise-words/route.ts`'s bare-array response shape
+// exactly (both `GET` and `PUT` return the same shape: the full persisted
+// list). No wrapping object, mirroring the route's own on-the-wire shape.
+// ---------------------------------------------------------------------------
+
+export const GlobalNoiseWordsResponseSchema = z.array(z.string());

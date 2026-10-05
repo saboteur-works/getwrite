@@ -272,6 +272,13 @@ const nextConfig = {
           // — same rule as above.
           "../../store/transport/native-entity-graph-kind-styles-backend":
             "./src/store/transport/native-entity-graph-kind-styles-backend.web-stub",
+          // Entity Mention Noise Flagging Task 11:
+          // lib/api/global-noise-words.ts also lives in src/lib/api/, so
+          // its dynamic import's literal specifier is
+          // "../../store/transport/native-global-noise-words-backend" —
+          // same rule as above.
+          "../../store/transport/native-global-noise-words-backend":
+            "./src/store/transport/native-global-noise-words-backend.web-stub",
         },
   },
 };
