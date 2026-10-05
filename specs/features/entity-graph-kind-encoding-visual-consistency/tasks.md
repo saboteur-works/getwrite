@@ -74,7 +74,7 @@ holistic sign-off once all four are done and visible together.
 **Depends on:** Task 4, Task 1
 **Estimate:** 5
 **Done:** [x]
-**Notes:** Non-goal explicitly excludes redesigning `TagsManagerModal.tsx` itself — this task only models structure on it (its layout/list/row-action conventions), not its code.
+**Notes:** Non-goal explicitly excludes redesigning `TagsManagerModal.tsx` itself — this task only models structure on it (its layout/list/row-action conventions), not its code. Correction (2026-10-04): the `<DialogContent maxWidth="max-w-[640px]">` call omitted `className="p-6"`, leaving the modal's content flush against its edges with no padding, unlike `EncryptionSetupModal.tsx`/`UnlockModal.tsx`; added `className="p-6"` to match.
 
 ### Task 7: Customization modal — static legend and graph-view entry point
 **What:** Adds the modal's static legend disclosing every kind's current color+shape mapping as the authoritative full reference (covering both the ever-configured list and the live new/unmapped section, including kinds still on Task 5's default treatment), and wires a button/entry point into the graph view that opens the modal, gated behind the existing `entities` feature flag with no new flag introduced (FR-10).

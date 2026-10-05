@@ -64,6 +64,22 @@ describe("EntityKindStylesModal", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders its dialog content with padding (p-6), matching every other Dialog-based modal", async () => {
+    mockGet.mockResolvedValue([]);
+
+    render(
+      <EntityKindStylesModal
+        isOpen
+        projectId="p1"
+        declaredEntityKinds={["character"]}
+        onClose={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+    expect(screen.getByRole("dialog").className).toContain("p-6");
+  });
+
   it("persists a configured kind's color change immediately and reflects it without a reload", async () => {
     mockGet.mockResolvedValue([
       { entityKind: "character", color: "entity-kind-0", shape: "circle" },

@@ -389,7 +389,7 @@ export default function EntityKindStylesModal({
         if (!open) onClose();
       }}
     >
-      <DialogContent maxWidth="max-w-[640px]">
+      <DialogContent maxWidth="max-w-[640px]" className="p-6">
         <DialogTitle>Entity kind colors and shapes</DialogTitle>
         <DialogDescription>
           Choose the color and shape each entity kind renders as on the
