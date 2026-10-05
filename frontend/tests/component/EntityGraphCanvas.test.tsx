@@ -52,6 +52,11 @@ import type {
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 import * as edgeDescriptions from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeDescriptions";
 import {
+  hashEntityKindToShapeName,
+  getEntityKindShapeGeometry,
+} from "../../components/WorkArea/Views/EntityRelationshipGraphView/entityKindShapes";
+import type { EntityGraphKindStyleRecord } from "../../src/lib/api/entity-graph-kind-styles";
+import {
   describeAuthoredEdge,
   describeCooccurrenceEdge,
 } from "../../components/WorkArea/Views/EntityRelationshipGraphView/edgeDescriptions";
@@ -79,6 +84,29 @@ const EDGES: EntityGraphEdge[] = [
 ];
 
 const RESERVED_RED_HEX = "#d44040";
+
+/**
+ * Mirrors the source file's own `NODE_RADIUS` (currently `22`, not exported)
+ * — used only to compute the expected shape geometry a test asserts against,
+ * never to assert on the constant's own value.
+ */
+const NODE_RADIUS_FOR_TEST = 22;
+
+/**
+ * Extracts a non-circle shape's `d` string, throwing if the shape resolves
+ * to the circle geometry instead — a test-only narrowing helper so call
+ * sites below don't need to repeat the `kind === "path"` check themselves.
+ */
+function expectedShapePathD(
+  shape: Parameters<typeof getEntityKindShapeGeometry>[0],
+  boundingRadius: number,
+): string {
+  const geometry = getEntityKindShapeGeometry(shape, boundingRadius);
+  if (geometry.kind !== "path") {
+    throw new Error(`Expected a path geometry for shape "${shape}"`);
+  }
+  return geometry.d;
+}
 
 const mockedGetEntityGraphPositions = vi.mocked(getEntityGraphPositions);
 const mockedSaveEntityGraphPosition = vi.mocked(saveEntityGraphPosition);
@@ -257,6 +285,29 @@ describe("EntityGraphCanvas", () => {
       expect(fill.toLowerCase()).not.toBe(RESERVED_RED_HEX);
       expect(stroke.toLowerCase()).not.toBe(RESERVED_RED_HEX);
     }
+  });
+
+  it("renders every edge's stroke and the arrowhead marker's fill via the --color-gw-secondary brand token (Feature 69, Task 14)", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const edgeElements = screen.getAllByTestId("entity-graph-edge");
+    expect(edgeElements.length).toBeGreaterThan(0);
+    for (const el of edgeElements) {
+      expect((el as HTMLElement).style.stroke).toBe(
+        "var(--color-gw-secondary)",
+      );
+    }
+
+    const authoredEdge = edgeElements.find(
+      (el: HTMLElement) => el.getAttribute("data-edge-kind") === "authored",
+    );
+    const authoredMarkerEnd = authoredEdge!.getAttribute("marker-end");
+    const markerId = authoredMarkerEnd!.slice(5, -1);
+    const markerEl = document.getElementById(markerId);
+    const markerPath = markerEl?.querySelector("path");
+    expect((markerPath as unknown as HTMLElement)?.style.fill).toBe(
+      "var(--color-gw-secondary)",
+    );
   });
 
   it("distinguishes a co-occurrence edge from an authored edge by a non-colour cue (dash pattern)", () => {
@@ -458,6 +509,17 @@ describe("EntityGraphCanvas", () => {
     expect(reset.x).toBe(0);
     expect(reset.y).toBe(0);
     expect(reset.scale).toBe(1);
+  });
+
+  it("renders the reset-view button's chrome via --color-gw-* brand tokens, never a raw color value or the reserved red token (Feature 69, Task 16)", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const resetButton = screen.getByTestId("entity-graph-reset-view");
+    expect(resetButton.className).toMatch(/\bborder-gw-border\b/);
+    expect(resetButton.className).toMatch(/\btext-gw-secondary\b/);
+    expect(resetButton.className).not.toMatch(/gw-red/);
+    expect(resetButton.className).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+    expect(resetButton.className).not.toMatch(/rgba?\(/);
   });
 
   it("anchors a wheel zoom on the pointer, keeping the graph point under the cursor fixed", () => {
@@ -1529,15 +1591,21 @@ describe("EntityGraphCanvas", () => {
       }
     });
 
-    it("never shows a tooltip when hovering a node (FR-8)", () => {
+    // Supersedes this describe block's own prior "never shows a tooltip when
+    // hovering a node (FR-8)" test from entity-graph-edge-tooltips: Feature
+    // 69, Task 9 (FR-7) deliberately extends the identical mechanism to
+    // nodes — see the "node kind tooltip" describe block below for that
+    // behavior's own coverage.
+    it("still shows the edge tooltip, not the node tooltip, when hovering an edge's hit-target rather than a node", () => {
       render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
 
-      const [firstNode] = screen.getAllByTestId("entity-graph-node");
-      fireEvent.mouseEnter(firstNode, { clientX: 5, clientY: 5 });
+      fireEvent.mouseEnter(getHitTargetFor("cooccurrence"), {
+        clientX: 10,
+        clientY: 20,
+      });
 
-      expect(
-        screen.queryByTestId("entity-graph-edge-tooltip"),
-      ).not.toBeInTheDocument();
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip).toHaveAttribute("data-tooltip-kind", "edge");
     });
 
     it("does not make an edge hit-target keyboard-focusable (FR-9)", () => {
@@ -1597,6 +1665,148 @@ describe("EntityGraphCanvas", () => {
         fireEvent.mouseLeave(hitTarget);
         fireEvent.click(hitTarget, { clientX: 1, clientY: 1 });
         fireEvent.click(hitTarget, { clientX: 1, clientY: 1 });
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe("node kind tooltip (Feature 69, Task 9, FR-7)", () => {
+    function getNodeFor(entityId: string): HTMLElement {
+      const node = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === entityId,
+        );
+      if (!node) throw new Error(`No node found for entityId "${entityId}"`);
+      return node;
+    }
+
+    it("shows a tooltip naming the entity's kind and its deterministic fallback color+shape mapping on hover", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.mouseEnter(getNodeFor("e-1"), { clientX: 10, clientY: 20 });
+
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip).toHaveAttribute("data-tooltip-kind", "node");
+      const expectedShape = hashEntityKindToShapeName("character");
+      expect(tooltip.textContent).toBe(
+        `Kind: character — default color ${expectedShape}`,
+      );
+    });
+
+    it("shows a tooltip naming the entity's kind and its configured color+shape mapping on hover", () => {
+      const kindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-2", shape: "star" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={kindStyles}
+        />,
+      );
+
+      fireEvent.mouseEnter(getNodeFor("e-1"), { clientX: 10, clientY: 20 });
+
+      const tooltip = screen.getByTestId("entity-graph-edge-tooltip");
+      expect(tooltip.textContent).toBe("Kind: character — color 3 star");
+    });
+
+    it("shows the tooltip on a simulated tap, dismisses it on a second tap of the same node, and dismisses it on a tap elsewhere — the exact dismiss rules the edge tooltip already uses", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      const node = getNodeFor("e-1");
+
+      // A tap fires as a click event, same as a mouse click on touch input.
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      // A second tap on the same node dismisses it.
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+
+      // Re-open it, then dismiss via a tap elsewhere (the canvas background).
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      const background = screen.getByTestId("entity-graph-canvas-background");
+      fireEvent.click(background);
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("dismisses the hover-shown node tooltip on mouse leave", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      const node = getNodeFor("e-1");
+      fireEvent.mouseEnter(node, { clientX: 10, clientY: 20 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+
+      fireEvent.mouseLeave(node);
+      expect(
+        screen.queryByTestId("entity-graph-edge-tooltip"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not dismiss a node's own existing selection/activation behavior when its tooltip is tapped open (no regression to click-to-select)", () => {
+      const handleActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={[]}
+          onNodeActivated={handleActivated}
+        />,
+      );
+
+      const node = getNodeFor("e-1");
+      fireEvent.click(node, { clientX: 30, clientY: 40 });
+
+      expect(screen.getByTestId("entity-graph-edge-tooltip")).toBeVisible();
+      expect(node).toHaveAttribute("data-selected", "true");
+      expect(handleActivated).toHaveBeenCalledWith("e-1");
+    });
+
+    it("moves a tapped node tooltip to a second node without immediately dismissing it", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      fireEvent.click(getNodeFor("e-1"), { clientX: 1, clientY: 1 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip").textContent).toBe(
+        `Kind: character — default color ${hashEntityKindToShapeName("character")}`,
+      );
+
+      fireEvent.click(getNodeFor("e-3"), { clientX: 2, clientY: 2 });
+      expect(screen.getByTestId("entity-graph-edge-tooltip").textContent).toBe(
+        `Kind: place — default color ${hashEntityKindToShapeName("place")}`,
+      );
+    });
+
+    it("introduces no new fetch call when hovering or tapping a node's tooltip", () => {
+      const fetchSpy = vi.fn();
+      const originalFetch = global.fetch;
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      try {
+        render(
+          <EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />,
+        );
+
+        const node = getNodeFor("e-1");
+        fireEvent.mouseEnter(node, { clientX: 1, clientY: 1 });
+        fireEvent.mouseMove(node, { clientX: 2, clientY: 2 });
+        fireEvent.mouseLeave(node);
+        fireEvent.click(node, { clientX: 1, clientY: 1 });
+        fireEvent.click(node, { clientX: 1, clientY: 1 });
 
         expect(fetchSpy).not.toHaveBeenCalled();
       } finally {
@@ -2477,6 +2687,193 @@ describe("EntityGraphCanvas", () => {
       for (const edge of screen.getAllByTestId("entity-graph-edge")) {
         expect(edge.getAttribute("data-focal-dimmed")).toBe("false");
       }
+    });
+  });
+
+  describe("per-kind node color and shape rendering (Feature 69, Task 8, FR-1/FR-4/FR-5)", () => {
+    /** Finds a node's own fill/shape element — either a `<circle>` or a `<path>`. */
+    function getNodeShapeElement(node: HTMLElement): HTMLElement {
+      const el = node.querySelector(
+        ':scope > circle:not([data-testid="entity-graph-node-selection-ring"]), :scope > path',
+      );
+      if (!el) throw new Error("No node shape element found");
+      return el as HTMLElement;
+    }
+
+    it("renders a node whose kind has a saved mapping with exactly that configured color and shape", () => {
+      const kindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-2", shape: "star" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={kindStyles}
+        />,
+      );
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const anna = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+      );
+      expect(anna).toBeDefined();
+      const shapeEl = getNodeShapeElement(anna!);
+
+      expect(shapeEl.tagName.toLowerCase()).toBe("path");
+      expect(shapeEl.style.fill).toBe("var(--entity-kind-2)");
+      expect(shapeEl.getAttribute("d")).toBe(
+        expectedShapePathD("star", NODE_RADIUS_FOR_TEST),
+      );
+    });
+
+    it("renders a node whose kind has no configured mapping with Task 5's deterministic fallback shape and the neutral default color", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />);
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const castle = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-3",
+      );
+      expect(castle).toBeDefined();
+      const shapeEl = getNodeShapeElement(castle!);
+
+      const expectedShape = hashEntityKindToShapeName("place");
+      const expectedGeometry = getEntityKindShapeGeometry(
+        expectedShape,
+        NODE_RADIUS_FOR_TEST,
+      );
+      expect(shapeEl.style.fill).toBe("var(--entity-kind-default)");
+      if (expectedGeometry.kind === "circle") {
+        expect(shapeEl.tagName.toLowerCase()).toBe("circle");
+      } else {
+        expect(shapeEl.tagName.toLowerCase()).toBe("path");
+        expect(shapeEl.getAttribute("d")).toBe(expectedGeometry.d);
+      }
+    });
+
+    it("renders two unmapped kinds with visibly different shapes, matching Task 5's hash", () => {
+      const nodesWithDistinctKinds: EntityGraphNode[] = [
+        { entityId: "n-1", name: "Alpha", entityKind: "character" },
+        { entityId: "n-2", name: "Beta", entityKind: "place" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={nodesWithDistinctKinds}
+          edges={[]}
+          kindStyles={[]}
+        />,
+      );
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const alpha = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "n-1",
+      );
+      const beta = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "n-2",
+      );
+      expect(alpha).toBeDefined();
+      expect(beta).toBeDefined();
+
+      const alphaShape = hashEntityKindToShapeName("character");
+      const betaShape = hashEntityKindToShapeName("place");
+      // Fixture sanity: this assertion is only meaningful if the two
+      // fixture kinds actually hash to different shapes.
+      expect(alphaShape).not.toBe(betaShape);
+
+      // A direct geometry comparison is the real assertion — tag name alone
+      // cannot distinguish two different `path`-kind shapes, and a `circle`
+      // vs. `path` tag-name difference alone wouldn't tell us the shapes
+      // differ for the right reason.
+      const alphaGeometry = getEntityKindShapeGeometry(
+        alphaShape,
+        NODE_RADIUS_FOR_TEST,
+      );
+      const betaGeometry = getEntityKindShapeGeometry(
+        betaShape,
+        NODE_RADIUS_FOR_TEST,
+      );
+      expect(alphaGeometry).not.toEqual(betaGeometry);
+    });
+
+    it("updates a node's rendered color and shape when the kindStyles prop changes, with no reload (FR-4)", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas nodes={NODES} edges={EDGES} kindStyles={[]} />,
+      );
+
+      const before = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      const beforeShapeEl = getNodeShapeElement(before);
+      const beforeFill = beforeShapeEl.style.fill;
+
+      const updatedKindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-5", shape: "square" },
+      ];
+      rerender(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={updatedKindStyles}
+        />,
+      );
+
+      const after = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      const afterShapeEl = getNodeShapeElement(after);
+
+      expect(afterShapeEl.style.fill).toBe("var(--entity-kind-5)");
+      expect(afterShapeEl.style.fill).not.toBe(beforeFill);
+      expect(afterShapeEl.tagName.toLowerCase()).toBe("path");
+      expect(afterShapeEl.getAttribute("d")).toBe(
+        expectedShapePathD("square", NODE_RADIUS_FOR_TEST),
+      );
+    });
+
+    it("leaves every existing node interaction — selection ring, drag, activation, focal-point dimming — unaffected by kind styling", () => {
+      const onNodeActivated = vi.fn();
+      const kindStyles: EntityGraphKindStyleRecord[] = [
+        { entityKind: "character", color: "entity-kind-1", shape: "triangle" },
+      ];
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          kindStyles={kindStyles}
+          onNodeActivated={onNodeActivated}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+
+      const nodeElements = screen.getAllByTestId("entity-graph-node");
+      const [first] = nodeElements;
+      expect(first.getAttribute("data-entity-id")).toBe("e-1");
+
+      // Activation + selection still work.
+      fireEvent.click(first);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+      expect(
+        first.querySelector('[data-testid="entity-graph-node-selection-ring"]'),
+      ).not.toBeNull();
+
+      // Focal-point dimming still applies to the out-of-radius node.
+      const third = nodeElements.find(
+        (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-3",
+      )!;
+      expect(third.getAttribute("data-focal-dimmed")).toBe("true");
+
+      // Drag still repositions the node.
+      const before = parseNodeTransform(first);
+      fireEvent.pointerDown(first, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { clientX: 30, clientY: 20 });
+      const afterDrag = parseNodeTransform(first);
+      expect(afterDrag.x).not.toBeCloseTo(before.x);
+      fireEvent.pointerUp(window);
     });
   });
 });

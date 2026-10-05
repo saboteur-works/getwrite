@@ -71,6 +71,25 @@
   --timeline-pov-5: #7a5040;
   --timeline-pov-6: #5e6a4e;
   --timeline-pov-7: #7a5a6e;
+
+  /* Entity-kind categorical palette (Feature 69, FR-2/OQ-2) — a new, parallel
+     namespace, deliberately not a reuse of --timeline-pov-0..7, mirroring that
+     palette's own light/dark structural split: deeper/higher-contrast values
+     here for the light paper surface. 8 slots, one hue family each, assigned
+     to an entityKind by EntityGraphCanvas.tsx (consumed starting Task 8) —
+     round-robin over kinds in the order they were first configured, with any
+     overflow past 8 kinds wrapping back to slot 0 rather than growing the
+     palette. --entity-kind-default is the neutral fallback color FR-5 pairs
+     with an unmapped kind's hash-assigned shape, never one of the 8 slots. */
+  --entity-kind-0: #3a6ea8;
+  --entity-kind-1: #4e8a52;
+  --entity-kind-2: #a8822e;
+  --entity-kind-3: #7a4ea0;
+  --entity-kind-4: #2e8a8a;
+  --entity-kind-5: #a8562e;
+  --entity-kind-6: #566b3a;
+  --entity-kind-7: #a04e78;
+  --entity-kind-default: #7a7870;
 }
 
 /* Dark mode: restore @theme defaults */
@@ -103,6 +122,18 @@
   --timeline-pov-5: #a07060;
   --timeline-pov-6: #7e8a6e;
   --timeline-pov-7: #9e7a8e;
+
+  /* Entity-kind categorical palette (Feature 69, FR-2/OQ-2) — softer values
+     for dark surfaces, same 8-slot structure as the light-mode block above. */
+  --entity-kind-0: #6b96c6;
+  --entity-kind-1: #7cae80;
+  --entity-kind-2: #c6a560;
+  --entity-kind-3: #a082c0;
+  --entity-kind-4: #5eaeae;
+  --entity-kind-5: #c6824e;
+  --entity-kind-6: #869468;
+  --entity-kind-7: #c080a0;
+  --entity-kind-default: #8a8880;
 
   /* Dark-mode timeline overrides */
   --timeline-track-bg: #0c0c0b;

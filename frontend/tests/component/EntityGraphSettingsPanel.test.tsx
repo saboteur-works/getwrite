@@ -173,4 +173,49 @@ describe("EntityGraphSettingsPanel", () => {
       screen.queryByRole("group", { name: "Entity graph settings" }),
     ).not.toBeInTheDocument();
   });
+
+  it("renders the panel's chrome via --color-gw-* brand tokens, never a raw color value or the reserved red token (Feature 69, Task 16)", async () => {
+    render(<EntityGraphSettingsPanel projectId="p1" />);
+    openToggle();
+
+    const panel = await screen.findByTestId("entity-graph-settings-panel");
+    expect(panel.className).toMatch(/\bborder-gw-border\b/);
+    expect(panel.className).toMatch(/\bbg-gw-chrome\b/);
+
+    const heading = screen.getByText("Graph settings");
+    expect(heading.className).toMatch(/\btext-gw-primary\b/);
+
+    const legend = screen.getByText("Connection types");
+    expect(legend.className).toMatch(/\btext-gw-primary\b/);
+
+    const hopRadiusLabel = screen.getByText("Focal hop radius");
+    expect(hopRadiusLabel.className).toMatch(/\btext-gw-primary\b/);
+
+    for (const labelText of [
+      "Authored relationships",
+      "Co-occurrence",
+      "Backlinks",
+      "Proximity mentions",
+      "Shared tags/metadata",
+    ]) {
+      const label = screen.getByText(labelText).closest("label");
+      expect(label?.className).toMatch(/\btext-gw-secondary\b/);
+    }
+
+    const statusEl = screen.getByRole("status");
+    expect(statusEl.className).toMatch(/\btext-gw-secondary\b/);
+
+    // No surface in this panel uses the reserved position/canonical-state
+    // red token or a raw hex/rgb value (FR-13).
+    const allClassNames = [
+      panel.className,
+      heading.className,
+      legend.className,
+      hopRadiusLabel.className,
+      statusEl.className,
+    ].join(" ");
+    expect(allClassNames).not.toMatch(/gw-red/);
+    expect(allClassNames).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+    expect(allClassNames).not.toMatch(/rgba?\(/);
+  });
 });

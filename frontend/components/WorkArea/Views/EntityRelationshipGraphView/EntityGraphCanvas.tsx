@@ -30,6 +30,12 @@ import {
   saveEntityGraphPosition,
 } from "../../../../src/lib/api/entity-graph-positions";
 import { isPositionInvalidated } from "../../../../src/lib/models/entity-graph-position-invalidation";
+import type { EntityGraphKindStyleRecord } from "../../../../src/lib/api/entity-graph-kind-styles";
+import {
+  getEntityKindShapeGeometry,
+  type EntityKindShapeName,
+} from "./entityKindShapes";
+import { getEntityKindFallbackStyle } from "../../../../src/lib/models/entity-kind-fallback-style";
 import "./entityGraphTooltipOverlay.css";
 
 const DEFAULT_WIDTH = 800;
@@ -213,6 +219,25 @@ export interface EntityGraphCanvasProps {
    * locally behavior is unaffected.
    */
   onSettingsSaved?: (settings: EntityGraphSettings) => void;
+  /**
+   * The project's persisted entity-kind color/shape style mapping (Feature
+   * 69, Task 8, FR-1/FR-4). Resolved to a `Map` keyed by `entityKind`
+   * internally; passed as a plain array here so a caller (`EntityRelationship-
+   * GraphView.tsx`) can fetch-and-pass it the same way it already threads
+   * `activeConnectionTypes` down, with no new per-render allocation
+   * requirement on the caller's part. Defaults to an empty array, matching
+   * "no kind has a saved mapping yet" rather than guessing a default — every
+   * node then renders via `getEntityKindFallbackStyle`'s deterministic
+   * hash-assigned shape and neutral color (FR-5).
+   *
+   * Deliberately a plain prop, not cached/memoized inside this component
+   * beyond a `useMemo` keyed on this same array: a parent that re-fetches
+   * after a Task 6 modal save and passes a new array down causes this
+   * component's node styling to update on its very next render, with no
+   * reload required (FR-4) — this component never freezes a copy of the
+   * mapping anywhere that would block that.
+   */
+  kindStyles?: EntityGraphKindStyleRecord[];
 }
 
 /**
@@ -590,21 +615,89 @@ function describeEdge(
 }
 
 /**
- * How a currently-shown edge tooltip was triggered — a hover-sourced tooltip
- * dismisses on `onMouseLeave`; a tap-sourced one dismisses only on a second
- * tap of the same hit-target or a tap elsewhere (FR-5). Tracking the source
- * is what lets those two dismiss rules coexist without one gesture
- * accidentally clearing a tooltip the other gesture opened.
+ * How a currently-shown tooltip (edge or, as of Feature 69 Task 9, node) was
+ * triggered — a hover-sourced tooltip dismisses on `onMouseLeave`; a
+ * tap-sourced one dismisses only on a second tap of the same hit-target/node
+ * or a tap elsewhere (FR-5). Tracking the source is what lets those two
+ * dismiss rules coexist without one gesture accidentally clearing a tooltip
+ * the other gesture opened.
  */
 type TooltipSource = "hover" | "tap";
 
 /** The edge tooltip currently shown, and where to position its popover. */
 interface ActiveEdgeTooltip {
+  tooltipKind: "edge";
   key: string;
   edge: EntityGraphEdge;
   source: TooltipSource;
   clientX: number;
   clientY: number;
+}
+
+/**
+ * The node tooltip currently shown (Feature 69, Task 9, FR-7) — extends the
+ * exact same mechanism `ActiveEdgeTooltip` already uses rather than a
+ * separate, parallel tooltip system: one `activeTooltip` state value covers
+ * both, discriminated by `tooltipKind`. `text` is precomputed at the moment
+ * the tooltip opens (`describeNodeTooltip`, below) from the node's
+ * `entityKind` and its resolved color/shape mapping, mirroring how an edge
+ * tooltip's text is produced fresh on each render via `describeEdge` — the
+ * only difference is a node's description has no `nameById`-style external
+ * lookup to stay fresh against, so precomputing it at open time is
+ * equivalent and avoids threading the node's full style resolution through
+ * render-time tooltip lookup.
+ */
+interface ActiveNodeTooltip {
+  tooltipKind: "node";
+  key: string;
+  entityId: string;
+  text: string;
+  source: TooltipSource;
+  clientX: number;
+  clientY: number;
+}
+
+type ActiveGraphTooltip = ActiveEdgeTooltip | ActiveNodeTooltip;
+
+/**
+ * A readable label for a persisted color-slot reference (e.g.
+ * `"entity-kind-0"` -> `"color 1"`), mirroring `EntityKindStylesModal.tsx`'s
+ * own "Color N" labeling convention — this codebase's `--entity-kind-*`
+ * tokens have no named-color labels of their own, only numbered slots — and
+ * Task 5's neutral `"entity-kind-default"` fallback slot as `"default
+ * color"`. Lowercase (`"color 1"`, not `"Color 1"`) since this feeds into a
+ * lowercase sentence fragment (`describeNodeTooltip`), not a form label.
+ */
+const ENTITY_KIND_COLOR_SLOT_PATTERN = /^entity-kind-(\d+)$/;
+
+function describeKindColorSlot(colorSlot: string): string {
+  const match = ENTITY_KIND_COLOR_SLOT_PATTERN.exec(colorSlot);
+  return match ? `color ${Number(match[1]) + 1}` : "default color";
+}
+
+/**
+ * Label used when a node's `entityKind` is an empty string, mirroring
+ * `EntityGraphAccessibleList.tsx`'s own `NO_ENTITY_KIND_LABEL`/
+ * `describeEntityKind` wording precedent for FR-8 exactly, so the
+ * accessible-list disclosure and this tooltip's disclosure never phrase "no
+ * kind" differently.
+ */
+const NO_ENTITY_KIND_TOOLTIP_LABEL = "no kind";
+
+/**
+ * Composes a node's tooltip disclosure text (Feature 69, Task 9, FR-7): the
+ * entity's kind, worded exactly like `EntityGraphAccessibleList.tsx`'s own
+ * `describeEntityKind` ("Kind: <kind>"/"Kind: no kind"), followed by its
+ * resolved color+shape mapping in plain English (e.g. "Kind: character —
+ * color 1 diamond").
+ */
+function describeNodeTooltip(
+  entityKind: string,
+  kindStyle: { color: string; shape: EntityKindShapeName },
+): string {
+  const kindLabel =
+    entityKind.trim() === "" ? NO_ENTITY_KIND_TOOLTIP_LABEL : entityKind;
+  return `Kind: ${kindLabel} — ${describeKindColorSlot(kindStyle.color)} ${kindStyle.shape}`;
 }
 
 /**
@@ -789,14 +882,34 @@ export function computeGraphLayout(
  * (handled by the document-level click listener below) — never on
  * `onMouseLeave`, since touch input does not fire that event. The popover
  * itself renders outside the `<svg>`, position-fixed at the tracked pointer
- * coordinates (`entityGraphTooltipOverlay.css`). A node never gains any of
- * this wiring (FR-8), and no hit-target line gains `tabIndex` or a
- * focus-triggered tooltip (FR-9) — the accessible list remains the sole
- * keyboard/screen-reader surface for this same text. Every tooltip's text is
- * produced by `describeEdge`, which delegates to Task 1's shared
- * `describeCooccurrenceEdge`/`describeAuthoredEdge` — the same functions
- * `EntityGraphAccessibleList.tsx` calls for the identical edge — passing a
- * `nameById` map built from `positionedNodes` as their first argument, so no
+ * coordinates (`entityGraphTooltipOverlay.css`). No hit-target line gains
+ * `tabIndex` or a focus-triggered tooltip (FR-9) — the accessible list
+ * remains the sole keyboard/screen-reader surface for this same text. Every
+ * edge tooltip's text is produced by `describeEdge`, which delegates to
+ * Task 1's shared `describeCooccurrenceEdge`/`describeAuthoredEdge` — the
+ * same functions `EntityGraphAccessibleList.tsx` calls for the identical
+ * edge — passing a `nameById` map built from `positionedNodes` as their
+ * first argument, so no
+ *
+ * Node tooltip (Feature 69, Task 9, FR-7): a node's own hover/tap gains the
+ * identical mechanism, not a parallel one — the single `activeTooltip`
+ * state above is a discriminated union (`ActiveEdgeTooltip |
+ * ActiveNodeTooltip`) rather than a second state variable, so the two can
+ * never both be "open" at once and share every placement/dismiss code path.
+ * A node's own `<g>` gains `onMouseEnter`/`onMouseMove`/`onMouseLeave`
+ * (hover, desktop, layered alongside the pre-existing focal-point hint-
+ * affordance hover tracking) and its existing `onClick` handler
+ * (`handleNodeClick`) additionally toggles a tap-sourced node tooltip,
+ * mirroring `handleEdgeClick`'s own toggle exactly — a node's click already
+ * had other jobs (selection/activation, the shift-click focal-point
+ * gesture, drag-suppression), so the tooltip toggle is one more thing that
+ * same handler does, not a new element or a new gesture. A node's text is
+ * produced by `describeNodeTooltip`, discloses the same "Kind: <kind>"
+ * wording `EntityGraphAccessibleList.tsx` already uses for FR-8 plus the
+ * node's resolved color/shape mapping, and is precomputed once at the
+ * moment the tooltip opens (not read fresh on every render the way an edge
+ * tooltip's `describeEdge` call is), since nothing about a node's own
+ * `entityKind`/style changes while its tooltip is open mid-gesture.
  * new fetch or persisted data is introduced (FR-6).
  */
 export default function EntityGraphCanvas({
@@ -812,11 +925,25 @@ export default function EntityGraphCanvas({
   onFocalEntityChange,
   focalHopRadius = DEFAULT_FOCAL_HOP_RADIUS,
   onSettingsSaved,
+  kindStyles = [],
 }: EntityGraphCanvasProps): JSX.Element {
   const { positionedNodes, positionedEdges } = React.useMemo(
     () => computeGraphLayout(nodes, edges, width, height),
     [nodes, edges, width, height],
   );
+
+  // Entity kind -> persisted color-slot/shape style (Feature 69, Task 8,
+  // FR-1/FR-4), keyed by `entityKind` for O(1) per-node lookup in the render
+  // loop below. Recomputed whenever the caller passes a new `kindStyles`
+  // array — e.g. after Task 6's customization modal saves a change — so a
+  // save is reflected here on the very next render with no reload.
+  const kindStyleByKind = React.useMemo(() => {
+    const map = new Map<string, EntityGraphKindStyleRecord>();
+    for (const record of kindStyles) {
+      map.set(record.entityKind, record);
+    }
+    return map;
+  }, [kindStyles]);
 
   // Entity id -> display name, built from the same positioned nodes the
   // canvas already renders (Task 5) — the sole lookup `describeEdge` needs,
@@ -843,7 +970,7 @@ export default function EntityGraphCanvas({
   }, [positionedNodes]);
 
   const [activeTooltip, setActiveTooltip] =
-    React.useState<ActiveEdgeTooltip | null>(null);
+    React.useState<ActiveGraphTooltip | null>(null);
 
   // A stable-but-unique id for this canvas instance's arrowhead marker, so
   // multiple `EntityGraphCanvas` instances rendered on the same page never
@@ -1468,12 +1595,45 @@ export default function EntityGraphCanvas({
   // existing select-and-navigate behavior (toggling `selectedNodeId`, calling
   // `onNodeActivated`) is completely unaffected by this branch. The
   // suppression flag is consumed so it applies to that one click only.
+  //
+  // As of Feature 69, Task 9 (FR-7), a genuine click (i.e. one that reaches
+  // past the drag-suppression check above) also toggles this node's
+  // tap-sourced tooltip, mirroring `handleEdgeClick`'s own toggle exactly: a
+  // second tap of the same node closes it, any other tap (a different node,
+  // or this node after its tooltip was closed by something else) opens it.
+  // This runs unconditionally — before the shift-click/plain-activation
+  // branch below — so a shift-click still both sets the focal point AND
+  // discloses the node's kind mapping, consistent with tapping/hovering any
+  // other time.
   const handleNodeClick = React.useCallback(
-    (event: React.MouseEvent<SVGGElement>, entityId: string) => {
+    (
+      event: React.MouseEvent<SVGGElement>,
+      entityId: string,
+      entityKind: string,
+      kindStyle: { color: string; shape: EntityKindShapeName },
+    ) => {
       if (justDraggedPastThresholdRef.current) {
         justDraggedPastThresholdRef.current = false;
         return;
       }
+      setActiveTooltip((current) => {
+        if (
+          current?.tooltipKind === "node" &&
+          current.entityId === entityId &&
+          current.source === "tap"
+        ) {
+          return null;
+        }
+        return {
+          tooltipKind: "node",
+          key: `node:${entityId}`,
+          entityId,
+          text: describeNodeTooltip(entityKind, kindStyle),
+          source: "tap",
+          clientX: event.clientX,
+          clientY: event.clientY,
+        };
+      });
       if (event.shiftKey) {
         handleFocalPointGesture(entityId);
         return;
@@ -1506,12 +1666,72 @@ export default function EntityGraphCanvas({
     setHoveredNodeId((current) => (current === entityId ? null : current));
   }, []);
 
+  // Hover-in on a node (desktop pointer devices, Feature 69, Task 9, FR-7):
+  // opens that node's kind-mapping tooltip, marked "hover"-sourced so only
+  // `onMouseLeave` dismisses it — mirrors `handleEdgeMouseEnter` exactly,
+  // layered alongside (not replacing) `handleNodeMouseEnter`'s own
+  // hint-affordance tracking above, since the two state updates are
+  // independent.
+  const handleNodeTooltipMouseEnter = React.useCallback(
+    (
+      event: React.MouseEvent<SVGGElement>,
+      entityId: string,
+      entityKind: string,
+      kindStyle: { color: string; shape: EntityKindShapeName },
+    ) => {
+      setActiveTooltip({
+        tooltipKind: "node",
+        key: `node:${entityId}`,
+        entityId,
+        text: describeNodeTooltip(entityKind, kindStyle),
+        source: "hover",
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    },
+    [],
+  );
+
+  // Tracks the live pointer position while a hover-sourced tooltip for this
+  // same node is already open, mirroring `handleEdgeMouseMove` exactly.
+  const handleNodeTooltipMouseMove = React.useCallback(
+    (event: React.MouseEvent<SVGGElement>, entityId: string) => {
+      setActiveTooltip((current) => {
+        if (
+          !current ||
+          current.tooltipKind !== "node" ||
+          current.entityId !== entityId ||
+          current.source !== "hover"
+        ) {
+          return current;
+        }
+        return { ...current, clientX: event.clientX, clientY: event.clientY };
+      });
+    },
+    [],
+  );
+
+  // Hover-out (Feature 69, Task 9, FR-7): only dismisses a hover-sourced
+  // tooltip for this exact node — touch input never fires this event, so it
+  // never interferes with a tap-sourced tooltip's own dismiss rules (FR-5),
+  // mirroring `handleEdgeMouseLeave` exactly.
+  const handleNodeTooltipMouseLeave = React.useCallback((entityId: string) => {
+    setActiveTooltip((current) =>
+      current?.tooltipKind === "node" &&
+      current.entityId === entityId &&
+      current.source === "hover"
+        ? null
+        : current,
+    );
+  }, []);
+
   // Hover-in on an edge's hit-target (desktop pointer devices, FR-1): opens
   // that edge's tooltip, marked "hover"-sourced so only `onMouseLeave`
   // dismisses it.
   const handleEdgeMouseEnter = React.useCallback(
     (event: React.MouseEvent<SVGLineElement>, positioned: PositionedEdge) => {
       setActiveTooltip({
+        tooltipKind: "edge",
         key: positioned.key,
         edge: positioned.edge,
         source: "hover",
@@ -1530,6 +1750,7 @@ export default function EntityGraphCanvas({
       setActiveTooltip((current) => {
         if (
           !current ||
+          current.tooltipKind !== "edge" ||
           current.key !== positioned.key ||
           current.source !== "hover"
         ) {
@@ -1547,7 +1768,9 @@ export default function EntityGraphCanvas({
   const handleEdgeMouseLeave = React.useCallback(
     (positioned: PositionedEdge) => {
       setActiveTooltip((current) =>
-        current?.key === positioned.key && current.source === "hover"
+        current?.tooltipKind === "edge" &&
+        current.key === positioned.key &&
+        current.source === "hover"
           ? null
           : current,
       );
@@ -1564,10 +1787,15 @@ export default function EntityGraphCanvas({
   const handleEdgeClick = React.useCallback(
     (event: React.MouseEvent<SVGLineElement>, positioned: PositionedEdge) => {
       setActiveTooltip((current) => {
-        if (current?.key === positioned.key && current.source === "tap") {
+        if (
+          current?.tooltipKind === "edge" &&
+          current.key === positioned.key &&
+          current.source === "tap"
+        ) {
           return null;
         }
         return {
+          tooltipKind: "edge",
           key: positioned.key,
           edge: positioned.edge,
           source: "tap",
@@ -1579,17 +1807,18 @@ export default function EntityGraphCanvas({
     [],
   );
 
-  // Tap elsewhere (FR-5): dismisses a tap-sourced tooltip on any click whose
-  // target is not itself an edge hit-target line — a click ON a hit-target
-  // is already handled by `handleEdgeClick`'s own toggle above, so this
-  // listener leaves that case alone (its own `current` check below would
-  // otherwise re-close a tooltip `handleEdgeClick` just reopened for a
-  // different edge, on the very same click).
+  // Tap elsewhere (FR-5; extended by Feature 69, Task 9 to nodes): dismisses
+  // a tap-sourced tooltip on any click whose target is not itself an edge
+  // hit-target line or a node — a click ON either is already handled by
+  // that element's own `onClick` toggle (`handleEdgeClick`/`handleNodeClick`),
+  // so this listener leaves both cases alone (its own `current` check below
+  // would otherwise re-close a tooltip that onClick handler just reopened
+  // for a different edge/node, on the very same click).
   React.useEffect(() => {
     const handleDocumentClick = (event: MouseEvent): void => {
       const target = event.target as Element | null;
       const clickedHitTarget = target?.closest(
-        '[data-testid="entity-graph-edge-hit-target"]',
+        '[data-testid="entity-graph-edge-hit-target"], [data-testid="entity-graph-node"]',
       );
       if (clickedHitTarget) return;
       setActiveTooltip((current) =>
@@ -1622,11 +1851,14 @@ export default function EntityGraphCanvas({
   } | null>(null);
 
   // Places the open tooltip beside the pointer, fully on-screen, on whichever
-  // side covers the least of the hovered edge's two endpoint nodes — the
-  // nodes a reader inspecting that edge is looking at (FR-10). Measured with
-  // the old fixed above-right offset, the tooltip covered one of them in 54%
-  // of hovers. A layout effect, so the placement commits before paint and the
-  // hidden measuring pass is never seen.
+  // side covers the least of the nodes it should avoid covering — an edge
+  // tooltip avoids its own two endpoint nodes (the nodes a reader inspecting
+  // that edge is looking at, FR-10); a node tooltip (Feature 69, Task 9,
+  // FR-7) avoids that one node itself, the node the tooltip is *about*, for
+  // the identical reason. Measured with the old fixed above-right offset,
+  // an edge tooltip covered an endpoint in 54% of hovers. A layout effect,
+  // so the placement commits before paint and the hidden measuring pass is
+  // never seen.
   React.useLayoutEffect(() => {
     if (!activeTooltip) {
       setTooltipPlacement(null);
@@ -1644,12 +1876,15 @@ export default function EntityGraphCanvas({
       tooltipSizeRef.current = size;
     }
 
-    const endpointIds = new Set(edgeEndpoints(activeTooltip.edge));
+    const avoidEntityIds =
+      activeTooltip.tooltipKind === "edge"
+        ? new Set(edgeEndpoints(activeTooltip.edge))
+        : new Set([activeTooltip.entityId]);
     const avoid = Array.from(
       svg.querySelectorAll<SVGGElement>('[data-testid="entity-graph-node"]'),
     )
       .filter((node) =>
-        endpointIds.has(node.getAttribute("data-entity-id") ?? ""),
+        avoidEntityIds.has(node.getAttribute("data-entity-id") ?? ""),
       )
       .map((node) => node.getBoundingClientRect());
 
@@ -1881,6 +2116,20 @@ export default function EntityGraphCanvas({
               const override = nodePositionOverrides.get(node.entityId);
               const resolvedX = override?.x ?? node.x;
               const resolvedY = override?.y ?? node.y;
+              // Per-kind color+shape resolution (Feature 69, Task 8,
+              // FR-1/FR-4/FR-5): a persisted mapping for this node's
+              // `entityKind`, if one exists, else Task 5's deterministic
+              // hash-assigned fallback shape paired with the neutral default
+              // color. Both are always resolved together from the same
+              // source — there is no path here that applies one without the
+              // other.
+              const kindStyle =
+                kindStyleByKind.get(node.entityKind) ??
+                getEntityKindFallbackStyle(node.entityKind);
+              const shapeGeometry = getEntityKindShapeGeometry(
+                kindStyle.shape,
+                NODE_RADIUS,
+              );
               return (
                 <g
                   key={node.entityId}
@@ -1908,10 +2157,31 @@ export default function EntityGraphCanvas({
                   onPointerDown={(event) =>
                     handleNodePointerDown(event, node.entityId, node.x, node.y)
                   }
-                  onClick={(event) => handleNodeClick(event, node.entityId)}
+                  onClick={(event) =>
+                    handleNodeClick(
+                      event,
+                      node.entityId,
+                      node.entityKind,
+                      kindStyle,
+                    )
+                  }
                   onKeyDown={(event) => handleNodeKeyDown(event, node.entityId)}
-                  onMouseEnter={() => handleNodeMouseEnter(node.entityId)}
-                  onMouseLeave={() => handleNodeMouseLeave(node.entityId)}
+                  onMouseEnter={(event) => {
+                    handleNodeMouseEnter(node.entityId);
+                    handleNodeTooltipMouseEnter(
+                      event,
+                      node.entityId,
+                      node.entityKind,
+                      kindStyle,
+                    );
+                  }}
+                  onMouseMove={(event) =>
+                    handleNodeTooltipMouseMove(event, node.entityId)
+                  }
+                  onMouseLeave={() => {
+                    handleNodeMouseLeave(node.entityId);
+                    handleNodeTooltipMouseLeave(node.entityId);
+                  }}
                   tabIndex={0}
                   role="button"
                   aria-label={node.name}
@@ -1926,14 +2196,38 @@ export default function EntityGraphCanvas({
                       style={{ stroke: "var(--color-gw-primary)" }}
                     />
                   ) : null}
-                  <circle
-                    r={NODE_RADIUS}
-                    strokeWidth={1.5}
-                    style={{
-                      fill: "var(--color-gw-chrome2)",
-                      stroke: "var(--color-gw-border-md)",
-                    }}
-                  />
+                  {/*
+                  Node shape+color (Feature 69, Task 8, FR-1/FR-4): drawn from
+                  `shapeGeometry` (Task 1's fixed six-shape set, resolved
+                  above via the persisted kind-style mapping or Task 5's
+                  deterministic fallback) rather than always rendering a
+                  circle. `kind-style`'s color is a token-slot reference
+                  (e.g. `"entity-kind-0"`, or `"entity-kind-default"` for the
+                  fallback) resolved to its CSS custom property name at render
+                  time via inline `style={{ fill: ... }}` — mirroring every
+                  other `--color-gw-*` fill/stroke usage in this file — never
+                  a JS object/array mapping a slot index to a literal hex
+                  value.
+                */}
+                  {shapeGeometry.kind === "circle" ? (
+                    <circle
+                      r={shapeGeometry.radius}
+                      strokeWidth={1.5}
+                      style={{
+                        fill: `var(--${kindStyle.color})`,
+                        stroke: "var(--color-gw-border-md)",
+                      }}
+                    />
+                  ) : (
+                    <path
+                      d={shapeGeometry.d}
+                      strokeWidth={1.5}
+                      style={{
+                        fill: `var(--${kindStyle.color})`,
+                        stroke: "var(--color-gw-border-md)",
+                      }}
+                    />
+                  )}
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -1990,7 +2284,13 @@ export default function EntityGraphCanvas({
         <div
           ref={tooltipRef}
           className="entity-graph-edge-tooltip"
+          // Deliberately the same `data-testid` for both an edge and a node
+          // tooltip (Feature 69, Task 9): this is the literal same overlay
+          // element/mechanism extended to a second source, not a second,
+          // parallel tooltip — `data-tooltip-kind` below distinguishes the
+          // two for a test or a future styling hook that needs to.
           data-testid="entity-graph-edge-tooltip"
+          data-tooltip-kind={activeTooltip.tooltipKind}
           role="tooltip"
           style={
             placedTooltip
@@ -2002,7 +2302,9 @@ export default function EntityGraphCanvas({
               : { position: "fixed", left: 0, top: 0, visibility: "hidden" }
           }
         >
-          {describeEdge(activeTooltip.edge, nameById)}
+          {activeTooltip.tooltipKind === "edge"
+            ? describeEdge(activeTooltip.edge, nameById)
+            : activeTooltip.text}
         </div>
       )}
     </div>
