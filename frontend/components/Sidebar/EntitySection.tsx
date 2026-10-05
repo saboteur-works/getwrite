@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import { updateSidecar } from "../../src/lib/api/resources";
-import { checkNoiseFlag } from "../../src/lib/models/entity-noise-check";
+import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
+import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
+import {
+  checkNoiseFlag,
+  type NoiseCheckSources,
+} from "../../src/lib/models/entity-noise-check";
 import { getNoiseObservation } from "../../src/lib/models/entity-noise-copy";
 import type { AnyResource } from "../../src/lib/models/types";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
 import Input from "../common/UI/Input/Input";
 import Button from "../common/UI/Button/Button";
+
+/**
+ * Normalizes a noise-flagging term for the `dismissedNoiseTerms` sidecar
+ * field: trim + lowercase, mirroring `entity-noise-check.ts`'s internal
+ * normalization (and `resource-crud-core.ts`'s `normalizeNoiseTerm`) so a
+ * persisted dismissal and a later noise check agree on what counts as "the
+ * same term" (FR-8/FR-13).
+ */
+function normalizeNoiseTerm(term: string): string {
+  return term.trim().toLowerCase();
+}
 
 /** Non-binding suggestions offered via a `<datalist>` — `entityKind` remains
  * an open, free-text value (Task 1); any non-empty string is accepted and
@@ -63,6 +79,43 @@ export default function EntitySection(): JSX.Element | null {
 
   const [newAlias, setNewAlias] = useState("");
 
+  // FR-1/FR-7: the project's custom/excluded-global noise-word lists and the
+  // cross-project global list, fetched once per project and cached in local
+  // state — mirroring `EntityRelationshipsSection.tsx`'s own self-contained
+  // fetch-on-mount lifecycle rather than introducing a shared context. A
+  // failed fetch degrades to an empty list rather than blocking the section:
+  // this is a non-blocking observation (FR-10/FR-11), not a value whose
+  // absence must be distinguished from zero.
+  const [projectCustomNoiseWords, setProjectCustomNoiseWords] = useState<
+    string[]
+  >([]);
+  const [projectExcludedGlobalNoiseWords, setProjectExcludedGlobalNoiseWords] =
+    useState<string[]>([]);
+  const [globalNoiseWords, setGlobalNoiseWordsState] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!projectId) {
+      setProjectCustomNoiseWords([]);
+      setProjectExcludedGlobalNoiseWords([]);
+      return;
+    }
+    void getNoiseWordLists(projectId)
+      .then((lists) => {
+        setProjectCustomNoiseWords(lists.customNoiseWords);
+        setProjectExcludedGlobalNoiseWords(lists.excludedGlobalNoiseWords);
+      })
+      .catch(() => {
+        setProjectCustomNoiseWords([]);
+        setProjectExcludedGlobalNoiseWords([]);
+      });
+  }, [projectId]);
+
+  useEffect(() => {
+    void getGlobalNoiseWords()
+      .then((words) => setGlobalNoiseWordsState(words))
+      .catch(() => setGlobalNoiseWordsState([]));
+  }, []);
+
   /**
    * `clearKeys`, when provided, is forwarded to `updateSidecar` so the
    * server actually deletes those sidecar keys (Task 10/11) rather than
@@ -110,6 +163,32 @@ export default function EntitySection(): JSX.Element | null {
 
   const aliases = resource.aliases ?? [];
   const isEntity = (resource.entityKind ?? "").trim().length > 0;
+  const dismissedNoiseTerms = resource.dismissedNoiseTerms ?? [];
+
+  // FR-1/FR-7: the full union/exclusion formula, shared identically by the
+  // `name` check and every `alias` check below — the same `sources` object
+  // on every call site, so none of them can silently drift from another.
+  const noiseCheckSources: NoiseCheckSources = {
+    projectCustomNoiseWords,
+    projectExcludedGlobalNoiseWords,
+    globalNoiseWords,
+    dismissedNoiseTerms,
+  };
+
+  // FR-8/FR-9/FR-13: dismissing/un-dismissing one term for this entity only,
+  // persisted via the existing `updateSidecar` write path `persist` already
+  // uses — no new transport. Normalization matches `entity-noise-check.ts`'s
+  // own internal normalization (and `resource-crud-core.ts`'s
+  // `normalizeNoiseTerm`) so a dismissal and a later check agree on what
+  // counts as "the same term".
+  const handleDismissNoiseTerm = (term: string): void => {
+    const normalized = normalizeNoiseTerm(term);
+    if (dismissedNoiseTerms.includes(normalized)) return;
+    persist({
+      ...resource,
+      dismissedNoiseTerms: [...dismissedNoiseTerms, normalized],
+    });
+  };
 
   const commitAliases = (nextAliases: string[]): void => {
     persist({ ...resource, aliases: nextAliases });
@@ -138,13 +217,17 @@ export default function EntitySection(): JSX.Element | null {
   // this guard `checkNoiseFlag("")` correctly flags a zero-length string as
   // too short, and every entity opens showing a "very short" warning before
   // the writer has typed anything.
-  //
-  // This call site passes no project/global/dismissal sources yet (Tasks
-  // 6/7/11 own wiring those in) — it gets exactly the predecessor's
-  // short-length + bundled-list behavior, which is this task's scope.
   const newAliasWarning =
-    newAlias.trim() && checkNoiseFlag(newAlias)
+    newAlias.trim() && checkNoiseFlag(newAlias, noiseCheckSources)
       ? getNoiseObservation(newAlias, "alias")
+      : null;
+
+  // FR-1: the entity's `name` is checked by the identical mechanism as each
+  // alias below — same function, same `sources`, no `kind`-based branching
+  // inside `checkNoiseFlag` itself.
+  const nameWarning =
+    isEntity && checkNoiseFlag(resource.name, noiseCheckSources)
+      ? getNoiseObservation(resource.name, "name")
       : null;
 
   return (
@@ -166,12 +249,26 @@ export default function EntitySection(): JSX.Element | null {
         </datalist>
       </LabeledField>
 
+      {nameWarning && (
+        <div className="mb-4 flex flex-col">
+          <p className="text-gw-label text-gw-secondary">{nameWarning}</p>
+          <Button
+            variant="ghost"
+            onClick={() => handleDismissNoiseTerm(resource.name)}
+            aria-label={`Dismiss noise observation for ${resource.name}`}
+            className="self-start"
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
+
       {isEntity && (
         <LabeledField label="Aliases" className="mb-4">
           {aliases.length > 0 && (
             <ul className="mt-2 flex flex-col gap-2">
               {aliases.map((alias, index) => {
-                const warning = checkNoiseFlag(alias)
+                const warning = checkNoiseFlag(alias, noiseCheckSources)
                   ? getNoiseObservation(alias, "alias")
                   : null;
                 return (
@@ -205,9 +302,19 @@ export default function EntitySection(): JSX.Element | null {
                       </Button>
                     </div>
                     {warning && (
-                      <p className="text-gw-label text-gw-secondary mt-1">
-                        {warning}
-                      </p>
+                      <div className="flex flex-col">
+                        <p className="text-gw-label text-gw-secondary mt-1">
+                          {warning}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleDismissNoiseTerm(alias)}
+                          aria-label={`Dismiss noise observation for ${alias}`}
+                          className="self-start"
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
                     )}
                   </li>
                 );

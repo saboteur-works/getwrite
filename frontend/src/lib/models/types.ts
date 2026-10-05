@@ -276,6 +276,15 @@ export interface ResourceBase {
    * string.
    */
   aliases?: string[];
+  /**
+   * Per-entity record of which exact noise-flagging terms (its `name` or one
+   * of its `aliases`) a writer has dismissed the noise observation for
+   * (entity-mention-noise-flagging FR-8/FR-9/FR-13). Mirrors
+   * `EntitySidecarFieldsSchema.dismissedNoiseTerms` (`schemas.ts`), which
+   * this hand-written type otherwise drifted from after Task 3 added the
+   * schema field.
+   */
+  dismissedNoiseTerms?: string[];
   /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */
   userMetadata?: Record<string, MetadataValue>;
   /** Creation timestamp (ISO 8601). */
