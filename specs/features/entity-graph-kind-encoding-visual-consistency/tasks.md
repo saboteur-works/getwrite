@@ -171,7 +171,7 @@ holistic sign-off once all four are done and visible together.
 **Done when:** The `box-shadow` declaration is gone from this file; elevation is instead conveyed via a `--color-gw-*` surface-color token (e.g. a distinct chrome/surface tier), verified in both dark and light mode; `frontend/components/QueryBuilder/value-picker.css`'s matching shadow is unchanged; the tooltip still discloses the exact same text (edge descriptions from Task 9 and the pre-existing edge tooltip) with no information change.
 **Depends on:** Task 17
 **Estimate:** 2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Owner sign-off checkpoint — tooltip overlay
 **What:** Presents the restyled tooltip overlay (Task 18) to the product owner for incremental qualitative sign-off — the fourth and last per-element checkpoint — before the final holistic sign-off (Task 20).
