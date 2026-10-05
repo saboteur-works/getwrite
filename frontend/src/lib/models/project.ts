@@ -21,6 +21,12 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     // — the same undefined-preserving treatment `metadataSchema` already
     // gets in this function for the same reason.
     relationshipTypes: config?.relationshipTypes,
+    // Defaulted to [] (not left undefined) for a project created before this
+    // feature, mirroring `statuses` above: both are writer add/remove lists
+    // read directly as arrays by their UI, not vocabulary fallbacks like
+    // `relationshipTypes`.
+    customNoiseWords: config?.customNoiseWords ?? [],
+    excludedGlobalNoiseWords: config?.excludedGlobalNoiseWords ?? [],
     autoPrune: config?.autoPrune ?? true,
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,

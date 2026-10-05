@@ -240,6 +240,22 @@ export const ProjectConfigSchema = z.object({
   relationshipTypes: z.array(z.string()).optional(),
   entityGraphConnectionTypes: z.array(z.string()).optional(),
   entityGraphFocalHopRadius: z.number().int().nonnegative().optional(),
+  /**
+   * Per-project custom noise-word list (FR-3, entity-mention-noise-flagging),
+   * additive to the bundled noise-word list. Mirrors `statuses`'s shape:
+   * a writer add/remove string list with no structural validation beyond
+   * non-empty, trimmed entries.
+   */
+  customNoiseWords: z.array(z.string().trim().min(1)).optional(),
+  /**
+   * Per-project exclusion list of specific words from the cross-project
+   * global noise-word list (FR-6, entity-mention-noise-flagging). Recording
+   * a word here means this project does not flag it even though the global
+   * list does — distinct from simply never adding it to `customNoiseWords`,
+   * since the global list applies by default to every project that hasn't
+   * excluded a given word.
+   */
+  excludedGlobalNoiseWords: z.array(z.string().trim().min(1)).optional(),
   autoPrune: z.boolean().optional(),
   tags: z
     .array(
@@ -354,10 +370,18 @@ export const TipTapDocumentSchema: z.ZodTypeAny = z.object({
  *   of non-empty strings. Length or common-word screening is intentionally
  *   out of scope here — that belongs to a later, non-blocking warning
  *   system.
+ * - `dismissedNoiseTerms` (entity-mention-noise-flagging FR-8/FR-9/FR-13)
+ *   records, per this one entity, which exact terms (its `name` or one of
+ *   its `aliases`) a writer has dismissed the noise observation for.
+ *   Entries are normalized/case-folded the same way `getAliasWarning`
+ *   normalizes a term for comparison, scoped to this entity's own sidecar
+ *   only — the same literal term dismissed here still surfaces its
+ *   observation on a different entity that also uses it (FR-13).
  */
 export const EntitySidecarFieldsSchema = z.object({
   entityKind: z.string().min(1).optional(),
   aliases: z.array(z.string().min(1)).optional(),
+  dismissedNoiseTerms: z.array(z.string().min(1)).optional(),
 });
 
 /**

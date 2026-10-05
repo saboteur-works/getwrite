@@ -99,6 +99,10 @@ export interface ProjectConfig {
   statuses?: string[];
   /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */
   relationshipTypes?: string[];
+  /** Per-project custom noise-word list, additive to the bundled noise-word list (FR-3). */
+  customNoiseWords?: string[];
+  /** Per-project exclusion list of specific global noise-word-list words (FR-6). */
+  excludedGlobalNoiseWords?: string[];
   /**
    * When true, automatically prune oldest non-canonical revisions when limit is exceeded.
    * When false, the UI should prompt the user (interactive) or abort in headless contexts.

@@ -69,6 +69,55 @@ describe("EntitySidecarFieldsSchema", () => {
   });
 });
 
+describe("EntitySidecarFieldsSchema — dismissedNoiseTerms", () => {
+  it("accepts an array of normalized, case-folded dismissed terms", () => {
+    const result = EntitySidecarFieldsSchema.safeParse({
+      entityKind: "character",
+      aliases: ["Ada", "The Brass Queen"],
+      dismissedNoiseTerms: ["ada", "the brass queen"],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dismissedNoiseTerms).toEqual([
+        "ada",
+        "the brass queen",
+      ]);
+    }
+  });
+
+  it("rejects an empty string in dismissedNoiseTerms", () => {
+    const result = EntitySidecarFieldsSchema.safeParse({
+      entityKind: "character",
+      dismissedNoiseTerms: ["ada", ""],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("defaults to undefined (not []) when absent on the schema itself", () => {
+    const result = EntitySidecarFieldsSchema.safeParse({
+      entityKind: "character",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dismissedNoiseTerms).toBeUndefined();
+    }
+  });
+
+  it("validates a resource sidecar carrying dismissedNoiseTerms via ResourceBaseSchema", () => {
+    const result = ResourceBaseSchema.safeParse({
+      ...baseResourceFields,
+      entityKind: "character",
+      aliases: ["Ada"],
+      dismissedNoiseTerms: ["ada"],
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("ResourceBaseSchema entity fields integration", () => {
   it("validates a resource sidecar carrying entityKind and aliases", () => {
     const result = ResourceBaseSchema.safeParse({

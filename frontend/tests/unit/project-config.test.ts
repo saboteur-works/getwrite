@@ -7,6 +7,7 @@ import {
   loadProjectConfig,
   PROJECT_FILENAME,
 } from "../../src/lib/models/project-config";
+import { normalizeProjectConfig } from "../../src/lib/models/project";
 import { ProjectConfigSchema } from "../../src/lib/models/schemas";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -186,5 +187,82 @@ describe("ProjectConfigSchema — relationshipTypes", () => {
     expect(() =>
       ProjectConfigSchema.parse({ relationshipTypes: "ally of" }),
     ).toThrow();
+  });
+});
+
+describe("ProjectConfigSchema — customNoiseWords (FR-3)", () => {
+  it("accepts an array of non-empty trimmed strings", () => {
+    const result = ProjectConfigSchema.parse({
+      customNoiseWords: ["anchor", "sail"],
+    });
+    expect(result.customNoiseWords).toEqual(["anchor", "sail"]);
+  });
+
+  it("rejects an empty string in the array", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ customNoiseWords: ["anchor", ""] }),
+    ).toThrow();
+  });
+
+  it("rejects a non-string-array value", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ customNoiseWords: [1, 2] }),
+    ).toThrow();
+    expect(() =>
+      ProjectConfigSchema.parse({ customNoiseWords: "anchor" }),
+    ).toThrow();
+  });
+
+  it("allows customNoiseWords to be omitted on the schema", () => {
+    expect(() => ProjectConfigSchema.parse({})).not.toThrow();
+  });
+
+  it("defaults to [] via normalizeProjectConfig when absent", () => {
+    const normalized = normalizeProjectConfig(undefined);
+    expect(normalized.customNoiseWords).toEqual([]);
+  });
+
+  it("preserves an explicit customNoiseWords list through normalizeProjectConfig", () => {
+    const normalized = normalizeProjectConfig({
+      customNoiseWords: ["anchor"],
+    } as never);
+    expect(normalized.customNoiseWords).toEqual(["anchor"]);
+  });
+});
+
+describe("ProjectConfigSchema — excludedGlobalNoiseWords (FR-6)", () => {
+  it("accepts an array of non-empty trimmed strings", () => {
+    const result = ProjectConfigSchema.parse({
+      excludedGlobalNoiseWords: ["the", "and"],
+    });
+    expect(result.excludedGlobalNoiseWords).toEqual(["the", "and"]);
+  });
+
+  it("rejects an empty string in the array", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ excludedGlobalNoiseWords: ["the", ""] }),
+    ).toThrow();
+  });
+
+  it("rejects a non-string-array value", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ excludedGlobalNoiseWords: [1, 2] }),
+    ).toThrow();
+  });
+
+  it("allows excludedGlobalNoiseWords to be omitted on the schema", () => {
+    expect(() => ProjectConfigSchema.parse({})).not.toThrow();
+  });
+
+  it("defaults to [] via normalizeProjectConfig when absent", () => {
+    const normalized = normalizeProjectConfig(undefined);
+    expect(normalized.excludedGlobalNoiseWords).toEqual([]);
+  });
+
+  it("preserves an explicit excludedGlobalNoiseWords list through normalizeProjectConfig", () => {
+    const normalized = normalizeProjectConfig({
+      excludedGlobalNoiseWords: ["the"],
+    } as never);
+    expect(normalized.excludedGlobalNoiseWords).toEqual(["the"]);
   });
 });
