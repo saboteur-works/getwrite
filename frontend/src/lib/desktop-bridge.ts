@@ -84,6 +84,17 @@ export interface StartDocxImportOptions {
   projectType: string;
 }
 
+/**
+ * What persisting a new global noise-word list can result in (FR-5b).
+ * Mirrors `electron/src/preload.ts`'s `GlobalNoiseWordsSetResult`
+ * byte-for-byte; redeclared here because `frontend` cannot import across the
+ * `electron/src` package boundary.
+ */
+export interface GlobalNoiseWordsSetResult {
+  ok: boolean;
+  message?: string;
+}
+
 /** A successful DOCX import. */
 export interface DocxImportSuccessOutcome {
   readonly kind: "success";
@@ -152,6 +163,10 @@ export interface DesktopBridge {
     handle: string,
     options: StartDocxImportOptions,
   ): Promise<DocxImportOutcome>;
+  /** Returns the cross-project global noise-word list (FR-5b). */
+  getGlobalNoiseWords(): Promise<string[]>;
+  /** Persists the cross-project global noise-word list (FR-5b). */
+  setGlobalNoiseWords(words: string[]): Promise<GlobalNoiseWordsSetResult>;
 }
 
 /**

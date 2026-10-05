@@ -19,9 +19,11 @@ import {
   legacyProjectsDirs,
   migrateLegacyProjectsDir,
   readConfiguredProjectsDir,
+  readGlobalNoiseWords,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
+  writeGlobalNoiseWords,
   type ProjectsDirEnvironment,
 } from "../src/projects-dir";
 
@@ -148,6 +150,69 @@ describe("the configured workspace location", () => {
     expect(
       resolveProjectsDir(packagedEnv({ isPackaged: false, repoRoot: "/repo" })),
     ).toBe(path.join("/repo", "projects"));
+  });
+});
+
+describe("the global noise-word list", () => {
+  it("is empty when nothing has been recorded yet", () => {
+    expect(readGlobalNoiseWords(userDataDir)).toEqual([]);
+  });
+
+  it("persists a recorded list and reflects it back", () => {
+    writeGlobalNoiseWords(userDataDir, ["said", "look", "time"]);
+
+    expect(readGlobalNoiseWords(userDataDir)).toEqual(["said", "look", "time"]);
+  });
+
+  it("overwrites a previously recorded list with the new one", () => {
+    writeGlobalNoiseWords(userDataDir, ["said"]);
+    writeGlobalNoiseWords(userDataDir, ["look", "time"]);
+
+    expect(readGlobalNoiseWords(userDataDir)).toEqual(["look", "time"]);
+  });
+
+  it("treats a corrupt config as no list at all", () => {
+    fs.mkdirSync(userDataDir, { recursive: true });
+    fs.writeFileSync(path.join(userDataDir, "workspace.json"), "{not json");
+
+    expect(readGlobalNoiseWords(userDataDir)).toEqual([]);
+  });
+
+  it("does not clobber a workspace-location override already on disk", () => {
+    const chosen = path.join(root, "elsewhere", "Novels");
+    writeConfiguredProjectsDir(userDataDir, chosen);
+
+    writeGlobalNoiseWords(userDataDir, ["said"]);
+
+    expect(readConfiguredProjectsDir(userDataDir)).toBe(chosen);
+    expect(readGlobalNoiseWords(userDataDir)).toEqual(["said"]);
+  });
+
+  it("does not clobber a global noise-word list already on disk when the workspace location is set", () => {
+    writeGlobalNoiseWords(userDataDir, ["said", "look"]);
+
+    const chosen = path.join(root, "elsewhere", "Novels");
+    writeConfiguredProjectsDir(userDataDir, chosen);
+
+    expect(readGlobalNoiseWords(userDataDir)).toEqual(["said", "look"]);
+    expect(readConfiguredProjectsDir(userDataDir)).toBe(chosen);
+  });
+
+  it("throws rather than silently losing the write when userData is unwritable", () => {
+    // `getwrite:global-noise-words-set`'s `ipcMain.handle` catches this throw
+    // and turns it into `{ ok: false, message }`, mirroring
+    // `choose-workspace-dir`'s own try/catch around a write failure — the
+    // part this test exercises is the underlying throw it depends on.
+    const readOnlyUserData = path.join(root, "read-only-user-data");
+    fs.mkdirSync(path.dirname(readOnlyUserData), { recursive: true });
+    fs.mkdirSync(readOnlyUserData, { recursive: true });
+    fs.chmodSync(readOnlyUserData, 0o555);
+
+    try {
+      expect(() => writeGlobalNoiseWords(readOnlyUserData, ["said"])).toThrow();
+    } finally {
+      fs.chmodSync(readOnlyUserData, 0o755);
+    }
   });
 });
 

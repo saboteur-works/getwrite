@@ -208,6 +208,66 @@ function workspaceConfigPath(userDataDir: string): string {
 }
 
 /**
+ * The shape of `workspace.json`. Every field is optional and independent —
+ * each one is read and written through its own read-modify-write pass so
+ * that setting one never clobbers another already recorded in the same file.
+ */
+interface WorkspaceConfigFile {
+  /** The user's chosen projects directory override (see FR for workspace dir). */
+  projectsDir?: string;
+  /**
+   * Noise words flagged globally, across every project, rather than per
+   * project (FR-5b). An entity-mention noise word a writer dismisses once
+   * here applies to every project this installation opens.
+   */
+  globalNoiseWords?: string[];
+}
+
+/**
+ * Reads `workspace.json` in full.
+ *
+ * A missing, unreadable, or malformed file reads as "nothing recorded yet"
+ * — an empty object — rather than preventing the app from starting. Every
+ * reader of an individual field already treats its own absence as the
+ * unset case, so this degrades the same way `readConfiguredProjectsDir`
+ * always has.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @returns The parsed config, or `{}` if it cannot be read.
+ */
+function readWorkspaceConfig(userDataDir: string): WorkspaceConfigFile {
+  try {
+    const raw = fs.readFileSync(workspaceConfigPath(userDataDir), "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as WorkspaceConfigFile)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Writes `workspace.json` in full.
+ *
+ * Callers must read-modify-write through {@link readWorkspaceConfig} first
+ * so an unrelated field already recorded in the file survives.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @param config - The complete config to persist.
+ */
+function writeWorkspaceConfig(
+  userDataDir: string,
+  config: WorkspaceConfigFile,
+): void {
+  fs.mkdirSync(userDataDir, { recursive: true });
+  fs.writeFileSync(
+    workspaceConfigPath(userDataDir),
+    `${JSON.stringify(config, null, 2)}\n`,
+  );
+}
+
+/**
  * Reads the user's chosen workspace location, if they have set one.
  *
  * A missing, unreadable, or malformed file means "no choice recorded" and
@@ -218,19 +278,17 @@ function workspaceConfigPath(userDataDir: string): string {
  * @returns The configured path, or `null` to use the default.
  */
 export function readConfiguredProjectsDir(userDataDir: string): string | null {
-  try {
-    const raw = fs.readFileSync(workspaceConfigPath(userDataDir), "utf8");
-    const parsed = JSON.parse(raw) as { projectsDir?: unknown };
-    return typeof parsed.projectsDir === "string" && parsed.projectsDir
-      ? parsed.projectsDir
-      : null;
-  } catch {
-    return null;
-  }
+  const config = readWorkspaceConfig(userDataDir);
+  return typeof config.projectsDir === "string" && config.projectsDir
+    ? config.projectsDir
+    : null;
 }
 
 /**
  * Records the user's chosen workspace location.
+ *
+ * Read-modify-write: any other field already recorded in `workspace.json`
+ * (e.g. {@link readGlobalNoiseWords}'s list) is preserved, not overwritten.
  *
  * @param userDataDir - Electron's per-user data directory.
  * @param projectsDir - The directory to use from now on.
@@ -239,24 +297,68 @@ export function writeConfiguredProjectsDir(
   userDataDir: string,
   projectsDir: string,
 ): void {
-  fs.mkdirSync(userDataDir, { recursive: true });
-  fs.writeFileSync(
-    workspaceConfigPath(userDataDir),
-    `${JSON.stringify({ projectsDir }, null, 2)}\n`,
-  );
+  const config = readWorkspaceConfig(userDataDir);
+  writeWorkspaceConfig(userDataDir, { ...config, projectsDir });
 }
 
 /**
  * Clears any recorded choice, returning the app to the default location.
  *
+ * Read-modify-write: leaves any other field already recorded in
+ * `workspace.json` untouched rather than deleting the whole file.
+ *
  * @param userDataDir - Electron's per-user data directory.
  */
 export function clearConfiguredProjectsDir(userDataDir: string): void {
-  try {
-    fs.rmSync(workspaceConfigPath(userDataDir), { force: true });
-  } catch {
-    // Already gone — the desired end state either way.
+  const config = readWorkspaceConfig(userDataDir);
+  if (config.projectsDir === undefined) return;
+  const { projectsDir: _unused, ...rest } = config;
+  if (Object.keys(rest).length === 0) {
+    try {
+      fs.rmSync(workspaceConfigPath(userDataDir), { force: true });
+    } catch {
+      // Already gone — the desired end state either way.
+    }
+    return;
   }
+  writeWorkspaceConfig(userDataDir, rest);
+}
+
+/**
+ * Reads the global, cross-project noise-word list (FR-5b).
+ *
+ * A missing field or file means "nothing flagged yet" and yields `[]`, the
+ * same downgrade-to-empty posture {@link readConfiguredProjectsDir} takes for
+ * a missing or corrupt config.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @returns The flagged words, or `[]` if none are recorded.
+ */
+export function readGlobalNoiseWords(userDataDir: string): string[] {
+  const config = readWorkspaceConfig(userDataDir);
+  return Array.isArray(config.globalNoiseWords)
+    ? config.globalNoiseWords.filter(
+        (word): word is string => typeof word === "string",
+      )
+    : [];
+}
+
+/**
+ * Records the global, cross-project noise-word list (FR-5b).
+ *
+ * Read-modify-write: any other field already recorded in `workspace.json`
+ * (e.g. {@link readConfiguredProjectsDir}'s override) is preserved, not
+ * overwritten.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @param words - The complete list to persist from now on.
+ */
+export function writeGlobalNoiseWords(
+  userDataDir: string,
+  words: string[],
+): void {
+  const config = readWorkspaceConfig(userDataDir);
+  writeWorkspaceConfig(userDataDir, { ...config, globalNoiseWords: words });
 }
 
 /**

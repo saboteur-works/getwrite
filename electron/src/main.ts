@@ -15,9 +15,11 @@ import {
   ensureProjectsDir,
   legacyProjectsDirs,
   migrateLegacyProjectsDir,
+  readGlobalNoiseWords,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
+  writeGlobalNoiseWords,
   type ProjectsDirEnvironment,
 } from "./projects-dir";
 import { createSelectionHandleRegistry } from "./scrivener-import/selection-handles";
@@ -245,6 +247,44 @@ function registerWorkspaceHandlers(): void {
     app.relaunch();
     app.quit();
   });
+}
+
+/** What persisting a new global noise-word list can result in. */
+interface GlobalNoiseWordsSetResult {
+  ok: boolean;
+  message?: string;
+}
+
+/**
+ * Wires the two global noise-word-list channels the preload bridge calls
+ * (FR-5b).
+ *
+ * Cross-project, unlike an entity's own per-project noise-word dismissals:
+ * this list lives in `userData/workspace.json`, the same file
+ * {@link registerWorkspaceHandlers} already keeps the workspace-location
+ * override in, read-modify-write so neither setting ever clobbers the
+ * other. A plain `fs` read/write, same as `writeConfiguredProjectsDir` — no
+ * forked worker, no IPC channel beyond the promise-based `ipcMain.handle`
+ * pair itself.
+ */
+function registerGlobalNoiseWordsHandlers(): void {
+  ipcMain.handle("getwrite:global-noise-words-get", (): string[] =>
+    readGlobalNoiseWords(projectsDirEnvironment().userDataDir),
+  );
+
+  ipcMain.handle(
+    "getwrite:global-noise-words-set",
+    (_event, words: string[]): GlobalNoiseWordsSetResult => {
+      try {
+        writeGlobalNoiseWords(projectsDirEnvironment().userDataDir, words);
+        return { ok: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log(`Failed to save the global noise-word list: ${message}`);
+        return { ok: false, message };
+      }
+    },
+  );
 }
 
 // The one active `.scriv` selection (FR-1, FR-3) and the one-in-flight-import
@@ -596,6 +636,7 @@ if (!app.requestSingleInstanceLock()) {
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
     registerWorkspaceHandlers();
+    registerGlobalNoiseWordsHandlers();
     registerScrivenerImportHandlers();
     registerDocxImportHandlers();
 
