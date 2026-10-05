@@ -1,12 +1,22 @@
 import React from "react";
 import type { EntityRosterRow as EntityRosterRowData } from "./EntityRosterView";
 import type { EntityMentionCounts } from "../../../../src/lib/api/entity-mention-counts";
+import { getNoiseObservation } from "../../../../src/lib/models/entity-noise-copy";
+import Button from "../../../common/UI/Button/Button";
 
 export interface EntityRosterRowProps {
   row: EntityRosterRowData;
   /** Invoked when the row's button is activated (click or keyboard). Task 8
    * wires this to real navigation — this component only forwards the call. */
   onActivate: () => void;
+  /**
+   * Invoked with a flagged term's original text when its per-term dismiss
+   * control is activated (FR-8/FR-9/FR-13). Optional — a caller that never
+   * supplies `row.flaggedTerms` (e.g. the unit tests, which build a row by
+   * hand without that field) renders no dismiss control at all, so this is
+   * safe to omit.
+   */
+  onDismissTerm?: (term: string) => void;
 }
 
 /**
@@ -63,8 +73,10 @@ function composeAttentionDisclosure(row: EntityRosterRowData): string | null {
 export default function EntityRosterRow({
   row,
   onActivate,
+  onDismissTerm,
 }: EntityRosterRowProps): JSX.Element {
   const attentionDisclosure = composeAttentionDisclosure(row);
+  const flaggedTerms = row.flaggedTerms ?? [];
 
   return (
     <li className="workarea-list-item" data-testid="entity-roster-row">
@@ -133,6 +145,32 @@ export default function EntityRosterRow({
           <span className="sr-only">{attentionDisclosure}</span>
         ) : null}
       </button>
+      {flaggedTerms.length > 0 ? (
+        <ul
+          className="mt-1 flex flex-col gap-1 pl-2"
+          data-testid="entity-roster-row-noise-observations"
+        >
+          {flaggedTerms.map((flagged) => (
+            <li
+              key={`${flagged.kind}-${flagged.term}`}
+              className="flex items-start justify-between gap-2"
+              data-testid="entity-roster-row-noise-observation"
+            >
+              <span className="workarea-list-item-meta">
+                {getNoiseObservation(flagged.term, flagged.kind)}
+              </span>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => onDismissTerm?.(flagged.term)}
+                aria-label={`Dismiss noise observation for "${flagged.term}"`}
+              >
+                Dismiss
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </li>
   );
 }

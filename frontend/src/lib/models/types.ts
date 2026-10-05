@@ -277,12 +277,14 @@ export interface ResourceBase {
    */
   aliases?: string[];
   /**
-   * Per-entity record of which exact noise-flagging terms (its `name` or one
-   * of its `aliases`) a writer has dismissed the noise observation for
-   * (entity-mention-noise-flagging FR-8/FR-9/FR-13). Mirrors
+   * Normalized (trimmed, lowercased) terms this entity has dismissed the
+   * noise observation for (entity-mention-noise-flagging FR-8/FR-9/FR-13).
+   * Scoped to this one entity's own sidecar only — the identical term
+   * dismissed on a different entity is unaffected. Mirrors
    * `EntitySidecarFieldsSchema.dismissedNoiseTerms` (`schemas.ts`), which
    * this hand-written type otherwise drifted from after Task 3 added the
-   * schema field.
+   * schema field. See `resource-crud-core.ts`'s `setNoiseTermDismissedCore`/
+   * `normalizeNoiseTerm`.
    */
   dismissedNoiseTerms?: string[];
   /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */

@@ -17,8 +17,10 @@ import {
   setProject,
   setSelectedProjectId,
 } from "../../src/store/projectsSlice";
+import { setResources } from "../../src/store/resourcesSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
+import type { AnyResource } from "../../src/lib/models/types";
 
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
@@ -27,28 +29,62 @@ vi.mock("../../src/lib/api/entity-mention-counts", () => ({
   getEntityMentionCounts: vi.fn(),
 }));
 vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
+vi.mock("../../src/lib/api/project-noise-words", () => ({
+  getNoiseWordLists: vi.fn(),
+}));
+vi.mock("../../src/lib/api/global-noise-words", () => ({
+  getGlobalNoiseWords: vi.fn(),
+}));
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityMentionCounts } from "../../src/lib/api/entity-mention-counts";
 import { updateSidecar } from "../../src/lib/api/resources";
+import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
+import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityMentionCounts = vi.mocked(getEntityMentionCounts);
+const mockedGetNoiseWordLists = vi.mocked(getNoiseWordLists);
+const mockedGetGlobalNoiseWords = vi.mocked(getGlobalNoiseWords);
 
 const PROJECT_ID = "proj-entity-roster";
+
+/** Minimal valid `AnyResource` (text resource) for an entity, used to seed
+ * `resourcesSlice` with a `dismissedNoiseTerms` value for a given id. */
+function makeEntityResource(
+  id: string,
+  overrides: Partial<AnyResource> = {},
+): AnyResource {
+  return {
+    id,
+    name: id,
+    type: "text",
+    orderIndex: 0,
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  } as AnyResource;
+}
 
 /**
  * Builds a store with the given alias table cached and the given project's
  * directory basename set (matching `selectActiveProjectDirectoryId`'s
- * `rootPath`-derived read), and given `entities` feature flag.
+ * `rootPath`-derived read), and given `entities` feature flag. Also seeds
+ * `resourcesSlice` with `resources` (defaulting to `[]`) so dismissal
+ * lookups by entity id resolve.
  */
 async function setupStore(
   aliasTable: EntityAliasTable,
   entitiesEnabled = true,
+  resources: AnyResource[] = [],
 ) {
   mockedGetEntityAliasTable.mockResolvedValue(aliasTable);
+  mockedGetNoiseWordLists.mockResolvedValue({
+    customNoiseWords: [],
+    excludedGlobalNoiseWords: [],
+  });
+  mockedGetGlobalNoiseWords.mockResolvedValue([]);
   const store = makeStore();
   store.dispatch(
     setProject({
@@ -61,12 +97,19 @@ async function setupStore(
     } as never),
   );
   store.dispatch(setSelectedProjectId(PROJECT_ID));
+  store.dispatch(setResources(resources));
   await store.dispatch(fetchEntityAliasTable(PROJECT_ID));
   return store;
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
+  // `vi.restoreAllMocks()` restores `vi.spyOn` implementations but does not
+  // clear call history for the plain `vi.fn()` mocks created by the
+  // `vi.mock(...)` factories above (e.g. `mockedUpdateSidecar`) — without
+  // this, a dismissal test's `updateSidecar` call leaks into a later test's
+  // "never calls updateSidecar" assertion.
+  vi.clearAllMocks();
 });
 
 describe("EntityRosterView", () => {
@@ -268,6 +311,136 @@ describe("EntityRosterView", () => {
     expect(byName["Ambiguous One"].textContent).toBe(
       byName["Noisy Two"].textContent,
     );
+  });
+
+  it("flags a noisy NAME the same way a noisy alias is flagged (FR-1)", async () => {
+    const table: EntityAliasTable = {
+      entities: {
+        "e-noisy-name": {
+          entityId: "e-noisy-name",
+          entityKind: "character",
+          // "May" is on the bundled common-word list in
+          // entity-noise-check.ts — same term used elsewhere in this file
+          // to flag an alias, here used as the entity's own `name`.
+          name: "May",
+          aliases: [],
+          terms: ["May"],
+        },
+        "e-clean-name": {
+          entityId: "e-clean-name",
+          entityKind: "character",
+          name: "Zedrathorn",
+          aliases: [],
+          terms: ["Zedrathorn"],
+        },
+      },
+      claimedBy: {},
+    };
+    mockedGetEntityMentionCounts.mockResolvedValue({});
+
+    const store = await setupStore(table);
+
+    render(
+      <Provider store={store}>
+        <EntityRosterView />
+      </Provider>,
+    );
+
+    await waitFor(() =>
+      expect(mockedGetEntityMentionCounts).toHaveBeenCalled(),
+    );
+
+    const names = await screen.findAllByTestId("entity-roster-row-name");
+    const flags = screen.getAllByTestId("entity-roster-row-needs-attention");
+    const byName: Record<string, HTMLElement> = {};
+    names.forEach((el: HTMLElement, i: number) => {
+      byName[el.textContent ?? ""] = flags[i];
+    });
+
+    expect(byName["May"].getAttribute("data-noise-prone")).toBe("true");
+    expect(byName["May"].getAttribute("data-needs-attention")).toBe("true");
+    expect(byName["Zedrathorn"].getAttribute("data-noise-prone")).toBe("false");
+
+    // The flagged name's observation and dismiss control render inline.
+    expect(
+      screen.getByText(/"May" also reads as a common English word/i),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Dismiss noise observation/i }),
+    ).toBeTruthy();
+  });
+
+  it("scopes dismissal per-entity-per-term: dismissing a term on one entity does not suppress it on another (FR-13)", async () => {
+    const table: EntityAliasTable = {
+      entities: {
+        "e-a": {
+          entityId: "e-a",
+          entityKind: "character",
+          name: "Entity A",
+          aliases: ["Case"],
+          terms: ["Entity A", "Case"],
+        },
+        "e-b": {
+          entityId: "e-b",
+          entityKind: "character",
+          name: "Entity B",
+          aliases: ["Case"],
+          terms: ["Entity B", "Case"],
+        },
+      },
+      claimedBy: {},
+    };
+    mockedGetEntityMentionCounts.mockResolvedValue({});
+    mockedUpdateSidecar.mockResolvedValue(undefined);
+
+    const resources: AnyResource[] = [
+      makeEntityResource("e-a", {
+        name: "Entity A",
+        entityKind: "character",
+        aliases: ["Case"],
+      }),
+      makeEntityResource("e-b", {
+        name: "Entity B",
+        entityKind: "character",
+        aliases: ["Case"],
+      }),
+    ];
+
+    const store = await setupStore(table, true, resources);
+
+    render(
+      <Provider store={store}>
+        <EntityRosterView />
+      </Provider>,
+    );
+
+    await waitFor(() =>
+      expect(mockedGetEntityMentionCounts).toHaveBeenCalled(),
+    );
+
+    // Both entities start out flagged for "Case".
+    const dismissButtonsBefore = await screen.findAllByRole("button", {
+      name: /Dismiss noise observation for "Case"/i,
+    });
+    expect(dismissButtonsBefore).toHaveLength(2);
+
+    // Dismiss "Case" on Entity A only.
+    dismissButtonsBefore[0].click();
+
+    await waitFor(() => expect(mockedUpdateSidecar).toHaveBeenCalledTimes(1));
+    expect(mockedUpdateSidecar).toHaveBeenCalledWith(
+      "e-a",
+      PROJECT_ID,
+      expect.objectContaining({ dismissedNoiseTerms: ["case"] }),
+    );
+
+    // Entity A's observation disappears; Entity B's remains.
+    await waitFor(() => {
+      const remaining = screen.getAllByRole("button", {
+        name: /Dismiss noise observation for "Case"/i,
+      });
+      expect(remaining).toHaveLength(1);
+    });
   });
 
   it("renders the FR-11 empty state when entities is on but no entity is declared", async () => {
