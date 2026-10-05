@@ -195,7 +195,7 @@ describe("EntityRosterView", () => {
     );
   });
 
-  it("surfaces a claimedBy ambiguity and a getAliasWarning-flagged alias both as one shared needs-attention state (FR-7/FR-9)", async () => {
+  it("surfaces a claimedBy ambiguity and a checkNoiseFlag-flagged alias both as one shared needs-attention state (FR-7/FR-9)", async () => {
     const table: EntityAliasTable = {
       entities: {
         "e-ambiguous": {
@@ -210,7 +210,7 @@ describe("EntityRosterView", () => {
           entityKind: "character",
           name: "Noisy Two",
           // "May" is on the fixed common-word list in
-          // entity-alias-warnings.ts.
+          // entity-noise-check.ts.
           aliases: ["May"],
           terms: ["Noisy Two", "May"],
         },

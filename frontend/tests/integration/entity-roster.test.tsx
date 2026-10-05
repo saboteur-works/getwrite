@@ -87,8 +87,8 @@ const ENTITY_SPECS: readonly EntitySpec[] = [
     aliases: ["Nightshade"],
   },
   { key: "vex", name: "Vex", entityKind: "character", aliases: ["Nightshade"] },
-  // A getAliasWarning-flagged common-word alias, "May" (FR-7/FR-9) — on the
-  // fixed common-word list in entity-alias-warnings.ts.
+  // A checkNoiseFlag-flagged common-word alias, "May" (FR-7/FR-9) — on the
+  // fixed common-word list in entity-noise-check.ts.
   {
     key: "whisper",
     name: "Whisper",
@@ -316,7 +316,7 @@ describe("entity roster — fixture integration (FR-4, FR-5, FR-6, FR-7, FR-8, F
     expect(byName["Vex"].ambiguous).toBe("true");
     expect(byName["Vex"].noiseProne).toBe("false");
 
-    // FR-7/FR-8/FR-9: a getAliasWarning-flagged common-word alias ("May")
+    // FR-7/FR-8/FR-9: a checkNoiseFlag-flagged common-word alias ("May")
     // surfaces as noise-prone, not ambiguous.
     expect(byName["Whisper"].needsAttention).toBe("true");
     expect(byName["Whisper"].ambiguous).toBe("false");

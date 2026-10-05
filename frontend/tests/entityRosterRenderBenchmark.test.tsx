@@ -104,7 +104,7 @@ const NAME_SYLLABLES = [
 
 const ENTITY_KINDS = ["character", "place", "object", "faction"];
 
-/** A short/common-word alias `getAliasWarning` flags as noise-prone, used to
+/** A short/common-word alias `checkNoiseFlag` flags as noise-prone, used to
  * give a share of entities the FR-7 warning state. */
 const NOISE_PRONE_ALIAS = "May";
 
@@ -293,7 +293,6 @@ describe("entity roster virtualization benchmark (task_733deea7)", () => {
       // the harness measured the wrong thing, not that rendering is fast.
       expect(m.renderedRows).toBe(m.entityCount);
     }
-  }, // The 1000-entity mount plus its `waitFor` polling exceeds the default
-  // 5s timeout on a cold run; this is a benchmark, not a latency assertion.
+  }, // 5s timeout on a cold run; this is a benchmark, not a latency assertion. // The 1000-entity mount plus its `waitFor` polling exceeds the default
   60_000);
 });

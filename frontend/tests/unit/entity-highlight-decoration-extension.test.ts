@@ -203,7 +203,7 @@ describe("buildEntityHighlightDecorations — matches render at correct live-doc
 
   it("distinguishes plain-match and needs-attention via CSS class", () => {
     const doc = docFromText("May opened the letter slowly.");
-    // "May" is on entity-alias-warnings.ts's common-word list.
+    // "May" is on entity-noise-check.ts's common-word list.
     const table = buildAliasTable([
       { entityId: "e1", name: "Maylene", aliases: ["May"] },
     ]);
@@ -222,7 +222,7 @@ describe("buildEntityHighlightDecorations — matches render at correct live-doc
 describe("buildEntityHighlightDecorations — hover/title disclosure (FR-11)", () => {
   it("names 'short or common word' wording when only the short/common-word condition applies", () => {
     const doc = docFromText("May opened the letter slowly.");
-    // "May" is on entity-alias-warnings.ts's common-word list and is
+    // "May" is on entity-noise-check.ts's common-word list and is
     // declared by exactly one entity — no ambiguous claim.
     const table = buildAliasTable([
       { entityId: "e1", name: "Maylene", aliases: ["May"] },

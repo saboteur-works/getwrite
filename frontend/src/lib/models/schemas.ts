@@ -373,8 +373,9 @@ export const TipTapDocumentSchema: z.ZodTypeAny = z.object({
  * - `dismissedNoiseTerms` (entity-mention-noise-flagging FR-8/FR-9/FR-13)
  *   records, per this one entity, which exact terms (its `name` or one of
  *   its `aliases`) a writer has dismissed the noise observation for.
- *   Entries are normalized/case-folded the same way `getAliasWarning`
- *   normalizes a term for comparison, scoped to this entity's own sidecar
+ *   Entries are normalized/case-folded the same way `checkNoiseFlag`
+ *   (`entity-noise-check.ts`) normalizes a term for comparison, scoped to
+ *   this entity's own sidecar
  *   only — the same literal term dismissed here still surfaces its
  *   observation on a different entity that also uses it (FR-13).
  */

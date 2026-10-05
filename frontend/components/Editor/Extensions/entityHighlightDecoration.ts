@@ -4,7 +4,7 @@ import {
   POSSESSIVE_OR_PLURAL_SUFFIX,
   escapeRegExp,
 } from "../../../src/lib/models/entity-detection";
-import { getAliasWarning } from "../../../src/lib/models/entity-alias-warnings";
+import { checkNoiseFlag } from "../../../src/lib/models/entity-noise-check";
 import type { EntityAliasTable } from "../../../src/lib/models/entity-alias-table";
 
 /**
@@ -57,7 +57,7 @@ interface TermClassification {
   /** Every entity id that declares this normalized term. Length 1 unless the
    * term is `claimedBy`-ambiguous. */
   entityIds: string[];
-  /** Whether `entity-alias-warnings.ts` flags this term as short/common. */
+  /** Whether `entity-noise-check.ts` flags this term as noise-prone. */
   isWarned: boolean;
 }
 
@@ -67,8 +67,8 @@ export type EntityMatchState = "plain-match" | "needs-attention";
 /** Which condition(s) put a match into the "needs attention" state, for
  * FR-11's hover/`title` disclosure. Both may be true for the same match. */
 export interface NeedsAttentionReason {
-  /** The term is flagged by `entity-alias-warnings.ts` as short or a common
-   * word/name. */
+  /** The term is flagged by `entity-noise-check.ts` as noise-prone (too
+   * short, or a bundled/custom/global noise-word match). */
   shortOrCommonWord: boolean;
   /** The term is claimed by more than one entity (`EntityAliasTable.claimedBy`). */
   ambiguousClaim: boolean;
@@ -129,7 +129,7 @@ function buildTermIndex(aliasTable: EntityAliasTable): {
       classifications.set(normalized, {
         term,
         entityIds: [entity.entityId],
-        isWarned: getAliasWarning(term) !== null,
+        isWarned: checkNoiseFlag(term),
       });
     }
   }

@@ -7,7 +7,8 @@ import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import { updateSidecar } from "../../src/lib/api/resources";
-import { getAliasWarning } from "../../src/lib/models/entity-alias-warnings";
+import { checkNoiseFlag } from "../../src/lib/models/entity-noise-check";
+import { getNoiseObservation } from "../../src/lib/models/entity-noise-copy";
 import type { AnyResource } from "../../src/lib/models/types";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
@@ -134,10 +135,17 @@ export default function EntitySection(): JSX.Element | null {
   };
 
   // An empty draft field is not yet an alias, so it gets no warning: without
-  // this guard `getAliasWarning("")` correctly reports a zero-length string as
+  // this guard `checkNoiseFlag("")` correctly flags a zero-length string as
   // too short, and every entity opens showing a "very short" warning before
   // the writer has typed anything.
-  const newAliasWarning = newAlias.trim() ? getAliasWarning(newAlias) : null;
+  //
+  // This call site passes no project/global/dismissal sources yet (Tasks
+  // 6/7/11 own wiring those in) — it gets exactly the predecessor's
+  // short-length + bundled-list behavior, which is this task's scope.
+  const newAliasWarning =
+    newAlias.trim() && checkNoiseFlag(newAlias)
+      ? getNoiseObservation(newAlias, "alias")
+      : null;
 
   return (
     <div className="mt-0">
@@ -163,7 +171,9 @@ export default function EntitySection(): JSX.Element | null {
           {aliases.length > 0 && (
             <ul className="mt-2 flex flex-col gap-2">
               {aliases.map((alias, index) => {
-                const warning = getAliasWarning(alias);
+                const warning = checkNoiseFlag(alias)
+                  ? getNoiseObservation(alias, "alias")
+                  : null;
                 return (
                   <li key={`${alias}-${index}`} className="flex flex-col">
                     <div className="flex items-center gap-1">

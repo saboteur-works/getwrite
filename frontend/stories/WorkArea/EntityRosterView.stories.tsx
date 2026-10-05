@@ -104,7 +104,7 @@ const populatedTable: EntityAliasTable = {
       entityId: "e-noisy",
       entityKind: "character",
       name: "Noisy Two",
-      // "May" is on the fixed common-word list in entity-alias-warnings.ts.
+      // "May" is on the fixed common-word list in entity-noise-check.ts.
       aliases: ["May"],
       terms: ["Noisy Two", "May"],
     },

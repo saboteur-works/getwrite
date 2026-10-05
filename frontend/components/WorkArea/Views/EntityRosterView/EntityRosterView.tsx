@@ -13,7 +13,7 @@ import {
   getEntityMentionCounts,
   type EntityMentionCounts,
 } from "../../../../src/lib/api/entity-mention-counts";
-import { getAliasWarning } from "../../../../src/lib/models/entity-alias-warnings";
+import { checkNoiseFlag } from "../../../../src/lib/models/entity-noise-check";
 import type { EntityAliasEntry } from "../../../../src/lib/models/entity-alias-table";
 import EntityRosterRowComponent from "./EntityRosterRow";
 
@@ -53,7 +53,7 @@ export interface EntityRosterRow {
    * than one entity, per the alias table's `claimedBy` map (FR-7). */
   ambiguous: boolean;
   /** Whether any of the entity's declared aliases (not its name) trigger
-   * `getAliasWarning`'s short/common-word noise heuristic (FR-7). */
+   * `checkNoiseFlag`'s noise heuristic (FR-7). */
   noiseProne: boolean;
   /** Single shared "needs attention" state — `ambiguous || noiseProne`
    * (FR-9). */
@@ -73,10 +73,14 @@ function isAmbiguous(
 
 /**
  * Derives whether any of an entity's declared aliases (not its name) are
- * flagged as noise-prone by `getAliasWarning` (FR-7).
+ * flagged as noise-prone by `checkNoiseFlag` (FR-7).
+ *
+ * No project/global/dismissal sources are passed yet — Tasks 6/7/11/14 own
+ * wiring those in; this call site keeps this task's scope and gets exactly
+ * the predecessor's short-length + bundled-list behavior.
  */
 function isNoiseProne(entry: EntityAliasEntry): boolean {
-  return entry.aliases.some((alias) => getAliasWarning(alias) !== null);
+  return entry.aliases.some((alias) => checkNoiseFlag(alias));
 }
 
 /**
