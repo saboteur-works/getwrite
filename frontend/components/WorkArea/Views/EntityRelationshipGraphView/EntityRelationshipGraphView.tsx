@@ -529,6 +529,7 @@ export default function EntityRelationshipGraphView({
           <Button
             type="button"
             variant="secondary"
+            className="mr-2"
             data-testid="entity-kind-styles-open-button"
             onClick={() => setIsKindStylesModalOpen(true)}
           >
