@@ -34,6 +34,17 @@ gesture).
 
 **Raised:** 2026-10-01
 
-**Resolved:** [ ]
+**Resolved:** [x]
 
-**Resolved on:**
+**Resolved on:** 2026-10-05 — see
+`specs/features/entity-graph-connections-persistence-focal-point/manual-verification.md`'s
+"Touch input — Pixel 7 Pro, 2026-10-05 (FU-1)" section. Verified on a
+physical Pixel 7 Pro with a debug build compiled fresh from `main`: the
+long-press correctly sets the focal point and hop-radius dimming applies
+correctly, confirmed via direct DOM inspection over the WebView's own
+DevTools socket rather than screenshot comparison alone. One platform
+characteristic worth knowing for future work on this gesture: this
+WebView's synthesized held-touch sequence ends in `pointercancel`, not
+`pointerup`, which does not break the gesture (the long-press timer fires
+independently before release) but differs from a normal tap's event
+sequence.
