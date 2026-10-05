@@ -748,3 +748,20 @@ export const EntityGraphKindStyleRecordResponseSchema = z.object({
 export const EntityGraphKindStylesListResponseSchema = z.array(
   EntityGraphKindStyleRecordResponseSchema,
 );
+
+// ---------------------------------------------------------------------------
+// NoiseWordListsResponseSchema — Entity Mention Noise Flagging, Task 6
+// (project noise-word list core + API). Matches
+// `project-noise-words-core.ts`'s `NoiseWordLists` shape exactly: `{
+// customNoiseWords: string[]; excludedGlobalNoiseWords: string[] }`. Both
+// fields are required here (unlike the optional-on-clear goal schemas
+// above) since the core always returns both lists with absent config keys
+// already defaulted to `[]` — there is no "absent" case on this response.
+// Backs both the GET read and the POST add/remove-action response, which
+// share this one shape.
+// ---------------------------------------------------------------------------
+
+export const NoiseWordListsResponseSchema = z.object({
+  customNoiseWords: z.array(z.string()),
+  excludedGlobalNoiseWords: z.array(z.string()),
+});
