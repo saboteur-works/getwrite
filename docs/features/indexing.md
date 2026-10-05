@@ -94,7 +94,7 @@ Separate from backlinks (explicit `[[wiki-link]]`/UUID references), the entity m
 - A resource becomes an entity by setting `entityKind` (an open string, e.g. `"character"`, `"place"`) on its sidecar, optionally with an `aliases` array of alternate names.
 - `frontend/src/lib/models/entity-detection.ts` scans other resources' persisted plain text for case-insensitive, word-boundary occurrences of an entity's name/aliases, including possessive (`Aria's`) and simple plural (`Arias`) forms.
 - `frontend/src/lib/models/entity-alias-table.ts` builds the per-project table of every entity's matchable terms and flags terms claimed by more than one entity as ambiguous.
-- `frontend/src/lib/models/entity-alias-warnings.ts` is a non-blocking heuristic (never rejects an alias) that flags very short or common-word aliases as noise-prone.
+- `frontend/src/lib/models/entity-noise-check.ts` (`checkNoiseFlag`, renamed from `entity-alias-warnings.ts`'s `getAliasWarning`) is a non-blocking heuristic (never rejects a name or alias) that flags a short or noise-prone term — against a bundled frequency word list plus a project's own custom/global noise-word lists — as noise-prone. It now applies identically to an entity's `name` and its `aliases`, not aliases only. A writer can dismiss the observation per entity/term (persisted on the sidecar's `dismissedNoiseTerms`). See the "Entity mention noise flagging" glossary entry in `CLAUDE.md` for the full account.
 
 **`MentionIndex` type** (`frontend/src/lib/models/mention-index.ts`)
 

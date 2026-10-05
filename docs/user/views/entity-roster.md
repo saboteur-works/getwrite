@@ -9,7 +9,7 @@ Each row lists:
 - The entity's name and its kind (character, place, or whatever kind you gave it).
 - Its declared aliases, if any.
 - How many times it's mentioned across the project and how many documents those mentions are spread across — for example "593 mentions in 32 documents" — or "No mentions yet" if it hasn't appeared in your prose. Both numbers are shown because they answer different questions: one tells you how heavily a character features, the other how widely they're threaded through the book.
-- A "Needs attention" indicator when one of its aliases is claimed by more than one entity, or is short enough or common enough a word to risk false matches.
+- A "Needs attention" indicator when its name or one of its aliases is claimed by more than one entity, or also reads as an ordinary English word or name (either too short, or a match against a bundled common-word list, your project's own custom noise-word list, or the cross-project noise-word list from App Settings) and so risks false matches. Each flagged term has its own "Dismiss" control if you've decided it's not actually a problem for this entity — dismissing it stops the indicator from reappearing for that exact term until its text changes.
 
 Rows are sorted alphabetically by name.
 
