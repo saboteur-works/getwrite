@@ -18,6 +18,7 @@ import {
   getEntityMentionedIn,
   getProjectMentionCounts,
   getEntityCooccurrence,
+  getProximityMentionEdges,
 } from "../../src/lib/models/mentions-core";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -447,5 +448,98 @@ describe("getEntityCooccurrence (entity-cooccurrence FR-1/FR-2/FR-3/FR-4)", () =
 
     expect(cooccurrence).not.toHaveProperty(linkOnlyId);
     expect(cooccurrence).toEqual({});
+  });
+});
+
+describe("getProximityMentionEdges (entity-graph-connections-persistence-focal-point FR-4, OQ-5)", () => {
+  it("weights mentions close together more strongly than mentions far apart", async () => {
+    const closeProjectRoot = await makeTmpProjectRoot();
+    const farProjectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const jonesId = "entity-jones";
+    const sceneId = "scene-1";
+
+    await persistMentionIndex(closeProjectRoot, {
+      [sceneId]: [
+        { entityId: ariaId, resourceId: sceneId, count: 1, offsets: [10] },
+        { entityId: jonesId, resourceId: sceneId, count: 1, offsets: [15] },
+      ],
+    });
+    await persistMentionIndex(farProjectRoot, {
+      [sceneId]: [
+        { entityId: ariaId, resourceId: sceneId, count: 1, offsets: [10] },
+        { entityId: jonesId, resourceId: sceneId, count: 1, offsets: [5000] },
+      ],
+    });
+
+    const closeEdges = await getProximityMentionEdges(closeProjectRoot);
+    const farEdges = await getProximityMentionEdges(farProjectRoot);
+
+    const closeWeight = closeEdges[ariaId]?.[0]?.weight;
+    const farWeight = farEdges[ariaId]?.[0]?.weight;
+
+    expect(closeWeight).toBe(5);
+    expect(farWeight).toBe(4990);
+    expect(closeWeight).toBeLessThan(farWeight as number);
+  });
+
+  it("averages distance across every mention pair, not just the nearest pair", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const jonesId = "entity-jones";
+    const sceneId = "scene-1";
+
+    // A at [10, 50], B at [20, 200] -> pairwise distances
+    // |10-20|=10, |10-200|=190, |50-20|=30, |50-200|=150 -> average 95.
+    // The nearest pair alone (|10-20|=10) must NOT be the reported weight.
+    await persistMentionIndex(projectRoot, {
+      [sceneId]: [
+        { entityId: ariaId, resourceId: sceneId, count: 2, offsets: [10, 50] },
+        {
+          entityId: jonesId,
+          resourceId: sceneId,
+          count: 2,
+          offsets: [20, 200],
+        },
+      ],
+    });
+
+    const edges = await getProximityMentionEdges(projectRoot);
+
+    expect(edges[ariaId]).toEqual([
+      { entityId: jonesId, resourceId: sceneId, weight: 95 },
+    ]);
+    expect(edges[jonesId]).toEqual([
+      { entityId: ariaId, resourceId: sceneId, weight: 95 },
+    ]);
+  });
+
+  it("produces no edge for two entities never mentioned in a common resource", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const jonesId = "entity-jones";
+    const sceneOneId = "scene-1";
+    const sceneTwoId = "scene-2";
+
+    await persistMentionIndex(projectRoot, {
+      [sceneOneId]: [
+        { entityId: ariaId, resourceId: sceneOneId, count: 1, offsets: [0] },
+      ],
+      [sceneTwoId]: [
+        { entityId: jonesId, resourceId: sceneTwoId, count: 1, offsets: [0] },
+      ],
+    });
+
+    const edges = await getProximityMentionEdges(projectRoot);
+
+    expect(edges).not.toHaveProperty(ariaId);
+    expect(edges).not.toHaveProperty(jonesId);
+    expect(edges).toEqual({});
+  });
+
+  it("returns {} for a missing mention index rather than throwing", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const edges = await getProximityMentionEdges(projectRoot);
+    expect(edges).toEqual({});
   });
 });

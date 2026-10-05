@@ -6,8 +6,15 @@
  * kind (FR-6's colour constraint, this task's own no-conflict scope).
  */
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import * as d3Force from "d3-force";
 import {
   chooseTooltipPlacement,
@@ -26,6 +33,19 @@ vi.mock("d3-force", async (importOriginal) => {
   const actual = await importOriginal<typeof import("d3-force")>();
   return { ...actual, forceSimulation: vi.fn(actual.forceSimulation) };
 });
+// Task 13: the canvas's own position-persistence reads/writes, mocked so no
+// test here ever hits a real `fetch`. `vi.restoreAllMocks()` (the existing
+// `afterEach` below) does not reset a plain `vi.fn()` created inside a
+// `vi.mock()` factory's call history — only `vi.spyOn()` spies — so these are
+// explicitly `.mockReset()` in `beforeEach` to avoid cross-test leakage.
+vi.mock("../../src/lib/api/entity-graph-positions", () => ({
+  getEntityGraphPositions: vi.fn(),
+  saveEntityGraphPosition: vi.fn(),
+}));
+import {
+  getEntityGraphPositions,
+  saveEntityGraphPosition,
+} from "../../src/lib/api/entity-graph-positions";
 import type {
   EntityGraphEdge,
   EntityGraphNode,
@@ -59,6 +79,22 @@ const EDGES: EntityGraphEdge[] = [
 ];
 
 const RESERVED_RED_HEX = "#d44040";
+
+const mockedGetEntityGraphPositions = vi.mocked(getEntityGraphPositions);
+const mockedSaveEntityGraphPosition = vi.mocked(saveEntityGraphPosition);
+
+beforeEach(() => {
+  mockedGetEntityGraphPositions.mockReset();
+  mockedGetEntityGraphPositions.mockResolvedValue([]);
+  mockedSaveEntityGraphPosition.mockReset();
+  mockedSaveEntityGraphPosition.mockResolvedValue({
+    entityId: "e-1",
+    x: 0,
+    y: 0,
+    connectionTypesSnapshot: [],
+    savedAt: "2026-01-01T00:00:00.000Z",
+  });
+});
 
 afterEach(() => {
   cleanup();
@@ -393,6 +429,35 @@ describe("EntityGraphCanvas", () => {
     }
     const afterManyZoomOut = parseViewportTransform(viewport);
     expect(afterManyZoomOut.scale).toBeGreaterThanOrEqual(0.25);
+  });
+
+  it("resets pan and zoom to the default framing when the reset-view button is clicked", () => {
+    render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+    const svg = screen.getByTestId("entity-graph-canvas");
+    const viewport = screen.getByTestId("entity-graph-viewport");
+
+    // Pan via a background drag, then zoom via wheel, so both pan and scale
+    // have drifted from their defaults before the reset is exercised.
+    fireEvent.mouseDown(screen.getByTestId("entity-graph-canvas-background"), {
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.mouseMove(window, { clientX: 150, clientY: 130 });
+    fireEvent.mouseUp(window);
+    fireEvent.wheel(svg, { deltaY: -100 });
+
+    const drifted = parseViewportTransform(viewport);
+    expect(drifted.x).not.toBe(0);
+    expect(drifted.y).not.toBe(0);
+    expect(drifted.scale).not.toBe(1);
+
+    fireEvent.click(screen.getByTestId("entity-graph-reset-view"));
+
+    const reset = parseViewportTransform(viewport);
+    expect(reset.x).toBe(0);
+    expect(reset.y).toBe(0);
+    expect(reset.scale).toBe(1);
   });
 
   it("anchors a wheel zoom on the pointer, keeping the graph point under the cursor fixed", () => {
@@ -1536,6 +1601,881 @@ describe("EntityGraphCanvas", () => {
         expect(fetchSpy).not.toHaveBeenCalled();
       } finally {
         global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe("new edge kinds (Feature 68 Task 7 minimal fix)", () => {
+    const NEW_KIND_EDGES: EntityGraphEdge[] = [
+      { kind: "backlinks", entityIds: ["e-1", "e-2"] },
+      {
+        kind: "proximityMentions",
+        entityIdA: "e-2",
+        entityIdB: "e-3",
+        resourceId: "res-1",
+        weight: 42,
+      },
+      {
+        kind: "sharedMetadata",
+        entityIdA: "e-1",
+        entityIdB: "e-3",
+        sharedTagIds: ["tag-1"],
+        sharedFieldKeys: [],
+      },
+    ];
+
+    it("renders one edge element per new-kind edge without throwing (regression: d3-force 'node not found')", () => {
+      // Before the Task 7 fix, `edgeEndpoints`'s non-exhaustive narrowing
+      // resolved a new-kind edge's endpoints to `undefined`, which made
+      // `forceLink`'s `.id()` lookup fail inside `d3-force` with
+      // "Error: node not found: undefined" the first time the simulation
+      // advanced a tick. This asserts the render (and therefore
+      // `computeGraphLayout`'s simulation) completes cleanly.
+      expect(() =>
+        render(<EntityGraphCanvas nodes={NODES} edges={NEW_KIND_EDGES} />),
+      ).not.toThrow();
+
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      expect(edgeElements).toHaveLength(NEW_KIND_EDGES.length);
+    });
+
+    it("resolves both real node endpoints for every new edge kind, never a position fallback", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={NEW_KIND_EDGES} />);
+
+      // If an endpoint had resolved to `undefined`, `computeGraphLayout`
+      // falls back to the canvas center for that endpoint (see its
+      // `?? width / 2` / `?? height / 2`), which every one of these fixture
+      // edges would coincidentally also do if both ends collapsed to the
+      // exact center — so this also cross-checks against
+      // `computeGraphLayout`'s own node positions directly.
+      const { positionedEdges, positionedNodes } = computeGraphLayout(
+        NODES,
+        NEW_KIND_EDGES,
+      );
+      const positionById = new Map(
+        positionedNodes.map((n) => [n.entityId, { x: n.x, y: n.y }]),
+      );
+
+      expect(positionedEdges).toHaveLength(NEW_KIND_EDGES.length);
+      const expectedEndpointsByKey: Record<string, [string, string]> = {
+        "backlinks:e-1:e-2": ["e-1", "e-2"],
+        "proximityMentions:e-2:e-3:res-1": ["e-2", "e-3"],
+        "sharedMetadata:e-1:e-3": ["e-1", "e-3"],
+      };
+      for (const edge of positionedEdges) {
+        const [sourceId, targetId] = expectedEndpointsByKey[edge.key];
+        expect(edge.x1).toBe(positionById.get(sourceId)?.x);
+        expect(edge.y1).toBe(positionById.get(sourceId)?.y);
+        expect(edge.x2).toBe(positionById.get(targetId)?.x);
+        expect(edge.y2).toBe(positionById.get(targetId)?.y);
+      }
+    });
+
+    it("never describes a new-kind edge's tooltip as an authored relationship", async () => {
+      for (const edge of NEW_KIND_EDGES) {
+        const { unmount } = render(
+          <EntityGraphCanvas nodes={NODES} edges={[edge]} />,
+        );
+        const hitTarget = screen.getByTestId("entity-graph-edge-hit-target");
+        fireEvent.mouseEnter(hitTarget, { clientX: 1, clientY: 1 });
+        const tooltip = await screen.findByTestId("entity-graph-edge-tooltip");
+        expect(tooltip.textContent).not.toMatch(/→/);
+        unmount();
+      }
+    });
+  });
+
+  describe("five-kind visual encoding (Feature 68, Task 8, FR-6/OQ-5)", () => {
+    const ALL_FIVE_KIND_EDGES: EntityGraphEdge[] = [
+      {
+        kind: "authored",
+        id: "rel-1",
+        sourceEntityId: "e-1",
+        targetEntityId: "e-2",
+        relationshipType: "allies with",
+      },
+      {
+        kind: "cooccurrence",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        sharedResourceCount: 3,
+      },
+      { kind: "backlinks", entityIds: ["e-1", "e-2"] },
+      {
+        kind: "proximityMentions",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        resourceId: "res-1",
+        weight: 10,
+      },
+      {
+        kind: "sharedMetadata",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        sharedTagIds: ["tag-1"],
+        sharedFieldKeys: [],
+      },
+    ];
+
+    function edgeByKind(
+      elements: HTMLElement[],
+      kind: EntityGraphEdge["kind"],
+    ): HTMLElement {
+      const found = elements.find(
+        (el) => el.getAttribute("data-edge-kind") === kind,
+      );
+      if (!found) throw new Error(`No edge element found for kind "${kind}"`);
+      return found;
+    }
+
+    it("gives every one of the five edge kinds its own dash pattern (or solid, for authored), with no two sharing one", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      expect(edgeElements).toHaveLength(ALL_FIVE_KIND_EDGES.length);
+
+      const dashByKind = new Map<string, string | null>();
+      for (const kind of [
+        "authored",
+        "cooccurrence",
+        "backlinks",
+        "proximityMentions",
+        "sharedMetadata",
+      ] as const) {
+        dashByKind.set(
+          kind,
+          edgeByKind(edgeElements, kind).getAttribute("stroke-dasharray"),
+        );
+      }
+
+      const dashValues = Array.from(dashByKind.values());
+      // Every pairwise combination differs by dash pattern alone — a plain
+      // `Set` dedupe is sufficient proof since there are only 5 elements.
+      expect(new Set(dashValues).size).toBe(dashValues.length);
+    });
+
+    it("renders every undirected kind (backlinks, proximityMentions, sharedMetadata) with no arrowhead marker", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+
+      for (const kind of [
+        "backlinks",
+        "proximityMentions",
+        "sharedMetadata",
+      ] as const) {
+        expect(
+          edgeByKind(edgeElements, kind).getAttribute("marker-end"),
+        ).toBeNull();
+      }
+      expect(
+        edgeByKind(edgeElements, "authored").getAttribute("marker-end"),
+      ).toBeTruthy();
+    });
+
+    it("renders a proximityMentions edge at reduced opacity relative to a full-opacity cooccurrence edge, so the two weighted kinds never look identical", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+
+      const cooccurrenceOpacity = Number(
+        edgeByKind(edgeElements, "cooccurrence").getAttribute("opacity") ?? "1",
+      );
+      const proximityOpacity = Number(
+        edgeByKind(edgeElements, "proximityMentions").getAttribute("opacity"),
+      );
+
+      expect(cooccurrenceOpacity).toBe(1);
+      expect(proximityOpacity).toBeLessThan(cooccurrenceOpacity);
+
+      // The two must also be distinguishable without relying on opacity
+      // alone (dash pattern already differs per the test above), and
+      // crucially proximityMentions must not fall back to cooccurrence's own
+      // thickness-scaling signal.
+      const cooccurrenceWidth = Number(
+        edgeByKind(edgeElements, "cooccurrence").getAttribute("stroke-width"),
+      );
+      const proximityWidth = Number(
+        edgeByKind(edgeElements, "proximityMentions").getAttribute(
+          "stroke-width",
+        ),
+      );
+      expect(proximityWidth).not.toBe(cooccurrenceWidth);
+    });
+
+    it("decreases a proximityMentions edge's opacity monotonically as its weight (distance) grows", () => {
+      const closeEdge: EntityGraphEdge = {
+        kind: "proximityMentions",
+        entityIdA: "e-1",
+        entityIdB: "e-2",
+        resourceId: "res-close",
+        weight: 10,
+      };
+      const farEdge: EntityGraphEdge = {
+        kind: "proximityMentions",
+        entityIdA: "e-1",
+        entityIdB: "e-3",
+        resourceId: "res-far",
+        weight: 5000,
+      };
+
+      render(<EntityGraphCanvas nodes={NODES} edges={[closeEdge, farEdge]} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      expect(edgeElements).toHaveLength(2);
+
+      const closeOpacity = Number(edgeElements[0].getAttribute("opacity"));
+      const farOpacity = Number(edgeElements[1].getAttribute("opacity"));
+
+      expect(closeOpacity).toBeGreaterThan(farOpacity);
+      // Never fades out entirely — a floor keeps a distant pair's edge
+      // visible.
+      expect(farOpacity).toBeGreaterThan(0);
+    });
+
+    it("keeps backlinks and sharedMetadata edges at fixed, non-varying stroke width regardless of their own data", () => {
+      const twoBacklinks: EntityGraphEdge[] = [
+        { kind: "backlinks", entityIds: ["e-1", "e-2"] },
+        { kind: "backlinks", entityIds: ["e-1", "e-3"] },
+      ];
+      const twoSharedMetadata: EntityGraphEdge[] = [
+        {
+          kind: "sharedMetadata",
+          entityIdA: "e-1",
+          entityIdB: "e-2",
+          sharedTagIds: ["tag-1"],
+          sharedFieldKeys: [],
+        },
+        {
+          kind: "sharedMetadata",
+          entityIdA: "e-1",
+          entityIdB: "e-3",
+          sharedTagIds: ["tag-1", "tag-2", "tag-3"],
+          sharedFieldKeys: ["field-a", "field-b"],
+        },
+      ];
+
+      const { unmount } = render(
+        <EntityGraphCanvas nodes={NODES} edges={twoBacklinks} />,
+      );
+      const backlinkWidths = screen
+        .getAllByTestId("entity-graph-edge")
+        .map((el: HTMLElement) => el.getAttribute("stroke-width"));
+      expect(backlinkWidths[0]).toBe(backlinkWidths[1]);
+      unmount();
+
+      render(<EntityGraphCanvas nodes={NODES} edges={twoSharedMetadata} />);
+      const sharedMetadataWidths = screen
+        .getAllByTestId("entity-graph-edge")
+        .map((el: HTMLElement) => el.getAttribute("stroke-width"));
+      expect(sharedMetadataWidths[0]).toBe(sharedMetadataWidths[1]);
+    });
+
+    it("uses no reserved red (#D44040) for any of the three new edge kinds, including via opacity-bearing style", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={ALL_FIVE_KIND_EDGES} />);
+      const edgeElements = screen.getAllByTestId("entity-graph-edge");
+      for (const kind of [
+        "backlinks",
+        "proximityMentions",
+        "sharedMetadata",
+      ] as const) {
+        const el = edgeByKind(edgeElements, kind);
+        const style = el.getAttribute("style") ?? "";
+        expect(style.toLowerCase()).not.toContain(RESERVED_RED_HEX);
+        expect(style.toLowerCase()).not.toContain("--color-gw-red");
+      }
+    });
+  });
+
+  describe("position persistence (Feature 68, Task 13, FR-9/FR-10/FR-11/FR-13)", () => {
+    const PROJECT_ID = "proj-entity-graph";
+    const dragPastThreshold = (
+      target: HTMLElement,
+      startX: number,
+      startY: number,
+      dx: number,
+      dy: number,
+    ) => {
+      fireEvent.pointerDown(target, { clientX: startX, clientY: startY });
+      fireEvent.pointerMove(window, {
+        clientX: startX + dx,
+        clientY: startY + dy,
+      });
+      fireEvent.pointerUp(window);
+    };
+
+    it("never fetches or saves positions when projectId is omitted", async () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      dragPastThreshold(target, 100, 100, 30, 20);
+
+      expect(mockedGetEntityGraphPositions).not.toHaveBeenCalled();
+      expect(mockedSaveEntityGraphPosition).not.toHaveBeenCalled();
+    });
+
+    it("seeds a node's rendered position from a valid persisted record at mount, instead of computeGraphLayout's fresh layout", async () => {
+      mockedGetEntityGraphPositions.mockResolvedValue([
+        {
+          entityId: "e-1",
+          x: 999,
+          y: 888,
+          connectionTypesSnapshot: ["authored"],
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalledWith(PROJECT_ID),
+      );
+
+      const target = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      await waitFor(() => {
+        const transform = parseNodeTransform(target);
+        expect(transform.x).toBeCloseTo(999);
+        expect(transform.y).toBeCloseTo(888);
+      });
+    });
+
+    it("ignores an invalidated persisted record (active connection types changed since save), rendering the fresh layout position instead", async () => {
+      const { positionedNodes } = computeGraphLayout(NODES, EDGES);
+      const freshE1 = positionedNodes.find((n) => n.entityId === "e-1")!;
+      mockedGetEntityGraphPositions.mockResolvedValue([
+        {
+          entityId: "e-1",
+          x: 999,
+          y: 888,
+          connectionTypesSnapshot: ["authored"],
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored", "cooccurrence"]}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalledWith(PROJECT_ID),
+      );
+
+      const target = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      const transform = parseNodeTransform(target);
+      expect(transform.x).toBeCloseTo(freshE1.x);
+      expect(transform.y).toBeCloseTo(freshE1.y);
+      expect(transform.x).not.toBeCloseTo(999);
+    });
+
+    it("writes exactly one position record via saveEntityGraphPosition's transport once a drag gesture ends", async () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored", "cooccurrence"]}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      dragPastThreshold(target, 100, 100, 30, 20);
+      const transform = parseNodeTransform(target);
+
+      await waitFor(() =>
+        expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
+      );
+      const [calledProjectId, calledEntityId, calledX, calledY, snapshot] =
+        mockedSaveEntityGraphPosition.mock.calls[0];
+      expect(calledProjectId).toBe(PROJECT_ID);
+      expect(calledEntityId).toBe("e-1");
+      expect(calledX).toBeCloseTo(transform.x);
+      expect(calledY).toBeCloseTo(transform.y);
+      expect(snapshot).toEqual(["authored", "cooccurrence"]);
+    });
+
+    it("does not call saveEntityGraphPosition for a gesture that stays under the click/drag threshold", async () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(window, { clientX: 101, clientY: 101 });
+      fireEvent.pointerUp(window);
+      fireEvent.click(target);
+
+      expect(mockedSaveEntityGraphPosition).not.toHaveBeenCalled();
+    });
+
+    it("reproduces a dragged position across a simulated reload (remount with the same persisted data)", async () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      dragPastThreshold(target, 100, 100, 40, 25);
+      const draggedTransform = parseNodeTransform(target);
+
+      await waitFor(() =>
+        expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
+      );
+
+      // Simulate the reload: a fresh mount, with the persisted store now
+      // containing the position the drag above just "saved".
+      mockedGetEntityGraphPositions.mockResolvedValue([
+        {
+          entityId: "e-1",
+          x: draggedTransform.x,
+          y: draggedTransform.y,
+          connectionTypesSnapshot: ["authored"],
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+      cleanup();
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+
+      const reloadedTarget = screen
+        .getAllByTestId("entity-graph-node")
+        .find(
+          (el: HTMLElement) => el.getAttribute("data-entity-id") === "e-1",
+        )!;
+      await waitFor(() => {
+        const reloadedTransform = parseNodeTransform(reloadedTarget);
+        expect(reloadedTransform.x).toBeCloseTo(draggedTransform.x);
+        expect(reloadedTransform.y).toBeCloseTo(draggedTransform.y);
+      });
+    });
+
+    it("does not crash and falls back to the fresh layout position when the position fetch fails", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockedGetEntityGraphPositions.mockRejectedValue(
+        new Error("network down"),
+      );
+
+      expect(() =>
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            projectId={PROJECT_ID}
+            activeConnectionTypes={["authored"]}
+          />,
+        ),
+      ).not.toThrow();
+
+      await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
+      expect(screen.getAllByTestId("entity-graph-node")).toHaveLength(
+        NODES.length,
+      );
+    });
+
+    it("does not crash when the position save fails, and reports it", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockedSaveEntityGraphPosition.mockRejectedValue(new Error("save failed"));
+
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          projectId={PROJECT_ID}
+          activeConnectionTypes={["authored"]}
+        />,
+      );
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalled(),
+      );
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      expect(() => dragPastThreshold(target, 100, 100, 30, 20)).not.toThrow();
+
+      await waitFor(() =>
+        expect(mockedSaveEntityGraphPosition).toHaveBeenCalledTimes(1),
+      );
+      await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled());
+    });
+  });
+
+  describe("focal-point selection (Feature 68, Task 15)", () => {
+    it("still activates the node on a plain click — selection toggle and onNodeActivated are both completely unaffected", () => {
+      const onNodeActivated = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first);
+
+      expect(onNodeActivated).toHaveBeenCalledTimes(1);
+      expect(onNodeActivated).toHaveBeenCalledWith("e-1");
+      expect(first.getAttribute("data-selected")).toBe("true");
+      // A plain click must not also set a focal point.
+      expect(first.getAttribute("data-focal-point")).toBe("false");
+    });
+
+    it("sets the focal point on a shift-click without toggling selection or calling onNodeActivated", () => {
+      const onNodeActivated = vi.fn();
+      const onFocalEntityChange = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onNodeActivated={onNodeActivated}
+          onFocalEntityChange={onFocalEntityChange}
+        />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first, { shiftKey: true });
+
+      expect(onNodeActivated).not.toHaveBeenCalled();
+      expect(first.getAttribute("data-selected")).toBe("false");
+      expect(first.getAttribute("data-focal-point")).toBe("true");
+      expect(onFocalEntityChange).toHaveBeenCalledTimes(1);
+      expect(onFocalEntityChange).toHaveBeenCalledWith("e-1");
+    });
+
+    it("centers the viewport's pan on the shift-clicked node without changing scale", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const viewport = screen.getByTestId("entity-graph-viewport");
+      const beforeScale = parseViewportTransform(viewport).scale;
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      const { x: nodeX, y: nodeY } = parseNodeTransform(first);
+
+      fireEvent.click(first, { shiftKey: true });
+
+      const after = parseViewportTransform(viewport);
+      expect(after.scale).toBe(beforeScale);
+      // pan = center - node * scale (width/height default to 800/560).
+      expect(after.x).toBeCloseTo(400 - nodeX * after.scale);
+      expect(after.y).toBeCloseTo(280 - nodeY * after.scale);
+    });
+
+    it("reassigns the focal point to a different node on a second shift-click gesture, with no clear step required first", () => {
+      const onFocalEntityChange = vi.fn();
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          onFocalEntityChange={onFocalEntityChange}
+        />,
+      );
+
+      const [first, second] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.click(first, { shiftKey: true });
+      expect(first.getAttribute("data-focal-point")).toBe("true");
+
+      fireEvent.click(second, { shiftKey: true });
+
+      expect(first.getAttribute("data-focal-point")).toBe("false");
+      expect(second.getAttribute("data-focal-point")).toBe("true");
+      expect(onFocalEntityChange).toHaveBeenCalledTimes(2);
+      expect(onFocalEntityChange).toHaveBeenNthCalledWith(1, "e-1");
+      expect(onFocalEntityChange).toHaveBeenNthCalledWith(2, "e-2");
+    });
+
+    it("resets focalEntityId to null when controlled from outside via the focalEntityId prop, exposing a clear action for a future caller", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas nodes={NODES} edges={EDGES} focalEntityId="e-1" />,
+      );
+
+      const [first] = screen.getAllByTestId("entity-graph-node");
+      expect(first.getAttribute("data-focal-point")).toBe("true");
+
+      rerender(
+        <EntityGraphCanvas nodes={NODES} edges={EDGES} focalEntityId={null} />,
+      );
+
+      expect(first.getAttribute("data-focal-point")).toBe("false");
+    });
+
+    it("sets the focal point via a long-press that stays stationary past the duration threshold", () => {
+      vi.useFakeTimers();
+      try {
+        const onFocalEntityChange = vi.fn();
+        const onNodeActivated = vi.fn();
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            onFocalEntityChange={onFocalEntityChange}
+            onNodeActivated={onNodeActivated}
+          />,
+        );
+
+        const [target] = screen.getAllByTestId("entity-graph-node");
+        fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+
+        expect(onFocalEntityChange).toHaveBeenCalledTimes(1);
+        expect(onFocalEntityChange).toHaveBeenCalledWith("e-1");
+        expect(target.getAttribute("data-focal-point")).toBe("true");
+
+        fireEvent.pointerUp(window);
+        // A trailing click (as a real browser fires after pointerup) must be
+        // suppressed, the same way a drag-past-threshold already suppresses
+        // it — a long-press must not also activate the node.
+        fireEvent.click(target);
+        expect(onNodeActivated).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not set a focal point via long-press once the gesture has moved past the drag threshold", () => {
+      vi.useFakeTimers();
+      try {
+        const onFocalEntityChange = vi.fn();
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            onFocalEntityChange={onFocalEntityChange}
+          />,
+        );
+
+        const [target] = screen.getAllByTestId("entity-graph-node");
+        fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+        fireEvent.pointerMove(window, {
+          clientX: 100 + DRAG_CLICK_THRESHOLD_PX + 20,
+          clientY: 100 + DRAG_CLICK_THRESHOLD_PX + 12,
+        });
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+
+        expect(onFocalEntityChange).not.toHaveBeenCalled();
+        fireEvent.pointerUp(window);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not set a focal point via long-press once the pointer has been released before the duration elapses", () => {
+      vi.useFakeTimers();
+      try {
+        const onFocalEntityChange = vi.fn();
+        render(
+          <EntityGraphCanvas
+            nodes={NODES}
+            edges={EDGES}
+            onFocalEntityChange={onFocalEntityChange}
+          />,
+        );
+
+        const [target] = screen.getAllByTestId("entity-graph-node");
+        fireEvent.pointerDown(target, { clientX: 100, clientY: 100 });
+        fireEvent.pointerUp(window);
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+
+        expect(onFocalEntityChange).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("shows the hint affordance icon only while a node is hovered, not before or after", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [target] = screen.getAllByTestId("entity-graph-node");
+      expect(
+        target.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).toBeNull();
+
+      fireEvent.mouseEnter(target);
+      expect(
+        target.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).not.toBeNull();
+
+      fireEvent.mouseLeave(target);
+      expect(
+        target.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).toBeNull();
+    });
+
+    it("shows the hint affordance on only the hovered node, not every node", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      const [first, second] = screen.getAllByTestId("entity-graph-node");
+      fireEvent.mouseEnter(first);
+
+      expect(
+        first.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).not.toBeNull();
+      expect(
+        second.querySelector('[data-testid="entity-graph-node-focal-hint"]'),
+      ).toBeNull();
+    });
+  });
+
+  describe("hop-radius dimming (Feature 68, Task 16)", () => {
+    // NODES/EDGES form a chain: e-1 -(cooccurrence)- e-2 -(authored)- e-3.
+    // With e-1 as the focal point: e-1 is 0 hops, e-2 is 1 hop, e-3 is 2 hops.
+
+    it("renders every node/edge at full opacity when no focal point is set", () => {
+      render(<EntityGraphCanvas nodes={NODES} edges={EDGES} />);
+
+      for (const node of screen.getAllByTestId("entity-graph-node")) {
+        expect(node.getAttribute("data-focal-dimmed")).toBe("false");
+        expect(node.getAttribute("opacity")).toBe("1");
+      }
+      for (const edge of screen.getAllByTestId("entity-graph-edge")) {
+        expect(edge.getAttribute("data-focal-dimmed")).toBe("false");
+      }
+    });
+
+    it("dims a node whose hop distance from the focal point exceeds the configured radius", () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+
+      const [first, second, third] = screen.getAllByTestId("entity-graph-node");
+      // e-1 (the focal point itself, 0 hops) and e-2 (1 hop) are in range.
+      expect(first.getAttribute("data-focal-dimmed")).toBe("false");
+      expect(second.getAttribute("data-focal-dimmed")).toBe("false");
+      // e-3 is 2 hops away, outside a radius of 1.
+      expect(third.getAttribute("data-focal-dimmed")).toBe("true");
+      expect(Number(third.getAttribute("opacity"))).toBeLessThan(1);
+    });
+
+    it("dims an edge when either of its endpoints falls outside the hop radius", () => {
+      render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+
+      const edges = screen.getAllByTestId("entity-graph-edge");
+      const cooccurrenceEdge = edges.find(
+        (edge: HTMLElement) =>
+          edge.getAttribute("data-edge-kind") === "cooccurrence",
+      );
+      const authoredEdge = edges.find(
+        (edge: HTMLElement) =>
+          edge.getAttribute("data-edge-kind") === "authored",
+      );
+      // e-1 <-> e-2: both endpoints within radius 1.
+      expect(cooccurrenceEdge?.getAttribute("data-focal-dimmed")).toBe("false");
+      // e-2 <-> e-3: e-3 is outside radius 1, so this edge is dimmed too.
+      expect(authoredEdge?.getAttribute("data-focal-dimmed")).toBe("true");
+    });
+
+    it("widens emphasis to every reachable node when the hop radius is increased, with no focal-point reselection", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+      const [, , thirdBefore] = screen.getAllByTestId("entity-graph-node");
+      expect(thirdBefore.getAttribute("data-focal-dimmed")).toBe("true");
+
+      rerender(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={2}
+        />,
+      );
+
+      const [, , thirdAfter] = screen.getAllByTestId("entity-graph-node");
+      expect(thirdAfter.getAttribute("data-focal-dimmed")).toBe("false");
+    });
+
+    it("restores full, unemphasized rendering once the focal point is cleared", () => {
+      const { rerender } = render(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId="e-1"
+          focalHopRadius={1}
+        />,
+      );
+      const [, , thirdBefore] = screen.getAllByTestId("entity-graph-node");
+      expect(thirdBefore.getAttribute("data-focal-dimmed")).toBe("true");
+
+      rerender(
+        <EntityGraphCanvas
+          nodes={NODES}
+          edges={EDGES}
+          focalEntityId={null}
+          focalHopRadius={1}
+        />,
+      );
+
+      for (const node of screen.getAllByTestId("entity-graph-node")) {
+        expect(node.getAttribute("data-focal-dimmed")).toBe("false");
+      }
+      for (const edge of screen.getAllByTestId("entity-graph-edge")) {
+        expect(edge.getAttribute("data-focal-dimmed")).toBe("false");
       }
     });
   });

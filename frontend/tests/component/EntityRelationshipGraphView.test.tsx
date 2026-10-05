@@ -9,7 +9,7 @@
  * plain placeholder text/JSON is exercised here — that is a later task.
  */
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityRelationshipGraphView from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
@@ -33,6 +33,19 @@ vi.mock("../../src/lib/api/entity-relationships", () => ({
   removeEntityRelationship: vi.fn(),
 }));
 vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
+// `EntityGraphAccessibleList` (Task 9) fetches the project's tag list itself
+// to resolve a `sharedMetadata` edge's raw ids to display labels; this view
+// doesn't exercise that edge kind, so a resolved-to-`[]` stub is enough to
+// keep the real `fetch` call out of this test file's jsdom environment.
+vi.mock("../../src/lib/api/tags", () => ({ listTags: vi.fn() }));
+// Task 13: `EntityGraphCanvas` now reads/writes Task 12's position transport
+// whenever it receives a `projectId` — which, as of this task's gap-fix, this
+// view always passes down. Mocked here for the same reason as `tags` above:
+// keeping this test file's jsdom environment free of a real `fetch` attempt.
+vi.mock("../../src/lib/api/entity-graph-positions", () => ({
+  getEntityGraphPositions: vi.fn(),
+  saveEntityGraphPosition: vi.fn(),
+}));
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
@@ -42,6 +55,8 @@ import {
   removeEntityRelationship,
 } from "../../src/lib/api/entity-relationships";
 import { updateSidecar } from "../../src/lib/api/resources";
+import { listTags } from "../../src/lib/api/tags";
+import { getEntityGraphPositions } from "../../src/lib/api/entity-graph-positions";
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityCooccurrence = vi.mocked(getEntityCooccurrence);
@@ -49,6 +64,8 @@ const mockedListEntityRelationships = vi.mocked(listEntityRelationships);
 const mockedCreateEntityRelationship = vi.mocked(createEntityRelationship);
 const mockedRemoveEntityRelationship = vi.mocked(removeEntityRelationship);
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
+const mockedListTags = vi.mocked(listTags);
+const mockedGetEntityGraphPositions = vi.mocked(getEntityGraphPositions);
 
 const PROJECT_ID = "proj-entity-graph";
 
@@ -62,6 +79,7 @@ async function setupStore(
   entitiesEnabled = true,
 ) {
   mockedGetEntityAliasTable.mockResolvedValue(aliasTable);
+  mockedListTags.mockResolvedValue([]);
   const store = makeStore();
   store.dispatch(
     setProject({
@@ -77,6 +95,14 @@ async function setupStore(
   await store.dispatch(fetchEntityAliasTable(PROJECT_ID));
   return store;
 }
+
+beforeEach(() => {
+  // `vi.restoreAllMocks()` (the `afterEach` below) does not reset a plain
+  // `vi.fn()` created inside a `vi.mock()` factory's call history — only
+  // `vi.spyOn()` spies — so this is explicit to avoid cross-test leakage.
+  mockedGetEntityGraphPositions.mockReset();
+  mockedGetEntityGraphPositions.mockResolvedValue([]);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -254,6 +280,42 @@ describe("EntityRelationshipGraphView", () => {
     ).toBeTruthy();
     expect(screen.queryByTestId("entity-graph-canvas")).toBeNull();
     expect(screen.queryByTestId("entity-graph-accessible-list")).toBeNull();
+  });
+
+  describe("projectId pass-through to EntityGraphCanvas (Feature 68, Task 13 gap-fix)", () => {
+    it("passes the active project's directory id down to EntityGraphCanvas, which uses it to read persisted node positions", async () => {
+      const table: EntityAliasTable = {
+        entities: {
+          "e-anna": {
+            entityId: "e-anna",
+            entityKind: "character",
+            name: "Anna",
+            aliases: [],
+            terms: ["Anna"],
+          },
+        },
+        claimedBy: {},
+      };
+      mockedGetEntityCooccurrence.mockResolvedValue({});
+      mockedListEntityRelationships.mockResolvedValue([]);
+      const store = await setupStore(table);
+
+      render(
+        <Provider store={store}>
+          <EntityRelationshipGraphView />
+        </Provider>,
+      );
+
+      await screen.findByTestId("entity-graph-canvas");
+
+      // Before this task, `EntityGraphCanvas` never received a `projectId`
+      // prop at all (Task 10's own dangling gap), so it never attempted this
+      // read regardless of the project being active. This is the concrete,
+      // observable evidence that the gap is closed.
+      await waitFor(() =>
+        expect(mockedGetEntityGraphPositions).toHaveBeenCalledWith(PROJECT_ID),
+      );
+    });
   });
 
   describe("node activation (Task 7, FR-9)", () => {

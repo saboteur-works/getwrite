@@ -548,34 +548,67 @@ lost work.
   flag and MUST NOT introduce a flag of its own. Consistent with FR-35
   through FR-38, the graph MUST NOT discover or infer an entity the writer
   never declared and MUST NOT perform pronoun/coreference resolution or any
-  model-backed inference. The graph's edges MUST come from both of the two
-  sources named when this capability was deferred (see the resolved OQ-2
-  below): derived co-occurrence edges (two entities mentioned in the same
-  resource, computed from the existing mention index, with no new persisted
-  data of their own) and explicit, writer-authored typed relationship edges
-  (e.g. "ally of", "parent of" — new authored, persisted data requiring a new
-  schema). The graph MUST visually distinguish a co-occurrence edge from an
-  authored typed edge wherever both appear, so a reader can always tell
-  whether a given edge is something the system observed or something the
-  writer asserted — a concrete instance of the existing product-wide rule
-  that a detected mention (found, never authored) and an authored link
-  (asserted, never detected; `mentions-core.ts`'s merge-only-for-display
-  discipline) are never conflated. This is a large, two-part requirement —
-  see Open Questions for whether it should split into more than one feature
-  before task breakdown. [US-17]
+  model-backed inference. Amended 2026-10-01 (owner planning decision, not
+  yet broken into tasks): the graph is shifting toward being
+  relationship-driven. Explicit, writer-authored typed relationship edges
+  (e.g. "ally of", "parent of" — authored, persisted data requiring a new
+  schema) become the graph's primary edge source, rather than one of two
+  co-equal required sources as originally resolved at OQ-2 below (OQ-2's
+  original resolution is reopened by this amendment, not overwritten — see
+  OQ-50). The owner is explicitly open to additional connection types
+  beyond today's authored relationships and derived co-occurrence, and
+  raised three candidates without deciding among them (recorded, not
+  decided, at OQ-50): backlinks between two declared entities' resources
+  (`backlinks.json` already tracks explicit resource-to-resource links,
+  distinct from detected mentions, and is an authored-adjacent signal
+  co-occurrence can't see); proximity-weighted mentions (the mention index
+  already stores each mention's character offset, and two entities
+  mentioned close together in the same resource is a stronger signal than
+  mentions far apart — a distinction today's whole-resource-granularity
+  co-occurrence can't make); and shared-tag or shared-metadata-field edges,
+  a weaker-tie type possibly opt-in only. Resolved 2026-10-01 (OQ-50): the
+  set of active connection types MUST be governed by one per-project
+  customizable list including authored relationships, co-occurrence,
+  backlinks, proximity-weighted mentions, and shared-tag/metadata edges as
+  peers, with authored relationships and co-occurrence on by default and
+  the remaining three off by default. Whichever edge types are active at a
+  given moment MUST remain visually
+  distinguishable from one another wherever more than one appears,
+  continuing the existing rule that a detected/derived signal (found, never
+  authored) and an authored assertion (asserted, never detected;
+  `mentions-core.ts`'s merge-only-for-display discipline) are never
+  conflated. This is a large, multi-part requirement — see Open Questions
+  for whether it should split into more than one feature before task
+  breakdown. [US-17]
 - FR-40: A writer MUST be able to reposition a node on the entity
-  relationship graph (FR-39) by dragging it. The resulting position is
-  ephemeral, exactly like every other node position on this graph: it MUST
-  NOT be persisted anywhere and does not survive a reload, the same
-  constraint the graph's underlying feature spec already places on its
-  computed layout. Dragging does not weaken FR-39's read-only guarantee —
-  it mutates only ephemeral view-layer position state, never entity data,
-  co-occurrence values, or authored relationship edges, none of which a
-  drag reads or writes. A drag repositions only the dragged node: no live
-  force simulation runs during or after a drag, and neighbouring nodes do
-  not respond, so dragging a node stretches its edges rather than letting
-  the layout relax around the new position (resolved: OQ-4). Dragging has
-  no keyboard-operable equivalent at this ship (resolved: OQ-6). [US-17]
+  relationship graph (FR-39) by dragging it. Amended 2026-10-01 (owner
+  planning decision): a position a writer has moved MUST be able to persist
+  across reloads, reversing this requirement's original ephemeral-only
+  constraint — a dragged node's position was previously required NOT to be
+  persisted anywhere (resolved: OQ-5 below; that resolution is reopened by
+  this amendment, not overwritten — see OQ-51 — and the parallel resolution
+  in `specs/features/entity-relationship-graph.md`'s own OQ-2, "node
+  positions are ephemeral," is reopened the same way, though that feature
+  spec is not itself edited by this amendment). This amendment depends on
+  FR-39's edge-sourcing amendment above — the owner flagged this dependency
+  explicitly in planning: switching the connection model would likely
+  affect position persistence. A persisted position MUST be keyed by
+  entity, independent of which edges happen to be visible at a given
+  moment. Resolved 2026-10-01 (OQ-51): a persisted position MUST be pinned
+  by default — exempt from any future layout recompute — but MUST be
+  invalidated (silently reset to a freshly computed position) specifically
+  when the project's active connection-type list (per FR-39's customizable
+  edge types, OQ-50) has changed since that position was last saved. A
+  persisted position for an entity that is later deleted or un-declared
+  (FR-41) MUST be dropped silently, with no new confirmation step added to
+  FR-41's existing removal dialog. Dragging does not weaken FR-39's read-only guarantee — it
+  mutates only node-position state, never entity data, co-occurrence
+  values, or authored relationship edges, none of which a drag reads or
+  writes. A drag repositions only the dragged node: no live force
+  simulation runs during or after a drag, and neighbouring nodes do not
+  respond, so dragging a node stretches its edges rather than letting the
+  layout relax around the new position (resolved: OQ-4). Dragging has no
+  keyboard-operable equivalent at this ship (resolved: OQ-6). [US-17]
 - FR-41: A writer MUST be able to remove a resource's entity declaration in
   one action — un-declaring it as an entity, clearing both `entityKind` and
   its `aliases` — while the resource itself (content, revisions, tags, and
@@ -800,6 +833,23 @@ lost work.
   through `createTransport` (ADR-021), with a native backend and a
   web-stub, and MUST validate its HTTP response body per the
   transport-boundary constraint. Status: Not started. [US-19][US-20][US-21][US-22]
+- FR-51: A writer MUST be able to select a particular entity node on the
+  entity relationship graph (FR-39) as a focal point, and MUST be able to
+  easily change which node holds that role. Status: Not started. This is new
+  scope — no existing requirement covers it; it was decided alongside the
+  FR-39 and FR-40 amendments above as one grouped feature (relationship-
+  driven graph connections, position persistence, and focal-point
+  selection) in the owner's planning conversation preceding this amendment
+  (2026-10-01). Resolved 2026-10-01 (OQ-52): focal-point selection MUST center/pan
+  the camera on the selected node and MUST visually emphasize its
+  neighborhood within a configurable number of relationship-hops, dimming
+  or hiding nodes outside that radius — the richer ego-graph reading, not a
+  camera-only action. The exact default hop count and whether/how it is
+  adjustable by the writer is left to the feature spec, not decided at this
+  level; so is how a hop-filter-hidden node's persisted-but-not-drawn
+  position/edges count (or don't) toward another visible node's hop
+  distance. This requirement rides the existing `entities` feature flag and
+  MUST NOT introduce a flag of its own, consistent with FR-39/FR-40. [US-17]
 
 ### Later Requirements
 
@@ -1006,6 +1056,13 @@ two entities — so they need a new top-level persisted structure alongside
 `specs/features/entity-roster.md:135-136` scoped this in; this product spec
 is the first rung to settle it.
 **Impact:** FR-39.
+**Reopened 2026-10-01:** This resolution ("both, co-equal") no longer
+reflects current product direction — FR-39 was amended to make authored
+relationship edges primary, with co-occurrence's continued role (removed,
+demoted, or kept as one of several customizable types) left undecided at
+the time this note was written. The text above is preserved as the
+historical record of what was originally resolved, not deleted or silently
+replaced. See OQ-50 (resolved).
 
 **OQ-3: FR-39 bundles two materially different halves under one
 requirement — should it split into more than one shippable feature, and if
@@ -1067,6 +1124,12 @@ the canvas's design comment is needed.
 **Evidence:** `specs/features/entity-relationship-graph.md:120,157-162`
 (OQ-2, resolved: positions are ephemeral).
 **Impact:** FR-40.
+**Reopened 2026-10-01:** This resolution no longer reflects current product
+direction — FR-40 was amended to require that a dragged position be able to
+persist across reloads. The text above (including its characterization of
+`specs/features/entity-relationship-graph.md`'s own OQ-2 as settled) is
+preserved as the historical record, not deleted or silently replaced; that
+feature spec is not itself edited by this amendment. See OQ-51 (resolved).
 
 **OQ-6 (resolved): Does dragging a node need a keyboard-operable
 equivalent?**
@@ -2064,6 +2127,106 @@ visible failure signal per `docs/standards/failure-visibility.md`.
 `snapshotBeforeDestructiveWrite` returns null for both unreadable and
 non-destructive cases, so FR-48 needs its own read or a distinguishable
 result.
+
+**OQ-50 (resolved): Now that FR-39 shifts the entity relationship graph
+toward being relationship-driven, is co-occurrence removed entirely,
+demoted to an optional/toggleable source, or kept as one of several
+customizable edge types alongside new candidates; which of the three newly
+suggested connection types — backlinks between declared entities'
+resources, proximity-weighted mentions, and shared-tag/metadata edges —
+(if any) ship in a first slice versus later; and what shape does the
+"customizable connection types" control take (per-project config,
+per-user, or something else)?**
+**Resolution:** All five connection types — authored relationships (the
+new primary source), derived co-occurrence (today's existing source), and
+the three previously-candidate types (backlinks between declared entities'
+resources, proximity-weighted mentions, shared-tag/metadata edges) —
+become peers in one customizable per-project list, shaped after
+`ProjectConfigSchema`'s existing `relationshipTypes: string[]` precedent
+(an array of active connection-type keys) rather than
+`ProjectFeatureFlagsSchema`'s boolean-per-capability shape — a single list
+reads as one coherent mechanism rather than mixing a list with separate
+flags. Defaults: authored relationships ON, co-occurrence ON (preserves
+today's existing behavior writers already see), the three new types OFF
+(unproven, noisier signals a writer opts into deliberately). Explicitly
+rejected: making co-occurrence a hardcoded always-on exception outside the
+customizable list — that reads as one exception a user has to learn rather
+than a single coherent feature, which the owner is explicitly not aiming
+for ("we're aiming for a polished view, not a midway point"). Also
+explicitly rejected: shipping toggle UI for any connection type with no
+derivation behind it — every listed type must have real behavior behind it
+in this same slice.
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, following the
+pipeline lead's recommendation; the triage round confirmed via code that
+none of the three new candidate types needs new persisted data (all are
+derivations over `backlinks.ts`, `mention-index.ts`'s stored offsets, and
+the existing tag/metadata layer) and that `relationshipTypes` is the closer
+existing shape precedent for "a customizable list of active things" than
+the boolean-flag pattern.
+**Impact:** FR-39. Reopens this document's own OQ-2 above ("both,
+co-equal" — preserved as the historical record, not deleted, but no longer
+the current answer; see OQ-50 (resolved)). Also bears on OQ-3's still-open
+question of whether FR-39 should split into more than one shippable
+feature, since a customizable, five-type edge model widens what "the
+authored-typed-link half" covers.
+
+**OQ-51 (resolved): For FR-40's now-persistable dragged node position, is a
+persisted position "pinned" (exempt from any future layout recompute) or
+simply the last-known position that a fresh layout computation may still
+override; and what happens to a persisted position for an entity that is
+later deleted or un-declared (FR-41)?**
+**Resolution:** Hybrid — a persisted position is pinned by default (exempt
+from any future layout recompute) but is invalidated (silently reset to a
+freshly computed position) specifically when the project's active
+connection-type list (OQ-50's resolution) has changed since that position
+was last saved, keeping the graph trustworthy as a writer customizes which
+connection types are active rather than letting a stale manual arrangement
+silently diverge. For an entity that is later deleted or un-declared
+(FR-41): its persisted position is silently dropped — no new confirmation
+step is added to FR-41's existing removal dialog. A layout coordinate is
+not precious authored content the way an authored relationship edge is,
+and FR-41's confirmation step stays reserved for genuinely destructive
+choices; this also matches how backlinks/mentions already get silently
+cleaned up on entity deletion elsewhere in the product.
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, following the
+pipeline lead's recommendation. The "last-known hint" alternative (a
+recompute can always override) was explicitly rejected as defeating the
+purpose of this FR-40 amendment, whose entire point is that a writer's
+manual arrangement survives a reload.
+**Impact:** FR-40. Reopens this document's own OQ-5 above ("positions stay
+ephemeral; nothing is persisted" — preserved as the historical record, not
+deleted, but no longer the current answer; see OQ-51 (resolved)) and
+reopens `specs/features/entity-relationship-graph.md`'s own OQ-2 ("node
+positions are ephemeral... nothing is persisted") the same way — that
+feature spec is not edited by this amendment, but its resolution no longer
+holds given FR-40 as amended. Also touches FR-41 (remove entity
+declaration): FR-41 as written is silent on graph node positions, since
+none persisted anywhere at the time FR-41 shipped; this resolution settles
+that a removed entity's position is dropped silently rather than surfaced
+in FR-41's removal choice.
+
+**OQ-52 (resolved): Is FR-51's focal-point selection a narrow camera action
+(center/pan the view on the selected node, no change to what is drawn) or a
+richer ego-graph filter (show only nodes within some number of
+relationship-hops of the focal node, dimming or hiding the rest)?**
+**Resolution:** The richer ego-graph reading, not camera-only. Selecting a
+node as the focal point centers/pans the camera on it (the camera action is
+implied by selection, not a separate mode a writer invokes) and visually
+emphasizes its neighborhood within a configurable number of
+relationship-hops, dimming or hiding nodes outside that radius. The owner
+chose to build this now rather than deferring it, since OQ-50 — the
+blocking dependency named in the original open question — is resolved in
+this same round. The exact default hop count and whether/how it's
+adjustable by the writer is explicitly left to the feature spec, not
+decided at the product-spec level. Flag (do not resolve) one interaction
+for the feature spec to settle: when a hop-filter hides a node, whether
+that hidden node's persisted-but-not-drawn position/edges still count
+toward another visible node's hop distance.
+**Evidence:** Owner decision at Gate 1 triage, 2026-10-01, following the
+pipeline lead's recommendation, made explicitly because resolving OQ-50 in
+the same pass removed the sequencing blocker the original OQ-52 options
+were built around.
+**Impact:** FR-51.
 
 ## Out of Scope (Deferred)
 

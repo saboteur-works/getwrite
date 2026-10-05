@@ -638,3 +638,72 @@ export const RevisionSettingsApiResponseSchema = z.object({
   defaultRevisionName: z.string().optional(),
   error: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// EntityGraphSettingsResponseSchema — Feature 68 Task 6 (entity-graph
+// settings transport). Matches `entity-graph-settings-core.ts`'s
+// `EntityGraphSettings` shape exactly: `{ entityGraphConnectionTypes:
+// string[]; entityGraphFocalHopRadius: number }`. Both fields are required
+// here (unlike the optional-on-clear goal schemas above) since the core
+// always returns the project's *effective* settings, defaults filled in —
+// there is no "absent" case on this response.
+// ---------------------------------------------------------------------------
+
+export const EntityGraphSettingsResponseSchema = z.object({
+  entityGraphConnectionTypes: z.array(z.string()),
+  entityGraphFocalHopRadius: z.number(),
+});
+
+// ---------------------------------------------------------------------------
+// Feature 68 Task 7 — response schemas for the three new entity-graph edge
+// derivations wired into `EntityRelationshipGraphView.tsx`. Each matches its
+// model-layer type exactly (`backlinks.ts`'s `EntityBacklinkEdge`,
+// `mentions-core.ts`'s `ProximityMentionEdge` keyed per-entity exactly like
+// `EntityCooccurrenceResponseSchema` above, and `entity-shared-metadata.ts`'s
+// `SharedMetadataEdge`).
+// ---------------------------------------------------------------------------
+
+export const EntityBacklinkEdgesResponseSchema = z.array(
+  z.object({ entityIds: z.tuple([z.string(), z.string()]) }),
+);
+
+const ProximityMentionEdgeSchema = z.object({
+  entityId: z.string(),
+  resourceId: z.string(),
+  weight: z.number(),
+});
+
+export const ProximityMentionEdgesResponseSchema = z.record(
+  z.string(),
+  z.array(ProximityMentionEdgeSchema),
+);
+
+export const SharedMetadataEdgesResponseSchema = z.array(
+  z.object({
+    entityIdA: z.string(),
+    entityIdB: z.string(),
+    sharedTagIds: z.array(z.string()),
+    sharedFieldKeys: z.array(z.string()),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Feature 68 Task 12 — response schemas for the entity-graph node position
+// persistence transport. Matches `entity-graph-positions.ts`'s
+// `EntityGraphPositionRecord` shape exactly (`{ entityId, x, y,
+// connectionTypesSnapshot, savedAt }`). `EntityGraphPositionRecordResponseSchema`
+// backs the PUT/POST single-record response;
+// `EntityGraphPositionsListResponseSchema` backs the GET list response.
+// ---------------------------------------------------------------------------
+
+export const EntityGraphPositionRecordResponseSchema = z.object({
+  entityId: z.string(),
+  x: z.number(),
+  y: z.number(),
+  connectionTypesSnapshot: z.array(z.string()),
+  savedAt: z.string(),
+});
+
+export const EntityGraphPositionsListResponseSchema = z.array(
+  EntityGraphPositionRecordResponseSchema,
+);

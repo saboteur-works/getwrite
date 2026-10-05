@@ -974,7 +974,12 @@ backends two earlier features had already shipped. Graph layout algorithm,
 library choice, and behavior at scale (a project with hundreds of entities
 and edges) are unaddressed here and belong in this feature's own task
 breakdown, in the same spirit as Feature 36's virtualization benchmark being
-deferred to a task rather than decided by assertion.
+deferred to a task rather than decided by assertion. FR-39 was further
+amended 2026-10-01 (see the product spec's OQ-50, resolved) — this entry's
+shipped description reflects the original co-equal two-source edge model
+(derived co-occurrence and authored typed edges as peers, per OQ-2's
+original resolution), which that amendment supersedes in favor of a
+five-type customizable connection list. See Feature 68.
 
 ### Feature 40: Entity graph edge tooltips — Shipped
 **Value:** A novelist looking at Feature 39's graph can tell what a given
@@ -1015,7 +1020,12 @@ synchronized accessible-list description text; this feature surfaces that
 same description on hover on the canvas itself, which Feature 39's own
 shipped spec did not include (its Out of scope section does not name
 tooltips, so this is a new increment on top of a shipped feature, not a
-resumption of something already deferred there).
+resumption of something already deferred there). FR-39's amendment
+2026-10-01 (see the product spec's OQ-50, resolved) widens the graph from
+two edge types to five; this entry's shipped tooltip coverage
+(`describeCooccurrenceEdge`/`describeAuthoredEdge` only) does not yet
+describe the three new connection types and will need extending if/when
+Feature 68 ships them. See Feature 68.
 
 ### Feature 41: Entity graph node dragging — Shipped
 **Value:** A novelist looking at Feature 39's graph can pull a node into a
@@ -1056,7 +1066,12 @@ needs nothing further from it, since the simulation itself is not what
 drives the drag. Distinguishing a drag from the existing click-to-select/
 click-to-navigate gesture is a real implementation cost this entry does not
 minimize away — see this feature list's Open Questions for the pixel-movement
-threshold that decision needs.
+threshold that decision needs. FR-40 was further amended 2026-10-01 (see
+the product spec's OQ-51, resolved) — this entry's claim that "dragged
+positions are ephemeral and are never persisted, consistent with FR-13's
+existing ephemeral-position constraint" is no longer accurate; FR-40 as
+amended requires a persisted position, pinned by default and invalidated
+only when the active connection-type list changes. See Feature 68.
 
 ### Feature 42: Remove an entity declaration — Shipped
 **Value:** A novelist who declared a resource as an entity by mistake, or no
@@ -2292,6 +2307,90 @@ feature owns none of its own (per "Requirements covered"/"User stories"
 above), matching Feature 65/66's precedent for UI-polish features with no
 FR of their own.
 
+### Feature 68: Relationship-driven entity graph — customizable connections, position persistence, and focal-point selection — Not started
+
+**Value:** A novelist customizes which kinds of connection appear on the
+entity relationship graph (Feature 39) — turning on backlinks between
+declared entities' resources, proximity-weighted mentions, or shared-tag/
+metadata edges alongside the authored-relationship and co-occurrence edges
+already shown by default — keeps a node where they dragged it (Feature 41)
+across reloads instead of losing the arrangement every time the view
+remounts, and can select one entity as a focal point to read its own
+neighborhood instead of scanning the whole graph at once.
+**Vertical slice:** Data layer: a new per-project customizable
+connection-type list, shaped after `ProjectConfigSchema`'s existing
+`relationshipTypes: string[]` precedent (an array of active connection-type
+keys, not a boolean-per-type flag set) governing which of five peer edge
+types draw — authored relationships and derived co-occurrence (today's two
+sources, both ON by default) plus three new derivations, each needing its
+own transport parity: backlinks between two declared entities' resources
+(over `backlinks.ts`), proximity-weighted mentions (over `mention-index.ts`'s
+stored per-mention character offsets), and shared-tag/shared-metadata-field
+edges (over the existing tag/metadata layer) — all three OFF by default.
+Data layer: persisted per-entity node positions, keyed by `entityId`
+independent of which edges happen to be visible at a given moment, pinned
+by default (exempt from layout recompute) but invalidated — silently reset
+to a freshly computed position — specifically when the project's active
+connection-type list has changed since the position was last saved; a
+position for an entity later deleted or un-declared (Feature 42) is dropped
+silently, with no new confirmation step added to Feature 42's removal
+dialog. Interface: a settings surface for the connection-type list;
+`EntityGraphCanvas.tsx` reading/writing persisted positions instead of
+discarding drag state on reload or view switch; a focal-point selection
+interaction (select a node as focal point, easily reassignable to a
+different node) that centers/pans the camera on the selected node and
+visually emphasizes its neighborhood within a configurable number of
+relationship-hops, dimming or hiding nodes outside that radius — the
+richer ego-graph reading rather than a camera-only action — with every
+active edge type remaining visually distinguishable from the others
+wherever more than one appears, continuing FR-39's existing
+detected-vs-authored distinction discipline. Default hop count, its
+adjustability, and full UI/interaction detail for all three pieces belong
+to this feature's own feature spec, not this breakdown-level entry.
+**Requirements covered:** FR-51
+**User stories:** US-17
+**Depends on:** Feature 39, Feature 41
+**Branch suggestion:** feat/entity-graph-connections-persistence-focal-point
+**Notes:** Not started. This is a grouped feature by explicit owner
+decision, not this document's default one-FR-one-feature bundling: the
+owner decided, in the planning conversation preceding the 2026-10-01
+product-spec amendment, to build FR-39's edge-sourcing amendment, FR-40's
+position-persistence amendment, and new FR-51 (focal-point selection)
+together as one slice rather than as separate features, explicitly because
+switching the connection model was expected to affect position persistence
+(see FR-40's own amended text) and because resolving the edge-sourcing
+question (OQ-50) in the same pass removed the sequencing blocker that had
+been holding FR-51 back (see OQ-52's resolution). This also addresses the
+parent spec's still-open OQ-3 ("should FR-39 split into more than one
+shippable feature") for this slice of work specifically: OQ-3 itself
+remains open and is not resolved here, but the owner's explicit grouping
+decision is the scoping call actually applied to this amendment, so FR-39's
+amended parts are not further split for this feature, and that is a
+deliberate scoping decision, not OQ-3 being silently ignored. Key resolved
+decisions this entry's Vertical slice reflects, each settled at Gate 1
+triage 2026-10-01 and detailed in the product spec: OQ-50 (resolved) —
+co-occurrence is folded into the same customizable five-type list as the
+three new candidate connection types, rather than kept as a hardcoded
+always-on exception outside it; OQ-51 (resolved) — the hybrid pin-by-default/
+invalidate-on-connection-list-change model for persisted positions, not a
+simple last-known-hint a recompute can always override; OQ-52 (resolved) —
+the richer ego-graph hop-filter reading for focal-point selection, not a
+narrow camera-only action. Two implementation-level questions are
+explicitly deferred to this feature's own feature spec rather than resolved
+at this breakdown rung, per OQ-52's own text: the default hop count and
+whether/how a writer can adjust it, and whether a hop-filter-hidden node's
+persisted-but-not-drawn position/edges still count toward another visible
+node's hop distance. Supersedes, for the amended portions only, Feature
+39's originally-shipped co-equal two-source edge model (see Feature 39's
+own Notes) and Feature 41's originally-shipped ephemeral-only position
+claim (see Feature 41's own Notes) — neither Feature 39 nor Feature 41 is
+rewritten here, since both entries remain the accurate historical record of
+what actually shipped at the time. Requirements covered lists only FR-51
+(new), which this feature owns exclusively; FR-39 and FR-40 remain owned by
+Feature 39 and Feature 41 respectively per the partition rule, even though
+this feature extends both — see those features' own Notes for the pointer
+back to this entry.
+
 ---
 
 ## Coverage check
@@ -2349,11 +2448,12 @@ FR of their own.
   - FR-48: Feature 59
   - FR-49: Feature 62
   - FR-50: Feature 59 (owner; Features 60, 61 and 62 follow it for their own transports)
+  - FR-51: Feature 68
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 66
+- Total features: 68
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2622,6 +2722,17 @@ FR-39 split (this document's own scoping call — Gate 2 review, 2026-09-07):
   Entity confirmation choice, and on its own it ships nothing a writer can
   use, failing this document's own independently-shippable bar (the Feature
   37 precedent).
+
+FR-39/FR-40/FR-51 amendment (Feature 68, added 2026-10-01):
+
+- Feature 68's default hop count for focal-point selection's ego-graph
+  hop-filter, and whether/how a writer can adjust it, is not decided here
+  and is left to that feature's own feature spec, per the parent spec's
+  OQ-52 (resolved), which explicitly defers rather than decides this.
+- Whether a hop-filter-hidden node's persisted-but-not-drawn position/edges
+  still count toward another visible node's hop distance is unresolved and
+  is left to Feature 68's feature spec, per the parent spec's OQ-52
+  (resolved), which flags this interaction without resolving it.
 
 FR-42 split (this document's own scoping call, 2026-09-11):
 

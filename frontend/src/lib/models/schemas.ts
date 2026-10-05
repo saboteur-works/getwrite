@@ -238,6 +238,8 @@ export const ProjectConfigSchema = z.object({
   dailyWordGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
+  entityGraphConnectionTypes: z.array(z.string()).optional(),
+  entityGraphFocalHopRadius: z.number().int().nonnegative().optional(),
   autoPrune: z.boolean().optional(),
   tags: z
     .array(
