@@ -391,10 +391,10 @@ export default function EntityKindStylesModal({
     >
       <DialogContent maxWidth="max-w-[640px]" className="p-6">
         <DialogTitle>Entity kind colors and shapes</DialogTitle>
-        <DialogDescription>
-          Choose the color and shape each entity kind renders as on the
-          relationship graph. A kind with no choice made yet still renders
-          distinctly, using a default color and an automatically assigned shape.
+        <DialogDescription className="mb-4">
+          Choose a color and shape each entity kind on the relationship graph. A
+          kind with no choice made yet is represented by a default color and an
+          automatically assigned shape.
         </DialogDescription>
 
         {loadError ? (
@@ -610,9 +610,8 @@ export default function EntityKindStylesModal({
                 Legend
               </h3>
               <p className="mb-2 text-sm text-gw-secondary">
-                Every kind currently in use in this project, with its live color
-                and shape — the authoritative full reference, including a kind
-                still on its default style.
+                Every kind currently in use in this project, with its color and
+                shape (including kinds that are still using the default style).
               </p>
               {legendKinds.length === 0 ? (
                 <p className="text-sm text-gw-secondary">
