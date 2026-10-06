@@ -331,6 +331,29 @@ export default function EntityMentionsSection(): JSX.Element | null {
     }
 
     editor.chain().setTextSelection(position).scrollIntoView().run();
+    // ProseMirror's own `.scrollIntoView()` chain command above walks DOM
+    // ancestors looking for a scrollable one by computed `overflow` style,
+    // and in this app's layout that walk doesn't find (or doesn't scroll)
+    // the real scrollable pane — verified live: the selection moves
+    // correctly (`editor.state.selection.from` matches the resolved
+    // position and stays there), but the viewport never follows it. The
+    // browser's own native `Element.scrollIntoView()`, called on the actual
+    // DOM node at the resolved position, finds the right scrollable
+    // ancestor reliably because it's the browser's own layout engine doing
+    // the walk, not a heuristic re-implementation of it. Kept alongside the
+    // chain command (not instead of it) since the chain command is still
+    // correct, just insufficient on its own here; `editor.view` is guarded
+    // optional since a test double for `editor` need not provide a real
+    // ProseMirror view, and `scrollIntoView` itself is guarded optional
+    // since it's unimplemented in this project's non-browser DOM test
+    // environments (and in jsdom).
+    const domPosition = editor.view?.domAtPos?.(position);
+    const domNode = domPosition
+      ? domPosition.node.nodeType === Node.TEXT_NODE
+        ? domPosition.node.parentElement
+        : (domPosition.node as Element)
+      : null;
+    domNode?.scrollIntoView?.({ block: "center", behavior: "auto" });
 
     const span = resolveMentionHighlightSpan(doc, position, terms);
     const durationMs =

@@ -47,6 +47,7 @@ import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import GetWriteImage from "./Editor/Extensions/GetWriteImage";
+import MentionJumpHighlightExtension from "./Editor/Extensions/MentionJumpHighlightExtension";
 import EntityHighlightDecoration, {
   ENTITY_HIGHLIGHT_DECORATION_KEY,
 } from "./Editor/Extensions/EntityHighlightDecorationExtension";
@@ -367,6 +368,7 @@ export default function TipTapEditor({
           getAliasTable: () => entityAliasTableRef.current,
           getNoiseCheckSources: () => noiseCheckSourcesRef.current,
         }),
+        MentionJumpHighlightExtension,
         Math.configure({
           blockOptions: {
             /**
