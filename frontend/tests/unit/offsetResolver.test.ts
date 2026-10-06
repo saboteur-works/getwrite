@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { Schema } from "@tiptap/pm/model";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { resolveOffsetToPosition } from "../../components/Editor/offset-resolver";
+import {
+  resolveOffsetToPosition,
+  isOffsetStillAMention,
+} from "../../components/Editor/offset-resolver";
 
 // Minimal schema covering every node type `resolveOffsetToPosition` has to
 // reason about: paragraphs, headings (both contribute a synthetic "\n"
@@ -99,5 +102,78 @@ describe("resolveOffsetToPosition", () => {
     // paragraph contributes no plain-text length at all — offset 5 is out
     // of range even though a literal node-boundary position exists there.
     expect(resolveOffsetToPosition(doc, 5)).toBeNull();
+  });
+});
+
+describe("isOffsetStillAMention", () => {
+  it("passes when the resolved position's nearby text still contains the entity's name", () => {
+    const doc = schema.node("doc", null, [paragraphOf("Aria walked home.")]);
+    const position = resolveOffsetToPosition(doc, 0); // "A" of "Aria"
+
+    expect(position).not.toBeNull();
+    expect(isOffsetStillAMention(doc, position as number, ["Aria"])).toBe(true);
+  });
+
+  it("passes when the nearby text contains a possessive form of one of the entity's aliases", () => {
+    const doc = schema.node("doc", null, [
+      paragraphOf("Aria's sword gleamed."),
+    ]);
+    const position = resolveOffsetToPosition(doc, 0); // "A" of "Aria's"
+
+    expect(position).not.toBeNull();
+    expect(
+      isOffsetStillAMention(doc, position as number, ["Hero", "Aria"]),
+    ).toBe(true);
+  });
+
+  it("passes when the nearby text contains a simple plural form of the entity's name", () => {
+    const doc = schema.node("doc", null, [
+      paragraphOf("The Arias gathered at dawn."),
+    ]);
+    const position = resolveOffsetToPosition(doc, 4); // "A" of "Arias"
+
+    expect(position).not.toBeNull();
+    expect(isOffsetStillAMention(doc, position as number, ["Aria"])).toBe(true);
+  });
+
+  it("fails when the surrounding text has changed such that none of the terms appear there any more", () => {
+    // Simulates a stale offset: the document has been edited since the
+    // mention's offset was recorded, so resolving against the live
+    // document lands somewhere that no longer reads as a mention of any
+    // declared term.
+    const doc = schema.node("doc", null, [
+      paragraphOf("The quiet village slept."),
+    ]);
+    const position = resolveOffsetToPosition(doc, 4); // "q" of "quiet"
+
+    expect(position).not.toBeNull();
+    expect(isOffsetStillAMention(doc, position as number, ["Aria"])).toBe(
+      false,
+    );
+  });
+
+  it("does not match a term occurring only as part of a larger word", () => {
+    const doc = schema.node("doc", null, [
+      paragraphOf("The aristocrat bowed."),
+    ]);
+    const position = resolveOffsetToPosition(doc, 4); // "a" of "aristocrat"
+
+    expect(position).not.toBeNull();
+    expect(isOffsetStillAMention(doc, position as number, ["Ari"])).toBe(false);
+  });
+
+  it("returns false for an empty terms list", () => {
+    const doc = schema.node("doc", null, [paragraphOf("Aria walked home.")]);
+    const position = resolveOffsetToPosition(doc, 0);
+
+    expect(position).not.toBeNull();
+    expect(isOffsetStillAMention(doc, position as number, [])).toBe(false);
+  });
+
+  it("returns false for a position outside the document's valid range", () => {
+    const doc = schema.node("doc", null, [paragraphOf("Aria walked home.")]);
+
+    expect(isOffsetStillAMention(doc, -1, ["Aria"])).toBe(false);
+    expect(isOffsetStillAMention(doc, 9999, ["Aria"])).toBe(false);
   });
 });

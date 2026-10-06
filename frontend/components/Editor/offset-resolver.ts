@@ -1,4 +1,9 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import {
+  ATTACHED_CHAR_CLASS,
+  POSSESSIVE_OR_PLURAL_SUFFIX,
+  escapeRegExp,
+} from "../../src/lib/models/entity-detection";
 
 /**
  * @module offset-resolver
@@ -122,4 +127,70 @@ export function resolveOffsetToPosition(
   if (offset >= positions.length) return null;
 
   return positions[offset];
+}
+
+/** How many plain-text characters of surrounding context to read on either
+ * side of a resolved position when checking whether it still lands on a
+ * mention — generous enough to contain a full possessive/plural-suffixed
+ * term plus the word-boundary character the matching envelope requires on
+ * each side, without reading the whole document. */
+const STALENESS_CHECK_WINDOW = 64;
+
+/**
+ * Checks whether the ProseMirror document position `position` (typically
+ * one just resolved by {@link resolveOffsetToPosition}) still lands on an
+ * occurrence of one of `terms` — an entity's own name and aliases — per
+ * FR-9's staleness check: a persisted mention offset can go stale the
+ * moment the document is edited, so a jump must re-confirm the destination
+ * actually still reads as a mention before completing.
+ *
+ * Reuses `entity-detection.ts`'s exported matching envelope
+ * (`ATTACHED_CHAR_CLASS`, `POSSESSIVE_OR_PLURAL_SUFFIX`, `escapeRegExp`) —
+ * the same case-insensitive, word-boundary, possessive/simple-plural
+ * matching `findMentionOffsets` itself uses — so this check can never
+ * disagree with how a mention was originally detected, mirroring
+ * `entityHighlightDecoration.ts`'s own combined-alternation reuse of the
+ * same building blocks rather than re-deriving the matching logic.
+ *
+ * Deliberately generic over `terms: string[]` — it has no dependency on
+ * `mentions-core.ts`, an `Entity`, or any transport; the caller supplies
+ * whichever terms (name + aliases) it wants checked.
+ *
+ * @param doc - The live ProseMirror document to check against.
+ * @param position - The ProseMirror document position to check the
+ *   surrounding text of.
+ * @param terms - The entity's own name and aliases to match against. An
+ *   empty term is ignored; an entirely empty/blank list always yields
+ *   `false`.
+ * @returns `true` if the text surrounding `position` contains an
+ *   occurrence of at least one of `terms` (per the shared matching
+ *   envelope); `false` otherwise, including when `position` is out of the
+ *   document's valid range.
+ */
+export function isOffsetStillAMention(
+  doc: ProseMirrorNode,
+  position: number,
+  terms: string[],
+): boolean {
+  const nonEmptyTerms = terms
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
+  if (nonEmptyTerms.length === 0) return false;
+
+  const docSize = doc.content.size;
+  if (!Number.isInteger(position) || position < 0 || position > docSize) {
+    return false;
+  }
+
+  const from = Math.max(0, position - STALENESS_CHECK_WINDOW);
+  const to = Math.min(docSize, position + STALENESS_CHECK_WINDOW);
+  const surroundingText = doc.textBetween(from, to, "\n");
+
+  const alternation = nonEmptyTerms.map(escapeRegExp).join("|");
+  const regex = new RegExp(
+    `(?<!${ATTACHED_CHAR_CLASS})(?:${alternation})${POSSESSIVE_OR_PLURAL_SUFFIX}(?!${ATTACHED_CHAR_CLASS})`,
+    "iu",
+  );
+
+  return regex.test(surroundingText);
 }
