@@ -248,6 +248,31 @@
   cursor: help;
 }
 
+/* One-shot mention-jump highlight (`specs/features/entity-mention-navigation.md`,
+ * FR-8/Task 14) — `MentionJumpHighlightExtension` applies this class to the
+ * span a mention-snippet click jumps to. It had no CSS at all before this
+ * pass (a plain `Decoration.inline` class with no matching rule renders with
+ * no visible effect), so this rule is new rather than a tweak of an existing
+ * one. Deliberately not a reuse of `.entity-highlight`'s tokens: that
+ * decoration is persistent/content-driven, this one is a transient,
+ * timer-cleared flash (see that module's doc comment), so it gets its own
+ * `--color-gw-mention-jump-highlight` token (`getwrite-utilities.css`).
+ * Paired with an underline, not background color alone, so the flash reads
+ * even without color perception — mirroring `.entity-highlight--needs-
+ * attention`'s own dotted-underline-plus-background precedent just above.
+ * Neither mode uses the reserved `--color-gw-red`/`--color-gw-red-border`
+ * tokens.
+ */
+.tiptap .mention-jump-highlight {
+  background-color: var(--color-gw-mention-jump-highlight);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  text-decoration: underline solid;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
 /* Named font classes — for dynamic font selection system */
 .domine-400 {
   font-family: "Domine", serif;
