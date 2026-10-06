@@ -28,6 +28,7 @@ import {
 } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import debounce from "lodash/debounce";
+import isEqual from "lodash/isEqual";
 import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import EditorContextMenu from "./Editor/EditorContextMenu";
@@ -593,12 +594,34 @@ export default function TipTapEditor({
    * — the editor already has that content, and calling setContent would reset
    * the cursor. Only call setContent for external changes (loading a revision,
    * switching resources) where `value` is a different object reference.
+   *
+   * Also skip when `value` is a TipTapDocument object that is *structurally*
+   * identical to what the editor already holds (`editor.getJSON()`), even
+   * though its object reference differs from `lastEmittedDocRef.current`.
+   * `useRevisionContent.ts` delivers a resource/revision switch's content in
+   * two sequential stages — the resource's own `content.tiptap.json` first,
+   * then the (normally identical) canonical revision's content a moment
+   * later — and without this check, the second, redundant delivery re-ran
+   * `loadDocumentIntoEditor` below purely because it was a new object,
+   * replacing the whole document again a few milliseconds after the first
+   * load already rendered it. A plain document reload is harmless on its
+   * own, but it also wipes any transient, non-content plugin decoration
+   * applied in that gap — including the mention-jump highlight
+   * (entity-mention-navigation FR-8), which could flash briefly and vanish,
+   * or never visibly appear at all, depending on exactly how the two loads
+   * happened to race. The `current = editor.getHTML()` comparison below is
+   * a string, so it was never actually comparing like for like against an
+   * object `value` in the first place — this adds the comparison that
+   * check was missing, without changing it for the legacy plain-string case.
    */
   useEffect(() => {
     if (!editor) return;
     // If value is the same reference we just emitted, the editor already
     // has this content. Calling setContent would reset the cursor position.
     if (value === lastEmittedDocRef.current) return;
+    if (typeof value !== "string" && isEqual(value, editor.getJSON())) {
+      return;
+    }
     const current = editor.getHTML();
     if (value !== current) {
       // Tiptap v3's signature is `setContent(content, options)`. The v2
