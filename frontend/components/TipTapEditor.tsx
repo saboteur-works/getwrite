@@ -34,6 +34,7 @@ import EditorContextMenu from "./Editor/EditorContextMenu";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
 import { loadDocumentIntoEditor } from "./Editor/loadDocumentIntoEditor";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
+export { resolveOffsetToPosition } from "./Editor/offset-resolver";
 import {
   documentToMarkdown,
   markdownToDocument,
