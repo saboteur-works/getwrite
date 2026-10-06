@@ -279,6 +279,13 @@ const nextConfig = {
           // same rule as above.
           "../../store/transport/native-global-noise-words-backend":
             "./src/store/transport/native-global-noise-words-backend.web-stub",
+          // Entity mention navigation Task 8:
+          // lib/api/mention-highlight-duration.ts also lives in
+          // src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-mention-highlight-duration-backend"
+          // — same rule as above.
+          "../../store/transport/native-mention-highlight-duration-backend":
+            "./src/store/transport/native-mention-highlight-duration-backend.web-stub",
         },
   },
 };

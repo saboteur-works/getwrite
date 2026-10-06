@@ -563,6 +563,19 @@ export const SetWordCountGoalResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// SetMentionHighlightDurationResponseSchema — Entity mention navigation,
+// Task 8. Mirrors SetWordCountGoalResponseSchema's shape exactly: matches
+// `mention-highlight-duration-core.ts`'s
+// `{ mentionHighlightDurationSeconds: number | undefined }`.
+// `mentionHighlightDurationSeconds` is optional because `JSON.stringify`
+// drops `undefined`-valued keys before the response leaves the server.
+// ---------------------------------------------------------------------------
+
+export const SetMentionHighlightDurationResponseSchema = z.object({
+  mentionHighlightDurationSeconds: z.number().optional(),
+});
+
+// ---------------------------------------------------------------------------
 // ProseDiagnosticsResponseSchema — Feature 62 (prose diagnostics), Task 4.
 // Matches `diagnostics-index.ts`'s `DiagnosticsRecord` shape, minus
 // `heuristicVersion` (an internal staleness marker the transport response
