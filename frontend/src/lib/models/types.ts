@@ -95,6 +95,8 @@ export interface ProjectConfig {
   wordCountGoal?: number;
   /** Target net words per day (Feature 59). Unset means no daily goal. */
   dailyWordGoal?: number;
+  /** How long (seconds, 1-10) a mention-jump highlight lasts (Entity mention navigation, FR-10). Unset means the 2-second default. */
+  mentionHighlightDurationSeconds?: number;
   /** Custom status values available to the project (e.g., ["Draft","Complete"]). */
   statuses?: string[];
   /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */

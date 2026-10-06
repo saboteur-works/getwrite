@@ -94,6 +94,8 @@ export interface ShellModalCoordinatorProps {
   initialDailyWordGoal?: number;
   /** Currently saved project-wide `wordCountGoal`, for the Writing Goals tab of ProjectSettingsDialog. */
   initialWordCountGoal?: number;
+  /** Currently saved `config.mentionHighlightDurationSeconds`, for the Entities tab of ProjectSettingsDialog. */
+  initialMentionHighlightDurationSeconds?: number;
   isPreferencesModalOpen: boolean;
   setIsPreferencesModalOpen: (open: boolean) => void;
   isHelpModalOpen: boolean;
@@ -173,6 +175,7 @@ export default function ShellModalCoordinator({
   projectId,
   initialDailyWordGoal,
   initialWordCountGoal,
+  initialMentionHighlightDurationSeconds,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
   isHelpModalOpen,
@@ -339,6 +342,9 @@ export default function ShellModalCoordinator({
         projectId={projectId}
         initialDailyWordGoal={initialDailyWordGoal}
         initialWordCountGoal={initialWordCountGoal}
+        initialMentionHighlightDurationSeconds={
+          initialMentionHighlightDurationSeconds
+        }
       />
 
       <Dialog

@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Type, PenLine, Tag, LayoutList, Target, Ban } from "lucide-react";
+import {
+  Type,
+  PenLine,
+  Tag,
+  LayoutList,
+  Target,
+  Ban,
+  Users,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
   Tabs,
@@ -17,6 +25,7 @@ import SchemaManager from "../SchemaManager/SchemaManager";
 import DailyWordGoalField from "./DailyWordGoalField";
 import WordCountGoalField from "./WordCountGoalField";
 import NoiseWordsSettingsTab from "./NoiseWordsSettingsTab";
+import MentionHighlightDurationField from "./MentionHighlightDurationField";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -37,6 +46,13 @@ export interface ProjectSettingsDialogProps {
   initialDailyWordGoal?: number;
   /** Currently saved project-wide `wordCountGoal`, if any. */
   initialWordCountGoal?: number;
+  /**
+   * Currently saved `config.mentionHighlightDurationSeconds`, if any
+   * (Entity mention navigation, Task 10). Omitted when the project has
+   * never set a value; `MentionHighlightDurationField` falls back to its
+   * own 2-second default in that case.
+   */
+  initialMentionHighlightDurationSeconds?: number;
 }
 
 type ProjectSettingsTab =
@@ -46,7 +62,8 @@ type ProjectSettingsTab =
   | "tags"
   | "metadata"
   | "writing-goals"
-  | "noise-words";
+  | "noise-words"
+  | "entities";
 
 interface ProjectSettingsTabOption {
   value: ProjectSettingsTab;
@@ -79,6 +96,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "metadata", label: "Metadata", icon: LayoutList },
   { value: "writing-goals", label: "Writing Goals", icon: Target },
   { value: "noise-words", label: "Noise Words", icon: Ban },
+  { value: "entities", label: "Entities", icon: Users },
 ];
 
 /**
@@ -103,6 +121,7 @@ export default function ProjectSettingsDialog({
   projectId,
   initialDailyWordGoal,
   initialWordCountGoal,
+  initialMentionHighlightDurationSeconds,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
   const hasProjectPath = Boolean(projectPath);
@@ -231,6 +250,17 @@ export default function ProjectSettingsDialog({
             <TabsContent value="noise-words" forceMount className={PANEL_CLASS}>
               {projectId ? (
                 <NoiseWordsSettingsTab projectId={projectId} />
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="entities" forceMount className={PANEL_CLASS}>
+              {projectId ? (
+                <MentionHighlightDurationField
+                  projectId={projectId}
+                  initialDurationSeconds={
+                    initialMentionHighlightDurationSeconds
+                  }
+                />
               ) : null}
             </TabsContent>
           </Tabs>
