@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
 import Input from "../common/UI/Input/Input";
+import { useAppDispatch } from "../../src/store/hooks";
+import { setProjectMentionHighlightDurationSeconds } from "../../src/store/projectsSlice";
 import {
   DEFAULT_MENTION_HIGHLIGHT_DURATION_SECONDS,
   setMentionHighlightDuration,
@@ -60,6 +62,7 @@ export default function MentionHighlightDurationField({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
 
   const handleSave = async (): Promise<void> => {
     setSavedMessage(null);
@@ -72,6 +75,18 @@ export default function MentionHighlightDurationField({
     setErrorMessage(null);
     try {
       const result = await setMentionHighlightDuration(projectId, duration);
+      // Update the Redux-cached project config immediately — the jump
+      // handler (`EntityMentionsSection.tsx`'s `performMentionJump`) reads
+      // this cached value on every click, not the server, so without this a
+      // just-saved duration has no visible effect until the project reloads.
+      // Keyed off the active project in the store, not this component's own
+      // `projectId` prop — see the reducer's doc comment for why those two
+      // are not interchangeable.
+      dispatch(
+        setProjectMentionHighlightDurationSeconds({
+          durationSeconds: result.mentionHighlightDurationSeconds,
+        }),
+      );
       setDraft(
         String(
           result.mentionHighlightDurationSeconds ??

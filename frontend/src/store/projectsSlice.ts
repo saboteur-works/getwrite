@@ -660,6 +660,43 @@ const projectsSlice = createSlice({
       state.projects[projectId] = { ...project, metadataSchema: schema };
       return state;
     },
+    /**
+     * Updates the *currently selected* stored project's cached
+     * `mentionHighlightDurationSeconds` immediately after a successful save,
+     * so a mention-snippet click right after changing the setting (no
+     * project reload in between) already reads the new value —
+     * `selectActiveProjectMentionHighlightDurationSeconds` reads this cached
+     * copy, not the server, on every jump.
+     *
+     * Deliberately keyed off `state.selectedProjectId` (matching
+     * `selectActiveProjectMentionHighlightDurationSeconds`'s own lookup)
+     * rather than taking a project id in the action payload: the Project
+     * Settings dialog this field lives in only ever edits the active
+     * project, and the directory id its own `projectId` prop carries (used
+     * for the HTTP save call, which needs it to resolve the on-disk path)
+     * is a different string from `state.projects`' own dictionary key
+     * (`StoredProject.id`/`selectedProjectId`) — a reducer keyed by that
+     * prop would silently write to a key nothing reads, which is exactly
+     * what the first version of this reducer did.
+     *
+     * @param state - Current slice state draft.
+     * @param action - The new duration, or `undefined` to clear back to the
+     *   server-side default.
+     */
+    setProjectMentionHighlightDurationSeconds(
+      state,
+      action: PayloadAction<{ durationSeconds: number | undefined }>,
+    ) {
+      const { durationSeconds } = action.payload;
+      const id = state.selectedProjectId;
+      const project = id ? state.projects[id] : undefined;
+      if (!project) return state;
+      state.projects[id as string] = {
+        ...project,
+        mentionHighlightDurationSeconds: durationSeconds,
+      };
+      return state;
+    },
   },
   extraReducers: (builder) => {
     // `loadProject` mirrors `setProject`'s upsert behavior; it exists
@@ -737,6 +774,7 @@ export const {
   addResource,
   removeResource,
   updateProjectMetadataSchema,
+  setProjectMentionHighlightDurationSeconds,
 } = projectsSlice.actions;
 export default projectsSlice.reducer;
 

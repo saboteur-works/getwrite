@@ -177,6 +177,14 @@ const ApiProjectConfigSchema = z.object({
   metadataRevision: z.number().optional(),
   features: ApiProjectFeatureFlagsSchema.optional(),
   organizerCardBody: ApiOrganizerCardBodyConfigSchema.optional(),
+  // Missing here meant a normal project load (GET /api/projects) silently
+  // stripped this field before it ever reached Redux — Zod drops unknown
+  // keys by default — even though the server always sent it correctly and
+  // the dedicated save endpoint's own response schema
+  // (MentionHighlightDurationResponseSchema, below) already declared it.
+  // Caught live: the field read `undefined` (falling back to the 2s
+  // default) on a fresh project load even with a persisted value on disk.
+  mentionHighlightDurationSeconds: z.number().optional(),
 });
 
 export const ProjectSchema = z.object({
