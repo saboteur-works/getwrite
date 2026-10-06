@@ -256,6 +256,15 @@ export const ProjectConfigSchema = z.object({
    * excluded a given word.
    */
   excludedGlobalNoiseWords: z.array(z.string().trim().min(1)).optional(),
+  /**
+   * How long, in seconds, a navigated-to entity mention stays highlighted
+   * in the editor (entity-mention-navigation, FR-10). An integer bounded
+   * 1-10 inclusive, with no default persisted when unset — this is the
+   * first field on `ProjectConfigSchema` bounded by both a minimum and a
+   * maximum; every prior numeric setting (`wordCountGoal`, `dailyWordGoal`)
+   * is floor-only.
+   */
+  mentionHighlightDurationSeconds: z.number().int().min(1).max(10).optional(),
   autoPrune: z.boolean().optional(),
   tags: z
     .array(
