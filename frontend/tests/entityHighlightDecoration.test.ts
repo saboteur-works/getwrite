@@ -6,7 +6,7 @@
  *
  * Covers this task's `done_when` list:
  *  1. An unambiguous name match renders plain.
- *  2. An alias flagged by `entity-alias-warnings.ts` renders "needs attention".
+ *  2. An alias flagged by `entity-noise-check.ts` renders "needs attention".
  *  3. A term present in `claimedBy` renders "needs attention".
  *  4. A term matching both conditions still renders exactly one
  *     "needs attention" state (no third style).
@@ -76,7 +76,7 @@ describe("computeEntityHighlightRanges — plain vs needs-attention classificati
   });
 
   it("renders a short/common-word-flagged alias as needs-attention", () => {
-    // "May" is on entity-alias-warnings.ts's fixed common-word list.
+    // "May" is on entity-noise-check.ts's fixed common-word list.
     const doc = docFromText("May opened the letter slowly.");
     const table = buildAliasTable([
       { entityId: "e1", name: "Maylene", aliases: ["May"] },

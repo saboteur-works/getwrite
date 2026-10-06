@@ -99,6 +99,10 @@ export interface ProjectConfig {
   statuses?: string[];
   /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */
   relationshipTypes?: string[];
+  /** Per-project custom noise-word list, additive to the bundled noise-word list (FR-3). */
+  customNoiseWords?: string[];
+  /** Per-project exclusion list of specific global noise-word-list words (FR-6). */
+  excludedGlobalNoiseWords?: string[];
   /**
    * When true, automatically prune oldest non-canonical revisions when limit is exceeded.
    * When false, the UI should prompt the user (interactive) or abort in headless contexts.
@@ -272,6 +276,17 @@ export interface ResourceBase {
    * string.
    */
   aliases?: string[];
+  /**
+   * Normalized (trimmed, lowercased) terms this entity has dismissed the
+   * noise observation for (entity-mention-noise-flagging FR-8/FR-9/FR-13).
+   * Scoped to this one entity's own sidecar only — the identical term
+   * dismissed on a different entity is unaffected. Mirrors
+   * `EntitySidecarFieldsSchema.dismissedNoiseTerms` (`schemas.ts`), which
+   * this hand-written type otherwise drifted from after Task 3 added the
+   * schema field. See `resource-crud-core.ts`'s `setNoiseTermDismissedCore`/
+   * `normalizeNoiseTerm`.
+   */
+  dismissedNoiseTerms?: string[];
   /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */
   userMetadata?: Record<string, MetadataValue>;
   /** Creation timestamp (ISO 8601). */

@@ -93,7 +93,7 @@ export const WithDailyGoal: Story = {
   args: { ...baseArgs, initialDailyWordGoal: 500 },
 };
 
-/** All six tabs available; defaults to the "Heading Styles" section. */
+/** All seven tabs available; defaults to the "Heading Styles" section. */
 export const Default: Story = { args: baseArgs };
 
 /**

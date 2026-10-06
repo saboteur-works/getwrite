@@ -96,7 +96,7 @@ describe("EntitySection", () => {
     fireEvent.change(aliasInput, { target: { value: "Jo" } });
 
     expect(
-      await screen.findByText(/very short and will match frequently/i),
+      await screen.findByText(/also reads as a common English word/i),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "add-alias" }));
@@ -127,7 +127,7 @@ describe("EntitySection", () => {
     });
 
     const warning = await screen.findByText(
-      /very short and will match frequently/i,
+      /also reads as a common English word/i,
     );
     expect(warning.className).toContain("text-gw-label");
     expect(warning.className).not.toContain("text-gw-nano");
@@ -165,26 +165,26 @@ describe("EntitySection", () => {
     // An untouched draft field is not an alias, so it must not be flagged as
     // "very short" — otherwise every entity opens showing a spurious warning.
     expect(
-      screen.queryByText(/very short and will match frequently/i),
+      screen.queryByText(/also reads as a common English word/i),
     ).not.toBeInTheDocument();
 
     // Whitespace alone is still an empty draft.
     fireEvent.change(aliasInput, { target: { value: "   " } });
     expect(
-      screen.queryByText(/very short and will match frequently/i),
+      screen.queryByText(/also reads as a common English word/i),
     ).not.toBeInTheDocument();
 
     // A genuinely short alias still warns, so the guard has not disabled FR-15.
     fireEvent.change(aliasInput, { target: { value: "Jo" } });
     expect(
-      await screen.findByText(/very short and will match frequently/i),
+      await screen.findByText(/also reads as a common English word/i),
     ).toBeInTheDocument();
 
     // Clearing the field retracts the warning.
     fireEvent.change(aliasInput, { target: { value: "" } });
     await waitFor(() => {
       expect(
-        screen.queryByText(/very short and will match frequently/i),
+        screen.queryByText(/also reads as a common English word/i),
       ).not.toBeInTheDocument();
     });
   });
@@ -213,6 +213,102 @@ describe("EntitySection", () => {
         "Charlie",
       ]);
     });
+  });
+
+  it("flags a noise-prone entity name the same way it flags a noise-prone alias (FR-1)", async () => {
+    makeFetchStub();
+    const store = setupStore("res-5", { entityKind: "character", name: "Jo" });
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+
+    expect(
+      await screen.findByText(/also reads as a common English word/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no name warning for a resource that is not a declared entity", () => {
+    makeFetchStub();
+    // No entityKind set, so `isEntity` is false — the name check (like the
+    // alias editor itself) is gated on the resource actually being an
+    // entity.
+    const store = setupStore("res-5b", { name: "Jo" });
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+
+    expect(
+      screen.queryByText(/also reads as a common English word/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("dismissing a flagged name observation persists the dismissal and hides it (FR-8/FR-9)", async () => {
+    const fetchStub = makeFetchStub();
+    const store = setupStore("res-6", { entityKind: "character", name: "Jo" });
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+
+    expect(
+      await screen.findByText(/also reads as a common English word/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dismiss noise observation for Jo" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/also reads as a common English word/i),
+      ).not.toBeInTheDocument();
+    });
+
+    const body = getLastSidecarBody(fetchStub);
+    expect(body).not.toBeNull();
+    expect(body!.updatedResource.dismissedNoiseTerms).toEqual(["jo"]);
+  });
+
+  it("dismissing a flagged alias observation persists the dismissal and hides it", async () => {
+    const fetchStub = makeFetchStub();
+    const store = setupStore("res-7", {
+      entityKind: "character",
+      aliases: ["Jo"],
+    });
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+
+    expect(
+      await screen.findByText(/also reads as a common English word/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dismiss noise observation for Jo" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/also reads as a common English word/i),
+      ).not.toBeInTheDocument();
+    });
+
+    const body = getLastSidecarBody(fetchStub);
+    expect(body).not.toBeNull();
+    expect(body!.updatedResource.dismissedNoiseTerms).toEqual(["jo"]);
+    // The alias itself is untouched by the dismissal.
+    expect(body!.updatedResource.aliases).toEqual(["Jo"]);
   });
 
   it("clearing entityKind hides the alias editor without deleting stored aliases", async () => {

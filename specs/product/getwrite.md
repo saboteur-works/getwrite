@@ -183,6 +183,12 @@ lost work.
   and, on request, the exact repeated phrases and where they occur, with no
   AI service involved, so that I can find overused wording while revising.
   [Next]
+- US-24: As a novelist who works across multiple projects (a series, or
+  several unrelated manuscripts), I want to maintain one noise-word list
+  that applies everywhere I write, on whichever device or build I'm using,
+  so that I don't have to re-add the same invented terms project by
+  project, while still being able to turn off a specific global word for
+  the one project where it isn't noise. [Shipped]
 
 ## Functional Requirements
 
@@ -522,6 +528,52 @@ lost work.
   follow-up refinements identified after the merge is tracked separately in
   `specs/features/trash-ui/follow-up-work.md` and addressed by
   `specs/features/trash-ui-followups.md`. [US-11]
+- FR-54: The product MUST check an entity's `name`, not only its
+  `aliases`, against a noise-prone-word heuristic, flagging — never
+  filtering, hiding, or otherwise suppressing — a detected mention whose
+  matching term is also an ordinary word. Status: Shipped. This replaces
+  the former alias-only scoping and the former ~20-word hardcoded
+  common-word list with a bundled, static, top-N (~2,000-3,000 word)
+  English frequency list committed as repo data, mirroring
+  `inverted-index.ts`'s `STOP_WORDS` precedent rather than an npm
+  dictionary dependency. For a given term, the check MUST evaluate the
+  union of the bundled list, the active project's own custom noise-word
+  list, and a cross-project "global" custom noise-word list, minus any
+  global-list word that project has explicitly excluded. The global list
+  MUST be available with functional parity (not data or sync parity)
+  across all three runtimes — web/hosted, Electron desktop, and native
+  Android — each persisting it independently with no merge, sync, or
+  conflict-resolution mechanism between them, so a word added on one
+  device or build MUST NOT be expected to appear on another. This
+  requirement MUST NOT change detection (`entity-detection.ts`), the
+  mention index, or any mention count/list surface — every detected
+  mention remains visible exactly as before; only the noise observation is
+  new or extended. [US-3][US-24]
+- FR-55: A writer MUST be able to dismiss the noise observation (FR-54)
+  for one specific term on one specific entity, after which that exact
+  term (compared case-insensitively, normalized) MUST NOT resurface the
+  observation for that entity, in any surface, unless the term's text
+  later changes. Status: Shipped. Dismissal is scoped per-entity-per-term:
+  the same term dismissed on one entity MUST still surface its observation
+  on a different entity that also uses it. Dismissal state MUST persist to
+  the entity's own sidecar through the existing `updateSidecar` write
+  path, with no new transport mechanism. Observation copy, wherever the
+  noise observation appears (the alias/name editor and the project-level
+  entity roster), MUST use non-imperative, neutral-aside phrasing that
+  states a fact about the term rather than instructing the writer, and
+  MUST NOT use the reserved position/canonical-state color token or any
+  other alert-styled treatment. [US-3]
+- FR-56: The product MUST provide two dedicated settings surfaces for the
+  noise-word lists FR-54 introduces, neither folded into an existing,
+  unrelated settings tab: a new Project Settings tab for a project's own
+  custom noise-word list and its per-project exclusions of specific global
+  words, and a new, standalone, top-level "App Settings" surface —
+  independent of any single project — for the cross-project global
+  noise-word list. Status: Shipped. The App Settings surface MUST be
+  reachable regardless of login state, including for a writer on the
+  local/desktop build with no hosted account at all, since hosted auth is
+  opt-in and not active for most users; its naming and copy MUST NOT imply
+  a user account exists. [US-24]
 
 ### In Progress Requirements
 

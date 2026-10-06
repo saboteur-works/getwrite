@@ -292,6 +292,7 @@ const EntityAliasEntrySchema = z.object({
   name: z.string(),
   aliases: z.array(z.string()),
   terms: z.array(z.string()),
+  dismissedNoiseTerms: z.array(z.string()).optional(),
 });
 
 export const EntityAliasTableSchema = z.object({
@@ -748,3 +749,30 @@ export const EntityGraphKindStyleRecordResponseSchema = z.object({
 export const EntityGraphKindStylesListResponseSchema = z.array(
   EntityGraphKindStyleRecordResponseSchema,
 );
+
+// ---------------------------------------------------------------------------
+// NoiseWordListsResponseSchema — Entity Mention Noise Flagging, Task 6
+// (project noise-word list core + API). Matches
+// `project-noise-words-core.ts`'s `NoiseWordLists` shape exactly: `{
+// customNoiseWords: string[]; excludedGlobalNoiseWords: string[] }`. Both
+// fields are required here (unlike the optional-on-clear goal schemas
+// above) since the core always returns both lists with absent config keys
+// already defaulted to `[]` — there is no "absent" case on this response.
+// Backs both the GET read and the POST add/remove-action response, which
+// share this one shape.
+// ---------------------------------------------------------------------------
+
+export const NoiseWordListsResponseSchema = z.object({
+  customNoiseWords: z.array(z.string()),
+  excludedGlobalNoiseWords: z.array(z.string()),
+});
+
+// ---------------------------------------------------------------------------
+// GlobalNoiseWordsResponseSchema — Entity Mention Noise Flagging, Task 11
+// (client transport collapse for the cross-project global noise-word list).
+// Matches `app/api/global-noise-words/route.ts`'s bare-array response shape
+// exactly (both `GET` and `PUT` return the same shape: the full persisted
+// list). No wrapping object, mirroring the route's own on-the-wire shape.
+// ---------------------------------------------------------------------------
+
+export const GlobalNoiseWordsResponseSchema = z.array(z.string());

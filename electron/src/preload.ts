@@ -50,6 +50,12 @@ export interface StartDocxImportOptions {
   projectType: string;
 }
 
+/** What persisting a new global noise-word list can result in (FR-5b). */
+export interface GlobalNoiseWordsSetResult {
+  ok: boolean;
+  message?: string;
+}
+
 /** The five-kind discriminated outcome of a DOCX import (FR-17). */
 export type DocxImportOutcome = DocxImportOutcomeType;
 
@@ -77,6 +83,10 @@ export interface GetWriteDesktopBridge {
     handle: string,
     options: StartDocxImportOptions,
   ): Promise<DocxImportOutcome>;
+  /** Returns the cross-project global noise-word list (FR-5b). */
+  getGlobalNoiseWords(): Promise<string[]>;
+  /** Persists the cross-project global noise-word list (FR-5b). */
+  setGlobalNoiseWords(words: string[]): Promise<GlobalNoiseWordsSetResult>;
 }
 
 const bridge: GetWriteDesktopBridge = {
@@ -96,6 +106,10 @@ const bridge: GetWriteDesktopBridge = {
       splitLevel: options.splitLevel,
       projectType: options.projectType,
     }),
+  getGlobalNoiseWords: () =>
+    ipcRenderer.invoke("getwrite:global-noise-words-get"),
+  setGlobalNoiseWords: (words: string[]) =>
+    ipcRenderer.invoke("getwrite:global-noise-words-set", words),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

@@ -86,7 +86,12 @@ function docFromText(text: string) {
 
 /** Builds a minimal `EntityAliasTable` from a flat list of declarations. */
 function buildAliasTable(
-  entities: Array<{ entityId: string; name: string; aliases?: string[] }>,
+  entities: Array<{
+    entityId: string;
+    name: string;
+    aliases?: string[];
+    dismissedNoiseTerms?: string[];
+  }>,
 ): EntityAliasTable {
   const table: EntityAliasTable = { entities: {}, claimedBy: {} };
   for (const e of entities) {
@@ -97,6 +102,7 @@ function buildAliasTable(
       name: e.name,
       aliases,
       terms: [e.name, ...aliases],
+      dismissedNoiseTerms: e.dismissedNoiseTerms ?? [],
     };
   }
   return table;
@@ -154,6 +160,7 @@ describe("buildEntityHighlightDecorations — gating (FR-1/FR-8/FR-9)", () => {
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => false,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     expect(decorationRanges(decorations)).toEqual([]);
@@ -170,6 +177,7 @@ describe("buildEntityHighlightDecorations — gating (FR-1/FR-8/FR-9)", () => {
     buildEntityHighlightDecorations(doc, {
       isEnabled: () => false,
       getAliasTable,
+      getNoiseCheckSources: () => ({}),
     });
 
     expect(getAliasTable).not.toHaveBeenCalled();
@@ -187,6 +195,7 @@ describe("buildEntityHighlightDecorations — matches render at correct live-doc
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     const ranges = decorationRanges(decorations);
@@ -198,12 +207,12 @@ describe("buildEntityHighlightDecorations — matches render at correct live-doc
       to: 5,
       class: expect.stringContaining("entity-highlight"),
     });
-    expect(mockedCompute).toHaveBeenCalledWith(doc, table);
+    expect(mockedCompute).toHaveBeenCalledWith(doc, table, {});
   });
 
   it("distinguishes plain-match and needs-attention via CSS class", () => {
     const doc = docFromText("May opened the letter slowly.");
-    // "May" is on entity-alias-warnings.ts's common-word list.
+    // "May" is on entity-noise-check.ts's common-word list.
     const table = buildAliasTable([
       { entityId: "e1", name: "Maylene", aliases: ["May"] },
     ]);
@@ -211,6 +220,7 @@ describe("buildEntityHighlightDecorations — matches render at correct live-doc
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     const ranges = decorationRanges(decorations);
@@ -222,7 +232,7 @@ describe("buildEntityHighlightDecorations — matches render at correct live-doc
 describe("buildEntityHighlightDecorations — hover/title disclosure (FR-11)", () => {
   it("names 'short or common word' wording when only the short/common-word condition applies", () => {
     const doc = docFromText("May opened the letter slowly.");
-    // "May" is on entity-alias-warnings.ts's common-word list and is
+    // "May" is on entity-noise-check.ts's common-word list and is
     // declared by exactly one entity — no ambiguous claim.
     const table = buildAliasTable([
       { entityId: "e1", name: "Maylene", aliases: ["May"] },
@@ -231,6 +241,7 @@ describe("buildEntityHighlightDecorations — hover/title disclosure (FR-11)", (
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     const titles = decorationTitles(decorations);
@@ -251,6 +262,7 @@ describe("buildEntityHighlightDecorations — hover/title disclosure (FR-11)", (
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     const titles = decorationTitles(decorations);
@@ -270,6 +282,7 @@ describe("buildEntityHighlightDecorations — hover/title disclosure (FR-11)", (
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     const titles = decorationTitles(decorations);
@@ -285,6 +298,7 @@ describe("buildEntityHighlightDecorations — hover/title disclosure (FR-11)", (
     const decorations = buildEntityHighlightDecorations(doc, {
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
 
     const titles = decorationTitles(decorations);
@@ -301,6 +315,7 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
     const plugins = buildPlugins({
       isEnabled: () => false,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
     const state = EditorState.create({ doc, schema, plugins });
 
@@ -317,6 +332,7 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
     const plugins = buildPlugins({
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
     const state = EditorState.create({ doc, schema, plugins });
 
@@ -338,6 +354,7 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
     const plugins = buildPlugins({
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
     const state = EditorState.create({ doc, schema, plugins });
 
@@ -360,6 +377,7 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
     const plugins = buildPlugins({
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
     let state = EditorState.create({ doc, schema, plugins });
     expect(
@@ -399,6 +417,7 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
     const plugins = buildPlugins({
       isEnabled: () => true,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
     let state = EditorState.create({ doc, schema, plugins });
     expect(
@@ -437,6 +456,7 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
     const plugins = buildPlugins({
       isEnabled: () => isHighlightingEnabled,
       getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
     });
     let state = EditorState.create({ doc, schema, plugins });
     expect(
@@ -456,5 +476,119 @@ describe("EntityHighlightDecorationExtension — real Plugin, no DOM required", 
         ENTITY_HIGHLIGHT_DECORATION_KEY.getState(state) as DecorationSet,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("buildEntityHighlightDecorations — project noise-check sources and per-entity dismissal (post-implementation bug fix)", () => {
+  it("flags a term as needs-attention when it is on the project's custom noise-word list, even though it is otherwise plain", () => {
+    const doc = docFromText("Meridian walked into the harbor.");
+    // "Meridian" is not short and not on the bundled list, so with no project
+    // sources it would be a plain match.
+    const table = buildAliasTable([{ entityId: "e1", name: "Meridian" }]);
+
+    const decorations = buildEntityHighlightDecorations(doc, {
+      isEnabled: () => true,
+      getAliasTable: () => table,
+      getNoiseCheckSources: () => ({ projectCustomNoiseWords: ["Meridian"] }),
+    });
+
+    const ranges = decorationRanges(decorations);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0].class).toContain("entity-highlight--needs-attention");
+  });
+
+  it("does not flag a term still matching bundled/length rules when the project's custom list is absent (unaffected baseline)", () => {
+    const doc = docFromText("Meridian walked into the harbor.");
+    const table = buildAliasTable([{ entityId: "e1", name: "Meridian" }]);
+
+    const decorations = buildEntityHighlightDecorations(doc, {
+      isEnabled: () => true,
+      getAliasTable: () => table,
+      getNoiseCheckSources: () => ({}),
+    });
+
+    const ranges = decorationRanges(decorations);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0].class).toContain("entity-highlight--plain");
+  });
+
+  it("stops flagging a term once its one claiming entity has dismissed it", () => {
+    const doc = docFromText("Meridian walked into the harbor.");
+    const table = buildAliasTable([
+      { entityId: "e1", name: "Meridian", dismissedNoiseTerms: ["meridian"] },
+    ]);
+
+    const decorations = buildEntityHighlightDecorations(doc, {
+      isEnabled: () => true,
+      getAliasTable: () => table,
+      getNoiseCheckSources: () => ({ projectCustomNoiseWords: ["Meridian"] }),
+    });
+
+    const ranges = decorationRanges(decorations);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0].class).toContain("entity-highlight--plain");
+  });
+
+  it("OR-across-claimants: a term claimed by two entities stays flagged when only one of them has dismissed it", () => {
+    const doc = docFromText("Meridian walked into the harbor.");
+    const table = buildAliasTable([
+      { entityId: "e1", name: "Meridian", dismissedNoiseTerms: ["meridian"] },
+      { entityId: "e2", name: "Meridian" },
+    ]);
+
+    const decorations = buildEntityHighlightDecorations(doc, {
+      isEnabled: () => true,
+      getAliasTable: () => table,
+      getNoiseCheckSources: () => ({ projectCustomNoiseWords: ["Meridian"] }),
+    });
+
+    const ranges = decorationRanges(decorations);
+    expect(ranges).toHaveLength(1);
+    // Still flagged as needs-attention: not every claiming entity dismissed
+    // it, and the ambiguous claim itself also contributes to needs-attention.
+    expect(ranges[0].class).toContain("entity-highlight--needs-attention");
+  });
+
+  it("OR-across-claimants: clears once every claiming entity has dismissed the term and the claim is otherwise unambiguous-safe", () => {
+    const doc = docFromText("Meridian walked into the harbor.");
+    // Both claimants dismiss "meridian" — the custom-noise-word condition is
+    // fully suppressed. The ambiguous-claim condition is independent of
+    // dismissal (FR-10b) and is not exercised by this meridian since dismissal
+    // only suppresses the short/common-word condition, matching
+    // EntitySection.tsx's existing per-entity semantics.
+    const table = buildAliasTable([
+      { entityId: "e1", name: "Meridian", dismissedNoiseTerms: ["meridian"] },
+    ]);
+
+    const decorations = buildEntityHighlightDecorations(doc, {
+      isEnabled: () => true,
+      getAliasTable: () => table,
+      getNoiseCheckSources: () => ({ projectCustomNoiseWords: ["Meridian"] }),
+    });
+
+    const ranges = decorationRanges(decorations);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0].class).toContain("entity-highlight--plain");
+  });
+
+  it("FR-12 unaffected: a dismissed/undismissed term is still matched and rendered — dismissal only changes isWarned, never whether a match is found or hidden", () => {
+    const doc = docFromText("Meridian walked into the harbor. Meridian again.");
+    const table = buildAliasTable([
+      { entityId: "e1", name: "Meridian", dismissedNoiseTerms: ["meridian"] },
+    ]);
+
+    const decorations = buildEntityHighlightDecorations(doc, {
+      isEnabled: () => true,
+      getAliasTable: () => table,
+      getNoiseCheckSources: () => ({ projectCustomNoiseWords: ["Meridian"] }),
+    });
+
+    // Both occurrences are still matched and rendered, just as plain
+    // (not needs-attention) matches.
+    const ranges = decorationRanges(decorations);
+    expect(ranges).toHaveLength(2);
+    for (const range of ranges) {
+      expect(range.class).toContain("entity-highlight--plain");
+    }
   });
 });

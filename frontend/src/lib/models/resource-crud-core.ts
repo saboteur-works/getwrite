@@ -464,6 +464,97 @@ export async function updateSidecarCore(
 }
 
 // ---------------------------------------------------------------------------
+// 5a. Noise-term dismissal (entity-mention-noise-flagging Task 7, FR-8/FR-9/FR-13)
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalizes a noise-flagging term for storage and later comparison: trims
+ * surrounding whitespace, then case-folds to lower case.
+ *
+ * This mirrors `entity-alias-warnings.ts`'s `getAliasWarning`, which compares
+ * `alias.trim().toLowerCase()` against its common-word list — the schema
+ * comment on `EntitySidecarFieldsSchema.dismissedNoiseTerms` (`schemas.ts`)
+ * calls for the same normalization so a persisted dismissal and a later
+ * noise check agree on what counts as "the same term". Exported so a later
+ * noise-check implementation (or an integration pass) can reuse this exact
+ * logic rather than re-deriving it and risking drift.
+ */
+export function normalizeNoiseTerm(term: string): string {
+  return term.trim().toLowerCase();
+}
+
+/**
+ * Reads a sidecar's current `dismissedNoiseTerms`, filtered down to actual
+ * strings. Returns `[]` for a sidecar with no such field (including a
+ * sidecar that doesn't exist yet) rather than `undefined`, so callers never
+ * need to null-check it.
+ */
+function readDismissedNoiseTerms(
+  sidecar: Record<string, MetadataValue> | null,
+): string[] {
+  const value = sidecar?.["dismissedNoiseTerms"];
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+/**
+ * Sets or clears one entity resource's dismissal of a noise observation for
+ * a given term (FR-8/FR-9), persisted through the existing
+ * `updateSidecarCore` write path — no new API route or transport mechanism.
+ *
+ * This is a read-modify-write: it reads the resource's current sidecar
+ * itself to find the existing `dismissedNoiseTerms` array, rather than
+ * requiring the caller to supply it, so a caller only ever needs a resource
+ * id and the term text (mirroring `updateSidecarCore`'s own merge-against-
+ * existing-sidecar shape).
+ *
+ * Dismissal is keyed by the term's own normalized text (see
+ * {@link normalizeNoiseTerm}), not by position or index, within this one
+ * entity's own sidecar — so editing an entity's name/alias text to a
+ * different string never carries over an old dismissal (FR-8): dismissing
+ * `"case"` has no bearing on whether `"case2"` is later flagged, since
+ * `"case2"` is never added to (or looked up in) this entity's array. The
+ * same literal term dismissed on one entity still surfaces its observation
+ * on a different entity using it (FR-13), since each entity's
+ * `dismissedNoiseTerms` lives in that entity's own sidecar only.
+ *
+ * `dismissed: true` adds the normalized term if not already present
+ * (idempotent — dismissing the same term twice does not duplicate it);
+ * `dismissed: false` removes it if present (also idempotent). Either way,
+ * the resulting array — including an empty one, when the last dismissal is
+ * cleared — is passed to `updateSidecarCore` as the new value of
+ * `dismissedNoiseTerms`. An empty array is not `undefined`, so it survives
+ * `JSON.stringify` and the merge intact; this is why no change to
+ * `updateSidecarCore`'s `clearKeys` allowlist is needed here.
+ */
+export async function setNoiseTermDismissedCore(
+  projectId: string,
+  resourceId: string,
+  term: string,
+  dismissed: boolean,
+): Promise<void> {
+  const projectRoot = resolveResourceProjectRootOrThrow(projectId);
+  const normalized = normalizeNoiseTerm(term);
+
+  const existing = await readSidecar(projectRoot, resourceId).catch(
+    (err: unknown) => {
+      if (isLockedAccessError(err)) throw err;
+      return null;
+    },
+  );
+
+  const current = readDismissedNoiseTerms(existing);
+  const next = dismissed
+    ? current.includes(normalized)
+      ? current
+      : [...current, normalized]
+    : current.filter((entry) => entry !== normalized);
+
+  await updateSidecarCore(projectId, resourceId, { dismissedNoiseTerms: next });
+}
+
+// ---------------------------------------------------------------------------
 // 6. Rename resource/folder
 // ---------------------------------------------------------------------------
 

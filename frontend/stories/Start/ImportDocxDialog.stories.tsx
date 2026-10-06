@@ -61,6 +61,8 @@ function installDocxBridge(overrides: {
     chooseDocxFile,
     chooseDocxFolder,
     startDocxImport,
+    getGlobalNoiseWords: async () => [],
+    setGlobalNoiseWords: async () => ({ ok: true }),
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }

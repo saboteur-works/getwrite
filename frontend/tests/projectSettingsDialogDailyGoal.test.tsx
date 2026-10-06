@@ -13,6 +13,18 @@ import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
 
 vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
+vi.mock("../src/lib/api/project-noise-words", () => ({
+  getNoiseWordLists: vi
+    .fn()
+    .mockResolvedValue({ customNoiseWords: [], excludedGlobalNoiseWords: [] }),
+  addCustomNoiseWord: vi.fn(),
+  removeCustomNoiseWord: vi.fn(),
+  excludeGlobalNoiseWord: vi.fn(),
+  unexcludeGlobalNoiseWord: vi.fn(),
+}));
+vi.mock("../src/lib/api/global-noise-words", () => ({
+  getGlobalNoiseWords: vi.fn().mockResolvedValue([]),
+}));
 
 function renderWith(projectId?: string): void {
   const store = configureStore({

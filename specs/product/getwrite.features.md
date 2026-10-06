@@ -2462,6 +2462,72 @@ completion as self-certifiable against fixed criteria.
 
 ---
 
+### Feature 70: Entity mention noise flagging — Shipped
+
+**Value:** A novelist naming a character or alias that happens to also be
+an ordinary English word (e.g. "Case," "Hope," "Tiny") gets a heads-up that
+detected prose mentions of it may include false positives — now on the
+entity's `name` as well as its `aliases`, checked against a much larger
+bundled word list rather than the ~20-word hardcoded list that preceded it
+— and can tune that check per-project, maintain one noise-word list across
+every project they write in, and dismiss an observation once acknowledged,
+all without any mention ever being hidden or filtered.
+**Vertical slice:** Data layer: a bundled, static, top-N (~2,000-3,000
+word) English frequency list committed as repo data
+(`bundled-noise-words.ts`), replacing the former ~20-word hardcoded common-
+word list in `entity-alias-warnings.ts`; a per-project custom noise-word
+list and per-project global-word exclusion list on project config
+(mirroring `config.statuses`'s shape); a cross-project "global" custom
+noise-word list persisted independently in all three runtimes — a
+tenant-root-level `.global-noise-words.json` via `io.ts` on web/hosted, an
+extension to `userData/workspace.json` plus a new
+`getwrite:global-noise-words-get`/`-set` IPC channel pair on Electron
+desktop (following the existing `getwrite:workspace-dir` precedent
+exactly), and a device-level, project-independent, unencrypted JSON file
+on native Android — collapsed behind one client transport
+(`lib/api/global-noise-words.ts`, `createTransport`) with no sync or merge
+logic between the three stores. Logic: a single noise-check function
+(`entity-alias-warnings.ts`, formerly alias-only) applied identically to an
+entity's `name` and `aliases`, evaluating bundled ∪ project-custom ∪
+global, minus project-excluded global words, and suppressing a dismissed
+term. Sidecar: a new `dismissedNoiseTerms` field, written through the
+existing `updateSidecar` path, scoped per-entity-per-term. Interface: a new
+standalone "App Settings" surface (reachable with no login/account) for
+the global list; a new Project Settings "Noise Words" tab for the
+per-project custom list and global-word exclusions; revised,
+non-imperative observation copy and an inline per-term dismiss control
+wired into both `EntitySection.tsx` (the alias/name editor) and
+`EntityRosterView.tsx` (the project-level roster), with no red/alert
+styling on either.
+**Requirements covered:** FR-54, FR-55, FR-56
+**User stories:** US-3, US-24
+**Depends on:** Feature 33
+**Branch suggestion:** feature/entity-mention-noise-flagging
+**Notes:** Shipped on branch `feature/entity-mention-noise-flagging` (not
+yet merged to `main` as of this entry; most recent commit `f5391215`).
+`specs/features/entity-mention-noise-flagging.md` and its `tasks.md` (15
+tasks, all done) are the authoritative record of the shipped scope. Per
+that spec's own scope note, this feature required genuinely new
+cross-project/device-level preferences infrastructure in all three
+runtimes — none of web/hosted, Electron, or native Android had an existing
+cross-project or device-level preferences seam before this feature — and
+all three shipped together rather than staged, per the spec's FR-5/FR-15
+hard requirement that functional parity across runtimes (not data or sync
+parity) is non-negotiable. The spec explicitly flags itself as "at the
+upper bound of what should stay one spec." Two settled, non-default scope
+calls carried over from the feature spec's own Gate 3 resolutions: bulk
+dismissal from the roster was considered and explicitly declined (dismissal
+stays inline-only, per-row); and the exact approved copy strings for the
+softened observation text went through a dedicated copy-review task (Task
+4) rather than being invented ad hoc inside the UI tasks that consume them.
+Extends, rather than duplicates, Feature 34's existing
+`entity-alias-warnings.ts` short/common-word advisory mechanism and
+Feature 36's roster "needs attention" surfacing — both already non-
+color-only per FR-11's styling constraint, which this feature's own
+observation UI follows rather than introduces fresh.
+
+---
+
 ## Coverage check
 
 - Requirements covered:
@@ -2520,11 +2586,14 @@ completion as self-certifiable against fixed criteria.
   - FR-51: Feature 68
   - FR-52: Feature 69
   - FR-53: Feature 69
+  - FR-54: Feature 70
+  - FR-55: Feature 70
+  - FR-56: Feature 70
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 69
+- Total features: 70
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2605,7 +2674,7 @@ completion as self-certifiable against fixed criteria.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66 (30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70 (30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
 - Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything

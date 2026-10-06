@@ -5,6 +5,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
   computeEntityHighlightRanges,
   type NeedsAttentionReason,
+  type ProjectNoiseCheckSources,
 } from "./entityHighlightDecoration";
 import type { EntityAliasTable } from "../../../src/lib/models/entity-alias-table";
 
@@ -63,10 +64,23 @@ export interface EntityHighlightDecorationOptions {
    * ref-backed getter for the same reason as `isEnabled`.
    */
   getAliasTable: () => EntityAliasTable;
+  /**
+   * Returns the project's current noise-check sources — its custom and
+   * excluded-global noise-word lists, plus the resolved cross-project
+   * global list (`entity-noise-check.ts`'s `NoiseCheckSources`, minus the
+   * per-entity `dismissedNoiseTerms` field, which `computeEntityHighlightRanges`
+   * resolves per claiming entity from `getAliasTable()` instead). Read via a
+   * ref-backed getter for the same reason as `isEnabled`/`getAliasTable`.
+   * Defaults to `{}` (bundled-list + short-term checks only) when unset.
+   */
+  getNoiseCheckSources: () => ProjectNoiseCheckSources;
 }
 
 /** The empty alias table, used only as an `addOptions` default. */
 const EMPTY_ALIAS_TABLE: EntityAliasTable = { entities: {}, claimedBy: {} };
+
+/** The empty noise-check sources, used only as an `addOptions` default. */
+const EMPTY_NOISE_CHECK_SOURCES: ProjectNoiseCheckSources = {};
 
 /** CSS class applied to a match that needs no user attention. */
 const PLAIN_MATCH_CLASS = "entity-highlight entity-highlight--plain";
@@ -114,7 +128,12 @@ export function buildEntityHighlightDecorations(
   if (!options.isEnabled()) return DecorationSet.empty;
 
   const aliasTable = options.getAliasTable();
-  const ranges = computeEntityHighlightRanges(doc, aliasTable);
+  const noiseCheckSources = options.getNoiseCheckSources();
+  const ranges = computeEntityHighlightRanges(
+    doc,
+    aliasTable,
+    noiseCheckSources,
+  );
   if (ranges.length === 0) return DecorationSet.empty;
 
   const decorations = ranges.map((range) =>
@@ -154,11 +173,15 @@ const EntityHighlightDecorationExtension =
     name: "entityHighlightDecoration",
 
     addOptions(): EntityHighlightDecorationOptions {
-      return { isEnabled: () => false, getAliasTable: () => EMPTY_ALIAS_TABLE };
+      return {
+        isEnabled: () => false,
+        getAliasTable: () => EMPTY_ALIAS_TABLE,
+        getNoiseCheckSources: () => EMPTY_NOISE_CHECK_SOURCES,
+      };
     },
 
     addProseMirrorPlugins() {
-      const { isEnabled, getAliasTable } = this.options;
+      const { isEnabled, getAliasTable, getNoiseCheckSources } = this.options;
 
       return [
         new Plugin({
@@ -168,6 +191,7 @@ const EntityHighlightDecorationExtension =
               buildEntityHighlightDecorations(doc, {
                 isEnabled,
                 getAliasTable,
+                getNoiseCheckSources,
               }),
             apply: (tr, old) => {
               if (
@@ -177,6 +201,7 @@ const EntityHighlightDecorationExtension =
                 return buildEntityHighlightDecorations(tr.doc, {
                   isEnabled,
                   getAliasTable,
+                  getNoiseCheckSources,
                 });
               }
               return old;

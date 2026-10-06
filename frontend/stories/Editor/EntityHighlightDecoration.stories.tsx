@@ -18,7 +18,7 @@ import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
  * The sample alias table declares three entities so the document exercises
  * both FR-10 states in one view:
  *  - "Kaelith Dawnbringer" — an unambiguous name, renders `--plain`.
- *  - "Sam" — flagged by `entity-alias-warnings.ts` as a short/common word,
+ *  - "Sam" — flagged by `entity-noise-check.ts` as a short/common word,
  *    renders `--needs-attention`.
  *  - "Aria", declared by two different entities (`claimedBy`-ambiguous),
  *    renders `--needs-attention` for the opposite reason.

@@ -58,6 +58,9 @@ import {
 } from "../src/store/projectsSlice";
 import { selectEntityAliasTable } from "../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../src/lib/models/entity-alias-table";
+import type { ProjectNoiseCheckSources } from "./Editor/Extensions/entityHighlightDecoration";
+import { getNoiseWordLists } from "../src/lib/api/project-noise-words";
+import { getGlobalNoiseWords } from "../src/lib/api/global-noise-words";
 import { deriveSelectionNodeLabels } from "../src/lib/node-display-selection";
 
 /**
@@ -196,6 +199,79 @@ export default function TipTapEditor({
   const entityAliasTableRef = useRef<EntityAliasTable>(entityAliasTable);
   entityAliasTableRef.current = entityAliasTable;
 
+  // The project's custom/excluded-global noise-word lists and the
+  // cross-project global list (entity-mention-noise-flagging, FR-1/FR-7),
+  // fetched once per project/mount and cached in local state — mirroring
+  // `EntitySection.tsx`'s own self-contained fetch-on-mount lifecycle rather
+  // than introducing a shared context. A failed fetch degrades to an empty
+  // list rather than blocking the editor: this only affects the
+  // "needs attention" decoration, never whether a match is found or hidden
+  // (FR-12). Threaded through a ref, same pattern as `entityAliasTableRef`
+  // above, so the non-React `EntityHighlightDecoration` extension can read
+  // the latest value without the editor being re-created.
+  const [projectNoiseCheckSources, setProjectNoiseCheckSources] =
+    useState<ProjectNoiseCheckSources>({});
+  const noiseCheckSourcesRef = useRef<ProjectNoiseCheckSources>(
+    projectNoiseCheckSources,
+  );
+  noiseCheckSourcesRef.current = projectNoiseCheckSources;
+
+  // Gated on the same isEnabled() condition entity highlighting itself uses
+  // (FR-9's "disabled means zero extra work" precedent, applied here too) —
+  // most projects never turn highlighting on, so there is no reason to hit
+  // two extra transports on every editor mount regardless.
+  const isEntityHighlightingActive =
+    isEntityHighlightingEnabled && isEntitiesEnabled;
+
+  useEffect(() => {
+    if (!isEntityHighlightingActive || !activeProjectDirectoryId) {
+      setProjectNoiseCheckSources((previous) => ({
+        ...previous,
+        projectCustomNoiseWords: undefined,
+        projectExcludedGlobalNoiseWords: undefined,
+      }));
+      return;
+    }
+    void getNoiseWordLists(activeProjectDirectoryId)
+      .then((lists) => {
+        setProjectNoiseCheckSources((previous) => ({
+          ...previous,
+          projectCustomNoiseWords: lists.customNoiseWords,
+          projectExcludedGlobalNoiseWords: lists.excludedGlobalNoiseWords,
+        }));
+      })
+      .catch(() => {
+        setProjectNoiseCheckSources((previous) => ({
+          ...previous,
+          projectCustomNoiseWords: undefined,
+          projectExcludedGlobalNoiseWords: undefined,
+        }));
+      });
+  }, [isEntityHighlightingActive, activeProjectDirectoryId]);
+
+  useEffect(() => {
+    if (!isEntityHighlightingActive) {
+      setProjectNoiseCheckSources((previous) => ({
+        ...previous,
+        globalNoiseWords: undefined,
+      }));
+      return;
+    }
+    void getGlobalNoiseWords()
+      .then((words) =>
+        setProjectNoiseCheckSources((previous) => ({
+          ...previous,
+          globalNoiseWords: words,
+        })),
+      )
+      .catch(() =>
+        setProjectNoiseCheckSources((previous) => ({
+          ...previous,
+          globalNoiseWords: undefined,
+        })),
+      );
+  }, [isEntityHighlightingActive]);
+
   // Keep the latest callback in a ref so the editor's (init-time) handlers can
   // call it without being re-created when the prop identity changes.
   const onNodeTypesChangeRef = useRef(onNodeTypesChange);
@@ -287,6 +363,7 @@ export default function TipTapEditor({
         EntityHighlightDecoration.configure({
           isEnabled: () => entityHighlightingActiveRef.current,
           getAliasTable: () => entityAliasTableRef.current,
+          getNoiseCheckSources: () => noiseCheckSourcesRef.current,
         }),
         Math.configure({
           blockOptions: {
@@ -469,6 +546,7 @@ export default function TipTapEditor({
     isEntityHighlightingEnabled,
     isEntitiesEnabled,
     entityAliasTable,
+    projectNoiseCheckSources,
   ]);
 
   useEffect(() => {
