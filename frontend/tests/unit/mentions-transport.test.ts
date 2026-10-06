@@ -14,6 +14,7 @@ import {
   getEntityMentionedIn,
   httpMentionsTransport,
 } from "../../src/lib/api/mentions";
+import { EntityMentionedInResponseSchema } from "../../src/lib/api/schemas";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 
 const mockedReport = vi.mocked(reportTransportValidationFailure);
@@ -187,5 +188,74 @@ describe("httpMentionsTransport", () => {
   it("is the transport object used directly by the resolver in web runtime", () => {
     expect(typeof httpMentionsTransport.getResourceMentions).toBe("function");
     expect(typeof httpMentionsTransport.getEntityMentionedIn).toBe("function");
+  });
+});
+
+// entity-mention-navigation Task 5 (FR-2): EntityMentionedInResponseSchema
+// must accept a response carrying the `offsets` field added by Task 1, and
+// — since Zod does not cross-validate sibling array fields for length
+// parity unless a schema explicitly adds a `.refine`/`.superRefine` for it,
+// matching `ambiguousWith`'s own existing precedent of no such check — a
+// `snippets`/`offsets` length mismatch is NOT rejected by this schema. This
+// test records that as a fact about the current schema, not an assumption.
+describe("EntityMentionedInResponseSchema — offsets field (FR-2)", () => {
+  it("accepts a response whose mentionedIn entries carry an offsets array", () => {
+    const result = EntityMentionedInResponseSchema.safeParse({
+      mentionedIn: [
+        {
+          resourceId: "r1",
+          name: "Chapter 1",
+          snippets: ["...Elowen..."],
+          offsets: [42],
+          isLinked: false,
+          isMentioned: true,
+          ambiguousWith: [],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.mentionedIn?.[0]?.offsets).toEqual([42]);
+    }
+  });
+
+  it("rejects a response whose offsets field is missing entirely", () => {
+    const result = EntityMentionedInResponseSchema.safeParse({
+      mentionedIn: [
+        {
+          resourceId: "r1",
+          name: "Chapter 1",
+          snippets: ["...Elowen..."],
+          isLinked: false,
+          isMentioned: true,
+          ambiguousWith: [],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("does NOT reject a snippets/offsets length mismatch — this schema has no cross-field length-parity check", () => {
+    const result = EntityMentionedInResponseSchema.safeParse({
+      mentionedIn: [
+        {
+          resourceId: "r1",
+          name: "Chapter 1",
+          snippets: ["...Elowen..."],
+          offsets: [1, 2, 3],
+          isLinked: false,
+          isMentioned: true,
+          ambiguousWith: [],
+        },
+      ],
+    });
+
+    // Three offsets against one snippet is a length mismatch that a
+    // cross-field refinement *could* reject, but none exists on this
+    // schema today (mirroring `ambiguousWith`'s own unenforced shape), so
+    // Zod accepts it as-is.
+    expect(result.success).toBe(true);
   });
 });
