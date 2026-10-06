@@ -73,6 +73,7 @@ describe("native entity-alias-table transport — in-process backend reuses the 
       name: "Aria",
       aliases: ["Ari", "The Wanderer"],
       terms: ["Aria", "Ari", "The Wanderer"],
+      dismissedNoiseTerms: [],
     });
     expect(table.claimedBy).toEqual({});
 
