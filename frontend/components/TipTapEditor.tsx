@@ -35,6 +35,7 @@ import MarkdownSourceView from "./Editor/MarkdownSourceView";
 import { loadDocumentIntoEditor } from "./Editor/loadDocumentIntoEditor";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
 export { resolveOffsetToPosition } from "./Editor/offset-resolver";
+import { setActiveEditor } from "./Editor/activeEditorRegistry";
 import {
   documentToMarkdown,
   markdownToDocument,
@@ -555,6 +556,20 @@ export default function TipTapEditor({
       scheduleSourceCommit.cancel();
     };
   }, [scheduleSourceCommit]);
+
+  /**
+   * Registers this editor instance as the app's single "live editor" (Task
+   * 11, `activeEditorRegistry.ts`) so a sidebar component outside this
+   * subtree — `EntityMentionsSection.tsx`, via `getActiveEditor()` — can jump
+   * the live selection to a resolved mention offset. Cleared on unmount so a
+   * stale instance is never read after this component goes away.
+   */
+  useEffect(() => {
+    setActiveEditor(editor ?? null);
+    return () => {
+      setActiveEditor(null);
+    };
+  }, [editor]);
 
   /**
    * Source textarea change handler: keep the buffer in local state and schedule

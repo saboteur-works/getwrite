@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectResource,
@@ -8,10 +9,21 @@ import {
 } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { useEntityMentions } from "./EntityMentionsContext";
+import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
 import type { EntityCooccurrenceEntry } from "../../src/lib/api/entity-cooccurrence";
 import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
+import { getActiveEditor } from "../Editor/activeEditorRegistry";
+import {
+  resolveOffsetToPosition,
+  isOffsetStillAMention,
+} from "../Editor/offset-resolver";
+import { applyMentionJumpHighlight } from "../Editor/Extensions/MentionJumpHighlightExtension";
+import {
+  escapeRegExp,
+  POSSESSIVE_OR_PLURAL_SUFFIX,
+} from "../../src/lib/models/entity-detection";
 
 /**
  * Read-only sidebar section for an entity's own view: every resource
@@ -72,6 +84,65 @@ export function resolveCooccurringEntityName(
   entityId: string,
 ): string {
   return aliasTable.entities[entityId]?.name ?? entityId;
+}
+
+/**
+ * Task 11 addition (`specs/features/entity-mention-navigation.md`, FR-4/FR-8)
+ * — temporary fixed duration for the one-shot "landed here" flash applied
+ * after a same-resource mention jump. A later task (Task 12) reads the
+ * real, project-configured `mentionHighlightDurationSeconds` instead; this
+ * constant is a deliberate stand-in until that wiring lands.
+ */
+const TEMPORARY_MENTION_JUMP_HIGHLIGHT_DURATION_MS = 2000;
+
+/**
+ * How many plain-text characters past a resolved jump position to search,
+ * at most, for the matched term's own length when building the jump-
+ * highlight span (Task 11, FR-8). Generous enough to contain the longest
+ * realistic name/alias plus its possessive/plural suffix.
+ */
+const MENTION_SPAN_SEARCH_WINDOW = 128;
+
+/**
+ * Resolves the `{ from, to }` span of the entity term starting at `position`
+ * for {@link applyMentionJumpHighlight}'s decoration, so the one-shot flash
+ * covers the matched text itself rather than only its starting character.
+ *
+ * Tries each of `terms` (longest first, so a longer term that happens to be
+ * a prefix of a shorter one is preferred) against the text immediately
+ * following `position`, using the same case-insensitive possessive/plural
+ * envelope `isOffsetStillAMention` already confirmed matches somewhere in
+ * this neighborhood. Falls back to a single-character span — rather than
+ * throwing or highlighting nothing — on the (expected to be rare, since the
+ * staleness check already passed) case where no term matches exactly at
+ * `position` within the search window.
+ */
+function resolveMentionHighlightSpan(
+  doc: ProseMirrorNode,
+  position: number,
+  terms: string[],
+): { from: number; to: number } {
+  const docSize = doc.content.size;
+  const windowEnd = Math.min(docSize, position + MENTION_SPAN_SEARCH_WINDOW);
+  const windowText = doc.textBetween(position, windowEnd, "\n");
+
+  const sortedTerms = terms
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0)
+    .sort((a, b) => b.length - a.length);
+
+  for (const term of sortedTerms) {
+    const pattern = new RegExp(
+      `^(?:${escapeRegExp(term)})${POSSESSIVE_OR_PLURAL_SUFFIX}`,
+      "iu",
+    );
+    const match = pattern.exec(windowText);
+    if (match) {
+      return { from: position, to: position + match[0].length };
+    }
+  }
+
+  return { from: position, to: Math.min(docSize, position + 1) };
 }
 
 /**
@@ -143,6 +214,54 @@ export default function EntityMentionsSection(): JSX.Element | null {
 
   const resourceId = resource?.id;
   const entityKind = resource?.entityKind;
+
+  /**
+   * Task 11 (FR-4/FR-6/FR-7): handles a click on one mention snippet.
+   *
+   * Only acts when `row`'s resource is already the selected one — the
+   * entity's own resource mentioning itself in its own prose, the only case
+   * this task is in scope for (FR-6, a different resource's row keeps its
+   * existing resource-name-only navigation, handled by the plain
+   * `setSelectedResourceId` dispatch on the name button below). Applies
+   * identically to an ambiguous snippet (FR-4): there is no special-casing
+   * branch for `ambiguousWith` here.
+   *
+   * Resolves the snippet's persisted offset against the *live* editor
+   * document (`getActiveEditor()`, since the live document can differ from
+   * what the offset was recorded against), re-confirms the resolved
+   * position still reads as a mention of this entity (FR-9's staleness
+   * check), and only on that success moves the selection, scrolls it into
+   * view, and shows the one-shot jump highlight — a stale or unresolved
+   * offset silently does nothing rather than jumping to the wrong place.
+   */
+  const handleSnippetClick = (
+    row: EntityMentionedIn,
+    snippetIndex: number,
+  ): void => {
+    if (row.resourceId !== resourceId) return;
+
+    const editor = getActiveEditor();
+    if (!editor) return;
+
+    const offset = row.offsets[snippetIndex];
+    if (offset === undefined) return;
+
+    const doc = editor.state.doc;
+    const position = resolveOffsetToPosition(doc, offset);
+    if (position === null) return;
+
+    const terms = aliasTable.entities[resourceId]?.terms ?? [];
+    if (!isOffsetStillAMention(doc, position, terms)) return;
+
+    editor.chain().setTextSelection(position).scrollIntoView().run();
+
+    const span = resolveMentionHighlightSpan(doc, position, terms);
+    applyMentionJumpHighlight(
+      editor.view,
+      span,
+      TEMPORARY_MENTION_JUMP_HIGHLIGHT_DURATION_MS,
+    );
+  };
 
   // Task 6 (FR-6): fetched separately from `rows` above, and NEVER derived
   // from `rows`' merged `isLinked`/`isMentioned` resource set — see the
@@ -217,9 +336,13 @@ export default function EntityMentionsSection(): JSX.Element | null {
                     const ambiguousWith = row.ambiguousWith[index] ?? [];
                     return (
                       <li key={index}>
-                        <p className="text-gw-micro text-gw-secondary">
+                        <button
+                          type="button"
+                          className="text-left text-gw-micro text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+                          onClick={() => handleSnippetClick(row, index)}
+                        >
                           {snippet}
-                        </p>
+                        </button>
                         {ambiguousWith.length > 0 && (
                           <p className="text-gw-micro text-gw-secondary italic">
                             Ambiguous &mdash; also matches{" "}
