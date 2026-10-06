@@ -292,6 +292,7 @@ const EntityAliasEntrySchema = z.object({
   name: z.string(),
   aliases: z.array(z.string()),
   terms: z.array(z.string()),
+  dismissedNoiseTerms: z.array(z.string()).optional(),
 });
 
 export const EntityAliasTableSchema = z.object({

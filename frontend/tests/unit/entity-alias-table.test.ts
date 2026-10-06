@@ -58,6 +58,7 @@ describe("buildEntityAliasTable (Task 3)", () => {
       name: "Aria",
       aliases: ["Ari", "The Wanderer"],
       terms: ["Aria", "Ari", "The Wanderer"],
+      dismissedNoiseTerms: [],
     });
 
     // No term of this entity should appear as ambiguous (claimed by >1 entity).
@@ -112,8 +113,35 @@ describe("buildEntityAliasTable (Task 3)", () => {
       name: "Solo",
       aliases: [],
       terms: ["Solo"],
+      dismissedNoiseTerms: [],
     });
     expect(table.claimedBy["solo"]).toBeUndefined();
+  });
+
+  it("reads dismissedNoiseTerms from the sidecar, defensively filtered to strings, defaulting to [] (post-implementation bug fix)", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "entity-dismisser");
+    await writeEntitySidecar(projectRoot, "entity-dismisser", {
+      name: "Meridian",
+      entityKind: "character",
+      dismissedNoiseTerms: ["meridian", 42, null, "may"],
+    });
+
+    await addResource(projectRoot, "entity-no-dismissals");
+    await writeEntitySidecar(projectRoot, "entity-no-dismissals", {
+      name: "Solo",
+      entityKind: "character",
+    });
+
+    const table = await buildEntityAliasTable(projectRoot);
+
+    expect(table.entities["entity-dismisser"].dismissedNoiseTerms).toEqual([
+      "meridian",
+      "may",
+    ]);
+    expect(table.entities["entity-no-dismissals"].dismissedNoiseTerms).toEqual(
+      [],
+    );
   });
 
   it("excludes resources without entityKind set", async () => {

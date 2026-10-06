@@ -4,8 +4,25 @@ import {
   POSSESSIVE_OR_PLURAL_SUFFIX,
   escapeRegExp,
 } from "../../../src/lib/models/entity-detection";
-import { checkNoiseFlag } from "../../../src/lib/models/entity-noise-check";
+import {
+  checkNoiseFlag,
+  type NoiseCheckSources,
+} from "../../../src/lib/models/entity-noise-check";
 import type { EntityAliasTable } from "../../../src/lib/models/entity-alias-table";
+
+/**
+ * The project-level noise-check sources `computeEntityHighlightRanges`
+ * accepts — everything `NoiseCheckSources` offers except
+ * `dismissedNoiseTerms`, which is per-entity (FR-8/FR-13) and resolved per
+ * claiming entity inside {@link buildTermIndex} instead (see the
+ * OR-across-claimants rule documented there).
+ */
+export type ProjectNoiseCheckSources = Pick<
+  NoiseCheckSources,
+  | "projectCustomNoiseWords"
+  | "projectExcludedGlobalNoiseWords"
+  | "globalNoiseWords"
+>;
 
 /**
  * @module entityHighlightDecoration
@@ -106,8 +123,26 @@ function normalizeTerm(term: string): string {
  * declaring entity ids + warning flag) from an `EntityAliasTable`, and the
  * de-duplicated, longest-first list of original term strings the combined
  * regex alternates over.
+ *
+ * ## `isWarned` and the OR-across-claimants rule (FR-8/FR-12/FR-13)
+ *
+ * A normalized term may be claimed by more than one entity (ambiguous
+ * claim). Dismissal is per-entity-per-term (`EntityAliasEntry.dismissedNoiseTerms`),
+ * but a single combined-regex match of the term in the document can't know
+ * which claiming entity's "use" it actually is — that's exactly why
+ * ambiguous-claim terms get flagged in the first place. So `isWarned` is
+ * computed once per claiming entity (that entity's own
+ * `dismissedNoiseTerms` alongside the shared `projectSources`), and the
+ * term's final `isWarned` is `true` if *any* claiming entity's check comes
+ * back `true` — never AND. A term only stops being flagged once every
+ * entity that could plausibly be the one meant here has individually
+ * dismissed it. For the common case (a term claimed by exactly one entity),
+ * this reduces to that one entity's own dismissal state.
  */
-function buildTermIndex(aliasTable: EntityAliasTable): {
+function buildTermIndex(
+  aliasTable: EntityAliasTable,
+  projectSources: ProjectNoiseCheckSources,
+): {
   classifications: Map<string, TermClassification>;
   orderedTerms: string[];
 } {
@@ -129,7 +164,10 @@ function buildTermIndex(aliasTable: EntityAliasTable): {
       classifications.set(normalized, {
         term,
         entityIds: [entity.entityId],
-        isWarned: checkNoiseFlag(term),
+        // Placeholder — recomputed below once every claimant of this term
+        // is known (the ambiguity-table reconciliation pass that follows
+        // can still add more claimants to `entityIds`).
+        isWarned: false,
       });
     }
   }
@@ -145,6 +183,20 @@ function buildTermIndex(aliasTable: EntityAliasTable): {
         existing.entityIds.push(entityId);
       }
     }
+  }
+
+  // Now that every claimant of each term is known, compute `isWarned` via
+  // the OR-across-claimants rule: flagged if any claiming entity's own
+  // noise check (its own dismissal set, the shared project/global sources)
+  // comes back true.
+  for (const classification of classifications.values()) {
+    classification.isWarned = classification.entityIds.some((entityId) => {
+      const entity = aliasTable.entities[entityId];
+      return checkNoiseFlag(classification.term, {
+        ...projectSources,
+        dismissedNoiseTerms: entity?.dismissedNoiseTerms ?? [],
+      });
+    });
   }
 
   const orderedTerms = Array.from(classifications.values())
@@ -278,14 +330,24 @@ function positionForBlockOffset(
  * @param doc - The ProseMirror document to scan.
  * @param aliasTable - The project's declared entities and their
  *   `claimedBy` ambiguity map (`entity-alias-table.ts`).
+ * @param projectNoiseCheckSources - The project's custom/excluded-global
+ *   noise-word lists and the resolved cross-project global list
+ *   (`entity-noise-check.ts`'s `NoiseCheckSources`, minus
+ *   `dismissedNoiseTerms`, which is per-entity and resolved internally per
+ *   claiming entity — see `buildTermIndex`'s OR-across-claimants rule).
+ *   Defaults to `{}` (bundled-list + short-term checks only) when omitted.
  * @returns Every match, in document order, classified into exactly one of
  *   the two FR-10 states.
  */
 export function computeEntityHighlightRanges(
   doc: ProseMirrorNode,
   aliasTable: EntityAliasTable,
+  projectNoiseCheckSources: ProjectNoiseCheckSources = {},
 ): EntityHighlightRange[] {
-  const { classifications, orderedTerms } = buildTermIndex(aliasTable);
+  const { classifications, orderedTerms } = buildTermIndex(
+    aliasTable,
+    projectNoiseCheckSources,
+  );
   const regex = buildCombinedRegex(orderedTerms);
   if (!regex) return [];
 

@@ -100,6 +100,7 @@ describe("GET /api/project/[project-id]/entity-alias-table", () => {
         name: "Aria",
         aliases: ["Ari"],
         terms: ["Aria", "Ari"],
+        dismissedNoiseTerms: [],
       });
       expect(json.entities[brannId]).toEqual({
         entityId: brannId,
@@ -107,6 +108,7 @@ describe("GET /api/project/[project-id]/entity-alias-table", () => {
         name: "Brann",
         aliases: ["Ari"],
         terms: ["Brann", "Ari"],
+        dismissedNoiseTerms: [],
       });
       expect(json.claimedBy["ari"]).toEqual(
         expect.arrayContaining([ariaId, brannId]),

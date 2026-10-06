@@ -13,6 +13,13 @@ export type EntityAliasEntry = {
   aliases: string[];
   /** `name` + `aliases`, in that order, verbatim (not normalized). */
   terms: string[];
+  /** This entity's own dismissed-noise-term set (its sidecar's
+   * `dismissedNoiseTerms`, FR-8/FR-13 of entity-mention-noise-flagging), as
+   * stored on the sidecar. Optional (rather than defaulted to `[]` on the
+   * type itself) so existing call sites that construct an `EntityAliasEntry`
+   * without this field — predating this feature — keep compiling; a reader
+   * treats a missing value the same as `[]`. */
+  dismissedNoiseTerms?: string[];
 };
 
 /**
@@ -71,7 +78,19 @@ export async function buildEntityAliasTable(
 
     const terms = name ? [name, ...aliases] : [...aliases];
 
-    entities[id] = { entityId: id, entityKind, name, aliases, terms };
+    const rawDismissedNoiseTerms = sidecar["dismissedNoiseTerms"];
+    const dismissedNoiseTerms: string[] = Array.isArray(rawDismissedNoiseTerms)
+      ? rawDismissedNoiseTerms.filter((t): t is string => typeof t === "string")
+      : [];
+
+    entities[id] = {
+      entityId: id,
+      entityKind,
+      name,
+      aliases,
+      terms,
+      dismissedNoiseTerms,
+    };
 
     for (const term of terms) {
       const normalized = normalizeTerm(term);
