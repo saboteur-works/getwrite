@@ -103,24 +103,43 @@ const MentionJumpHighlightExtension = Extension.create({
 export default MentionJumpHighlightExtension;
 
 /**
+ * Tracks the single in-flight clear timer across calls to
+ * {@link applyMentionJumpHighlight}, module-scoped because only one flash can
+ * ever be showing at a time (the decoration set has a single slot — see
+ * {@link buildSpanDecoration}). Without this, calling the function again
+ * before an earlier call's timer fires replaces the *decoration* (a fresh
+ * flash) but leaves the earlier call's own `setTimeout` running; that stale
+ * timer still unconditionally clears on its own original schedule, cutting
+ * the new flash short at "time of the earlier click + its duration" rather
+ * than letting it run its own full duration. Clearing the previous timer
+ * before scheduling a new one — exactly what a second real click on a
+ * mention snippet does — is what makes "a fresh jump always shows its own
+ * full duration" (the behavior this module has always documented) actually
+ * true.
+ */
+let pendingClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
  * Applies the one-shot transient highlight: dispatches a transaction setting
  * a decoration over `{ from, to }` on `view`'s current state, then schedules
  * a single `setTimeout` (no polling/interval) that, after `durationMs`
  * milliseconds, dispatches a second transaction clearing it. Calling this
- * again before the timer fires replaces the currently-showing flash (and its
- * pending clear) with the new one — the prior timer's clear, if it still
- * fires, is a no-op against whatever span is showing by then only in the
- * sense that it unconditionally clears to empty, matching "a fresh jump
- * always shows its own full duration" rather than being cut short by a
- * leftover timer, since each call owns its own timer scheduling its own
- * clear and clearing always empties the (single-slot) decoration set rather
- * than targeting a specific span.
+ * again before the timer fires cancels the still-pending previous timer (see
+ * {@link pendingClearTimer}) and replaces the currently-showing flash with
+ * the new one, so the new flash always runs its own full duration rather
+ * than being cut short by a leftover clear scheduled against an earlier
+ * call.
  */
 export function applyMentionJumpHighlight(
   view: Pick<EditorView, "state" | "dispatch">,
   span: { from: number; to: number },
   durationMs: number,
 ): void {
+  if (pendingClearTimer !== null) {
+    clearTimeout(pendingClearTimer);
+    pendingClearTimer = null;
+  }
+
   view.dispatch(
     view.state.tr.setMeta(MENTION_JUMP_HIGHLIGHT_KEY, {
       from: span.from,
@@ -128,7 +147,8 @@ export function applyMentionJumpHighlight(
     }),
   );
 
-  setTimeout(() => {
+  pendingClearTimer = setTimeout(() => {
+    pendingClearTimer = null;
     view.dispatch(
       view.state.tr.setMeta(MENTION_JUMP_HIGHLIGHT_KEY, CLEAR_META),
     );
