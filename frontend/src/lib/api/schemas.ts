@@ -394,8 +394,9 @@ export const TagAssignmentsResponseSchema = z.object({
 //
 // - `ResourceMention` — `{ entityId: string; name: string }` (FR-9).
 // - `EntityMentionedIn` — `{ resourceId: string; name: string; snippets:
-//   string[]; isLinked: boolean; isMentioned: boolean; ambiguousWith:
-//   string[][] }` (FR-10/FR-12/FR-14). None of these fields are optional in
+//   string[]; offsets: number[]; isLinked: boolean; isMentioned: boolean;
+//   ambiguousWith: string[][] }` (FR-10/FR-12/FR-14; `offsets` added by
+//   entity-mention-navigation FR-1). None of these fields are optional in
 //   the source type.
 // - `EntityCooccurrenceEntry` — `{ entityId: string; count: number;
 //   resourceIds: string[] }`, keyed per-entity in a `Record<string,
@@ -414,6 +415,7 @@ const EntityMentionedInSchema = z.object({
   resourceId: z.string(),
   name: z.string(),
   snippets: z.array(z.string()),
+  offsets: z.array(z.number()),
   isLinked: z.boolean(),
   isMentioned: z.boolean(),
   ambiguousWith: z.array(z.array(z.string())),

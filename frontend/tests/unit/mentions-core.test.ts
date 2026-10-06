@@ -162,6 +162,94 @@ describe("getEntityMentionedIn (FR-10)", () => {
     expect(byResource.get(sceneTwoId)?.snippets[0]).toContain("Aria's letter");
   });
 
+  it("carries a parallel offsets array, index-aligned with snippets, equal to the source MentionRecord offsets (FR-1)", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const sceneOneId = "scene-1";
+    const sceneTwoId = "scene-2";
+
+    await writeSidecar(projectRoot, sceneOneId, {
+      id: sceneOneId,
+      name: "Chapter One",
+    });
+    await writeSidecar(projectRoot, sceneTwoId, {
+      id: sceneTwoId,
+      name: "Chapter Two",
+    });
+
+    const sceneOneText = "Aria drew her blade and stepped into the light.";
+    const sceneTwoText = "Far away, Aria's letter finally arrived at the keep.";
+    await writeResourceContent(projectRoot, sceneOneId, sceneOneText);
+    await writeResourceContent(projectRoot, sceneTwoId, sceneTwoText);
+
+    await persistMentionIndex(projectRoot, {
+      [sceneOneId]: [
+        { entityId: ariaId, resourceId: sceneOneId, count: 1, offsets: [0] },
+      ],
+      [sceneTwoId]: [
+        { entityId: ariaId, resourceId: sceneTwoId, count: 1, offsets: [11] },
+      ],
+    });
+
+    const mentionedIn = await getEntityMentionedIn(projectRoot, ariaId);
+    const byResource = new Map(mentionedIn.map((m) => [m.resourceId, m]));
+
+    // The known offset in each fixture record (0 and 11) is the exact
+    // character position of "Aria" in the corresponding plain text, so the
+    // snippet at that offset must start with "Aria" — confirming `offsets[i]`
+    // really is the position `snippets[i]` was built from, not merely an
+    // array of the right length.
+    const sceneOneRow = byResource.get(sceneOneId);
+    expect(sceneOneRow?.offsets).toEqual([0]);
+    expect(sceneOneRow?.offsets).toHaveLength(
+      sceneOneRow?.snippets.length ?? -1,
+    );
+    expect(sceneOneText.slice(sceneOneRow?.offsets[0] ?? -1)).toMatch(/^Aria/);
+    expect(sceneOneRow?.snippets[0]).toMatch(/^Aria/);
+
+    const sceneTwoRow = byResource.get(sceneTwoId);
+    expect(sceneTwoRow?.offsets).toEqual([11]);
+    expect(sceneTwoRow?.offsets).toHaveLength(
+      sceneTwoRow?.snippets.length ?? -1,
+    );
+    // Offset 11 lands mid-word in "Aria's" ("Far away, A|ria's letter...");
+    // the snippet is still centered on that exact position, confirmed by
+    // the surrounding "Aria's letter" text it contains.
+    const sceneTwoOffset = sceneTwoRow?.offsets[0] ?? -1;
+    expect(sceneTwoText.slice(sceneTwoOffset, sceneTwoOffset + 12)).toBe(
+      "ria's letter",
+    );
+    expect(sceneTwoRow?.snippets[0]).toContain("Aria's letter");
+  });
+
+  it("carries an empty offsets array, alongside an empty snippets array, for a link-only row", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    const ariaId = "entity-aria";
+    const linkedResourceId = "scene-linked-only";
+
+    await writeSidecar(projectRoot, linkedResourceId, {
+      id: linkedResourceId,
+      name: "Linked Only",
+    });
+    await writeResourceContent(
+      projectRoot,
+      linkedResourceId,
+      "No mention of the entity here at all.",
+    );
+
+    // Backlinks persisted via the real backlinks module so `resolveName`
+    // and `loadBacklinks` both see a stable on-disk project root.
+    const { persistBacklinks } = await import("../../src/lib/models/backlinks");
+    await persistBacklinks(projectRoot, { [linkedResourceId]: [ariaId] });
+
+    const mentionedIn = await getEntityMentionedIn(projectRoot, ariaId);
+    expect(mentionedIn).toHaveLength(1);
+    expect(mentionedIn[0]?.isLinked).toBe(true);
+    expect(mentionedIn[0]?.isMentioned).toBe(false);
+    expect(mentionedIn[0]?.snippets).toEqual([]);
+    expect(mentionedIn[0]?.offsets).toEqual([]);
+  });
+
   it("returns one snippet per occurrence when an entity is mentioned multiple times in one resource", async () => {
     const projectRoot = await makeTmpProjectRoot();
     const ariaId = "entity-aria";

@@ -62,17 +62,21 @@ export type ResourceMention = { entityId: string; name: string };
  * both. A resource that is both linked and mentioned appears once with both
  * flags set — never as two rows.
  *
- * `snippets` and `ambiguousWith` are only populated for mentioned
- * occurrences (empty arrays for a linked-only row, since a plain explicit
- * link carries no occurrence offsets to snippet). `ambiguousWith` is
- * parallel to `snippets`: `ambiguousWith[i]` names every other entity whose
- * own mention record also claims `snippets[i]`'s occurrence (FR-14) — empty
- * when that occurrence is unambiguous.
+ * `snippets`, `offsets`, and `ambiguousWith` are only populated for
+ * mentioned occurrences (empty arrays for a linked-only row, since a plain
+ * explicit link carries no occurrence offsets to snippet). `offsets` is
+ * parallel to `snippets`: `offsets[i]` is the character offset `snippets[i]`
+ * was built from (FR-1 of `specs/features/entity-mention-navigation.md`).
+ * `ambiguousWith` is likewise parallel to `snippets`: `ambiguousWith[i]`
+ * names every other entity whose own mention record also claims
+ * `snippets[i]`'s occurrence (FR-14) — empty when that occurrence is
+ * unambiguous.
  */
 export type EntityMentionedIn = {
   resourceId: string;
   name: string;
   snippets: string[];
+  offsets: number[];
   isLinked: boolean;
   isMentioned: boolean;
   ambiguousWith: string[][];
@@ -228,6 +232,7 @@ async function buildMentionedRow(
     resourceId: record.resourceId,
     name,
     snippets,
+    offsets: record.offsets,
     isLinked: false,
     isMentioned: true,
     ambiguousWith,
@@ -353,6 +358,7 @@ export async function getEntityMentionedIn(
       resourceId,
       name,
       snippets: [],
+      offsets: [],
       isLinked: true,
       isMentioned: false,
       ambiguousWith: [],
