@@ -114,8 +114,9 @@ export default function AppSettingsDialog({
               Global noise words
             </h3>
             <p className="mt-1 text-sm text-gw-secondary">
-              Words or phrases excluded from entity mention noise flagging in
-              every project.
+              Words or phrases flagged as noise in every project. You can
+              exclude one from a specific project in that project&rsquo;s own
+              Noise Words settings.
             </p>
           </header>
 
