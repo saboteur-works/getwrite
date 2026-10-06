@@ -24,6 +24,7 @@ import { useCanonicalAutosave } from "./useCanonicalAutosave";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
 import WritingLogFooterDisplay from "./WritingLogFooterDisplay";
+import { setActiveEditorResourceId } from "../Editor/activeEditorRegistry";
 
 export interface EditViewProps {
   /** Initial editor content (HTML or plain text) */
@@ -97,6 +98,24 @@ export default function EditView({
     });
 
   const dispatch = useAppDispatch();
+
+  /**
+   * Task 12 addition (`specs/features/entity-mention-navigation.md`, FR-5) —
+   * tags `activeEditorRegistry.ts`'s resource-id slot with the resource
+   * whose content is actually settled into the editor, so
+   * `EntityMentionsSection.tsx`'s cross-resource mention jump can poll for
+   * "the new resource's content has finished loading" rather than racing the
+   * previous resource's still-mounted document. Only `"loaded"` counts —
+   * `"loading"`/`"error"`/`"idle"` clear the tag, matching the branches below
+   * where `TipTapEditor` itself isn't even rendered.
+   */
+  useEffect(() => {
+    const resourceId = selectedResource?.id ?? null;
+    setActiveEditorResourceId(loadState === "loaded" ? resourceId : null);
+    return () => {
+      setActiveEditorResourceId(null);
+    };
+  }, [loadState, selectedResource?.id]);
 
   // An autosave that would have destroyed most of the document preserves the
   // previous content as a new revision first. Reload the list so the backup is

@@ -98,6 +98,14 @@ export interface StoredProject {
   features?: ProjectFeatureFlags;
   /** Organizer card-body source configuration; absent means none configured. */
   organizerCardBody?: OrganizerCardBodyConfig;
+  /**
+   * Mention-jump highlight duration, in seconds (Entity mention navigation,
+   * Task 12). Absent means the project has never set one —
+   * `resolveMentionHighlightDurationSeconds` (`lib/api/mention-highlight-duration.ts`)
+   * is the single place that applies the FR-10 2-second fallback for that
+   * case, so this field is left as-is here rather than defaulted.
+   */
+  mentionHighlightDurationSeconds?: number;
 }
 
 /**
@@ -146,6 +154,8 @@ export function buildStoredProject(
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
+    mentionHighlightDurationSeconds:
+      project.config?.mentionHighlightDurationSeconds,
   };
 }
 
@@ -836,6 +846,26 @@ export const selectActiveProjectMetadataSchema = (
   return (
     state?.projects?.projects?.[id]?.metadataSchema ?? DEFAULT_METADATA_SCHEMA
   );
+};
+
+/**
+ * Selects the active project's raw, possibly-unset
+ * `config.mentionHighlightDurationSeconds` (Entity mention navigation, Task
+ * 12). Deliberately returns the raw value rather than applying the FR-10
+ * 2-second fallback itself — callers pass this through
+ * `resolveMentionHighlightDurationSeconds`
+ * (`lib/api/mention-highlight-duration.ts`), the single place that applies
+ * it, so the two never drift.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns The active project's configured highlight duration in seconds,
+ *   or `undefined` when none is set or no project is selected.
+ */
+export const selectActiveProjectMentionHighlightDurationSeconds = (
+  state: any,
+): number | undefined => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.mentionHighlightDurationSeconds;
 };
 
 export const selectActiveProjectRootPath = (state: any): string | null => {

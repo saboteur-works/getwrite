@@ -23,9 +23,27 @@ import type { Editor } from "@tiptap/core";
  * change than this task's scope. This mirrors the synchronous,
  * framework-agnostic shape of `offset-resolver.ts`'s own functions, which
  * this registry exists to supply a live document to.
+ *
+ * Task 12 addition (`specs/features/entity-mention-navigation.md`, FR-5) —
+ * `activeEditorResourceId` tags which resource's content the currently
+ * registered editor actually reflects, so a cross-resource mention jump can
+ * tell "a resource switch is still loading" apart from "the new resource's
+ * content has settled into the editor" without a shared React context
+ * between `EditView` and `EntityMentionsSection`. Written by `EditView.tsx`
+ * (not `TipTapEditor.tsx`) in its own effect keyed on its `loadState` /
+ * selected-resource id: it clears to `null` whenever `loadState` is
+ * `"loading"`/`"error"`/idle (nothing loaded, or the editor isn't mounted —
+ * see `EditView.tsx`'s loading/error branches, which don't render
+ * `TipTapEditor` at all) and is set to the settled resource's id once
+ * `loadState` is `"loaded"`. React commits a child's effects before its
+ * parent's within the same commit, so by the time this value updates,
+ * `TipTapEditor`'s own mount effect (`setActiveEditor`, above) has already
+ * registered the live editor instance for that same commit — a poller
+ * checking both together never observes one set without the other.
  */
 
 let activeEditor: Editor | null = null;
+let activeEditorResourceId: string | null = null;
 
 /**
  * Registers (or clears, with `null`) the currently-mounted live editor
@@ -42,4 +60,21 @@ export function setActiveEditor(editor: Editor | null): void {
  */
 export function getActiveEditor(): Editor | null {
   return activeEditor;
+}
+
+/**
+ * Registers (or clears, with `null`) the resource id whose content the
+ * currently-registered editor reflects. Called only by `EditView.tsx`.
+ */
+export function setActiveEditorResourceId(resourceId: string | null): void {
+  activeEditorResourceId = resourceId;
+}
+
+/**
+ * Returns the resource id the currently-mounted editor's content reflects,
+ * or `null` while a resource switch is still loading (or nothing is
+ * selected).
+ */
+export function getActiveEditorResourceId(): string | null {
+  return activeEditorResourceId;
 }
