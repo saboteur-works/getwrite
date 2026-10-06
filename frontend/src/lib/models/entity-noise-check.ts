@@ -121,16 +121,37 @@ export function checkNoiseFlag(
     return true;
   }
 
-  const union = new Set<string>(NORMALIZED_BUNDLED_NOISE_WORDS);
-  for (const word of sources.projectCustomNoiseWords ?? []) {
-    union.add(normalizeNoiseTerm(word));
-  }
-  for (const word of sources.globalNoiseWords ?? []) {
-    union.add(normalizeNoiseTerm(word));
-  }
+  // `projectExcludedGlobalNoiseWords` subtracts from the *whole* union
+  // (bundled ∪ projectCustom ∪ global), not just global membership — an
+  // excluded word is never flagged regardless of which source would
+  // otherwise have matched it. Checked first so a bundled match can't
+  // short-circuit past it.
   for (const word of sources.projectExcludedGlobalNoiseWords ?? []) {
-    union.delete(normalizeNoiseTerm(word));
+    if (normalizeNoiseTerm(word) === normalized) {
+      return false;
+    }
   }
 
-  return union.has(normalized);
+  // Check the bundled list directly against its pre-built, module-scoped Set
+  // rather than copying it into a fresh union Set on every call — the
+  // bundled list alone is ~2,000-3,000 words, and this function runs once
+  // per declared term on every editor-highlight recompute, so an O(bundled
+  // size) copy per call is a real cost, not just a benchmark artifact.
+  if (NORMALIZED_BUNDLED_NOISE_WORDS.has(normalized)) {
+    return true;
+  }
+
+  for (const word of sources.projectCustomNoiseWords ?? []) {
+    if (normalizeNoiseTerm(word) === normalized) {
+      return true;
+    }
+  }
+
+  for (const word of sources.globalNoiseWords ?? []) {
+    if (normalizeNoiseTerm(word) === normalized) {
+      return true;
+    }
+  }
+
+  return false;
 }

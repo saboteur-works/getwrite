@@ -216,8 +216,15 @@ export default function TipTapEditor({
   );
   noiseCheckSourcesRef.current = projectNoiseCheckSources;
 
+  // Gated on the same isEnabled() condition entity highlighting itself uses
+  // (FR-9's "disabled means zero extra work" precedent, applied here too) —
+  // most projects never turn highlighting on, so there is no reason to hit
+  // two extra transports on every editor mount regardless.
+  const isEntityHighlightingActive =
+    isEntityHighlightingEnabled && isEntitiesEnabled;
+
   useEffect(() => {
-    if (!activeProjectDirectoryId) {
+    if (!isEntityHighlightingActive || !activeProjectDirectoryId) {
       setProjectNoiseCheckSources((previous) => ({
         ...previous,
         projectCustomNoiseWords: undefined,
@@ -240,9 +247,16 @@ export default function TipTapEditor({
           projectExcludedGlobalNoiseWords: undefined,
         }));
       });
-  }, [activeProjectDirectoryId]);
+  }, [isEntityHighlightingActive, activeProjectDirectoryId]);
 
   useEffect(() => {
+    if (!isEntityHighlightingActive) {
+      setProjectNoiseCheckSources((previous) => ({
+        ...previous,
+        globalNoiseWords: undefined,
+      }));
+      return;
+    }
     void getGlobalNoiseWords()
       .then((words) =>
         setProjectNoiseCheckSources((previous) => ({
@@ -256,7 +270,7 @@ export default function TipTapEditor({
           globalNoiseWords: undefined,
         })),
       );
-  }, []);
+  }, [isEntityHighlightingActive]);
 
   // Keep the latest callback in a ref so the editor's (init-time) handlers can
   // call it without being re-created when the prop identity changes.
