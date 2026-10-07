@@ -18,7 +18,31 @@ import type { AnyResource } from "../../src/lib/models/types";
 const PROJECT_PATH = "/tmp/test-project";
 
 function makeFetchStub() {
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = input.toString();
+    // EntitySection fetches both of these on mount for its noise-flag
+    // check — the catch-all `{}` below fails their own response-shape
+    // validation (`transport-validation.ts`) and logs a console error, so
+    // they get their real shape here rather than every other, unrelated
+    // test in this file routing around that noise individually.
+    if (url.includes("/api/project/noise-words")) {
+      return {
+        ok: true,
+        json: async () => ({
+          customNoiseWords: [],
+          excludedGlobalNoiseWords: [],
+        }),
+      } as Response;
+    }
+    if (url.includes("/api/global-noise-words")) {
+      return { ok: true, json: async () => [] } as Response;
+    }
+    if (url.includes("/entity-alias-table")) {
+      return {
+        ok: true,
+        json: async () => ({ entities: {}, claimedBy: {} }),
+      } as Response;
+    }
     return { ok: true, json: async () => ({}) } as Response;
   });
 }

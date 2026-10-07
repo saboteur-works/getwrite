@@ -18,6 +18,7 @@ import {
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import type { ProjectFeatureFlags } from "../src/lib/models/types";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const PROJECT_ID = "proj_timeline_gating";
 
@@ -66,20 +67,14 @@ function renderShell(features: ProjectFeatureFlags) {
 }
 
 describe("AppShell — Timeline view gating (Task 8)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
     vi.clearAllMocks();
   });
 

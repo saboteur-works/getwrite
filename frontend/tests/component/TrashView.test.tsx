@@ -67,6 +67,7 @@ import {
 } from "../../src/lib/api/trash";
 import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
+import { stubAppShellFetch } from "../helpers/appShellFetchStub";
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
@@ -127,7 +128,7 @@ const THREE_RESOURCE_LISTING: TrashListing = {
   folders: [],
 };
 
-let originalFetch: typeof globalThis.fetch;
+let restoreFetch: () => void;
 
 beforeEach(() => {
   // AppShell's mount effects fire a few background fetches (saved queries,
@@ -135,13 +136,7 @@ beforeEach(() => {
   // relative URLs `node-fetch`/undici can't parse outside a browser — stub
   // fetch globally so those settle quietly instead of surfacing as unhandled
   // rejections (mirrors tests/appShellEntityRosterGating.test.tsx's setup).
-  originalFetch = globalThis.fetch;
-  globalThis.fetch = vi.fn(async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({}),
-    text: async () => "",
-  })) as unknown as typeof globalThis.fetch;
+  restoreFetch = stubAppShellFetch();
 
   // Task 26: `vi.restoreAllMocks()` below only restores real `vi.spyOn`
   // spies — it leaves a plain `vi.fn()` mock's own call history (`mock.calls`)
@@ -156,7 +151,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restoreFetch();
   vi.restoreAllMocks();
 });
 

@@ -18,6 +18,7 @@ import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setResources } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { setWordCountGoal } from "../src/lib/api/word-count-goal";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const mockSet = vi.mocked(setWordCountGoal);
 
@@ -28,22 +29,16 @@ const INTERNAL_ID = "9c19c9a4-internal-id-from-project-json";
 const DIRECTORY_ID = "1e6f0b3d-directory-basename";
 
 describe("AppShell word-count goal wiring (Task 8)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
     mockSet.mockReset();
     mockSet.mockResolvedValue({ wordCountGoal: 50000 });
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   });
 
   function renderWithPageShapedProject(wordCountGoal: number | undefined) {

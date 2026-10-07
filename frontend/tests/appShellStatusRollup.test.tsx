@@ -20,6 +20,7 @@ import {
   createTextResource,
 } from "../src/lib/models/resource";
 import type { AnyResource } from "../src/lib/models/types";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const PROJECT_ID = "proj_status_rollup_wiring";
 
@@ -131,20 +132,14 @@ function rollupRows(): string[][] {
 }
 
 describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
     vi.clearAllMocks();
   });
 

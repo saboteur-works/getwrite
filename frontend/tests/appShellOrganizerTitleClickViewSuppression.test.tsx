@@ -18,6 +18,7 @@ import {
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const PROJECT_ID = "proj_organizer_title_click_suppression";
 const FOLDER_ID = "44444444-4444-4444-8444-444444444444";
@@ -85,20 +86,14 @@ function renderShell() {
 }
 
 describe("AppShell — OrganizerCard title click suppresses the auto-switch view effect (FR-3, FR-4, FR-6)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
     vi.clearAllMocks();
   });
 
