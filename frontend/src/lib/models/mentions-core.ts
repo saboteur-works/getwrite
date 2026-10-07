@@ -82,7 +82,7 @@ export type EntityMentionedIn = {
   ambiguousWith: string[][];
 };
 
-const SNIPPET_MAX_LEN = 160;
+const SNIPPET_MAX_WORDS = 20;
 
 /**
  * Resolves a resource or entity's display name from its sidecar's `name`
@@ -96,8 +96,8 @@ async function resolveName(projectRoot: string, id: string): Promise<string> {
 }
 
 /**
- * Extracts a fixed-width snippet of `text` centered on a known character
- * offset.
+ * Extracts a snippet of `text` spanning a fixed number of words, centered on
+ * a known character offset.
  *
  * This is a small offset-based sibling of `search-snippet.ts`'s
  * `extractSnippet`, not a reuse of it. `extractSnippet` takes a query
@@ -109,21 +109,43 @@ async function resolveName(projectRoot: string, id: string): Promise<string> {
  * (the leftmost match `extractSnippet` finds is not necessarily the one at
  * this offset). Centering directly on the stored offset is the correct
  * disambiguation and the entire reason FR-6 stores offsets in the first
- * place, so this small helper mirrors `extractSnippet`'s windowing math
- * instead of calling through it.
+ * place, so this small helper mirrors `extractSnippet`'s centering/clamping
+ * logic, just counting whole words instead of characters so a snippet never
+ * starts or ends mid-word.
  */
 function snippetAtOffset(
   text: string,
   offset: number,
-  maxLen: number = SNIPPET_MAX_LEN,
+  maxWords: number = SNIPPET_MAX_WORDS,
 ): string {
   if (!text) return "";
-  let start = Math.max(0, offset - Math.floor(maxLen / 2));
-  const end = Math.min(text.length, start + maxLen);
-  if (end - start < maxLen) {
-    start = Math.max(0, end - maxLen);
+
+  const words: { start: number; end: number }[] = [];
+  const wordPattern = /\S+/g;
+  let match: RegExpExecArray | null;
+  while ((match = wordPattern.exec(text)) !== null) {
+    words.push({ start: match.index, end: match.index + match[0].length });
   }
-  return text.slice(start, end);
+  if (words.length === 0) return "";
+
+  let centerIndex = words.findIndex((w) => offset >= w.start && offset < w.end);
+  if (centerIndex === -1) {
+    centerIndex = words.findIndex((w) => w.start >= offset);
+  }
+  if (centerIndex === -1) {
+    centerIndex = words.length - 1;
+  }
+
+  let startIndex = Math.max(0, centerIndex - Math.floor(maxWords / 2));
+  const endIndex = Math.min(words.length, startIndex + maxWords);
+  if (endIndex - startIndex < maxWords) {
+    startIndex = Math.max(0, endIndex - maxWords);
+  }
+
+  const startWord = words[startIndex];
+  const endWord = words[endIndex - 1];
+  if (!startWord || !endWord) return "";
+  return text.slice(startWord.start, endWord.end);
 }
 
 /**

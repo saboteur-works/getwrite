@@ -93,6 +93,20 @@ import { setStorageAdapter } from "../../src/lib/models/io";
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
 }));
+// Noise-flag lifecycle (entity-mention-noise-flagging) — mocked at the
+// module boundary, matching EntityMentionsSection.test.tsx's own precedent,
+// rather than relying on the fetch spy's catch-all `{}` fallback, which
+// fails these two endpoints' own response-shape validation and fires an
+// unrelated transport-validation-failure toast into the shared `toastError`
+// mock the staleness-toast assertion below reads from.
+vi.mock("../../src/lib/api/project-noise-words", () => ({
+  getNoiseWordLists: vi.fn(() =>
+    Promise.resolve({ customNoiseWords: [], excludedGlobalNoiseWords: [] }),
+  ),
+}));
+vi.mock("../../src/lib/api/global-noise-words", () => ({
+  getGlobalNoiseWords: vi.fn(() => Promise.resolve([])),
+}));
 
 const toastError = vi.fn();
 vi.mock("../../src/lib/toast-service", () => ({
@@ -141,21 +155,22 @@ function mountEditor(
   return editor;
 }
 
-/** `screen.findByText`'s default matcher normalizes the DOM's own text
- * before comparing it, but does NOT normalize a plain-string needle against
- * it — so a needle containing a literal newline (as a multi-paragraph
- * snippet's text does) never matches the space-joined, normalized DOM text
- * it is compared against. This builds a normalizing function-matcher
- * instead, collapsing whitespace on both sides before comparing, matching
- * only a `<button>` element specifically (there is always exactly one
- * button rendering any given snippet's text in this fixture). */
-function normalizedButtonTextMatcher(
-  expected: string,
-): (content: string, element: Element | null) => boolean {
+/**
+ * A snippet button now bolds its matched entity term in a nested `<strong>`
+ * (the entity-mentions quick-win pass), so its text is split across
+ * elements — `getByText`'s default per-node matching cannot see it (its own
+ * error message says as much: "the text is broken up by multiple
+ * elements"). `getByRole`'s accessible-name computation, unlike
+ * `getByText`, concatenates all descendant text regardless of markup, so
+ * querying by role sidesteps that split; this still needs its own
+ * normalizer because a needle containing a literal newline (a multi-
+ * paragraph snippet's text does) never matches the computed accessible
+ * name's whitespace-collapsed form otherwise.
+ */
+function normalizedNameMatcher(expected: string): (name: string) => boolean {
   const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
   const target = normalize(expected);
-  return (content, element) =>
-    element?.tagName === "BUTTON" && normalize(content) === target;
+  return (name) => normalize(name) === target;
 }
 
 /** Reads the real jump-highlight decoration spans currently set on
@@ -312,10 +327,13 @@ describe("entity mention navigation — end-to-end click-to-jump (FR-3, FR-4, FR
     );
 
     // --- Scenario 1: same-resource click-to-jump (FR-3, FR-4) -----------
+    // Mention sections default to collapsed (entity-mentions quick-win
+    // pass) — expand before the snippet button is queryable.
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
 
-    const selfSnippetButton = await screen.findByText(
-      normalizedButtonTextMatcher(selfRow!.snippets[0]),
-    );
+    const selfSnippetButton = await screen.findByRole("button", {
+      name: normalizedNameMatcher(selfRow!.snippets[0]),
+    });
 
     fireEvent.click(selfSnippetButton);
 
@@ -414,9 +432,12 @@ describe("entity mention navigation — end-to-end click-to-jump (FR-3, FR-4, FR
       }
     });
 
-    const crossSnippetButton = await screen.findByText(
-      normalizedButtonTextMatcher(crossRow!.snippets[0]),
+    fireEvent.click(
+      await screen.findByLabelText("Expand Chapter Two mentions"),
     );
+    const crossSnippetButton = await screen.findByRole("button", {
+      name: normalizedNameMatcher(crossRow!.snippets[0]),
+    });
     fireEvent.click(crossSnippetButton);
 
     await waitFor(() => {

@@ -2,7 +2,7 @@ import React from "react";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import EntityMentionsSection from "../../components/Sidebar/EntityMentionsSection";
@@ -44,6 +44,18 @@ import { MENTION_JUMP_HIGHLIGHT_CLASS } from "../../components/Editor/Extensions
 
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
+}));
+// Noise-flag lifecycle (entity-mention-noise-flagging) — mocked at the
+// module boundary, matching EntityMentionsSection.test.tsx's own precedent,
+// rather than relying on mockMentionedIn's catch-all `{}` fetch fallback,
+// which fails these two endpoints' own response-shape validation.
+vi.mock("../../src/lib/api/project-noise-words", () => ({
+  getNoiseWordLists: vi.fn(() =>
+    Promise.resolve({ customNoiseWords: [], excludedGlobalNoiseWords: [] }),
+  ),
+}));
+vi.mock("../../src/lib/api/global-noise-words", () => ({
+  getGlobalNoiseWords: vi.fn(() => Promise.resolve([])),
 }));
 vi.mock("../../components/Editor/activeEditorRegistry", () => ({
   getActiveEditor: vi.fn(),
@@ -171,7 +183,8 @@ describe("a11y: EntityMentionsSection mention-snippet buttons", () => {
     const store = setupStore("entity-aria");
 
     const { container } = renderSection(store);
-    await screen.findByText("Aria drew her own blade.");
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
+    await screen.findByRole("button", { name: "Aria drew her own blade." });
     await runAxe(container);
   });
 
@@ -181,6 +194,7 @@ describe("a11y: EntityMentionsSection mention-snippet buttons", () => {
     const user = userEvent.setup();
 
     renderSection(store);
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
     const snippetButton = await screen.findByRole("button", {
       name: "Aria drew her own blade.",
     });
@@ -189,8 +203,10 @@ describe("a11y: EntityMentionsSection mention-snippet buttons", () => {
     // Tab from the top of the document reaches the snippet button — it is
     // a plain native <button> with no explicit tabIndex override, so this
     // also confirms nothing in this component's markup pulled it out of the
-    // natural tab order. The row's own resource-name button comes first in
-    // document order (`Aria`), so two tabs land on the snippet button.
+    // natural tab order. Document order is: the row's own collapse/expand
+    // chevron button, then its resource-name button (`Aria`), then (once
+    // expanded) the snippet button — three tabs land on the snippet button.
+    await user.tab();
     await user.tab();
     await user.tab();
     expect(snippetButton).toHaveFocus();
@@ -207,6 +223,7 @@ describe("a11y: EntityMentionsSection mention-snippet buttons", () => {
     mockedIsOffsetStillAMention.mockReturnValue(true);
 
     renderSection(store);
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
     const snippetButton = await screen.findByRole("button", {
       name: "Aria drew her own blade.",
     });
@@ -231,6 +248,7 @@ describe("a11y: EntityMentionsSection mention-snippet buttons", () => {
     mockedIsOffsetStillAMention.mockReturnValue(true);
 
     renderSection(store);
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
     const snippetButton = await screen.findByRole("button", {
       name: "Aria drew her own blade.",
     });

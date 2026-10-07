@@ -33,6 +33,20 @@ import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
 }));
+// Noise-flag lifecycle (entity-mention-noise-flagging) — mocked at the
+// module boundary, matching EntityRosterView.test.tsx's own precedent,
+// rather than relying on mockMentionedIn's catch-all `{}` fetch fallback,
+// which fails these two endpoints' own response-shape validation and fires
+// an unrelated transport-validation-failure toast into the shared
+// `toastError` mock the staleness-toast tests assert against.
+vi.mock("../../src/lib/api/project-noise-words", () => ({
+  getNoiseWordLists: vi.fn(() =>
+    Promise.resolve({ customNoiseWords: [], excludedGlobalNoiseWords: [] }),
+  ),
+}));
+vi.mock("../../src/lib/api/global-noise-words", () => ({
+  getGlobalNoiseWords: vi.fn(() => Promise.resolve([])),
+}));
 
 // Task 11/12 (`specs/features/entity-mention-navigation.md`) — the live-editor
 // seam `handleSnippetClick` reads through. Mocked at the module boundary so
@@ -243,7 +257,12 @@ describe("EntityMentionsSection", () => {
     expect(
       screen.queryByLabelText("Chapter Two-linked-badge"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Aria drew her blade.")).toBeInTheDocument();
+
+    // Mention sections default to collapsed; expand to reveal the snippet.
+    fireEvent.click(screen.getByLabelText("Expand Chapter Two mentions"));
+    expect(screen.getByLabelText("Chapter Two-snippets").textContent).toContain(
+      "Aria drew her blade.",
+    );
   });
 
   it("shows a single row with both badges for a resource that is both linked and mentioned", async () => {
@@ -299,7 +318,10 @@ describe("EntityMentionsSection", () => {
       </Provider>,
     );
 
-    expect(await screen.findByText("May arrived at dawn.")).toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByLabelText("Expand Chapter Four mentions"),
+    );
+    expect(screen.getByText("May arrived at dawn.")).toBeInTheDocument();
     expect(screen.getByText(/Ambiguous/)).toBeInTheDocument();
     expect(screen.getByText(/Bob/)).toBeInTheDocument();
   });
@@ -328,13 +350,80 @@ describe("EntityMentionsSection", () => {
       </Provider>,
     );
 
-    const snippet = await screen.findByText("May arrived at dawn.");
+    fireEvent.click(
+      await screen.findByLabelText("Expand Chapter Six mentions"),
+    );
+    const snippet = screen.getByText("May arrived at dawn.");
     expect(snippet.className).toContain("text-gw-micro");
     expect(snippet.className).not.toContain("text-gw-nano");
     expect(screen.getByText(/Ambiguous/).className).toContain("text-gw-micro");
     expect(
       screen.getByLabelText("Chapter Six-mentioned-badge").className,
     ).toContain("text-gw-nano");
+  });
+
+  it("flags and offers to dismiss a noise-prone term even when the mention snippet contains a plural/possessive form of it", async () => {
+    // "Tiny" is a bundled noise word (reads as an ordinary adjective), and
+    // "tinys"/"Tiny's" are detected mentions of it (entity-detection.ts's
+    // simple-plural/possessive matching) — the flagged-term lookup must
+    // still recognize the base term "Tiny" inside those attached forms,
+    // not just an exact "\bTiny\b" occurrence.
+    mockedGetEntityAliasTable.mockResolvedValue({
+      entities: {},
+      claimedBy: {},
+    });
+    mockMentionedIn([
+      {
+        resourceId: "scene-7",
+        name: "Chapter Seven",
+        snippets: ["The tinys scattered.", "It was Tiny's favorite toy."],
+        offsets: [4, 7],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[], []],
+      },
+    ]);
+    const store = setupStore("entity-tiny", { name: "Tiny" });
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(
+      await screen.findByLabelText("Expand Chapter Seven mentions"),
+    );
+
+    const dismissButtons = await screen.findAllByRole("button", {
+      name: /Dismiss noise observation for Tiny/,
+    });
+    expect(dismissButtons).toHaveLength(2);
+
+    fireEvent.click(dismissButtons[0] as HTMLElement);
+
+    await waitFor(() => {
+      expect(
+        (store.getState().resources.resources[0] as unknown as AnyResource)
+          .dismissedNoiseTerms,
+      ).toContain("tiny");
+    });
+
+    // Let the dismiss handler's own updateSidecar().then(...) chain settle
+    // before this test tears down — otherwise the pending
+    // fetchEntityAliasTable dispatch (and its getEntityAliasTable call)
+    // resolves during the *next* test and inflates its call count.
+    await waitFor(() => {
+      expect(mockedGetEntityAliasTable).toHaveBeenCalled();
+    });
+    // vi.restoreAllMocks() (afterEach, above) does not clear call history
+    // for a vi.mock()-factory mock like this one — only mockClear()/
+    // mockReset() do — so the alias-table-resolution tests below, which
+    // assert an exact call count, need this test's own call cleared
+    // explicitly rather than left for the next test to inherit.
+    mockedGetEntityAliasTable.mockClear();
   });
 
   it("navigates to the mentioning resource on click", async () => {
@@ -807,6 +896,9 @@ describe("EntityMentionsSection snippet click-to-jump (Task 11)", () => {
       </Provider>,
     );
 
+    fireEvent.click(
+      await screen.findByLabelText("Expand Chapter Seven mentions"),
+    );
     const snippetButton = await screen.findByRole("button", {
       name: "Aria drew her blade.",
     });
@@ -841,7 +933,10 @@ describe("EntityMentionsSection snippet click-to-jump (Task 11)", () => {
       </Provider>,
     );
 
-    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Aria drew her own blade." }),
+    );
 
     expect(mockedResolveOffsetToPosition).toHaveBeenCalledWith(fake.doc, 5);
     expect(mockedIsOffsetStillAMention).toHaveBeenCalledWith(
@@ -911,7 +1006,10 @@ describe("EntityMentionsSection snippet click-to-jump (Task 11)", () => {
       </Provider>,
     );
 
-    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Aria drew her own blade." }),
+    );
 
     expect(fake.scrollIntoView).toHaveBeenCalled();
     expect(nativeScrollIntoView).toHaveBeenCalledWith({
@@ -947,7 +1045,10 @@ describe("EntityMentionsSection snippet click-to-jump (Task 11)", () => {
       </Provider>,
     );
 
-    fireEvent.click(await screen.findByText("Aria and May spoke."));
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Aria and May spoke." }),
+    );
 
     expect(mockedResolveOffsetToPosition).toHaveBeenCalledWith(fake.doc, 3);
     expect(fake.setTextSelection).toHaveBeenCalledWith(9);
@@ -1048,7 +1149,12 @@ describe("EntityMentionsSection snippet click-to-jump (Task 12)", () => {
       </Provider>,
     );
 
-    fireEvent.click(await screen.findByText("Aria arrived quietly."));
+    fireEvent.click(
+      await screen.findByLabelText("Expand Chapter Nine mentions"),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Aria arrived quietly." }),
+    );
 
     await waitFor(() => {
       expect(
@@ -1105,7 +1211,10 @@ describe("EntityMentionsSection snippet click-to-jump (Task 12)", () => {
       </Provider>,
     );
 
-    const snippetButton = await screen.findByText("Aria drew her own blade.");
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
+    const snippetButton = await screen.findByRole("button", {
+      name: "Aria drew her own blade.",
+    });
     // Two rapid repeated clicks — the toast must not stack.
     fireEvent.click(snippetButton);
     fireEvent.click(snippetButton);
@@ -1155,6 +1264,7 @@ describe("EntityMentionsSection snippet click-to-jump (Task 12)", () => {
       </Provider>,
     );
 
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
     fireEvent.click(
       await screen.findByText(
         "A very specific line of prose nobody should see again.",
@@ -1202,7 +1312,10 @@ describe("EntityMentionsSection snippet click-to-jump (Task 12)", () => {
       </Provider>,
     );
 
-    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+    fireEvent.click(await screen.findByLabelText("Expand Aria mentions"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Aria drew her own blade." }),
+    );
 
     await waitFor(() => {
       expect(mockedApplyMentionJumpHighlight).toHaveBeenCalledWith(
@@ -1218,7 +1331,9 @@ describe("EntityMentionsSection snippet click-to-jump (Task 12)", () => {
     mockedResolveMentionHighlightDurationSeconds.mockReturnValue(2);
     mockedApplyMentionJumpHighlight.mockClear();
 
-    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Aria drew her own blade." }),
+    );
 
     await waitFor(() => {
       expect(mockedApplyMentionJumpHighlight).toHaveBeenCalledWith(

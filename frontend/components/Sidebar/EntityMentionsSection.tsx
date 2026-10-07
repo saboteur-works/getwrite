@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectResource,
   setSelectedResourceId,
+  updateResource,
 } from "../../src/store/resourcesSlice";
 import {
   selectActiveProjectDirectoryId,
@@ -16,6 +18,7 @@ import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
 import type { EntityCooccurrenceEntry } from "../../src/lib/api/entity-cooccurrence";
 import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
+import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
 import {
   getActiveEditor,
@@ -28,10 +31,101 @@ import {
 import { applyMentionJumpHighlight } from "../Editor/Extensions/MentionJumpHighlightExtension";
 import { resolveMentionHighlightDurationSeconds } from "../../src/lib/api/mention-highlight-duration";
 import { toastService } from "../../src/lib/toast-service";
+import { updateSidecar } from "../../src/lib/api/resources";
+import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
+import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 import {
-  escapeRegExp,
+  checkNoiseFlag,
+  type NoiseCheckSources,
+} from "../../src/lib/models/entity-noise-check";
+import { getNoiseObservation } from "../../src/lib/models/entity-noise-copy";
+import {
+  ATTACHED_CHAR_CLASS,
   POSSESSIVE_OR_PLURAL_SUFFIX,
+  escapeRegExp,
 } from "../../src/lib/models/entity-detection";
+import type { AnyResource } from "../../src/lib/models/types";
+import Button from "../common/UI/Button/Button";
+
+/**
+ * Normalizes a noise-flagging term for the `dismissedNoiseTerms` sidecar
+ * field, matching `EntitySection.tsx`'s and `entity-noise-check.ts`'s own
+ * internal normalization so a persisted dismissal and a later check agree
+ * on what counts as "the same term".
+ */
+function normalizeNoiseTerm(term: string): string {
+  return term.trim().toLowerCase();
+}
+
+/**
+ * Builds a regex matching any of `terms` (an entity's `name` plus its
+ * `aliases`) for bolding a mention snippet's matched span, reusing
+ * `entity-detection.ts`'s own word-boundary/possessive/plural envelope
+ * (`ATTACHED_CHAR_CLASS`/`POSSESSIVE_OR_PLURAL_SUFFIX`) rather than a plain
+ * `\bterm\b` — a snippet can contain a detected possessive (`Tiny's`) or
+ * simple-plural (`Tinys`) form, and a naive word-boundary regex fails to
+ * match those, silently leaving them unbolded (and, via
+ * {@link findFlaggedTermInSnippet}, unflagged). The whole matched span
+ * (term + any suffix) is captured as one group so bolding covers the
+ * suffix too. Returns `null` when every term is blank.
+ */
+function buildBoldPattern(terms: string[]): string | null {
+  const nonEmpty = terms.map((t) => t.trim()).filter((t) => t.length > 0);
+  if (nonEmpty.length === 0) return null;
+  const escaped = nonEmpty.map((t) => escapeRegExp(t));
+  return `(?<!${ATTACHED_CHAR_CLASS})((?:${escaped.join("|")})${POSSESSIVE_OR_PLURAL_SUFFIX})(?!${ATTACHED_CHAR_CLASS})`;
+}
+
+/**
+ * Returns the first of `terms` that appears in `snippet` per the same
+ * matching envelope `findMentionOffsets` (`entity-detection.ts`) uses to
+ * detect a mention in the first place — so a snippet built from a possessive
+ * or simple-plural occurrence (`Tiny's`, `Tinys`) is still recognized as
+ * containing the base term `Tiny`, not missed. Returns the term's own
+ * original (non-normalized) text, not the matched span with its suffix, so
+ * a caller dismissing it persists the same string `checkNoiseFlag` checks
+ * entity-wide.
+ */
+function findFlaggedTermInSnippet(
+  terms: string[],
+  snippet: string,
+): string | undefined {
+  return terms.find((term) => {
+    const escaped = escapeRegExp(term.trim());
+    if (escaped.length === 0) return false;
+    const regex = new RegExp(
+      `(?<!${ATTACHED_CHAR_CLASS})${escaped}${POSSESSIVE_OR_PLURAL_SUFFIX}(?!${ATTACHED_CHAR_CLASS})`,
+      "giu",
+    );
+    return regex.test(snippet);
+  });
+}
+
+/**
+ * Renders `snippet` with every occurrence of a term in `pattern` wrapped in
+ * `<strong>`, mirroring `SearchBar.tsx`'s own `renderSnippet` bolding
+ * approach for its search-result snippets.
+ */
+function renderSnippetWithMatch(
+  snippet: string,
+  pattern: string | null,
+): React.ReactNode {
+  if (!pattern) return snippet;
+  const parts = snippet.split(new RegExp(pattern, "giu"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <strong key={i} className="font-semibold text-gw-primary">
+            {part}
+          </strong>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
 
 /**
  * Read-only sidebar section for an entity's own view: every resource
@@ -280,8 +374,59 @@ export default function EntityMentionsSection(): JSX.Element | null {
     selectActiveProjectMentionHighlightDurationSeconds,
   );
 
+  // Collapsed by default (per resource row), expanded on demand.
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRow = (rowResourceId: string): void => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowResourceId)) {
+        next.delete(rowResourceId);
+      } else {
+        next.add(rowResourceId);
+      }
+      return next;
+    });
+  };
+
+  // Mirrors EntitySection.tsx's own self-contained fetch-on-mount lifecycle
+  // for the project custom/excluded-global and cross-project global
+  // noise-word lists — there is no shared hook for this yet.
+  const [projectCustomNoiseWords, setProjectCustomNoiseWords] = useState<
+    string[]
+  >([]);
+  const [projectExcludedGlobalNoiseWords, setProjectExcludedGlobalNoiseWords] =
+    useState<string[]>([]);
+  const [globalNoiseWords, setGlobalNoiseWordsState] = useState<string[]>([]);
+
   const resourceId = resource?.id;
   const entityKind = resource?.entityKind;
+
+  useEffect(() => {
+    if (!projectId || !entityKind) {
+      setProjectCustomNoiseWords([]);
+      setProjectExcludedGlobalNoiseWords([]);
+      return;
+    }
+    void getNoiseWordLists(projectId)
+      .then((lists) => {
+        setProjectCustomNoiseWords(lists.customNoiseWords);
+        setProjectExcludedGlobalNoiseWords(lists.excludedGlobalNoiseWords);
+      })
+      .catch(() => {
+        setProjectCustomNoiseWords([]);
+        setProjectExcludedGlobalNoiseWords([]);
+      });
+  }, [projectId, entityKind]);
+
+  useEffect(() => {
+    if (!entityKind) {
+      setGlobalNoiseWordsState([]);
+      return;
+    }
+    void getGlobalNoiseWords()
+      .then((words) => setGlobalNoiseWordsState(words))
+      .catch(() => setGlobalNoiseWordsState([]));
+  }, [entityKind]);
 
   /**
    * Task 11/12 — resolves `row`'s snippet offset against the *live* editor
@@ -427,71 +572,162 @@ export default function EntityMentionsSection(): JSX.Element | null {
     );
   }
 
+  // The selected entity's own name + aliases are the terms a detected
+  // mention snippet can contain — used both to bold the matched term and to
+  // tell which snippets contain a noise-flagged term (FR-7's union/exclusion
+  // formula, same mechanism `EntitySection.tsx` uses for the name/alias
+  // editor, applied here per-match instead).
+  const aliases = resource.aliases ?? [];
+  const terms = [resource.name, ...aliases];
+  const matchPattern = buildBoldPattern(terms);
+
+  const dismissedNoiseTerms = resource.dismissedNoiseTerms ?? [];
+  const noiseCheckSources: NoiseCheckSources = {
+    projectCustomNoiseWords,
+    projectExcludedGlobalNoiseWords,
+    globalNoiseWords,
+    dismissedNoiseTerms,
+  };
+  const flaggedTerms = terms.filter((term) =>
+    checkNoiseFlag(term, noiseCheckSources),
+  );
+
+  // Dismisses one flagged term for this entity only, persisted via the same
+  // `updateSidecar` write path `EntitySection.tsx`'s own dismiss handler
+  // uses — no new transport.
+  const handleDismissNoiseTerm = (term: string): void => {
+    const normalized = normalizeNoiseTerm(term);
+    if (dismissedNoiseTerms.includes(normalized)) return;
+    const updated: AnyResource = {
+      ...resource,
+      dismissedNoiseTerms: [...dismissedNoiseTerms, normalized],
+    };
+    dispatch(updateResource(updated));
+    void updateSidecar(updated.id, projectId, updated)
+      .then(() => {
+        dispatch(fetchEntityAliasTable(projectId));
+      })
+      .catch(() => {
+        // Best-effort persistence, consistent with EntitySection.tsx's own
+        // dismiss handler.
+      });
+  };
+
   return (
     <div className="flex flex-col gap-3">
       {rows.length > 0 && (
         <ul className="flex flex-col gap-3" aria-label="entity-mentions-list">
-          {rows.map((row) => (
-            <li key={row.resourceId} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  className="text-left text-gw-label text-gw-primary hover:text-gw-secondary transition-colors duration-150"
-                  onClick={() =>
-                    dispatch(setSelectedResourceId(row.resourceId))
-                  }
-                >
-                  {row.name}
-                </button>
-                {row.isLinked && (
-                  <span
-                    className="text-gw-nano uppercase tracking-label px-1.5 py-0.5 rounded border border-gw-border text-gw-secondary"
-                    aria-label={`${row.name}-linked-badge`}
+          {rows.map((row) => {
+            const hasSnippets = row.snippets.length > 0;
+            const isExpanded = expandedRows.has(row.resourceId);
+            return (
+              <li key={row.resourceId} className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {hasSnippets && (
+                    <button
+                      type="button"
+                      onClick={() => toggleRow(row.resourceId)}
+                      aria-expanded={isExpanded}
+                      aria-label={
+                        isExpanded
+                          ? `Collapse ${row.name} mentions`
+                          : `Expand ${row.name} mentions`
+                      }
+                      className="text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown size={12} strokeWidth={1.5} />
+                      ) : (
+                        <ChevronRight size={12} strokeWidth={1.5} />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="text-left text-gw-label text-gw-primary hover:text-gw-secondary transition-colors duration-150"
+                    onClick={() =>
+                      dispatch(setSelectedResourceId(row.resourceId))
+                    }
                   >
-                    Linked
-                  </span>
-                )}
-                {row.isMentioned && (
-                  <span
-                    className="text-gw-nano uppercase tracking-label px-1.5 py-0.5 rounded border border-gw-border text-gw-secondary"
-                    aria-label={`${row.name}-mentioned-badge`}
-                  >
-                    Mentioned
-                  </span>
-                )}
-              </div>
+                    {row.name}
+                  </button>
+                  {row.isLinked && (
+                    <span
+                      className="text-gw-nano uppercase tracking-label px-1.5 py-0.5 rounded border border-gw-border text-gw-secondary"
+                      aria-label={`${row.name}-linked-badge`}
+                    >
+                      Linked
+                    </span>
+                  )}
+                  {row.isMentioned && (
+                    <span
+                      className="text-gw-nano uppercase tracking-label px-1.5 py-0.5 rounded border border-gw-border text-gw-secondary"
+                      aria-label={`${row.name}-mentioned-badge`}
+                    >
+                      Mentioned
+                    </span>
+                  )}
+                </div>
 
-              {row.snippets.length > 0 && (
-                <ul
-                  className="flex flex-col gap-1 pl-2"
-                  aria-label={`${row.name}-snippets`}
-                >
-                  {row.snippets.map((snippet, index) => {
-                    const ambiguousWith = row.ambiguousWith[index] ?? [];
-                    return (
-                      <li key={index}>
-                        <button
-                          type="button"
-                          className="text-left text-gw-micro text-gw-secondary hover:text-gw-primary transition-colors duration-150"
-                          onClick={() => {
-                            void handleSnippetClick(row, index);
-                          }}
-                        >
-                          {snippet}
-                        </button>
-                        {ambiguousWith.length > 0 && (
-                          <p className="text-gw-micro text-gw-secondary italic">
-                            Ambiguous &mdash; also matches{" "}
-                            {ambiguousWith.join(", ")}
-                          </p>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </li>
-          ))}
+                {hasSnippets && isExpanded && (
+                  <ul
+                    className="flex flex-col gap-1 pl-2"
+                    aria-label={`${row.name}-snippets`}
+                  >
+                    {row.snippets.map((snippet, index) => {
+                      const ambiguousWith = row.ambiguousWith[index] ?? [];
+                      const flaggedTerm = findFlaggedTermInSnippet(
+                        flaggedTerms,
+                        snippet,
+                      );
+                      return (
+                        <li key={index}>
+                          <button
+                            type="button"
+                            className="text-left text-gw-micro text-gw-secondary hover:text-gw-primary transition-colors duration-150 transition-opacity hover:opacity-70"
+                            onClick={() => {
+                              void handleSnippetClick(row, index);
+                            }}
+                          >
+                            {renderSnippetWithMatch(snippet, matchPattern)}
+                          </button>
+                          {ambiguousWith.length > 0 && (
+                            <p className="text-gw-micro text-gw-secondary italic">
+                              Ambiguous &mdash; also matches{" "}
+                              {ambiguousWith.join(", ")}
+                            </p>
+                          )}
+                          {flaggedTerm && (
+                            <div className="flex flex-col">
+                              <p className="text-gw-micro text-gw-secondary italic">
+                                {getNoiseObservation(
+                                  flaggedTerm,
+                                  flaggedTerm.toLowerCase() ===
+                                    resource.name.toLowerCase()
+                                    ? "name"
+                                    : "alias",
+                                )}
+                              </p>
+                              <Button
+                                variant="ghost"
+                                onClick={() =>
+                                  handleDismissNoiseTerm(flaggedTerm)
+                                }
+                                aria-label={`Dismiss noise observation for ${flaggedTerm}`}
+                                className="self-start"
+                              >
+                                Dismiss
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
