@@ -1141,6 +1141,9 @@ export default function AppShell({
                     }
                     initialDailyWordGoal={project?.config?.dailyWordGoal}
                     initialWordCountGoal={project?.config?.wordCountGoal}
+                    initialMentionHighlightDurationSeconds={
+                      project?.config?.mentionHighlightDurationSeconds
+                    }
                     isResourcePaletteOpen={isResourcePaletteOpen}
                     setIsResourcePaletteOpen={setIsResourcePaletteOpen}
                     isProjectTypesLoading={isProjectTypesLoading}

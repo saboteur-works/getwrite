@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import {
   render,
   screen,
@@ -11,6 +11,7 @@ import { Provider } from "react-redux";
 import EntityMentionsSection, {
   useEntityAliasTable,
   resolveCooccurringEntityName,
+  STALE_MENTION_JUMP_TOAST_ID,
 } from "../../components/Sidebar/EntityMentionsSection";
 import EntityMentionsProvider from "../../components/Sidebar/EntityMentionsContext";
 import { makeStore } from "../../src/store/store";
@@ -33,9 +34,82 @@ vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
 }));
 
+// Task 11/12 (`specs/features/entity-mention-navigation.md`) — the live-editor
+// seam `handleSnippetClick` reads through. Mocked at the module boundary so
+// these component tests never need a real TipTap/ProseMirror instance.
+vi.mock("../../components/Editor/activeEditorRegistry", () => ({
+  getActiveEditor: vi.fn(),
+  getActiveEditorResourceId: vi.fn(),
+}));
+vi.mock("../../components/Editor/offset-resolver", () => ({
+  resolveOffsetToPosition: vi.fn(),
+  isOffsetStillAMention: vi.fn(),
+}));
+vi.mock(
+  "../../components/Editor/Extensions/MentionJumpHighlightExtension",
+  () => ({ applyMentionJumpHighlight: vi.fn() }),
+);
+// Task 12 — the real, project-configured duration read, mocked so each test
+// controls exactly what it resolves to without needing a real project config
+// round-trip.
+vi.mock("../../src/lib/api/mention-highlight-duration", () => ({
+  resolveMentionHighlightDurationSeconds: vi.fn(),
+}));
+const toastError = vi.fn();
+vi.mock("../../src/lib/toast-service", () => ({
+  toastService: { error: (...a: unknown[]) => toastError(...a) },
+}));
+
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
+import {
+  getActiveEditor,
+  getActiveEditorResourceId,
+} from "../../components/Editor/activeEditorRegistry";
+import {
+  resolveOffsetToPosition,
+  isOffsetStillAMention,
+} from "../../components/Editor/offset-resolver";
+import { applyMentionJumpHighlight } from "../../components/Editor/Extensions/MentionJumpHighlightExtension";
+import { resolveMentionHighlightDurationSeconds } from "../../src/lib/api/mention-highlight-duration";
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
+const mockedGetActiveEditor = vi.mocked(getActiveEditor);
+const mockedGetActiveEditorResourceId = vi.mocked(getActiveEditorResourceId);
+const mockedResolveOffsetToPosition = vi.mocked(resolveOffsetToPosition);
+const mockedIsOffsetStillAMention = vi.mocked(isOffsetStillAMention);
+const mockedApplyMentionJumpHighlight = vi.mocked(applyMentionJumpHighlight);
+const mockedResolveMentionHighlightDurationSeconds = vi.mocked(
+  resolveMentionHighlightDurationSeconds,
+);
+
+/**
+ * Builds a minimal chainable fake editor matching the `editor.chain()
+ * .setTextSelection().scrollIntoView().run()` sequence `handleSnippetClick`
+ * invokes, plus the `editor.state.doc`/`editor.view` it reads directly.
+ * Each chain method is its own spy so a test can assert the exact sequence
+ * without depending on real TipTap/ProseMirror.
+ */
+function createFakeEditor() {
+  const run = vi.fn();
+  const scrollIntoView = vi.fn(() => ({ run }));
+  const setTextSelection = vi.fn(() => ({ scrollIntoView }));
+  const chain = vi.fn(() => ({ setTextSelection }));
+  // `resolveMentionHighlightSpan` (local, unmocked) reads `doc.content.size`
+  // and `doc.textBetween` directly to size the jump-highlight span — shaped
+  // minimally here so it falls through to its single-character fallback span
+  // rather than throwing.
+  const fakeDoc = { content: { size: 1000 }, textBetween: () => "" } as unknown;
+  const fakeView = {} as unknown;
+  return {
+    editor: { state: { doc: fakeDoc }, chain, view: fakeView },
+    chain,
+    setTextSelection,
+    scrollIntoView,
+    run,
+    doc: fakeDoc,
+    view: fakeView,
+  };
+}
 
 const PROJECT_PATH = "/tmp/test-project";
 
@@ -115,6 +189,7 @@ describe("EntityMentionsSection", () => {
         resourceId: "scene-1",
         name: "Chapter One",
         snippets: [],
+        offsets: [],
         isLinked: true,
         isMentioned: false,
         ambiguousWith: [],
@@ -145,6 +220,7 @@ describe("EntityMentionsSection", () => {
         resourceId: "scene-2",
         name: "Chapter Two",
         snippets: ["Aria drew her blade."],
+        offsets: [0],
         isLinked: false,
         isMentioned: true,
         ambiguousWith: [[]],
@@ -176,6 +252,7 @@ describe("EntityMentionsSection", () => {
         resourceId: "scene-3",
         name: "Chapter Three",
         snippets: ["Aria nodded."],
+        offsets: [0],
         isLinked: true,
         isMentioned: true,
         ambiguousWith: [[]],
@@ -206,6 +283,7 @@ describe("EntityMentionsSection", () => {
         resourceId: "scene-4",
         name: "Chapter Four",
         snippets: ["May arrived at dawn."],
+        offsets: [0],
         isLinked: false,
         isMentioned: true,
         ambiguousWith: [["Bob"]],
@@ -234,6 +312,7 @@ describe("EntityMentionsSection", () => {
         resourceId: "scene-6",
         name: "Chapter Six",
         snippets: ["May arrived at dawn."],
+        offsets: [0],
         isLinked: false,
         isMentioned: true,
         ambiguousWith: [["Bob"]],
@@ -264,6 +343,7 @@ describe("EntityMentionsSection", () => {
         resourceId: "scene-5",
         name: "Chapter Five",
         snippets: ["Aria left."],
+        offsets: [0],
         isLinked: false,
         isMentioned: true,
         ambiguousWith: [[]],
@@ -413,6 +493,7 @@ describe("EntityMentionsSection alias-table name resolution (Task 5)", () => {
         resourceId: "scene-1",
         name: "Chapter One",
         snippets: [],
+        offsets: [],
         isLinked: true,
         isMentioned: false,
         ambiguousWith: [],
@@ -539,6 +620,7 @@ describe("EntityMentionsSection co-occurrence list (Task 6)", () => {
           resourceId: "scene-1",
           name: "Chapter One",
           snippets: [],
+          offsets: [],
           isLinked: true,
           isMentioned: false,
           ambiguousWith: [],
@@ -580,6 +662,7 @@ describe("EntityMentionsSection co-occurrence list (Task 6)", () => {
           resourceId: "scene-1",
           name: "Chapter One",
           snippets: ["Aria and Priya spoke."],
+          offsets: [0],
           isLinked: false,
           isMentioned: true,
           ambiguousWith: [[]],
@@ -614,6 +697,7 @@ describe("EntityMentionsSection co-occurrence list (Task 6)", () => {
           resourceId: "scene-1",
           name: "Chapter One",
           snippets: [],
+          offsets: [],
           isLinked: true,
           isMentioned: false,
           ambiguousWith: [],
@@ -673,5 +757,475 @@ describe("EntityMentionsSection co-occurrence list (Task 6)", () => {
         expect(item.className).not.toMatch(/border/);
         expect(item.getAttribute("aria-label")).toBeNull();
       });
+  });
+});
+
+// Task 11 (`specs/features/entity-mention-navigation.md`, FR-4/FR-6/FR-7) —
+// mention-snippet activation and the same-resource click-to-jump flow.
+describe("EntityMentionsSection snippet click-to-jump (Task 11)", () => {
+  beforeEach(() => {
+    // A sane default so this describe's pre-existing tests (which don't
+    // care about the exact highlight duration) don't compute `NaN *
+    // undefined` once the real call site reads through this function
+    // (Task 12). Tests that DO care override it themselves.
+    mockedResolveMentionHighlightDurationSeconds.mockReturnValue(2);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    // `restoreAllMocks` only restores `vi.spyOn` spies to their original
+    // implementation; the plain `vi.fn()` mocks the module-level `vi.mock`
+    // factories above return have no "original" to restore to, so their
+    // call history survives unless explicitly cleared here.
+    mockedGetActiveEditor.mockClear();
+    mockedGetActiveEditorResourceId.mockClear();
+    mockedResolveOffsetToPosition.mockClear();
+    mockedIsOffsetStillAMention.mockClear();
+    mockedApplyMentionJumpHighlight.mockClear();
+    mockedResolveMentionHighlightDurationSeconds.mockClear();
+  });
+
+  it("renders a mention snippet as a button rather than a non-interactive element (FR-7)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "scene-7",
+        name: "Chapter Seven",
+        snippets: ["Aria drew her blade."],
+        offsets: [0],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    const snippetButton = await screen.findByRole("button", {
+      name: "Aria drew her blade.",
+    });
+    expect(snippetButton.tagName).toBe("BUTTON");
+  });
+
+  it("resolves the offset, passes the staleness check, and moves the editor selection/scroll without dispatching setSelectedResourceId, when the snippet's resource is already selected (FR-4)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["Aria drew her own blade."],
+        offsets: [5],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+    const dispatchSpy = vi.spyOn(store, "dispatch");
+
+    const fake = createFakeEditor();
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(7);
+    mockedIsOffsetStillAMention.mockReturnValue(true);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+
+    expect(mockedResolveOffsetToPosition).toHaveBeenCalledWith(fake.doc, 5);
+    expect(mockedIsOffsetStillAMention).toHaveBeenCalledWith(
+      fake.doc,
+      7,
+      expect.any(Array),
+    );
+    expect(fake.chain).toHaveBeenCalled();
+    expect(fake.setTextSelection).toHaveBeenCalledWith(7);
+    expect(fake.scrollIntoView).toHaveBeenCalled();
+    expect(fake.run).toHaveBeenCalled();
+    expect(mockedApplyMentionJumpHighlight).toHaveBeenCalled();
+
+    expect(
+      dispatchSpy.mock.calls.some(
+        (call) => call[0]?.type === setSelectedResourceId.type,
+      ),
+    ).toBe(false);
+  });
+
+  /**
+   * Regression test for 591975e9: ProseMirror's own `.scrollIntoView()` chain
+   * command (asserted above via `fake.scrollIntoView`) never actually scrolled
+   * the real viewport in this app's layout — `performMentionJump` also calls
+   * the native DOM `Element.scrollIntoView()` on the resolved position's own
+   * node, which every other test in this file (via `createFakeEditor`'s bare
+   * `fakeView = {}`) has no way to exercise, since `editor.view.domAtPos` is
+   * absent there and the call is optional-chained away. This test gives the
+   * fake editor a real `domAtPos` returning a real DOM node (jsdom) and
+   * asserts the native call actually happens, with the exact options
+   * `performMentionJump` passes.
+   */
+  it("also calls the native DOM scrollIntoView on the resolved position's own node, not just the ProseMirror chain command (regression: 591975e9)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["Aria drew her own blade."],
+        offsets: [5],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    const fake = createFakeEditor();
+    const textNode = document.createTextNode("Aria drew her own blade.");
+    const parentEl = document.createElement("p");
+    parentEl.appendChild(textNode);
+    const nativeScrollIntoView = vi.fn();
+    parentEl.scrollIntoView = nativeScrollIntoView;
+    (fake.view as { domAtPos?: unknown }).domAtPos = vi.fn(() => ({
+      node: textNode,
+      offset: 0,
+    }));
+
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(7);
+    mockedIsOffsetStillAMention.mockReturnValue(true);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+
+    expect(fake.scrollIntoView).toHaveBeenCalled();
+    expect(nativeScrollIntoView).toHaveBeenCalledWith({
+      block: "center",
+      behavior: "auto",
+    });
+  });
+
+  it("gets the identical same-resource jump behavior for an ambiguous snippet, with no special-casing branch (FR-4)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["Aria and May spoke."],
+        offsets: [3],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [["May"]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    const fake = createFakeEditor();
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(9);
+    mockedIsOffsetStillAMention.mockReturnValue(true);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Aria and May spoke."));
+
+    expect(mockedResolveOffsetToPosition).toHaveBeenCalledWith(fake.doc, 3);
+    expect(fake.setTextSelection).toHaveBeenCalledWith(9);
+    expect(fake.scrollIntoView).toHaveBeenCalled();
+    expect(fake.run).toHaveBeenCalled();
+    expect(mockedApplyMentionJumpHighlight).toHaveBeenCalled();
+  });
+
+  it("does nothing beyond dispatching setSelectedResourceId for a link-only row's resource-name button, unchanged (FR-6)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "scene-8",
+        name: "Chapter Eight",
+        snippets: [],
+        offsets: [],
+        isLinked: true,
+        isMentioned: false,
+        ambiguousWith: [],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Chapter Eight"));
+
+    await waitFor(() => {
+      expect(store.getState().resources.selectedResourceId).toBe("scene-8");
+    });
+    expect(mockedGetActiveEditor).not.toHaveBeenCalled();
+    expect(mockedResolveOffsetToPosition).not.toHaveBeenCalled();
+    expect(mockedApplyMentionJumpHighlight).not.toHaveBeenCalled();
+  });
+});
+
+// Task 12 (`specs/features/entity-mention-navigation.md`, FR-5/FR-8/FR-9) —
+// cross-resource jump, the FR-9 staleness toast, and the real configured
+// highlight duration.
+describe("EntityMentionsSection snippet click-to-jump (Task 12)", () => {
+  beforeEach(() => {
+    mockedResolveMentionHighlightDurationSeconds.mockReturnValue(2);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    mockedGetActiveEditor.mockClear();
+    mockedGetActiveEditorResourceId.mockClear();
+    mockedResolveOffsetToPosition.mockClear();
+    mockedIsOffsetStillAMention.mockClear();
+    mockedApplyMentionJumpHighlight.mockClear();
+    mockedResolveMentionHighlightDurationSeconds.mockClear();
+    toastError.mockClear();
+  });
+
+  it("dispatches setSelectedResourceId, waits for the newly selected resource's content to settle, and only then resolves/jumps against the newly loaded document, never the previous one (FR-5)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "scene-9",
+        name: "Chapter Nine",
+        snippets: ["Aria arrived quietly."],
+        offsets: [4],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+    const dispatchSpy = vi.spyOn(store, "dispatch");
+
+    // Two distinct fake editors stand in for "the previous resource's still-
+    // mounted document" (stale) and "the newly loaded document" (fresh) — a
+    // poll that resolved too early would resolve/jump against `staleFake`,
+    // which the assertions below would catch.
+    const staleFake = createFakeEditor();
+    const freshFake = createFakeEditor();
+    let pollCount = 0;
+    mockedGetActiveEditor.mockImplementation(() => {
+      pollCount += 1;
+      return (pollCount <= 2 ? staleFake.editor : freshFake.editor) as never;
+    });
+    mockedGetActiveEditorResourceId.mockImplementation(() =>
+      pollCount <= 2 ? "entity-aria" : "scene-9",
+    );
+    mockedResolveOffsetToPosition.mockReturnValue(9);
+    mockedIsOffsetStillAMention.mockReturnValue(true);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Aria arrived quietly."));
+
+    await waitFor(() => {
+      expect(
+        dispatchSpy.mock.calls.some(
+          (call) =>
+            call[0]?.type === setSelectedResourceId.type &&
+            call[0]?.payload === "scene-9",
+        ),
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(mockedApplyMentionJumpHighlight).toHaveBeenCalled();
+    });
+
+    expect(mockedResolveOffsetToPosition).toHaveBeenCalledWith(
+      freshFake.doc,
+      4,
+    );
+    expect(mockedResolveOffsetToPosition).not.toHaveBeenCalledWith(
+      staleFake.doc,
+      4,
+    );
+    expect(freshFake.setTextSelection).toHaveBeenCalledWith(9);
+    expect(freshFake.scrollIntoView).toHaveBeenCalled();
+    expect(staleFake.setTextSelection).not.toHaveBeenCalled();
+    expect(staleFake.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("no-ops — no selection change, no scroll, no highlight — and shows exactly one deduplicated toast across two rapid repeated clicks when the staleness check fails (FR-9)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["Aria drew her own blade."],
+        offsets: [5],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    const fake = createFakeEditor();
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(7);
+    mockedIsOffsetStillAMention.mockReturnValue(false);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    const snippetButton = await screen.findByText("Aria drew her own blade.");
+    // Two rapid repeated clicks — the toast must not stack.
+    fireEvent.click(snippetButton);
+    fireEvent.click(snippetButton);
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalled();
+    });
+
+    expect(fake.setTextSelection).not.toHaveBeenCalled();
+    expect(fake.scrollIntoView).not.toHaveBeenCalled();
+    expect(mockedApplyMentionJumpHighlight).not.toHaveBeenCalled();
+
+    const ids = toastError.mock.calls.map(
+      (call) => (call[2] as { id?: string } | undefined)?.id,
+    );
+    expect(ids.length).toBeGreaterThan(0);
+    // Every call uses the identical, stable id — this is what lets
+    // react-hot-toast collapse repeated calls into one visible toast rather
+    // than stacking.
+    expect(new Set(ids)).toEqual(new Set([STALE_MENTION_JUMP_TOAST_ID]));
+  });
+
+  it("includes no raw document/snippet content in the staleness toast message", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["A very specific line of prose nobody should see again."],
+        offsets: [5],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    const fake = createFakeEditor();
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(7);
+    mockedIsOffsetStillAMention.mockReturnValue(false);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(
+      await screen.findByText(
+        "A very specific line of prose nobody should see again.",
+      ),
+    );
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalled();
+    });
+
+    for (const call of toastError.mock.calls) {
+      expect(String(call[0])).not.toContain(
+        "A very specific line of prose nobody should see again.",
+      );
+    }
+  });
+
+  it("calls the Task 3 highlight extension with the duration (ms) read from resolveMentionHighlightDurationSeconds, falling back to the function's own 2000ms default when the project has no configured value", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["Aria drew her own blade."],
+        offsets: [5],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    const fake = createFakeEditor();
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(7);
+    mockedIsOffsetStillAMention.mockReturnValue(true);
+    // Simulates the configured-value case: the project set a custom
+    // duration, and the pure resolver (mocked here) reflects it verbatim.
+    mockedResolveMentionHighlightDurationSeconds.mockReturnValue(5);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+
+    await waitFor(() => {
+      expect(mockedApplyMentionJumpHighlight).toHaveBeenCalledWith(
+        fake.view,
+        expect.anything(),
+        5000,
+      );
+    });
+
+    // Simulates the unset-value case: the resolver (mocked) reflects its own
+    // documented 2-second fallback, which the call site must still pass
+    // through unmodified, converted to ms.
+    mockedResolveMentionHighlightDurationSeconds.mockReturnValue(2);
+    mockedApplyMentionJumpHighlight.mockClear();
+
+    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+
+    await waitFor(() => {
+      expect(mockedApplyMentionJumpHighlight).toHaveBeenCalledWith(
+        fake.view,
+        expect.anything(),
+        2000,
+      );
+    });
   });
 });

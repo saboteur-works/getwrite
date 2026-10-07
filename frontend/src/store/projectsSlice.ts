@@ -98,6 +98,14 @@ export interface StoredProject {
   features?: ProjectFeatureFlags;
   /** Organizer card-body source configuration; absent means none configured. */
   organizerCardBody?: OrganizerCardBodyConfig;
+  /**
+   * Mention-jump highlight duration, in seconds (Entity mention navigation,
+   * Task 12). Absent means the project has never set one —
+   * `resolveMentionHighlightDurationSeconds` (`lib/api/mention-highlight-duration.ts`)
+   * is the single place that applies the FR-10 2-second fallback for that
+   * case, so this field is left as-is here rather than defaulted.
+   */
+  mentionHighlightDurationSeconds?: number;
 }
 
 /**
@@ -146,6 +154,8 @@ export function buildStoredProject(
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
+    mentionHighlightDurationSeconds:
+      project.config?.mentionHighlightDurationSeconds,
   };
 }
 
@@ -650,6 +660,43 @@ const projectsSlice = createSlice({
       state.projects[projectId] = { ...project, metadataSchema: schema };
       return state;
     },
+    /**
+     * Updates the *currently selected* stored project's cached
+     * `mentionHighlightDurationSeconds` immediately after a successful save,
+     * so a mention-snippet click right after changing the setting (no
+     * project reload in between) already reads the new value —
+     * `selectActiveProjectMentionHighlightDurationSeconds` reads this cached
+     * copy, not the server, on every jump.
+     *
+     * Deliberately keyed off `state.selectedProjectId` (matching
+     * `selectActiveProjectMentionHighlightDurationSeconds`'s own lookup)
+     * rather than taking a project id in the action payload: the Project
+     * Settings dialog this field lives in only ever edits the active
+     * project, and the directory id its own `projectId` prop carries (used
+     * for the HTTP save call, which needs it to resolve the on-disk path)
+     * is a different string from `state.projects`' own dictionary key
+     * (`StoredProject.id`/`selectedProjectId`) — a reducer keyed by that
+     * prop would silently write to a key nothing reads, which is exactly
+     * what the first version of this reducer did.
+     *
+     * @param state - Current slice state draft.
+     * @param action - The new duration, or `undefined` to clear back to the
+     *   server-side default.
+     */
+    setProjectMentionHighlightDurationSeconds(
+      state,
+      action: PayloadAction<{ durationSeconds: number | undefined }>,
+    ) {
+      const { durationSeconds } = action.payload;
+      const id = state.selectedProjectId;
+      const project = id ? state.projects[id] : undefined;
+      if (!project) return state;
+      state.projects[id as string] = {
+        ...project,
+        mentionHighlightDurationSeconds: durationSeconds,
+      };
+      return state;
+    },
   },
   extraReducers: (builder) => {
     // `loadProject` mirrors `setProject`'s upsert behavior; it exists
@@ -727,6 +774,7 @@ export const {
   addResource,
   removeResource,
   updateProjectMetadataSchema,
+  setProjectMentionHighlightDurationSeconds,
 } = projectsSlice.actions;
 export default projectsSlice.reducer;
 
@@ -836,6 +884,26 @@ export const selectActiveProjectMetadataSchema = (
   return (
     state?.projects?.projects?.[id]?.metadataSchema ?? DEFAULT_METADATA_SCHEMA
   );
+};
+
+/**
+ * Selects the active project's raw, possibly-unset
+ * `config.mentionHighlightDurationSeconds` (Entity mention navigation, Task
+ * 12). Deliberately returns the raw value rather than applying the FR-10
+ * 2-second fallback itself — callers pass this through
+ * `resolveMentionHighlightDurationSeconds`
+ * (`lib/api/mention-highlight-duration.ts`), the single place that applies
+ * it, so the two never drift.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns The active project's configured highlight duration in seconds,
+ *   or `undefined` when none is set or no project is selected.
+ */
+export const selectActiveProjectMentionHighlightDurationSeconds = (
+  state: any,
+): number | undefined => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.mentionHighlightDurationSeconds;
 };
 
 export const selectActiveProjectRootPath = (state: any): string | null => {

@@ -27,6 +27,10 @@ vi.mock("../src/lib/api/project-noise-words", () => ({
 vi.mock("../src/lib/api/global-noise-words", () => ({
   getGlobalNoiseWords: vi.fn().mockResolvedValue([]),
 }));
+vi.mock("../src/lib/api/mention-highlight-duration", () => ({
+  DEFAULT_MENTION_HIGHLIGHT_DURATION_SECONDS: 2,
+  setMentionHighlightDuration: vi.fn(),
+}));
 
 function renderDialog(): void {
   const store = configureStore({
@@ -78,6 +82,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Metadata",
       "Writing Goals",
       "Noise Words",
+      "Entities",
     ]);
   });
 
@@ -122,6 +127,47 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     const user = userEvent.setup();
     renderDialog();
     await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    await runAxe(document.body);
+  });
+});
+
+describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
+  it("appends an Entities tab last, after Noise Words", () => {
+    renderDialog();
+    const names = screen
+      .getAllByRole("tab")
+      .map((t: HTMLElement) => (t.textContent ?? "").trim());
+    expect(names[names.length - 1]).toBe("Entities");
+    expect(names[names.length - 2]).toBe("Noise Words");
+  });
+
+  it("hosts the mention-highlight duration field in the Entities panel", () => {
+    renderDialog();
+    expect(
+      within(panelFor("Entities")).getByLabelText(
+        "Highlight duration (seconds)",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("contains exactly one field in the Entities panel — no entityKind, entityHighlighting, or relationship-type controls", () => {
+    renderDialog();
+    const panel = panelFor("Entities");
+    expect(
+      within(panel).getByLabelText("Highlight duration (seconds)"),
+    ).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("textbox").length).toBeLessThanOrEqual(
+      1,
+    );
+    expect(within(panel).queryByText(/entity kind/i)).toBeNull();
+    expect(within(panel).queryByText(/entity highlighting/i)).toBeNull();
+    expect(within(panel).queryByText(/relationship type/i)).toBeNull();
+  });
+
+  it("passes an axe check with the Entities tab selected", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole("tab", { name: "Entities" }));
     await runAxe(document.body);
   });
 });

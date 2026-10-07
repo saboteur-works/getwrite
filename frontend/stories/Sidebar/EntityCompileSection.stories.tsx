@@ -100,6 +100,7 @@ const associatedRows: EntityMentionedIn[] = [
     isLinked: false,
     isMentioned: true,
     snippets: ["Aria crossed the bridge."],
+    offsets: [12],
     ambiguousWith: [[]],
   },
   {
@@ -108,6 +109,7 @@ const associatedRows: EntityMentionedIn[] = [
     isLinked: true,
     isMentioned: false,
     snippets: [],
+    offsets: [],
     ambiguousWith: [],
   },
 ];

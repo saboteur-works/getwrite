@@ -2528,6 +2528,67 @@ observation UI follows rather than introduces fresh.
 
 ---
 
+### Feature 71: Entity mention navigation — Shipped
+**Value:** A novelist reviewing an entity's own "mentioned in" list no
+longer has to re-scan a resource by eye to find the exact sentence a
+snippet came from — clicking the snippet itself jumps the editor straight
+to that occurrence, switching resources first if needed, and briefly
+marks the spot so it's unmistakable at a glance.
+**Vertical slice:** Threads each mention snippet's source character offset
+from the mention index through to the client (`mentions-core.ts`'s
+`EntityMentionedIn` rows gain a parallel `offsets: number[]`, carried end
+to end through the HTTP response schema and native transport); a new
+pure resolver (`offset-resolver.ts`) that walks the live TipTap document's
+text nodes to convert that plain-text offset into a ProseMirror position,
+plus a staleness check re-matching the resolved position's surrounding
+text against the entity's own name/aliases before committing to a jump; a
+new one-shot transient highlight decoration
+(`MentionJumpHighlightExtension.ts`), deliberately separate from the
+persistent entity-highlighting decoration; a small cross-subtree registry
+(`activeEditorRegistry.ts`) letting the sidebar reach the live editor
+instance to drive the selection/scroll/highlight; and a new per-project,
+writer-adjustable highlight-fade duration (`config.mentionHighlightDurationSeconds`,
+1-10 seconds inclusive, default 2 when unset) plumbed end to end the same
+way `wordCountGoal`/`dailyWordGoal` are, surfaced in a new "Entities"
+Project Settings tab holding exactly that one field. A stale offset (the
+underlying text changed since the mention index was last built) no-ops
+the click with a toast rather than jumping to the wrong place. A
+link-only row with no detected mentions keeps its existing resource-open-only
+click behavior unchanged.
+**Requirements covered:** None of its own — scoped and approved through its
+own standalone feature spec (`specs/features/entity-mention-navigation.md`,
+FR-1 through FR-10) rather than an amendment to this product spec's FR
+ladder; see this entry's Notes.
+**User stories:** None of this document's own — the source spec defines its
+own US-1/US-2 (reviewing a mention in the current resource; reviewing one in
+a different resource), not drawn from this document's US ladder.
+**Depends on:** Feature 33
+**Branch suggestion:** feature/entity-mention-navigation
+**Notes:** Shipped on branch `feature/entity-mention-navigation` (not yet
+merged to `main` as of this entry). `specs/features/entity-mention-navigation.md`
+and its `tasks.md` (17 tasks, all done) are the authoritative record of the
+shipped scope. Five bug-fix commits landed on top of the original
+implementation, found by manual testing against real project data rather
+than the automated suite: the highlight extension was never registered in
+`TipTapEditor.tsx`'s extensions array, and ProseMirror's own
+`.scrollIntoView()` command didn't actually move the real viewport, needing
+a supplementary native DOM `scrollIntoView` call; the configured duration
+never took effect, through three successive causes (a stale Redux cache,
+then a wrong cache key, then an incomplete response-validation schema
+silently stripping the field); a stale `setTimeout` from an earlier click
+could clear a later click's highlight early when clicks overlapped; and the
+"works once, then never again" failure traced to `TipTapEditor.tsx`'s
+content-sync effect firing two full document replacements back-to-back on
+every resource load (a broken object-vs-string equality check), reproducible
+only with a large entity's many mentions since that widens the timing gap
+between the two loads enough for the second replacement to wipe out the
+first's highlight. `EntityHighlightDecorationExtension.ts` (Feature 34) is
+explicitly not reused or extended for the new one-shot highlight — the two
+serve different purposes (persistent, continuously-recomputed vs. one-shot,
+timer-cleared) and the source spec requires them to stay separate.
+
+---
+
 ## Coverage check
 
 - Requirements covered:
@@ -2593,7 +2654,7 @@ observation UI follows rather than introduces fresh.
 
 ## Summary
 
-- Total features: 70
+- Total features: 71
 - Suggested build order: Features 1 through 23 are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped

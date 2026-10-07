@@ -115,6 +115,19 @@ describe("AppShell footer refreshes after a daily goal change (Task 19)", () => 
     globalThis.fetch = originalFetch;
   });
 
+  // Both tests mount the full `AppShell` (one of the heaviest components in
+  // the app — resource tree, editor shell, sidebar, and every Project
+  // Settings tab, all `forceMount`ed) and drive it through several sequential
+  // `fireEvent`+`waitFor` round trips. That comfortably clears vitest's
+  // default 5000ms per-test timeout locally (consistently ~3s for the whole
+  // file, including both tests), but was observed failing on exactly this
+  // timeout in CI three runs in a row while passing reliably everywhere else
+  // this was reproduced (isolated run, full-suite run, full-suite run capped
+  // to 4 worker threads to approximate CI's smaller runner) — i.e. a timing
+  // margin that holds up fine locally but not under CI's actual resource
+  // ceiling, not a logic defect in the test or the code it exercises. A
+  // generous explicit timeout is the correct fix for that, not a change to
+  // what's being asserted.
   it("shows the new goal after a save and drops it after a clear, without a document save", async () => {
     renderShell();
     expect(await screen.findByText("Today: 13")).toBeTruthy();
@@ -130,7 +143,7 @@ describe("AppShell footer refreshes after a daily goal change (Task 19)", () => 
     expect(await screen.findByText("Daily goal cleared.")).toBeTruthy();
     await waitFor(() => expect(screen.getByText("Today: 13")).toBeTruthy());
     expect(screen.queryByText(/\/ 500/)).toBeNull();
-  });
+  }, 15000);
 
   it("leaves the footer unchanged when the goal save fails", async () => {
     renderShell();
@@ -142,5 +155,5 @@ describe("AppShell footer refreshes after a daily goal change (Task 19)", () => 
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.getByText("Today: 13")).toBeTruthy();
     expect(screen.queryByText("Today: 13 / 500")).toBeNull();
-  });
+  }, 15000);
 });

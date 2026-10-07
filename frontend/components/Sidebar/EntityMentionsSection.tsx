@@ -1,17 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import {
   selectResource,
   setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
-import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
+import {
+  selectActiveProjectDirectoryId,
+  selectActiveProjectMentionHighlightDurationSeconds,
+} from "../../src/store/projectsSlice";
 import { useEntityMentions } from "./EntityMentionsContext";
+import type { EntityMentionedIn } from "../../src/lib/models/mentions-core";
 import { getEntityCooccurrence } from "../../src/lib/api/entity-cooccurrence";
 import type { EntityCooccurrenceEntry } from "../../src/lib/api/entity-cooccurrence";
 import { selectEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
+import {
+  getActiveEditor,
+  getActiveEditorResourceId,
+} from "../Editor/activeEditorRegistry";
+import {
+  resolveOffsetToPosition,
+  isOffsetStillAMention,
+} from "../Editor/offset-resolver";
+import { applyMentionJumpHighlight } from "../Editor/Extensions/MentionJumpHighlightExtension";
+import { resolveMentionHighlightDurationSeconds } from "../../src/lib/api/mention-highlight-duration";
+import { toastService } from "../../src/lib/toast-service";
+import {
+  escapeRegExp,
+  POSSESSIVE_OR_PLURAL_SUFFIX,
+} from "../../src/lib/models/entity-detection";
 
 /**
  * Read-only sidebar section for an entity's own view: every resource
@@ -72,6 +92,122 @@ export function resolveCooccurringEntityName(
   entityId: string,
 ): string {
   return aliasTable.entities[entityId]?.name ?? entityId;
+}
+
+/**
+ * Task 12 addition (`specs/features/entity-mention-navigation.md`, FR-9) —
+ * fixed message and stable, deduplicated toast id for a mention-snippet
+ * click whose resolved offset no longer reads as an occurrence of the
+ * entity's own name/aliases (the staleness check, `isOffsetStillAMention`).
+ * Carries no raw document/snippet text, per FR-9. The stable id is what
+ * keeps two rapid repeated clicks from stacking two toasts — `toastService
+ * .error`'s underlying `toast.error` collapses a second call with the same
+ * `id` into the first's slot rather than queuing a new one.
+ */
+export const STALE_MENTION_JUMP_TOAST_ID = "entity-mention-jump-stale";
+const STALE_MENTION_JUMP_TOAST_MESSAGE =
+  "This mention may be out of date and could not be found at that location.";
+
+/**
+ * Task 12 addition (FR-5) — polling interval/timeout for
+ * {@link waitForResourceContentLoaded}, below. The interval is short enough
+ * that a writer waiting on an ordinary local fetch never notices it; the
+ * timeout is generous enough to outlast a slow read without hanging a click
+ * handler forever if the switch never settles (e.g. the target resource was
+ * deleted out from under the click).
+ */
+const RESOURCE_SWITCH_POLL_INTERVAL_MS = 25;
+const RESOURCE_SWITCH_POLL_TIMEOUT_MS = 5000;
+
+/**
+ * Task 12 addition (`specs/features/entity-mention-navigation.md`, FR-5) —
+ * resolves once the *live* editor registry (`activeEditorRegistry.ts`)
+ * reports both a mounted editor AND that `targetResourceId` is the resource
+ * whose content it reflects — the tag `EditView.tsx` writes only once its
+ * own `loadState` settles to `"loaded"` (see that module's doc comment).
+ * Resolves `false` on timeout rather than hanging forever, so a click whose
+ * target resource never finishes loading (e.g. it was deleted, or the read
+ * failed) eventually gives up instead of leaving the handler pending.
+ *
+ * There is no existing promise-based "content finished loading" signal to
+ * await instead: `useRevisionContent.ts`'s own `loadState` is local React
+ * state owned by `EditView`, a sibling subtree with no shared context
+ * reaching `EntityMentionsSection` (the same reason `activeEditorRegistry.ts`
+ * itself exists, per its doc comment) — so this polls the same registry the
+ * same-resource jump already reads from, rather than inventing a second,
+ * parallel signaling mechanism.
+ */
+function waitForResourceContentLoaded(
+  targetResourceId: string,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + RESOURCE_SWITCH_POLL_TIMEOUT_MS;
+    const check = (): void => {
+      if (
+        getActiveEditor() !== null &&
+        getActiveEditorResourceId() === targetResourceId
+      ) {
+        resolve(true);
+        return;
+      }
+      if (Date.now() >= deadline) {
+        resolve(false);
+        return;
+      }
+      setTimeout(check, RESOURCE_SWITCH_POLL_INTERVAL_MS);
+    };
+    check();
+  });
+}
+
+/**
+ * How many plain-text characters past a resolved jump position to search,
+ * at most, for the matched term's own length when building the jump-
+ * highlight span (Task 11, FR-8). Generous enough to contain the longest
+ * realistic name/alias plus its possessive/plural suffix.
+ */
+const MENTION_SPAN_SEARCH_WINDOW = 128;
+
+/**
+ * Resolves the `{ from, to }` span of the entity term starting at `position`
+ * for {@link applyMentionJumpHighlight}'s decoration, so the one-shot flash
+ * covers the matched text itself rather than only its starting character.
+ *
+ * Tries each of `terms` (longest first, so a longer term that happens to be
+ * a prefix of a shorter one is preferred) against the text immediately
+ * following `position`, using the same case-insensitive possessive/plural
+ * envelope `isOffsetStillAMention` already confirmed matches somewhere in
+ * this neighborhood. Falls back to a single-character span — rather than
+ * throwing or highlighting nothing — on the (expected to be rare, since the
+ * staleness check already passed) case where no term matches exactly at
+ * `position` within the search window.
+ */
+function resolveMentionHighlightSpan(
+  doc: ProseMirrorNode,
+  position: number,
+  terms: string[],
+): { from: number; to: number } {
+  const docSize = doc.content.size;
+  const windowEnd = Math.min(docSize, position + MENTION_SPAN_SEARCH_WINDOW);
+  const windowText = doc.textBetween(position, windowEnd, "\n");
+
+  const sortedTerms = terms
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0)
+    .sort((a, b) => b.length - a.length);
+
+  for (const term of sortedTerms) {
+    const pattern = new RegExp(
+      `^(?:${escapeRegExp(term)})${POSSESSIVE_OR_PLURAL_SUFFIX}`,
+      "iu",
+    );
+    const match = pattern.exec(windowText);
+    if (match) {
+      return { from: position, to: position + match[0].length };
+    }
+  }
+
+  return { from: position, to: Math.min(docSize, position + 1) };
 }
 
 /**
@@ -140,9 +276,126 @@ export default function EntityMentionsSection(): JSX.Element | null {
     EntityCooccurrenceEntry[]
   >([]);
   const aliasTable = useEntityAliasTable();
+  const configuredHighlightDurationSeconds = useAppSelector(
+    selectActiveProjectMentionHighlightDurationSeconds,
+  );
 
   const resourceId = resource?.id;
   const entityKind = resource?.entityKind;
+
+  /**
+   * Task 11/12 — resolves `row`'s snippet offset against the *live* editor
+   * document (`getActiveEditor()`, since the live document can differ from
+   * what the offset was recorded against), re-confirms the resolved
+   * position still reads as a mention of this entity (FR-9's staleness
+   * check), and only on that success moves the selection, scrolls it into
+   * view, and shows the one-shot jump highlight.
+   *
+   * Always resolves the entity's own terms via the closed-over `resourceId`/
+   * `aliasTable` from the render that owned the click — i.e. the entity
+   * being *viewed*, not whatever resource happens to be selected by the time
+   * this runs. That matters for the cross-resource case: by the time this
+   * fires, `dispatch(setSelectedResourceId(row.resourceId))` has already
+   * changed the selected resource, which (for a plain mention row, not
+   * itself an entity) un-mounts this whole component — but the already-
+   * running async closure keeps its own captured values regardless, so the
+   * entity whose mentions these are stays correct.
+   *
+   * An unresolved offset (`resolveOffsetToPosition` returns `null`) silently
+   * does nothing, matching Task 11's existing behavior — distinct from a
+   * failed staleness check (FR-9), which no-ops too but additionally shows
+   * the toast below, since staleness is a confirmed, nameable condition
+   * ("this used to be a mention, isn't anymore") while an out-of-range
+   * offset is not.
+   */
+  const performMentionJump = (
+    row: EntityMentionedIn,
+    snippetIndex: number,
+  ): void => {
+    const editor = getActiveEditor();
+    if (!editor) return;
+
+    const offset = row.offsets[snippetIndex];
+    if (offset === undefined) return;
+
+    const doc = editor.state.doc;
+    const position = resolveOffsetToPosition(doc, offset);
+    if (position === null) return;
+
+    const terms = aliasTable.entities[resourceId ?? ""]?.terms ?? [];
+    if (!isOffsetStillAMention(doc, position, terms)) {
+      toastService.error(STALE_MENTION_JUMP_TOAST_MESSAGE, undefined, {
+        id: STALE_MENTION_JUMP_TOAST_ID,
+      });
+      return;
+    }
+
+    editor.chain().setTextSelection(position).scrollIntoView().run();
+    // ProseMirror's own `.scrollIntoView()` chain command above walks DOM
+    // ancestors looking for a scrollable one by computed `overflow` style,
+    // and in this app's layout that walk doesn't find (or doesn't scroll)
+    // the real scrollable pane — verified live: the selection moves
+    // correctly (`editor.state.selection.from` matches the resolved
+    // position and stays there), but the viewport never follows it. The
+    // browser's own native `Element.scrollIntoView()`, called on the actual
+    // DOM node at the resolved position, finds the right scrollable
+    // ancestor reliably because it's the browser's own layout engine doing
+    // the walk, not a heuristic re-implementation of it. Kept alongside the
+    // chain command (not instead of it) since the chain command is still
+    // correct, just insufficient on its own here; `editor.view` is guarded
+    // optional since a test double for `editor` need not provide a real
+    // ProseMirror view, and `scrollIntoView` itself is guarded optional
+    // since it's unimplemented in this project's non-browser DOM test
+    // environments (and in jsdom).
+    const domPosition = editor.view?.domAtPos?.(position);
+    const domNode = domPosition
+      ? domPosition.node.nodeType === Node.TEXT_NODE
+        ? domPosition.node.parentElement
+        : (domPosition.node as Element)
+      : null;
+    domNode?.scrollIntoView?.({ block: "center", behavior: "auto" });
+
+    const span = resolveMentionHighlightSpan(doc, position, terms);
+    const durationMs =
+      resolveMentionHighlightDurationSeconds(
+        configuredHighlightDurationSeconds,
+      ) * 1000;
+    applyMentionJumpHighlight(editor.view, span, durationMs);
+  };
+
+  /**
+   * Task 11/12 (FR-4/FR-5/FR-6/FR-7/FR-9): handles a click on one mention
+   * snippet.
+   *
+   * Same-resource (FR-4): jumps immediately against the already-live editor
+   * document — the entity's own resource mentioning itself in its own
+   * prose. Applies identically to an ambiguous snippet: there is no
+   * special-casing branch for `ambiguousWith` here.
+   *
+   * Cross-resource (FR-5): a different resource's row keeps the existing
+   * resource-name-only navigation on its name button (`setSelectedResourceId`,
+   * unchanged), but a click on the *snippet* itself now also dispatches that
+   * same switch, waits for the newly selected resource's content to settle
+   * into the editor (`waitForResourceContentLoaded`), and only then runs the
+   * identical resolve/staleness-check/jump sequence against the *newly
+   * loaded* document — never against whatever the editor still showed from
+   * the previous resource. A switch that never settles (timeout) silently
+   * does nothing, the same no-toast treatment as an unresolved offset.
+   */
+  const handleSnippetClick = async (
+    row: EntityMentionedIn,
+    snippetIndex: number,
+  ): Promise<void> => {
+    if (row.resourceId !== resourceId) {
+      dispatch(setSelectedResourceId(row.resourceId));
+      const isLoaded = await waitForResourceContentLoaded(row.resourceId);
+      if (!isLoaded) return;
+      performMentionJump(row, snippetIndex);
+      return;
+    }
+
+    performMentionJump(row, snippetIndex);
+  };
 
   // Task 6 (FR-6): fetched separately from `rows` above, and NEVER derived
   // from `rows`' merged `isLinked`/`isMentioned` resource set — see the
@@ -217,9 +470,15 @@ export default function EntityMentionsSection(): JSX.Element | null {
                     const ambiguousWith = row.ambiguousWith[index] ?? [];
                     return (
                       <li key={index}>
-                        <p className="text-gw-micro text-gw-secondary">
+                        <button
+                          type="button"
+                          className="text-left text-gw-micro text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+                          onClick={() => {
+                            void handleSnippetClick(row, index);
+                          }}
+                        >
                           {snippet}
-                        </p>
+                        </button>
                         {ambiguousWith.length > 0 && (
                           <p className="text-gw-micro text-gw-secondary italic">
                             Ambiguous &mdash; also matches{" "}

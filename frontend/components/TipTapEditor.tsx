@@ -32,8 +32,13 @@ import { TipTapDocument } from "../src/lib/models";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import EditorContextMenu from "./Editor/EditorContextMenu";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
-import { loadDocumentIntoEditor } from "./Editor/loadDocumentIntoEditor";
+import {
+  loadDocumentIntoEditor,
+  shouldSyncEditorContent,
+} from "./Editor/loadDocumentIntoEditor";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
+export { resolveOffsetToPosition } from "./Editor/offset-resolver";
+import { setActiveEditor } from "./Editor/activeEditorRegistry";
 import {
   documentToMarkdown,
   markdownToDocument,
@@ -45,6 +50,7 @@ import CustomHeading from "./Editor/Extensions/CustomHeading";
 import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import GetWriteImage from "./Editor/Extensions/GetWriteImage";
+import MentionJumpHighlightExtension from "./Editor/Extensions/MentionJumpHighlightExtension";
 import EntityHighlightDecoration, {
   ENTITY_HIGHLIGHT_DECORATION_KEY,
 } from "./Editor/Extensions/EntityHighlightDecorationExtension";
@@ -365,6 +371,7 @@ export default function TipTapEditor({
           getAliasTable: () => entityAliasTableRef.current,
           getNoiseCheckSources: () => noiseCheckSourcesRef.current,
         }),
+        MentionJumpHighlightExtension,
         Math.configure({
           blockOptions: {
             /**
@@ -556,6 +563,20 @@ export default function TipTapEditor({
   }, [scheduleSourceCommit]);
 
   /**
+   * Registers this editor instance as the app's single "live editor" (Task
+   * 11, `activeEditorRegistry.ts`) so a sidebar component outside this
+   * subtree — `EntityMentionsSection.tsx`, via `getActiveEditor()` — can jump
+   * the live selection to a resolved mention offset. Cleared on unmount so a
+   * stale instance is never read after this component goes away.
+   */
+  useEffect(() => {
+    setActiveEditor(editor ?? null);
+    return () => {
+      setActiveEditor(null);
+    };
+  }, [editor]);
+
+  /**
    * Source textarea change handler: keep the buffer in local state and schedule
    * a debounced autosave so source-mode edits survive a resource switch.
    */
@@ -569,20 +590,22 @@ export default function TipTapEditor({
 
   /**
    * Synchronizes externally provided `value` into TipTap when it diverges
-   * from the editor's current content.
-   *
-   * Skip when `value` is the exact object most recently emitted by `onUpdate`
-   * — the editor already has that content, and calling setContent would reset
-   * the cursor. Only call setContent for external changes (loading a revision,
-   * switching resources) where `value` is a different object reference.
+   * from the editor's current content. The actual skip-or-sync decision is
+   * {@link shouldSyncEditorContent} (`Editor/loadDocumentIntoEditor.ts`) —
+   * see that function's own doc comment for the full rationale, including
+   * why a plain reference/string comparison isn't enough to prevent a
+   * redundant reload when `value` is a `TipTapDocument` object.
    */
   useEffect(() => {
     if (!editor) return;
-    // If value is the same reference we just emitted, the editor already
-    // has this content. Calling setContent would reset the cursor position.
-    if (value === lastEmittedDocRef.current) return;
-    const current = editor.getHTML();
-    if (value !== current) {
+    if (
+      shouldSyncEditorContent(
+        value,
+        lastEmittedDocRef.current,
+        editor.getJSON(),
+        editor.getHTML(),
+      )
+    ) {
       // Tiptap v3's signature is `setContent(content, options)`. The v2
       // signature took the emit flag as a second positional boolean, so the
       // `false as any` this replaced was destructured as `{} = false` and

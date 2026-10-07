@@ -34,6 +34,7 @@
   --color-gw-diff-removed: rgba(80, 130, 180, 0.18);
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.2);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.28);
+  --color-gw-mention-jump-highlight: rgba(80, 160, 220, 0.3);
 
   /* ── Timeline overrides ──
      * Placed here (not :root) so this class-selector wins over the :root defaults
@@ -112,6 +113,7 @@
   --color-gw-diff-removed: rgba(80, 130, 180, 0.24);
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.26);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.36);
+  --color-gw-mention-jump-highlight: rgba(100, 180, 240, 0.38);
 
   /* POV palette — original softer values for dark surfaces */
   --timeline-pov-0: #6b8cae;
@@ -160,6 +162,7 @@ html.gw-theme-light {
   --color-gw-diff-removed: rgba(80, 130, 180, 0.18);
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.2);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.28);
+  --color-gw-mention-jump-highlight: rgba(80, 160, 220, 0.3);
 }
 
 html.gw-theme-dark {
@@ -179,6 +182,7 @@ html.gw-theme-dark {
   --color-gw-diff-removed: rgba(80, 130, 180, 0.24);
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.26);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.36);
+  --color-gw-mention-jump-highlight: rgba(100, 180, 240, 0.38);
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */
