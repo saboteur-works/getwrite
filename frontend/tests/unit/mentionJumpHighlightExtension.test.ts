@@ -225,6 +225,67 @@ describe("applyMentionJumpHighlight — one-shot set + timer-based clear (FR-8)"
       ),
     ).toEqual([{ from: 40, to: 45, class: MENTION_JUMP_HIGHLIGHT_CLASS }]);
   });
+
+  /**
+   * Regression test for 2e2c146e: a second call before the first call's timer
+   * fires must not have its own flash cut short by the first call's now-stale
+   * clear timer. Before that fix, the first call's `setTimeout` kept running
+   * after the second call replaced the decoration, and cleared it at
+   * "first-call time + duration" instead of "second-call time + duration" —
+   * i.e. too early, cutting the second flash short by however much time had
+   * elapsed between the two calls.
+   */
+  it("a second call before the first's timer fires cancels that stale timer, so the second flash runs its own full duration (regression: 2e2c146e)", () => {
+    const doc = docFromText("Aria walked into the harbor and found Reeve.");
+    const plugins = buildPlugins();
+    const state = EditorState.create({ doc, schema, plugins });
+    const view = createMockView(state);
+
+    applyMentionJumpHighlight(view, { from: 1, to: 5 }, 2000);
+
+    // 300ms later — well before the first call's 2000ms timer — a second
+    // click lands on a different span.
+    vi.advanceTimersByTime(300);
+    applyMentionJumpHighlight(view, { from: 40, to: 45 }, 2000);
+
+    // At "first-call time + 2000ms" (i.e. 1700ms after the second call), the
+    // buggy behavior cleared the decoration here. The fix must not.
+    vi.advanceTimersByTime(1700);
+    expect(
+      decorationRanges(
+        MENTION_JUMP_HIGHLIGHT_KEY.getState(view.state) as DecorationSet,
+      ),
+    ).toEqual([{ from: 40, to: 45, class: MENTION_JUMP_HIGHLIGHT_CLASS }]);
+
+    // The second flash only clears once its own full 2000ms has elapsed.
+    vi.advanceTimersByTime(299);
+    expect(
+      decorationRanges(
+        MENTION_JUMP_HIGHLIGHT_KEY.getState(view.state) as DecorationSet,
+      ),
+    ).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(
+      decorationRanges(
+        MENTION_JUMP_HIGHLIGHT_KEY.getState(view.state) as DecorationSet,
+      ),
+    ).toEqual([]);
+  });
+
+  it("a second call before the first's timer fires cancels the first's pending setTimeout (regression: 2e2c146e)", () => {
+    const doc = docFromText("Aria walked into the harbor.");
+    const plugins = buildPlugins();
+    const state = EditorState.create({ doc, schema, plugins });
+    const view = createMockView(state);
+
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+
+    applyMentionJumpHighlight(view, { from: 1, to: 5 }, 2000);
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+
+    applyMentionJumpHighlight(view, { from: 10, to: 15 }, 2000);
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("MentionJumpHighlightExtension — no reuse/extension of EntityHighlightDecorationExtension (FR-8)", () => {
@@ -258,5 +319,49 @@ describe("MentionJumpHighlightExtension — no reuse/extension of EntityHighligh
     expect(
       importLines.some((line) => line.includes("MentionJumpHighlight")),
     ).toBe(false);
+  });
+});
+
+/**
+ * Regression test for 591975e9: `MentionJumpHighlightExtension` was written
+ * (this file's own suite above exercises its real `Plugin`/`applyMention
+ * JumpHighlight` logic in isolation) but never added to `TipTapEditor.tsx`'s
+ * `extensions: [...]` array, so `applyMentionJumpHighlight`'s dispatched
+ * transaction was a silent no-op against the real, mounted editor — nothing
+ * in the extension's own unit tests above could have caught that, since they
+ * build the plugin array directly rather than going through the real
+ * editor's configuration. Mirrors this file's own "no reuse" tests just
+ * above: a static source check, not a mounted editor — this repo's
+ * established convention for this kind of test.
+ */
+describe("MentionJumpHighlightExtension — registered in TipTapEditor's extensions (regression: 591975e9)", () => {
+  it("TipTapEditor.tsx imports MentionJumpHighlightExtension and includes it in the editor's extensions array", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const filePath = path.resolve(
+      __dirname,
+      "../../components/TipTapEditor.tsx",
+    );
+    const text = await fs.readFile(filePath, "utf-8");
+
+    const importLines = text
+      .split("\n")
+      .filter((line) => /^\s*import\b/.test(line));
+    expect(
+      importLines.some((line) =>
+        line.includes("MentionJumpHighlightExtension"),
+      ),
+    ).toBe(true);
+
+    // The extensions array itself: confirm the identifier appears as a bare
+    // entry (not just imported-and-unused) inside the `extensions: [...]`
+    // block passed to `useEditor`.
+    const extensionsBlockMatch = text.match(
+      /extensions:\s*\[([\s\S]*?)\n\s*\],/,
+    );
+    expect(extensionsBlockMatch).not.toBeNull();
+    expect(extensionsBlockMatch?.[1]).toMatch(
+      /\bMentionJumpHighlightExtension\b/,
+    );
   });
 });

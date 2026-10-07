@@ -862,6 +862,64 @@ describe("EntityMentionsSection snippet click-to-jump (Task 11)", () => {
     ).toBe(false);
   });
 
+  /**
+   * Regression test for 591975e9: ProseMirror's own `.scrollIntoView()` chain
+   * command (asserted above via `fake.scrollIntoView`) never actually scrolled
+   * the real viewport in this app's layout — `performMentionJump` also calls
+   * the native DOM `Element.scrollIntoView()` on the resolved position's own
+   * node, which every other test in this file (via `createFakeEditor`'s bare
+   * `fakeView = {}`) has no way to exercise, since `editor.view.domAtPos` is
+   * absent there and the call is optional-chained away. This test gives the
+   * fake editor a real `domAtPos` returning a real DOM node (jsdom) and
+   * asserts the native call actually happens, with the exact options
+   * `performMentionJump` passes.
+   */
+  it("also calls the native DOM scrollIntoView on the resolved position's own node, not just the ProseMirror chain command (regression: 591975e9)", async () => {
+    mockMentionedIn([
+      {
+        resourceId: "entity-aria",
+        name: "Aria",
+        snippets: ["Aria drew her own blade."],
+        offsets: [5],
+        isLinked: false,
+        isMentioned: true,
+        ambiguousWith: [[]],
+      },
+    ]);
+    const store = setupStore("entity-aria");
+
+    const fake = createFakeEditor();
+    const textNode = document.createTextNode("Aria drew her own blade.");
+    const parentEl = document.createElement("p");
+    parentEl.appendChild(textNode);
+    const nativeScrollIntoView = vi.fn();
+    parentEl.scrollIntoView = nativeScrollIntoView;
+    (fake.view as { domAtPos?: unknown }).domAtPos = vi.fn(() => ({
+      node: textNode,
+      offset: 0,
+    }));
+
+    mockedGetActiveEditor.mockReturnValue(fake.editor as never);
+    mockedResolveOffsetToPosition.mockReturnValue(7);
+    mockedIsOffsetStillAMention.mockReturnValue(true);
+
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityMentionsSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(await screen.findByText("Aria drew her own blade."));
+
+    expect(fake.scrollIntoView).toHaveBeenCalled();
+    expect(nativeScrollIntoView).toHaveBeenCalledWith({
+      block: "center",
+      behavior: "auto",
+    });
+  });
+
   it("gets the identical same-resource jump behavior for an ambiguous snippet, with no special-casing branch (FR-4)", async () => {
     mockMentionedIn([
       {
