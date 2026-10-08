@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { test, expect, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -35,6 +35,8 @@ test("CLI save-from-resource captures a resource as a template", async () => {
       name: "Seed",
       type: "text",
       plainText: "Seed body",
+      userMetadata: { status: "draft" },
+      resourceSubtype: "scene",
     } as any);
     const created = (await createResourceFromTemplate(tmp, "seed-tpl", {
       name: "A Resource",
@@ -61,6 +63,60 @@ test("CLI save-from-resource captures a resource as a template", async () => {
     const parsed = JSON.parse(raw);
     expect(parsed.id).toBe(tplId);
     expect(parsed.name).toBe("From CLI");
+    // Feature 73 (FR-16/FR-17): explicit key set, body from the app layout,
+    // subtype as a top-level key, no placement or identity fields.
+    expect(Object.keys(parsed).sort()).toEqual([
+      "id",
+      "name",
+      "plainText",
+      "resourceSubtype",
+      "type",
+      "userMetadata",
+    ]);
+    expect(parsed.type).toBe("text");
+    expect(parsed.plainText).toBe("Seed body");
+    expect(parsed.resourceSubtype).toBe("scene");
+    expect(parsed.userMetadata).toEqual({ status: "draft" });
+  });
+});
+
+test("CLI save-from-resource rejects a resource with no readable body and writes no template", async () => {
+  await withTmp(async (tmp) => {
+    await saveResourceTemplate(tmp, {
+      id: "seed-tpl",
+      name: "Seed",
+      type: "text",
+      plainText: "Seed body",
+    } as any);
+    const created = (await createResourceFromTemplate(tmp, "seed-tpl", {
+      name: "A Resource",
+    })) as any;
+    const base = path.join(tmp, "resources", created.id);
+    await fs.rm(path.join(base, "content.txt"));
+    await fs.rm(path.join(base, "content.tiptap.json"));
+
+    const errors: string[] = [];
+    const errSpy = vi.spyOn(console, "error").mockImplementation((...a) => {
+      errors.push(a.join(" "));
+    });
+    let code: number;
+    try {
+      code = await main([
+        "node",
+        "templates.ts",
+        "save-from-resource",
+        tmp,
+        created.id,
+        "from-cli-nobody",
+      ]);
+    } finally {
+      errSpy.mockRestore();
+    }
+    expect(code).toBe(2);
+    expect(errors.join("\n")).toContain(created.id);
+    await expect(
+      fs.stat(path.join(tmp, "meta", "templates", "from-cli-nobody.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
 

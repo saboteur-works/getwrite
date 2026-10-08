@@ -977,8 +977,24 @@ const CRC32_TABLE = (() => {
 })();
 
 /**
- * Create and persist a resource template based on an existing resource in the project.
- * Captures sidecar metadata and (for text resources) the file contents as `plainText`.
+ * Create and persist a resource template based on an existing text resource.
+ *
+ * Records an explicit key set: `id`, `name`, `type`, the body as `plainText`
+ * (the text of the resource's `content.txt`, or text derived from its TipTap
+ * document), `userMetadata` (only when the source has at least one key) and
+ * `resourceSubtype` (trimmed, only when present). Placement, identity, timing
+ * and entity fields (`folderId`, `orderIndex`, `slug`, `createdAt`,
+ * `wordCount`, `entityKind`, `aliases`, `wordCountGoal`,
+ * `dismissedNoiseTerms`) are never recorded. The body is plain text only:
+ * formatting is not preserved.
+ *
+ * Every read and check completes before the template is written, so a
+ * rejection leaves no template behind.
+ *
+ * @throws {Error} when the sidecar is missing, its `type` is not `"text"`, its
+ *   `resourceSubtype` is present but not a non-blank string, no body can be
+ *   read, or the composed template fails `ResourceTemplateSchema`.
+ * @throws a locked-access error from the body read, unchanged.
  */
 export async function saveResourceTemplateFromResource(
   projectRoot: string,
@@ -991,47 +1007,59 @@ export async function saveResourceTemplateFromResource(
     throw new Error(`sidecar metadata for resource ${resourceId} not found`);
   }
 
-  // determine type (prefer sidecar.type)
-  const type = (meta.type as ResourceType) ?? "text";
-
-  // locate the resource file if present
-  let plainText: string | undefined = undefined;
-  try {
-    const entries = await readdir(RESOURCES_DIR(projectRoot));
-    for (const e of entries) {
-      if (e.includes(resourceId)) {
-        const p = path.join(RESOURCES_DIR(projectRoot), e);
-        if (type === "text") {
-          try {
-            plainText = await readFile(p, "utf8");
-          } catch (_) {
-            plainText = undefined;
-          }
-        }
-        break;
-      }
-    }
-  } catch (_) {
-    // ignore missing resources dir
+  const type: unknown = meta.type;
+  if (type !== "text") {
+    throw new Error(
+      `Cannot save resource ${resourceId} as a template: only text resources are supported, but its type is ${
+        typeof type === "string" ? `"${type}"` : "missing or not a string"
+      }.`,
+    );
   }
 
-  // Compose template; copy metadata but avoid embedding volatile fields like id/createdAt
-  const {
-    id: _id,
-    createdAt: _created,
-    ...restMeta
-  } = meta as Record<string, unknown>;
+  const rawSubtype: unknown = meta.resourceSubtype;
+  let resourceSubtype: string | undefined;
+  if (rawSubtype !== undefined) {
+    if (typeof rawSubtype !== "string" || rawSubtype.trim() === "") {
+      throw new Error(
+        `Resource ${resourceId} has an invalid resourceSubtype: expected a non-blank string.`,
+      );
+    }
+    resourceSubtype = rawSubtype.trim();
+  }
+
+  // loadResourceContent returns {} when both content files are missing and
+  // swallows non-locked read errors, so absence of a body is checked here.
+  const { plainText } = await loadResourceContent(projectRoot, resourceId);
+  if (plainText === undefined) {
+    throw new Error(
+      `Cannot save resource ${resourceId} as a template: its body could not be read.`,
+    );
+  }
+
+  const rawUserMetadata: unknown = meta.userMetadata;
+  const hasUserMetadata =
+    typeof rawUserMetadata === "object" &&
+    rawUserMetadata !== null &&
+    !Array.isArray(rawUserMetadata) &&
+    Object.keys(rawUserMetadata).length > 0;
 
   const tpl: ResourceTemplate = {
     id: templateId,
     name: opts?.name ?? (meta.name as string) ?? templateId,
-    type,
-    folderId: (meta.folderId as UUID) ?? null,
-    userMetadata: Object.keys(restMeta).length
-      ? (restMeta as Record<string, MetadataValue>)
-      : undefined,
-    plainText: plainText,
+    type: "text",
+    plainText,
+    ...(hasUserMetadata
+      ? { userMetadata: rawUserMetadata as Record<string, MetadataValue> }
+      : {}),
+    ...(resourceSubtype !== undefined ? { resourceSubtype } : {}),
   };
+
+  const validation = validateTemplate(tpl);
+  if (!validation.valid) {
+    throw new Error(
+      `Cannot save resource ${resourceId} as a template: ${(validation.errors ?? []).join("; ")}`,
+    );
+  }
 
   await saveResourceTemplate(projectRoot, tpl);
 }

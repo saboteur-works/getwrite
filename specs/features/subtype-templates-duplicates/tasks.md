@@ -94,7 +94,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 5
 **Notes:** Satisfies FR-16, FR-17, FR-18, FR-19, FR-33 (save). Depends on Task 6 only because both edit `resource-templates.ts` and `resource-templates.test.ts`. Known limitation, NOT filtered and not to be "fixed": a source's `userMetadata` may hold `resource-ref` or `multi-resource-ref` ids of other resources; they are copied as recorded. The body is plain text only (RQ-11): paragraph breaks survive; marks, headings and lists are flattened; `hardBreak` contributes no text so the two sides join; trailing blank paragraphs are dropped. Assert what `tiptapToPlainText` actually produces for one multi-paragraph fixture and state it as observed; do not add rich-text capture. `loadResourceContent` swallows non-locked read errors and returns `{}` when both files are missing, so the explicit undefined check is required.
 **POS:** task_ba959dc8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: CLI: register `templates save-from-resource`; command-level tests
 **What:** Register `templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` on the shipped commander group and cover save-from-resource, create, duplicate, list and the encrypted-project guard through the registered commands.

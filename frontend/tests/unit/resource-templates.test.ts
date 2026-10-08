@@ -1,7 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+
+vi.mock("../../src/lib/tiptap-utils", async (orig) => {
+  const actual = await orig<typeof import("../../src/lib/tiptap-utils")>();
+  return { ...actual, loadResourceContent: vi.fn(actual.loadResourceContent) };
+});
 
 import {
   saveResourceTemplate,
@@ -12,7 +17,17 @@ import {
 import { saveResourceTemplateFromResource } from "../../src/lib/models/resource-templates";
 import { createAndAssertProject } from "./helpers/project-creator";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
-import { readSidecar } from "../../src/lib/models/sidecar";
+import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
+import {
+  createResourceCore,
+  updateSidecarCore,
+} from "../../src/lib/models/resource-crud-core";
+import { generateUUID } from "../../src/lib/models/uuid";
+import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import { ResourceTemplateSchema } from "../../src/lib/models/schemas";
+import { loadResourceContent } from "../../src/lib/tiptap-utils";
+import { tiptapToPlainText } from "../../src/lib/tiptap-text";
+import type { MetadataValue, TipTapDocument } from "../../src/lib/models/types";
 import { removeDirRetry } from "./helpers/fs-utils";
 import { loadProjectFromDisk } from "../../src/lib/models/project-loader";
 import { getLocalResources } from "../../src/lib/models/resource-persistence";
@@ -1136,5 +1151,410 @@ describe("models/resource-templates — createResourceFromTemplate on the app pe
     } finally {
       await removeDirRetry(tmp);
     }
+  });
+});
+
+describe("models/resource-templates — saveResourceTemplateFromResource (Feature 73, Task 7)", () => {
+  let projectsDir: string;
+  let projectId: string;
+  let projectRoot: string;
+  let originalEnv: string | undefined;
+
+  beforeEach(async () => {
+    originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-save-tpl-"));
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    projectId = generateUUID();
+    projectRoot = path.join(projectsDir, projectId);
+    await createAndAssertProject(NOVEL_SPEC_PATH, {
+      projectRoot,
+      name: "Save Template Test",
+    });
+    await flushIndexer();
+  });
+
+  afterEach(async () => {
+    vi.mocked(loadResourceContent).mockClear();
+    if (originalEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+    await removeDirRetry(projectsDir);
+  });
+
+  const templatePath = (id: string): string =>
+    path.join(projectRoot, "meta", "templates", `${id}.json`);
+
+  async function readTemplate(id: string): Promise<Record<string, unknown>> {
+    return JSON.parse(await fs.readFile(templatePath(id), "utf8")) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  async function expectNoTemplate(id: string): Promise<void> {
+    await expect(fs.stat(templatePath(id))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  }
+
+  async function sidecarRecord(
+    id: string,
+  ): Promise<Record<string, MetadataValue>> {
+    const meta = await readSidecar(projectRoot, id);
+    if (!meta) throw new Error(`missing sidecar ${id}`);
+    return meta as Record<string, MetadataValue>;
+  }
+
+  async function removeContentFiles(id: string): Promise<void> {
+    const base = path.join(projectRoot, "resources", id);
+    await fs.rm(path.join(base, "content.txt"));
+    await fs.rm(path.join(base, "content.tiptap.json"));
+  }
+
+  const EXTRA_SIDECAR_KEYS = {
+    entityKind: "character",
+    aliases: ["Al", "Alice"],
+    wordCountGoal: 500,
+    dismissedNoiseTerms: ["al"],
+  };
+
+  /** App-created text source carrying every field the capture must drop. */
+  async function makeRichSource(): Promise<string> {
+    const folder = await createResourceCore(projectId, {
+      type: "folder",
+      name: "Chapters",
+    });
+    const created = await createResourceCore(projectId, {
+      type: "text",
+      name: "Alice Source",
+      folderId: folder.id,
+      userMetadata: { status: "draft", mood: "calm" },
+      text: { plainText: "Alice walked in.\n\nThen she sat." },
+    });
+    await updateSidecarCore(projectId, created.id, {
+      resourceSubtype: "scene",
+      ...EXTRA_SIDECAR_KEYS,
+    });
+    await flushIndexer();
+    return created.id;
+  }
+
+  async function makePlainSource(plainText = "body"): Promise<string> {
+    const created = await createResourceCore(projectId, {
+      type: "text",
+      name: "Plain Source",
+      text: { plainText },
+    });
+    await flushIndexer();
+    return created.id;
+  }
+
+  const DROPPED_KEYS = [
+    "folderId",
+    "orderIndex",
+    "slug",
+    "createdAt",
+    "wordCount",
+    "entityKind",
+    "aliases",
+    "wordCountGoal",
+    "dismissedNoiseTerms",
+  ];
+
+  it("FR-16: the saved template has exactly the explicit key set and none of the dropped keys", async () => {
+    const id = await makeRichSource();
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-rich");
+    const tpl = await readTemplate("tpl-rich");
+
+    expect(Object.keys(tpl).sort()).toEqual(
+      [
+        "id",
+        "name",
+        "type",
+        "plainText",
+        "userMetadata",
+        "resourceSubtype",
+      ].sort(),
+    );
+    expect(tpl.id).toBe("tpl-rich");
+    expect(tpl.type).toBe("text");
+    expect(tpl.resourceSubtype).toBe("scene");
+    expect(tpl.userMetadata).toEqual({ status: "draft", mood: "calm" });
+    const inner = Object.keys(tpl.userMetadata as Record<string, unknown>);
+    for (const key of DROPPED_KEYS) {
+      expect(tpl).not.toHaveProperty(key);
+      expect(inner).not.toContain(key);
+    }
+    expect(inner).not.toContain("resourceSubtype");
+  });
+
+  it("FR-16: name is the source name by default and --name when given", async () => {
+    const id = await makePlainSource();
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-default");
+    expect((await readTemplate("tpl-default")).name).toBe("Plain Source");
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-named", {
+      name: "Custom Name",
+    });
+    expect((await readTemplate("tpl-named")).name).toBe("Custom Name");
+  });
+
+  it("FR-16: userMetadata and resourceSubtype keys are absent when the source has none", async () => {
+    const id = await makePlainSource();
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-bare");
+    const tpl = await readTemplate("tpl-bare");
+    expect(Object.keys(tpl).sort()).toEqual(
+      ["id", "name", "type", "plainText"].sort(),
+    );
+  });
+
+  it("FR-16: userMetadata is absent when the source's userMetadata is an empty object", async () => {
+    const id = await makePlainSource();
+    await writeSidecar(projectRoot, id, {
+      ...(await sidecarRecord(id)),
+      userMetadata: {},
+    });
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-empty-meta");
+    expect(await readTemplate("tpl-empty-meta")).not.toHaveProperty(
+      "userMetadata",
+    );
+  });
+
+  it("FR-16: a padded sidecar resourceSubtype is saved trimmed", async () => {
+    const id = await makePlainSource();
+    await writeSidecar(projectRoot, id, {
+      ...(await sidecarRecord(id)),
+      resourceSubtype: "  scene ",
+    });
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-trim");
+    expect((await readTemplate("tpl-trim")).resourceSubtype).toBe("scene");
+  });
+
+  it("FR-16: the saved template passes ResourceTemplateSchema", async () => {
+    const id = await makeRichSource();
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-schema");
+    const parsed = ResourceTemplateSchema.safeParse(
+      await readTemplate("tpl-schema"),
+    );
+    expect(parsed.success).toBe(true);
+  });
+
+  it("FR-17: the body equals the text of the source's content.txt", async () => {
+    const id = await makeRichSource();
+    const onDisk = await fs.readFile(
+      path.join(projectRoot, "resources", id, "content.txt"),
+      "utf8",
+    );
+    expect(onDisk).toBe("Alice walked in.\n\nThen she sat.");
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-body");
+    expect((await readTemplate("tpl-body")).plainText).toBe(onDisk);
+  });
+
+  it("RQ-11: a multi-paragraph rich document is captured as exactly what content.txt holds (plain text, observed)", async () => {
+    const richDoc: TipTapDocument = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "First line" }] },
+        { type: "paragraph", content: [] },
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [{ type: "text", text: "Title" }],
+        },
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Bold ", marks: [{ type: "bold" }] },
+            { type: "text", text: "plain" },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "a" },
+            { type: "hardBreak" },
+            { type: "text", text: "b" },
+          ],
+        },
+        { type: "paragraph", content: [] },
+        { type: "paragraph", content: [] },
+      ],
+    };
+    // The app persists content.txt as tiptapToPlainText(doc) on every save.
+    const created = await createResourceCore(projectId, {
+      type: "text",
+      name: "Rich",
+      text: { tiptap: richDoc, plainText: tiptapToPlainText(richDoc) },
+    });
+    await flushIndexer();
+    const onDisk = await fs.readFile(
+      path.join(projectRoot, "resources", created.id, "content.txt"),
+      "utf8",
+    );
+    await saveResourceTemplateFromResource(
+      projectRoot,
+      created.id,
+      "tpl-rich-doc",
+    );
+    const body = (await readTemplate("tpl-rich-doc")).plainText;
+    expect(body).toBe(onDisk);
+    expect(body).toBe("First line\n\nTitle\nBold plain\nab");
+  });
+
+  it("FR-17: when both content files are missing it fails naming the resource and writes no template", async () => {
+    const id = await makePlainSource();
+    await removeContentFiles(id);
+    await expect(
+      saveResourceTemplateFromResource(projectRoot, id, "tpl-nobody"),
+    ).rejects.toThrow(id);
+    await expectNoTemplate("tpl-nobody");
+  });
+
+  it("FR-18: an unreadable body fails naming the resource and writes no template", async () => {
+    const id = await makePlainSource();
+    await removeContentFiles(id);
+    await fs.mkdir(path.join(projectRoot, "resources", id, "content.txt"));
+    await expect(
+      saveResourceTemplateFromResource(projectRoot, id, "tpl-unreadable"),
+    ).rejects.toThrow(id);
+    await expectNoTemplate("tpl-unreadable");
+  });
+
+  it("FR-17: a locked-access error from the body read propagates and writes no template", async () => {
+    const id = await makePlainSource();
+    vi.mocked(loadResourceContent).mockRejectedValueOnce(
+      new ProjectLockedError(projectId),
+    );
+    await expect(
+      saveResourceTemplateFromResource(projectRoot, id, "tpl-locked"),
+    ).rejects.toBeInstanceOf(ProjectLockedError);
+    await expectNoTemplate("tpl-locked");
+  });
+
+  it("FR-18: a resource with no sidecar is rejected naming its id, writing nothing", async () => {
+    const missing = generateUUID();
+    await expect(
+      saveResourceTemplateFromResource(projectRoot, missing, "tpl-nosidecar"),
+    ).rejects.toThrow(missing);
+    await expectNoTemplate("tpl-nosidecar");
+  });
+
+  it.each(["image", "audio"] as const)(
+    "FR-18: an %s source is rejected naming the type and the resource id, writing nothing",
+    async (type) => {
+      const created = await createResourceCore(projectId, {
+        type,
+        name: "Media",
+        ...(type === "image"
+          ? { image: { file: "original.png" } }
+          : { audio: { file: "original.mp3" } }),
+      });
+      const call = saveResourceTemplateFromResource(
+        projectRoot,
+        created.id,
+        "tpl-media",
+      );
+      await expect(call).rejects.toThrow(type);
+      await expect(call).rejects.toThrow(created.id);
+      await expectNoTemplate("tpl-media");
+    },
+  );
+
+  it.each([
+    ["unknown", "banana"],
+    ["missing", undefined],
+  ] as const)(
+    "FR-18: a %s sidecar type is rejected explicitly with no default to text",
+    async (_label, badType) => {
+      const id = await makePlainSource();
+      const next = { ...(await sidecarRecord(id)) };
+      if (badType === undefined) delete next.type;
+      else next.type = badType;
+      await writeSidecar(projectRoot, id, next);
+      const call = saveResourceTemplateFromResource(
+        projectRoot,
+        id,
+        "tpl-badtype",
+      );
+      await expect(call).rejects.toThrow(id);
+      if (badType !== undefined) await expect(call).rejects.toThrow(badType);
+      await expectNoTemplate("tpl-badtype");
+    },
+  );
+
+  it.each([
+    ["blank", "   "],
+    ["non-string", 5],
+    ["null", null],
+  ] as const)(
+    "FR-18: a present-but-invalid (%s) resourceSubtype is rejected naming the field and the resource id",
+    async (_label, bad) => {
+      const id = await makePlainSource();
+      await writeSidecar(projectRoot, id, {
+        ...(await sidecarRecord(id)),
+        resourceSubtype: bad as unknown as MetadataValue,
+      });
+      const call = saveResourceTemplateFromResource(
+        projectRoot,
+        id,
+        "tpl-badsubtype",
+      );
+      await expect(call).rejects.toThrow(/resourceSubtype/);
+      await expect(call).rejects.toThrow(id);
+      await expectNoTemplate("tpl-badsubtype");
+    },
+  );
+
+  it("FR-18: a composed template that fails ResourceTemplateSchema is rejected, writing nothing", async () => {
+    const id = await makePlainSource();
+    await writeSidecar(projectRoot, id, {
+      ...(await sidecarRecord(id)),
+      name: 5 as unknown as MetadataValue,
+    });
+    await expect(
+      saveResourceTemplateFromResource(projectRoot, id, "tpl-badschema"),
+    ).rejects.toThrow(/name/);
+    await expectNoTemplate("tpl-badschema");
+  });
+
+  it("FR-33: a failed read leaves an already-saved template untouched", async () => {
+    const id = await makePlainSource();
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-keep", {
+      name: "Original",
+    });
+    const before = await fs.readFile(templatePath("tpl-keep"), "utf8");
+    await removeContentFiles(id);
+    await expect(
+      saveResourceTemplateFromResource(projectRoot, id, "tpl-keep", {
+        name: "Changed",
+      }),
+    ).rejects.toThrow(id);
+    expect(await fs.readFile(templatePath("tpl-keep"), "utf8")).toBe(before);
+  });
+
+  it("FR-19: save then create round-trips body, userMetadata and subtype, with a new identity and none of the entity fields", async () => {
+    const id = await makeRichSource();
+    const source = await sidecarRecord(id);
+    await saveResourceTemplateFromResource(projectRoot, id, "tpl-trip", {
+      name: "Trip Template",
+    });
+    const created = await createResourceFromTemplate(projectRoot, "tpl-trip");
+    if (!("id" in created)) throw new Error("expected a created resource");
+    await flushIndexer();
+
+    const copy = await sidecarRecord(created.id);
+    expect(created.id).not.toBe(id);
+    expect(copy.createdAt).not.toBe(source.createdAt);
+    expect(copy.userMetadata).toEqual(source.userMetadata);
+    expect(copy.resourceSubtype).toBe("scene");
+    for (const key of Object.keys(EXTRA_SIDECAR_KEYS)) {
+      expect(copy).not.toHaveProperty(key);
+    }
+    expect(copy.name).toBe("Trip Template");
+    expect(copy.name).not.toBe(source.name);
+    const body = await fs.readFile(
+      path.join(projectRoot, "resources", created.id, "content.txt"),
+      "utf8",
+    );
+    expect(body).toBe("Alice walked in.\n\nThen she sat.");
+    await expectLoadableTextResource(projectRoot, created.id, body);
   });
 });
