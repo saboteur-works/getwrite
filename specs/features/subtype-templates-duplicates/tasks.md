@@ -64,7 +64,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 8
 **Notes:** Satisfies FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10 (code half), FR-11, FR-12 (code half), FR-26 (template tests), FR-33 (template creation). Largest task, kept whole because the dry-run, the real path and the existing-test updates cannot be separated without leaving the suite red. Order inside the function: load template → type check → subtype check → folder-existence check (`readFolderTree(<projectRoot>/folders)`, a descriptor with that id) → sibling listing from `getLocalResources` plus `readFolderTree` (effective parent: `parentId ?? folderId ?? null` for a folder, `folderId ?? null` for a resource) → `createResourceOfType` (schema parse) → set `resourceSubtype` on the object after `createResourceOfType` returns (the factory must keep ignoring a request's key) → only then the first write. The `cli/tests/templates-*.test.ts` files that import `main` from `cli/src/templates.ts` test the UNBUNDLED helper set; they are model-level evidence, not evidence about the shipped binary. If a bare-temp-dir test cannot meet the no-`project.json` requirement, move it to a created project deliberately and say so. This task owns `resource-templates.ts` and `resource-templates.test.ts` until Task 6.
 **POS:** task_a672a3a3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Editor-level autosave test for a real copy, and its negative control
 **What:** Extend the existing jsdom autosave integration test with a case seeded from the real output of `copyResourceCore` and a negative control with no revision.

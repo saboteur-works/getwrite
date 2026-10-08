@@ -27,11 +27,16 @@ import {
 } from "./io";
 import path from "node:path";
 import { generateUUID } from "./uuid";
+import { ZodError } from "zod";
+import { createResourceOfType } from "./resource-factory";
 import {
-  createTextResource,
-  createImageResource,
-  createAudioResource,
-} from "./resource-factory";
+  buildResourceSidecarData,
+  getLocalResources,
+} from "./resource-persistence";
+import { writeResourceWithInitialRevision } from "./resource-initial-revision";
+import { revisionDir } from "./revision";
+import { plainTextToTipTapDocument } from "./tiptap-doc";
+import { readFolderTree } from "./folder-utils";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
 import {
@@ -221,9 +226,13 @@ export async function inspectResourceTemplate(
 /**
  * Instantiate a resource from a saved template.
  *
- * Supports `dryRun` mode which returns planned filesystem writes without
- * performing them. When performing a real creation this function writes
- * resource files and its sidecar and returns the created resource model.
+ * Text templates only: image, audio and unrecognised types are rejected. A real
+ * creation persists through the app's own path (`resources/<id>/` content
+ * files, the full sidecar including the template's `resourceSubtype`, and an
+ * initial canonical revision), placing the resource in the template's folder at
+ * the end of its siblings. `dryRun` returns the five planned writes without
+ * performing any, after the same validation and reads as a real run. All
+ * validation and reads complete before the first write.
  *
  * @param projectRoot - project root path
  * @param templateId - template identifier
@@ -244,9 +253,7 @@ export async function createResourceFromTemplate(
     vars?: Record<string, string> | string;
     dryRun?: boolean;
   },
-): Promise<
-  TextResource | ImageResource | AudioResource | TemplateCreatePreview
-> {
+): Promise<TextResource | TemplateCreatePreview> {
   const tmpl = await loadResourceTemplate(projectRoot, templateId);
 
   const vars: Record<string, string> | undefined =
@@ -278,95 +285,166 @@ export async function createResourceFromTemplate(
   const name = (opts?.name ?? tmpl.name) as string;
   const appliedName = (applyVars(name) as string) ?? name;
 
+  // Every check and pre-write read happens before the first write (FR-33).
+  assertSupportedTemplateType(tmpl);
+  const subtype = resolveTemplateSubtype(tmpl);
+  const placement = await resolveTemplatePlacement(projectRoot, tmpl);
+
+  const res = createResourceOfType("text", {
+    type: "text",
+    name: appliedName,
+    folderId: placement.folderId,
+    orderIndex: placement.orderIndex,
+    userMetadata: applyVars(tmpl.userMetadata) as
+      | Record<string, MetadataValue>
+      | undefined,
+    text: { plainText: (applyVars(tmpl.plainText ?? "") as string) ?? "" },
+  }) as TextResource;
+  // The factory deliberately ignores a request's subtype, so set it here.
+  if (subtype !== undefined) res.resourceSubtype = subtype;
+
   await mkdir(RESOURCES_DIR(projectRoot), { recursive: true });
 
-  const plannedWrites: Array<{ path: string; content: string | null }> = [];
-
-  if (tmpl.type === "text") {
-    const res = createTextResource({
-      name: appliedName,
-      folderId: tmpl.folderId ?? null,
-      plainText: (applyVars(tmpl.plainText ?? "") as string) ?? "",
-      userMetadata: tmpl.userMetadata,
-    });
-    const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.txt`;
-    const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
-
-    const content = res.plainText ?? "";
-    const sidecar = JSON.stringify(
-      { id: res.id, name: res.name, type: res.type, createdAt: res.createdAt },
-      null,
-      2,
-    );
-
-    if (opts?.dryRun) {
-      plannedWrites.push({ path: filePath, content });
-      plannedWrites.push({
-        path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
-        content: sidecar,
-      });
-      return { plannedWrites, resourcePreview: res };
-    }
-
-    await writeFile(filePath, content, "utf8");
-    await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
-    return res;
-  }
-
-  if (tmpl.type === "image") {
-    const res = createImageResource({
-      name: appliedName,
-      folderId: tmpl.folderId ?? null,
-      userMetadata: tmpl.userMetadata,
-    });
-    const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.img`;
-    const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
-    const sidecar = JSON.stringify(
-      { id: res.id, name: res.name, type: res.type, createdAt: res.createdAt },
-      null,
-      2,
-    );
-
-    if (opts?.dryRun) {
-      plannedWrites.push({ path: filePath, content: "" });
-      plannedWrites.push({
-        path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
-        content: sidecar,
-      });
-      return { plannedWrites, resourcePreview: res };
-    }
-
-    await writeFile(filePath, "", "utf8");
-    await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
-    return res;
-  }
-
-  // audio
-  const res = createAudioResource({
-    name: appliedName,
-    folderId: tmpl.folderId ?? null,
-    userMetadata: tmpl.userMetadata,
-  });
-  const filename = `${res.slug ?? appliedName.replace(/\s+/g, "-")}-${res.id}.aud`;
-  const filePath = path.join(RESOURCES_DIR(projectRoot), filename);
-  const sidecar = JSON.stringify(
-    { id: res.id, name: res.name, type: res.type, createdAt: res.createdAt },
-    null,
-    2,
-  );
-
   if (opts?.dryRun) {
-    plannedWrites.push({ path: filePath, content: "" });
-    plannedWrites.push({
-      path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
-      content: sidecar,
-    });
-    return { plannedWrites, resourcePreview: res };
+    return {
+      plannedWrites: planTextCreationWrites(projectRoot, res),
+      resourcePreview: res,
+    };
   }
 
-  await writeFile(filePath, "", "utf8");
-  await writeSidecar(projectRoot, res.id, JSON.parse(sidecar));
+  await writeResourceWithInitialRevision(projectRoot, res);
   return res;
+}
+
+/**
+ * Rejects every template type other than `text`: media templates would create
+ * a resource with no file, and an unrecognised type must not fall through to a
+ * media branch.
+ */
+function assertSupportedTemplateType(tmpl: ResourceTemplate): void {
+  if (tmpl.type === "text") return;
+  const type = String(tmpl.type);
+  if (tmpl.type === "image" || tmpl.type === "audio") {
+    throw new Error(
+      `Template "${tmpl.id}" has type "${type}"; only text templates can create resources.`,
+    );
+  }
+  throw new Error(
+    `Template "${tmpl.id}" has unknown type "${type}"; only text templates can create resources.`,
+  );
+}
+
+/**
+ * Returns the template's trimmed `resourceSubtype`, `undefined` when the key is
+ * absent, and throws when it is present but not a non-blank string.
+ */
+function resolveTemplateSubtype(tmpl: ResourceTemplate): string | undefined {
+  const raw: unknown = tmpl.resourceSubtype;
+  if (raw === undefined) return undefined;
+  if (typeof raw !== "string" || raw.trim() === "") {
+    throw new Error(
+      `Template "${tmpl.id}" has an invalid resourceSubtype: expected a non-blank string.`,
+    );
+  }
+  return raw.trim();
+}
+
+/** Minimal shape read from a folder descriptor for placement. */
+type FolderDescriptorLike = {
+  id?: unknown;
+  parentId?: unknown;
+  folderId?: unknown;
+  orderIndex?: unknown;
+};
+
+/** Normalises an unknown parent reference to a string id or `null`. */
+function parentKey(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Reads persisted folders and resources (never through `loadProjectFromDisk`,
+ * which migrates and rewrites `project.json`) to decide where a template's
+ * resource goes: validates the template's folder exists, and computes the
+ * `orderIndex` that appends it after its siblings.
+ *
+ * Resources and folders share one ordering space per parent. The effective
+ * parent is `parentId ?? folderId ?? null` for a folder and `folderId ?? null`
+ * for a resource.
+ *
+ * @throws {Error} when the template names a folder that does not exist, or the
+ * project holds a resource sidecar missing required fields.
+ */
+async function resolveTemplatePlacement(
+  projectRoot: string,
+  tmpl: ResourceTemplate,
+): Promise<{ folderId: string | null; orderIndex: number }> {
+  const folders = (await readFolderTree(
+    path.join(projectRoot, "folders"),
+  )) as FolderDescriptorLike[];
+  const folderId = tmpl.folderId ?? null;
+  if (folderId !== null && !folders.some((f) => f?.id === folderId)) {
+    throw new Error(
+      `Template "${tmpl.id}" names folder "${String(folderId)}", which does not exist in this project.`,
+    );
+  }
+
+  let resources: AnyResource[];
+  try {
+    resources = await getLocalResources(projectRoot);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      throw new Error(
+        `Cannot place a new resource: a resource sidecar in this project is missing required fields, which an older "templates create" produced. Remove that sidecar (meta/resource-<id>.meta.json) and its flat file under resources/, then retry.`,
+        { cause: err },
+      );
+    }
+    throw err;
+  }
+
+  const siblingOrders: number[] = [];
+  for (const r of resources) {
+    if (parentKey(r.folderId) === folderId) siblingOrders.push(r.orderIndex);
+  }
+  for (const f of folders) {
+    const parent = parentKey(f?.parentId) ?? parentKey(f?.folderId);
+    if (parent === folderId && typeof f?.orderIndex === "number") {
+      siblingOrders.push(f.orderIndex);
+    }
+  }
+  const orderIndex = siblingOrders.length ? Math.max(...siblingOrders) + 1 : 0;
+  return { folderId, orderIndex };
+}
+
+/**
+ * The five writes a real text creation performs (content files, sidecar, and
+ * the initial canonical revision), for the dry run. The sidecar content is the
+ * exact JSON `writeSidecar` stores; the revision's metadata carries a generated
+ * id and timestamp, so it is reported as `null`.
+ */
+function planTextCreationWrites(
+  projectRoot: string,
+  res: TextResource,
+): Array<{ path: string; content: string | null }> {
+  const doc = res.tiptap ?? plainTextToTipTapDocument(res.plainText ?? "");
+  const contentDir = path.join(RESOURCES_DIR(projectRoot), res.id);
+  const revDir = revisionDir(projectRoot, res.id, 1);
+  return [
+    {
+      path: path.join(contentDir, "content.tiptap.json"),
+      content: JSON.stringify(doc, null, 2),
+    },
+    {
+      path: path.join(contentDir, "content.txt"),
+      content: res.plainText ?? "",
+    },
+    {
+      path: path.join(projectRoot, "meta", `resource-${res.id}.meta.json`),
+      content: JSON.stringify(buildResourceSidecarData(res), null, 2),
+    },
+    { path: path.join(revDir, "content.bin"), content: JSON.stringify(doc) },
+    { path: path.join(revDir, "metadata.json"), content: null },
+  ];
 }
 
 /**
