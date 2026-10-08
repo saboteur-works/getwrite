@@ -19,6 +19,8 @@ import projectsReducer, {
   updateProjectFeatures,
   updateProjectOrganizerCardBody,
   updateProjectRelationshipTypes,
+  updateProjectSubtypes,
+  selectActiveProjectSubtypes,
   selectActiveProjectFeatures,
   selectActiveProjectOrganizerCardBody,
   selectActiveProjectDirectoryId,
@@ -480,6 +482,93 @@ describe("projectsSlice — updateProjectRelationshipTypes thunk (FR-19)", () =>
   });
 });
 
+describe("projectsSlice — subtypes (Feature 72, FR-1/FR-3/FR-4)", () => {
+  it("selectActiveProjectSubtypes returns the stored list verbatim", () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, subtypes: ["Scene", "Chapter"] });
+    expect(selectActiveProjectSubtypes(store.getState())).toEqual([
+      "Scene",
+      "Chapter",
+    ]);
+  });
+
+  it("selectActiveProjectSubtypes returns [] for an absent list and when no project is selected", () => {
+    const store = makeStore();
+    expect(selectActiveProjectSubtypes(store.getState())).toEqual([]);
+    seedProject(store, { editorConfig: {} });
+    expect(selectActiveProjectSubtypes(store.getState())).toEqual([]);
+  });
+
+  it("updateProjectSubtypes posts the list and mirrors the returned list into the store", async () => {
+    const store = makeStore();
+    seedProject(store);
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ features: {}, subtypes: ["Scene", "Chapter"] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await store.dispatch(
+      updateProjectSubtypes({
+        projectId: "project-1",
+        subtypes: [" Scene ", "Chapter"],
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: "project-1",
+        subtypes: [" Scene ", "Chapter"],
+      }),
+    });
+    expect(selectActiveProjectSubtypes(store.getState())).toEqual([
+      "Scene",
+      "Chapter",
+    ]);
+  });
+
+  it("rejected updateProjectSubtypes leaves the stored list untouched and exposes the message", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, subtypes: ["Scene"] });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Duplicate subtype label" }), {
+        status: 400,
+      }),
+    );
+
+    const result = await store.dispatch(
+      updateProjectSubtypes({ projectId: "project-1", subtypes: ["a", "A"] }),
+    );
+
+    expect(result.type).toBe("projects/updateProjectSubtypes/rejected");
+    expect(result.payload).toBe("Duplicate subtype label");
+    expect(selectActiveProjectSubtypes(store.getState())).toEqual(["Scene"]);
+  });
+
+  it("another feature-config thunk's result does not erase the stored list when the server echoes it", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, subtypes: ["Scene"] });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ features: { pov: true }, subtypes: ["Scene"] }),
+        { status: 200 },
+      ),
+    );
+    await store.dispatch(
+      updateProjectFeatures({
+        projectId: "project-1",
+        features: { pov: true },
+      }),
+    );
+    expect(selectActiveProjectSubtypes(store.getState())).toEqual(["Scene"]);
+  });
+});
+
 describe("buildStoredProject", () => {
   function makeProject(config?: Project["config"]): Project {
     return {
@@ -536,6 +625,19 @@ describe("buildStoredProject", () => {
       [],
     );
     expect(stored.relationshipTypes).toEqual(["ally of", "rival of"]);
+  });
+
+  it("carries subtypes, and leaves them undefined (not []) when absent", () => {
+    expect(
+      buildStoredProject(
+        makeProject({ editorConfig: {}, subtypes: ["Scene"] }),
+        [],
+        [],
+      ).subtypes,
+    ).toEqual(["Scene"]);
+    expect(
+      buildStoredProject(makeProject({ editorConfig: {} }), [], []).subtypes,
+    ).toBeUndefined();
   });
 
   it("leaves features/organizerCardBody undefined for a project with no config", () => {

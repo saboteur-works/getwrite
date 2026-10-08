@@ -71,6 +71,15 @@ version.
   at export.
 - **Not an AI writing assistant.** No generation or rewriting features are
   in scope at any milestone in this spec.
+- **Resource subtype (FR-57 to FR-62) is deliberately narrow.** It is not
+  location- or folder-based scoping, not multi-valued (one subtype per
+  resource), not backed by a catch-all or "general" subtype, and not a merge
+  with the entity declaration (`entityKind`, FR-35). The first slice also
+  has no rename operation, cannot restrict built-in fields, does not make
+  subtype selectable in the query builder or smart folders, does not have
+  the import pipelines assign subtypes, and ships no subtype list in any
+  built-in project type (see Out of Scope (Deferred)). Owner decisions,
+  2026-10-08 (ideation; Gate 1).
 - Hosted multi-tenant access and Android are addressed only as later
   milestones (see Functional Requirements); this spec does not treat them as
   shipped even though technical foundations exist. They are pursued on a
@@ -189,6 +198,15 @@ lost work.
   so that I don't have to re-add the same invented terms project by
   project, while still being able to turn off a specific global word for
   the one project where it isn't noise. [Shipped]
+- US-25: As a writer on deadline, I want to label a resource with a subtype
+  of my own naming (for example "Scene", "Profile" or "Outline") so that the
+  project can tell what kind of thing each resource is without relying on
+  where it sits in the tree. [Next]
+- US-26: As a writer on deadline, I want to limit a custom metadata field to
+  particular subtypes so that a field that only makes sense for scenes does
+  not clutter resources that exist for outlining or character profiles,
+  while every field I have already defined keeps working as it does today.
+  [Next]
 
 ## Functional Requirements
 
@@ -945,6 +963,109 @@ lost work.
   belongs at the feature-spec rung. This requirement rides the existing
   per-project `entities` feature flag and MUST NOT introduce a flag of its
   own, consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-56): "done" for this pass is qualitative owner sign-off against a built implementation, not a predefined checklist — the feature spec and task breakdown for this requirement MUST include an explicit owner review/sign-off step rather than treating completion as self-certifiable against fixed criteria. [US-17]
+- FR-57: A writer MUST be able to assign a resource at most one **subtype**
+  — a single, free-form, writer-defined label (for example "Scene",
+  "Profile", "Outline"), not drawn from a fixed product-defined set and not
+  multi-valued — and to change or clear it. A resource with no subtype is
+  the default state. A resource's subtype MUST persist with the resource's
+  other metadata, so that moving the resource (FR-3) does not change it.
+  Subtype applies to every resource kind that has a metadata sidebar today
+  (text, image and audio), not text only. The writer chooses a resource's
+  subtype from the project's subtype list (FR-61). Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08).
+  This is new scope; no existing requirement covers it. Owner decisions
+  (ideation, 2026-10-08): scoping is by subtype and not by folder location;
+  a resource has at most one subtype; a writer who needs a straddling case
+  defines a subtype for it. Resolved (OQ-61): Owner decision, Gate 1, 2026-10-08; the evidence came from
+  code (all three resource kinds' sidecar schemas share the base that
+  carries the entity fields, and the sidebar renders schema groups for all
+  three) and the owner confirmed. The sidecar identifier is not fixed here
+  (`resourceSubtype` was the working name in ideation; the feature spec
+  fixed it as `resourceSubtype`, Owner decision, Gate 3, 2026-10-08). Constraint, not a
+  design: whatever identifier is chosen MUST NOT be able to collide with a
+  custom field's key, because queries flatten custom-field values over
+  top-level sidecar keys. [US-25]
+- FR-58: A custom metadata field definition MAY be restricted to one or more
+  subtypes, chosen where the field is defined (the schema manager, FR-20).
+  A field with no restriction MUST be presented on every resource it is
+  presented on today, exactly as before. A restricted field's control MUST
+  be presented only on a resource whose subtype is one of the field's
+  subtypes. A resource with no subtype MUST be presented only unrestricted
+  fields; there is no catch-all subtype, and an unset subtype never matches
+  a restricted field. Adding this capability MUST NOT change what any
+  existing project shows and MUST NOT require migrating any existing field
+  or resource. Only custom fields can be restricted; built-in
+  (default-schema) fields MUST NOT be restrictable in this work. The
+  existing folder-scoped group mechanism (a metadata group's optional
+  folder id) is left exactly as it is: it and subtype restriction are
+  independent, and both MUST pass for a field to be presented. Fields
+  hidden by subtype scope MUST remain fully queryable, unchanged; making
+  subtype itself selectable in the query builder or smart folders is not in
+  this slice. The Organizer card body, Organizer filters and the Timeline
+  MUST be unchanged. Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08). Owner decisions (ideation,
+  2026-10-08): the restriction is optional per field; unrestricted is the
+  default; no general bucket exists. Resolved (OQ-62, OQ-63, OQ-64, OQ-66):
+  Owner decision, Gate 1, 2026-10-08. Evidence from code, which the owner confirmed: the query evaluator
+  reads the sidecar and never consults sidebar visibility; nothing in the
+  product (no UI, importer, project type or project on disk) creates a
+  group with a folder id set, only tests and stories do, and the mechanism
+  is not retired by this work; the Timeline reads only built-in keys and no
+  custom fields, and Organizer cards and filters read stored values
+  directly. The field-definition identifier is not fixed here (`appliesTo`
+  was the working name in ideation; the feature spec fixed it as
+  `appliesTo`, Owner decision, Gate 3, 2026-10-08). [US-26]
+- FR-59: A resource's subtype MUST be independent of both its folder and its
+  entity declaration. Moving a resource between folders MUST NOT change its
+  subtype or which fields are presented for it. Declaring or un-declaring a
+  resource as an entity (FR-35) MUST NOT set, change or clear its subtype,
+  and setting a subtype MUST NOT declare it an entity. Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08).
+  Owner decisions (ideation, 2026-10-08): location-based scoping was
+  considered and rejected as fragile — moving a resource would silently
+  change its fields, a resource can be in only one folder, and it would
+  couple metadata visibility to layout; subtype and `entityKind` are
+  separate and neither implies the other. [US-25][US-26]
+- FR-60: When a resource's subtype is changed or cleared, values already
+  stored in fields that are no longer in scope MUST be kept and their
+  controls hidden; they MUST reappear if the subtype is set back, and
+  nothing is cleared. Removing a subtype from the project's list (FR-61) is
+  allowed while it is still in use, with no block and no cascade: resources
+  and field restrictions that reference the removed label keep it and keep
+  matching each other, because matching is by the label itself and not by
+  membership in the list. There is no rename operation in the first slice;
+  renaming means remove plus add, and existing resources and restrictions
+  keep the old label until the writer changes them. Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08).
+  Resolved (OQ-59, OQ-60): Owner decision, Gate 1, 2026-10-08. Known and accepted consequence: a stored
+  value hidden by subtype scope may still appear where stored values are
+  read directly (Organizer cards and filters, queries). This follows the
+  precedent in FR-9 that hiding a field does not discard its stored values
+  and matches the existing relationship-types behaviour, where removal
+  neither checks for use nor cascades (verified in code by triage). [US-26]
+- FR-61: A project MUST have its own list of known subtypes, kept on the
+  project config and managed the same way as the existing relationship-types
+  list: the writer can add, remove and reorder entries, and duplicates are
+  rejected. The list is edited in a new section of the existing "Metadata"
+  Project Settings tab, alongside the schema manager — not in the Entities
+  tab (subtype is independent of entities), not gated on the `entities`
+  flag, and with no new tab (superseded at Gate 3, 2026-10-08: Gate 1 had
+  decided on a new, dedicated "Subtypes" tab; see OQ-57). The list is what the resource's subtype control
+  (FR-57) and the field-restriction control (FR-58) choose from. A project
+  type MAY seed a new project's initial subtype list, the same way it may
+  seed statuses and relationship types, and this ships in the first slice;
+  no built-in project type ships a subtype list as part of this work, so
+  new projects created from the built-in types start with an empty list.
+  Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08). Resolved (OQ-57, OQ-58): Owner decision, Gate 1, 2026-10-08; the tab location was changed by Owner decision, Gate 3, 2026-10-08. Evidence from code,
+  which the owner confirmed: `statuses` and `relationshipTypes` are
+  optional string arrays on the project config schema, optionally seeded
+  from a project type by the project creator. Which built-in project types
+  should later ship lists is a deferred content decision (see Out of Scope
+  (Deferred)). [US-25][US-26]
+- FR-62: A resource created from a resource template, and a duplicate or
+  copy of a resource, MUST carry the source's subtype (a resource created
+  from a "Scene" template is a Scene; a duplicate keeps its original's
+  subtype). A resource created blank MUST have no subtype. The import
+  pipelines (Scrivener, DOCX and plain text) MUST NOT assign a subtype.
+  This requirement does not say whether templates and duplicate carry the
+  entity declaration today; that was not verified and is not implied by this
+  decision. Status: Not started. Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08. [US-25]
 
 ### Later Requirements
 
@@ -2343,6 +2464,56 @@ were built around.
 **Evidence:** Owner decision at Gate 1 triage, 2026-10-01, choosing the qualitative-sign-off option over the checklist or hybrid alternatives offered.
 **Impact:** FR-53.
 
+**OQ-57 (resolved): Where does a project's set of known subtypes live, and where in the UI is it edited?**
+**Resolution:** A per-project list on the project config, managed the same way as the existing relationship-types list (add, remove, reorder; duplicates rejected). The list is what the resource's subtype control and the field-restriction control choose from. Where it is edited was decided twice. Gate 1 answer (superseded): a new, dedicated "Subtypes" Project Settings tab — not the Entities tab (subtype is independent of entities) and not the Metadata tab. Gate 3 answer (current): the list editor lives in the existing "Metadata" Project Settings tab, alongside the schema manager. There is no new tab. It still is not in the Entities tab and is not gated on the `entities` flag.
+**Evidence:** Owner decision, Gate 1, 2026-10-08 (list on project config; dedicated tab). Owner decision, Gate 3, 2026-10-08 (editor in the Metadata tab, superseding the Gate 1 tab decision). Code evidence from triage, confirmed by the owner: `statuses` and `relationshipTypes` are optional string arrays on `ProjectConfigSchema` (`schemas.ts`), optionally seeded from a project type (`project-creator.ts`).
+**Impact:** FR-61, FR-57, FR-58.
+
+**OQ-58 (resolved): Can a project type seed an initial subtype list, and does that ship with the first slice or later?**
+**Resolution:** A project type MAY seed a new project's initial subtype list, the same way it may seed statuses and relationship types, and this ships in the first slice. No built-in project type ships a subtype list as part of this work; new projects from the built-in types start with an empty list. Which built-in types should later ship lists is a deferred content decision (see Out of Scope (Deferred)).
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence from triage: `project-creator.ts` copies a spec's `statuses` and `relationshipTypes` into the new project's config.
+**Impact:** FR-61; project-type specs under `getwrite-config/templates/project-types/`.
+
+**OQ-59 (resolved): What happens to a value already stored in a restricted field when the resource's subtype changes or is cleared?**
+**Resolution:** Kept but hidden. Values already stored in fields no longer in scope are kept and their controls hidden; they reappear if the subtype is set back. Nothing is cleared. Known and accepted consequence: such a stored value may still appear where stored values are read directly (Organizer cards and filters, queries).
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence from triage: `MetadataSidebar.tsx`'s `isFieldVisible` documents that hiding a field leaves the stored sidecar value untouched (the FR-9 precedent).
+**Impact:** FR-60, FR-58.
+
+**OQ-60 (resolved): What happens when a subtype is renamed or removed from the project's list while resources and field restrictions still reference it?**
+**Resolution:** There is no rename operation in the first slice. Removing a subtype from the project list is allowed while it is still in use, with no block and no cascade; resources and field restrictions that reference the removed label keep it and keep matching each other (matching is by the label itself, not by membership in the list). Renaming therefore means remove plus add, and existing resources and restrictions keep the old label until the writer changes them.
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Matches the existing relationship-types behaviour, verified in code by triage: removal there neither checks for use nor cascades.
+**Impact:** FR-60, FR-61, FR-58.
+
+**OQ-61 (resolved): Does subtype apply to all resource kinds (text, image, audio) or to text resources only?**
+**Resolution:** All resource kinds that have a metadata sidebar today (text, image, audio).
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: all three sidecar schemas share the base that carries the entity fields (`EntitySidecarFieldsSchema` via `ResourceBaseSchema`), and `MetadataSidebar.tsx` renders the schema-driven field groups for all three.
+**Impact:** FR-57, FR-58.
+
+**OQ-62 (resolved): Do fields hidden by subtype scope still participate in saved queries, smart folders and the Data view, and must subtype itself be queryable in the first slice?**
+**Resolution:** Fields hidden by subtype scope remain fully queryable, unchanged. Making subtype itself selectable in the query builder or smart folders is deferred and not in the first slice (see Out of Scope (Deferred)).
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: `query-evaluator.ts` reads the sidecar and never consults sidebar visibility. Constraint noted by triage: the eventual sidecar identifier for subtype must not be able to collide with a custom field's key, because queries flatten custom-field values over top-level sidecar keys.
+**Impact:** FR-58, FR-57, FR-10, FR-34.
+
+**OQ-63 (resolved): Can built-in (default-schema) fields be restricted by subtype, or only custom fields?**
+**Resolution:** Only custom fields can be restricted by subtype. Built-in (default-schema) fields cannot be restricted in this work.
+**Evidence:** Owner decision, Gate 1, 2026-10-08.
+**Impact:** FR-58.
+
+**OQ-64 (resolved): How does subtype scoping coexist with the metadata schema's existing folder-scoped groups?**
+**Resolution:** The pre-existing folder-scoped group mechanism (a metadata group's optional folder id) is left exactly as it is. It and subtype restriction are independent, and both must pass for a field to show. It is not retired by this work.
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: nothing in the product — no UI, importer, project type, or project on disk — creates a group with a folder id set; only tests and stories do.
+**Impact:** FR-58, FR-59.
+
+**OQ-65 (resolved): How do resource templates, copy/duplicate, create-resource and the import pipelines (Scrivener, DOCX, plain text) treat subtype?**
+**Resolution:** Resource templates and duplicate/copy carry the source's subtype (a resource created from a "Scene" template is a Scene; a duplicate keeps its original's subtype). A resource created blank has no subtype. The import pipelines do not assign a subtype. Whether templates and duplicate carry the entity declaration today was not verified and is not implied by this decision.
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence from triage: resource templates carry a `userMetadata` map (`resource-templates.ts`); nothing there is subtype-aware today.
+**Impact:** FR-62; FR-19, FR-21 and the import requirements.
+
+**OQ-66 (resolved): How do the Organizer card body, Organizer filters and the Timeline treat a field that is out of scope for a resource's subtype?**
+**Resolution:** Organizer card body, Organizer filters and Timeline are unchanged. Consistent with OQ-59.
+**Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: the Timeline reads only built-in keys and no custom fields; Organizer's `cardBody.ts` and `organizerFilters.ts` read `resource.userMetadata[field.key]` directly, without reference to sidebar visibility.
+**Impact:** FR-58; Organizer and Timeline requirements.
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -2413,3 +2584,11 @@ were built around.
   changeset) — this exists in the source tree (`cli/src/templates.ts`) but
   is not wired into the shipped `getwrite-cli` binary and is reachable only
   from tests (see FR-19).
+- Resource subtype follow-ups (FR-57 to FR-62, resolved: OQ-58, OQ-60, OQ-62,
+  OQ-63, OQ-65; Owner decision, Gate 1, 2026-10-08), deferred or excluded
+  from the first slice: a rename operation for subtypes (renaming is remove
+  plus add); restricting built-in (default-schema) fields by subtype; making
+  subtype selectable in the query builder and smart folders; the import
+  pipelines assigning a subtype; and which built-in project types should
+  ship a subtype list (no built-in type ships one yet, a deferred content
+  decision). These are deferred, not decided against.

@@ -349,7 +349,41 @@ const SIDECAR_CLEARABLE_KEYS: readonly string[] = [
   "entityKind",
   "aliases",
   "wordCountGoal",
+  "resourceSubtype",
 ];
+
+/**
+ * Thrown by {@link updateSidecarCore} when `updatedResource.resourceSubtype`
+ * is present but not a non-blank string (FR-7). Thrown before any
+ * read-modify-write occurs, so the sidecar is left unchanged.
+ */
+export class InvalidResourceSubtypeCoreError extends Error {
+  constructor() {
+    super("resourceSubtype must be a non-blank string");
+    this.name = "InvalidResourceSubtypeCoreError";
+  }
+}
+
+/**
+ * Returns `updatedResource` with `resourceSubtype` trimmed, or the same
+ * object when the key is absent. A present key whose value is not a string,
+ * or is blank after trimming, throws {@link InvalidResourceSubtypeCoreError};
+ * clearing is done via `clearKeys`, never by a blank value.
+ */
+function normalizeResourceSubtype(
+  updatedResource: Record<string, unknown>,
+): Record<string, unknown> {
+  if (
+    !Object.prototype.hasOwnProperty.call(updatedResource, "resourceSubtype")
+  ) {
+    return updatedResource;
+  }
+  const value = updatedResource.resourceSubtype;
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new InvalidResourceSubtypeCoreError();
+  }
+  return { ...updatedResource, resourceSubtype: value.trim() };
+}
 
 /**
  * Thrown by {@link updateSidecarCore} when `clearKeys` is malformed (not an
@@ -409,6 +443,7 @@ export async function updateSidecarCore(
   clearKeys?: string[],
 ): Promise<void> {
   validateClearKeys(clearKeys);
+  const update = normalizeResourceSubtype(updatedResource);
 
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
@@ -426,14 +461,12 @@ export async function updateSidecarCore(
 
   const merged: Record<string, unknown> = {
     ...(existing ?? {}),
-    ...updatedResource,
+    ...update,
     orderIndex:
-      existing?.orderIndex ??
-      (updatedResource.orderIndex as number | undefined) ??
-      0,
+      existing?.orderIndex ?? (update.orderIndex as number | undefined) ?? 0,
     folderId:
       existing?.folderId ??
-      (updatedResource.folderId as string | null | undefined) ??
+      (update.folderId as string | null | undefined) ??
       null,
   };
 

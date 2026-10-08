@@ -5,7 +5,8 @@
  * `project.json` — the `config.features` opt-in flags (Timeline, POV, Synopsis,
  * Notes, Entities), `config.organizerCardBody` (what Organizer cards render
  * as their body), and `config.relationshipTypes` (the project's
- * entity-relationship-type vocabulary, FR-19).
+ * entity-relationship-type vocabulary, FR-19), and `config.subtypes` (the
+ * project's resource-subtype list, Feature 72).
  *
  * Unlike the lock-free `editor-config` / `preferences` read-modify-writes, this
  * helper acquires the per-project lock so toggle writes cannot race the
@@ -22,6 +23,7 @@ import { PROJECT_FILENAME } from "./project-config";
 import {
   ProjectFeatureFlagsSchema,
   OrganizerCardBodyConfigSchema,
+  SubtypeListSchema,
 } from "./schemas";
 import type {
   Project,
@@ -39,6 +41,12 @@ export interface FeatureConfigUpdate {
   organizerCardBody?: OrganizerCardBodyConfig;
   /** Replacement relationship-type vocabulary. Omit to leave the existing list untouched. */
   relationshipTypes?: string[];
+  /**
+   * Replacement resource-subtype list (Feature 72). Omit to leave the existing
+   * list untouched. Blank or case-insensitively duplicate entries are rejected
+   * with a `ZodError`.
+   */
+  subtypes?: string[];
 }
 
 /** The persisted feature configuration after an update. */
@@ -46,12 +54,13 @@ export interface FeatureConfigResult {
   features: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
   relationshipTypes?: string[];
+  subtypes?: string[];
 }
 
 /**
  * Validates and persists a partial feature-configuration update to
  * `project.json`. Each provided block (`features` / `organizerCardBody` /
- * `relationshipTypes`) replaces the existing block wholesale; an omitted
+ * `relationshipTypes` / `subtypes`) replaces the existing block wholesale; an omitted
  * block is left unchanged.
  *
  * The read-modify-write runs under the project lock and updates `updatedAt`. It
@@ -87,6 +96,10 @@ export async function updateFeatureConfig(
     update.relationshipTypes !== undefined
       ? RelationshipTypesSchema.parse(update.relationshipTypes)
       : undefined;
+  const nextSubtypes =
+    update.subtypes !== undefined
+      ? SubtypeListSchema.parse(update.subtypes)
+      : undefined;
 
   const release = await acquireLock(projectRoot);
   try {
@@ -104,6 +117,9 @@ export async function updateFeatureConfig(
     if (nextRelationshipTypes !== undefined) {
       config.relationshipTypes = nextRelationshipTypes;
     }
+    if (nextSubtypes !== undefined) {
+      config.subtypes = nextSubtypes;
+    }
 
     const nextProject: Project = {
       ...project,
@@ -117,6 +133,7 @@ export async function updateFeatureConfig(
       features: config.features ?? {},
       organizerCardBody: config.organizerCardBody,
       relationshipTypes: config.relationshipTypes,
+      subtypes: config.subtypes,
     };
   } finally {
     release();

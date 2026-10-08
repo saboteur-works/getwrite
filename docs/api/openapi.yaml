@@ -141,6 +141,9 @@ components:
             type: string
         preserve:
           type: boolean
+        resourceSubtype:
+          type: string
+          description: The resource's single subtype label (Feature 72); absent when unset.
         metadata:
           type: object
           additionalProperties:
@@ -276,6 +279,11 @@ components:
           type: boolean
         maxSelections:
           type: number
+        appliesTo:
+          type: array
+          items:
+            type: string
+          description: Subtype labels the field is restricted to (Feature 72); absent means unrestricted. Custom fields only.
 
     MetadataGroup:
       type: object
@@ -828,12 +836,12 @@ paths:
         `add-field`, `remove-field`, `deprecate-field`, `clear-field`,
         `reorder-fields`, `rename-field`, `update-field-options`,
         `update-field-options-with-migration`, `update-ref-properties`,
-        `change-field-type`, `change-field-type-with-migration`, `rename-key`,
+        `update-field-applies-to`, `change-field-type`, `change-field-type-with-migration`, `rename-key`,
         `add-group`, `remove-group`, `reorder-groups`.
 
         Additional fields depend on the action (e.g. `groupId`, `fieldKey`, `field`,
         `newLabel`, `options`, `newType`, `migrations`, `group`, `newKeyOrder`,
-        `newGroupIdOrder`, `newKey`). Slug validation `/^[a-z0-9-]+$/` is applied to
+        `newGroupIdOrder`, `newKey`, `appliesTo`). Slug validation `/^[a-z0-9-]+$/` is applied to
         `add-field` and `rename-key`.
       requestBody:
         required: true
@@ -856,6 +864,7 @@ paths:
                       update-field-options,
                       update-field-options-with-migration,
                       update-ref-properties,
+                      update-field-applies-to,
                       change-field-type,
                       change-field-type-with-migration,
                       rename-key,
@@ -1833,7 +1842,9 @@ paths:
         existing sidecar). Used to persist userMetadata changes from the Metadata sidebar.
         An optional `clearKeys` array names sidecar keys to delete from the merged
         result after the merge; it is validated against a fail-closed allowlist
-        (`entityKind`, `aliases`) and rejected with 400 if it names anything else.
+        (`entityKind`, `aliases`, `wordCountGoal`, `resourceSubtype`) and rejected with 400 if it
+        names anything else. A present `resourceSubtype` in `updatedResource` that is not a
+        non-blank string is also rejected with 400.
       parameters:
         - name: resource-id
           in: path
@@ -1856,7 +1867,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: [entityKind, aliases]
+                    enum: [entityKind, aliases, wordCountGoal, resourceSubtype]
                   description: Sidecar keys to delete after the merge.
       responses:
         "200":

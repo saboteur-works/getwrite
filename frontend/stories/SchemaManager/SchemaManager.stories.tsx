@@ -29,7 +29,7 @@ export default meta;
 
 type Story = StoryObj<typeof SchemaManager>;
 
-function makeStore(schema?: MetadataSchema) {
+function makeStore(schema?: MetadataSchema, subtypes?: string[]) {
   return configureStore({
     reducer: {
       projects: projectReducer,
@@ -48,6 +48,7 @@ function makeStore(schema?: MetadataSchema) {
             folders: [],
             resources: [],
             metadataSchema: schema ?? DEFAULT_METADATA_SCHEMA,
+            subtypes,
           } as StoredProject,
         },
       },
@@ -176,4 +177,69 @@ export const WithPrefill: Story = {
       </Provider>
     );
   },
+};
+
+// ── Subtype restriction control (Feature 72, Task 10, FR-14, FR-16, FR-29) ──
+
+/** Story args: the project subtype list and the custom field's stored restriction. */
+interface RestrictionStoryArgs {
+  subtypes: string[];
+  appliesTo?: string[];
+  /** When true, only the built-in schema is shown (no custom field). */
+  builtInOnly?: boolean;
+}
+
+function renderRestriction(args: RestrictionStoryArgs): JSX.Element {
+  const schema: MetadataSchema = args.builtInOnly
+    ? DEFAULT_METADATA_SCHEMA
+    : {
+        groups: [
+          ...DEFAULT_METADATA_SCHEMA.groups,
+          {
+            id: "custom-group",
+            label: "Plot",
+            fields: [
+              {
+                key: "tension",
+                label: "Tension",
+                type: "text",
+                ...(args.appliesTo ? { appliesTo: args.appliesTo } : {}),
+              },
+            ],
+          },
+        ],
+      };
+  return (
+    <Provider store={makeStore(schema, args.subtypes)}>
+      <div className="max-w-2xl">
+        <SchemaManager />
+      </div>
+    </Provider>
+  );
+}
+
+type RestrictionStory = StoryObj<RestrictionStoryArgs>;
+
+/** A custom field restricted to one of the project's listed subtypes. */
+export const RestrictedCustomField: RestrictionStory = {
+  args: { subtypes: ["Scene", "Chapter", "Act"], appliesTo: ["Scene"] },
+  render: renderRestriction,
+};
+
+/** Built-in fields show no restriction control. */
+export const BuiltInFieldNoRestriction: RestrictionStory = {
+  args: { subtypes: ["Scene", "Chapter"], builtInOnly: true },
+  render: renderRestriction,
+};
+
+/** A stored label no longer in the list shows as a checked, removable row. */
+export const StaleRestrictionLabel: RestrictionStory = {
+  args: { subtypes: ["Scene"], appliesTo: ["Scene", "Epilogue"] },
+  render: renderRestriction,
+};
+
+/** An empty project list with no restriction shows the hint. */
+export const NoSubtypesDefined: RestrictionStory = {
+  args: { subtypes: [] },
+  render: renderRestriction,
 };

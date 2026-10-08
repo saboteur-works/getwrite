@@ -47,6 +47,7 @@ import {
   removeGroup,
   reorderGroups,
   updateRefProperties,
+  updateFieldAppliesTo,
 } from "../../src/lib/models/metadata-schema";
 import type {
   MetadataField,
@@ -86,6 +87,36 @@ const LOCKED_FIELD: MetadataField = {
 function baseSchema(): MetadataSchema {
   return { groups: [{ id: GROUP_ID, label: "Group One", fields: [FIELD] }] };
 }
+
+// ---------------------------------------------------------------------------
+// Feature 72, FR-6: the sidecar key `resourceSubtype` (camelCase) can never
+// equal a validated custom field key, so the dispatch core rejects it.
+// ---------------------------------------------------------------------------
+
+describe("dispatch core rejects the key resourceSubtype (Feature 72, FR-6)", () => {
+  it("add-field rejects resourceSubtype with InvalidFieldKeyError", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      dispatchMetadataSchemaAction(dir, {
+        action: "add-field",
+        groupId: GROUP_ID,
+        field: { key: "resourceSubtype", label: "Subtype", type: "text" },
+      }),
+    ).rejects.toThrow(/Invalid field key/);
+  });
+
+  it("rename-key rejects resourceSubtype with InvalidFieldKeyError", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      dispatchMetadataSchemaAction(dir, {
+        action: "rename-key",
+        groupId: GROUP_ID,
+        fieldKey: "my-field",
+        newKey: "resourceSubtype",
+      }),
+    ).rejects.toThrow(/Invalid field key/);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Slug validation (route-level guard for user-created fields)
@@ -575,6 +606,360 @@ describe("updateRefProperties action", () => {
     await expect(
       updateRefProperties(dir, GROUP_ID, "ghost", { refFolder: "x" }),
     ).rejects.toThrow(/Field not found/);
+  });
+});
+
+describe("updateFieldAppliesTo action (Feature 72, FR-13/14/15)", () => {
+  it("stores the selection in the chosen order, de-duplicated under the comparison key", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const schema = await updateFieldAppliesTo(dir, GROUP_ID, "my-field", [
+      "Scene",
+      "Chapter",
+      " scene ",
+      "CHAPTER",
+      "Act",
+    ]);
+    const field = schema.groups[0].fields.find((f) => f.key === "my-field");
+    expect(field?.appliesTo).toEqual(["Scene", "Chapter", "Act"]);
+    const onDisk = JSON.parse(
+      await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8"),
+    );
+    expect(onDisk.config.metadataSchema.groups[0].fields[0].appliesTo).toEqual([
+      "Scene",
+      "Chapter",
+      "Act",
+    ]);
+  });
+
+  it("stores an empty selection as the key's absence, not []", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [{ ...FIELD, appliesTo: ["Scene"] }],
+        },
+      ],
+    });
+    const schema = await updateFieldAppliesTo(dir, GROUP_ID, "my-field", []);
+    const field = schema.groups[0].fields[0];
+    expect("appliesTo" in field).toBe(false);
+    const raw = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    expect(raw).not.toContain("appliesTo");
+  });
+
+  it.each([
+    ["status"],
+    ["synopsis"],
+    ["notes"],
+    ["pov"],
+    ["storyDate"],
+    ["storyDuration"],
+    ["storyEndDate"],
+  ])("rejects the built-in key %s", async (key) => {
+    const { dir } = await makeTmpProject({
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [{ key, label: key, type: "text" }],
+        },
+      ],
+    });
+    await expect(
+      updateFieldAppliesTo(dir, GROUP_ID, key, ["Scene"]),
+    ).rejects.toThrow(/built-in/i);
+  });
+
+  it("rejects a locked field", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [{ id: GROUP_ID, label: "G", fields: [LOCKED_FIELD] }],
+    });
+    await expect(
+      updateFieldAppliesTo(dir, GROUP_ID, "locked-field", ["Scene"]),
+    ).rejects.toThrow(/locked/i);
+  });
+
+  it("rejects an unknown field and an unknown group", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      updateFieldAppliesTo(dir, GROUP_ID, "ghost", ["Scene"]),
+    ).rejects.toThrow(/Field not found/);
+    await expect(
+      updateFieldAppliesTo(dir, "no-group", "my-field", ["Scene"]),
+    ).rejects.toThrow(/not found/i);
+  });
+
+  it("dispatches update-field-applies-to through the dispatch core", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const schema = await dispatchMetadataSchemaAction(dir, {
+      action: "update-field-applies-to",
+      groupId: GROUP_ID,
+      fieldKey: "my-field",
+      appliesTo: ["Scene"],
+    });
+    expect(schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+  });
+
+  it("dispatch rejects a malformed appliesTo", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      dispatchMetadataSchemaAction(dir, {
+        action: "update-field-applies-to",
+        groupId: GROUP_ID,
+        fieldKey: "my-field",
+        appliesTo: "Scene" as unknown as string[],
+      }),
+    ).rejects.toThrow(/must be an array of strings/);
+  });
+});
+
+describe("POST /api/project/metadata-schema — update-field-applies-to (Feature 72)", () => {
+  async function setup(schema: MetadataSchema) {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-r-"),
+    );
+    const projectId = generateUUID();
+    const root = path.join(projectsDir, projectId);
+    await fs.mkdir(root, { recursive: true });
+    const proj = createProject({ name: "route-test" });
+    await fs.writeFile(
+      path.join(root, PROJECT_FILENAME),
+      JSON.stringify({
+        ...proj,
+        config: { ...proj.config, metadataSchema: schema },
+      }),
+      "utf8",
+    );
+    return { projectsDir, projectId };
+  }
+
+  async function post(body: Record<string, unknown>) {
+    const { POST } =
+      await import("../../app/api/project/metadata-schema/route");
+    const { NextRequest } = await import("next/server");
+    return POST(
+      new NextRequest("http://localhost/api/project/metadata-schema", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  it("returns 200 with the schema for a custom field, and 400 for a built-in key", async () => {
+    const prev = process.env.GETWRITE_PROJECTS_DIR;
+    const { projectsDir, projectId } = await setup({
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [FIELD, { key: "pov", label: "POV", type: "text" }],
+        },
+      ],
+    });
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const ok = await post({
+        action: "update-field-applies-to",
+        projectId,
+        groupId: GROUP_ID,
+        fieldKey: "my-field",
+        appliesTo: ["Scene"],
+      });
+      expect(ok.status).toBe(200);
+      const okBody = (await ok.json()) as { schema: MetadataSchema };
+      expect(okBody.schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+
+      const bad = await post({
+        action: "update-field-applies-to",
+        projectId,
+        groupId: GROUP_ID,
+        fieldKey: "pov",
+        appliesTo: ["Scene"],
+      });
+      expect(bad.status).toBe(400);
+    } finally {
+      if (prev === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+      else process.env.GETWRITE_PROJECTS_DIR = prev;
+      await removeDirRetry(projectsDir);
+    }
+  });
+});
+
+describe("updateFieldAppliesTo action (Feature 72, FR-13/14/15)", () => {
+  it("stores the selection in the chosen order, de-duplicated under the comparison key", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const schema = await updateFieldAppliesTo(dir, GROUP_ID, "my-field", [
+      "Scene",
+      "Chapter",
+      " scene ",
+      "CHAPTER",
+      "Act",
+    ]);
+    const field = schema.groups[0].fields.find((f) => f.key === "my-field");
+    expect(field?.appliesTo).toEqual(["Scene", "Chapter", "Act"]);
+    const onDisk = JSON.parse(
+      await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8"),
+    );
+    expect(onDisk.config.metadataSchema.groups[0].fields[0].appliesTo).toEqual([
+      "Scene",
+      "Chapter",
+      "Act",
+    ]);
+  });
+
+  it("stores an empty selection as the key's absence, not []", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [{ ...FIELD, appliesTo: ["Scene"] }],
+        },
+      ],
+    });
+    const schema = await updateFieldAppliesTo(dir, GROUP_ID, "my-field", []);
+    const field = schema.groups[0].fields[0];
+    expect("appliesTo" in field).toBe(false);
+    const raw = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    expect(raw).not.toContain("appliesTo");
+  });
+
+  it.each([
+    ["status"],
+    ["synopsis"],
+    ["notes"],
+    ["pov"],
+    ["storyDate"],
+    ["storyDuration"],
+    ["storyEndDate"],
+  ])("rejects the built-in key %s", async (key) => {
+    const { dir } = await makeTmpProject({
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [{ key, label: key, type: "text" }],
+        },
+      ],
+    });
+    await expect(
+      updateFieldAppliesTo(dir, GROUP_ID, key, ["Scene"]),
+    ).rejects.toThrow(/built-in/i);
+  });
+
+  it("rejects a locked field", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [{ id: GROUP_ID, label: "G", fields: [LOCKED_FIELD] }],
+    });
+    await expect(
+      updateFieldAppliesTo(dir, GROUP_ID, "locked-field", ["Scene"]),
+    ).rejects.toThrow(/locked/i);
+  });
+
+  it("rejects an unknown field and an unknown group", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      updateFieldAppliesTo(dir, GROUP_ID, "ghost", ["Scene"]),
+    ).rejects.toThrow(/Field not found/);
+    await expect(
+      updateFieldAppliesTo(dir, "no-group", "my-field", ["Scene"]),
+    ).rejects.toThrow(/not found/i);
+  });
+
+  it("dispatches update-field-applies-to through the dispatch core", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const schema = await dispatchMetadataSchemaAction(dir, {
+      action: "update-field-applies-to",
+      groupId: GROUP_ID,
+      fieldKey: "my-field",
+      appliesTo: ["Scene"],
+    });
+    expect(schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+  });
+
+  it("dispatch rejects a malformed appliesTo", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      dispatchMetadataSchemaAction(dir, {
+        action: "update-field-applies-to",
+        groupId: GROUP_ID,
+        fieldKey: "my-field",
+        appliesTo: "Scene" as unknown as string[],
+      }),
+    ).rejects.toThrow(/must be an array of strings/);
+  });
+});
+
+describe("POST /api/project/metadata-schema — update-field-applies-to (Feature 72)", () => {
+  async function setup(schema: MetadataSchema) {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-r-"),
+    );
+    const projectId = generateUUID();
+    const root = path.join(projectsDir, projectId);
+    await fs.mkdir(root, { recursive: true });
+    const proj = createProject({ name: "route-test" });
+    await fs.writeFile(
+      path.join(root, PROJECT_FILENAME),
+      JSON.stringify({
+        ...proj,
+        config: { ...proj.config, metadataSchema: schema },
+      }),
+      "utf8",
+    );
+    return { projectsDir, projectId };
+  }
+
+  async function post(body: Record<string, unknown>) {
+    const { POST } =
+      await import("../../app/api/project/metadata-schema/route");
+    const { NextRequest } = await import("next/server");
+    return POST(
+      new NextRequest("http://localhost/api/project/metadata-schema", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  it("returns 200 with the schema for a custom field, and 400 for a built-in key", async () => {
+    const prev = process.env.GETWRITE_PROJECTS_DIR;
+    const { projectsDir, projectId } = await setup({
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [FIELD, { key: "pov", label: "POV", type: "text" }],
+        },
+      ],
+    });
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const ok = await post({
+        action: "update-field-applies-to",
+        projectId,
+        groupId: GROUP_ID,
+        fieldKey: "my-field",
+        appliesTo: ["Scene"],
+      });
+      expect(ok.status).toBe(200);
+      const okBody = (await ok.json()) as { schema: MetadataSchema };
+      expect(okBody.schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+
+      const bad = await post({
+        action: "update-field-applies-to",
+        projectId,
+        groupId: GROUP_ID,
+        fieldKey: "pov",
+        appliesTo: ["Scene"],
+      });
+      expect(bad.status).toBe(400);
+    } finally {
+      if (prev === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+      else process.env.GETWRITE_PROJECTS_DIR = prev;
+      await removeDirRetry(projectsDir);
+    }
   });
 });
 

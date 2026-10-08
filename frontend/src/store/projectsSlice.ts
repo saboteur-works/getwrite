@@ -44,6 +44,7 @@ import {
   postUpdateFieldOptions,
   postUpdateFieldOptionsWithMigration,
   postUpdateRefProperties,
+  postUpdateFieldAppliesTo,
   postChangeFieldType,
   postChangeFieldTypeWithMigration,
   postAddGroup,
@@ -92,6 +93,11 @@ export interface StoredProject {
   statuses?: string[];
   /** Ordered list of relationship-type values configured for this project. */
   relationshipTypes?: string[];
+  /**
+   * Ordered resource-subtype labels (Feature 72). Left `undefined` when the
+   * project never set a list; `selectActiveProjectSubtypes` is the reader.
+   */
+  subtypes?: string[];
   /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
   metadataSchema?: MetadataSchema;
   /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
@@ -151,6 +157,8 @@ export function buildStoredProject(
     // than an already-collapsed `[]` that would be indistinguishable from an
     // explicitly emptied list (FR-15).
     relationshipTypes: project.config?.relationshipTypes,
+    // Left as-is (not defaulted to []) when absent, mirroring relationshipTypes.
+    subtypes: project.config?.subtypes,
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
@@ -432,6 +440,23 @@ export const updateMetadataRefProperties = makeSchemaThunk<{
     postUpdateRefProperties(ctx, groupId, fieldKey, updates),
 );
 
+/**
+ * Sets or clears a custom field's subtype restriction. An empty `appliesTo`
+ * clears it. A failure is returned as a rejected action carrying the message
+ * (`rejectValue: string`), so a caller that awaits the dispatch can read it
+ * with `.unwrap()` or `result.meta.requestStatus` rather than losing it.
+ */
+export const updateMetadataFieldAppliesTo = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  appliesTo: string[];
+}>(
+  "projects/updateMetadataFieldAppliesTo",
+  (ctx, { groupId, fieldKey, appliesTo }) =>
+    postUpdateFieldAppliesTo(ctx, groupId, fieldKey, appliesTo),
+);
+
 // ---------------------------------------------------------------------------
 // Async thunks — feature configuration (toggles + Organizer card body)
 // ---------------------------------------------------------------------------
@@ -499,6 +524,11 @@ export const updateProjectRelationshipTypes = makeFeatureConfigThunk<{
 }>("projects/updateProjectRelationshipTypes", ({ relationshipTypes }) => ({
   relationshipTypes,
 }));
+
+export const updateProjectSubtypes = makeFeatureConfigThunk<{
+  projectId: string;
+  subtypes: string[];
+}>("projects/updateProjectSubtypes", ({ subtypes }) => ({ subtypes }));
 
 /**
  * Initial state for the `projects` slice.
@@ -721,6 +751,7 @@ const projectsSlice = createSlice({
       updateMetadataFieldOptions,
       updateMetadataFieldOptionsWithMigration,
       updateMetadataRefProperties,
+      updateMetadataFieldAppliesTo,
       changeMetadataFieldType,
       changeMetadataFieldTypeWithMigration,
       addMetadataGroup,
@@ -746,6 +777,7 @@ const projectsSlice = createSlice({
       updateProjectFeatures,
       updateProjectOrganizerCardBody,
       updateProjectRelationshipTypes,
+      updateProjectSubtypes,
     ] as const;
 
     for (const thunk of featureConfigThunks) {
@@ -758,6 +790,7 @@ const projectsSlice = createSlice({
           features: result.features,
           organizerCardBody: result.organizerCardBody ?? undefined,
           relationshipTypes: result.relationshipTypes ?? undefined,
+          subtypes: result.subtypes ?? undefined,
         };
         return state;
       });
@@ -874,6 +907,37 @@ export const selectActiveProjectRelationshipTypes = (state: any): string[] => {
     state?.projects?.projects?.[id]?.relationshipTypes ??
     DEFAULT_RELATIONSHIP_TYPES
   );
+};
+
+const EMPTY_SUBTYPES: string[] = [];
+
+/**
+ * Minimal structural view of the root state that
+ * `selectActiveProjectSubtypes` reads. Declared locally (rather than
+ * importing `RootState`) to avoid a store import cycle.
+ */
+interface SubtypesSelectorState {
+  projects?: {
+    selectedProjectId?: string | null;
+    projects?: Record<string, { subtypes?: string[] } | undefined>;
+  };
+}
+
+/**
+ * Selects the ordered resource-subtype list for the currently active
+ * project. An absent list is equivalent to an empty one (Feature 72, FR-1).
+ * A failed write never reaches the store (the thunk's rejected case leaves
+ * the record untouched), so this never reports a list that was not saved.
+ *
+ * @param state - Redux root state (structurally typed to avoid circular imports).
+ * @returns The active project's subtype labels, or a shared empty array.
+ */
+export const selectActiveProjectSubtypes = (
+  state: SubtypesSelectorState,
+): string[] => {
+  const id = state?.projects?.selectedProjectId;
+  if (id === undefined || id === null) return EMPTY_SUBTYPES;
+  return state?.projects?.projects?.[id]?.subtypes ?? EMPTY_SUBTYPES;
 };
 
 /**

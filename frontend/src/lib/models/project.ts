@@ -21,6 +21,9 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     // — the same undefined-preserving treatment `metadataSchema` already
     // gets in this function for the same reason.
     relationshipTypes: config?.relationshipTypes,
+    // Feature 72, FR-1: omitted entirely (not `undefined`, not `[]`) when
+    // absent, so a project that never sets a subtype list never gains the key.
+    ...(config?.subtypes !== undefined ? { subtypes: config.subtypes } : {}),
     // Defaulted to [] (not left undefined) for a project created before this
     // feature, mirroring `statuses` above: both are writer add/remove lists
     // read directly as arrays by their UI, not vocabulary fallbacks like

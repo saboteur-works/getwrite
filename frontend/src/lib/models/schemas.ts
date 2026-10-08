@@ -11,6 +11,7 @@
  */
 import { z } from "zod";
 import { QueryASTSchema } from "./query-ast";
+import { normalizeSubtypeLabel } from "./field-subtype-scope";
 export type {
   QueryAST,
   LeafNode,
@@ -166,6 +167,12 @@ export const MetadataFieldSchema = z.object({
   includeSubfolders: z.boolean().optional(),
   /** Maximum number of selections allowed; unset means unbounded. */
   maxSelections: z.number().int().positive().optional(),
+  /**
+   * Resource-subtype restriction (Feature 72, FR-13): when non-empty, the
+   * field is shown only for resources whose subtype matches an entry under
+   * the shared comparison key. Absent or empty means unrestricted.
+   */
+  appliesTo: z.array(z.string()).optional(),
 });
 
 /**
@@ -230,6 +237,37 @@ export const OrganizerCardBodyConfigSchema = z.object({
 });
 
 /**
+ * Ordered list of resource-subtype labels (Feature 72, FR-2). Entries are
+ * trimmed (the writer's case is kept) and order is preserved. A blank entry,
+ * or two entries equal under `normalizeSubtypeLabel`, fails validation with a
+ * `ZodError` so the features route maps it to HTTP 400.
+ */
+export const SubtypeListSchema = z
+  .array(z.string().trim())
+  .superRefine((labels, ctx) => {
+    const seen = new Set<string>();
+    labels.forEach((label, index) => {
+      const key = normalizeSubtypeLabel(label);
+      if (key === "") {
+        ctx.addIssue({
+          code: "custom",
+          path: [index],
+          message: "Subtype label must not be blank",
+        });
+        return;
+      }
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index],
+          message: "Duplicate subtype label",
+        });
+      }
+      seen.add(key);
+    });
+  });
+
+/**
  * Project-level configuration schema persisted in `project.json`.
  */
 export const ProjectConfigSchema = z.object({
@@ -238,6 +276,8 @@ export const ProjectConfigSchema = z.object({
   dailyWordGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
+  /** Ordered resource-subtype labels (Feature 72, FR-1); absent means none. */
+  subtypes: SubtypeListSchema.optional(),
   entityGraphConnectionTypes: z.array(z.string()).optional(),
   entityGraphFocalHopRadius: z.number().int().nonnegative().optional(),
   /**
@@ -408,6 +448,8 @@ export const ResourceBaseSchema = z
     notes: z.string().optional(),
     orderIndex: z.number().default(0),
     statuses: z.array(z.string()).optional(),
+    /** At most one subtype label (Feature 72, FR-5); independent of entity fields. */
+    resourceSubtype: z.string().trim().min(1).optional(),
     userMetadata: z.record(z.string(), MetadataValue).optional(),
     createdAt: IsoDateString,
     updatedAt: IsoDateString.optional(),
@@ -650,6 +692,8 @@ export const ProjectTypeSchema = z
     editorConfig: EditorConfigSchema.optional(),
     statuses: z.array(z.string()).optional(),
     relationshipTypes: z.array(z.string()).optional(),
+    /** Seeds the new project's subtype list (Feature 72, FR-26). */
+    subtypes: SubtypeListSchema.optional(),
     wordCountGoal: z.number().int().nonnegative().optional(),
   })
   .strict();

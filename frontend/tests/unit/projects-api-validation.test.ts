@@ -23,6 +23,8 @@ import {
   openProject,
   createProject,
 } from "../../src/lib/api/projects";
+import type { ProjectListApiEntry } from "../../src/lib/api/projects";
+import type { Project } from "../../src/lib/models/types";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 
 const mockedReport = vi.mocked(reportTransportValidationFailure);
@@ -205,5 +207,119 @@ describe("projects.ts transport-boundary validation (FU-10 regression)", () => {
       expect(result.project.id).toBe(validProject.id);
       expect(mockedReport).not.toHaveBeenCalled();
     });
+  });
+});
+
+// Feature 72 (resource subtype), FR-1 / FR-5 / FR-13 / FR-31: the client
+// response schemas strip unknown keys on project load (the failure Feature
+// 71's `mentionHighlightDurationSeconds` hit), so each new key must be
+// declared on the response schemas and survive a `GET /api/projects` parse.
+describe("projects.ts subtype keys survive the project-load parse (Feature 72, FR-31)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    mockedReport.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // `listProjects` returns a union with the locked-entry variant, whose
+  // project has no `config`; narrow to the full variant for these reads.
+  function fullProject(entry: ProjectListApiEntry): Project {
+    return entry.project as Project;
+  }
+
+  const textResource = {
+    id: "cccccccc-3333-4333-8333-333333333333",
+    slug: "scene-one",
+    name: "Scene One",
+    type: "text",
+    orderIndex: 0,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+
+  it("preserves config.subtypes, a field's appliesTo, and a resource's resourceSubtype", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          project: {
+            ...validProject,
+            config: {
+              editorConfig: {},
+              subtypes: ["Scene", "Chapter"],
+              metadataSchema: {
+                groups: [
+                  {
+                    id: "g1",
+                    label: "Group",
+                    fields: [
+                      {
+                        key: "mood",
+                        label: "Mood",
+                        type: "text",
+                        appliesTo: ["Scene"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          folders: [],
+          resources: [{ ...textResource, resourceSubtype: "Scene" }],
+        },
+      ]),
+    );
+
+    const [entry] = await listProjects();
+
+    expect(mockedReport).not.toHaveBeenCalled();
+    const config = fullProject(entry).config;
+    expect(config?.subtypes).toEqual(["Scene", "Chapter"]);
+    expect(config?.metadataSchema?.groups[0].fields[0].appliesTo).toEqual([
+      "Scene",
+    ]);
+    expect(
+      (entry.resources[0] as { resourceSubtype?: string }).resourceSubtype,
+    ).toBe("Scene");
+  });
+
+  it("adds none of the three keys when a project carries none of them", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          project: {
+            ...validProject,
+            config: {
+              editorConfig: {},
+              metadataSchema: {
+                groups: [
+                  {
+                    id: "g1",
+                    label: "Group",
+                    fields: [{ key: "mood", label: "Mood", type: "text" }],
+                  },
+                ],
+              },
+            },
+          },
+          folders: [],
+          resources: [textResource],
+        },
+      ]),
+    );
+
+    const [entry] = await listProjects();
+
+    const config = fullProject(entry).config;
+    expect(config).not.toHaveProperty("subtypes");
+    expect(config?.metadataSchema?.groups[0].fields[0]).not.toHaveProperty(
+      "appliesTo",
+    );
+    expect(entry.resources[0]).not.toHaveProperty("resourceSubtype");
   });
 });

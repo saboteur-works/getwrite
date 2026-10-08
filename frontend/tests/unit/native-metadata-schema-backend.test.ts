@@ -162,6 +162,55 @@ describe("native metadata-schema transport — in-process backend reuses the sha
     fetchMock.restore();
   });
 
+  it("updateFieldAppliesTo stores the restriction, rejects a built-in key, with no HTTP", async () => {
+    const fetchMock = guardAgainstFetch();
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    await seedProject(fs, projectId, {
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "Group One",
+          fields: [
+            { key: "my-field", label: "My Field", type: "text" },
+            { key: "pov", label: "POV", type: "text" },
+          ],
+        },
+      ],
+    });
+
+    const transport = createNativeMetadataSchemaTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const context: MetadataSchemaRequestContext = { projectId };
+
+    const schema = await transport.updateFieldAppliesTo(
+      context,
+      GROUP_ID,
+      "my-field",
+      ["Scene", "scene", "Chapter"],
+    );
+    expect(schema.groups[0]!.fields[0]!.appliesTo).toEqual([
+      "Scene",
+      "Chapter",
+    ]);
+
+    await expect(
+      transport.updateFieldAppliesTo(context, GROUP_ID, "pov", ["Scene"]),
+    ).rejects.toThrow(/built-in/i);
+
+    const cleared = await transport.updateFieldAppliesTo(
+      context,
+      GROUP_ID,
+      "my-field",
+      [],
+    );
+    expect("appliesTo" in cleared.groups[0]!.fields[0]!).toBe(false);
+
+    fetchMock.restore();
+  });
+
   it("fetchFieldValues enumerates seeded sidecar values with no HTTP", async () => {
     const fetchMock = guardAgainstFetch();
     const fs = createFakeCapacitorFilesystem();

@@ -17,6 +17,7 @@ Primary fields
 - `maxRevisions` (number, default 50): normalized into the project config (`project.ts`) but not read by any code path that prunes. `getwrite prune` takes `--max`; `revision-manager.ts` reads an option of the same name but has no caller outside tests. When pruning does run, protected non-canonical revisions are not counted toward the cap.
 - `autoPrune` (boolean, default true): normalized into the project config but not read anywhere. It is an option on `pruneRevisions` only (`revision.ts`); no caller passes it from config.
 - `config.dailyWordGoal` (integer >= 0, optional): the writer's daily writing goal, compared against today's non-import net words from the [writing log](./writing-log.md). Distinct from `config.wordCountGoal` (a separate config field, not changed by the daily goal). Set or cleared from Project Settings.
+- `config.subtypes` (array of strings, optional): the project's ordered resource-subtype list (Feature 72). Omitted from `project.json` when never set. Replaced wholesale by `POST /api/project/features` (`updateFeatureConfig`, `project-features.ts`); blank entries and entries equal under trim-then-lowercase are rejected with HTTP 400. A project type may seed it on creation. See [resource-subtype.md](./resource-subtype.md).
 - `meta` (object, optional): per-project meta options (e.g., paths or flags for previews/indexing). See examples below.
 
 Meta/Derived storage

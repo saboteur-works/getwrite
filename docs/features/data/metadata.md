@@ -45,6 +45,8 @@ Behavioral configuration for the project, persisted in `project.json`.
 
 💡✏️ **autoPrune** \[Boolean]: When `true`, the oldest non-canonical revisions are pruned automatically when the `maxRevisions` limit is exceeded. When `false`, the UI prompts the user interactively (or aborts in headless contexts).
 
+✏️ **subtypes** \[String[]]: Optional ordered list of resource-subtype labels (Feature 72). Absent when the project never set a list; entries are trimmed, non-blank, and unique under a trim-then-lowercase comparison. Manage it from the Metadata tab of Project Settings. See [resource-subtype.md](../resource-subtype.md).
+
 💡 **tags** \[Tag[]]: Project-scoped tags. Each tag has an `id` (UUID), `name` (String), and optional `color` (String). Tag IDs must stay consistent with `tagAssignments` — use the UI to manage these.
 
 💡 **tagAssignments** \[Record\<UUID, UUID[]\>]: Map of resource UUIDs to arrays of tag UUIDs. UUIDs must match valid resources and entries in `tags` — use the UI to manage these.
@@ -74,6 +76,8 @@ The following fields are written to the sidecar file by the primary persistence 
 🤖 **createdAt** \[ISO Date]: Creation timestamp
 
 The following fields are defined in the schema and may be present in the sidecar (e.g. after a sidecar update via the UI), but are not written by the primary resource creation path.
+
+✏️ **resourceSubtype** \[String]: Optional single subtype label for the resource (Feature 72); defined on the base schema, so text, image, and audio resources can all carry it. Absent when unset. It is not an entry of `type`, and it is stored as typed (matching against the project's list and against a field's `appliesTo` is by trimmed, lowercased label). Set from the sidebar's Subtype control. See [resource-subtype.md](../resource-subtype.md).
 
 🤖 **sizeBytes** \[Number]: File size in bytes, derived from the filesystem.
 

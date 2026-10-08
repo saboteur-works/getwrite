@@ -13,7 +13,7 @@ export interface StatusRollupRow {
 const UNSET_STATUS_LABEL = "No status";
 
 /** Label for a status value present on resources but absent from `config.statuses`. */
-function unknownStatusLabel(value: string): string {
+export function unknownStatusLabel(value: string): string {
   return `${value} (not in the current list)`;
 }
 

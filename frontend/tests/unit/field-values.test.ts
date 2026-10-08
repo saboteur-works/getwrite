@@ -271,3 +271,74 @@ describe("scanAllFieldValues — reads values nested under userMetadata", () => 
     }
   });
 });
+
+describe("scanAllFieldValues — resourceSubtype presence (FR-20)", () => {
+  async function writeSidecar(
+    dir: string,
+    id: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const metaDir = path.join(dir, "meta");
+    await fs.mkdir(metaDir, { recursive: true });
+    await fs.writeFile(
+      path.join(metaDir, `resource-${id}.meta.json`),
+      JSON.stringify({ id, type: "text", ...body }, null, 2),
+      "utf8",
+    );
+  }
+
+  it("counts a custom field identically with and without a top-level resourceSubtype", async () => {
+    const plain = await fs.mkdtemp(path.join(os.tmpdir(), "gw-fv-plain-"));
+    const sub = await fs.mkdtemp(path.join(os.tmpdir(), "gw-fv-sub-"));
+    try {
+      for (const [dir, extra] of [
+        [plain, {}],
+        [sub, { resourceSubtype: "Memoir" }],
+      ] as const) {
+        await writeSidecar(dir, "r1", {
+          ...extra,
+          userMetadata: { tone: "a" },
+        });
+        await writeSidecar(dir, "r2", {
+          ...extra,
+          userMetadata: { tone: "a" },
+        });
+        await writeSidecar(dir, "r3", { userMetadata: { tone: "b" } });
+      }
+      const summarize = (
+        m: Map<string, { count: number }>,
+      ): [string, number][] =>
+        [...m.entries()]
+          .map(([k, v]) => [k, v.count] as [string, number])
+          .sort();
+
+      const a = await scanAllFieldValues(plain, "tone");
+      const b = await scanAllFieldValues(sub, "tone");
+      expect(summarize(b)).toEqual(summarize(a));
+      expect(b.get("a")?.count).toBe(2);
+      expect(b.get("b")?.count).toBe(1);
+    } finally {
+      await removeDirRetry(plain);
+      await removeDirRetry(sub);
+    }
+  });
+
+  it("treats the top-level resourceSubtype as a plain flattened key, not as a metadata field of userMetadata", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-fv-key-"));
+    try {
+      await writeSidecar(dir, "r1", {
+        resourceSubtype: "Memoir",
+        userMetadata: { tone: "a" },
+      });
+      // Only the top-level key is read: it is not duplicated into or shadowed
+      // by userMetadata, and userMetadata keys are unaffected.
+      const subtypeCounts = await scanAllFieldValues(dir, "resourceSubtype");
+      expect(subtypeCounts.get("Memoir")?.count).toBe(1);
+      const toneCounts = await scanAllFieldValues(dir, "tone");
+      expect(toneCounts.size).toBe(1);
+      expect(toneCounts.get("a")?.count).toBe(1);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+});

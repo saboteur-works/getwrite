@@ -107,6 +107,193 @@ describe("POST /api/resource/[resource-id]/sidecar (projectId-based)", () => {
   });
 });
 
+describe("POST /api/resource/[resource-id]/sidecar (resourceSubtype, FR-7/FR-8)", () => {
+  async function post(
+    projectId: string,
+    resourceId: string,
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    const { POST } =
+      await import("../../app/api/resource/[resource-id]/sidecar/route");
+    return POST(sidecarRequest(resourceId, { projectId, ...body }) as never, {
+      params: Promise.resolve({ "resource-id": resourceId }),
+    });
+  }
+
+  const independentFields = {
+    entityKind: "character",
+    aliases: ["Al"],
+    dismissedNoiseTerms: ["may"],
+    orderIndex: 3,
+    folderId: "folder-1",
+  };
+
+  it("persists the trimmed subtype string", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: { resourceSubtype: "  Scene  " },
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(sidecar?.resourceSubtype).toBe("Scene");
+    });
+  });
+
+  it("clears resourceSubtype via clearKeys as an absent key, not an undefined-valued one", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        resourceSubtype: "Scene",
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: {},
+        clearKeys: ["resourceSubtype"],
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(
+        Object.prototype.hasOwnProperty.call(sidecar, "resourceSubtype"),
+      ).toBe(false);
+      expect(sidecar?.name).toBe("Original");
+    });
+  });
+
+  it.each([
+    ["a number", 42],
+    ["null", null],
+    ["an array", ["Scene"]],
+    ["an empty string", ""],
+    ["a whitespace-only string", "   "],
+  ])(
+    "rejects %s as resourceSubtype with 400 and leaves the sidecar byte-identical",
+    async (_label, value) => {
+      const { projectsDir, projectId, projectPath } =
+        await makeTmpProjectsDir();
+      await withProjectsDirEnv(projectsDir, async () => {
+        const resourceId = generateUUID();
+        await writeSidecar(projectPath, resourceId, {
+          id: resourceId,
+          name: "Original",
+          type: "text",
+          resourceSubtype: "Scene",
+        });
+        const sidecarPath = path.join(
+          projectPath,
+          "meta",
+          `resource-${resourceId}.meta.json`,
+        );
+        const before = await fs.readFile(sidecarPath, "utf-8");
+        const res = await post(projectId, resourceId, {
+          updatedResource: { name: "Changed", resourceSubtype: value },
+        });
+        expect(res.status).toBe(400);
+        expect(await fs.readFile(sidecarPath, "utf-8")).toBe(before);
+      });
+    },
+  );
+
+  it("still rejects clearKeys naming a key outside the allowlist", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        resourceSubtype: "Scene",
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: {},
+        clearKeys: ["resourceSubtype", "dismissedNoiseTerms"],
+      });
+      expect(res.status).toBe(400);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(sidecar?.resourceSubtype).toBe("Scene");
+    });
+  });
+
+  it("setting, changing and clearing the subtype leaves folderId, entityKind, aliases and dismissedNoiseTerms unchanged, and does not add entityKind", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      const plainId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        ...independentFields,
+      });
+      await writeSidecar(projectPath, plainId, {
+        id: plainId,
+        name: "Plain",
+        type: "text",
+      });
+      const pick = (s: Record<string, unknown> | null): string =>
+        JSON.stringify(
+          Object.keys(independentFields).map((k) => (s ? s[k] : undefined)),
+        );
+      const expected = pick(independentFields);
+
+      await post(projectId, resourceId, {
+        updatedResource: { resourceSubtype: "Scene" },
+      });
+      expect(pick(await readSidecar(projectPath, resourceId))).toBe(expected);
+      await post(projectId, resourceId, {
+        updatedResource: { resourceSubtype: "Chapter" },
+      });
+      expect(pick(await readSidecar(projectPath, resourceId))).toBe(expected);
+      await post(projectId, resourceId, {
+        updatedResource: {},
+        clearKeys: ["resourceSubtype"],
+      });
+      expect(pick(await readSidecar(projectPath, resourceId))).toBe(expected);
+
+      await post(projectId, plainId, {
+        updatedResource: { resourceSubtype: "Scene" },
+      });
+      const plain = await readSidecar(projectPath, plainId);
+      expect(plain?.resourceSubtype).toBe("Scene");
+      expect(Object.prototype.hasOwnProperty.call(plain, "entityKind")).toBe(
+        false,
+      );
+    });
+  });
+
+  it("Remove Entity (clearKeys entityKind and aliases) leaves resourceSubtype unchanged", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+        resourceSubtype: "Scene",
+        ...independentFields,
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: {},
+        clearKeys: ["entityKind", "aliases"],
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, resourceId);
+      expect(sidecar?.resourceSubtype).toBe("Scene");
+      expect(sidecar?.folderId).toBe("folder-1");
+      expect(sidecar?.dismissedNoiseTerms).toEqual(["may"]);
+    });
+  });
+});
+
 describe("POST /api/resource/[resource-id]/sidecar (clearKeys, FR-20/FR-25)", () => {
   it("deletes the named keys from the persisted sidecar and leaves everything else, including orderIndex/folderId, unchanged", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();

@@ -11,6 +11,7 @@ import projectsReducer, {
   reorderMetadataGroups,
   updateProjectMetadataSchema,
   updateMetadataRefProperties,
+  updateMetadataFieldAppliesTo,
   setProject,
 } from "../../src/store/projectsSlice";
 import type {
@@ -574,6 +575,65 @@ describe("updateMetadataRefProperties thunk (Task 3)", () => {
     );
 
     expect(result.meta.requestStatus).toBe("rejected");
+    expect(
+      store.getState().projects.projects["project-1"].metadataSchema,
+    ).toEqual(schemaBefore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateMetadataFieldAppliesTo thunk (Feature 72, FR-15)
+// ---------------------------------------------------------------------------
+
+describe("updateMetadataFieldAppliesTo thunk (Feature 72)", () => {
+  it("posts the action and mirrors the returned schema into the store", async () => {
+    const store = makeTestStore();
+    seedProject(store);
+    const fetchSpy = mockFetchSuccess();
+
+    const result = await store.dispatch(
+      updateMetadataFieldAppliesTo({
+        projectId: "project-1",
+        groupId: "test-group",
+        fieldKey: "new-field",
+        appliesTo: ["Scene", "Chapter"],
+      }),
+    );
+
+    expect(result.meta.requestStatus).toBe("fulfilled");
+    expect(
+      JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string),
+    ).toEqual({
+      action: "update-field-applies-to",
+      projectId: "project-1",
+      groupId: "test-group",
+      fieldKey: "new-field",
+      appliesTo: ["Scene", "Chapter"],
+    });
+    expect(
+      store.getState().projects.projects["project-1"].metadataSchema,
+    ).toEqual(updatedSchema);
+  });
+
+  it("on failure leaves the stored schema unchanged and exposes the failure through unwrap()", async () => {
+    const store = makeTestStore();
+    seedProject(store);
+    const schemaBefore =
+      store.getState().projects.projects["project-1"].metadataSchema;
+    mockFetchError(400, "Cannot restrict built-in field");
+
+    const action = store.dispatch(
+      updateMetadataFieldAppliesTo({
+        projectId: "project-1",
+        groupId: "test-group",
+        fieldKey: "pov",
+        appliesTo: ["Scene"],
+      }),
+    );
+
+    await expect(action.unwrap()).rejects.toEqual(
+      expect.stringContaining("Cannot restrict built-in field"),
+    );
     expect(
       store.getState().projects.projects["project-1"].metadataSchema,
     ).toEqual(schemaBefore);

@@ -2556,9 +2556,9 @@ the click with a toast rather than jumping to the wrong place. A
 link-only row with no detected mentions keeps its existing resource-open-only
 click behavior unchanged.
 **Requirements covered:** None of its own — scoped and approved through its
-own standalone feature spec (`specs/features/entity-mention-navigation.md`,
-FR-1 through FR-10) rather than an amendment to this product spec's FR
-ladder; see this entry's Notes.
+own standalone feature spec (`specs/features/entity-mention-navigation.md`)
+rather than an amendment to this product spec's FR ladder; see this entry's
+Notes.
 **User stories:** None of this document's own — the source spec defines its
 own US-1/US-2 (reviewing a mention in the current resource; reviewing one in
 a different resource), not drawn from this document's US ladder.
@@ -2567,7 +2567,8 @@ a different resource), not drawn from this document's US ladder.
 **Notes:** Shipped on branch `feature/entity-mention-navigation` (not yet
 merged to `main` as of this entry). `specs/features/entity-mention-navigation.md`
 and its `tasks.md` (17 tasks, all done) are the authoritative record of the
-shipped scope. Five bug-fix commits landed on top of the original
+shipped scope. That standalone spec defines its own FR-1 through FR-10,
+numbered independently of this document's FR ladder. Five bug-fix commits landed on top of the original
 implementation, found by manual testing against real project data rather
 than the automated suite: the highlight extension was never registered in
 `TipTapEditor.tsx`'s extensions array, and ProseMirror's own
@@ -2586,6 +2587,123 @@ first's highlight. `EntityHighlightDecorationExtension.ts` (Feature 34) is
 explicitly not reused or extended for the new one-shot highlight — the two
 serve different purposes (persistent, continuously-recomputed vs. one-shot,
 timer-cleared) and the source spec requires them to stay separate.
+
+---
+
+### Feature 72: Resource subtype — Shipped
+**Value:** A writer on deadline labels each resource with a subtype they
+define themselves (for example "Scene" or "Profile") and limits a custom
+metadata field to particular subtypes, so a field that only makes sense for
+scenes stops cluttering the sidebar of every other resource.
+**Vertical slice:** Data: an optional `subtypes` string array on the project
+config (`ProjectConfigSchema` and the project-type spec shape, mirroring
+`statuses`/`relationshipTypes` in `schemas.ts` and `project-creator.ts`,
+which gains seeding of it from a project type), a new optional subtype key
+on the shared base of the text/image/audio sidecar schemas, and a new
+optional subtype-restriction array on a custom field definition
+(`MetadataFieldSchema`); the identifiers are final (`subtypes`,
+`resourceSubtype`, `appliesTo`; Owner decision, Gate 3, 2026-10-08), the
+sidecar key chosen so it cannot collide with a custom field key. Logic: a pure
+visibility predicate (a restricted field shows only when the resource's
+subtype is in its list; an unset subtype matches no restricted field; the
+existing group `folderId` check is unchanged and must also pass), matching
+by label so removal from the list leaves references intact; the sidecar
+subtype is set and cleared through the existing `updateSidecar` path
+(`resource-crud-core.ts`), where clearing needs its key added to the
+`clearKeys` allowlist, and the project list is persisted through the
+existing feature-config path that relationship types use
+(`POST /api/project/features`, `updateFeatureConfig`, the feature-config
+transport and its native backend), with no new route, transport or native
+backend pair. Interface: a new subtype list editor, modelled on
+`RelationshipTypesSettings.tsx` (add, remove, reorder, duplicates rejected;
+this component is new), added as a new section of the existing "Metadata"
+tab in `ProjectSettingsDialog.tsx` (no new tab; Owner decision, Gate 3,
+2026-10-08, reversing the Gate 1 decision for a dedicated "Subtypes" tab),
+a subtype control in `MetadataSidebar.tsx` for all three resource kinds, a
+subtype restriction checkbox group on custom fields in `SchemaManager.tsx`,
+and the sidebar filtering fields through the predicate.
+**Requirements covered:** FR-57, FR-58, FR-59, FR-60, FR-61
+**User stories:** US-25, US-26
+**Depends on:** Feature 2, Feature 3, Feature 7, Feature 18, Feature 33
+**Branch suggestion:** feat/resource-subtype
+**Notes:** One slice, not several, because the owner's value exists only
+when the list editor, the resource control, the per-field restriction
+and the sidebar honouring it all exist together; any subset leaves a control
+that changes nothing a writer can see. Project-type seeding of the list is
+part of FR-61 and ships here by owner decision (OQ-58); no built-in project
+type ships a list, so seeding is exercised only by tests and by a type that
+declares one. Dependencies: Feature 2 for the project-type seeding path,
+Feature 3 for the move-does-not-change-subtype guarantee, Feature 7 for the
+sidecar and metadata sidebar, Feature 18 for the schema manager and field
+definitions (and for the Metadata tab that hosts the list editor), Feature 33 for the entity independence guarantee in FR-59.
+Explicitly out of scope and unchanged: subtype in the query builder or smart
+folders, restricting built-in fields, a rename operation, any catch-all
+subtype, Organizer card body and filters, and the Timeline. Fields hidden by
+subtype remain queryable and a hidden stored value can still show in the
+Organizer or in queries; that is an accepted consequence (OQ-59). The
+folder-scoped group mechanism is left alone and no migration is required.
+Risk: the sidebar visibility predicate must not be applied anywhere that
+reads stored values directly.
+
+Shipped on branch `feat/resource-subtype` (not yet merged to `main` as of
+this entry, 2026-10-08), accepted by the owner 2026-10-08.
+`specs/features/resource-subtype.md` and its `tasks.md` (fourteen tasks, all
+done) are the authoritative record of the shipped scope. On the integrated
+branch `pnpm typecheck` was clean and the frontend suite reported 5459
+passed, 1 skipped, 0 failed. Exercised in the running app against a
+disposable project, with on-disk state checked: subtype list add,
+duplicate-rejection, remove and re-add; sidebar set, change and clear; field
+restriction; kept-but-hidden values; stale-label display; normalized
+matching; reload. A later custom-field edit did not revert or resurrect the
+subtype on disk. Not verified live: Storybook story tests were not run
+(sandbox); reordering, image/audio resources, project-type seeding,
+failed-write behaviour, keyboard-only operation and the native build were
+covered by tests only. Deviations from the spec: built-in fields show no
+restriction control (the spec allowed none or disabled); blank and duplicate
+list entries show an inline alert, and only a failed save shows a toast; the
+subtype selector returns an empty list both for "no subtypes" and for "no
+project record". Stale whole-resource save: measured at the request-payload
+level for `entityKind` (the second payload omitted the key), and fixed for
+the subtype key only. The same behaviour for `entityKind`, `aliases` and
+`wordCountGoal` is unchanged, and what the server stores in that case was
+not measured.
+
+---
+
+### Feature 73: Subtype carried by templates and duplicates — Not started
+**Value:** A writer who creates a resource from a "Scene" template, or
+duplicates a Scene, gets a Scene without re-labelling it, so the fields they
+scoped to scenes appear immediately. The copy and duplicate half is already
+satisfied once Feature 72 ships; the template half is the remaining work.
+**Vertical slice:** Data and logic: the template scaffold in
+`resource-templates.ts` (save and create) carries the source's subtype key
+(`createResourceFromTemplate` builds from `tmpl.userMetadata` only today, so
+this is real work), and the CLI `templates save|create|duplicate|list`
+commands carry it; a blank create sets none. The copy and duplicate paths
+need only a test: verified in code by triage, confirmed by the owner,
+`copyResourceCore` (`resource-crud-core.ts`) spreads the whole source sidecar
+and backs both the HTTP copy route and `native-resource-backend`, and
+`duplicateResource` (`resource-templates.ts`, reached only by the CLI
+`templates duplicate`) spreads `{...meta, id}`, so a copy or duplicate
+already carries the key with no code change. The check that the Scrivener,
+DOCX and plain-text import pipelines do not set a subtype belongs to
+Feature 72 (its FR-27), not to this feature. Interface: no new UI beyond what
+Feature 72 provides; the effect is visible in the sidebar of the created or
+copied resource and, for templates, through the CLI commands.
+**Requirements covered:** FR-62
+**User stories:** US-25
+**Depends on:** Feature 72, Feature 17
+**Branch suggestion:** feat/subtype-templates-duplicate
+**Notes:** Split from Feature 72 because the core loop works without it:
+a writer can label resources by hand. It is the one part that touches the
+template model rather than the sidebar, settings and schema manager, and it
+has no visible payoff before Feature 72 exists. The copy and duplicate
+guarantee needs only a test once Feature 72 ships, so the substantive work is
+the template scaffold and the CLI `templates` commands. The
+resource templates feature is CLI and model only, so there is no template UI
+to extend. This breakdown does not claim whether templates or duplicate
+carry the entity declaration today; that was not verified (OQ-65) and is
+not implied here.
 
 ---
 
@@ -2650,12 +2768,21 @@ timer-cleared) and the source spec requires them to stay separate.
   - FR-54: Feature 70
   - FR-55: Feature 70
   - FR-56: Feature 70
+  - FR-57: Feature 72
+  - FR-58: Feature 72
+  - FR-59: Feature 72
+  - FR-60: Feature 72
+  - FR-61: Feature 72
+  - FR-62: Feature 73
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 71
-- Suggested build order: Features 1 through 23 are already shipped
+- Total features: 73
+- Suggested build order: 72 → 73 for resource subtype (73 needs 72's
+  sidecar key; 72 has since shipped on branch `feat/resource-subtype`, not
+  yet merged to `main`, so 73 is the remaining one). Features 1 through 23
+  are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
   features independently). The entity chain 33 → 34 → 35 → 36 has since
@@ -2735,10 +2862,10 @@ timer-cleared) and the source spec requires them to stay separate.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70 (30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72 (73 is unblocked once 72 merges; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 73. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped

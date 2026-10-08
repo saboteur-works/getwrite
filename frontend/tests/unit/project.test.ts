@@ -48,4 +48,19 @@ describe("models: normalizeProjectConfig", () => {
     expect(normalized.features).toBeUndefined();
     expect(normalized.organizerCardBody).toBeUndefined();
   });
+
+  it("passes an absent subtypes through as an absent key, not []", () => {
+    const normalized = normalizeProjectConfig({ editorConfig: {} });
+    expect("subtypes" in normalized).toBe(false);
+    expect(normalizeProjectConfig().subtypes).toBeUndefined();
+    expect("subtypes" in normalizeProjectConfig()).toBe(false);
+  });
+
+  it("passes a subtypes list through unchanged", () => {
+    const normalized = normalizeProjectConfig({
+      editorConfig: {},
+      subtypes: ["Scene", "Beat"],
+    });
+    expect(normalized.subtypes).toEqual(["Scene", "Beat"]);
+  });
 });

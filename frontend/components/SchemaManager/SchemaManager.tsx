@@ -20,7 +20,16 @@ import {
   reorderMetadataGroups,
   renameMetadataFieldKey,
   updateMetadataRefProperties,
+  updateMetadataFieldAppliesTo,
+  selectActiveProjectSubtypes,
 } from "../../src/store/projectsSlice";
+import {
+  dedupeSubtypeLabels,
+  isLabelInList,
+  normalizeSubtypeLabel,
+} from "../../src/lib/models/field-subtype-scope";
+import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
+import { toastService } from "../../src/lib/toast-service";
 import FolderTreePicker from "../ResourceTree/FolderTreePicker";
 import MigrationPreview from "./MigrationPreview";
 import OptionsRemovalPreview from "./OptionsRemovalPreview";
@@ -108,6 +117,129 @@ export interface SchemaManagerProps {
   prefill?: SchemaManagerPrefill;
   /** Called with the new field's key after a prefilled creation completes. */
   onCreated?: (fieldKey: string) => void;
+}
+
+/** Keys of every built-in field; these never take a subtype restriction (FR-14). */
+const BUILT_IN_FIELD_KEYS: ReadonlySet<string> = new Set(
+  DEFAULT_METADATA_SCHEMA.groups.flatMap((g) => g.fields.map((f) => f.key)),
+);
+
+interface SubtypeRestrictionControlProps {
+  projectId: string | null;
+  groupId: string;
+  fieldKey: string;
+  fieldLabel: string;
+  /** The restriction stored in the schema (empty or absent = unrestricted). */
+  storedAppliesTo: readonly string[];
+}
+
+/**
+ * Per-custom-field "Applies to subtypes" checkbox group (Feature 72, FR-14,
+ * FR-16). Lists the project's subtypes in list order, plus one checked row per
+ * stored label not in the current list. A toggle sends the whole selection in
+ * chosen order; the write is awaited, and on rejection an error toast shows
+ * and the display reverts to the stored restriction (FR-15,
+ * `docs/standards/failure-visibility.md`).
+ */
+function SubtypeRestrictionControl({
+  projectId,
+  groupId,
+  fieldKey,
+  fieldLabel,
+  storedAppliesTo,
+}: SubtypeRestrictionControlProps): JSX.Element {
+  const dispatch = useAppDispatch();
+  const subtypes = useAppSelector(selectActiveProjectSubtypes);
+  // The selection shown while a write is in flight; `null` = show the stored one.
+  const [pending, setPending] = React.useState<string[] | null>(null);
+  const selection = pending ?? [...storedAppliesTo];
+
+  const staleLabels = selection.filter(
+    (label) => !isLabelInList(label, subtypes),
+  );
+
+  async function persist(next: string[]): Promise<void> {
+    if (!projectId) return;
+    setPending(next);
+    try {
+      await dispatch(
+        updateMetadataFieldAppliesTo({
+          projectId,
+          groupId,
+          fieldKey,
+          appliesTo: next,
+        }),
+      ).unwrap();
+    } catch (caught) {
+      toastService.error(
+        "Couldn't update subtype restriction",
+        caught instanceof Error
+          ? caught.message
+          : typeof caught === "string"
+            ? caught
+            : undefined,
+      );
+    } finally {
+      // Success: the store now holds the new restriction. Failure: the store
+      // is unchanged, so clearing reverts the display to the stored one.
+      setPending(null);
+    }
+  }
+
+  function toggle(label: string, checked: boolean): void {
+    const key = normalizeSubtypeLabel(label);
+    const next = checked
+      ? dedupeSubtypeLabels([...selection, label])
+      : selection.filter((entry) => normalizeSubtypeLabel(entry) !== key);
+    void persist(next);
+  }
+
+  const rowClass =
+    "flex items-center gap-1.5 font-mono text-[10px] text-gw-secondary";
+
+  return (
+    <fieldset
+      className="ml-1 mt-1 flex flex-col gap-1"
+      disabled={pending !== null}
+    >
+      <legend className="text-[11px] text-gw-secondary">
+        Applies to subtypes
+        <span className="sr-only"> for {fieldLabel}</span>
+      </legend>
+      {subtypes.map((label) => (
+        <label
+          key={`listed-${normalizeSubtypeLabel(label)}`}
+          className={rowClass}
+        >
+          <input
+            type="checkbox"
+            checked={isLabelInList(label, selection)}
+            onChange={(e) => toggle(label, e.target.checked)}
+          />
+          {label}
+        </label>
+      ))}
+      {staleLabels.map((label) => (
+        <label
+          key={`stale-${normalizeSubtypeLabel(label)}`}
+          className={rowClass}
+        >
+          <input
+            type="checkbox"
+            checked
+            onChange={(e) => toggle(label, e.target.checked)}
+          />
+          {label} (not in the current list)
+        </label>
+      ))}
+      {subtypes.length === 0 && staleLabels.length === 0 ? (
+        <p className="text-[11px] text-gw-secondary">
+          No subtypes yet. Add them in the Subtypes section above, in this
+          Metadata tab.
+        </p>
+      ) : null}
+    </fieldset>
+  );
 }
 
 export default function SchemaManager({
@@ -959,6 +1091,18 @@ export default function SchemaManager({
                               />
                             </EditContextMenu>
                           </div>
+                        ) : null}
+
+                        {/* Subtype restriction — custom fields only (FR-14);
+                            built-ins are identified by key, not `locked`. */}
+                        {!BUILT_IN_FIELD_KEYS.has(field.key) ? (
+                          <SubtypeRestrictionControl
+                            projectId={projectId}
+                            groupId={group.id}
+                            fieldKey={field.key}
+                            fieldLabel={field.label}
+                            storedAppliesTo={field.appliesTo ?? []}
+                          />
                         ) : null}
 
                         {/* Folder picker + Include Subfolders for multi-resource-ref */}

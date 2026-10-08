@@ -151,6 +151,15 @@ export function createNativeMetadataSchemaTransport(
       });
     },
 
+    updateFieldAppliesTo(context, groupId, fieldKey, appliesTo) {
+      return dispatch(context, {
+        action: "update-field-applies-to",
+        groupId,
+        fieldKey,
+        appliesTo,
+      });
+    },
+
     changeFieldTypeWithMigration(
       context,
       groupId,

@@ -306,3 +306,84 @@ describe("updateFeatureConfig (Task 4)", () => {
     }
   });
 });
+
+describe("updateFeatureConfig — subtypes (Feature 72, FR-1/FR-2)", () => {
+  it("replaces the stored list in order with trimmed entries, keeping case", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, subtypes: ["Old"] });
+    try {
+      const result = await updateFeatureConfig(dir, {
+        subtypes: ["  Scene ", "Chapter", "Beat"],
+      });
+      const saved = await readProject(dir);
+      expect(saved.config?.subtypes).toEqual(["Scene", "Chapter", "Beat"]);
+      expect(result.subtypes).toEqual(["Scene", "Chapter", "Beat"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("accepts an explicit empty list", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, subtypes: ["Scene"] });
+    try {
+      await updateFeatureConfig(dir, { subtypes: [] });
+      expect((await readProject(dir)).config?.subtypes).toEqual([]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("rejects a blank entry with a ZodError and leaves project.json unchanged", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, subtypes: ["Scene"] });
+    try {
+      const before = await fs.readFile(
+        path.join(dir, PROJECT_FILENAME),
+        "utf8",
+      );
+      await expect(
+        updateFeatureConfig(dir, { subtypes: ["Ok", "   "] }),
+      ).rejects.toMatchObject({ name: "ZodError" });
+      const after = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+      expect(after).toBe(before);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("rejects a case-insensitive duplicate with a ZodError and leaves project.json unchanged", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, subtypes: ["Scene"] });
+    try {
+      const before = await fs.readFile(
+        path.join(dir, PROJECT_FILENAME),
+        "utf8",
+      );
+      await expect(
+        updateFeatureConfig(dir, { subtypes: ["Scene", " scene "] }),
+      ).rejects.toMatchObject({ name: "ZodError" });
+      const after = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+      expect(after).toBe(before);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("does not write a subtypes key when the update never sets it", async () => {
+    const dir = await makeTmpProject();
+    try {
+      await updateFeatureConfig(dir, { features: { pov: true } });
+      const saved = await readProject(dir);
+      expect(saved.config).not.toHaveProperty("subtypes");
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("leaves a stored subtypes list untouched when only features is provided", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, subtypes: ["Scene"] });
+    try {
+      await updateFeatureConfig(dir, { features: { pov: true } });
+      expect((await readProject(dir)).config?.subtypes).toEqual(["Scene"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+});

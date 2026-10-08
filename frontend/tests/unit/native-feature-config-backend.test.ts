@@ -110,3 +110,48 @@ describe("native feature-config transport — in-process backend reuses updateFe
     }
   });
 });
+
+describe("native feature-config transport — subtypes (Feature 72, FR-3)", () => {
+  it("forwards subtypes and returns the same trimmed result the HTTP core does", async () => {
+    const guard = guardAgainstFetch();
+    try {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = generateUUID();
+      await seedProject(fs, projectId);
+      const transport = createNativeFeatureConfigTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+
+      const result = await transport.updateFeatureConfig(projectId, {
+        subtypes: [" Scene ", "Chapter"],
+      });
+
+      expect(result.subtypes).toEqual(["Scene", "Chapter"]);
+    } finally {
+      guard.restore();
+    }
+  });
+
+  it("rejects a blank or duplicate list, as the HTTP path does", async () => {
+    const guard = guardAgainstFetch();
+    try {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = generateUUID();
+      await seedProject(fs, projectId);
+      const transport = createNativeFeatureConfigTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+
+      await expect(
+        transport.updateFeatureConfig(projectId, { subtypes: ["A", " "] }),
+      ).rejects.toThrow();
+      await expect(
+        transport.updateFeatureConfig(projectId, { subtypes: ["A", "a"] }),
+      ).rejects.toThrow();
+    } finally {
+      guard.restore();
+    }
+  });
+});

@@ -80,6 +80,46 @@ describe("HelpPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("mentions the subtype list in the Project Settings tabs card", async () => {
+    const user = userEvent.setup();
+
+    render(<HelpPage />);
+
+    await user.click(screen.getByRole("tab", { name: /Projects/i }));
+
+    const projectsPanel = screen.getByRole("tabpanel", { name: /Projects/i });
+
+    expect(
+      within(projectsPanel).getByText(
+        (_content: string, element: Element | null) =>
+          (element?.tagName === "LI" &&
+            element?.textContent?.includes("subtype list") &&
+            element?.textContent?.includes("built-in")) ??
+          false,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains subtypes and field restriction in the Metadata Fields manager", async () => {
+    const user = userEvent.setup();
+
+    render(<HelpPage />);
+
+    await user.click(screen.getByRole("tab", { name: /Metadata/i }));
+
+    const metadataPanel = screen.getByRole("tabpanel", { name: /Metadata/i });
+
+    expect(
+      within(metadataPanel).getByText("Subtypes and field restriction"),
+    ).toBeInTheDocument();
+
+    const text = metadataPanel.textContent ?? "";
+    expect(text).toContain("Metadata tab");
+    expect(text).toContain("No subtype");
+    expect(text).toContain("restrict");
+    expect(text).toContain("values you have already entered are kept");
+  });
+
   it("keeps the modal close button behavior intact", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
