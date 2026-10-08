@@ -2556,9 +2556,9 @@ the click with a toast rather than jumping to the wrong place. A
 link-only row with no detected mentions keeps its existing resource-open-only
 click behavior unchanged.
 **Requirements covered:** None of its own — scoped and approved through its
-own standalone feature spec (`specs/features/entity-mention-navigation.md`,
-FR-1 through FR-10) rather than an amendment to this product spec's FR
-ladder; see this entry's Notes.
+own standalone feature spec (`specs/features/entity-mention-navigation.md`)
+rather than an amendment to this product spec's FR ladder; see this entry's
+Notes.
 **User stories:** None of this document's own — the source spec defines its
 own US-1/US-2 (reviewing a mention in the current resource; reviewing one in
 a different resource), not drawn from this document's US ladder.
@@ -2567,7 +2567,8 @@ a different resource), not drawn from this document's US ladder.
 **Notes:** Shipped on branch `feature/entity-mention-navigation` (not yet
 merged to `main` as of this entry). `specs/features/entity-mention-navigation.md`
 and its `tasks.md` (17 tasks, all done) are the authoritative record of the
-shipped scope. Five bug-fix commits landed on top of the original
+shipped scope. That standalone spec defines its own FR-1 through FR-10,
+numbered independently of this document's FR ladder. Five bug-fix commits landed on top of the original
 implementation, found by manual testing against real project data rather
 than the automated suite: the highlight extension was never registered in
 `TipTapEditor.tsx`'s extensions array, and ProseMirror's own
