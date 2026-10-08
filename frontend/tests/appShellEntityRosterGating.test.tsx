@@ -19,6 +19,7 @@ import {
 import { createTextResource } from "../src/lib/models/resource";
 import type { ProjectFeatureFlags } from "../src/lib/models/types";
 import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_entity_roster_gating";
 
@@ -32,7 +33,7 @@ const PROJECT_ID = "proj_entity_roster_gating";
  * roster reads across every resource, so it must render with nothing selected
  * at all — the state a freshly opened project is in.
  */
-function renderShell(
+async function renderShell(
   features: ProjectFeatureFlags,
   { selectResource = true }: { selectResource?: boolean } = {},
 ) {
@@ -71,6 +72,12 @@ function renderShell(
       />
     </Provider>,
   );
+  // AppShell mounts several sections (TagsSection, SmartFolders, SearchBar,
+  // etc.) that each fire their own fetch-then-setState effect on mount;
+  // none of this file's tests assert on them, so flush them inside act()
+  // rather than leaving their eventual update to land outside any act()
+  // scope.
+  await flushPendingEffects();
 
   return { resource };
 }
@@ -87,18 +94,21 @@ describe("AppShell — Entity Roster view gating (Task 5)", () => {
     vi.clearAllMocks();
   });
 
-  it("enables the Entities tab and mounts EntityRosterView when the entities flag is on", () => {
-    renderShell({ entities: true });
+  it("enables the Entities tab and mounts EntityRosterView when the entities flag is on", async () => {
+    await renderShell({ entities: true });
 
     const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
     expect(entitiesTab).not.toBeDisabled();
 
     fireEvent.click(entitiesTab);
+    // Mounting the Entities tab fires EntityRosterView's own mention-count
+    // fetch effect — flush it before asserting.
+    await flushPendingEffects();
     expect(screen.getByTestId("entity-roster-view")).toBeInTheDocument();
   });
 
-  it("disables the Entities tab and never mounts EntityRosterView when the entities flag is off", () => {
-    renderShell({ entities: false });
+  it("disables the Entities tab and never mounts EntityRosterView when the entities flag is off", async () => {
+    await renderShell({ entities: false });
 
     const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
     expect(entitiesTab).toBeDisabled();
@@ -108,8 +118,8 @@ describe("AppShell — Entity Roster view gating (Task 5)", () => {
     expect(screen.queryByTestId("entity-roster-view")).not.toBeInTheDocument();
   });
 
-  it("treats an absent entities flag as disabled", () => {
-    renderShell({});
+  it("treats an absent entities flag as disabled", async () => {
+    await renderShell({});
 
     const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
     expect(entitiesTab).toBeDisabled();
@@ -123,13 +133,14 @@ describe("AppShell — Entity Roster view gating (Task 5)", () => {
   // on screen. Measured in the running app against a real project before this
   // test existed; every other test here selects a resource first, which is
   // exactly why the suite stayed green while the feature was unreachable.
-  it("mounts the roster with no resource selected, since it is project-wide", () => {
-    renderShell({ entities: true }, { selectResource: false });
+  it("mounts the roster with no resource selected, since it is project-wide", async () => {
+    await renderShell({ entities: true }, { selectResource: false });
 
     const entitiesTab = screen.getByRole("tab", { name: /Entities/i });
     expect(entitiesTab).not.toBeDisabled();
 
     fireEvent.click(entitiesTab);
+    await flushPendingEffects();
 
     expect(screen.getByTestId("entity-roster-view")).toBeInTheDocument();
     expect(

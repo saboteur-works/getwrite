@@ -19,6 +19,7 @@ import {
 import { createTextResource } from "../src/lib/models/resource";
 import type { ProjectFeatureFlags } from "../src/lib/models/types";
 import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_entity_graph_gating";
 
@@ -32,7 +33,7 @@ const PROJECT_ID = "proj_entity_graph_gating";
  * graph reads across every declared entity, so it must render with nothing
  * selected at all — the state a freshly opened project is in.
  */
-function renderShell(
+async function renderShell(
   features: ProjectFeatureFlags,
   { selectResource = true }: { selectResource?: boolean } = {},
 ) {
@@ -71,6 +72,12 @@ function renderShell(
       />
     </Provider>,
   );
+  // AppShell mounts several sections (TagsSection, SmartFolders, SearchBar,
+  // etc.) that each fire their own fetch-then-setState effect on mount;
+  // none of this file's tests assert on them, so flush them inside act()
+  // rather than leaving their eventual update to land outside any act()
+  // scope.
+  await flushPendingEffects();
 
   return { resource };
 }
@@ -87,20 +94,24 @@ describe("AppShell — Relationship Graph view gating (Task 2)", () => {
     vi.clearAllMocks();
   });
 
-  it("enables the Graph tab and mounts EntityRelationshipGraphView when the entities flag is on", () => {
-    renderShell({ entities: true });
+  it("enables the Graph tab and mounts EntityRelationshipGraphView when the entities flag is on", async () => {
+    await renderShell({ entities: true });
 
     const graphTab = screen.getByRole("tab", { name: /Graph/i });
     expect(graphTab).not.toBeDisabled();
 
     fireEvent.click(graphTab);
+    // Mounting the Graph tab fires EntityRelationshipGraphView's own batch
+    // of fetch-then-setState effects (cooccurrence, relationships,
+    // backlinks, kind styles, settings) — flush them before asserting.
+    await flushPendingEffects();
     expect(
       screen.getByTestId("entity-relationship-graph-view"),
     ).toBeInTheDocument();
   });
 
-  it("disables the Graph tab and never mounts EntityRelationshipGraphView when the entities flag is off", () => {
-    renderShell({ entities: false });
+  it("disables the Graph tab and never mounts EntityRelationshipGraphView when the entities flag is off", async () => {
+    await renderShell({ entities: false });
 
     const graphTab = screen.getByRole("tab", { name: /Graph/i });
     expect(graphTab).toBeDisabled();
@@ -112,8 +123,8 @@ describe("AppShell — Relationship Graph view gating (Task 2)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("treats an absent entities flag as disabled", () => {
-    renderShell({});
+  it("treats an absent entities flag as disabled", async () => {
+    await renderShell({});
 
     const graphTab = screen.getByRole("tab", { name: /Graph/i });
     expect(graphTab).toBeDisabled();
@@ -128,13 +139,14 @@ describe("AppShell — Relationship Graph view gating (Task 2)", () => {
   // post-guard `switch` instead and is still unreachable from a freshly
   // opened project as a result (POS task_a7d8581a). This test guards against
   // the graph view repeating that mistake.
-  it("mounts the graph with no resource selected, since it is project-wide", () => {
-    renderShell({ entities: true }, { selectResource: false });
+  it("mounts the graph with no resource selected, since it is project-wide", async () => {
+    await renderShell({ entities: true }, { selectResource: false });
 
     const graphTab = screen.getByRole("tab", { name: /Graph/i });
     expect(graphTab).not.toBeDisabled();
 
     fireEvent.click(graphTab);
+    await flushPendingEffects();
 
     expect(
       screen.getByTestId("entity-relationship-graph-view"),
