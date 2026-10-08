@@ -295,7 +295,12 @@ lost work.
   HTTP route. A separate, richer template CLI (export/import to `.zip`,
   scaffold, validate, preview, version, changeset) exists in the source tree
   but is not wired into the shipped `getwrite-cli` binary and is reachable
-  only from tests; it MUST NOT be treated as a shipped capability. [US-13]
+  only from tests; it MUST NOT be treated as a shipped capability. Note,
+  2026-10-08: template creation was measured on this date to write resources
+  the project loaders reject (a flat content file and a four-key sidecar,
+  after which the project fails to load and to list); FR-63 addresses it and
+  adds `save-from-resource` to the shipped commands. This requirement's
+  history is otherwise unchanged. [US-13]
 - FR-20: Users MUST be able to define and manage custom metadata field
   definitions per project through a schema manager UI, beyond the built-in
   fields: add, edit, and delete field definitions; rename a field's label;
@@ -311,7 +316,12 @@ lost work.
   drag-and-drop, with order persisted to disk, and MUST have context-menu
   actions to create, rename, copy/duplicate (a single behavior offered
   under both labels), delete, convert to smart folder, and export tree
-  nodes. [US-6]
+  nodes. Note, 2026-10-08: a duplicate of a text resource made through the
+  running app was measured on this date to have no revision directory, and
+  edits typed into it were not saved and were lost on page reload, with no
+  error shown (the Duplicate action was measured; the menu's "Copy" action was
+  not). FR-64 addresses it. This requirement's history is otherwise
+  unchanged. [US-6]
 - FR-22: The editor MUST provide TipTap-based WYSIWYG rich-text editing with
   a config-driven toolbar, heading/body styling, tables, and paste
   normalization. [US-9]
@@ -1063,9 +1073,52 @@ lost work.
   from a "Scene" template is a Scene; a duplicate keeps its original's
   subtype). A resource created blank MUST have no subtype. The import
   pipelines (Scrivener, DOCX and plain text) MUST NOT assign a subtype.
-  This requirement does not say whether templates and duplicate carry the
-  entity declaration today; that was not verified and is not implied by this
-  decision. Status: Not started. Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08. [US-25]
+  Amended 2026-10-08 (Gate 3): the Gate 1 sentence that it was not verified
+  whether templates and duplicate carry the entity declaration is replaced
+  by what is now known. Copy and duplicate spread the whole source sidecar
+  and so carry `entityKind`, `aliases`, `wordCountGoal` and
+  `dismissedNoiseTerms` (established by reading the code; no test asserts
+  it). Templates carry none of those four and are not required to (Gate 3,
+  default accepted). That a resource created from a template can be opened
+  at all is FR-63, which this requirement depends on for its template half.
+  That a copy or duplicate of a text resource can be edited at all is FR-64
+  (added 2026-10-08, Gate 3). Status: Not started. Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08;
+  amended by the Gate 3 additions recorded under OQ-65. [US-25]
+- FR-63: A resource created from a resource template MUST be a normal
+  resource the app can open: it MUST be written the way the app's own
+  create path writes a resource (a per-resource content folder, a complete
+  valid sidecar, and for a text resource an initial canonical revision), and
+  it MUST carry the template's own metadata and subtype. Measured
+  2026-10-08: today it is not; template creation writes a flat content file
+  and a four-key sidecar, after which the project loader and the resource
+  lister both throw for the whole project. A writer MUST also be able to
+  save a template from an existing resource through the shipped
+  `getwrite-cli`, capturing the resource's type, text body, own metadata and
+  subtype and nothing else from its sidecar. A subtype the template or the
+  source resource holds in an invalid form MUST be rejected with an error
+  naming it, not dropped. Status: Not started. Resolved (OQ-65 addition):
+  Owner decision, Gate 3, 2026-10-08. [US-13][US-25]
+- FR-64: A copy or duplicate of a text resource MUST be editable like any
+  other resource: it MUST have an initial canonical revision, so that an
+  edit made to it is autosaved and survives a reload. That revision is
+  written by the same code that gives a new, template-created or imported
+  text resource its first revision, so that the ways of making a text
+  resource cannot drift apart; the source's other revisions are not copied,
+  and an image or audio copy is unchanged (it has no revision, as no media
+  resource does). Measured 2026-10-08 in the running app (`next dev` with a
+  disposable projects directory, the browser driven by Playwright, files
+  checked on disk): after Duplicate on a text resource, edits typed into the
+  copy were in neither content file after about 25 seconds, the copy had no
+  revision directory, and after a page reload and reopening the copy the
+  edits were gone, with no error or unsaved-changes prompt. A model-level
+  check the same day found the same missing revision after a copy and after
+  a duplicate. The cause of the lost edits was not established by an
+  experiment. Copies and duplicates made before this requirement is met are
+  not repaired by it (decided: not repaired; a repair command is deferred to
+  a follow-up feature, see Out of Scope (Deferred); Owner decision, Gate 3,
+  2026-10-08). Status: Not
+  started. Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
+  [US-6][US-9]
 
 ### Later Requirements
 
@@ -2507,7 +2560,11 @@ were built around.
 **OQ-65 (resolved): How do resource templates, copy/duplicate, create-resource and the import pipelines (Scrivener, DOCX, plain text) treat subtype?**
 **Resolution:** Resource templates and duplicate/copy carry the source's subtype (a resource created from a "Scene" template is a Scene; a duplicate keeps its original's subtype). A resource created blank has no subtype. The import pipelines do not assign a subtype. Whether templates and duplicate carry the entity declaration today was not verified and is not implied by this decision.
 **Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence from triage: resource templates carry a `userMetadata` map (`resource-templates.ts`); nothing there is subtype-aware today.
-**Impact:** FR-62; FR-19, FR-21 and the import requirements.
+**Addition, 2026-10-08 (Gate 3), what is now known:** By reading the code (not run): copy and duplicate spread the whole source sidecar, so they do carry `entityKind`, `aliases`, `wordCountGoal` and `dismissedNoiseTerms`; no existing test asserts any sidecar key is carried. Measured by the pipeline lead (the real model functions against a temp project, scratch test deleted): after `createResourceFromTemplate` the call returned without error, wrote a flat `resources/<name>-<id>.txt`, a sidecar of exactly `{id, name, type, createdAt}` and no `revisions/<id>/`; afterwards `loadProjectFromDisk` threw `ENOENT` on `resources/<id>/content.txt` and `getLocalResources` threw a `ZodError` (`slug` missing), each for the project as a whole. Not measured: the running app, image and audio templates, and `templates duplicate`. The shipped CLI registers only `templates save|create|duplicate|list`; `save` writes an empty text template and takes no source resource, and `save-from-resource` exists only in the unbundled `cli/src/templates.ts`.
+**Addition, 2026-10-08 (Gate 3), owner decisions:** (A) Fix template creation as part of this work: a resource created from a template is a normal, app-loadable resource, written the way the app's own create path writes one, and carries the template's subtype. (B) The shipped CLI gains `templates save-from-resource <projectRoot> <resourceId> <templateId> [--name]`, and what it captures is corrected: the source's real `userMetadata`, the source's `resourceSubtype` as its own top-level template key, and nothing else from the sidecar. Defaults accepted at Gate 3 (the owner did not object): `templates list` output is unchanged; an invalid stored subtype in a template or source resource is rejected with an error naming it; no fallback read of a label from an older template's `userMetadata`; templates do not carry `entityKind`, `aliases`, `wordCountGoal` or `dismissedNoiseTerms`; project-type `defaultResources` are out of scope. A consequence of (A) and (B) taken together: templates now carry a resource's `userMetadata` onto the resources created from them.
+**Addition, 2026-10-08 (Gate 3), copy and duplicate measured, and owner decision C:** Measured by the pipeline lead the same day, two ways. At model level (a temp project, the real functions, the scratch test deleted): `copyResourceCore` and `duplicateResource` each returned and persisted a sidecar that carried `resourceSubtype` and `entityKind` and the content directory, left `revisions/<newId>/` absent (0 revisions; the source had 1), and `loadProjectFromDisk` and `getLocalResources` both succeeded afterwards; `duplicateResource` also kept the source's `name` and `createdAt`. In the running app (`next dev`, a disposable projects directory, Playwright, files checked on disk): a baseline edit typed into a text resource reached `content.txt` and `content.tiptap.json` within 5 seconds (revisions: `v-1`); after Duplicate, an edit typed into the copy was in neither file after 8 and again about 25 seconds, no revision existed, and after a page reload and reopening the copy the edit was gone, with no toast, error or unsaved-changes prompt. Not measured: the menu's "Copy" action (Duplicate was used), image and audio copies, a manual "save revision" on the copy, and CLI `templates duplicate` output opened in the app. The cause is not established by experiment; triage's reading (the editor queues autosave only when editing the canonical revision, and a copy has none) is consistent with the measurement and untested. Owner decision C: fix it inside this work. A copy or duplicate of a text resource gets an initial canonical revision, written by the same code as a new resource's; the source's other revisions are not copied; image and audio copies get none. This is FR-64. Whether a duplicate should also get a fresh `createdAt` or a distinct name is not decided and is not part of this fix. Copies made before the fix are an open question in the feature spec, not decided here.
+**Addition, 2026-10-08 (Gate 3), defaults confirmed by the owner ("defaults OK") for the feature spec's eight open questions:** (1) Image and audio templates are rejected, as is any template type other than text, with an error naming the type; image and audio remain supported for copy and duplicate. (2) A template's folder is honoured when it exists and rejected, naming the template and the folder id, when it does not. (3) `templates create` gains no `--folder` option or any other new option. (4) Variable substitution applies to a template's metadata string values too; the shipped command passes no variables, so shipped behaviour is the same either way. (5) A template's body is captured as plain text only; paragraph breaks survive, while marks, headings, lists and other structure are flattened, soft line breaks contribute no text and trailing blank paragraphs are dropped. (6) Resources already created by the old template path are out of scope, with a documented workaround (delete the stray sidecar and the flat content file); the repo's own `projects/` directory holds 160 sidecars, all with a `slug`, and no flat-layout resource files (triage count, 2026-10-08; only the repo's store was checked, not a writer's workspace). (7) Duplicate fidelity is closed by the measurement and owner decision C above. (8) Templates made by the old unbundled helper are left as they are and documented; they are unreachable from the shipped CLI and no template files exist under the repo's `projects/`.
+**Impact:** FR-62, FR-63, FR-64; FR-19, FR-21 and the import requirements.
 
 **OQ-66 (resolved): How do the Organizer card body, Organizer filters and the Timeline treat a field that is out of scope for a resource's subtype?**
 **Resolution:** Organizer card body, Organizer filters and Timeline are unchanged. Consistent with OQ-59.
@@ -2592,3 +2649,15 @@ were built around.
   pipelines assigning a subtype; and which built-in project types should
   ship a subtype list (no built-in type ships one yet, a deferred content
   decision). These are deferred, not decided against.
+- Repair of text resources that already lack an initial canonical revision
+  (copies and duplicates made before FR-64 is met, and any other
+  revision-less text resource), whether by healing on open, detection, or a
+  repair command (FR-64, resolved: OQ-65; Owner decision, Gate 3,
+  2026-10-08). FR-64 fixes copy and duplicate going forward only; a repair
+  command is a follow-up feature, and the documented workaround is to
+  duplicate the resource again after the fix and work in the new copy (a
+  revision-less resource that is not a copy has none in this feature). A
+  read-only count over the repo's own `projects/` store on 2026-10-08 found
+  11 of 160 text resources with no revision directory, all in one project,
+  none with "copy" in its name; how they came to lack one was not
+  established. This is deferred, not decided against.

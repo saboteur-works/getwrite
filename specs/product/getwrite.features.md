@@ -275,6 +275,11 @@ template scaffolds under `meta/templates/`.
 preview, version, changeset) exists in the source tree but is not wired
 into the shipped `getwrite-cli` binary and is reachable only from tests; it
 is not shipped and must not be claimed as such.
+Note, 2026-10-08: template creation was measured on this date to write
+resources the project loaders reject (a flat content file and a four-key
+sidecar, after which `loadProjectFromDisk` and `getLocalResources` both throw
+for the whole project); Feature 73 fixes it and adds `save-from-resource` to
+the shipped commands. This entry's status and references are unchanged.
 
 ### Feature 18: User-definable metadata schema — Shipped
 **Value:** A writer on deadline tracks attributes specific to their project
@@ -2670,41 +2675,109 @@ not measured.
 
 ---
 
-### Feature 73: Subtype carried by templates and duplicates — Not started
-**Value:** A writer who creates a resource from a "Scene" template, or
-duplicates a Scene, gets a Scene without re-labelling it, so the fields they
-scoped to scenes appear immediately. The copy and duplicate half is already
-satisfied once Feature 72 ships; the template half is the remaining work.
-**Vertical slice:** Data and logic: the template scaffold in
-`resource-templates.ts` (save and create) carries the source's subtype key
-(`createResourceFromTemplate` builds from `tmpl.userMetadata` only today, so
-this is real work), and the CLI `templates save|create|duplicate|list`
-commands carry it; a blank create sets none. The copy and duplicate paths
-need only a test: verified in code by triage, confirmed by the owner,
-`copyResourceCore` (`resource-crud-core.ts`) spreads the whole source sidecar
-and backs both the HTTP copy route and `native-resource-backend`, and
-`duplicateResource` (`resource-templates.ts`, reached only by the CLI
-`templates duplicate`) spreads `{...meta, id}`, so a copy or duplicate
-already carries the key with no code change. The check that the Scrivener,
-DOCX and plain-text import pipelines do not set a subtype belongs to
-Feature 72 (its FR-27), not to this feature. Interface: no new UI beyond what
-Feature 72 provides; the effect is visible in the sidebar of the created or
-copied resource and, for templates, through the CLI commands.
-**Requirements covered:** FR-62
-**User stories:** US-25
+### Feature 73: Loadable template resources, save from a resource, editable copies, and subtype carried through — Not started
+**Value:** A writer who creates a resource from a template gets a normal
+resource the project can open (it does not today), and a writer who creates a
+resource from a "Scene" template, or copies or duplicates a Scene, gets a
+Scene without re-labelling it, so the fields they scoped to scenes appear
+immediately. A writer can also save a template from a resource they have
+already written, through the shipped CLI, instead of hand-editing JSON. And a
+writer who copies or duplicates a text resource to rework it can edit the
+copy and keep the edits: today they cannot (measured 2026-10-08, edits typed
+into a duplicate were lost on reload with no error), because a copy has no
+revision for the editor to save into.
+**Vertical slice:** Data and logic: template creation in
+`resource-templates.ts` is changed to write a resource through the app's own
+create path (`createResourceOfType`, `writeResourceToFile`, and the initial
+canonical revision `createResourceCore` writes), carrying the template's
+`userMetadata` and subtype; the template shape gains an optional top-level
+`resourceSubtype`; `saveResourceTemplateFromResource` is corrected to capture
+the source's real `userMetadata`, its subtype and its text body and nothing
+else from the sidecar; and the CLI registers a new shipped
+`templates save-from-resource` command on the existing `templates` group. The
+write-plus-initial-revision tail of the app's create is extracted into one
+function that the app's create, template creation, copy (`copyResourceCore`)
+and duplicate (`duplicateResource`) all call, so a copied or duplicated text
+resource gets a single initial canonical revision (the source's other
+revisions are not copied; image and audio copies get none). The subtype on
+copy and duplicate needs only regression tests (they spread the whole source
+sidecar by reading, so no code change is expected for it), plus a regression
+test that a blank create has none. Template creation supports text templates
+only, stores the body as plain text, and the shipped `templates create` gains
+no `--folder` option.
+The check that the Scrivener, DOCX and plain-text import pipelines do not set
+a subtype belongs to Feature 72 (its FR-27), not to this feature. Interface:
+no new UI; the effect is visible in the sidebar of the created or copied
+resource and, for templates, through the CLI commands.
+**Requirements covered:** FR-62, FR-63, FR-64
+**User stories:** US-25, US-13, US-6, US-9
 **Depends on:** Feature 72, Feature 17
 **Branch suggestion:** feat/subtype-templates-duplicate
-**Notes:** Split from Feature 72 because the core loop works without it:
-a writer can label resources by hand. It is the one part that touches the
-template model rather than the sidebar, settings and schema manager, and it
-has no visible payoff before Feature 72 exists. Feature 72 merged to `main`
-on 2026-10-08, so this feature is unblocked. The copy and duplicate
-guarantee needs only a test once Feature 72 ships, so the substantive work is
-the template scaffold and the CLI `templates` commands. The
-resource templates feature is CLI and model only, so there is no template UI
-to extend. This breakdown does not claim whether templates or duplicate
-carry the entity declaration today; that was not verified (OQ-65) and is
-not implied here.
+**Notes:** Split from Feature 72 because the core loop works without it: a
+writer can label resources by hand. Feature 72 merged to `main` on
+2026-10-08, so this feature is unblocked. Scope grew at Gate 3 on 2026-10-08
+from the original entry, which was "templates carry the subtype key", with
+copy and duplicate needing only a test. A measurement that day changed it: the
+pipeline lead ran the real model functions against a temp project; after
+`createResourceFromTemplate` the call returned without error and wrote a flat
+`resources/<name>-<id>.txt`, a sidecar of exactly id, name, type and createdAt,
+and no `revisions/<id>/`, and afterwards `loadProjectFromDisk` threw `ENOENT`
+on `resources/<id>/content.txt` and `getLocalResources` threw a `ZodError`
+(`slug` missing), each for the project as a whole. Not measured: the running
+app, image and audio templates, and `templates duplicate`. Gate 3 owner
+decisions: (A) fix template creation as part of this feature, through the
+app's own create path; (B) add `templates save-from-resource` to the shipped
+CLI and correct what it captures (the source's real `userMetadata`, its
+`resourceSubtype` as a top-level template key, nothing else). Defaults
+accepted at Gate 3, not explicit decisions: `templates list` output
+unchanged; an invalid stored subtype is rejected with an error naming it; no
+fallback read of a label from an older template's `userMetadata`; templates do
+not carry `entityKind`, `aliases`, `wordCountGoal` or `dismissedNoiseTerms`;
+project-type `defaultResources` out of scope. Consequences the owner may not
+have anticipated: templates now carry a resource's `userMetadata` onto every
+resource created from them; existing tests that assert the old flat layout or
+the four-key sidecar change deliberately; resources already created by the old
+path remain unloadable unless a separate repair is decided. The other
+unshipped helper subcommands stay unregistered, and the template feature stays
+CLI and model only, with no template UI. The feature spec is
+`specs/features/subtype-templates-duplicates.md`, which has no open questions:
+the last one (copies and duplicates made before the fix) was decided at Gate 3
+on 2026-10-08, option (a), see below.
+The first draft of this note said that whether the app opens a duplicate or
+a copy equivalently to an app-created resource was unmeasured; it has since
+been measured (next paragraph).
+Second Gate 3 measurement, 2026-10-08 (pipeline lead, two ways). At model
+level (a temp project, the real functions): a copy and a duplicate of a text
+resource each kept `resourceSubtype` and `entityKind` and the content
+directory, had no `revisions/<newId>/`, and both loaders still succeeded; the
+duplicate also kept the source's `name` and `createdAt`. In the running app
+(`next dev`, a disposable projects directory, Playwright, files on disk): a
+baseline edit reached disk within 5 seconds; after Duplicate, an edit typed
+into the copy was in neither content file after 8 and about 25 seconds, the
+copy had no revision directory, and after a reload and reopening the copy the
+edit was gone, with no toast, error or unsaved-changes prompt. Not measured:
+the menu's "Copy" action, image and audio copies, a manual "save revision" on
+the copy, and CLI `templates duplicate` output opened in the app. The cause
+is not established by experiment (a reading that the editor autosaves only
+into a canonical revision, which a copy lacks, is consistent and untested).
+Owner decision C, Gate 3, 2026-10-08: fix it inside this feature (FR-64).
+Defaults the owner confirmed ("defaults OK") for the feature spec's eight
+questions: text templates only (image, audio and unknown types rejected); a
+template's folder honoured when it exists and rejected when it does not; no
+`--folder` option; variable substitution applies to metadata strings; body
+captured as plain text only; resources made by the old template path out of
+scope with a documented workaround; duplicate fidelity closed by decision C;
+templates made by the old unbundled helper left as they are. Not decided: a
+fresh name or `createdAt` for a duplicate (an adjacent finding). Owner
+decision, Gate 3, 2026-10-08, on copies and duplicates made before the fix
+(formerly the feature spec's one open question): not repaired by this feature
+and documented, with a repair command deferred to a follow-up feature; the
+workaround is to duplicate the resource again after the fix and work in the
+new copy. A read-only count over the repo's own `projects/` store the same day
+found 11 of 160 text resources with no revision directory, all in one project,
+none with "copy" in its name, 9 of the 11 with a word count of zero or absent;
+how they came to lack a revision was not established, and only the repo's
+store was checked. The owner then approved the feature spec.
 
 ---
 
@@ -2775,6 +2848,8 @@ not implied here.
   - FR-60: Feature 72
   - FR-61: Feature 72
   - FR-62: Feature 73
+  - FR-63: Feature 73
+  - FR-64: Feature 73
 - Unassigned requirements: none
 
 ## Summary
