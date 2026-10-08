@@ -182,7 +182,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
           ],
           [
             strong("Metadata"),
-            " - add, remove, and reorder metadata fields and groups, and turn the optional built-in fields on or off. See the Metadata help tab for the full picture.",
+            " - add, remove, and reorder metadata fields and groups, manage the subtype list, and turn the optional built-in fields on or off. See the Metadata help tab for the full picture.",
           ],
           [
             strong("Timeline"),
@@ -504,6 +504,37 @@ export const HELP_TABS: HelpTabDefinition[] = [
             "Set the folder scope and a maximum number of selections for ",
             strong("Multi Ref"),
             " fields.",
+          ],
+        ],
+      },
+      { type: "heading", content: ["Subtypes and field restriction"] },
+      {
+        type: "paragraph",
+        content: [
+          "A ",
+          strong("subtype"),
+          " is an optional label you give a document to say what kind of document it is — for example Scene, Chapter, or Interview. You define the list yourself, in the ",
+          strong("Metadata"),
+          " tab of Project Settings, in the section above the Metadata Fields manager. Labels are matched without regard to capital letters or surrounding spaces, so Scene and scene count as the same label.",
+        ],
+      },
+      {
+        type: "tip-card",
+        items: [
+          [
+            "To give a document a subtype, select it and use the ",
+            strong("Subtype"),
+            " section in its metadata panel. Choose ",
+            strong("No subtype"),
+            " to clear it. A document has at most one subtype, and text, image, and audio resources can all have one.",
+          ],
+          [
+            "To make a field you created appear only on some kinds of document, open it in the Metadata Fields manager and restrict it to one or more subtypes. A field with no restriction appears on every document. A restricted field appears only on documents with one of its subtypes, and not on documents with no subtype. The built-in fields cannot be restricted.",
+          ],
+          [
+            "Hiding a field this way never deletes anything: values you have already entered are kept, and they reappear unchanged when the document's subtype matches again. Removing a subtype from the list is also safe — documents and restrictions that use it keep it, and it is marked ",
+            em("not in the current list"),
+            " until you add it back.",
           ],
         ],
       },

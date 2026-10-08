@@ -143,7 +143,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 2
 **Notes:** Satisfies FR-30 (help half). Write from the spec; copy for the UI strings is working copy ("Subtype", "No subtype"). No other documentation is written in this feature's implementation stage.
 **POS:** task_fb4281cc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Final verification gate
 **What:** Run the full verification suite against a freshly measured baseline and confirm nothing out of scope or stray was added.
