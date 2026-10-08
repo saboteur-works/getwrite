@@ -247,6 +247,79 @@ describe("native resources transport — in-process backend reuses the shared re
     expect(sidecar.name).toBe("Entity Target");
   });
 
+  it("updateSidecar sets, then clears, resourceSubtype through clearKeys on the native path, leaving entity fields alone (FR-7/FR-8)", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const created = await transport.create(projectId, {
+      type: "text",
+      name: "Subtype Target",
+      text: { plainText: "content" },
+    });
+    const adapter = capacitorFsAdapter(fs);
+    const sidecarPath = sidecarPathForProject(
+      path.join(PROJECTS_DIR, projectId),
+      created.resource.id,
+    );
+    const readRaw = async (): Promise<Record<string, unknown>> =>
+      JSON.parse(
+        (await adapter.readFile(sidecarPath, "utf-8")) as string,
+      ) as Record<string, unknown>;
+
+    await transport.updateSidecar(created.resource.id, projectId, {
+      ...created.resource,
+      entityKind: "character",
+      aliases: ["Al"],
+      resourceSubtype: " Scene ",
+    } as never);
+    const set = await readRaw();
+    expect(set.resourceSubtype).toBe("Scene");
+
+    await transport.updateSidecar(
+      created.resource.id,
+      projectId,
+      { ...created.resource } as never,
+      ["resourceSubtype"],
+    );
+    const cleared = await readRaw();
+    expect(
+      Object.prototype.hasOwnProperty.call(cleared, "resourceSubtype"),
+    ).toBe(false);
+    expect(cleared.entityKind).toBe("character");
+    expect(cleared.aliases).toEqual(["Al"]);
+  });
+
+  it("updateSidecar rejects a blank resourceSubtype and leaves the sidecar unchanged on the native path", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const created = await transport.create(projectId, {
+      type: "text",
+      name: "Subtype Target",
+      text: { plainText: "content" },
+    });
+    const adapter = capacitorFsAdapter(fs);
+    const sidecarPath = sidecarPathForProject(
+      path.join(PROJECTS_DIR, projectId),
+      created.resource.id,
+    );
+    const before = await adapter.readFile(sidecarPath, "utf-8");
+
+    await expect(
+      transport.updateSidecar(created.resource.id, projectId, {
+        ...created.resource,
+        resourceSubtype: "   ",
+      } as never),
+    ).rejects.toThrow();
+    expect(await adapter.readFile(sidecarPath, "utf-8")).toBe(before);
+  });
+
   it("fetchContent resolves to null on failure (invalid projectId), matching the HTTP transport's null-on-failure parity", async () => {
     const fs = createFakeCapacitorFilesystem();
     const transport = createNativeResourcesTransport({

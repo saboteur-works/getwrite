@@ -73,7 +73,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-8. The allowlist currently reads `entityKind`, `aliases`, `wordCountGoal`.
 **POS:** task_5ee42e9a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Field-restriction schema action, end to end below the UI
 **What:** Add a "set or clear a field's subtype restriction" metadata-schema action through model, dispatch core, route, both transports and a store thunk.

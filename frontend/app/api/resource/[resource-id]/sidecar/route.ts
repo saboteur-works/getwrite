@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   InvalidClearKeysCoreError,
   InvalidProjectIdCoreError,
+  InvalidResourceSubtypeCoreError,
   updateSidecarCore,
 } from "../../../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
@@ -45,6 +46,12 @@ async function handlePost(
     if (error instanceof InvalidClearKeysCoreError) {
       return NextResponse.json(
         { error: "Invalid clearKeys", details: error.message },
+        { status: 400 },
+      );
+    }
+    if (error instanceof InvalidResourceSubtypeCoreError) {
+      return NextResponse.json(
+        { error: "Invalid resourceSubtype", details: error.message },
         { status: 400 },
       );
     }
