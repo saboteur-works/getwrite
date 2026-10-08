@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   render,
   screen,
   waitFor,
@@ -189,7 +190,9 @@ describe("WritingLogFooterDisplay", () => {
     mocked.mockResolvedValue(aggregate());
     render(<WritingLogFooterDisplay projectId="p1" />);
     await screen.findByText("Today: 420 / 1000");
-    reportWritingLogSignal({ markerAppendFailed: true } as never);
+    act(() => {
+      reportWritingLogSignal({ markerAppendFailed: true } as never);
+    });
     await waitFor(() =>
       expect(screen.getByText(/today's count may be incomplete/i)).toBeTruthy(),
     );

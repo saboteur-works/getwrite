@@ -33,6 +33,7 @@ vi.mock("../components/TipTapEditor", () => {
 import EditView from "../components/WorkArea/EditView";
 import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 function seedRevisions(
   store: ReturnType<typeof makeStore>,
@@ -196,6 +197,16 @@ describe("EditView", () => {
     fireEvent.change(editor, { target: { value: "Edited" } });
 
     expect(screen.getByText(/Autosave queued/i)).toBeInTheDocument();
+
+    // EditView mounts WritingLogFooterDisplay/RevisionControl, and fires
+    // its own revision-content effect on mount, all unrelated to the
+    // autosave-queuing behavior just asserted above — flushed here, after
+    // that assertion, rather than before it: this test's blanket 404 fetch
+    // stub also fails that unrelated content read, which flips EditView
+    // into its "error" state (replacing the editor entirely) once that
+    // settles, so flushing before the assertion would have changed what
+    // this test actually exercises, not just silenced console noise.
+    await flushPendingEffects();
 
     fetchStub.mockRestore();
   });

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityRelationshipsSection from "../../components/Sidebar/EntityRelationshipsSection";
 import EntityRelationshipsRefreshProvider from "../../components/Sidebar/EntityRelationshipsRefreshContext";
@@ -251,13 +251,17 @@ describe("EntityRelationshipsSection", () => {
       "entity-relationship-type-select",
     ) as HTMLSelectElement;
 
-    targetSelect.value = "entity-priya";
-    targetSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    typeSelect.value = "ally of";
-    typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    act(() => {
+      targetSelect.value = "entity-priya";
+      targetSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      typeSelect.value = "ally of";
+      typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
 
     const addButton = screen.getByLabelText("add-entity-relationship");
-    addButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    act(() => {
+      addButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
 
     await waitFor(() =>
       expect(mockedCreate).toHaveBeenCalledWith(
@@ -410,7 +414,9 @@ describe("EntityRelationshipsSection", () => {
     const removeButton = await screen.findByLabelText(
       "Remove relationship with Priya",
     );
-    removeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    act(() => {
+      removeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
 
     await waitFor(() =>
       expect(mockedRemove).toHaveBeenCalledWith(PROJECT_ID, "edge-1"),

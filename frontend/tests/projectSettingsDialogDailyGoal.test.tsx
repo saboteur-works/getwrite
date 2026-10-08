@@ -11,6 +11,7 @@ import { setDailyWordGoal } from "../src/lib/api/writing-log";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
 vi.mock("../src/lib/api/project-noise-words", () => ({
@@ -26,7 +27,7 @@ vi.mock("../src/lib/api/global-noise-words", () => ({
   getGlobalNoiseWords: vi.fn().mockResolvedValue([]),
 }));
 
-function renderWith(projectId?: string): void {
+async function renderWith(projectId?: string): Promise<void> {
   const store = configureStore({
     reducer: {
       projects: projectReducer,
@@ -49,18 +50,22 @@ function renderWith(projectId?: string): void {
       />
     </Provider>,
   );
+  // Every tab's panel mounts simultaneously (not lazily per-tab), so
+  // NoiseWordsSettingsTab fires its own fetch-then-setState effect on
+  // every render here regardless of which tab a test cares about.
+  await flushPendingEffects();
 }
 
 describe("ProjectSettingsDialog daily goal", () => {
-  it("shows the current daily goal when a project id is given", () => {
-    renderWith("p1");
+  it("shows the current daily goal when a project id is given", async () => {
+    await renderWith("p1");
     expect(
       (screen.getByLabelText("Daily word goal") as HTMLInputElement).value,
     ).toBe("300");
   });
 
-  it("omits the field without a project id", () => {
-    renderWith(undefined);
+  it("omits the field without a project id", async () => {
+    await renderWith(undefined);
     expect(screen.queryByLabelText("Daily word goal")).toBeNull();
   });
 });
@@ -72,7 +77,7 @@ describe("ProjectSettingsDialog daily goal project id (Task 16)", () => {
       rootPath: "/workspace/dir-basename-id",
     };
     vi.mocked(setDailyWordGoal).mockResolvedValue({ dailyWordGoal: 300 });
-    renderWith(getProjectDirectoryId(project.rootPath));
+    await renderWith(getProjectDirectoryId(project.rootPath));
     fireEvent.click(screen.getByRole("tab", { name: /Writing Goals/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save daily goal" }));
     await waitFor(() =>

@@ -18,6 +18,8 @@ import {
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_organizer_title_click_suppression";
 const FOLDER_ID = "44444444-4444-4444-8444-444444444444";
@@ -39,7 +41,7 @@ const makeFolder = (id: string, name: string) => ({
  * can dispatch against it directly (mirroring an ordinary, non-title-click
  * selection path such as `ResourceTree.tsx`/`SearchBar.tsx`).
  */
-function renderShell() {
+async function renderShell() {
   const textA = createTextResource({
     name: "Text Card A",
     folderId: FOLDER_ID,
@@ -80,30 +82,30 @@ function renderShell() {
       />
     </Provider>,
   );
+  // AppShell mounts several sections (TagsSection, SmartFolders, SearchBar,
+  // etc.) that each fire their own fetch-then-setState effect on mount;
+  // none of this file's tests assert on them, so flush them inside act()
+  // rather than leaving their eventual update to land outside any act()
+  // scope.
+  await flushPendingEffects();
 
   return { store, textA, textB };
 }
 
 describe("AppShell — OrganizerCard title click suppresses the auto-switch view effect (FR-3, FR-4, FR-6)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
     vi.clearAllMocks();
   });
 
-  it("stays on the organizer view after a title click, but a later ordinary selection still switches to edit (one-shot regression)", () => {
-    const { store, textB } = renderShell();
+  it("stays on the organizer view after a title click, but a later ordinary selection still switches to edit (one-shot regression)", async () => {
+    const { store, textB } = await renderShell();
 
     // Selecting Folder A lands the shell on "organizer" via the existing
     // folder-selection effect.
@@ -140,6 +142,9 @@ describe("AppShell — OrganizerCard title click suppresses the auto-switch view
     act(() => {
       store.dispatch(setSelectedResourceId(textB.id));
     });
+    // Switching to the Edit view mounts EditView, which fires its own
+    // revision-content-load effect — flush it before the test ends.
+    await flushPendingEffects();
 
     expect(screen.getByRole("tab", { name: "Edit" })).toHaveAttribute(
       "aria-selected",
@@ -147,8 +152,8 @@ describe("AppShell — OrganizerCard title click suppresses the auto-switch view
     );
   });
 
-  it("clicking the footer Open button still switches the active view to edit (FR-6, unchanged)", () => {
-    renderShell();
+  it("clicking the footer Open button still switches the active view to edit (FR-6, unchanged)", async () => {
+    await renderShell();
 
     expect(screen.getByRole("tab", { name: "Organizer" })).toHaveAttribute(
       "aria-selected",
@@ -159,6 +164,9 @@ describe("AppShell — OrganizerCard title click suppresses the auto-switch view
       .getByText("Text Card A")
       .closest("article") as HTMLElement;
     fireEvent.click(within(cardA).getByRole("button", { name: "Open" }));
+    // Switching to the Edit view mounts EditView, which fires its own
+    // revision-content-load effect — flush it before the test ends.
+    await flushPendingEffects();
 
     expect(screen.getByRole("tab", { name: "Edit" })).toHaveAttribute(
       "aria-selected",

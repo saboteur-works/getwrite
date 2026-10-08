@@ -48,7 +48,7 @@ export default function TimelineView({
   const dispatch = useAppDispatch();
 
   const resources = useAppSelector((state) => state.resources.resources);
-  const folders = useAppSelector((state) => state.resources.folders ?? []);
+  const folders = useAppSelector((state) => state.resources.folders);
 
   // POV and Notes are independent opt-ins (spec FR4): when a feature is off the
   // Timeline must ignore its data entirely — no coloring, pills, or legend for

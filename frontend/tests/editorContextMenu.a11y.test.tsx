@@ -6,6 +6,7 @@ import { EditorContent } from "@tiptap/react";
 import { runAxe } from "./a11y/helpers/axe";
 import EditorContextMenu from "../components/Editor/EditorContextMenu";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 // Mirrors editorContextMenu.test.tsx's own mountEditor/openMenu conventions
 // (a real TipTap `Editor` instance, Radix's DismissableLayer pointerdown
@@ -89,6 +90,12 @@ describe("a11y: EditorContextMenu", () => {
     // pointerdown setTimeout so the menu actually opens) must be torn
     // down first, or `axe.run()` never resolves.
     vi.useRealTimers();
+    // Switching back to real timers doesn't replay any Radix rAF/
+    // ResizeObserver-driven internal update (Presence/PopperContent/
+    // FocusScope/DismissableLayer) still pending from opening the menu
+    // under fake timers above — flush it before the axe scan touches
+    // the DOM, so it lands inside act() rather than during the scan.
+    await flushPendingEffects();
     await runAxe(document.body, ["region"]);
   });
 
@@ -109,6 +116,12 @@ describe("a11y: EditorContextMenu", () => {
     // pointerdown setTimeout so the menu actually opens) must be torn
     // down first, or `axe.run()` never resolves.
     vi.useRealTimers();
+    // Switching back to real timers doesn't replay any Radix rAF/
+    // ResizeObserver-driven internal update (Presence/PopperContent/
+    // FocusScope/DismissableLayer) still pending from opening the menu
+    // under fake timers above — flush it before the axe scan touches
+    // the DOM, so it lands inside act() rather than during the scan.
+    await flushPendingEffects();
     await runAxe(document.body, ["region"]);
   });
 
@@ -133,6 +146,12 @@ describe("a11y: EditorContextMenu", () => {
     // pointerdown setTimeout so the menu actually opens) must be torn
     // down first, or `axe.run()` never resolves.
     vi.useRealTimers();
+    // Switching back to real timers doesn't replay any Radix rAF/
+    // ResizeObserver-driven internal update (Presence/PopperContent/
+    // FocusScope/DismissableLayer) still pending from opening the menu
+    // under fake timers above — flush it before the axe scan touches
+    // the DOM, so it lands inside act() rather than during the scan.
+    await flushPendingEffects();
     await runAxe(document.body, ["region"]);
   });
 
@@ -153,6 +172,12 @@ describe("a11y: EditorContextMenu", () => {
     // pointerdown setTimeout so the menu actually opens) must be torn
     // down first, or `axe.run()` never resolves.
     vi.useRealTimers();
+    // Switching back to real timers doesn't replay any Radix rAF/
+    // ResizeObserver-driven internal update (Presence/PopperContent/
+    // FocusScope/DismissableLayer) still pending from opening the menu
+    // under fake timers above — flush it before the axe scan touches
+    // the DOM, so it lands inside act() rather than during the scan.
+    await flushPendingEffects();
     await runAxe(document.body, ["region"]);
   });
 });

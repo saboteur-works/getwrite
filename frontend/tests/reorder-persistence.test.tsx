@@ -21,15 +21,12 @@ describe("Reorder persistence integration", () => {
       "../specs/002-define-data-models/project-types/novel_project_type.json",
     );
 
-    console.log("[test] creating project from type...");
-
     const created = await createProjectFromType({
       projectRoot: tmp,
       spec: specPath,
       name: "Reorder Persistence Project",
     });
 
-    console.log("[test] created project", created.project.id);
     // Use canonical `created.resources` (not the adapter's flat `view.resources`)
     // to avoid duplicating folder entries in the UI tree (folder entries are
     // represented separately via `folders`). Passing the adapter's `view.resources`
@@ -41,7 +38,6 @@ describe("Reorder persistence integration", () => {
       resources: created.resources,
     } as any;
 
-    console.log("[test] stubbing global fetch");
     // stub global fetch so AppShell's persistence call writes into our tmp project
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, opts?: any) => {
@@ -98,7 +94,6 @@ describe("Reorder persistence integration", () => {
     });
     globalThis.fetch = fetchMock as typeof globalThis.fetch;
 
-    console.log("[test] seeding test-local store and rendering AppShell");
     // create a test-local Redux store, seed it, and render AppShell
     const testStore = makeStore();
     testStore.dispatch(
@@ -124,12 +119,8 @@ describe("Reorder persistence integration", () => {
       </Provider>,
     );
 
-    console.log("[test] AppShell rendered");
-
     // Expand the first folder if present and locate treeitems
-    console.log("[test] waiting for Resource tree");
     const tree = await screen.findByRole("tree", { name: "Resource tree" });
-    console.log("[test] found Resource tree");
     const treeItems = Array.from(
       tree.querySelectorAll('[role="treeitem"]'),
     ) as HTMLElement[];
@@ -159,12 +150,14 @@ describe("Reorder persistence integration", () => {
       await Promise.resolve();
     });
 
-    // allow async persistence stub to complete
-    console.log("[test] waiting for persistence stub to complete");
+    // Deliberately 100ms, not tests/helpers/flushEffects.ts's 0ms flush:
+    // the fetchMock above does real fs reads/writes (folder.json, sidecar
+    // files) before resolving, which can genuinely outlast a single
+    // macrotask tick — this is waiting out that write, not just flushing
+    // an already-settled mount effect.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 100));
     });
-    console.log("[test] waiting complete");
 
     expect(fetchMock).toHaveBeenCalled();
     const lastCall = fetchMock.mock.calls.at(-1);

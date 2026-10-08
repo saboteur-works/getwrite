@@ -21,6 +21,7 @@ import {
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { updateSidecar } from "../src/lib/api/resources";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const mockUpdateSidecar = vi.mocked(updateSidecar);
 
@@ -33,22 +34,16 @@ const INTERNAL_ID = "7b8e0a2c-internal-id-from-project-json";
 const DIRECTORY_ID = "3f5d9e11-directory-basename";
 
 describe("AppShell resource word-count goal wiring (Task 8)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
     mockUpdateSidecar.mockReset();
     mockUpdateSidecar.mockResolvedValue(undefined as never);
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   });
 
   it("drives a save through the mounted sidebar, writing the sidecar with the directory id and rendering the progress bar with the saved goal", async () => {

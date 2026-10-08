@@ -52,7 +52,10 @@ export interface EntityAliasTableTransport {
 }
 
 /** The empty alias table returned on any read failure. */
-const EMPTY_ALIAS_TABLE: EntityAliasTable = { entities: {}, claimedBy: {} };
+export const EMPTY_ALIAS_TABLE: EntityAliasTable = {
+  entities: {},
+  claimedBy: {},
+};
 
 /**
  * HTTP transport — the hosted/desktop path. The method body below is the

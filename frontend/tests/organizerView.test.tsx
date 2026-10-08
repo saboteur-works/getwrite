@@ -972,7 +972,9 @@ describe("OrganizerView", () => {
     // `browsingFolderId` only syncs from a folder-resolving selection), so
     // this tree is explicitly unmounted before the next render rather than
     // relying on the grid having emptied on its own.
-    screen.getByRole("button", { name: "Text Card" }).click();
+    act(() => {
+      screen.getByRole("button", { name: "Text Card" }).click();
+    });
     expect(testStore.getState().resources.selectedResourceId).toBe(
       textResource.id,
     );
@@ -1042,7 +1044,9 @@ describe("OrganizerView", () => {
       selectSuppressNextViewAutoSwitch(testStore.getState().resources),
     ).toBe(false);
 
-    screen.getByRole("button", { name: "Text Card" }).click();
+    act(() => {
+      screen.getByRole("button", { name: "Text Card" }).click();
+    });
 
     // Immediately after the click — nothing in `OrganizerView` clears this
     // flag; only `AppShell.tsx`'s effect does, and it isn't rendered here.
@@ -1493,7 +1497,9 @@ describe("OrganizerView folder browsing survives an in-folder title click (Task 
     expect(screen.getByText("Resource B")).toBeTruthy();
 
     // Click one card's title, selecting that resource (not the folder).
-    screen.getByRole("button", { name: "Resource A" }).click();
+    act(() => {
+      screen.getByRole("button", { name: "Resource A" }).click();
+    });
     expect(testStore.getState().resources.selectedResourceId).toBe(
       resourceA.id,
     );

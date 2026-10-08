@@ -10,6 +10,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -67,6 +68,8 @@ import {
 } from "../../src/lib/api/trash";
 import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
+import { stubAppShellFetch } from "../helpers/appShellFetchStub";
+import { flushPendingEffects } from "../helpers/flushEffects";
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
@@ -127,7 +130,7 @@ const THREE_RESOURCE_LISTING: TrashListing = {
   folders: [],
 };
 
-let originalFetch: typeof globalThis.fetch;
+let restoreFetch: () => void;
 
 beforeEach(() => {
   // AppShell's mount effects fire a few background fetches (saved queries,
@@ -135,13 +138,7 @@ beforeEach(() => {
   // relative URLs `node-fetch`/undici can't parse outside a browser — stub
   // fetch globally so those settle quietly instead of surfacing as unhandled
   // rejections (mirrors tests/appShellEntityRosterGating.test.tsx's setup).
-  originalFetch = globalThis.fetch;
-  globalThis.fetch = vi.fn(async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({}),
-    text: async () => "",
-  })) as unknown as typeof globalThis.fetch;
+  restoreFetch = stubAppShellFetch();
 
   // Task 26: `vi.restoreAllMocks()` below only restores real `vi.spyOn`
   // spies — it leaves a plain `vi.fn()` mock's own call history (`mock.calls`)
@@ -156,7 +153,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restoreFetch();
   vi.restoreAllMocks();
 });
 
@@ -790,6 +787,10 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
         </TrashRefreshProvider>
       </Provider>,
     );
+    // AppShell mounts several sections (UpdateNotice, SearchBar,
+    // SmartFolders, etc.) that each fire their own fetch-then-setState
+    // effect on mount — flush them before unmounting.
+    await flushPendingEffects();
     const baselineText = screen.getByText(
       /Select a file from the resource tree/i,
     ).textContent;
@@ -840,6 +841,7 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
         </TrashRefreshProvider>
       </Provider>,
     );
+    await flushPendingEffects();
     expect(
       screen.getByText(/Select a file from the resource tree/i).textContent,
     ).toBe(baselineText);
@@ -884,7 +886,9 @@ describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made 
     // Simulate a delete made elsewhere (e.g. the resource tree), which
     // dispatches `removeResource` against `resourcesSlice` directly — this
     // is the same action `page.tsx`'s `handleResourceAction` dispatches.
-    store.dispatch(removeResource("res-1"));
+    act(() => {
+      store.dispatch(removeResource("res-1"));
+    });
 
     await waitFor(() => expect(mockedListTrash).toHaveBeenCalledTimes(2));
     await waitFor(() =>

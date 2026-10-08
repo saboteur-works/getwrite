@@ -24,6 +24,7 @@ import {
   getTodayWritingLog,
   setDailyWordGoal,
 } from "../src/lib/api/writing-log";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const mockSet = vi.mocked(setDailyWordGoal);
 const mockGet = vi.mocked(getTodayWritingLog);
@@ -91,16 +92,10 @@ function saveGoal(value: string): void {
 }
 
 describe("AppShell footer refreshes after a daily goal change (Task 19)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
     serverGoal = undefined;
     mockGet.mockReset();
     mockGet.mockImplementation(async () => aggregate());
@@ -112,7 +107,7 @@ describe("AppShell footer refreshes after a daily goal change (Task 19)", () => 
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   });
 
   // Both tests mount the full `AppShell` (one of the heaviest components in

@@ -18,6 +18,7 @@ import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setResources } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { setDailyWordGoal } from "../src/lib/api/writing-log";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const mockSet = vi.mocked(setDailyWordGoal);
 
@@ -27,22 +28,16 @@ const INTERNAL_ID = "4943675f-internal-id-from-project-json";
 const DIRECTORY_ID = "af142f76-directory-basename";
 
 describe("AppShell daily goal wiring (Task 16)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
     mockSet.mockReset();
     mockSet.mockResolvedValue({ dailyWordGoal: 400 });
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   });
 
   it("saves the daily goal against the project directory id, not project.id", async () => {

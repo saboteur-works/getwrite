@@ -10,6 +10,7 @@ import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
 import { runAxe } from "./a11y/helpers/axe";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
 vi.mock("../src/lib/api/word-count-goal", () => ({
@@ -32,7 +33,7 @@ vi.mock("../src/lib/api/mention-highlight-duration", () => ({
   setMentionHighlightDuration: vi.fn(),
 }));
 
-function renderDialog(): void {
+async function renderDialog(): Promise<void> {
   const store = configureStore({
     reducer: {
       projects: projectReducer,
@@ -57,6 +58,11 @@ function renderDialog(): void {
       />
     </Provider>,
   );
+  // Every tab's panel mounts simultaneously (not lazily per-tab), so
+  // NoiseWordsSettingsTab and TagsManagerModal both fire their own
+  // fetch-then-setState effect on every render here, regardless of which
+  // tab a given test actually cares about — flush them inside act().
+  await flushPendingEffects();
 }
 
 function panelFor(tabName: string): HTMLElement {
@@ -69,8 +75,8 @@ function panelFor(tabName: string): HTMLElement {
 }
 
 describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
-  it("appends a Writing Goals tab last, after Metadata", () => {
-    renderDialog();
+  it("appends a Writing Goals tab last, after Metadata", async () => {
+    await renderDialog();
     const names = screen
       .getAllByRole("tab")
       .map((t: HTMLElement) => (t.textContent ?? "").trim());
@@ -86,8 +92,8 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     ]);
   });
 
-  it("hosts the daily goal field in the Writing Goals panel, not the Default Revision Name panel", () => {
-    renderDialog();
+  it("hosts the daily goal field in the Writing Goals panel, not the Default Revision Name panel", async () => {
+    await renderDialog();
     expect(
       within(panelFor("Writing Goals")).getByLabelText("Daily word goal"),
     ).toBeInTheDocument();
@@ -98,8 +104,8 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     ).toBeNull();
   });
 
-  it("hosts both the daily goal and total word-count goal fields together in the Writing Goals panel", () => {
-    renderDialog();
+  it("hosts both the daily goal and total word-count goal fields together in the Writing Goals panel", async () => {
+    await renderDialog();
     const panel = panelFor("Writing Goals");
     expect(within(panel).getByLabelText("Daily word goal")).toBeInTheDocument();
     expect(
@@ -109,7 +115,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
 
   it("is reachable by keyboard and has the accessible name 'Writing Goals'", async () => {
     const user = userEvent.setup();
-    renderDialog();
+    await renderDialog();
     screen.getByRole("tab", { name: "Heading Styles" }).focus();
     // This tab rail is vertical (ArrowDown/ArrowUp, not ArrowRight/Left —
     // see Tabs.tsx's `nextKey`), and Writing Goals is now second-to-last
@@ -125,15 +131,15 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
 
   it("passes an axe check with the Writing Goals tab selected", async () => {
     const user = userEvent.setup();
-    renderDialog();
+    await renderDialog();
     await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
     await runAxe(document.body);
   });
 });
 
 describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
-  it("appends an Entities tab last, after Noise Words", () => {
-    renderDialog();
+  it("appends an Entities tab last, after Noise Words", async () => {
+    await renderDialog();
     const names = screen
       .getAllByRole("tab")
       .map((t: HTMLElement) => (t.textContent ?? "").trim());
@@ -141,8 +147,8 @@ describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
     expect(names[names.length - 2]).toBe("Noise Words");
   });
 
-  it("hosts the mention-highlight duration field in the Entities panel", () => {
-    renderDialog();
+  it("hosts the mention-highlight duration field in the Entities panel", async () => {
+    await renderDialog();
     expect(
       within(panelFor("Entities")).getByLabelText(
         "Highlight duration (seconds)",
@@ -150,8 +156,8 @@ describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
     ).toBeInTheDocument();
   });
 
-  it("contains exactly one field in the Entities panel — no entityKind, entityHighlighting, or relationship-type controls", () => {
-    renderDialog();
+  it("contains exactly one field in the Entities panel — no entityKind, entityHighlighting, or relationship-type controls", async () => {
+    await renderDialog();
     const panel = panelFor("Entities");
     expect(
       within(panel).getByLabelText("Highlight duration (seconds)"),
@@ -166,7 +172,7 @@ describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
 
   it("passes an axe check with the Entities tab selected", async () => {
     const user = userEvent.setup();
-    renderDialog();
+    await renderDialog();
     await user.click(screen.getByRole("tab", { name: "Entities" }));
     await runAxe(document.body);
   });

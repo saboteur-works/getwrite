@@ -837,6 +837,14 @@ export const selectSelectedProjectId = (state: any): string | null => {
 };
 
 /**
+ * Stable empty statuses array returned when a project has no `statuses`
+ * list, so `useSelector(selectActiveProjectStatuses)` keeps a constant
+ * reference and doesn't re-render consumers on every unrelated dispatch —
+ * mirroring `EMPTY_FEATURES`'s own rationale below.
+ */
+const EMPTY_STATUSES: string[] = [];
+
+/**
  * Selects the ordered statuses array for the currently active project.
  *
  * @param state - Redux root state (typed as `any` to avoid circular imports).
@@ -844,7 +852,7 @@ export const selectSelectedProjectId = (state: any): string | null => {
  */
 export const selectActiveProjectStatuses = (state: any): string[] => {
   const id = state?.projects?.selectedProjectId;
-  return state?.projects?.projects?.[id]?.statuses ?? [];
+  return state?.projects?.projects?.[id]?.statuses ?? EMPTY_STATUSES;
 };
 
 /**

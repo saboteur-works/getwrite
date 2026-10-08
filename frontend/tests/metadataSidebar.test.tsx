@@ -27,6 +27,7 @@ import type {
   MetadataValue,
   ProjectFeatureFlags,
 } from "../src/lib/models/types";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 function setupMultiRefSidebar({
   fieldKey = "refs-field",
@@ -81,7 +82,7 @@ function setupMultiRefSidebar({
 }
 
 describe("MetadataSidebar", () => {
-  it("renders story date/duration controls and invokes onChangeField", () => {
+  it("renders story date/duration controls and invokes onChangeField", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -101,6 +102,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const dateInput = screen.getByLabelText(
       "story-date-input",
@@ -121,7 +123,7 @@ describe("MetadataSidebar", () => {
     expect(onChangeField).toHaveBeenCalledWith("storyDuration", 120);
   });
 
-  it("shows computed end date when storyDate and storyDuration are set", () => {
+  it("shows computed end date when storyDate and storyDuration are set", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -140,6 +142,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.getByLabelText("end-date-override-toggle"),
@@ -149,7 +152,7 @@ describe("MetadataSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onChangeField for storyEndDate when user overrides the end date", () => {
+  it("calls onChangeField for storyEndDate when user overrides the end date", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -169,6 +172,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
 
     fireEvent.click(screen.getByLabelText("end-date-override-toggle"));
     fireEvent.change(screen.getByLabelText("story-end-date-input"), {
@@ -180,7 +184,7 @@ describe("MetadataSidebar", () => {
     );
   });
 
-  it("shows editable end date input when storyEndDate override is already set", () => {
+  it("shows editable end date input when storyEndDate override is already set", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -203,6 +207,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const input = screen.getByLabelText(
       "story-end-date-input",
@@ -211,7 +216,7 @@ describe("MetadataSidebar", () => {
     expect(input.value).toBe("2024-06-01T04:00");
   });
 
-  it("renders synopsis input with initial value from userMetadata", () => {
+  it("renders synopsis input with initial value from userMetadata", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -230,13 +235,14 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
     expect(synopsis).toBeInTheDocument();
     expect(synopsis.value).toBe("A duel at dawn.");
   });
 
-  it("calls onChangeField with key 'synopsis' when synopsis changes", () => {
+  it("calls onChangeField with key 'synopsis' when synopsis changes", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -256,13 +262,14 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
     fireEvent.change(synopsis, { target: { value: "A new synopsis." } });
     expect(onChangeField).toHaveBeenCalledWith("synopsis", "A new synopsis.");
   });
 
-  it("renders schema group sections as collapsible headings", () => {
+  it("renders schema group sections as collapsible headings", async () => {
     const res = createTextResource({ name: "Scene", plainText: "" });
     const testStore = makeStore();
     testStore.dispatch(
@@ -280,6 +287,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /document/i }),
@@ -290,7 +298,7 @@ describe("MetadataSidebar", () => {
     expect(screen.getByRole("button", { name: /tags/i })).toBeInTheDocument();
   });
 
-  it("collapses the Document section and hides synopsis and notes", () => {
+  it("collapses the Document section and hides synopsis and notes", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -312,6 +320,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /document/i }));
@@ -319,7 +328,7 @@ describe("MetadataSidebar", () => {
     expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
   });
 
-  it("expands the Document section again when its header is clicked twice", () => {
+  it("expands the Document section again when its header is clicked twice", async () => {
     const res = createTextResource({ name: "Scene", plainText: "" });
     const testStore = makeStore();
     testStore.dispatch(
@@ -333,6 +342,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const docBtn = screen.getByRole("button", { name: /document/i });
     fireEvent.click(docBtn);
@@ -341,7 +351,7 @@ describe("MetadataSidebar", () => {
     expect(screen.getByLabelText("notes")).toBeInTheDocument();
   });
 
-  it("collapses the Timeline section and hides all three inputs", () => {
+  it("collapses the Timeline section and hides all three inputs", async () => {
     const res = createTextResource({
       name: "Scene",
       plainText: "",
@@ -359,6 +369,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(screen.getByLabelText("story-date-input")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /timeline/i }));
@@ -371,7 +382,7 @@ describe("MetadataSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onChangeField for notes and status", () => {
+  it("calls onChangeField for notes and status", async () => {
     const res = createTextResource({
       name: "Notes",
       plainText: "",
@@ -397,6 +408,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const notes = screen.getByLabelText("notes") as HTMLTextAreaElement;
     expect(notes).toBeInTheDocument();
@@ -411,7 +423,7 @@ describe("MetadataSidebar", () => {
     expect(onChangeField).toHaveBeenCalledWith("status", "review");
   });
 
-  it("renders a custom text field when present in schema", () => {
+  it("renders a custom text field when present in schema", async () => {
     const customSchema: MetadataSchema = {
       groups: [
         {
@@ -439,6 +451,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /custom group/i }),
@@ -449,7 +462,7 @@ describe("MetadataSidebar", () => {
     );
   });
 
-  it("calls onChangeField with custom field key for a custom text field", () => {
+  it("calls onChangeField with custom field key for a custom text field", async () => {
     const customSchema: MetadataSchema = {
       groups: [
         {
@@ -483,13 +496,14 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const input = screen.getByLabelText("my-field");
     fireEvent.change(input, { target: { value: "custom value" } });
     expect(onChangeField).toHaveBeenCalledWith("my-field", "custom value");
   });
 
-  it("does not render a folder-scoped group when resource folderId does not match", () => {
+  it("does not render a folder-scoped group when resource folderId does not match", async () => {
     const customSchema: MetadataSchema = {
       groups: [
         {
@@ -521,13 +535,14 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /folder group/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders a folder-scoped group when resource folderId matches", () => {
+  it("renders a folder-scoped group when resource folderId matches", async () => {
     const customSchema: MetadataSchema = {
       groups: [
         {
@@ -560,6 +575,7 @@ describe("MetadataSidebar", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /folder group/i }),
@@ -594,13 +610,14 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
     return { testStore, projectId, res };
   }
 
-  it("renders the 'Add field' button when a text resource is selected", () => {
+  it("renders the 'Add field' button when a text resource is selected", async () => {
     const { testStore } = setupWithProject();
     render(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
   });
 
@@ -646,6 +663,7 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     // Click opens the AddFieldForm inline mini-form (Task 20)
     fireEvent.click(screen.getByLabelText("add-metadata-field"));
@@ -691,7 +709,7 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
     void projectId;
   });
 
-  it("is disabled when no project is selected", () => {
+  it("is disabled when no project is selected", async () => {
     const testStore = makeStore();
     const res = createTextResource({ name: "Scene", plainText: "" });
     testStore.dispatch(setResources([res]));
@@ -701,6 +719,7 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     const btn = screen.getByLabelText(
       "add-metadata-field",
     ) as HTMLButtonElement;
@@ -713,19 +732,20 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
 // ---------------------------------------------------------------------------
 
 describe("MetadataSidebar — multi-resource-ref field", () => {
-  it("renders MultiResourceRefInput for a multi-resource-ref field", () => {
+  it("renders MultiResourceRefInput for a multi-resource-ref field", async () => {
     const { testStore } = setupMultiRefSidebar();
     render(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(
       screen.getByLabelText("multi-resource-ref-input"),
     ).toBeInTheDocument();
   });
 
-  it("loads an existing ResourceRef[] sidecar value as chips", () => {
+  it("loads an existing ResourceRef[] sidecar value as chips", async () => {
     const optionRes = createTextResource({ name: "Alice", plainText: "" });
     const { testStore } = setupMultiRefSidebar({
       userMetadata: { "refs-field": [{ id: optionRes.id, name: "Alice" }] },
@@ -736,10 +756,11 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByRole("button", { name: "Alice" })).toBeInTheDocument();
   });
 
-  it("calls onChangeField with ResourceRef[] when a ref is added via Enter", () => {
+  it("calls onChangeField with ResourceRef[] when a ref is added via Enter", async () => {
     const optionRes = createTextResource({ name: "Alice", plainText: "" });
     const onChangeField = vi.fn();
     const { testStore } = setupMultiRefSidebar({ extraResources: [optionRes] });
@@ -748,6 +769,7 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
 
     const input = screen.getByLabelText("multi-resource-ref-input");
     fireEvent.change(input, { target: { value: "Alice" } });
@@ -758,7 +780,7 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
     ]);
   });
 
-  it("renders without crashing when sidecar contains a ResourceRef missing the name field", () => {
+  it("renders without crashing when sidecar contains a ResourceRef missing the name field", async () => {
     // Malformed sidecar data: a ref object with no `name` property.
     // Previously this was silently tolerated by ResourceRefInput (via string join),
     // but MultiResourceRefInput calls r.name.toLowerCase() which would crash.
@@ -780,6 +802,7 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
         </Provider>,
       ),
     ).not.toThrow();
+    await flushPendingEffects();
     // Malformed ref is filtered out — input is present but no chip buttons
     expect(
       screen.getByLabelText("multi-resource-ref-input"),
@@ -790,7 +813,7 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
 });
 
 describe("MetadataSidebar — media resource display", () => {
-  it("shows image dimensions for an image resource with width and height", () => {
+  it("shows image dimensions for an image resource with width and height", async () => {
     const res = createImageResource({
       name: "Cover Photo",
       width: 1920,
@@ -804,11 +827,12 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByText(/1920/)).toBeInTheDocument();
     expect(screen.getByText(/1080/)).toBeInTheDocument();
   });
 
-  it("shows EXIF fields when an image resource has exif data", () => {
+  it("shows EXIF fields when an image resource has exif data", async () => {
     const res = createImageResource({
       name: "Sunset",
       width: 800,
@@ -823,11 +847,12 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByText("Canon")).toBeInTheDocument();
     expect(screen.getByText("EOS R5")).toBeInTheDocument();
   });
 
-  it("shows duration and format for an audio resource", () => {
+  it("shows duration and format for an audio resource", async () => {
     const res = createAudioResource({
       name: "Intro Music",
       durationSeconds: 83,
@@ -841,11 +866,12 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByText("MP3")).toBeInTheDocument();
     expect(screen.getByText("1m 23s")).toBeInTheDocument();
   });
 
-  it("shows only format when audio has no duration", () => {
+  it("shows only format when audio has no duration", async () => {
     const res = createAudioResource({ name: "Track", format: "wav" });
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
@@ -855,10 +881,11 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByText("WAV")).toBeInTheDocument();
   });
 
-  it("shows the editable schema metadata editor for image resources", () => {
+  it("shows the editable schema metadata editor for image resources", async () => {
     const res = createImageResource({ name: "Banner", width: 100, height: 50 });
     const testStore = makeStore();
     testStore.dispatch(
@@ -872,6 +899,7 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     // Editable schema fields + add-field affordance are available, like text
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
@@ -879,7 +907,7 @@ describe("MetadataSidebar — media resource display", () => {
     expect(screen.getByText(/100/)).toBeInTheDocument();
   });
 
-  it("invokes onChangeField when editing a custom field on an image resource", () => {
+  it("invokes onChangeField when editing a custom field on an image resource", async () => {
     const res = createImageResource({ name: "Banner" });
     const onChangeField = vi.fn();
     const testStore = makeStore();
@@ -894,6 +922,7 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
+    await flushPendingEffects();
     const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
     fireEvent.change(synopsis, { target: { value: "A striking banner." } });
     expect(onChangeField).toHaveBeenCalledWith(
@@ -902,7 +931,7 @@ describe("MetadataSidebar — media resource display", () => {
     );
   });
 
-  it("shows the editable schema metadata editor for audio resources", () => {
+  it("shows the editable schema metadata editor for audio resources", async () => {
     const res = createAudioResource({ name: "Theme", format: "mp3" });
     const testStore = makeStore();
     testStore.dispatch(
@@ -916,12 +945,13 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
     expect(screen.getByText("MP3")).toBeInTheDocument();
   });
 
-  it("formats hours correctly for long audio tracks", () => {
+  it("formats hours correctly for long audio tracks", async () => {
     const res = createAudioResource({
       name: "Audiobook",
       durationSeconds: 3723,
@@ -935,6 +965,7 @@ describe("MetadataSidebar — media resource display", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     expect(screen.getByText("1h 2m 3s")).toBeInTheDocument();
   });
 });
@@ -944,7 +975,7 @@ describe("MetadataSidebar — media resource display", () => {
 // ---------------------------------------------------------------------------
 
 describe("MetadataSidebar — feature gating (Task 7)", () => {
-  function renderSidebar(options: {
+  async function renderSidebar(options: {
     features?: ProjectFeatureFlags;
     userMetadata?: Record<string, MetadataValue>;
   }) {
@@ -970,11 +1001,12 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
     return { testStore, res, projectId, ...utils };
   }
 
-  it("hides synopsis, notes, and pov controls when their features are disabled", () => {
-    renderSidebar({
+  it("hides synopsis, notes, and pov controls when their features are disabled", async () => {
+    await renderSidebar({
       features: {},
       userMetadata: { synopsis: "kept", notes: "kept", pov: "kept" },
     });
@@ -985,8 +1017,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     expect(screen.getByLabelText("status")).toBeInTheDocument();
   });
 
-  it("renders synopsis, notes, and pov controls when their features are enabled", () => {
-    renderSidebar({
+  it("renders synopsis, notes, and pov controls when their features are enabled", async () => {
+    await renderSidebar({
       features: { synopsis: true, notes: true, pov: true },
       userMetadata: { synopsis: "A duel at dawn." },
     });
@@ -995,8 +1027,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     expect(screen.getByLabelText("pov-input")).toBeInTheDocument();
   });
 
-  it("hides the entire Timeline group when timeline is disabled", () => {
-    renderSidebar({
+  it("hides the entire Timeline group when timeline is disabled", async () => {
+    await renderSidebar({
       features: {},
       userMetadata: { storyDate: "2024-06-01", storyDuration: 90 },
     });
@@ -1009,8 +1041,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the Timeline group when timeline is enabled", () => {
-    renderSidebar({
+  it("renders the Timeline group when timeline is enabled", async () => {
+    await renderSidebar({
       features: { timeline: true },
       userMetadata: { storyDate: "2024-06-01", storyDuration: 90 },
     });
@@ -1020,8 +1052,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     expect(screen.getByLabelText("story-date-input")).toBeInTheDocument();
   });
 
-  it("gates each feature independently", () => {
-    renderSidebar({
+  it("gates each feature independently", async () => {
+    await renderSidebar({
       features: { synopsis: true, notes: false },
       userMetadata: { synopsis: "shown", notes: "hidden" },
     });
@@ -1029,8 +1061,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     expect(screen.queryByLabelText("notes")).not.toBeInTheDocument();
   });
 
-  it("preserves a stored value across a disable -> enable cycle", () => {
-    const { testStore, projectId } = renderSidebar({
+  it("preserves a stored value across a disable -> enable cycle", async () => {
+    const { testStore, projectId } = await renderSidebar({
       features: {},
       userMetadata: { synopsis: "Stored synopsis." },
     });
@@ -1053,8 +1085,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     expect(synopsis.value).toBe("Stored synopsis.");
   });
 
-  it("hides the Entity, Entities Mentioned, and Entity Mentions sections by default", () => {
-    renderSidebar({ features: {} });
+  it("hides the Entity, Entities Mentioned, and Entity Mentions sections by default", async () => {
+    await renderSidebar({ features: {} });
     expect(
       screen.queryByRole("button", { name: /^entity$/i }),
     ).not.toBeInTheDocument();
@@ -1066,8 +1098,8 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the Entity, Entities Mentioned, and Entity Mentions sections when the entities feature is enabled", () => {
-    renderSidebar({ features: { entities: true } });
+  it("renders the Entity, Entities Mentioned, and Entity Mentions sections when the entities feature is enabled", async () => {
+    await renderSidebar({ features: { entities: true } });
     expect(
       screen.getByRole("button", { name: /^entity$/i }),
     ).toBeInTheDocument();
@@ -1085,7 +1117,7 @@ describe("MetadataSidebar — feature gating (Task 7)", () => {
 // ---------------------------------------------------------------------------
 
 describe("MetadataSidebar — Word count goal section (Task 5)", () => {
-  it("renders the Word count goal section for a text resource", () => {
+  it("renders the Word count goal section for a text resource", async () => {
     const res = createTextResource({ name: "Chapter One", plainText: "" });
     const testStore = makeStore();
     testStore.dispatch(setProject({ id: "p", rootPath: "/test" }));
@@ -1097,6 +1129,7 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /word count goal/i }),
@@ -1104,7 +1137,7 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
     expect(screen.getByLabelText("word-count-goal-input")).toBeInTheDocument();
   });
 
-  it("does not render the Word count goal section for an image resource", () => {
+  it("does not render the Word count goal section for an image resource", async () => {
     const res = createImageResource({ name: "Cover" });
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
@@ -1114,6 +1147,7 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /word count goal/i }),
@@ -1139,7 +1173,7 @@ vi.mock("../src/lib/api/prose-diagnostics", () => ({
 }));
 
 describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
-  it("renders the Prose diagnostics section for a text resource", () => {
+  it("renders the Prose diagnostics section for a text resource", async () => {
     const res = createTextResource({ name: "Chapter One", plainText: "" });
     const testStore = makeStore();
     testStore.dispatch(setProject({ id: "p", rootPath: "/test" }));
@@ -1151,13 +1185,14 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /prose diagnostics/i }),
     ).toBeInTheDocument();
   });
 
-  it("does not render the Prose diagnostics section for an image resource", () => {
+  it("does not render the Prose diagnostics section for an image resource", async () => {
     const res = createImageResource({ name: "Cover" });
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
@@ -1167,13 +1202,14 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("does not render the Prose diagnostics section for an audio resource", () => {
+  it("does not render the Prose diagnostics section for an audio resource", async () => {
     const res = createAudioResource({ name: "Interview" });
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
@@ -1183,19 +1219,21 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("does not render the Prose diagnostics section when nothing is selected (folder / empty selection)", () => {
+  it("does not render the Prose diagnostics section when nothing is selected (folder / empty selection)", async () => {
     const testStore = makeStore();
     render(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),

@@ -21,6 +21,7 @@ import {
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { getProseDiagnosticsOrThrow } from "../src/lib/api/prose-diagnostics";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
 
 const mockGetProseDiagnostics = vi.mocked(getProseDiagnosticsOrThrow);
 
@@ -35,16 +36,10 @@ const INTERNAL_ID = "9c1a4f20-internal-id-from-project-json";
 const DIRECTORY_ID = "5e2b7d33-directory-basename";
 
 describe("AppShell prose diagnostics wiring (Feature 62, Task 9)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
     mockGetProseDiagnostics.mockReset();
     mockGetProseDiagnostics.mockResolvedValue({
       dialogueRatio: 0.42,
@@ -54,7 +49,7 @@ describe("AppShell prose diagnostics wiring (Feature 62, Task 9)", () => {
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
     vi.clearAllMocks();
   });
 

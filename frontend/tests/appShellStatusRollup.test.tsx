@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 
 vi.mock("../components/TipTapEditor", () => ({
@@ -20,6 +26,8 @@ import {
   createTextResource,
 } from "../src/lib/models/resource";
 import type { AnyResource } from "../src/lib/models/types";
+import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_status_rollup_wiring";
 
@@ -56,7 +64,7 @@ function buildResources(): Record<string, AnyResource> {
   };
 }
 
-function renderShell(
+async function renderShell(
   statuses: string[],
   resources: AnyResource[],
   options: { pageShaped?: boolean } = {},
@@ -111,7 +119,14 @@ function renderShell(
       />
     </Provider>,
   );
+  // AppShell mounts several sections (SmartFolders, SearchBar, UpdateNotice,
+  // etc.) that each fire their own fetch-then-setState effect on mount;
+  // none of this file's tests assert on them, so flush them inside act()
+  // rather than leaving their eventual update to land outside any act()
+  // scope.
+  await flushPendingEffects();
   fireEvent.click(screen.getByRole("tab", { name: /Data/i }));
+  await flushPendingEffects();
   return { store };
 }
 
@@ -131,26 +146,20 @@ function rollupRows(): string[][] {
 }
 
 describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let restoreFetch: () => void;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    })) as unknown as typeof globalThis.fetch;
+    restoreFetch = stubAppShellFetch();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
     vi.clearAllMocks();
   });
 
-  it("shows exact count and words per row, in configured, unknown, No status order", () => {
+  it("shows exact count and words per row, in configured, unknown, No status order", async () => {
     const res = buildResources();
-    renderShell(["Draft", "Revised", "Final"], Object.values(res));
+    await renderShell(["Draft", "Revised", "Final"], Object.values(res));
 
     expect(rollupRows()).toEqual([
       ["Draft", "2", "150"],
@@ -161,9 +170,9 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
     ]);
   });
 
-  it("excludes the image and legacy-only resource from configured rows, and row counts sum to the text resources", () => {
+  it("excludes the image and legacy-only resource from configured rows, and row counts sum to the text resources", async () => {
     const res = buildResources();
-    renderShell(["Draft", "Revised", "Final"], Object.values(res));
+    await renderShell(["Draft", "Revised", "Final"], Object.values(res));
 
     const rows = rollupRows();
     expect(rows.find((r) => r[0] === "Final")).toEqual(["Final", "0", "0"]);
@@ -178,12 +187,14 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
 
   it("moves a resource between rows when its status is changed in the sidebar StatusSelector", async () => {
     const res = buildResources();
-    const { store } = renderShell(
+    const { store } = await renderShell(
       ["Draft", "Revised", "Final"],
       Object.values(res),
     );
 
-    store.dispatch(setSelectedResourceId(res.unset.id));
+    act(() => {
+      store.dispatch(setSelectedResourceId(res.unset.id));
+    });
     const select = await screen.findByRole("combobox", { name: "status" });
     fireEvent.change(select, { target: { value: "Final" } });
 
@@ -198,9 +209,9 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
     );
   });
 
-  it("shows the no-statuses hint when the project has no configured statuses", () => {
+  it("shows the no-statuses hint when the project has no configured statuses", async () => {
     const res = buildResources();
-    renderShell([], Object.values(res));
+    await renderShell([], Object.values(res));
 
     expect(
       screen.getByText(
@@ -211,9 +222,11 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
     expect(rows[rows.length - 1][0]).toBe("No status");
   });
 
-  it("uses the store's statuses when the page-shaped project config lacks them", () => {
+  it("uses the store's statuses when the page-shaped project config lacks them", async () => {
     const res = buildResources();
-    renderShell(["Draft", "Revised"], Object.values(res), { pageShaped: true });
+    await renderShell(["Draft", "Revised"], Object.values(res), {
+      pageShaped: true,
+    });
 
     const rows = rollupRows();
     expect(rows.slice(0, 2)).toEqual([
@@ -234,9 +247,9 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("still shows the no-statuses hint for a page-shaped project with genuinely empty statuses", () => {
+  it("still shows the no-statuses hint for a page-shaped project with genuinely empty statuses", async () => {
     const res = buildResources();
-    renderShell([], Object.values(res), { pageShaped: true });
+    await renderShell([], Object.values(res), { pageShaped: true });
 
     expect(
       screen.getByText(

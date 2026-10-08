@@ -10,7 +10,13 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityRelationshipGraphView from "../../components/WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 import { makeStore } from "../../src/store/store";
@@ -65,6 +71,7 @@ import { updateSidecar } from "../../src/lib/api/resources";
 import { listTags } from "../../src/lib/api/tags";
 import { getEntityGraphPositions } from "../../src/lib/api/entity-graph-positions";
 import { getEntityGraphKindStyles } from "../../src/lib/api/entity-graph-kind-styles";
+import { flushPendingEffects } from "../helpers/flushEffects";
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityCooccurrence = vi.mocked(getEntityCooccurrence);
@@ -176,6 +183,9 @@ describe("EntityRelationshipGraphView", () => {
     );
 
     await screen.findByTestId("entity-graph-canvas");
+    // EntityGraphCanvas fires its own persisted-node-position-read
+    // effect on mount — flush it before asserting.
+    await flushPendingEffects();
     const nodeElements = screen.getAllByTestId("entity-graph-node");
     expect(nodeElements).toHaveLength(4);
     expect(
@@ -243,6 +253,9 @@ describe("EntityRelationshipGraphView", () => {
     );
 
     await screen.findByTestId("entity-graph-canvas");
+    // EntityGraphCanvas fires its own persisted-node-position-read
+    // effect on mount — flush it before asserting.
+    await flushPendingEffects();
 
     // Exactly one cooccurrence edge (deduped from the mirrored map) and one
     // authored edge for the same pair — never merged into one record.
@@ -318,6 +331,9 @@ describe("EntityRelationshipGraphView", () => {
       );
 
       await screen.findByTestId("entity-graph-canvas");
+      // EntityGraphCanvas fires its own persisted-node-position-read
+      // effect on mount — flush it before asserting.
+      await flushPendingEffects();
 
       // Before this task, `EntityGraphCanvas` never received a `projectId`
       // prop at all (Task 10's own dangling gap), so it never attempted this
@@ -356,14 +372,20 @@ describe("EntityRelationshipGraphView", () => {
         </Provider>,
       );
 
-      return screen.findByTestId("entity-graph-node");
+      const node = await screen.findByTestId("entity-graph-node");
+      // EntityGraphCanvas fires its own persisted-node-position-read
+      // effect on mount — flush it before returning.
+      await flushPendingEffects();
+      return node;
     }
 
     it("calls onEntityActivated with the entityId when a canvas node is clicked", async () => {
       const onEntityActivated = vi.fn();
       const node = await renderWithActivation(onEntityActivated);
 
-      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      act(() => {
+        node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
 
       expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
     });
@@ -374,7 +396,9 @@ describe("EntityRelationshipGraphView", () => {
 
       const listItem = await screen.findByTestId("entity-graph-node-item");
       const button = listItem.querySelector("button") as HTMLButtonElement;
-      button.click();
+      act(() => {
+        button.click();
+      });
 
       expect(onEntityActivated).toHaveBeenCalledWith("e-anna");
     });
@@ -383,10 +407,14 @@ describe("EntityRelationshipGraphView", () => {
       const onEntityActivated = vi.fn();
       const node = await renderWithActivation(onEntityActivated);
 
-      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      act(() => {
+        node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
       const listItem = await screen.findByTestId("entity-graph-node-item");
       const button = listItem.querySelector("button") as HTMLButtonElement;
-      button.click();
+      act(() => {
+        button.click();
+      });
 
       expect(onEntityActivated).toHaveBeenCalledTimes(2);
       expect(onEntityActivated).toHaveBeenNthCalledWith(1, "e-anna");
@@ -397,10 +425,14 @@ describe("EntityRelationshipGraphView", () => {
       const onEntityActivated = vi.fn();
       const node = await renderWithActivation(onEntityActivated);
 
-      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      act(() => {
+        node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
       const listItem = await screen.findByTestId("entity-graph-node-item");
       const button = listItem.querySelector("button") as HTMLButtonElement;
-      button.click();
+      act(() => {
+        button.click();
+      });
 
       expect(mockedUpdateSidecar).not.toHaveBeenCalled();
       expect(mockedCreateEntityRelationship).not.toHaveBeenCalled();
@@ -451,6 +483,9 @@ describe("EntityRelationshipGraphView", () => {
       );
 
       await screen.findByTestId("entity-graph-canvas");
+      // EntityGraphCanvas fires its own persisted-node-position-read
+      // effect on mount — flush it before asserting.
+      await flushPendingEffects();
       expect(
         screen.queryByTestId("entity-kind-styles-open-button"),
       ).not.toBeInTheDocument();
@@ -468,7 +503,9 @@ describe("EntityRelationshipGraphView", () => {
       const button = await screen.findByTestId(
         "entity-kind-styles-open-button",
       );
-      button.click();
+      act(() => {
+        button.click();
+      });
 
       expect(
         await screen.findByText("Entity kind colors and shapes"),
@@ -503,7 +540,9 @@ describe("EntityRelationshipGraphView", () => {
       const openButton = await screen.findByTestId(
         "entity-kind-styles-open-button",
       );
-      openButton.click();
+      act(() => {
+        openButton.click();
+      });
 
       // The modal's own `loadStyles` effect fetches again on open.
       await waitFor(() =>

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import ProseDiagnosticsDetailDialog from "../components/Sidebar/ProseDiagnosticsDetailDialog";
 import type { LocatedRepeatedWordResult } from "../src/lib/api/prose-diagnostics";
 
@@ -118,12 +118,16 @@ describe("ProseDiagnosticsDetailDialog", () => {
       expect(getProseDiagnosticsDetail).toHaveBeenCalledTimes(1),
     );
 
-    screen.getByText("close-test-hook").click();
+    act(() => {
+      screen.getByText("close-test-hook").click();
+    });
     await waitFor(() => {
       expect(screen.queryByText(/the/)).not.toBeInTheDocument();
     });
 
-    screen.getByText("Show detail").click();
+    act(() => {
+      screen.getByText("Show detail").click();
+    });
     await waitFor(() =>
       expect(getProseDiagnosticsDetail).toHaveBeenCalledTimes(2),
     );
