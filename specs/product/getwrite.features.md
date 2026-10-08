@@ -2590,7 +2590,7 @@ timer-cleared) and the source spec requires them to stay separate.
 
 ---
 
-### Feature 72: Resource subtype — Not started
+### Feature 72: Resource subtype — Shipped
 **Value:** A writer on deadline labels each resource with a subtype they
 define themselves (for example "Scene" or "Profile") and limits a custom
 metadata field to particular subtypes, so a field that only makes sense for
@@ -2644,6 +2644,29 @@ Organizer or in queries; that is an accepted consequence (OQ-59). The
 folder-scoped group mechanism is left alone and no migration is required.
 Risk: the sidebar visibility predicate must not be applied anywhere that
 reads stored values directly.
+
+Shipped on branch `feat/resource-subtype` (not yet merged to `main` as of
+this entry, 2026-10-08), accepted by the owner 2026-10-08.
+`specs/features/resource-subtype.md` and its `tasks.md` (fourteen tasks, all
+done) are the authoritative record of the shipped scope. On the integrated
+branch `pnpm typecheck` was clean and the frontend suite reported 5459
+passed, 1 skipped, 0 failed. Exercised in the running app against a
+disposable project, with on-disk state checked: subtype list add,
+duplicate-rejection, remove and re-add; sidebar set, change and clear; field
+restriction; kept-but-hidden values; stale-label display; normalized
+matching; reload. A later custom-field edit did not revert or resurrect the
+subtype on disk. Not verified live: Storybook story tests were not run
+(sandbox); reordering, image/audio resources, project-type seeding,
+failed-write behaviour, keyboard-only operation and the native build were
+covered by tests only. Deviations from the spec: built-in fields show no
+restriction control (the spec allowed none or disabled); blank and duplicate
+list entries show an inline alert, and only a failed save shows a toast; the
+subtype selector returns an empty list both for "no subtypes" and for "no
+project record". Stale whole-resource save: measured at the request-payload
+level for `entityKind` (the second payload omitted the key), and fixed for
+the subtype key only. The same behaviour for `entityKind`, `aliases` and
+`wordCountGoal` is unchanged, and what the server stores in that case was
+not measured.
 
 ---
 
@@ -2757,7 +2780,8 @@ not implied here.
 
 - Total features: 73
 - Suggested build order: 72 → 73 for resource subtype (73 needs 72's
-  sidecar key; 72 depends only on shipped features). Features 1 through 23
+  sidecar key; 72 has since shipped on branch `feat/resource-subtype`, not
+  yet merged to `main`, so 73 is the remaining one). Features 1 through 23
   are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2838,10 +2862,10 @@ not implied here.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72 (73 waits on 72; 30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72 (73 is unblocked once 72 merges; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 73. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped

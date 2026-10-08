@@ -971,7 +971,7 @@ lost work.
   other metadata, so that moving the resource (FR-3) does not change it.
   Subtype applies to every resource kind that has a metadata sidebar today
   (text, image and audio), not text only. The writer chooses a resource's
-  subtype from the project's subtype list (FR-61). Status: Not started.
+  subtype from the project's subtype list (FR-61). Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08).
   This is new scope; no existing requirement covers it. Owner decisions
   (ideation, 2026-10-08): scoping is by subtype and not by folder location;
   a resource has at most one subtype; a writer who needs a straddling case
@@ -1001,7 +1001,7 @@ lost work.
   hidden by subtype scope MUST remain fully queryable, unchanged; making
   subtype itself selectable in the query builder or smart folders is not in
   this slice. The Organizer card body, Organizer filters and the Timeline
-  MUST be unchanged. Status: Not started. Owner decisions (ideation,
+  MUST be unchanged. Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08). Owner decisions (ideation,
   2026-10-08): the restriction is optional per field; unrestricted is the
   default; no general bucket exists. Resolved (OQ-62, OQ-63, OQ-64, OQ-66):
   Owner decision, Gate 1, 2026-10-08. Evidence from code, which the owner confirmed: the query evaluator
@@ -1017,7 +1017,7 @@ lost work.
   entity declaration. Moving a resource between folders MUST NOT change its
   subtype or which fields are presented for it. Declaring or un-declaring a
   resource as an entity (FR-35) MUST NOT set, change or clear its subtype,
-  and setting a subtype MUST NOT declare it an entity. Status: Not started.
+  and setting a subtype MUST NOT declare it an entity. Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08).
   Owner decisions (ideation, 2026-10-08): location-based scoping was
   considered and rejected as fragile — moving a resource would silently
   change its fields, a resource can be in only one folder, and it would
@@ -1032,7 +1032,7 @@ lost work.
   matching each other, because matching is by the label itself and not by
   membership in the list. There is no rename operation in the first slice;
   renaming means remove plus add, and existing resources and restrictions
-  keep the old label until the writer changes them. Status: Not started.
+  keep the old label until the writer changes them. Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08).
   Resolved (OQ-59, OQ-60): Owner decision, Gate 1, 2026-10-08. Known and accepted consequence: a stored
   value hidden by subtype scope may still appear where stored values are
   read directly (Organizer cards and filters, queries). This follows the
@@ -1052,7 +1052,7 @@ lost work.
   seed statuses and relationship types, and this ships in the first slice;
   no built-in project type ships a subtype list as part of this work, so
   new projects created from the built-in types start with an empty list.
-  Status: Not started. Resolved (OQ-57, OQ-58): Owner decision, Gate 1, 2026-10-08; the tab location was changed by Owner decision, Gate 3, 2026-10-08. Evidence from code,
+  Status: Shipped on branch `feat/resource-subtype`, not yet merged to `main` (2026-10-08). Resolved (OQ-57, OQ-58): Owner decision, Gate 1, 2026-10-08; the tab location was changed by Owner decision, Gate 3, 2026-10-08. Evidence from code,
   which the owner confirmed: `statuses` and `relationshipTypes` are
   optional string arrays on the project config schema, optionally seeded
   from a project type by the project creator. Which built-in project types
