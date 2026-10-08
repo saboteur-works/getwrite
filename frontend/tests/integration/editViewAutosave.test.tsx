@@ -14,6 +14,28 @@ import {
 } from "../../src/store/projectsSlice";
 import { createTextResource } from "../../src/lib/models/resource";
 import type { RevisionEntry } from "../../src/store/revisionsSlice";
+import { toRevisionEntry } from "../../src/store/revision-normalization";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {
+  copyResourceCore,
+  createResourceCore,
+} from "../../src/lib/models/resource-crud-core";
+import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import { listRevisions } from "../../src/lib/models/revision";
+import { generateUUID } from "../../src/lib/models/uuid";
+import { createAndAssertProject } from "../unit/helpers/project-creator";
+import { removeDirRetry } from "../unit/helpers/fs-utils";
+
+const SPEC_PATH = path.join(
+  process.cwd(),
+  "..",
+  "specs",
+  "002-define-data-models",
+  "project-types",
+  "novel_project_type.json",
+);
 
 function seedRevisions(
   store: ReturnType<typeof makeStore>,
@@ -242,5 +264,174 @@ describe("EditView autosave integration", () => {
     expect(body.projectId).toBe(directoryBasename);
     expect(body.projectPath).toBeUndefined();
     expect(body.projectRoot).toBeUndefined();
+  });
+});
+
+/**
+ * Feature 73, Task 5 (FR-32, automated half).
+ *
+ * Scope of what these cases show: the harness mocks the editor
+ * (`TipTapEditor`) and the HTTP layer (`fetch`), so the first case proves only
+ * that the editor autosaves a copy that HAS a canonical revision, using the
+ * revision list `copyResourceCore` really produced. The server side of that
+ * PATCH (writing into the copy's revision in place) is covered by Task 3's
+ * `updateRevisionInPlace` assertion in `resource-copy-revision.test.ts`.
+ */
+describe("EditView autosave of a copied text resource", () => {
+  let projectsDir: string;
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+  });
+
+  afterEach(async () => {
+    if (originalEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+    if (projectsDir) await removeDirRetry(projectsDir);
+  });
+
+  function patchCallsFor(
+    fetchMock: ReturnType<typeof vi.spyOn>,
+    resourceId: string,
+  ): unknown[][] {
+    return (fetchMock.mock.calls as unknown[][]).filter((call) => {
+      const url = typeof call[0] === "string" ? call[0] : String(call[0]);
+      return (
+        url.includes(`/api/resource/revision/${resourceId}`) &&
+        (call[1] as RequestInit | undefined)?.method === "PATCH"
+      );
+    });
+  }
+
+  function mockPatchOk(resourceId: string): ReturnType<typeof vi.spyOn> {
+    return vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = typeof input === "string" ? input : input.toString();
+          if (
+            url.includes(`/api/resource/revision/${resourceId}`) &&
+            init?.method === "PATCH"
+          ) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ updatedAt: new Date().toISOString() }),
+            } as Response;
+          }
+          return { ok: false, status: 404, json: async () => ({}) } as Response;
+        },
+      );
+  }
+
+  async function editAndAdvance(): Promise<void> {
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("tiptap-mock"), {
+        target: { value: "Updated text" },
+      });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(2600);
+      await Promise.resolve();
+    });
+  }
+
+  it("PATCHes the copy's own canonical revision id, from the real output of copyResourceCore and listRevisions", async () => {
+    // Real filesystem work runs on real timers; fake timers are enabled by the
+    // suite's beforeEach, so switch back for setup and forward again after.
+    vi.useRealTimers();
+    projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-autosave-copy-"));
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    const projectId = generateUUID();
+    const projectRoot = path.join(projectsDir, projectId);
+    await createAndAssertProject(SPEC_PATH, {
+      projectRoot,
+      name: "Autosave Copy",
+    });
+    const source = await createResourceCore(projectId, {
+      type: "text",
+      name: "Source",
+      text: { plainText: "initial words" },
+    });
+    const copy = (await copyResourceCore(
+      projectId,
+      source.id,
+      "Source Copy",
+    )) as { id: string; name: string };
+    await flushIndexer();
+    const copyRevisions = await listRevisions(projectRoot, copy.id);
+    expect(copyRevisions).toHaveLength(1);
+    const canonical = copyRevisions[0];
+    expect(canonical.isCanonical).toBe(true);
+    const entries = copyRevisions.map((r) => toRevisionEntry(r));
+    vi.useFakeTimers();
+
+    const store = makeStore();
+    const resource = {
+      ...createTextResource({ name: copy.name, plainText: "initial words" }),
+      id: copy.id,
+    };
+    const fetchMock = mockPatchOk(copy.id);
+
+    store.dispatch(
+      setProject({
+        id: "project-json-internal-id",
+        name: "Autosave Copy",
+        rootPath: projectRoot,
+        resources: [{ id: copy.id, name: copy.name }],
+      }),
+    );
+    store.dispatch(setSelectedProjectId("project-json-internal-id"));
+    store.dispatch(setResources([resource]));
+    store.dispatch(setSelectedResourceId(copy.id));
+    seedRevisions(store, copy.id, entries, canonical.id);
+
+    render(
+      <Provider store={store}>
+        <EditView initialContent="initial words" />
+      </Provider>,
+    );
+    await editAndAdvance();
+
+    const calls = patchCallsFor(fetchMock, copy.id);
+    expect(calls).toHaveLength(1);
+    const body = JSON.parse((calls[0][1] as RequestInit).body as string) as {
+      revisionId?: string;
+    };
+    expect(body.revisionId).toBe(canonical.id);
+  });
+
+  it("issues no PATCH when the resource has no canonical revision (negative control)", async () => {
+    // Characterises the editor's behaviour when no canonical revision exists.
+    // It is NOT evidence of the cause of the original failure.
+    const store = makeStore();
+    const resource = createTextResource({
+      name: "No revision",
+      plainText: "Initial text",
+    });
+    const fetchMock = mockPatchOk(resource.id);
+
+    store.dispatch(
+      setProject({
+        id: "project-no-revision",
+        name: "No Revision Project",
+        rootPath: "/tmp/project-no-revision",
+        resources: [{ id: resource.id, name: resource.name }],
+      }),
+    );
+    store.dispatch(setSelectedProjectId("project-no-revision"));
+    store.dispatch(setResources([resource]));
+    store.dispatch(setSelectedResourceId(resource.id));
+    seedRevisions(store, resource.id, [], "");
+
+    render(
+      <Provider store={store}>
+        <EditView initialContent="Initial text" />
+      </Provider>,
+    );
+    await editAndAdvance();
+
+    expect(patchCallsFor(fetchMock, resource.id)).toHaveLength(0);
   });
 });

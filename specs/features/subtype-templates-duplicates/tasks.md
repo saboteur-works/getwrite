@@ -74,7 +74,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 3
 **Notes:** Satisfies FR-32 (automated half). If combining the harness (fake timers, mocked `fetch`, mocked `TipTapEditor`) with the real model functions (real filesystem) cannot be made to work, do NOT claim it works: put the limitation in the test's own name (for example "... (not combined with real model functions: <reason>)"), build the seeded revision list from a hand-written `RevisionEntry` shaped exactly like a `listRevisions` result for a copy, keep the negative control, and report the limitation in this task's Notes; the manual step (Task 10) then becomes the only end-to-end evidence. The harness mocks the editor and the HTTP layer, so it proves only that the editor autosaves a copy that HAS a canonical revision (with Task 3's `updateRevisionInPlace` assertion covering the server side); say that in a comment, not more. Make no change to `EditView.tsx` or `useCanonicalAutosave.ts`.
 **POS:** task_55faf952
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Duplicate: initial canonical revision, subtype kept
 **What:** Make `duplicateResource` copy content before writing, write the initial canonical revision last through the shared writer for a text source, and fail before any write when a text source has no readable content.
