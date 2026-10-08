@@ -31,8 +31,9 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-32 (reproduction half). The hazard is a hypothesis from code reading, not an established defect; state what was observed and name no cause. Do not fix anything here (a general save-path fix is out of scope). If the page cannot be mounted in jsdom with the existing helpers, say so in the Notes and fall back to driving the `MetadataSidebar` `onUpdateResource` prop wiring as `page.tsx` builds it; report which was used. Task 11 reads this result.
+**Measured result (Task 2, 2026-10-08): REPRODUCED**, by this task's payload-level definition. Mounted the full page (real `page.tsx`, `AppShell`, `MetadataSidebar`, `EntitySection`; mocked `StartPage`, `TipTapEditor`, `openProject`, `updateSidecar`), so the fallback was not used. Project had `features.entities` on, one text resource `res-1`, one custom text field `mood`. Step 1, typing "character" into the entity-kind input, gave `updateSidecar("res-1", "proj-dir-id", { id: "res-1", name: "Chapter One", type: "text", folderId: null, orderIndex: 0, userMetadata: {}, entityKind: "character" }, undefined)`. Step 2, typing "calm" into `mood`, gave `updateSidecar("res-1", "proj-dir-id", { id: "res-1", name: "Chapter One", type: "text", folderId: null, orderIndex: 0, userMetadata: { mood: "calm" } })`, with no `entityKind` key. The Redux resource after both calls held `entityKind: "character"` and `userMetadata: { mood: "calm" }`. Not measured: what the server stores after the second call, because `updateSidecar` was mocked; no cause is asserted. Test: `frontend/tests/page-stale-sidecar-save.test.tsx`, which pins these payloads.
 **POS:** task_d498ae1f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Model-layer schema and type plumbing, project-type seeding
 **What:** Add `subtypes`, `resourceSubtype` and `appliesTo` to the Zod schemas, types, `normalizeProjectConfig` and project-type seeding, with the FR-2 rejection rules in Zod.
