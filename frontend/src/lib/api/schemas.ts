@@ -121,6 +121,9 @@ const ApiMetadataFieldSchema = z.object({
   refFolder: z.string().optional(),
   includeSubfolders: z.boolean().optional(),
   maxSelections: z.number().int().positive().optional(),
+  // Subtype labels this field is restricted to (Feature 72, FR-13). Absent
+  // means unrestricted; declared here because Zod strips unknown keys.
+  appliesTo: z.array(z.string()).optional(),
 });
 
 const ApiMetadataGroupSchema = z.object({
@@ -168,6 +171,9 @@ const ApiProjectConfigSchema = z.object({
   dailyWordGoal: z.number().int().nonnegative().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
+  // Ordered subtype labels (Feature 72, FR-1). Must be declared or a project
+  // load strips it, as happened to `mentionHighlightDurationSeconds` below.
+  subtypes: z.array(z.string()).optional(),
   autoPrune: z.boolean().optional(),
   tags: z.array(ApiTagSchema).optional(),
   tagAssignments: z.record(z.string(), z.array(z.string())).optional(),

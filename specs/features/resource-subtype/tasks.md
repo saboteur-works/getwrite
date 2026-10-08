@@ -53,7 +53,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 2
 **Notes:** Satisfies FR-1 (client response schema), FR-5, FR-13, FR-31. Prior art: `ApiProjectConfigSchema` omitted `mentionHighlightDurationSeconds` and stripped it on load (see its comment). This task owns `lib/api/schemas.ts` for the feature.
 **POS:** task_94db523f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Persist and mirror the subtype list through the feature-config path
 **What:** Carry `subtypes` through `updateFeatureConfig`, the route, both transports and the Redux store with a new thunk, record field and selector.
