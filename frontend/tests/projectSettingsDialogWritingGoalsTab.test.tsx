@@ -96,6 +96,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Writing Goals",
       "Noise Words",
       "Entities",
+      "Project Encryption",
     ]);
   });
 
@@ -143,13 +144,14 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
 });
 
 describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
-  it("appends an Entities tab last, after Noise Words", async () => {
+  it("appends an Entities tab after Noise Words, before Project Encryption", async () => {
     await renderDialog();
     const names = screen
       .getAllByRole("tab")
       .map((t: HTMLElement) => (t.textContent ?? "").trim());
-    expect(names[names.length - 1]).toBe("Entities");
-    expect(names[names.length - 2]).toBe("Noise Words");
+    expect(names[names.length - 1]).toBe("Project Encryption");
+    expect(names[names.length - 2]).toBe("Entities");
+    expect(names[names.length - 3]).toBe("Noise Words");
   });
 
   it("hosts the mention-highlight duration field in the Entities panel", async () => {
@@ -200,6 +202,26 @@ describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
     const user = userEvent.setup();
     await renderDialog();
     await user.click(screen.getByRole("tab", { name: "Entities" }));
+    await runAxe(document.body);
+  });
+});
+
+describe("ProjectSettingsDialog Project Encryption tab", () => {
+  it("renders a Project Encryption tab mounting ProjectEncryptionPanel", async () => {
+    await renderDialog();
+    // ProjectEncryptionPanel renders nothing until lock state is known
+    // (this store has no crypto slice), but the tab and its empty panel
+    // must still exist rather than throwing.
+    expect(
+      screen.getByRole("tab", { name: "Project Encryption" }),
+    ).toBeInTheDocument();
+    expect(panelFor("Project Encryption")).toBeEmptyDOMElement();
+  });
+
+  it("passes an axe check with the Project Encryption tab selected", async () => {
+    const user = userEvent.setup();
+    await renderDialog();
+    await user.click(screen.getByRole("tab", { name: "Project Encryption" }));
     await runAxe(document.body);
   });
 });

@@ -9,6 +9,7 @@ import {
   Target,
   Ban,
   Users,
+  Lock,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
@@ -28,6 +29,7 @@ import NoiseWordsSettingsTab from "./NoiseWordsSettingsTab";
 import MentionHighlightDurationField from "./MentionHighlightDurationField";
 import EntityFeatureToggles from "../preferences/EntityFeatureToggles";
 import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
+import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -64,7 +66,8 @@ type ProjectSettingsTab =
   | "metadata"
   | "writing-goals"
   | "noise-words"
-  | "entities";
+  | "entities"
+  | "encryption";
 
 interface ProjectSettingsTabOption {
   value: ProjectSettingsTab;
@@ -97,6 +100,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "writing-goals", label: "Writing Goals", icon: Target },
   { value: "noise-words", label: "Noise Words", icon: Ban },
   { value: "entities", label: "Entities", icon: Users },
+  { value: "encryption", label: "Project Encryption", icon: Lock },
 ];
 
 /**
@@ -271,6 +275,10 @@ export default function ProjectSettingsDialog({
                   />
                 </>
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="encryption" forceMount className={PANEL_CLASS}>
+              <ProjectEncryptionPanel />
             </TabsContent>
           </Tabs>
         </div>
