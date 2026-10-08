@@ -30,12 +30,13 @@ describe("a11y: WritingLogFooterDisplay", () => {
     await screen.findByText("Today: 550 / 1000");
     await user.click(screen.getByRole("button", { name: /today's writing/i }));
     await screen.findByText("Added: 640");
-    // The button's own tooltip (react-tooltip) recomputes its position
-    // once it's hidden behind the opened overlay — not userEvent-driven.
-    // Flushing before the scan didn't stop the warning (measured): the
-    // update happens during axe's own DOM traversal, which forces layout
-    // and apparently triggers it then — so the scan itself is wrapped in
-    // act() instead.
+    // Measured: flushing before the scan didn't stop the "not wrapped in
+    // act(...)" warning, but wrapping the scan call itself does — the
+    // update happens during axe's own DOM traversal, not before it.
+    // Presumably the button's own tooltip (react-tooltip) recomputing its
+    // position once hidden behind the opened overlay, since that's the
+    // only unaccounted-for update source here, but that's not confirmed by
+    // a discriminating test, just the most likely candidate.
     await act(async () => {
       await runAxe(document.body);
     });

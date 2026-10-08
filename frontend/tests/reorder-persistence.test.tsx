@@ -150,7 +150,11 @@ describe("Reorder persistence integration", () => {
       await Promise.resolve();
     });
 
-    // allow async persistence stub to complete
+    // Deliberately 100ms, not tests/helpers/flushEffects.ts's 0ms flush:
+    // the fetchMock above does real fs reads/writes (folder.json, sidecar
+    // files) before resolving, which can genuinely outlast a single
+    // macrotask tick — this is waiting out that write, not just flushing
+    // an already-settled mount effect.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 100));
     });
