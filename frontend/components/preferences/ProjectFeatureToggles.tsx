@@ -43,7 +43,7 @@ const FEATURE_TOGGLES: readonly FeatureToggleDef[] = [
     key: "timeline",
     label: "Timeline",
     description:
-      "Story date, duration, and end-date fields in the sidebar. (The Timeline view itself is toggled in User Preferences.)",
+      "Story date, duration, and end-date fields in the sidebar. (The Timeline view itself is toggled in the Timeline tab.)",
   },
   {
     key: "pov",

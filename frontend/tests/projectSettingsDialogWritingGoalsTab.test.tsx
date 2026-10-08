@@ -93,6 +93,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Default Revision Name",
       "Manage Tags",
       "Metadata",
+      "Timeline",
       "Writing Goals",
       "Noise Words",
       "Entities",
@@ -126,10 +127,12 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     await renderDialog();
     screen.getByRole("tab", { name: "Editor" }).focus();
     // This tab rail is vertical (ArrowDown/ArrowUp, not ArrowRight/Left —
-    // see Tabs.tsx's `nextKey`), and Writing Goals is now second-to-last
-    // (Noise Words follows it), so arrow down four times from Editor
-    // rather than {End}.
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
+    // see Tabs.tsx's `nextKey`), and Writing Goals sits fifth (after
+    // Editor, Default Revision Name, Manage Tags, Metadata, Timeline), so
+    // arrow down five times from Editor rather than {End}.
+    await user.keyboard(
+      "{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}",
+    );
     const tab = screen.getByRole("tab", { name: "Writing Goals" });
     expect(tab).toHaveFocus();
     expect(tab).toHaveAttribute("aria-selected", "true");
@@ -139,6 +142,36 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     const user = userEvent.setup();
     await renderDialog();
     await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    await runAxe(document.body);
+  });
+});
+
+describe("ProjectSettingsDialog Timeline tab", () => {
+  it("appends a Timeline tab after Metadata, before Writing Goals", async () => {
+    await renderDialog();
+    const names = screen
+      .getAllByRole("tab")
+      .map((t: HTMLElement) => (t.textContent ?? "").trim());
+    const timelineIndex = names.indexOf("Timeline");
+    expect(names[timelineIndex - 1]).toBe("Metadata");
+    expect(names[timelineIndex + 1]).toBe("Writing Goals");
+  });
+
+  it("hosts the Timeline view toggle, moved out of User Preferences", async () => {
+    await renderDialog({ timeline: true });
+    const panel = panelFor("Timeline");
+    expect(
+      within(panel).getByRole("checkbox", {
+        name: /enable timeline view/i,
+        hidden: true,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("passes an axe check with the Timeline tab selected", async () => {
+    const user = userEvent.setup();
+    await renderDialog();
+    await user.click(screen.getByRole("tab", { name: "Timeline" }));
     await runAxe(document.body);
   });
 });

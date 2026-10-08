@@ -3,12 +3,14 @@
 /**
  * @module TimelineViewToggle
  *
- * User-preferences section that turns the chronological Timeline view/tab on or
- * off for the active project (`config.features.timelineView`). The view depends
- * on the Timeline date fields (`config.features.timeline`), so enabling the view
- * also enables those fields when they are off — keeping the project out of the
- * "view on, no data fields" state. Persists via the {@link updateProjectFeatures}
- * thunk, merging onto the full feature map so other flags are preserved.
+ * Project Settings section (Project Settings' "Timeline" tab) that turns the
+ * chronological Timeline view/tab on or off for the active project
+ * (`config.features.timelineView`). The view depends on the Timeline date
+ * fields (`config.features.timeline`, toggled in the Metadata tab's
+ * `ProjectFeatureToggles`), so enabling the view also enables those fields
+ * when they are off — keeping the project out of the "view on, no data
+ * fields" state. Persists via the {@link updateProjectFeatures} thunk,
+ * merging onto the full feature map so other flags are preserved.
  */
 
 import { useAppDispatch } from "../../src/store/hooks";

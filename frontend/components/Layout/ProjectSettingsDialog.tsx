@@ -10,6 +10,7 @@ import {
   Ban,
   Users,
   Lock,
+  CalendarClock,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
@@ -30,6 +31,7 @@ import MentionHighlightDurationField from "./MentionHighlightDurationField";
 import EntityFeatureToggles from "../preferences/EntityFeatureToggles";
 import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
 import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
+import TimelineViewToggle from "../preferences/TimelineViewToggle";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -64,6 +66,7 @@ type ProjectSettingsTab =
   | "default-revision-name"
   | "tags"
   | "metadata"
+  | "timeline"
   | "writing-goals"
   | "noise-words"
   | "entities"
@@ -97,6 +100,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   },
   { value: "tags", label: "Manage Tags", icon: Tag },
   { value: "metadata", label: "Metadata", icon: LayoutList },
+  { value: "timeline", label: "Timeline", icon: CalendarClock },
   { value: "writing-goals", label: "Writing Goals", icon: Target },
   { value: "noise-words", label: "Noise Words", icon: Ban },
   { value: "entities", label: "Entities", icon: Users },
@@ -231,6 +235,10 @@ export default function ProjectSettingsDialog({
 
             <TabsContent value="metadata" forceMount className={PANEL_CLASS}>
               <SchemaManager onClose={handleClose} />
+            </TabsContent>
+
+            <TabsContent value="timeline" forceMount className={PANEL_CLASS}>
+              <TimelineViewToggle />
             </TabsContent>
 
             <TabsContent
