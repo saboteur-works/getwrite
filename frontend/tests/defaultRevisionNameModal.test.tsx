@@ -1,6 +1,12 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import DefaultRevisionNameModal from "../components/preferences/DefaultRevisionNameModal";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
 
@@ -173,6 +179,8 @@ describe("DefaultRevisionNameModal", () => {
       expect(screen.getByRole("button", { name: /saving/i })).toBeDisabled();
     });
 
-    resolvePromise();
+    await act(async () => {
+      resolvePromise();
+    });
   });
 });

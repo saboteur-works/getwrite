@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import TagsManagerModal from "../components/common/TagsManagerModal";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 function renderInDialog(ui: React.ReactElement) {
   return render(
@@ -151,12 +152,17 @@ describe("TagsManagerModal", () => {
     });
   });
 
-  it("calls onClose when Escape is pressed", () => {
+  it("calls onClose when Escape is pressed", async () => {
     setupFetchStub([]);
     const onClose = vi.fn();
     renderInDialog(
       <TagsManagerModal projectPath={PROJECT_PATH} onClose={onClose} />,
     );
+    // TagsManagerModal fires its own tag-list fetch-then-setState effect
+    // on mount; this test doesn't assert on it, so flush it inside act()
+    // rather than leaving its eventual update to land outside any act()
+    // scope.
+    await flushPendingEffects();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();

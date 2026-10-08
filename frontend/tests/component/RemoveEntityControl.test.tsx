@@ -1,6 +1,12 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import RemoveEntityControl from "../../components/Sidebar/RemoveEntityControl";
 import EntityRelationshipsRefreshProvider, {
@@ -613,7 +619,9 @@ describe("RemoveEntityControl", () => {
 
       // Switch the selected resource to entity B, mirroring how the real app
       // switches resources without unmounting this control.
-      store.dispatch(setSelectedResourceId(ENTITY_B_ID));
+      act(() => {
+        store.dispatch(setSelectedResourceId(ENTITY_B_ID));
+      });
 
       await screen.findByRole("button", { name: "Remove Entity" });
 
@@ -643,11 +651,13 @@ describe("RemoveEntityControl", () => {
       );
 
       // Re-declare the SAME resource as an entity again, without unmounting.
-      store.dispatch(
-        setResources([
-          { ...getResource(store), entityKind: "character" },
-        ] as AnyResource[]),
-      );
+      act(() => {
+        store.dispatch(
+          setResources([
+            { ...getResource(store), entityKind: "character" },
+          ] as AnyResource[]),
+        );
+      });
 
       await screen.findByRole("button", { name: "Remove Entity" });
 

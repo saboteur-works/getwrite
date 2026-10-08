@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import EntityRelationshipsSection from "../../components/Sidebar/EntityRelationshipsSection";
 import EntityRelationshipsRefreshProvider, {
@@ -137,7 +137,9 @@ describe("EntityRelationshipsRefreshContext", () => {
     expect(mockedList).toHaveBeenCalledWith(PROJECT_ID);
 
     const notifyButton = screen.getByLabelText("notify-relationships-changed");
-    notifyButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    act(() => {
+      notifyButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
 
     await waitFor(() => expect(mockedList).toHaveBeenCalledTimes(2));
     expect(mockedList).toHaveBeenLastCalledWith(PROJECT_ID);
