@@ -1,6 +1,12 @@
 import React from "react";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import SchemaManager from "../components/SchemaManager/SchemaManager";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
@@ -9,6 +15,19 @@ import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setFolders } from "../src/store/resourcesSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { Folder, MetadataSchema } from "../src/lib/models/types";
+
+vi.mock("../src/lib/toast-service", () => {
+  const toastService = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+    dismissAll: vi.fn(),
+  };
+  return { toastService, default: toastService };
+});
+import { toastService } from "../src/lib/toast-service";
 
 function makeFolder(id: string, name: string): Folder {
   return {
@@ -1202,5 +1221,216 @@ describe("SchemaManager — maxSelections input (Task 10)", () => {
       }
     });
     expect(refPropCalls).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Subtype restriction control (Feature 72, Task 10; FR-14, FR-15, FR-16, FR-20)
+// ---------------------------------------------------------------------------
+
+function restrictionSchema(appliesTo?: string[]): MetadataSchema {
+  return {
+    groups: [
+      ...DEFAULT_METADATA_SCHEMA.groups,
+      {
+        id: "custom-group",
+        label: "Custom",
+        fields: [
+          {
+            key: "tension",
+            label: "Tension",
+            type: "text",
+            ...(appliesTo ? { appliesTo } : {}),
+          },
+          { key: "mood", label: "Mood", type: "text" },
+        ],
+      },
+    ],
+  };
+}
+
+function setupRestriction(options: {
+  subtypes?: string[];
+  appliesTo?: string[];
+}) {
+  const testStore = makeStore();
+  testStore.dispatch(
+    setProject({
+      id: "proj-1",
+      rootPath: "/projects/proj-1",
+      metadataSchema: restrictionSchema(options.appliesTo),
+      ...(options.subtypes ? { subtypes: options.subtypes } : {}),
+    }),
+  );
+  testStore.dispatch(setSelectedProjectId("proj-1"));
+  render(
+    <Provider store={testStore}>
+      <Dialog open onOpenChange={() => undefined}>
+        <SchemaManager />
+      </Dialog>
+    </Provider>,
+  );
+  return { testStore };
+}
+
+function tensionGroup(): HTMLElement {
+  const groups = screen.getAllByRole("group", { name: /applies to subtypes/i });
+  const match = groups.find((g: HTMLElement) =>
+    /tension/i.test(g.textContent ?? ""),
+  );
+  if (!match) throw new Error("no restriction group for Tension");
+  return match;
+}
+
+function lastPostBody(spy: ReturnType<typeof mockFetchOk>): {
+  action: string;
+  fieldKey: string;
+  appliesTo: string[];
+} {
+  const [, init] = spy.mock.calls[spy.mock.calls.length - 1] as [
+    string,
+    RequestInit,
+  ];
+  return JSON.parse(init.body as string);
+}
+
+describe("SchemaManager — subtype restriction control", () => {
+  it("renders a fieldset with a legend and one checkbox per listed subtype, in list order", () => {
+    setupRestriction({ subtypes: ["Scene", "Chapter", "Act"] });
+    const group = tensionGroup();
+    expect(group.tagName).toBe("FIELDSET");
+    expect(group.querySelector("legend")).not.toBeNull();
+    const boxes = within(group).getAllByRole("checkbox");
+    expect(
+      boxes.map((b: HTMLElement) => b.closest("label")?.textContent?.trim()),
+    ).toEqual(["Scene", "Chapter", "Act"]);
+    boxes.forEach((b: HTMLElement) => expect(b).not.toBeChecked());
+  });
+
+  it("renders the control on every custom field and on no built-in field", () => {
+    setupRestriction({ subtypes: ["Scene"] });
+    // Two custom fields (Tension, Mood); built-ins render none.
+    expect(
+      screen.getAllByRole("group", { name: /applies to subtypes/i }),
+    ).toHaveLength(2);
+  });
+
+  it("checks the rows matching a stored restriction under the comparison key", () => {
+    setupRestriction({ subtypes: ["Scene", "Chapter"], appliesTo: ["scene"] });
+    const group = tensionGroup();
+    expect(
+      within(group).getByRole("checkbox", { name: "Scene" }),
+    ).toBeChecked();
+    expect(
+      within(group).getByRole("checkbox", { name: "Chapter" }),
+    ).not.toBeChecked();
+    expect(within(group).queryByText(/not in the current list/i)).toBeNull();
+  });
+
+  it("toggling dispatches the thunk with the selection", async () => {
+    const fetchSpy = mockFetchOk(restrictionSchema(["Chapter"]));
+    setupRestriction({ subtypes: ["Scene", "Chapter", "Act"] });
+    fireEvent.click(
+      within(tensionGroup()).getByRole("checkbox", { name: "Chapter" }),
+    );
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(lastPostBody(fetchSpy)).toMatchObject({
+      action: "update-field-applies-to",
+      fieldKey: "tension",
+      appliesTo: ["Chapter"],
+    });
+  });
+
+  it("sends the chosen order, not list order", async () => {
+    const fetchSpy = mockFetchOk(restrictionSchema(["Act", "Scene"]));
+    setupRestriction({ subtypes: ["Scene", "Act"], appliesTo: ["Act"] });
+    fireEvent.click(
+      within(tensionGroup()).getByRole("checkbox", { name: "Scene" }),
+    );
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(lastPostBody(fetchSpy).appliesTo).toEqual(["Act", "Scene"]);
+  });
+
+  it("renders a stale stored label as a checked row marked not in the current list, and unchecking sends the rest", async () => {
+    const fetchSpy = mockFetchOk(restrictionSchema(["Scene"]));
+    setupRestriction({ subtypes: ["Scene"], appliesTo: ["Scene", "Epilogue"] });
+    const stale = within(tensionGroup()).getByRole("checkbox", {
+      name: "Epilogue (not in the current list)",
+    });
+    expect(stale).toBeChecked();
+    fireEvent.click(stale);
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(lastPostBody(fetchSpy).appliesTo).toEqual(["Scene"]);
+  });
+
+  it("lets a stale restriction be cleared when the project list is empty", async () => {
+    const fetchSpy = mockFetchOk(restrictionSchema([]));
+    setupRestriction({ appliesTo: ["Epilogue"] });
+    const stale = within(tensionGroup()).getByRole("checkbox", {
+      name: "Epilogue (not in the current list)",
+    });
+    expect(stale).toBeEnabled();
+    fireEvent.click(stale);
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(lastPostBody(fetchSpy).appliesTo).toEqual([]);
+  });
+
+  it("shows the hint with an empty list and no stored restriction", () => {
+    setupRestriction({});
+    const group = tensionGroup();
+    expect(
+      within(group).getByText(
+        "No subtypes yet. Add them in the Subtypes section above, in this Metadata tab.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(group).queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("offers no control on a built-in field", () => {
+    setupRestriction({ subtypes: ["Scene"] });
+    for (const g of screen.getAllByRole("group", {
+      name: /applies to subtypes/i,
+    })) {
+      expect(g.textContent).not.toMatch(/synopsis|point of view/i);
+    }
+    expect(
+      screen.queryByRole("group", { name: /applies to subtypes.*synopsis/i }),
+    ).toBeNull();
+  });
+
+  it("still lists every field irrespective of any restriction", () => {
+    setupRestriction({ subtypes: ["Scene"], appliesTo: ["Scene"] });
+    expect(screen.getByText("Tension")).toBeInTheDocument();
+    expect(screen.getByText("Mood")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Field type for Synopsis"),
+    ).toBeInTheDocument();
+  });
+
+  it("on a rejected write shows an error toast and reverts the displayed restriction", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ error: "boom" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    const { testStore } = setupRestriction({ subtypes: ["Scene", "Chapter"] });
+    fireEvent.click(
+      within(tensionGroup()).getByRole("checkbox", { name: "Scene" }),
+    );
+    await waitFor(() => expect(toastService.error).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        within(tensionGroup()).getByRole("checkbox", { name: "Scene" }),
+      ).not.toBeChecked(),
+    );
+    const stored = testStore
+      .getState()
+      .projects.projects[
+        "proj-1"
+      ].metadataSchema?.groups.find((g) => g.id === "custom-group")
+      ?.fields[0].appliesTo;
+    expect(stored).toBeUndefined();
   });
 });

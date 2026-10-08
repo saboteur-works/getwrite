@@ -113,7 +113,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 5
 **Notes:** Satisfies FR-14, FR-15 (UI/failure half), FR-16, FR-20 (schema manager lists all fields), FR-29 (restriction control). The existing schema thunks are dispatched with `void dispatch(...)` and show nothing on failure; do NOT copy that. Await the dispatch result and handle rejection.
 **POS:** task_6aeaa185
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Sidebar subtype control with scoped write
 **What:** Add the sidebar subtype `<select>` section, with revert-on-failure, stale-value display, empty-list state, and a write that sends only the subtype key.
