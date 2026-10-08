@@ -29,6 +29,7 @@ export interface FeatureConfigUpdate {
   features?: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
   relationshipTypes?: string[];
+  subtypes?: string[];
 }
 
 /** The persisted feature configuration returned by the route. */
@@ -36,6 +37,7 @@ export interface FeatureConfigResult {
   features: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig | null;
   relationshipTypes?: string[];
+  subtypes?: string[];
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {

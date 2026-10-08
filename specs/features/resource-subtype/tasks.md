@@ -63,7 +63,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 5
 **Notes:** Satisfies FR-1 (store layer), FR-2 (server boundary), FR-3, FR-4 (store/server half; the UI half is Task 9). Reuse `SubtypeListSchema` from Task 3. Model the code on the `relationshipTypes` equivalents in each file (`updateProjectRelationshipTypes`, `selectActiveProjectRelationshipTypes`). The selector must distinguish "list failed to load" from "no subtypes" only to the extent the project record exists; do not default silently on a missing project record in a way that hides a load failure. This task owns `projectsSlice.ts` until Task 7 (chained).
 **POS:** task_4c50e6ca
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Sidecar subtype set, clear and independence tests
 **What:** Make `resourceSubtype` a clearable sidecar key with value validation and prove set/clear/independence on HTTP and native paths.

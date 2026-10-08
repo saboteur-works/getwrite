@@ -10,8 +10,8 @@
  * Route:
  * - `POST /api/project/features` — replaces the provided block(s)
  *
- * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[] }`
- * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[] }`
+ * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[]; subtypes?: string[] }`
+ * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[]; subtypes?: string[] }`
  * Failure:   `{ error: string }`
  *
  * The underlying helper acquires the project lock and does NOT bump
@@ -33,6 +33,7 @@ interface UpdateFeaturesBody {
   features?: ProjectFeatureFlags;
   organizerCardBody?: OrganizerCardBodyConfig;
   relationshipTypes?: string[];
+  subtypes?: string[];
 }
 
 async function handlePost(req: NextRequest): Promise<Response> {
@@ -43,7 +44,13 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { projectId, features, organizerCardBody, relationshipTypes } = body;
+  const {
+    projectId,
+    features,
+    organizerCardBody,
+    relationshipTypes,
+    subtypes,
+  } = body;
 
   const resolved = resolveProjectPath(projectId);
   if (resolved instanceof Response) return resolved;
@@ -51,12 +58,13 @@ async function handlePost(req: NextRequest): Promise<Response> {
   if (
     features === undefined &&
     organizerCardBody === undefined &&
-    relationshipTypes === undefined
+    relationshipTypes === undefined &&
+    subtypes === undefined
   ) {
     return NextResponse.json(
       {
         error:
-          "Provide at least one of: features, organizerCardBody, relationshipTypes.",
+          "Provide at least one of: features, organizerCardBody, relationshipTypes, subtypes.",
       },
       { status: 400 },
     );
@@ -70,6 +78,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
         features,
         organizerCardBody,
         relationshipTypes,
+        subtypes,
       }),
     );
   } catch (error) {

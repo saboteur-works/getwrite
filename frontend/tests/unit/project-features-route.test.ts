@@ -27,7 +27,10 @@ vi.mock("../../src/lib/models/project-features", async () => {
 
 import { POST } from "../../app/api/project/features/route";
 import { updateFeatureConfig } from "../../src/lib/models/project-features";
-import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import {
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "../../src/lib/models/crypto/adapter-selection";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
@@ -141,7 +144,7 @@ describe("POST /api/project/features", () => {
     expect(res.status).toBe(200);
   });
 
-  it("still returns 400 when none of features/organizerCardBody/relationshipTypes is provided", async () => {
+  it("still returns 400 when none of features/organizerCardBody/relationshipTypes/subtypes is provided", async () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     await writeProject(projectsDir, projectId);
@@ -153,7 +156,7 @@ describe("POST /api/project/features", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe(
-      "Provide at least one of: features, organizerCardBody, relationshipTypes.",
+      "Provide at least one of: features, organizerCardBody, relationshipTypes, subtypes.",
     );
   });
 
@@ -192,5 +195,81 @@ describe("POST /api/project/features — locked-access rethrow (Feature 54, Task
     );
 
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/project/features — subtypes (Feature 72, FR-2/FR-3/FR-4)", () => {
+  async function readStored(projectPath: string): Promise<string> {
+    return fs.readFile(path.join(projectPath, PROJECT_FILENAME), "utf8");
+  }
+
+  it("accepts a body carrying only subtypes and returns the trimmed list", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({
+          projectId,
+          subtypes: [" Scene ", "Chapter"],
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).subtypes).toEqual(["Scene", "Chapter"]);
+  });
+
+  it("returns 400 for a blank entry and leaves project.json unchanged", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+    const before = await readStored(projectPath);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(featuresRequest({ projectId, subtypes: ["Scene", "  "] }) as never),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await readStored(projectPath)).toBe(before);
+  });
+
+  it("returns 400 for a case-insensitive duplicate and leaves project.json unchanged", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+    const before = await readStored(projectPath);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({ projectId, subtypes: ["Scene", "SCENE"] }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await readStored(projectPath)).toBe(before);
+  });
+
+  it("maps ProjectLockedError to 401 and MissingProjectKeyError to 409 for a subtypes write", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    await writeProject(projectsDir, projectId);
+
+    vi.mocked(updateFeatureConfig).mockRejectedValueOnce(
+      new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
+    );
+    const locked = await withProjectsDir(projectsDir, () =>
+      POST(featuresRequest({ projectId, subtypes: ["Scene"] }) as never),
+    );
+    expect(locked.status).toBe(401);
+
+    vi.mocked(updateFeatureConfig).mockRejectedValueOnce(
+      new MissingProjectKeyError("11111111-1111-4111-8111-111111111111"),
+    );
+    const keyless = await withProjectsDir(projectsDir, () =>
+      POST(featuresRequest({ projectId, subtypes: ["Scene"] }) as never),
+    );
+    expect(keyless.status).toBe(409);
   });
 });

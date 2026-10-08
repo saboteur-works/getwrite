@@ -92,6 +92,11 @@ export interface StoredProject {
   statuses?: string[];
   /** Ordered list of relationship-type values configured for this project. */
   relationshipTypes?: string[];
+  /**
+   * Ordered resource-subtype labels (Feature 72). Left `undefined` when the
+   * project never set a list; `selectActiveProjectSubtypes` is the reader.
+   */
+  subtypes?: string[];
   /** Active metadata field schema. Defaults to DEFAULT_METADATA_SCHEMA when not persisted on disk. */
   metadataSchema?: MetadataSchema;
   /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
@@ -151,6 +156,8 @@ export function buildStoredProject(
     // than an already-collapsed `[]` that would be indistinguishable from an
     // explicitly emptied list (FR-15).
     relationshipTypes: project.config?.relationshipTypes,
+    // Left as-is (not defaulted to []) when absent, mirroring relationshipTypes.
+    subtypes: project.config?.subtypes,
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
     organizerCardBody: project.config?.organizerCardBody,
@@ -500,6 +507,11 @@ export const updateProjectRelationshipTypes = makeFeatureConfigThunk<{
   relationshipTypes,
 }));
 
+export const updateProjectSubtypes = makeFeatureConfigThunk<{
+  projectId: string;
+  subtypes: string[];
+}>("projects/updateProjectSubtypes", ({ subtypes }) => ({ subtypes }));
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -746,6 +758,7 @@ const projectsSlice = createSlice({
       updateProjectFeatures,
       updateProjectOrganizerCardBody,
       updateProjectRelationshipTypes,
+      updateProjectSubtypes,
     ] as const;
 
     for (const thunk of featureConfigThunks) {
@@ -758,6 +771,7 @@ const projectsSlice = createSlice({
           features: result.features,
           organizerCardBody: result.organizerCardBody ?? undefined,
           relationshipTypes: result.relationshipTypes ?? undefined,
+          subtypes: result.subtypes ?? undefined,
         };
         return state;
       });
@@ -874,6 +888,22 @@ export const selectActiveProjectRelationshipTypes = (state: any): string[] => {
     state?.projects?.projects?.[id]?.relationshipTypes ??
     DEFAULT_RELATIONSHIP_TYPES
   );
+};
+
+const EMPTY_SUBTYPES: string[] = [];
+
+/**
+ * Selects the ordered resource-subtype list for the currently active
+ * project. An absent list is equivalent to an empty one (Feature 72, FR-1).
+ * A failed write never reaches the store (the thunk's rejected case leaves
+ * the record untouched), so this never reports a list that was not saved.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @returns The active project's subtype labels, or a shared empty array.
+ */
+export const selectActiveProjectSubtypes = (state: any): string[] => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.subtypes ?? EMPTY_SUBTYPES;
 };
 
 /**
