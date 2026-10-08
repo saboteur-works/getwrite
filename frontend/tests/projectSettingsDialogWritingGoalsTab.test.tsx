@@ -5,7 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import ProjectSettingsDialog from "../components/Layout/ProjectSettingsDialog";
-import projectReducer from "../src/store/projectsSlice";
+import projectReducer, {
+  setProject,
+  setSelectedProjectId,
+} from "../src/store/projectsSlice";
+import type { ProjectFeatureFlags } from "../src/lib/models/types";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
@@ -33,7 +37,7 @@ vi.mock("../src/lib/api/mention-highlight-duration", () => ({
   setMentionHighlightDuration: vi.fn(),
 }));
 
-async function renderDialog(): Promise<void> {
+async function renderDialog(features?: ProjectFeatureFlags): Promise<void> {
   const store = configureStore({
     reducer: {
       projects: projectReducer,
@@ -42,6 +46,10 @@ async function renderDialog(): Promise<void> {
       editorConfig: editorConfigReducer,
     },
   });
+  if (features) {
+    store.dispatch(setProject({ id: "p1", rootPath: "/story", features }));
+    store.dispatch(setSelectedProjectId("p1"));
+  }
   render(
     <Provider store={store}>
       <ProjectSettingsDialog
@@ -153,18 +161,39 @@ describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
     ).toBeInTheDocument();
   });
 
-  it("contains exactly one field in the Entities panel — no entityKind, entityHighlighting, or relationship-type controls", async () => {
+  it("hosts the entities activation toggle, highlighting toggle, and relationship types alongside the highlight-duration field", async () => {
+    await renderDialog({ entities: true });
+    const panel = panelFor("Entities");
+    expect(
+      within(panel).getByLabelText("Highlight duration (seconds)"),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("checkbox", { name: /entities/i, hidden: true }),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("checkbox", {
+        name: /entity highlighting/i,
+        hidden: true,
+      }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByText("Relationship Types")).toBeInTheDocument();
+    // entityKind itself is edited per-entity from EntitySection, not here.
+    expect(within(panel).queryByText(/entity kind/i)).toBeNull();
+  });
+
+  it("omits the highlighting toggle and relationship types when entities is off", async () => {
     await renderDialog();
     const panel = panelFor("Entities");
     expect(
       within(panel).getByLabelText("Highlight duration (seconds)"),
     ).toBeInTheDocument();
-    expect(within(panel).queryAllByRole("textbox").length).toBeLessThanOrEqual(
-      1,
-    );
-    expect(within(panel).queryByText(/entity kind/i)).toBeNull();
-    expect(within(panel).queryByText(/entity highlighting/i)).toBeNull();
-    expect(within(panel).queryByText(/relationship type/i)).toBeNull();
+    expect(
+      within(panel).queryByRole("checkbox", {
+        name: /entity highlighting/i,
+        hidden: true,
+      }),
+    ).toBeNull();
+    expect(within(panel).queryByText("Relationship Types")).toBeNull();
   });
 
   it("passes an axe check with the Entities tab selected", async () => {

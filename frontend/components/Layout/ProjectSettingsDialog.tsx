@@ -26,6 +26,8 @@ import DailyWordGoalField from "./DailyWordGoalField";
 import WordCountGoalField from "./WordCountGoalField";
 import NoiseWordsSettingsTab from "./NoiseWordsSettingsTab";
 import MentionHighlightDurationField from "./MentionHighlightDurationField";
+import EntityFeatureToggles from "../preferences/EntityFeatureToggles";
+import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -252,14 +254,22 @@ export default function ProjectSettingsDialog({
               ) : null}
             </TabsContent>
 
-            <TabsContent value="entities" forceMount className={PANEL_CLASS}>
+            <TabsContent
+              value="entities"
+              forceMount
+              className={`${PANEL_CLASS} flex flex-col gap-6`}
+            >
               {projectId ? (
-                <MentionHighlightDurationField
-                  projectId={projectId}
-                  initialDurationSeconds={
-                    initialMentionHighlightDurationSeconds
-                  }
-                />
+                <>
+                  <EntityFeatureToggles />
+                  <RelationshipTypesSettings />
+                  <MentionHighlightDurationField
+                    projectId={projectId}
+                    initialDurationSeconds={
+                      initialMentionHighlightDurationSeconds
+                    }
+                  />
+                </>
               ) : null}
             </TabsContent>
           </Tabs>

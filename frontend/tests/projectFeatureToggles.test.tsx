@@ -4,7 +4,9 @@
  * Covers: the four toggles reflect `config.features` (absent flag = off),
  * toggling a feature dispatches `updateProjectFeatures` with the full merged
  * map and updates the store, and the section renders nothing when no project is
- * selected.
+ * selected. The entity-specific `entities`/`entityHighlighting` toggles were
+ * split out into `EntityFeatureToggles.tsx` (see `entityFeatureToggles.test.tsx`)
+ * and are not covered here.
  */
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -63,7 +65,7 @@ describe("ProjectFeatureToggles", () => {
     vi.clearAllMocks();
   });
 
-  it("renders a checkbox for each of the five features", () => {
+  it("renders a checkbox for each of the four features", () => {
     setup();
     expect(
       screen.getByRole("checkbox", { name: /timeline/i }),
@@ -77,20 +79,11 @@ describe("ProjectFeatureToggles", () => {
     expect(
       screen.getByRole("checkbox", { name: /notes/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("checkbox", { name: /entities/i }),
-    ).toBeInTheDocument();
   });
 
   it("treats an absent features block as all-off", () => {
     setup();
-    for (const name of [
-      /timeline/i,
-      /point of view/i,
-      /synopsis/i,
-      /notes/i,
-      /entities/i,
-    ]) {
+    for (const name of [/timeline/i, /point of view/i, /synopsis/i, /notes/i]) {
       expect(screen.getByRole("checkbox", { name })).not.toBeChecked();
     }
   });
@@ -242,72 +235,6 @@ describe("ProjectFeatureToggles", () => {
 
     await waitFor(() => expect(toastService.error).toHaveBeenCalled());
     expect(toastService.success).not.toHaveBeenCalled();
-  });
-
-  it("persists the entities flag when toggled on", async () => {
-    const { store } = setup();
-    const fetchSpy = mockFeatureRoute({ entities: true });
-
-    fireEvent.click(screen.getByRole("checkbox", { name: /entities/i }));
-
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/api/project/features");
-    expect(JSON.parse(init.body as string)).toEqual({
-      projectId: "test",
-      features: { entities: true },
-    });
-
-    await waitFor(() =>
-      expect(screen.getByRole("checkbox", { name: /entities/i })).toBeChecked(),
-    );
-    expect(
-      store.getState().projects.projects["test-project-id"].features,
-    ).toEqual({ entities: true });
-  });
-
-  it("does not render the entity highlighting toggle when entities is off", () => {
-    setup();
-    expect(screen.queryByText(/entity highlighting/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", { name: /entity highlighting/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("renders the entity highlighting toggle when entities is on", () => {
-    setup({ entities: true });
-    expect(
-      screen.getByRole("checkbox", { name: /entity highlighting/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("persists entityHighlighting through updateFeatureConfig when toggled on", async () => {
-    const { store } = setup({ entities: true });
-    const fetchSpy = mockFeatureRoute({
-      entities: true,
-      entityHighlighting: true,
-    });
-
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: /entity highlighting/i }),
-    );
-
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/api/project/features");
-    expect(JSON.parse(init.body as string)).toEqual({
-      projectId: "test",
-      features: { entities: true, entityHighlighting: true },
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole("checkbox", { name: /entity highlighting/i }),
-      ).toBeChecked(),
-    );
-    expect(
-      store.getState().projects.projects["test-project-id"].features,
-    ).toEqual({ entities: true, entityHighlighting: true });
   });
 
   it("renders nothing when no project is selected", () => {
