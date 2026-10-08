@@ -560,3 +560,46 @@ describe("clearField", () => {
     );
   });
 });
+
+// ─── Feature 72, FR-17: appliesTo survives migrations ─────────────────────────
+
+describe("appliesTo is preserved by migrating schema operations (FR-17)", () => {
+  const RESTRICTED: MetadataField = {
+    key: "tone",
+    label: "Tone",
+    type: "select",
+    options: ["dark"],
+    appliesTo: ["Scene"],
+  };
+
+  function restricted(): MetadataSchema {
+    return { groups: [{ id: GROUP_ID, label: "Plot", fields: [RESTRICTED] }] };
+  }
+
+  it("change type with migration", async () => {
+    const dir = await makeTmpProject(restricted());
+    const schema = await changeFieldTypeWithMigration(
+      dir,
+      GROUP_ID,
+      "tone",
+      "text",
+      [],
+      {},
+    );
+    expect(schema.groups[0].fields[0].type).toBe("text");
+    expect(schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+  });
+
+  it("options update with migration", async () => {
+    const dir = await makeTmpProject(restricted());
+    const schema = await updateFieldOptionsWithMigration(
+      dir,
+      GROUP_ID,
+      "tone",
+      ["dark", "light"],
+      {},
+    );
+    expect(schema.groups[0].fields[0].options).toEqual(["dark", "light"]);
+    expect(schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+  });
+});

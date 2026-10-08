@@ -36,6 +36,7 @@ import {
   updateFieldOptions,
   updateFieldOptionsWithMigration,
   updateRefProperties,
+  updateFieldAppliesTo,
   changeFieldType,
   changeFieldTypeWithMigration,
   addGroup,
@@ -166,6 +167,14 @@ interface UpdateRefPropertiesRequest {
   maxSelections?: number | null;
 }
 
+interface UpdateFieldAppliesToRequest {
+  action: "update-field-applies-to";
+  groupId: string;
+  fieldKey: string;
+  /** Subtype labels in chosen order; empty clears the restriction. */
+  appliesTo: string[];
+}
+
 interface ChangeFieldTypeWithMigrationRequest {
   action: "change-field-type-with-migration";
   groupId: string;
@@ -197,6 +206,7 @@ export type MetadataSchemaDispatchRequest =
   | RenameFieldKeyRequest
   | ChangeFieldTypeRequest
   | UpdateRefPropertiesRequest
+  | UpdateFieldAppliesToRequest
   | ChangeFieldTypeWithMigrationRequest
   | UpdateFieldOptionsWithMigrationRequest;
 
@@ -348,6 +358,22 @@ export async function dispatchMetadataSchemaAction(
         request.groupId,
         request.fieldKey,
         updates,
+      );
+    }
+
+    case "update-field-applies-to": {
+      const { appliesTo } = request;
+      if (
+        !Array.isArray(appliesTo) ||
+        !appliesTo.every((label) => typeof label === "string")
+      ) {
+        throw new Error("appliesTo must be an array of strings");
+      }
+      return updateFieldAppliesTo(
+        projectRoot,
+        request.groupId,
+        request.fieldKey,
+        appliesTo,
       );
     }
 

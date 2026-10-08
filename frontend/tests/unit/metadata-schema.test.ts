@@ -20,6 +20,7 @@ import {
   renameField,
   renameFieldKey,
   updateFieldOptions,
+  changeFieldType,
   addGroup,
   removeGroup,
   reorderGroups,
@@ -778,5 +779,82 @@ describe("sidecar key resourceSubtype cannot collide with a custom field (Featur
     await expect(
       renameFieldKey(dir, GROUP_ID, "my-field", "resourceSubtype"),
     ).rejects.toThrow(/Invalid field key/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Feature 72, FR-17: existing schema operations preserve a field's `appliesTo`
+// ---------------------------------------------------------------------------
+
+describe("appliesTo is preserved by existing schema operations (FR-17)", () => {
+  const RESTRICTED: MetadataField = {
+    key: "mood",
+    label: "Mood",
+    type: "select",
+    options: ["Calm"],
+    appliesTo: ["Scene", "Chapter"],
+  };
+  const OTHER: MetadataField = { key: "other", label: "Other", type: "text" };
+
+  async function restrictedProject() {
+    return makeTmpProject({
+      groups: [{ id: GROUP_ID, label: "G", fields: [RESTRICTED, OTHER] }],
+    });
+  }
+
+  function mood(schema: MetadataSchema): MetadataField | undefined {
+    return schema.groups[0].fields.find((f) => f.key === "mood");
+  }
+
+  async function storedMood(dir: string): Promise<MetadataField | undefined> {
+    return mood(await getSchema(dir));
+  }
+
+  it("rename label", async () => {
+    const { dir } = await restrictedProject();
+    const schema = await renameField(dir, GROUP_ID, "mood", "Feeling");
+    expect(mood(schema)?.appliesTo).toEqual(["Scene", "Chapter"]);
+    expect((await storedMood(dir))?.appliesTo).toEqual(["Scene", "Chapter"]);
+  });
+
+  it("rename key", async () => {
+    const { dir } = await restrictedProject();
+    const schema = await renameFieldKey(dir, GROUP_ID, "mood", "feeling");
+    const renamed = schema.groups[0].fields.find((f) => f.key === "feeling");
+    expect(renamed?.appliesTo).toEqual(["Scene", "Chapter"]);
+    const stored = (await getSchema(dir)).groups[0].fields.find(
+      (f) => f.key === "feeling",
+    );
+    expect(stored?.appliesTo).toEqual(["Scene", "Chapter"]);
+  });
+
+  it("reorder", async () => {
+    const { dir } = await restrictedProject();
+    const schema = await reorderFields(dir, GROUP_ID, ["other", "mood"]);
+    expect(schema.groups[0].fields.map((f) => f.key)).toEqual([
+      "other",
+      "mood",
+    ]);
+    expect(mood(schema)?.appliesTo).toEqual(["Scene", "Chapter"]);
+    expect((await storedMood(dir))?.appliesTo).toEqual(["Scene", "Chapter"]);
+  });
+
+  it("change type (without migration)", async () => {
+    const { dir } = await restrictedProject();
+    const schema = await changeFieldType(dir, GROUP_ID, "mood", "text");
+    expect(mood(schema)?.type).toBe("text");
+    expect(mood(schema)?.appliesTo).toEqual(["Scene", "Chapter"]);
+    expect((await storedMood(dir))?.appliesTo).toEqual(["Scene", "Chapter"]);
+  });
+
+  it("options update", async () => {
+    const { dir } = await restrictedProject();
+    const schema = await updateFieldOptions(dir, GROUP_ID, "mood", [
+      "Calm",
+      "Tense",
+    ]);
+    expect(mood(schema)?.options).toEqual(["Calm", "Tense"]);
+    expect(mood(schema)?.appliesTo).toEqual(["Scene", "Chapter"]);
+    expect((await storedMood(dir))?.appliesTo).toEqual(["Scene", "Chapter"]);
   });
 });

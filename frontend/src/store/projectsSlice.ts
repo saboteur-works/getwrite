@@ -44,6 +44,7 @@ import {
   postUpdateFieldOptions,
   postUpdateFieldOptionsWithMigration,
   postUpdateRefProperties,
+  postUpdateFieldAppliesTo,
   postChangeFieldType,
   postChangeFieldTypeWithMigration,
   postAddGroup,
@@ -439,6 +440,23 @@ export const updateMetadataRefProperties = makeSchemaThunk<{
     postUpdateRefProperties(ctx, groupId, fieldKey, updates),
 );
 
+/**
+ * Sets or clears a custom field's subtype restriction. An empty `appliesTo`
+ * clears it. A failure is returned as a rejected action carrying the message
+ * (`rejectValue: string`), so a caller that awaits the dispatch can read it
+ * with `.unwrap()` or `result.meta.requestStatus` rather than losing it.
+ */
+export const updateMetadataFieldAppliesTo = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  appliesTo: string[];
+}>(
+  "projects/updateMetadataFieldAppliesTo",
+  (ctx, { groupId, fieldKey, appliesTo }) =>
+    postUpdateFieldAppliesTo(ctx, groupId, fieldKey, appliesTo),
+);
+
 // ---------------------------------------------------------------------------
 // Async thunks — feature configuration (toggles + Organizer card body)
 // ---------------------------------------------------------------------------
@@ -733,6 +751,7 @@ const projectsSlice = createSlice({
       updateMetadataFieldOptions,
       updateMetadataFieldOptionsWithMigration,
       updateMetadataRefProperties,
+      updateMetadataFieldAppliesTo,
       changeMetadataFieldType,
       changeMetadataFieldTypeWithMigration,
       addMetadataGroup,

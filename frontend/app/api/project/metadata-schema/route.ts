@@ -138,6 +138,15 @@ interface UpdateRefPropertiesRequest {
   maxSelections?: number | null;
 }
 
+interface UpdateFieldAppliesToRequest {
+  action: "update-field-applies-to";
+  projectId: string;
+  groupId: string;
+  fieldKey: string;
+  /** Subtype labels in chosen order; empty clears the restriction. */
+  appliesTo: string[];
+}
+
 interface ChangeFieldTypeWithMigrationRequest {
   action: "change-field-type-with-migration";
   projectId: string;
@@ -171,6 +180,7 @@ type MetadataSchemaRequestBody =
   | RenameFieldKeyRequest
   | ChangeFieldTypeRequest
   | UpdateRefPropertiesRequest
+  | UpdateFieldAppliesToRequest
   | ChangeFieldTypeWithMigrationRequest
   | UpdateFieldOptionsWithMigrationRequest;
 
@@ -248,7 +258,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
       /not found/i.test(message) ||
       /already exists/i.test(message) ||
       /Invalid field key/i.test(message) ||
-      /must contain exactly/i.test(message);
+      /must contain exactly/i.test(message) ||
+      /built-in/i.test(message) ||
+      /must be an array of strings/i.test(message);
 
     return NextResponse.json(
       { error: "Metadata schema operation failed", details: message },

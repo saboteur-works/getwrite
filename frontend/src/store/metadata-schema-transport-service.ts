@@ -187,6 +187,13 @@ export interface MetadataSchemaTransport {
     },
   ): Promise<MetadataSchema>;
 
+  updateFieldAppliesTo(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    fieldKey: string,
+    appliesTo: string[],
+  ): Promise<MetadataSchema>;
+
   changeFieldTypeWithMigration(
     context: MetadataSchemaRequestContext,
     groupId: string,
@@ -342,6 +349,17 @@ export const httpMetadataSchemaTransport: MetadataSchemaTransport = {
       groupId,
       fieldKey,
       ...updates,
+    });
+  },
+
+  updateFieldAppliesTo(context, groupId, fieldKey, appliesTo) {
+    const { projectId } = context;
+    return postToMetadataSchemaRoute({
+      action: "update-field-applies-to",
+      projectId,
+      groupId,
+      fieldKey,
+      appliesTo,
     });
   },
 
@@ -536,6 +554,16 @@ export async function postUpdateRefProperties(
 ): Promise<MetadataSchema> {
   const transport = await resolveMetadataSchemaTransport();
   return transport.updateRefProperties(context, groupId, fieldKey, updates);
+}
+
+export async function postUpdateFieldAppliesTo(
+  context: MetadataSchemaRequestContext,
+  groupId: string,
+  fieldKey: string,
+  appliesTo: string[],
+): Promise<MetadataSchema> {
+  const transport = await resolveMetadataSchemaTransport();
+  return transport.updateFieldAppliesTo(context, groupId, fieldKey, appliesTo);
 }
 
 export async function postUpdateFieldOptionsWithMigration(

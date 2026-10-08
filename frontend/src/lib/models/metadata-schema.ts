@@ -15,6 +15,7 @@ import { PROJECT_FILENAME } from "./project-config";
 import { readSidecar, writeSidecar } from "./sidecar";
 import { canonicalValueKey } from "./field-values";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
+import { dedupeSubtypeLabels } from "./field-subtype-scope";
 import type {
   Project,
   MetadataSchema,
@@ -786,6 +787,47 @@ export async function updateRefProperties(
 }
 
 /**
+ * Sets or clears a custom field's subtype restriction (`appliesTo`).
+ *
+ * The selection is stored in the order given, de-duplicated under the shared
+ * subtype comparison key. An empty selection removes the key entirely rather
+ * than storing `[]`, so "unrestricted" has one on-disk representation.
+ *
+ * Throws if the group or field does not exist, if the field is locked, or if
+ * the field's key is a built-in (present in `DEFAULT_METADATA_SCHEMA`).
+ */
+export async function updateFieldAppliesTo(
+  projectRoot: string,
+  groupId: string,
+  fieldKey: string,
+  appliesTo: readonly string[],
+): Promise<MetadataSchema> {
+  return withLockedSchema(projectRoot, (schema) => {
+    const group = findGroup(schema, groupId);
+    const field = findField(group, fieldKey);
+    if (isBuiltInFieldKey(fieldKey)) {
+      throw new Error(
+        `Cannot restrict built-in field to subtypes: "${fieldKey}"`,
+      );
+    }
+    if (field.locked) {
+      throw new Error(
+        `Cannot update subtype restriction of locked field: "${fieldKey}"`,
+      );
+    }
+    const labels = dedupeSubtypeLabels(appliesTo);
+    if (labels.length === 0) delete field.appliesTo;
+    else field.appliesTo = labels;
+  });
+}
+
+function isBuiltInFieldKey(fieldKey: string): boolean {
+  return DEFAULT_METADATA_SCHEMA.groups.some((group) =>
+    group.fields.some((field) => field.key === fieldKey),
+  );
+}
+
+/**
  * Changes the type of a field. When switching away from `select`/`multiselect`,
  * the `options` array is preserved on disk so it can be recovered if the user
  * switches back.
@@ -1042,6 +1084,7 @@ const metadataSchema = {
   updateFieldOptions,
   updateFieldOptionsWithMigration,
   updateRefProperties,
+  updateFieldAppliesTo,
   changeFieldType,
   changeFieldTypeWithMigration,
   addGroup,

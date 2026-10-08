@@ -21,6 +21,7 @@ import {
   fetchFieldValues,
   postAddField,
   postAddGroup,
+  postUpdateFieldAppliesTo,
   resolveMetadataSchemaRequestContext,
 } from "../../src/store/metadata-schema-transport-service";
 import type { MetadataField, MetadataGroup } from "../../src/lib/models/types";
@@ -106,6 +107,26 @@ describe("metadata-schema-transport-service (T9e regression)", () => {
     expect(body.action).toBe("add-group");
     expect(body.projectId).toBe(directoryUuid);
     expect(body).not.toHaveProperty("projectPath");
+  });
+
+  it("postUpdateFieldAppliesTo posts update-field-applies-to with projectId and appliesTo", async () => {
+    await postUpdateFieldAppliesTo(
+      { projectId: directoryUuid },
+      "group-1",
+      "mood",
+      ["Scene", "Chapter"],
+    );
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/project/metadata-schema");
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).toEqual({
+      action: "update-field-applies-to",
+      projectId: directoryUuid,
+      groupId: "group-1",
+      fieldKey: "mood",
+      appliesTo: ["Scene", "Chapter"],
+    });
   });
 
   it("fetchFieldValues sends projectId as a query param, with no projectPath param", async () => {

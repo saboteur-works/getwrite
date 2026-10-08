@@ -83,7 +83,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 5
 **Notes:** Satisfies FR-15 (below the UI), FR-14 (server-side built-in rejection), FR-17. Depends on 5 only because both edit `projectsSlice.ts`; the two must not run concurrently. The native-web-stub aliasing in `frontend/next.config.mjs` is unchanged because no new native backend module is added; only the existing `native-metadata-schema-backend.ts` changes.
 **POS:** task_afca9086
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Unchanged-surface, importer-negative and round-trip tests
 **What:** Add test-only coverage that queries, importers, trash/restore, reindex, compile and export are unaffected by subtype data.
