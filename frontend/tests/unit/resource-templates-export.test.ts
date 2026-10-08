@@ -53,3 +53,26 @@ test("T033: export/import template roundtrip", async () => {
     await removeDirRetry(tmp);
   }
 });
+
+test("unshipped helper: export/import preserves resourceSubtype (FR-25)", async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rt-"));
+  try {
+    const tpl = {
+      id: "tpl-export-subtype",
+      name: "Typed Template",
+      type: "text" as const,
+      plainText: "Body",
+      resourceSubtype: "Scene",
+    };
+    await saveResourceTemplate(tmp, tpl);
+    const out = path.join(tmp, "tpl-export-subtype.zip");
+    await exportResourceTemplate(tmp, tpl.id, out);
+    await fs.unlink(path.join(tmp, "meta", "templates", `${tpl.id}.json`));
+    await importResourceTemplates(tmp, out);
+    const loaded = await loadResourceTemplate(tmp, tpl.id);
+    expect(loaded.resourceSubtype).toBe("Scene");
+  } finally {
+    const { removeDirRetry } = await import("./helpers/fs-utils");
+    await removeDirRetry(tmp);
+  }
+});

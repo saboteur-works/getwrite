@@ -7,10 +7,13 @@ import { describe, expect, it } from "vitest";
 import {
   inspectResourceTemplate,
   listResourceTemplates,
+  loadResourceTemplate,
   saveResourceTemplate,
   scaffoldResourcesFromTemplate,
   validateResourceTemplate,
 } from "../../src/lib/models/resource-templates";
+import { validateTemplate } from "../../src/lib/models/template-service";
+import { ResourceTemplateSchema } from "../../src/lib/models/schemas";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -118,6 +121,110 @@ describe("models/template-service regressions (T007)", () => {
         expect.objectContaining({ name: "Scene 2", type: "text" }),
         expect.objectContaining({ name: "Scene 3", type: "text" }),
       ]);
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+});
+
+describe("models/template-service resourceSubtype (Feature 73, FR-13/FR-14)", () => {
+  const base = { id: "tpl-subtype", name: "Scene", type: "text" as const };
+
+  async function writeRaw(
+    projectRoot: string,
+    template: Record<string, unknown>,
+  ): Promise<void> {
+    const dir = path.join(projectRoot, "meta", "templates");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, `${String(template.id)}.json`),
+      JSON.stringify(template),
+      "utf8",
+    );
+  }
+
+  it.each([
+    ["empty string", ""],
+    ["whitespace-only string", "   "],
+    ["number", 5],
+    ["null", null],
+  ])(
+    "validateResourceTemplate reports resourceSubtype for a %s value",
+    async (_label, value) => {
+      const projectRoot = await fs.mkdtemp(
+        path.join(os.tmpdir(), "getwrite-template-subtype-bad-"),
+      );
+      try {
+        await writeRaw(projectRoot, { ...base, resourceSubtype: value });
+        const result = await validateResourceTemplate(projectRoot, base.id);
+        expect(result.valid).toBe(false);
+        if (result.valid) throw new Error("expected invalid");
+        expect(result.errors.some((e) => e.startsWith("resourceSubtype"))).toBe(
+          true,
+        );
+      } finally {
+        await removeDirRetry(projectRoot);
+      }
+    },
+  );
+
+  it.each([
+    ["empty string", ""],
+    ["whitespace-only string", "   "],
+    ["number", 5],
+    ["null", null],
+  ])("validateTemplate rejects a %s resourceSubtype", (_label, value) => {
+    const result = validateTemplate({
+      ...base,
+      resourceSubtype: value,
+    } as never);
+    expect(result.valid).toBe(false);
+    if (result.valid) throw new Error("expected invalid");
+    expect(result.errors.some((e) => e.startsWith("resourceSubtype"))).toBe(
+      true,
+    );
+  });
+
+  it("accepts a non-blank resourceSubtype", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-template-subtype-ok-"),
+    );
+    try {
+      await writeRaw(projectRoot, { ...base, resourceSubtype: "Scene" });
+      await expect(
+        validateResourceTemplate(projectRoot, base.id),
+      ).resolves.toEqual({ valid: true });
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("still validates a template saved before the feature, with no resourceSubtype key in the parse result", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-template-subtype-legacy-"),
+    );
+    try {
+      await writeRaw(projectRoot, { ...base });
+      await expect(
+        validateResourceTemplate(projectRoot, base.id),
+      ).resolves.toEqual({ valid: true });
+      const parsed = ResourceTemplateSchema.parse({ ...base });
+      expect("resourceSubtype" in parsed).toBe(false);
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("round-trips resourceSubtype through saveResourceTemplate and loadResourceTemplate", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-template-subtype-rt-"),
+    );
+    try {
+      const tpl = { ...base, resourceSubtype: "Scene" };
+      await saveResourceTemplate(projectRoot, tpl);
+      await expect(loadResourceTemplate(projectRoot, base.id)).resolves.toEqual(
+        tpl,
+      );
     } finally {
       await removeDirRetry(projectRoot);
     }

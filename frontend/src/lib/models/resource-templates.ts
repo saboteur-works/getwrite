@@ -75,6 +75,8 @@ export interface ResourceTemplate {
   folderId?: UUID | null;
   userMetadata?: Record<string, MetadataValue>;
   plainText?: string; // for text templates
+  /** Optional free-text subtype label; absent (never null or "") when unset. */
+  resourceSubtype?: string;
 }
 
 type TemplateCreatePreview = {

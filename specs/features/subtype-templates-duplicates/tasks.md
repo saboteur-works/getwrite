@@ -40,7 +40,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 2
 **Notes:** Satisfies FR-13, FR-14, FR-25 (optional). A template with no subtype must NOT gain a `resourceSubtype` key (absent, not `null` or `""`). No fallback read of a label from `userMetadata.resourceSubtype` (RQ-4). `loadResourceTemplate` does `JSON.parse` with no schema parse, so values are not trimmed on load; do not change that here. This task owns `schemas.ts` for the feature and shares `resource-templates.ts` and `resource-templates.test.ts` with Tasks 4, 6 and 7, which are chained after it (Task 4 depends on this task).
 **POS:** task_5f83cb9e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Copy: initial canonical revision for text copies, subtype kept end to end
 **What:** Make `copyResourceCore` write an initial canonical revision for a text copy through the shared writer, fail before any write when a text source has no content, and prove the subtype survives core, HTTP route, native backend and the response schema parse.

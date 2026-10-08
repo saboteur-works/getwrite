@@ -523,6 +523,7 @@ export const ResourceTemplateSchema = z.object({
   folderId: UUID.nullable().optional(),
   userMetadata: z.record(z.string(), MetadataValue).optional(),
   plainText: z.string().optional(),
+  resourceSubtype: z.string().trim().min(1).optional(),
 });
 
 /**

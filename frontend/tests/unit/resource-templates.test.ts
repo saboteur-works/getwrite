@@ -228,6 +228,31 @@ describe("models/resource-templates (T027)", () => {
     }
   });
 
+  it("unshipped helper: parametrizeResourceTemplate leaves resourceSubtype intact (FR-25)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rt-"));
+    try {
+      await saveResourceTemplate(tmp, {
+        id: "tpl-param-subtype",
+        name: "Chapter One",
+        type: "text",
+        plainText: "Chapter One\n\nContent here",
+        resourceSubtype: "Scene",
+      });
+      const { parametrizeResourceTemplate } =
+        await import("../../src/lib/models/resource-templates");
+      await parametrizeResourceTemplate(tmp, "tpl-param-subtype", "{{TITLE}}");
+      const raw = await fs.readFile(
+        path.join(tmp, "meta", "templates", "tpl-param-subtype.json"),
+        "utf8",
+      );
+      const parsed = JSON.parse(raw);
+      expect(parsed.name).toBe("{{TITLE}}");
+      expect(parsed.resourceSubtype).toBe("Scene");
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("creates from template with vars (dry-run and real)", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-rt-"));
     try {
