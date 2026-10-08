@@ -4,7 +4,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import ProjectSettingsDialog from "../../components/Layout/ProjectSettingsDialog";
 import type { ProjectSettingsDialogProps } from "../../components/Layout/ProjectSettingsDialog";
-import projectReducer from "../../src/store/projectsSlice";
+import projectReducer, { setProject } from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
 import editorConfigReducer from "../../src/store/editorConfigSlice";
@@ -91,6 +91,33 @@ const baseArgs: ProjectSettingsDialogProps = {
 /** A daily writing goal is already set; the Writing Goals tab shows it. */
 export const WithDailyGoal: Story = {
   args: { ...baseArgs, initialDailyWordGoal: 500 },
+};
+
+/**
+ * The Metadata tab hosts the Subtypes list editor above the field manager.
+ * The panel is force-mounted, so it is present in the DOM from first render;
+ * select the "Metadata" tab to see it.
+ */
+export const MetadataTabWithSubtypes: Story = {
+  args: baseArgs,
+  decorators: [
+    (Story: React.ComponentType) => {
+      const store = makeStore();
+      store.dispatch(
+        setProject({
+          id: "story-proj",
+          rootPath: "/story",
+          metadataSchema: DEFAULT_METADATA_SCHEMA,
+          subtypes: ["Scene", "Chapter"],
+        }),
+      );
+      return (
+        <Provider store={store}>
+          <Story />
+        </Provider>
+      );
+    },
+  ],
 };
 
 /** All seven tabs available; defaults to the "Heading Styles" section. */

@@ -103,7 +103,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (UI half), FR-23 (removal allowed with no block or prompt), FR-24, FR-25, FR-29 (SubtypesSettings), FR-30 (no tab added). Open the real `ProjectSettingsDialog.tsx`, `RelationshipTypesSettings.tsx` and `ProjectSettingsDialog.stories.tsx` first; read `projectSettingsDialogDailyGoal.test.tsx` and the dialog story to check whether either pins Metadata-tab contents (spec FR-30 says these were not read) and report what is found. Do NOT copy `RelationshipTypesSettings.handleAdd`'s clear-input-before-resolve behaviour. Error toasts: use `toastService.error` (`frontend/src/lib/toast-service.ts`).
 **POS:** task_a090a636
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Schema-manager restriction checkbox group
 **What:** Add the per-custom-field "Applies to subtypes" checkbox group to `SchemaManager.tsx`, wired to the Task 7 thunk, with failure feedback.
