@@ -35,8 +35,11 @@ This is the developer reference for the project-type JSON format, validation, an
   - `template` (string, optional): initial plain text for the resource.
 - `statuses` (array of strings, optional), `relationshipTypes` (array of
   strings, optional — seeds the project's list of entity-relationship types,
-  e.g. `["ally of", "rival of"]`), `wordCountGoal` (integer, optional),
-  `editorConfig` (object, optional).
+  e.g. `["ally of", "rival of"]`), `subtypes` (array of strings, optional —
+  seeds the project's resource-subtype list, Feature 72; validated by
+  `SubtypeListSchema`, so a blank or case-insensitively duplicate entry fails
+  validation; none of the built-in types ships a list), `wordCountGoal`
+  (integer, optional), `editorConfig` (object, optional).
 
 The schema is `.strict()` — unknown top-level keys are rejected.
 
