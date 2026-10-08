@@ -133,7 +133,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 3
 **Notes:** Satisfies FR-19, FR-20 (only `MetadataSidebar.tsx` applies the predicate; grep to confirm no other file imports `field-subtype-scope.ts` except the schema manager's normalization use), FR-21, FR-22, FR-23. Depends on 11 only because both edit `MetadataSidebar.tsx`. The sidebar "Add field" silent no-op for a subtype-hidden field name (OQ-9) is left as is; do not change it.
 **POS:** task_835dedad
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: In-app help content
 **What:** Update the in-app help to describe the subtype list and field restriction.

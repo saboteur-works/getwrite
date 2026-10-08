@@ -139,7 +139,10 @@ export const Interactive: Story = {
   },
 };
 
-function makeStoreWithResource(resource: AnyResource) {
+function makeStoreWithResource(
+  resource: AnyResource,
+  projectOverrides: Partial<StoredProject> = {},
+) {
   const store = configureStore({
     reducer: {
       projects: projectReducer,
@@ -163,6 +166,7 @@ function makeStoreWithResource(resource: AnyResource) {
               synopsis: true,
               notes: true,
             },
+            ...projectOverrides,
           } as StoredProject,
         },
       },
@@ -337,6 +341,54 @@ export const WithAudioResource: Story = {
     });
     return (
       <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
+type RestrictedFieldArgs = { resourceSubtype?: string };
+
+/**
+ * A custom field restricted to the "Scene" subtype (Feature 72, FR-19). Set the
+ * `resourceSubtype` arg to "Scene" (or "scene") to show the field; any other
+ * value, or none, hides it along with its group.
+ */
+export const RestrictedField: StoryObj<RestrictedFieldArgs> = {
+  args: { resourceSubtype: "Scene" },
+  render: (args: RestrictedFieldArgs) => {
+    const resource = {
+      ...createTextResource({
+        name: "Opening scene",
+        plainText: "",
+        userMetadata: { "scene-location": "The harbour" },
+      }),
+      ...(args.resourceSubtype !== undefined
+        ? { resourceSubtype: args.resourceSubtype }
+        : {}),
+    } as AnyResource;
+    return (
+      <Provider
+        store={makeStoreWithResource(resource, {
+          subtypes: ["Scene", "Chapter"],
+          metadataSchema: {
+            groups: [
+              {
+                id: "scene-details",
+                label: "Scene details",
+                fields: [
+                  {
+                    key: "scene-location",
+                    label: "Location",
+                    type: "text",
+                    appliesTo: ["Scene"],
+                  },
+                ],
+              },
+            ],
+          },
+        } as Partial<StoredProject>)}
+      >
         <MetadataSidebar />
       </Provider>
     );

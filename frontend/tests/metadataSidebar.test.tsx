@@ -1275,3 +1275,312 @@ describe("MetadataSidebar — Subtype section (Task 11)", () => {
     expect(documentGroup).toBeGreaterThan(subtype);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Sidebar field filtering by subtype (Feature 72, Task 12; FR-19..FR-23)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — subtype field filtering (Task 12)", () => {
+  const SCENE_FIELD = {
+    key: "scene-field",
+    label: "Scene Field",
+    type: "text" as const,
+    appliesTo: ["Scene"],
+  };
+
+  function schemaWith(
+    groupOverrides: Record<string, unknown> = {},
+    fields: MetadataSchema["groups"][number]["fields"] = [SCENE_FIELD],
+  ): MetadataSchema {
+    return {
+      groups: [
+        {
+          id: "g",
+          label: "Scoped Group",
+          fields,
+          ...groupOverrides,
+        } as MetadataSchema["groups"][number],
+      ],
+    };
+  }
+
+  function okResponse(): Response {
+    return new Response(JSON.stringify({}), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  function mountScoped(
+    schema: MetadataSchema,
+    resourceOverrides: Record<string, unknown> = {},
+    projectOverrides: Record<string, unknown> = {},
+  ) {
+    const base = createTextResource({
+      name: "R",
+      plainText: "",
+      userMetadata: { "scene-field": "kept value" },
+    });
+    const res = { ...base, ...resourceOverrides } as AnyResource;
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: "p",
+        rootPath: "/test",
+        metadataSchema: schema,
+        subtypes: ["Scene", "Chapter"],
+        ...projectOverrides,
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    return {
+      testStore,
+      res,
+      ui: (
+        <Provider store={testStore}>
+          <MetadataSidebar />
+        </Provider>
+      ),
+    };
+  }
+
+  function storedResource(
+    store: ReturnType<typeof makeStore>,
+    id: string,
+  ): AnyResource {
+    return store
+      .getState()
+      .resources.resources.find((r: AnyResource) => r.id === id) as AnyResource;
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each(["Scene", "scene", " Scene "])(
+    "renders a Scene-restricted field for subtype %j",
+    async (subtype) => {
+      const { ui } = mountScoped(schemaWith(), { resourceSubtype: subtype });
+      await renderAndFlush(ui);
+      expect(screen.getByLabelText("scene-field")).toBeInTheDocument();
+    },
+  );
+
+  it("hides a Scene-restricted field for another subtype and for none", async () => {
+    const other = mountScoped(schemaWith(), { resourceSubtype: "Chapter" });
+    const first = await renderAndFlush(other.ui);
+    expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument();
+    first.unmount();
+
+    const none = mountScoped(schemaWith());
+    await renderAndFlush(none.ui);
+    expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument();
+  });
+
+  it("renders unrestricted fields for every subtype and for none", async () => {
+    const schema = schemaWith({}, [
+      { key: "free", label: "Free", type: "text" },
+      { key: "empty", label: "Empty", type: "text", appliesTo: [] },
+    ]);
+    for (const subtype of ["Chapter", undefined]) {
+      const { ui } = mountScoped(
+        schema,
+        subtype ? { resourceSubtype: subtype } : {},
+      );
+      const { unmount } = await renderAndFlush(ui);
+      expect(screen.getByLabelText("free")).toBeInTheDocument();
+      expect(screen.getByLabelText("empty")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("omits a group, title included, when all its fields are out of scope", async () => {
+    const { ui } = mountScoped(schemaWith(), { resourceSubtype: "Chapter" });
+    await renderAndFlush(ui);
+    expect(
+      screen.queryByRole("button", { name: /scoped group/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps a group visible when only some of its fields are out of scope", async () => {
+    const schema = schemaWith({}, [
+      SCENE_FIELD,
+      { key: "free", label: "Free", type: "text" },
+    ]);
+    const { ui } = mountScoped(schema, { resourceSubtype: "Chapter" });
+    await renderAndFlush(ui);
+    expect(
+      screen.getByRole("button", { name: /scoped group/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("free")).toBeInTheDocument();
+    expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument();
+  });
+
+  describe("all three checks must pass (FR-19)", () => {
+    const fields = [
+      { key: "synopsis", label: "Synopsis", type: "text" as const },
+      { ...SCENE_FIELD },
+    ];
+
+    it("subtype check failing alone hides the field", async () => {
+      const { ui } = mountScoped(
+        schemaWith({ folderId: "f1" }, fields),
+        { resourceSubtype: "Chapter", folderId: "f1" },
+        { features: { synopsis: true } },
+      );
+      await renderAndFlush(ui);
+      expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+    });
+
+    it("group folderId check failing alone hides the field", async () => {
+      const { ui } = mountScoped(
+        schemaWith({ folderId: "f1" }, fields),
+        { resourceSubtype: "Scene", folderId: "other" },
+        { features: { synopsis: true } },
+      );
+      await renderAndFlush(ui);
+      expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+    });
+
+    it("feature-flag check failing alone hides the gated field only", async () => {
+      const { ui } = mountScoped(
+        schemaWith({ folderId: "f1" }, fields),
+        { resourceSubtype: "Scene", folderId: "f1" },
+        { features: { synopsis: false } },
+      );
+      await renderAndFlush(ui);
+      expect(screen.queryByLabelText("synopsis")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("scene-field")).toBeInTheDocument();
+    });
+
+    it("renders the field when all three pass", async () => {
+      const { ui } = mountScoped(
+        schemaWith({ folderId: "f1" }, fields),
+        { resourceSubtype: "Scene", folderId: "f1" },
+        { features: { synopsis: true } },
+      );
+      await renderAndFlush(ui);
+      expect(screen.getByLabelText("scene-field")).toBeInTheDocument();
+      expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
+    });
+  });
+
+  it("FR-21: changing or clearing the subtype sends no userMetadata and the value returns", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => okResponse());
+    const { ui, testStore, res } = mountScoped(schemaWith(), {
+      resourceSubtype: "Scene",
+    });
+    await renderAndFlush(ui);
+    expect(screen.getByLabelText("scene-field")).toHaveValue("kept value");
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Subtype" }), {
+        target: { value: "Chapter" },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument(),
+    );
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Subtype" }), {
+        target: { value: "" },
+      });
+    });
+    await waitFor(() =>
+      expect(storedResource(testStore, res.id).resourceSubtype).toBeUndefined(),
+    );
+    expect(screen.queryByLabelText("scene-field")).not.toBeInTheDocument();
+
+    const sidecarBodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes("/sidecar"))
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(sidecarBodies).toHaveLength(2);
+    for (const body of sidecarBodies) {
+      expect(JSON.stringify(body)).not.toContain("userMetadata");
+    }
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Subtype" }), {
+        target: { value: "Scene" },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("scene-field")).toHaveValue("kept value"),
+    );
+    expect(storedResource(testStore, res.id).userMetadata).toEqual({
+      "scene-field": "kept value",
+    });
+  });
+
+  it("FR-22: with no restrictions and no subtypes, DOM matches the unrestricted render and mounting writes nothing", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => okResponse());
+    const plainFields = [
+      { key: "a", label: "A", type: "text" as const },
+      { key: "b", label: "B", type: "text" as const },
+    ];
+    const baseline = mountScoped(
+      schemaWith({}, plainFields),
+      {},
+      { subtypes: [] },
+    );
+    const first = await renderAndFlush(baseline.ui);
+    // React's generated ids (`_r_b5_`) differ between mounts; mask them.
+    const maskIds = (html: string): string => html.replace(/_r_\w+_/g, "_id_");
+    const baselineHtml = maskIds(first.container.innerHTML);
+    first.unmount();
+
+    const withEmptyScope = mountScoped(
+      schemaWith({}, [{ ...plainFields[0], appliesTo: [] }, plainFields[1]]),
+      { id: baseline.res.id },
+      { subtypes: [] },
+    );
+    const second = await renderAndFlush(withEmptyScope.ui);
+    expect(maskIds(second.container.innerHTML)).toBe(baselineHtml);
+
+    // TagsSection issues POST-based tag reads on mount; nothing else may call
+    // out, so no sidecar or project.json write can have happened.
+    const urls = fetchSpy.mock.calls.map(([url]) => String(url));
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.filter((url) => url !== "/api/project/tags")).toEqual([]);
+    for (const [, init] of fetchSpy.mock.calls) {
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(["list", "assignments"]).toContain(body.action);
+    }
+  });
+
+  it("FR-23: a subtype removed from the project list still sees its restricted fields; re-adding changes nothing else", async () => {
+    const { ui, testStore } = mountScoped(
+      schemaWith(),
+      { resourceSubtype: "Scene" },
+      { subtypes: ["Chapter"] },
+    );
+    const { container } = await renderAndFlush(ui);
+    expect(screen.getByLabelText("scene-field")).toBeInTheDocument();
+    const removedHtml = container.innerHTML;
+
+    await act(async () => {
+      testStore.dispatch(
+        setProject({
+          id: "p",
+          rootPath: "/test",
+          metadataSchema: schemaWith(),
+          subtypes: ["Chapter", "Scene"],
+        }),
+      );
+    });
+    await flushPendingEffects();
+    expect(screen.getByLabelText("scene-field")).toHaveValue("kept value");
+    // Only the subtype control's own option list differs.
+    const strip = (html: string): string =>
+      html.replace(/<select[^>]*aria-label="Subtype"[\s\S]*?<\/select>/, "");
+    expect(strip(container.innerHTML)).toBe(strip(removedHtml));
+  });
+});
