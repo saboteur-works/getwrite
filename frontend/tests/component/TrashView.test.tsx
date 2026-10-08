@@ -68,7 +68,7 @@ import {
 } from "../../src/lib/api/trash";
 import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
-import { stubAppShellFetch } from "../helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "../helpers/appShellFetchStub";
 import { flushPendingEffects } from "../helpers/flushEffects";
 
 const mockedListTrash = vi.mocked(listTrash);
@@ -130,16 +130,14 @@ const THREE_RESOURCE_LISTING: TrashListing = {
   folders: [],
 };
 
-let restoreFetch: () => void;
+// AppShell's mount effects fire a few background fetches (saved queries,
+// reindex, etc.) that are irrelevant to the FR-21 test below and whose
+// relative URLs `node-fetch`/undici can't parse outside a browser — stub
+// fetch globally so those settle quietly instead of surfacing as unhandled
+// rejections (mirrors tests/appShellEntityRosterGating.test.tsx's setup).
+setupAppShellFetchStub();
 
 beforeEach(() => {
-  // AppShell's mount effects fire a few background fetches (saved queries,
-  // reindex, etc.) that are irrelevant to the FR-21 test below and whose
-  // relative URLs `node-fetch`/undici can't parse outside a browser — stub
-  // fetch globally so those settle quietly instead of surfacing as unhandled
-  // rejections (mirrors tests/appShellEntityRosterGating.test.tsx's setup).
-  restoreFetch = stubAppShellFetch();
-
   // Task 26: `vi.restoreAllMocks()` below only restores real `vi.spyOn`
   // spies — it leaves a plain `vi.fn()` mock's own call history (`mock.calls`)
   // intact across tests, so a `not.toHaveBeenCalled()` regression assertion
@@ -153,7 +151,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  restoreFetch();
   vi.restoreAllMocks();
 });
 

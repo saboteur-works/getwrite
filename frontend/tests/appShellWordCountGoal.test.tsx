@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 
@@ -18,7 +18,7 @@ import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setResources } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { setWordCountGoal } from "../src/lib/api/word-count-goal";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 
 const mockSet = vi.mocked(setWordCountGoal);
 
@@ -29,16 +29,11 @@ const INTERNAL_ID = "9c19c9a4-internal-id-from-project-json";
 const DIRECTORY_ID = "1e6f0b3d-directory-basename";
 
 describe("AppShell word-count goal wiring (Task 8)", () => {
-  let restoreFetch: () => void;
+  setupAppShellFetchStub();
 
   beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
     mockSet.mockReset();
     mockSet.mockResolvedValue({ wordCountGoal: 50000 });
-  });
-
-  afterEach(() => {
-    restoreFetch();
   });
 
   function renderWithPageShapedProject(wordCountGoal: number | undefined) {

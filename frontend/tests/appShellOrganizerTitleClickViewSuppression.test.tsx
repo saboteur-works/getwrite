@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 
@@ -18,7 +18,7 @@ import {
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_organizer_title_click_suppression";
@@ -93,14 +93,9 @@ async function renderShell() {
 }
 
 describe("AppShell — OrganizerCard title click suppresses the auto-switch view effect (FR-3, FR-4, FR-6)", () => {
-  let restoreFetch: () => void;
-
-  beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
-  });
+  setupAppShellFetchStub();
 
   afterEach(() => {
-    restoreFetch();
     vi.clearAllMocks();
   });
 

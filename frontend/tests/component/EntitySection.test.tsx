@@ -15,9 +15,22 @@ import {
 import { createTextResource } from "../../src/lib/models/resource";
 import type { AnyResource } from "../../src/lib/models/types";
 import { flushPendingEffects } from "../helpers/flushEffects";
+import { EMPTY_ALIAS_TABLE } from "../../src/lib/api/entity-alias-table";
 
 const PROJECT_PATH = "/tmp/test-project";
 
+/**
+ * Not `setupAppShellFetchStub()`/`stubAppShellFetch()` (`appShellFetchStub
+ * .ts`): several tests here need the returned spy itself, to inspect the
+ * sidecar PATCH body via `getLastSidecarBody` below, which neither of
+ * those expose. `EMPTY_ALIAS_TABLE` is still imported from its own module
+ * rather than hand-typed, though, for the same reason `appShellFetchStub
+ * .ts` does — `project-noise-words`/`global-noise-words` have no named
+ * constant to import because an empty array/object is their only
+ * plausible "empty" shape, but an alias table's shape is more than one
+ * field, so hand-typing it is exactly the kind of guess that already
+ * drifted once elsewhere (`entity-graph-settings`, fixed in a prior pass).
+ */
 function makeFetchStub() {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = input.toString();
@@ -39,10 +52,7 @@ function makeFetchStub() {
       return { ok: true, json: async () => [] } as Response;
     }
     if (url.includes("/entity-alias-table")) {
-      return {
-        ok: true,
-        json: async () => ({ entities: {}, claimedBy: {} }),
-      } as Response;
+      return { ok: true, json: async () => EMPTY_ALIAS_TABLE } as Response;
     }
     return { ok: true, json: async () => ({}) } as Response;
   });

@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi, beforeEach, afterEach } from "vitest";
 // Every constant below is imported from its own module rather than
 // hand-typed here, deliberately: a hand-typed stand-in silently drifted
 // from the real default once already (`entity-graph-settings` answered
@@ -56,16 +56,25 @@ import {
  * "Dialogue ratio: 0% / Average sentence length: 0.0 / Top repeated words:
  * None". No test in this suite asserts on either string.
  *
- * Mirrors the save/restore shape every caller already used inline:
- *
- *     let restoreFetch: () => void;
- *     beforeEach(() => { restoreFetch = stubAppShellFetch(); });
- *     afterEach(() => { restoreFetch(); vi.clearAllMocks(); });
+ * Most callers want {@link setupAppShellFetchStub} instead of calling this
+ * directly — it wires the `beforeEach`/`afterEach` pair below for you. Use
+ * this lower-level function directly only when the stub needs to start
+ * outside the normal per-test lifecycle (e.g. `TrashView.test.tsx` installs
+ * it from inside its own, already-combined `beforeEach`, alongside other
+ * per-test mock resets).
  */
 export function stubAppShellFetch(): () => void {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = input.toString();
+    // Branches below are checked in order via unanchored `url.includes(...)`,
+    // so a new branch whose path is a substring of (or contains) an
+    // existing one must be ordered carefully — `/diagnostics-detail` is
+    // checked before `/diagnostics` for exactly this reason, since the
+    // latter would otherwise match first. `appShellFetchStub.contract.test
+    // .ts` is what actually guards this: a branch that silently started
+    // matching the wrong URL would answer the wrong shape, which that test
+    // checks against each endpoint's own real default.
     if (url.includes("/api/project/noise-words")) {
       return {
         ok: true,
@@ -192,4 +201,28 @@ export function stubAppShellFetch(): () => void {
   return () => {
     globalThis.fetch = originalFetch;
   };
+}
+
+/**
+ * Installs {@link stubAppShellFetch} for every test in the current suite —
+ * the `beforeEach`/`afterEach` pair that was, until now, copy-pasted
+ * identically into every `AppShell`-mounting test file. Call it once,
+ * anywhere a `beforeEach`/`afterEach` call is valid (inside a `describe`,
+ * or at a file's top level) — it's additive, so a file with its own extra
+ * per-test setup (resetting an unrelated mock, seeding a variable) keeps
+ * its own `beforeEach`/`afterEach` alongside this one rather than folding
+ * everything into a single call.
+ *
+ *     setupAppShellFetchStub();
+ *
+ *     it("...", () => { ... });
+ */
+export function setupAppShellFetchStub(): void {
+  let restoreFetch: () => void;
+  beforeEach(() => {
+    restoreFetch = stubAppShellFetch();
+  });
+  afterEach(() => {
+    restoreFetch();
+  });
 }

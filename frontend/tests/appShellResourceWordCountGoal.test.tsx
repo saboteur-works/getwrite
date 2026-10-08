@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 
@@ -21,7 +21,7 @@ import {
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { updateSidecar } from "../src/lib/api/resources";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 
 const mockUpdateSidecar = vi.mocked(updateSidecar);
 
@@ -34,16 +34,11 @@ const INTERNAL_ID = "7b8e0a2c-internal-id-from-project-json";
 const DIRECTORY_ID = "3f5d9e11-directory-basename";
 
 describe("AppShell resource word-count goal wiring (Task 8)", () => {
-  let restoreFetch: () => void;
+  setupAppShellFetchStub();
 
   beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
     mockUpdateSidecar.mockReset();
     mockUpdateSidecar.mockResolvedValue(undefined as never);
-  });
-
-  afterEach(() => {
-    restoreFetch();
   });
 
   it("drives a save through the mounted sidebar, writing the sidecar with the directory id and rendering the progress bar with the saved goal", async () => {

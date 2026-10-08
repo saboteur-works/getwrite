@@ -15,9 +15,16 @@
  * constant (not a second hand-typed copy of the value), so a future edit to
  * the stub that reintroduces a mismatch fails a test instead of only
  * showing up in an unrelated AppShell test's rendered output.
+ *
+ * Coverage is scoped to this stub specifically, not to every AppShell test:
+ * a file that mocks the underlying `lib/api/*` module directly (several
+ * `appShell*.test.tsx` files do, for their own per-test control) never
+ * exercises this stub's branch for that endpoint at all, so a shape drift
+ * there wouldn't be caught by an AppShell render either way — only by this
+ * file, or by that test file's own assertions.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { stubAppShellFetch } from "./appShellFetchStub";
+import { describe, it, expect } from "vitest";
+import { setupAppShellFetchStub } from "./appShellFetchStub";
 import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 import {
@@ -44,13 +51,7 @@ const PROJECT_ID = "proj-stub-contract";
 const RESOURCE_ID = "res-stub-contract";
 
 describe("stubAppShellFetch — each answer matches its module's own degrade-default", () => {
-  let restoreFetch: () => void;
-  beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
-  });
-  afterEach(() => {
-    restoreFetch();
-  });
+  setupAppShellFetchStub();
 
   it("project-noise-words: resolves to empty lists", async () => {
     await expect(getNoiseWordLists(PROJECT_ID)).resolves.toEqual({

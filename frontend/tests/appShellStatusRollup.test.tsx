@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   render,
   screen,
@@ -26,7 +26,7 @@ import {
   createTextResource,
 } from "../src/lib/models/resource";
 import type { AnyResource } from "../src/lib/models/types";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_status_rollup_wiring";
@@ -146,14 +146,9 @@ function rollupRows(): string[][] {
 }
 
 describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
-  let restoreFetch: () => void;
-
-  beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
-  });
+  setupAppShellFetchStub();
 
   afterEach(() => {
-    restoreFetch();
     vi.clearAllMocks();
   });
 

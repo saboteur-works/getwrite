@@ -29,6 +29,22 @@ import type {
 } from "../src/lib/models/types";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
+/**
+ * `render(...)`, then `flushPendingEffects()` — the pair nearly every test
+ * in this file needs, since `MetadataSidebar` always mounts `TagsSection`/
+ * `ProseDiagnosticsSection`'s own fetch-then-setState effects regardless of
+ * what a given test asserts on. One shared helper instead of pasting the
+ * flush as its own statement after every one of this file's ~35 standalone
+ * `render()` calls.
+ */
+async function renderAndFlush(
+  ui: React.ReactElement,
+): Promise<ReturnType<typeof render>> {
+  const result = render(ui);
+  await flushPendingEffects();
+  return result;
+}
+
 function setupMultiRefSidebar({
   fieldKey = "refs-field",
   fieldLabel = "Refs",
@@ -97,12 +113,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const dateInput = screen.getByLabelText(
       "story-date-input",
@@ -137,12 +152,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.getByLabelText("end-date-override-toggle"),
@@ -167,12 +181,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
 
     fireEvent.click(screen.getByLabelText("end-date-override-toggle"));
     fireEvent.change(screen.getByLabelText("story-end-date-input"), {
@@ -202,12 +215,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const input = screen.getByLabelText(
       "story-end-date-input",
@@ -230,12 +242,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
     expect(synopsis).toBeInTheDocument();
@@ -257,12 +268,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
     fireEvent.change(synopsis, { target: { value: "A new synopsis." } });
@@ -282,12 +292,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /document/i }),
@@ -315,12 +324,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /document/i }));
@@ -337,12 +345,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const docBtn = screen.getByRole("button", { name: /document/i });
     fireEvent.click(docBtn);
@@ -364,12 +371,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(screen.getByLabelText("story-date-input")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /timeline/i }));
@@ -403,12 +409,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId(projectId));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const notes = screen.getByLabelText("notes") as HTMLTextAreaElement;
     expect(notes).toBeInTheDocument();
@@ -446,12 +451,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId(projectId));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /custom group/i }),
@@ -491,12 +495,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId(projectId));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const input = screen.getByLabelText("my-field");
     fireEvent.change(input, { target: { value: "custom value" } });
@@ -530,12 +533,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId(projectId));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /folder group/i }),
@@ -570,12 +572,11 @@ describe("MetadataSidebar", () => {
     testStore.dispatch(setSelectedProjectId(projectId));
     testStore.dispatch(setResources([resWithFolder as any]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /folder group/i }),
@@ -612,12 +613,11 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
 
   it("renders the 'Add field' button when a text resource is selected", async () => {
     const { testStore } = setupWithProject();
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
   });
 
@@ -658,12 +658,11 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         });
       });
 
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     // Click opens the AddFieldForm inline mini-form (Task 20)
     fireEvent.click(screen.getByLabelText("add-metadata-field"));
@@ -714,12 +713,11 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
     const res = createTextResource({ name: "Scene", plainText: "" });
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     const btn = screen.getByLabelText(
       "add-metadata-field",
     ) as HTMLButtonElement;
@@ -734,12 +732,11 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
 describe("MetadataSidebar — multi-resource-ref field", () => {
   it("renders MultiResourceRefInput for a multi-resource-ref field", async () => {
     const { testStore } = setupMultiRefSidebar();
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(
       screen.getByLabelText("multi-resource-ref-input"),
     ).toBeInTheDocument();
@@ -751,12 +748,11 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
       userMetadata: { "refs-field": [{ id: optionRes.id, name: "Alice" }] },
       extraResources: [optionRes],
     });
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByRole("button", { name: "Alice" })).toBeInTheDocument();
   });
 
@@ -764,12 +760,11 @@ describe("MetadataSidebar — multi-resource-ref field", () => {
     const optionRes = createTextResource({ name: "Alice", plainText: "" });
     const onChangeField = vi.fn();
     const { testStore } = setupMultiRefSidebar({ extraResources: [optionRes] });
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
 
     const input = screen.getByLabelText("multi-resource-ref-input");
     fireEvent.change(input, { target: { value: "Alice" } });
@@ -822,12 +817,11 @@ describe("MetadataSidebar — media resource display", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByText(/1920/)).toBeInTheDocument();
     expect(screen.getByText(/1080/)).toBeInTheDocument();
   });
@@ -842,12 +836,11 @@ describe("MetadataSidebar — media resource display", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByText("Canon")).toBeInTheDocument();
     expect(screen.getByText("EOS R5")).toBeInTheDocument();
   });
@@ -861,12 +854,11 @@ describe("MetadataSidebar — media resource display", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByText("MP3")).toBeInTheDocument();
     expect(screen.getByText("1m 23s")).toBeInTheDocument();
   });
@@ -876,12 +868,11 @@ describe("MetadataSidebar — media resource display", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByText("WAV")).toBeInTheDocument();
   });
 
@@ -894,12 +885,11 @@ describe("MetadataSidebar — media resource display", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     // Editable schema fields + add-field affordance are available, like text
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
@@ -917,12 +907,11 @@ describe("MetadataSidebar — media resource display", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar onChangeField={onChangeField} />
       </Provider>,
     );
-    await flushPendingEffects();
     const synopsis = screen.getByLabelText("synopsis") as HTMLTextAreaElement;
     fireEvent.change(synopsis, { target: { value: "A striking banner." } });
     expect(onChangeField).toHaveBeenCalledWith(
@@ -940,12 +929,11 @@ describe("MetadataSidebar — media resource display", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
     expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
     expect(screen.getByText("MP3")).toBeInTheDocument();
@@ -960,12 +948,11 @@ describe("MetadataSidebar — media resource display", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
     expect(screen.getByText("1h 2m 3s")).toBeInTheDocument();
   });
 });
@@ -1124,12 +1111,11 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /word count goal/i }),
@@ -1142,12 +1128,11 @@ describe("MetadataSidebar — Word count goal section (Task 5)", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /word count goal/i }),
@@ -1180,12 +1165,11 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
     testStore.dispatch(setSelectedProjectId("p"));
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.getByRole("button", { name: /prose diagnostics/i }),
@@ -1197,12 +1181,11 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),
@@ -1214,12 +1197,11 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
     const testStore = makeStore();
     testStore.dispatch(setResources([res]));
     testStore.dispatch(setSelectedResourceId(res.id));
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),
@@ -1228,12 +1210,11 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
 
   it("does not render the Prose diagnostics section when nothing is selected (folder / empty selection)", async () => {
     const testStore = makeStore();
-    render(
+    await renderAndFlush(
       <Provider store={testStore}>
         <MetadataSidebar />
       </Provider>,
     );
-    await flushPendingEffects();
 
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),

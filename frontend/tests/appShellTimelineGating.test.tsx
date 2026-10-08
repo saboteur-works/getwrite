@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Provider } from "react-redux";
 
@@ -18,7 +18,7 @@ import {
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import type { ProjectFeatureFlags } from "../src/lib/models/types";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
 const PROJECT_ID = "proj_timeline_gating";
@@ -74,14 +74,9 @@ async function renderShell(features: ProjectFeatureFlags) {
 }
 
 describe("AppShell — Timeline view gating (Task 8)", () => {
-  let restoreFetch: () => void;
-
-  beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
-  });
+  setupAppShellFetchStub();
 
   afterEach(() => {
-    restoreFetch();
     vi.clearAllMocks();
   });
 

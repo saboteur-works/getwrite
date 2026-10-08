@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 
@@ -24,7 +24,7 @@ import {
   getTodayWritingLog,
   setDailyWordGoal,
 } from "../src/lib/api/writing-log";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 
 const mockSet = vi.mocked(setDailyWordGoal);
 const mockGet = vi.mocked(getTodayWritingLog);
@@ -92,10 +92,9 @@ function saveGoal(value: string): void {
 }
 
 describe("AppShell footer refreshes after a daily goal change (Task 19)", () => {
-  let restoreFetch: () => void;
+  setupAppShellFetchStub();
 
   beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
     serverGoal = undefined;
     mockGet.mockReset();
     mockGet.mockImplementation(async () => aggregate());
@@ -104,10 +103,6 @@ describe("AppShell footer refreshes after a daily goal change (Task 19)", () => 
       serverGoal = goal === null ? undefined : goal;
       return { dailyWordGoal: serverGoal };
     });
-  });
-
-  afterEach(() => {
-    restoreFetch();
   });
 
   // Both tests mount the full `AppShell` (one of the heaviest components in

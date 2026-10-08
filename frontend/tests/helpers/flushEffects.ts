@@ -17,6 +17,17 @@ import { act } from "@testing-library/react";
  * regardless of how many hops it took, while a single microtask await is
  * not.
  *
+ * A prior version of this helper chained a fixed ten `Promise.resolve()`
+ * awaits instead, measurably faster (~34–35s vs. ~36s across the full
+ * suite) and passing every test that exists today. Reverted: unlike the
+ * macrotask tick, a fixed hop count isn't structurally guaranteed to
+ * cover a chain of arbitrary depth — a future sidebar section with one
+ * more `.then()` hop than today's would silently under-flush, with
+ * nothing failing until that new code shipped. That's the exact
+ * "passes now, flakes later" failure class this helper exists to
+ * eliminate, so the measured speedup wasn't worth trading it away for
+ * (code review caught this).
+ *
  * Call once, right after `render()`, for a test that doesn't itself assert
  * on the section this settles (if it does, prefer `findBy*`/`waitFor`,
  * which already wrap in `act()` and additionally assert something real).

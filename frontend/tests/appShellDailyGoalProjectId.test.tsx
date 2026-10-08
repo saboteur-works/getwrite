@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 
@@ -18,7 +18,7 @@ import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setResources } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import { setDailyWordGoal } from "../src/lib/api/writing-log";
-import { stubAppShellFetch } from "./helpers/appShellFetchStub";
+import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 
 const mockSet = vi.mocked(setDailyWordGoal);
 
@@ -28,16 +28,11 @@ const INTERNAL_ID = "4943675f-internal-id-from-project-json";
 const DIRECTORY_ID = "af142f76-directory-basename";
 
 describe("AppShell daily goal wiring (Task 16)", () => {
-  let restoreFetch: () => void;
+  setupAppShellFetchStub();
 
   beforeEach(() => {
-    restoreFetch = stubAppShellFetch();
     mockSet.mockReset();
     mockSet.mockResolvedValue({ dailyWordGoal: 400 });
-  });
-
-  afterEach(() => {
-    restoreFetch();
   });
 
   it("saves the daily goal against the project directory id, not project.id", async () => {
