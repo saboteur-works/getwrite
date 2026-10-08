@@ -81,8 +81,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       .getAllByRole("tab")
       .map((t: HTMLElement) => (t.textContent ?? "").trim());
     expect(names).toEqual([
-      "Heading Styles",
-      "Body Text Styles",
+      "Editor",
       "Default Revision Name",
       "Manage Tags",
       "Metadata",
@@ -116,14 +115,12 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
   it("is reachable by keyboard and has the accessible name 'Writing Goals'", async () => {
     const user = userEvent.setup();
     await renderDialog();
-    screen.getByRole("tab", { name: "Heading Styles" }).focus();
+    screen.getByRole("tab", { name: "Editor" }).focus();
     // This tab rail is vertical (ArrowDown/ArrowUp, not ArrowRight/Left —
     // see Tabs.tsx's `nextKey`), and Writing Goals is now second-to-last
-    // (Noise Words follows it), so arrow down five times from Heading
-    // Styles rather than {End}.
-    await user.keyboard(
-      "{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}",
-    );
+    // (Noise Words follows it), so arrow down four times from Editor
+    // rather than {End}.
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
     const tab = screen.getByRole("tab", { name: "Writing Goals" });
     expect(tab).toHaveFocus();
     expect(tab).toHaveAttribute("aria-selected", "true");

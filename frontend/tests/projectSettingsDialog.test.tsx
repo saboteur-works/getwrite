@@ -98,7 +98,7 @@ afterEach(() => {
 });
 
 describe("ProjectSettingsDialog", () => {
-  it("renders the 'Project Settings' title and 8 tabs, defaulting to Heading Styles", async () => {
+  it("renders the 'Project Settings' title and 7 tabs, defaulting to Editor", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
@@ -111,17 +111,14 @@ describe("ProjectSettingsDialog", () => {
     ).toBeInTheDocument();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(8);
-    expect(screen.getByRole("tab", { name: /Heading Styles/ })).toHaveAttribute(
+    expect(tabs).toHaveLength(7);
+    expect(screen.getByRole("tab", { name: /Editor/ })).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    expect(
-      screen.getByRole("tab", { name: /Body Text Styles/ }),
-    ).toHaveAttribute("aria-selected", "false");
   });
 
-  it("switches tabs without unmounting inactive panels, preserving draft state", async () => {
+  it("renders Heading Styles and Body Text Styles together under the Editor tab", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
@@ -129,18 +126,21 @@ describe("ProjectSettingsDialog", () => {
 
     await renderDialog();
 
+    expect(
+      screen.getByRole("heading", { name: "Heading Styles" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Body Text Styles" }),
+    ).toBeInTheDocument();
+
     const fontSizeInput = screen.getByLabelText(
       "H1 Font Size",
     ) as HTMLInputElement;
     fireEvent.change(fontSizeInput, { target: { value: "42" } });
     expect(fontSizeInput.value).toBe("42");
 
-    fireEvent.click(screen.getByRole("tab", { name: /Body Text Styles/ }));
-    expect(
-      screen.getByRole("heading", { name: "Body Text Styles" }),
-    ).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("tab", { name: /Heading Styles/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Manage Tags/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Editor/ }));
 
     const fontSizeInputAfter = screen.getByLabelText(
       "H1 Font Size",
@@ -184,7 +184,10 @@ describe("ProjectSettingsDialog", () => {
 
     const { onOpenChange, onSaveHeadingSettings } = await renderDialog();
 
-    fireEvent.click(screen.getByRole("button", { name: /Save Changes/ }));
+    const [headingSaveButton] = screen.getAllByRole("button", {
+      name: /Save Changes/,
+    });
+    fireEvent.click(headingSaveButton);
 
     await waitFor(() => {
       expect(onSaveHeadingSettings).toHaveBeenCalledTimes(1);

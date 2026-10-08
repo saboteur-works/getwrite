@@ -56,8 +56,7 @@ export interface ProjectSettingsDialogProps {
 }
 
 type ProjectSettingsTab =
-  | "headings"
-  | "body-text"
+  | "editor"
   | "default-revision-name"
   | "tags"
   | "metadata"
@@ -74,7 +73,7 @@ interface ProjectSettingsTabOption {
   }>;
 }
 
-const DEFAULT_TAB: ProjectSettingsTab = "headings";
+const DEFAULT_TAB: ProjectSettingsTab = "editor";
 
 /**
  * Shared styling for each settings panel: a bordered card that scrolls
@@ -85,8 +84,7 @@ const PANEL_CLASS =
   "min-h-0 overflow-y-auto rounded-lg border border-gw-border bg-gw-chrome2 p-5";
 
 const TAB_OPTIONS: ProjectSettingsTabOption[] = [
-  { value: "headings", label: "Heading Styles", icon: Type },
-  { value: "body-text", label: "Body Text Styles", icon: Type },
+  { value: "editor", label: "Editor", icon: Type },
   {
     value: "default-revision-name",
     label: "Default Revision Name",
@@ -184,16 +182,17 @@ export default function ProjectSettingsDialog({
               ))}
             </TabsList>
 
-            <TabsContent value="headings" forceMount className={PANEL_CLASS}>
+            <TabsContent
+              value="editor"
+              forceMount
+              className={`${PANEL_CLASS} flex flex-col gap-8`}
+            >
               <HeadingSettingsModal
                 initialHeadings={initialHeadings}
                 onClose={handleClose}
                 onSave={onSaveHeadingSettings}
                 closeOnSave={false}
               />
-            </TabsContent>
-
-            <TabsContent value="body-text" forceMount className={PANEL_CLASS}>
               <BodySettingsModal
                 initialBody={initialBodySettings}
                 onClose={handleClose}
