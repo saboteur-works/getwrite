@@ -10,6 +10,7 @@ import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-fi
 import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
 import { createNativeResourcesTransport } from "../../src/store/transport/native-resource-backend";
 import { sidecarPathForProject } from "../../src/lib/models/sidecar";
+import { ResourceResponseSchema } from "../../src/lib/api/schemas";
 
 const PROJECTS_DIR = "/projects";
 
@@ -155,6 +156,49 @@ describe("native resources transport — in-process backend reuses the shared re
       "resource",
     );
     expect(didRename).toBe(true);
+  });
+
+  it("copy keeps resourceSubtype and gives a text copy its own initial canonical revision, with no HTTP", async () => {
+    const fetchMock = guardAgainstFetch();
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    const created = await transport.create(projectId, {
+      type: "text",
+      name: "Original",
+      text: { plainText: "content" },
+    });
+    await transport.updateSidecar(created.resource.id, projectId, {
+      resourceSubtype: "scene",
+    } as never);
+
+    const copied = await transport.copy(created.resource.id, "Copy", projectId);
+    expect(
+      (copied.resource as { resourceSubtype?: string }).resourceSubtype,
+    ).toBe("scene");
+    expect(ResourceResponseSchema.parse(copied).resource.resourceSubtype).toBe(
+      "scene",
+    );
+
+    const adapter = capacitorFsAdapter(fs);
+    const v1 = await adapter.readFile(
+      path.join(
+        PROJECTS_DIR,
+        projectId,
+        "revisions",
+        copied.resource.id,
+        "v-1",
+        "content.bin",
+      ),
+      "utf8",
+    );
+    expect(JSON.parse(v1 as string).type).toBe("doc");
+
+    fetchMock.restore();
   });
 
   it("rename resolves to false (never throws) on failure, matching the HTTP transport's boolean-return parity", async () => {

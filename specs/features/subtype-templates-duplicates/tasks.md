@@ -50,7 +50,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 5
 **Notes:** Satisfies FR-20, FR-21, FR-28, FR-30, FR-31 (copy half), FR-33 (copy), FR-26 (copy-affected tests). The revision content is the copy's OWN document: `loadResourceContent` on the copy (`content.tiptap.json`, byte-for-byte `cp` of the source's), falling back to `plainTextToTipTapDocument` of the copy's `content.txt`, never an empty document; "equals the copy's content" means equal after JSON parse. Order: pre-write reads (source sidecar, and for a text source `loadResourceContent`) → `cp` of the directory → `writeSidecar` → revision LAST. `loadResourceContent` returns `{}` when both files are missing, so check explicitly for an undefined body. Only the single initial revision is created; do NOT read or copy `revisions/<sourceId>/` (FR-30). Pre-existing revision-less resources are not repaired (RQ-15); add no heal logic. The FR-32 editor test (Task 5) uses the real output of this function.
 **POS:** task_2c060f2a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Rewrite `createResourceFromTemplate` onto the app's persistence path
 **What:** Make template creation text-only and write through the shared persistence function (per-resource content folder, full sidecar, subtype, userMetadata, folder placement, initial canonical revision), with validation before any write, a faithful five-write dry run, and the deliberate updates to the existing tests that encoded the old flat layout.

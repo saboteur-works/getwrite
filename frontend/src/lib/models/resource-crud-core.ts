@@ -53,7 +53,12 @@ import {
 import { validateMediaFile } from "./media-validation";
 import { extractAudioMetadata, extractImageMetadata } from "./media-metadata";
 import { listRevisions } from "./revision";
-import { writeResourceWithInitialRevision } from "./resource-initial-revision";
+import {
+  writeInitialCanonicalRevision,
+  writeResourceWithInitialRevision,
+} from "./resource-initial-revision";
+import { loadResourceContent } from "../tiptap-utils";
+import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { readSidecar, writeSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
@@ -231,8 +236,9 @@ export async function uploadMediaResourceCore(
  * Copies a resource's on-disk content directory (if any) and sidecar under a
  * newly generated id.
  *
- * Lifted verbatim from `POST /api/resource/[resource-id]`'s local
- * `copyResource` helper.
+ * Lifted from `POST /api/resource/[resource-id]`'s local `copyResource`
+ * helper. A text copy also gets its own initial canonical revision (FR-28),
+ * and a text source with no content files is rejected before any write.
  */
 export async function copyResourceCore(
   projectId: string,
@@ -245,11 +251,22 @@ export async function copyResourceCore(
   const srcDir = path.join(projectRoot, "resources", sourceId);
   const dstDir = path.join(projectRoot, "resources", newId);
 
+  // All reads complete before the first write (FR-33).
+  const sourceSidecar = await readSidecar(projectRoot, sourceId);
+  const isText = sourceSidecar?.type === "text";
+  if (isText) {
+    const content = await loadResourceContent(projectRoot, sourceId);
+    if (content.tiptap === undefined && content.plainText === undefined) {
+      throw new Error(
+        `Cannot copy text resource ${sourceId}: it has no content files to copy.`,
+      );
+    }
+  }
+
   if (await exists(srcDir)) {
     await cp(srcDir, dstDir, { recursive: true });
   }
 
-  const sourceSidecar = await readSidecar(projectRoot, sourceId);
   const newSidecar = {
     ...(sourceSidecar ?? {}),
     id: newId,
@@ -258,6 +275,16 @@ export async function copyResourceCore(
   };
 
   await writeSidecar(projectRoot, newId, newSidecar);
+
+  if (isText) {
+    // The revision holds the copy's own document, written last (FR-28).
+    const copied = await loadResourceContent(projectRoot, newId);
+    await writeInitialCanonicalRevision(
+      projectRoot,
+      newId,
+      copied.tiptap ?? plainTextToTipTapDocument(copied.plainText ?? ""),
+    );
+  }
   return newSidecar;
 }
 
