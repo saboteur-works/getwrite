@@ -3,11 +3,12 @@
 /**
  * @module OrganizerCardBodySettings
  *
- * Project-settings section that chooses what Organizer cards render as their
- * body text: nothing, a truncated excerpt of the resource's text content, or the
- * value of a specific metadata field. The field list reads the live project
- * `metadataSchema` so newly added fields appear automatically. Selections
- * persist via the {@link updateProjectOrganizerCardBody} thunk (Task 4).
+ * Project Settings section (Project Settings' "Organizer" tab) that chooses
+ * what Organizer cards render as their body text: nothing, a truncated
+ * excerpt of the resource's text content, or the value of a specific
+ * metadata field. The field list reads the live project `metadataSchema` so
+ * newly added fields appear automatically. Selections persist via the
+ * {@link updateProjectOrganizerCardBody} thunk (Task 4).
  *
  * When no card body is configured yet, the selector previews the back-compat
  * default the Organizer consumer (Task 10) will use: the Notes field when Notes

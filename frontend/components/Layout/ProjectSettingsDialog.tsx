@@ -11,6 +11,7 @@ import {
   Users,
   Lock,
   CalendarClock,
+  LayoutGrid,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
@@ -32,6 +33,7 @@ import EntityFeatureToggles from "../preferences/EntityFeatureToggles";
 import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
 import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
 import TimelineViewToggle from "../preferences/TimelineViewToggle";
+import OrganizerCardBodySettings from "../preferences/OrganizerCardBodySettings";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -67,6 +69,7 @@ type ProjectSettingsTab =
   | "tags"
   | "metadata"
   | "timeline"
+  | "organizer"
   | "writing-goals"
   | "noise-words"
   | "entities"
@@ -101,6 +104,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "tags", label: "Manage Tags", icon: Tag },
   { value: "metadata", label: "Metadata", icon: LayoutList },
   { value: "timeline", label: "Timeline", icon: CalendarClock },
+  { value: "organizer", label: "Organizer", icon: LayoutGrid },
   { value: "writing-goals", label: "Writing Goals", icon: Target },
   { value: "noise-words", label: "Noise Words", icon: Ban },
   { value: "entities", label: "Entities", icon: Users },
@@ -239,6 +243,10 @@ export default function ProjectSettingsDialog({
 
             <TabsContent value="timeline" forceMount className={PANEL_CLASS}>
               <TimelineViewToggle />
+            </TabsContent>
+
+            <TabsContent value="organizer" forceMount className={PANEL_CLASS}>
+              <OrganizerCardBodySettings />
             </TabsContent>
 
             <TabsContent

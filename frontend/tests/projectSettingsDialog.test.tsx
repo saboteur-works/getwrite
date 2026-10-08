@@ -98,7 +98,7 @@ afterEach(() => {
 });
 
 describe("ProjectSettingsDialog", () => {
-  it("renders the 'Project Settings' title and 9 tabs, defaulting to Editor", async () => {
+  it("renders the 'Project Settings' title and 10 tabs, defaulting to Editor", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
@@ -111,7 +111,7 @@ describe("ProjectSettingsDialog", () => {
     ).toBeInTheDocument();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(9);
+    expect(tabs).toHaveLength(10);
     expect(screen.getByRole("tab", { name: /Editor/ })).toHaveAttribute(
       "aria-selected",
       "true",

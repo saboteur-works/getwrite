@@ -94,6 +94,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Manage Tags",
       "Metadata",
       "Timeline",
+      "Organizer",
       "Writing Goals",
       "Noise Words",
       "Entities",
@@ -127,11 +128,11 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
     await renderDialog();
     screen.getByRole("tab", { name: "Editor" }).focus();
     // This tab rail is vertical (ArrowDown/ArrowUp, not ArrowRight/Left —
-    // see Tabs.tsx's `nextKey`), and Writing Goals sits fifth (after
-    // Editor, Default Revision Name, Manage Tags, Metadata, Timeline), so
-    // arrow down five times from Editor rather than {End}.
+    // see Tabs.tsx's `nextKey`), and Writing Goals sits sixth (after
+    // Editor, Default Revision Name, Manage Tags, Metadata, Timeline,
+    // Organizer), so arrow down six times from Editor rather than {End}.
     await user.keyboard(
-      "{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}",
+      "{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}",
     );
     const tab = screen.getByRole("tab", { name: "Writing Goals" });
     expect(tab).toHaveFocus();
@@ -147,14 +148,14 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
 });
 
 describe("ProjectSettingsDialog Timeline tab", () => {
-  it("appends a Timeline tab after Metadata, before Writing Goals", async () => {
+  it("appends a Timeline tab after Metadata, before Organizer", async () => {
     await renderDialog();
     const names = screen
       .getAllByRole("tab")
       .map((t: HTMLElement) => (t.textContent ?? "").trim());
     const timelineIndex = names.indexOf("Timeline");
     expect(names[timelineIndex - 1]).toBe("Metadata");
-    expect(names[timelineIndex + 1]).toBe("Writing Goals");
+    expect(names[timelineIndex + 1]).toBe("Organizer");
   });
 
   it("hosts the Timeline view toggle, moved out of User Preferences", async () => {
@@ -172,6 +173,31 @@ describe("ProjectSettingsDialog Timeline tab", () => {
     const user = userEvent.setup();
     await renderDialog();
     await user.click(screen.getByRole("tab", { name: "Timeline" }));
+    await runAxe(document.body);
+  });
+});
+
+describe("ProjectSettingsDialog Organizer tab", () => {
+  it("appends an Organizer tab after Timeline, before Writing Goals", async () => {
+    await renderDialog();
+    const names = screen
+      .getAllByRole("tab")
+      .map((t: HTMLElement) => (t.textContent ?? "").trim());
+    const organizerIndex = names.indexOf("Organizer");
+    expect(names[organizerIndex - 1]).toBe("Timeline");
+    expect(names[organizerIndex + 1]).toBe("Writing Goals");
+  });
+
+  it("hosts the Organizer card-body settings, moved out of User Preferences", async () => {
+    await renderDialog({});
+    const panel = panelFor("Organizer");
+    expect(within(panel).getByText(/organizer card/i)).toBeInTheDocument();
+  });
+
+  it("passes an axe check with the Organizer tab selected", async () => {
+    const user = userEvent.setup();
+    await renderDialog();
+    await user.click(screen.getByRole("tab", { name: "Organizer" }));
     await runAxe(document.body);
   });
 });
