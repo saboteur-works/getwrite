@@ -10,6 +10,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -68,6 +69,7 @@ import {
 import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
 import { stubAppShellFetch } from "../helpers/appShellFetchStub";
+import { flushPendingEffects } from "../helpers/flushEffects";
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
@@ -785,6 +787,10 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
         </TrashRefreshProvider>
       </Provider>,
     );
+    // AppShell mounts several sections (UpdateNotice, SearchBar,
+    // SmartFolders, etc.) that each fire their own fetch-then-setState
+    // effect on mount — flush them before unmounting.
+    await flushPendingEffects();
     const baselineText = screen.getByText(
       /Select a file from the resource tree/i,
     ).textContent;
@@ -835,6 +841,7 @@ describe("TrashView + AppShell — FR-21 open-editor-tab boundary (Task 17)", ()
         </TrashRefreshProvider>
       </Provider>,
     );
+    await flushPendingEffects();
     expect(
       screen.getByText(/Select a file from the resource tree/i).textContent,
     ).toBe(baselineText);
@@ -879,7 +886,9 @@ describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made 
     // Simulate a delete made elsewhere (e.g. the resource tree), which
     // dispatches `removeResource` against `resourcesSlice` directly — this
     // is the same action `page.tsx`'s `handleResourceAction` dispatches.
-    store.dispatch(removeResource("res-1"));
+    act(() => {
+      store.dispatch(removeResource("res-1"));
+    });
 
     await waitFor(() => expect(mockedListTrash).toHaveBeenCalledTimes(2));
     await waitFor(() =>

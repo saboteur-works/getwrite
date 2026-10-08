@@ -28,6 +28,7 @@ import type { MetadataSchema } from "../../src/lib/models/types";
 vi.mock("../../src/lib/api/tags", () => ({ listTags: vi.fn() }));
 
 import { listTags } from "../../src/lib/api/tags";
+import { flushPendingEffects } from "../helpers/flushEffects";
 
 const mockedListTags = vi.mocked(listTags);
 
@@ -56,12 +57,18 @@ function setupStore(metadataSchema?: MetadataSchema) {
 }
 
 /** Renders the component wrapped in a Redux `Provider`, as it is in production. */
-function renderWithStore(
+async function renderWithStore(
   ui: React.ReactElement,
   metadataSchema?: MetadataSchema,
 ) {
   const store = setupStore(metadataSchema);
-  return render(<Provider store={store}>{ui}</Provider>);
+  const result = render(<Provider store={store}>{ui}</Provider>);
+  // EntityGraphAccessibleList fires its own listTags fetch-then-setState
+  // effect on mount (for shared-metadata label resolution); most tests here
+  // don't assert on it, so flush it inside act() rather than leaving its
+  // eventual update to land outside any act() scope.
+  await flushPendingEffects();
+  return result;
 }
 
 beforeEach(() => {
@@ -94,8 +101,10 @@ const authoredEdge: EntityGraphAuthoredEdge = {
 };
 
 describe("EntityGraphAccessibleList", () => {
-  it("renders one activation button per entity, alphabetically ordered regardless of input order (OQ-7)", () => {
-    renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
+  it("renders one activation button per entity, alphabetically ordered regardless of input order (OQ-7)", async () => {
+    await renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[]} />,
+    );
 
     const buttons = screen.getAllByTestId("entity-graph-node-activate-button");
     expect(buttons).toHaveLength(3);
@@ -106,9 +115,9 @@ describe("EntityGraphAccessibleList", () => {
     ]);
   });
 
-  it("calls onNodeActivated with the entityId when a node button is clicked", () => {
+  it("calls onNodeActivated with the entityId when a node button is clicked", async () => {
     const onNodeActivated = vi.fn();
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -122,9 +131,9 @@ describe("EntityGraphAccessibleList", () => {
     expect(onNodeActivated).toHaveBeenCalledWith("e-anna");
   });
 
-  it("calls onNodeActivated on native button Enter/Space keyboard activation", () => {
+  it("calls onNodeActivated on native button Enter/Space keyboard activation", async () => {
     const onNodeActivated = vi.fn();
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -144,8 +153,8 @@ describe("EntityGraphAccessibleList", () => {
     expect(onNodeActivated).toHaveBeenCalledWith("e-bob");
   });
 
-  it("renders a co-occurrence edge entry with both entity names and the literal shared-resource count", () => {
-    renderWithStore(
+  it("renders a co-occurrence edge entry with both entity names and the literal shared-resource count", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={[cooccurrenceEdge]} />,
     );
 
@@ -155,8 +164,8 @@ describe("EntityGraphAccessibleList", () => {
     expect(list.textContent).toContain("3");
   });
 
-  it("renders an authored edge entry with both names, a direction indicator, and the relationship type", () => {
-    renderWithStore(
+  it("renders an authored edge entry with both names, a direction indicator, and the relationship type", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={[authoredEdge]} />,
     );
 
@@ -167,8 +176,8 @@ describe("EntityGraphAccessibleList", () => {
     expect(list.textContent).toContain("ally");
   });
 
-  it("gives an edge-list entry no interactive role", () => {
-    renderWithStore(
+  it("gives an edge-list entry no interactive role", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[cooccurrenceEdge, authoredEdge]}
@@ -188,14 +197,14 @@ describe("EntityGraphAccessibleList", () => {
     }
   });
 
-  it("falls back to the 'Unknown entity' label for a dangling edge reference", () => {
+  it("falls back to the 'Unknown entity' label for a dangling edge reference", async () => {
     const danglingEdge: EntityGraphCooccurrenceEdge = {
       kind: "cooccurrence",
       entityIdA: "e-anna",
       entityIdB: "e-ghost",
       sharedResourceCount: 1,
     };
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={[danglingEdge]} />,
     );
 
@@ -203,8 +212,10 @@ describe("EntityGraphAccessibleList", () => {
     expect(list.textContent).toContain("Unknown entity");
   });
 
-  it("discloses each node's entityKind as readable text (FR-8)", () => {
-    renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
+  it("discloses each node's entityKind as readable text (FR-8)", async () => {
+    await renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[]} />,
+    );
 
     const items = screen.getAllByTestId("entity-graph-node-item");
     const kindFor = (name: string): string | undefined =>
@@ -218,11 +229,11 @@ describe("EntityGraphAccessibleList", () => {
     expect(kindFor("Carl")).toContain("Kind: character");
   });
 
-  it("discloses an explicit 'no kind' label rather than an empty/missing string for an entity with no declared kind", () => {
+  it("discloses an explicit 'no kind' label rather than an empty/missing string for an entity with no declared kind", async () => {
     const nodesWithEmptyKind: EntityGraphNode[] = [
       { entityId: "e-mystery", name: "Mystery", entityKind: "" },
     ];
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodesWithEmptyKind} edges={[]} />,
     );
 
@@ -232,8 +243,8 @@ describe("EntityGraphAccessibleList", () => {
     ).toContain("Kind: no kind");
   });
 
-  it("is visually hidden without leaving the accessibility tree", () => {
-    renderWithStore(
+  it("is visually hidden without leaving the accessibility tree", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[cooccurrenceEdge, authoredEdge]}
@@ -274,8 +285,10 @@ describe("EntityGraphAccessibleList — focal-point controls and hop-radius disc
     },
   ];
 
-  it("renders a 'Set as focal point' button per node, distinct from the activation button", () => {
-    renderWithStore(<EntityGraphAccessibleList nodes={nodes} edges={[]} />);
+  it("renders a 'Set as focal point' button per node, distinct from the activation button", async () => {
+    await renderWithStore(
+      <EntityGraphAccessibleList nodes={nodes} edges={[]} />,
+    );
 
     const setFocalButtons = screen.getAllByTestId(
       "entity-graph-node-set-focal-button",
@@ -283,10 +296,10 @@ describe("EntityGraphAccessibleList — focal-point controls and hop-radius disc
     expect(setFocalButtons).toHaveLength(3);
   });
 
-  it("calls onSetFocalPoint (not onNodeActivated) when a node's 'Set as focal point' button is clicked", () => {
+  it("calls onSetFocalPoint (not onNodeActivated) when a node's 'Set as focal point' button is clicked", async () => {
     const onNodeActivated = vi.fn();
     const onSetFocalPoint = vi.fn();
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -304,8 +317,8 @@ describe("EntityGraphAccessibleList — focal-point controls and hop-radius disc
     expect(onNodeActivated).not.toHaveBeenCalled();
   });
 
-  it("renders a header 'Clear focal point' button, disabled when no focal point is set", () => {
-    renderWithStore(
+  it("renders a header 'Clear focal point' button, disabled when no focal point is set", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -322,9 +335,9 @@ describe("EntityGraphAccessibleList — focal-point controls and hop-radius disc
     ).toBe("No focal point set.");
   });
 
-  it("enables the header 'Clear focal point' button and discloses the current focal point's name when one is set", () => {
+  it("enables the header 'Clear focal point' button and discloses the current focal point's name when one is set", async () => {
     const onClearFocalPoint = vi.fn();
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[]}
@@ -345,8 +358,8 @@ describe("EntityGraphAccessibleList — focal-point controls and hop-radius disc
     expect(onClearFocalPoint).toHaveBeenCalledTimes(1);
   });
 
-  it("discloses each node's inside/outside hop-radius status as text when a focal point is set", () => {
-    renderWithStore(
+  it("discloses each node's inside/outside hop-radius status as text when a focal point is set", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={chainEdges}
@@ -367,17 +380,17 @@ describe("EntityGraphAccessibleList — focal-point controls and hop-radius disc
     expect(statusFor("Carl")).toContain("outside focal radius");
   });
 
-  it("renders no hop-status disclosure at all when no focal point is set", () => {
-    renderWithStore(
+  it("renders no hop-status disclosure at all when no focal point is set", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={chainEdges} />,
     );
 
     expect(screen.queryByTestId("entity-graph-node-focal-status")).toBeNull();
   });
 
-  it("still fires onNodeActivated for a node outside the active hop radius — accessible-list reachability is independent of canvas dimming (FR-20/OQ-10)", () => {
+  it("still fires onNodeActivated for a node outside the active hop radius — accessible-list reachability is independent of canvas dimming (FR-20/OQ-10)", async () => {
     const onNodeActivated = vi.fn();
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={chainEdges}
@@ -419,22 +432,25 @@ describe("EntityGraphAccessibleList — new edge kinds (Feature 68 Task 7 minima
     sharedFieldKeys: ["role"],
   };
 
-  it("renders exactly one <li> per new-kind edge, without throwing", () => {
-    expect(() =>
-      renderWithStore(
-        <EntityGraphAccessibleList
-          nodes={nodes}
-          edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
-        />,
-      ),
-    ).not.toThrow();
+  it("renders exactly one <li> per new-kind edge, without throwing", async () => {
+    // An unawaited throw inside render() would reject this call rather
+    // than throw synchronously (renderWithStore is itself async, to flush
+    // its own pending effect) — awaiting it directly still fails the test
+    // on any throw, without needing expect(...).not.toThrow()'s sync-only
+    // shape.
+    await renderWithStore(
+      <EntityGraphAccessibleList
+        nodes={nodes}
+        edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
+      />,
+    );
 
     const items = screen.getAllByTestId("entity-graph-edge-item");
     expect(items).toHaveLength(3);
   });
 
-  it("never mis-describes a new-kind edge as an authored relationship", () => {
-    renderWithStore(
+  it("never mis-describes a new-kind edge as an authored relationship", async () => {
+    await renderWithStore(
       <EntityGraphAccessibleList
         nodes={nodes}
         edges={[backlinkEdge, proximityMentionEdge, sharedMetadataEdge]}
@@ -479,7 +495,7 @@ describe("EntityGraphAccessibleList — shared-metadata label resolution (Task 9
       { id: "tag-2", name: "Minor" },
     ]);
 
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={[sharedMetadataEdge]} />,
       metadataSchema,
     );
@@ -498,7 +514,7 @@ describe("EntityGraphAccessibleList — shared-metadata label resolution (Task 9
   it("falls back to the raw id/key when a tag or field can't be resolved, without throwing", async () => {
     mockedListTags.mockResolvedValue([]); // tag-1 not found
 
-    renderWithStore(
+    await renderWithStore(
       <EntityGraphAccessibleList nodes={nodes} edges={[sharedMetadataEdge]} />,
       // No metadata schema fields supplied either, so "role" can't resolve.
       { groups: [] },
