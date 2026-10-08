@@ -22,7 +22,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 2
 **Notes:** Satisfies FR-2 (comparison key), FR-18. The predicate should take the field's `key` and `appliesTo` plus the resource's optional subtype as plain arguments so it has no dependency on `types.ts` beyond a type import (type-only import of `MetadataField` from `types.ts` is acceptable; `types.ts` does not import `schemas.ts` values). Also export a small helper for "is this label in this list under the comparison key" (used by FR-10, FR-16) and one for de-duplicating a label array under the key (FR-13).
 **POS:** task_b06fed09
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-32 reproduction of the stale full-resource sidecar save (measurement only)
 **What:** Write a test that measures, with the existing `entityKind` key, whether a Redux-only sidecar update followed by a custom-field edit sends a stale whole resource to `updateSidecar`, and record exactly what was observed.
