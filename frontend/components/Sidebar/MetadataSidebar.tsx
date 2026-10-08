@@ -31,6 +31,7 @@ import EntityCompileSection from "./EntityCompileSection";
 import EntityMentionsProvider from "./EntityMentionsContext";
 import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshContext";
 import ProseDiagnosticsSection from "./ProseDiagnosticsSection";
+import SubtypeSection from "./SubtypeSection";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -510,6 +511,9 @@ export default function MetadataSidebar({
             {editableResource.type === "text" && (
               <ProseDiagnosticsSection resource={editableResource} />
             )}
+            <CollapsibleSection title="Subtype" variant="sidebar">
+              <SubtypeSection />
+            </CollapsibleSection>
             {schema.groups.map((group) => {
               if (
                 group.folderId &&

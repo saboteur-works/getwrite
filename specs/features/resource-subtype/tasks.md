@@ -123,7 +123,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 5
 **Notes:** Satisfies FR-9, FR-10, FR-11, FR-12, FR-25, FR-29 (sidebar control), FR-32 (regression half). FR-32 requires that after a successful subtype write BOTH the Redux resource and whatever local copy the custom-field save path builds its payload from reflect the new value; Task 2's measured result decides whether `page.tsx` needs an edit. If the regression test fails because of the hazard, fix it for the subtype key only (for example by updating the local copy the page builds its payload from); do not generalize to `entityKind`, `aliases` or `wordCountGoal`. Use `CollapsibleSection variant="sidebar"` and `LabeledField` plus a native select (open both sources first). Do NOT copy `EntitySection.persist`'s swallow-and-keep-optimistic behaviour, and do not use `StatusSelector` as a model for the unset state. Strings "Subtype"/"No subtype" are working copy. Owns `MetadataSidebar.tsx` and `MetadataSidebar.stories.tsx` until Task 12.
 **POS:** task_5cb5ddde
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Sidebar field filtering by subtype
 **What:** Apply the Task 1 predicate in `MetadataSidebar.tsx` when choosing which fields to render, alongside the existing checks.

@@ -459,11 +459,31 @@ export default function Home(): JSX.Element {
       return;
     }
 
+    // Feature 72 FR-32, subtype key only. The sidebar's subtype control writes
+    // `resourceSubtype` through `updateSidecar` and Redux, not through this
+    // page's local resource copies, so those copies can hold an older value
+    // (or none). Overlay the Redux value onto whatever `updater` returns so
+    // this whole-resource write neither restores a replaced subtype nor
+    // resurrects a cleared one. Other keys are deliberately not reconciled.
+    const applyUpdate = (r: AnyResource): AnyResource => {
+      const updated = updater(r);
+      if (!selectedResource || selectedResource.id !== updated.id) {
+        return updated;
+      }
+      const next: Record<string, unknown> = { ...updated };
+      if (selectedResource.resourceSubtype === undefined) {
+        delete next.resourceSubtype;
+      } else {
+        next.resourceSubtype = selectedResource.resourceSubtype;
+      }
+      return next as unknown as AnyResource;
+    };
+
     if (activeProjectDirectoryId) {
       updateSidecar(
         resourceId,
         activeProjectDirectoryId,
-        updater(resource),
+        applyUpdate(resource),
       ).catch((err) => {
         console.error("Error updating resource metadata:", err);
       });
@@ -473,14 +493,14 @@ export default function Home(): JSX.Element {
       );
     }
 
-    dispatch(updateResourceInStore(updater(resource)));
+    dispatch(updateResourceInStore(applyUpdate(resource)));
 
     setProjects((prev) =>
       prev.map((p) => {
         if (p.project.id !== selectedProject.id) return p;
 
         const resources = p.resources.map((r) =>
-          r.id === resourceId ? updater(r) : r,
+          r.id === resourceId ? applyUpdate(r) : r,
         );
         return { ...p, resources };
       }),
@@ -490,7 +510,7 @@ export default function Home(): JSX.Element {
     setSelectedProject((prev) => {
       if (!prev || prev.id !== selectedProject.id) return prev;
       const resources = prev.resources.map((r) =>
-        r.id === resourceId ? updater(r) : r,
+        r.id === resourceId ? applyUpdate(r) : r,
       );
       return { ...prev, resources, updatedAt: new Date().toISOString() };
     });

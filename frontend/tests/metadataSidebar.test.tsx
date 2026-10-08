@@ -23,6 +23,7 @@ import {
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type {
+  AnyResource,
   MetadataSchema,
   MetadataValue,
   ProjectFeatureFlags,
@@ -1219,5 +1220,58 @@ describe("MetadataSidebar — Prose diagnostics section (Task 6)", () => {
     expect(
       screen.queryByRole("button", { name: /prose diagnostics/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Subtype section (Feature 72, Task 11)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — Subtype section (Task 11)", () => {
+  function mountWith(res: AnyResource) {
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", subtypes: ["Scene"] }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    return renderAndFlush(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+  }
+
+  it("renders the subtype control for text, image and audio resources", async () => {
+    const makers: Array<() => AnyResource> = [
+      () => createTextResource({ name: "T", plainText: "" }),
+      () => createImageResource({ name: "I" }),
+      () => createAudioResource({ name: "A" }),
+    ];
+    for (const make of makers) {
+      const { unmount } = await mountWith(make());
+      expect(
+        screen.getByRole("combobox", { name: "Subtype" }),
+      ).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("places the section after Prose diagnostics and before the schema groups", async () => {
+    await mountWith(createTextResource({ name: "T", plainText: "" }));
+    const buttons: string[] = screen
+      .getAllByRole("button")
+      .map((b: HTMLElement): string => b.textContent ?? "");
+    const prose = buttons.findIndex((t: string) =>
+      /prose diagnostics/i.test(t),
+    );
+    const subtype = buttons.findIndex((t: string) =>
+      /^subtype$/i.test(t.trim()),
+    );
+    const documentGroup = buttons.findIndex((t: string) => /document/i.test(t));
+    expect(prose).toBeGreaterThanOrEqual(0);
+    expect(subtype).toBeGreaterThan(prose);
+    expect(documentGroup).toBeGreaterThan(subtype);
   });
 });
