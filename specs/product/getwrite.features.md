@@ -2291,8 +2291,8 @@ mode; Storybook story and accessibility/unit test coverage.
 **User stories:** None.
 **Depends on:** none
 **Branch suggestion:** feature/editor-context-menu
-**Notes:** Shipped on branch `feature/editor-context-menu` (not yet merged
-to `main` as of this entry). `specs/features/editor-context-menu.md` and
+**Notes:** Shipped on branch `feature/editor-context-menu`, merged to `main`
+via PR #252 on 2026-10-01. `specs/features/editor-context-menu.md` and
 its `tasks.md` are the authoritative record of the shipped scope. This is
 a new, independent component scoped to the TipTap rich-text surface only —
 explicitly not a reuse or extension of `ResourceContextMenu` (the resource
@@ -2564,8 +2564,8 @@ own US-1/US-2 (reviewing a mention in the current resource; reviewing one in
 a different resource), not drawn from this document's US ladder.
 **Depends on:** Feature 33
 **Branch suggestion:** feature/entity-mention-navigation
-**Notes:** Shipped on branch `feature/entity-mention-navigation` (not yet
-merged to `main` as of this entry). `specs/features/entity-mention-navigation.md`
+**Notes:** Shipped on branch `feature/entity-mention-navigation`, merged to
+`main` via PR #257 on 2026-10-06. `specs/features/entity-mention-navigation.md`
 and its `tasks.md` (17 tasks, all done) are the authoritative record of the
 shipped scope. That standalone spec defines its own FR-1 through FR-10,
 numbered independently of this document's FR ladder. Five bug-fix commits landed on top of the original
