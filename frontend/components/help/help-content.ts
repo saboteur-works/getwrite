@@ -153,6 +153,63 @@ export const HELP_TABS: HelpTabDefinition[] = [
           ],
         ],
       },
+      { type: "heading", content: ["Project Settings"] },
+      {
+        type: "paragraph",
+        content: [
+          "Open ",
+          strong("Project Settings"),
+          " from the settings menu (gear icon) to configure everything specific to the open project. It is organised into tabs down the left side:",
+        ],
+      },
+      {
+        type: "tip-card",
+        title: "Project Settings tabs",
+        items: [
+          [
+            strong("Editor"),
+            " - typography for the editor: font, size, weight, letter spacing, and color for each heading level and for body text.",
+          ],
+          [
+            strong("Default Revision Name"),
+            " - the name given to a new text resource's first revision (",
+            em("Initial Draft"),
+            " unless you change it).",
+          ],
+          [
+            strong("Manage Tags"),
+            " - create, color, and delete the tags shared across the project.",
+          ],
+          [
+            strong("Metadata"),
+            " - add, remove, and reorder metadata fields and groups, and turn the optional built-in fields on or off. See the Metadata help tab for the full picture.",
+          ],
+          [
+            strong("Timeline"),
+            " - turn the chronological Timeline view on or off for this project.",
+          ],
+          [
+            strong("Organizer"),
+            " - choose what each Organizer card shows beneath its title: nothing, a text excerpt, or a metadata field's value.",
+          ],
+          [
+            strong("Writing Goals"),
+            " - set a daily word-count goal and a total word-count goal for the whole project.",
+          ],
+          [
+            strong("Noise Words"),
+            " - add project-specific noise words, and exclude words from your cross-project global list, to tune which common words get flagged when detected as entity mentions.",
+          ],
+          [
+            strong("Entities"),
+            " - turn entity tracking and inline entity highlighting on or off, manage the relationship types offered when linking entities, and set how long a jumped-to mention stays highlighted.",
+          ],
+          [
+            strong("Project Encryption"),
+            " - encrypt this project, export an unencrypted copy, or lock the workspace.",
+          ],
+        ],
+      },
       { type: "heading", content: ["Linking documents to each other"] },
       {
         type: "paragraph",
@@ -355,11 +412,9 @@ export const HELP_TABS: HelpTabDefinition[] = [
         content: [
           "The chronological ",
           strong("Timeline View"),
-          " has its own switch in ",
-          strong("User Preferences"),
-          " under ",
-          strong("Timeline view"),
-          ". Because that view reads the Timeline date fields, the two are linked: enabling the view also enables the date fields, and disabling the date fields also turns the view off.",
+          " has its own switch in Project Settings' ",
+          strong("Timeline"),
+          " tab. Because that view reads the Timeline date fields, the two are linked: enabling the view also enables the date fields, and disabling the date fields also turns the view off.",
         ],
       },
       { type: "heading", content: ["Field types"] },
@@ -580,7 +635,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
           strong("Timeline View"),
           " to see a visual timeline of resources that have a ",
           strong("Story Date"),
-          " set in the Metadata Panel. Resources are colour-coded by POV. Clicking a timeline item selects that resource. Timeline View is off by default — turn it on under Preferences, in the Timeline view section. Enabling it also turns on the timeline date fields it reads.",
+          " set in the Metadata Panel. Resources are colour-coded by POV. Clicking a timeline item selects that resource. Timeline View is off by default — turn it on in Project Settings' Timeline tab. Enabling it also turns on the timeline date fields it reads.",
         ],
       },
     ],
@@ -602,17 +657,12 @@ export const HELP_TABS: HelpTabDefinition[] = [
         title: "Card content",
         items: [
           [
-            "Beneath the title each card can show a single line of text: nothing, an excerpt of the document, or the value of any metadata field. Choose which in User Preferences under Organizer Card Body; with no choice made, cards show the Notes field.",
+            "Beneath the title each card can show a single line of text: nothing, an excerpt of the document, or the value of any metadata field. Choose which in Project Settings' ",
+            strong("Organizer"),
+            " tab; with no choice made, cards show the Notes field. A button in the view header toggles the body on and off.",
           ],
           [
             "Cards do not show image thumbnails or audio players — open the resource to see those.",
-          ],
-          [
-            "Choose what each card shows beneath its title — nothing, a text excerpt, or the value of any metadata field — from ",
-            strong("User Preferences"),
-            " under ",
-            strong("Organizer Card Body"),
-            ". A button in the view header toggles the body on and off.",
           ],
         ],
       },
