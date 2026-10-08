@@ -157,7 +157,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 
 **Measured result (Task 2, 2026-10-08): REPRODUCED**, by this task's payload-level definition. Mounted the full page (real `page.tsx`, `AppShell`, `MetadataSidebar`, `EntitySection`; mocked `StartPage`, `TipTapEditor`, `openProject`, `updateSidecar`), so the fallback was not used. Project had `features.entities` on, one text resource `res-1`, one custom text field `mood`. Step 1, typing "character" into the entity-kind input, gave `updateSidecar("res-1", "proj-dir-id", { id: "res-1", name: "Chapter One", type: "text", folderId: null, orderIndex: 0, userMetadata: {}, entityKind: "character" }, undefined)`. Step 2, typing "calm" into `mood`, gave `updateSidecar("res-1", "proj-dir-id", { id: "res-1", name: "Chapter One", type: "text", folderId: null, orderIndex: 0, userMetadata: { mood: "calm" } })`, with no `entityKind` key. The Redux resource after both calls held `entityKind: "character"` and `userMetadata: { mood: "calm" }`. Not measured: what the server stores after the second call, because `updateSidecar` was mocked; no cause is asserted. Test: `frontend/tests/page-stale-sidecar-save.test.tsx`, which pins these payloads.
 **POS:** task_45fc1938
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 14
