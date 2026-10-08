@@ -9,17 +9,24 @@ import { act } from "@testing-library/react";
  * `findBy*`/`waitFor`) doesn't trip React's "not wrapped in act(...)"
  * warning for it.
  *
- * A chain of ten already-resolved microtask awaits, not a single one and
- * not a real timer tick (`setTimeout`): the real chain is several
- * microtask hops deep (`fetch` → `response.json()` → the transport's own
- * `.then()`), so a single `await Promise.resolve()` isn't enough — but
- * entering the timer queue with a real `setTimeout` isn't necessary either
- * once the hop count is covered, and costs real wall-clock time across the
- * 100+ call sites this is used from. Ten hops was chosen as comfortably
- * more than the real chain needs, then confirmed, not assumed: the full
- * suite (562 files) passes identically — same act() warnings, same
- * assertions — with this and with a real timer tick, and measurably faster
- * with this (two full-suite runs, ~34–35s vs. ~36s with the timer).
+ * A macrotask tick (`setTimeout`), not a single microtask
+ * (`Promise.resolve()`), because the real chain is several microtask hops
+ * deep (`fetch` → `response.json()` → the transport's own `.then()`), and
+ * microtasks always finish draining before the next macrotask runs — so a
+ * macrotask tick is guaranteed to observe the effect's completed update
+ * regardless of how many hops it took, while a single microtask await is
+ * not.
+ *
+ * A prior version of this helper chained a fixed ten `Promise.resolve()`
+ * awaits instead, measurably faster (~34–35s vs. ~36s across the full
+ * suite) and passing every test that exists today. Reverted: unlike the
+ * macrotask tick, a fixed hop count isn't structurally guaranteed to
+ * cover a chain of arbitrary depth — a future sidebar section with one
+ * more `.then()` hop than today's would silently under-flush, with
+ * nothing failing until that new code shipped. That's the exact
+ * "passes now, flakes later" failure class this helper exists to
+ * eliminate, so the measured speedup wasn't worth trading it away for
+ * (code review caught this).
  *
  * Call once, right after `render()`, for a test that doesn't itself assert
  * on the section this settles (if it does, prefer `findBy*`/`waitFor`,
@@ -27,8 +34,6 @@ import { act } from "@testing-library/react";
  */
 export async function flushPendingEffects(): Promise<void> {
   await act(async () => {
-    for (let i = 0; i < 10; i++) {
-      await Promise.resolve();
-    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
