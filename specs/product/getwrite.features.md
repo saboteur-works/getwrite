@@ -2645,8 +2645,8 @@ folder-scoped group mechanism is left alone and no migration is required.
 Risk: the sidebar visibility predicate must not be applied anywhere that
 reads stored values directly.
 
-Shipped on branch `feat/resource-subtype` (not yet merged to `main` as of
-this entry, 2026-10-08), accepted by the owner 2026-10-08.
+Shipped on branch `feat/resource-subtype`, accepted by the owner 2026-10-08,
+and merged to `main` via PR #260 on 2026-10-08 (merge commit `4a5a0809`).
 `specs/features/resource-subtype.md` and its `tasks.md` (fourteen tasks, all
 done) are the authoritative record of the shipped scope. On the integrated
 branch `pnpm typecheck` was clean and the frontend suite reported 5459
@@ -2697,7 +2697,8 @@ copied resource and, for templates, through the CLI commands.
 **Notes:** Split from Feature 72 because the core loop works without it:
 a writer can label resources by hand. It is the one part that touches the
 template model rather than the sidebar, settings and schema manager, and it
-has no visible payoff before Feature 72 exists. The copy and duplicate
+has no visible payoff before Feature 72 exists. Feature 72 merged to `main`
+on 2026-10-08, so this feature is unblocked. The copy and duplicate
 guarantee needs only a test once Feature 72 ships, so the substantive work is
 the template scaffold and the CLI `templates` commands. The
 resource templates feature is CLI and model only, so there is no template UI
@@ -2780,8 +2781,8 @@ not implied here.
 
 - Total features: 73
 - Suggested build order: 72 → 73 for resource subtype (73 needs 72's
-  sidecar key; 72 has since shipped on branch `feat/resource-subtype`, not
-  yet merged to `main`, so 73 is the remaining one). Features 1 through 23
+  sidecar key; 72 has since shipped and merged to `main` (PR #260,
+  2026-10-08), so 73 is the remaining one and is now unblocked). Features 1 through 23
   are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2862,7 +2863,7 @@ not implied here.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72 (73 is unblocked once 72 merges; 30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72 (73 is now unblocked and independently shippable, Feature 72 having merged; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
 - Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 73. Everything
