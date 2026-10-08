@@ -1,5 +1,17 @@
 import { vi } from "vitest";
+// Every constant below is imported from its own module rather than
+// hand-typed here, deliberately: a hand-typed stand-in silently drifted
+// from the real default once already (`entity-graph-settings` answered
+// `[]` instead of `DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES`), and importing
+// the real constant is what makes that class of bug impossible rather than
+// merely unlikely.
 import { DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES } from "../../src/lib/models/entity-graph-connection-types";
+import { DEFAULT_ENTITY_GRAPH_FOCAL_HOP_RADIUS } from "../../src/lib/models/entity-graph-settings-core";
+import { EMPTY_ALIAS_TABLE } from "../../src/lib/api/entity-alias-table";
+import {
+  EMPTY_PROSE_DIAGNOSTICS,
+  EMPTY_PROSE_DIAGNOSTICS_DETAIL,
+} from "../../src/lib/api/prose-diagnostics";
 
 /**
  * A plain `vi.fn()` `fetch` stub answering `{}` to every request is what
@@ -16,11 +28,18 @@ import { DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES } from "../../src/lib/models/enti
  * doesn't care about these sections doesn't have to say so file by file.
  *
  * The validating shape for each endpoint is deliberately the SAME value its
- * own transport module degrades to on a real read failure (its `EMPTY_*`
- * constant, or a hand-matched equivalent like `entity-graph-settings`'s
- * `DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES`) — not an arbitrary empty value —
- * so a component fed through this stub renders the same thing it would
- * have shown if its own read had simply failed gracefully. One pair of
+ * own transport module degrades to on a real read failure — imported from
+ * that module's own exported `EMPTY_*`/`DEFAULT_*` constant wherever one
+ * exists, not an arbitrary value hand-typed here, so this stub can't drift
+ * from the real default the way it once did (see the import block's own
+ * comment above). A schema-bare-array endpoint with no named constant
+ * (`entity-backlink-edges`, `entity-relationships`, etc.) still hand-types
+ * `[]` — there's only one plausible empty value for an array, so there's
+ * nothing for a hand-typed `[]` to drift from. The risk is specific to a
+ * default with more than one plausible "empty" shape, which is exactly
+ * what `entity-graph-settings` has (`[]` was plausible-looking and wrong).
+ * This way, a component fed through this stub renders the same thing it
+ * would have shown if its own read had simply failed gracefully. One pair of
  * endpoints doesn't have a degrade-to-default: `getTodayWritingLog`
  * (writing-log) and `getProseDiagnosticsOrThrow` (prose-diagnostics) reject
  * on any failure, by design, rather than degrading — their callers
@@ -70,15 +89,21 @@ export function stubAppShellFetch(): () => void {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ entities: {}, claimedBy: {} }),
+        json: async () => EMPTY_ALIAS_TABLE,
         text: async () => "",
       } as Response;
     }
     if (url.includes("/diagnostics-detail")) {
+      // The HTTP response wraps the array (`ProseDiagnosticsDetailResponseSchema`
+      // is `{ locatedRepeatedWords: [...] }`), unlike `getProseDiagnosticsDetail`'s
+      // own unwrapped return type — answering the bare array here fails
+      // validation. The contract test caught exactly this.
       return {
         ok: true,
         status: 200,
-        json: async () => [],
+        json: async () => ({
+          locatedRepeatedWords: EMPTY_PROSE_DIAGNOSTICS_DETAIL,
+        }),
         text: async () => "",
       } as Response;
     }
@@ -86,11 +111,7 @@ export function stubAppShellFetch(): () => void {
       return {
         ok: true,
         status: 200,
-        json: async () => ({
-          dialogueRatio: 0,
-          averageSentenceLength: 0,
-          topRepeatedWords: [],
-        }),
+        json: async () => EMPTY_PROSE_DIAGNOSTICS,
         text: async () => "",
       } as Response;
     }
@@ -143,7 +164,7 @@ export function stubAppShellFetch(): () => void {
         status: 200,
         json: async () => ({
           entityGraphConnectionTypes: DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
-          entityGraphFocalHopRadius: 1,
+          entityGraphFocalHopRadius: DEFAULT_ENTITY_GRAPH_FOCAL_HOP_RADIUS,
         }),
         text: async () => "",
       } as Response;
