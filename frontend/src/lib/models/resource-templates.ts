@@ -33,7 +33,11 @@ import {
   buildResourceSidecarData,
   getLocalResources,
 } from "./resource-persistence";
-import { writeResourceWithInitialRevision } from "./resource-initial-revision";
+import {
+  writeInitialCanonicalRevision,
+  writeResourceWithInitialRevision,
+} from "./resource-initial-revision";
+import { loadResourceContent } from "../tiptap-utils";
 import { revisionDir } from "./revision";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { readFolderTree } from "./folder-utils";
@@ -457,8 +461,14 @@ function planTextCreationWrites(
  * @param projectRoot - project root path
  * @param resourceId - id of resource to duplicate
  * @returns object containing `newId` for the duplicated resource
- * @throws {Error} when the original resource sidecar is missing or when
- * filesystem copy operations fail
+ * For a text source the content is read before any write, the content is
+ * copied, then the sidecar, and the single initial canonical revision is
+ * written last. The source's own revisions are neither read nor copied.
+ *
+ * @throws {Error} when the original resource sidecar is missing, when a text
+ * source has no readable content (nothing is written), or when filesystem
+ * copy operations fail
+ * @throws A locked-access error when the project is locked or keyless.
  */
 export async function duplicateResource(
   projectRoot: string,
@@ -468,6 +478,17 @@ export async function duplicateResource(
   const meta = await readSidecar(projectRoot, resourceId);
   if (!meta) {
     throw new Error(`resource metadata for ${resourceId} not found`);
+  }
+
+  // All reads and checks complete before the first write (FR-33).
+  const isText = meta.type === "text";
+  if (isText) {
+    const content = await loadResourceContent(projectRoot, resourceId);
+    if (content.tiptap === undefined && content.plainText === undefined) {
+      throw new Error(
+        `Cannot duplicate text resource ${resourceId}: it has no content files under resources/${resourceId}/.`,
+      );
+    }
   }
 
   // find resource file in resources dir
@@ -487,14 +508,7 @@ export async function duplicateResource(
 
   const newId = generateUUID();
 
-  // clone sidecar metadata, replacing id
-  const newMeta = { ...meta, id: newId } as Record<string, unknown>;
-  await writeSidecar(
-    projectRoot,
-    newId,
-    newMeta as Record<string, MetadataValue>,
-  );
-
+  // Content first, so the sidecar and revision never point at nothing.
   if (foundName) {
     const src = path.join(resourcesDir, foundName);
     const dest = path.join(resourcesDir, foundName.replace(resourceId, newId));
@@ -505,6 +519,24 @@ export async function duplicateResource(
     } else {
       await copyFile(src, dest);
     }
+  }
+
+  // clone sidecar metadata, replacing id
+  const newMeta = { ...meta, id: newId } as Record<string, unknown>;
+  await writeSidecar(
+    projectRoot,
+    newId,
+    newMeta as Record<string, MetadataValue>,
+  );
+
+  if (isText) {
+    // The revision holds the duplicate's own document, written last (FR-29).
+    const copied = await loadResourceContent(projectRoot, newId);
+    await writeInitialCanonicalRevision(
+      projectRoot,
+      newId,
+      copied.tiptap ?? plainTextToTipTapDocument(copied.plainText ?? ""),
+    );
   }
 
   return { newId };

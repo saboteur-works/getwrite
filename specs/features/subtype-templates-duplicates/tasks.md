@@ -84,7 +84,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 3
 **Notes:** Satisfies FR-22 (model half), FR-26 (duplicate-affected tests), FR-29, FR-30, FR-31 (duplicate half), FR-33 (duplicate). Depends on Task 4 only because both edit `resource-templates.ts` and `resource-templates.test.ts`. Today the function writes the sidecar first and copies content afterwards; reorder so all reads and checks come first, then copy content, then sidecar, then revision (keep the sidecar `{ ...meta, id: newId }`). Only the single initial revision is created; the source's `revisions/` is not read or copied. Pre-existing revision-less resources are not repaired (RQ-15), but note that re-duplicating one works because this function reads content files, not revisions.
 **POS:** task_3579122c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: `saveResourceTemplateFromResource` corrected capture, and the round trip
 **What:** Rewrite what `saveResourceTemplateFromResource` records (explicit key list, body from the app's layout, subtype as a top-level key) with its failure cases, and prove the save-then-create round trip.
