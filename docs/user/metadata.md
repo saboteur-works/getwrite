@@ -34,6 +34,36 @@ Beyond these, you can add your own **custom fields** of any type — text, numbe
 
 Image and audio resources carry the same editable fields and tags as text documents, with a read-only technical section (image dimensions and EXIF data, or audio format and duration) shown above them.
 
+## Subtypes: showing a field only where it belongs
+
+By default, every custom field appears on every resource. If you add a field that only makes sense for scenes, it also shows up on your outlines and character profiles. **Subtypes** let you narrow that down.
+
+A subtype is a label you give a resource to say what kind of document it is — for example Scene, Profile, or Outline. You choose the labels; GetWrite has no fixed list. A resource has at most one subtype, and text, image, and audio resources can all have one.
+
+Using them takes three steps:
+
+1. **Define your subtypes.** Open the settings menu → **Project Settings** → **Metadata** tab. The **Subtypes** section sits above the Metadata Fields manager. Type a name and select **Add** (or press Enter). You can reorder and remove entries there too.
+2. **Give a resource its subtype.** Select the resource and pick one from the **Subtype** section of the Metadata sidebar. Choose **No subtype** to clear it.
+3. **Restrict a field.** In the Metadata Fields manager, each custom field has an **Applies to subtypes** group of checkboxes. Tick the subtypes the field belongs to.
+
+How fields then behave:
+
+- A field with nothing ticked appears on every resource, exactly as before. Nothing changes for your existing fields until you restrict one.
+- A restricted field appears only on resources whose subtype is one of the ticked ones.
+- A resource with no subtype shows only the unrestricted fields.
+- Only custom fields can be restricted. The built-in fields (Status, Synopsis, Notes, and so on) have their own on/off switches instead — see above.
+
+Things worth knowing:
+
+- **Hiding never deletes.** If you change or clear a resource's subtype, any values in fields that drop out of view are kept. Set the subtype back and they reappear unchanged. A hidden value is still stored with the resource, so smart folders and saved queries that use that field still find it.
+- **Capital letters and stray spaces don't matter.** "Scene" and "scene" are the same subtype, and you can't add both.
+- **Removing a subtype is safe.** Resources and fields that use it keep it, and it is shown as _not in the current list_ until you add it back or choose something else. Nothing is cleared.
+- **There is no rename.** To rename a subtype, remove it and add the new name, then update the resources and fields that used the old one. Changing only the capitalisation needs no follow-up, since the two already match.
+- **Subtype is not an entity kind and not a folder.** Moving a resource to another folder doesn't change its subtype, and marking a resource as an entity is a separate setting.
+- If you haven't defined any subtypes yet, the sidebar's Subtype control is greyed out and points you to the Metadata tab.
+
+Not available yet: filtering by subtype in smart folders and the query builder, and having a resource template set a subtype for you.
+
 ## Prose diagnostics
 
 Text resources also carry a read-only **Prose diagnostics** section in the sidebar, showing three cheap, automatic observations about the document's prose — computed with no AI or network call:
