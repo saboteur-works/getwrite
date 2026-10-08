@@ -912,16 +912,31 @@ export const selectActiveProjectRelationshipTypes = (state: any): string[] => {
 const EMPTY_SUBTYPES: string[] = [];
 
 /**
+ * Minimal structural view of the root state that
+ * `selectActiveProjectSubtypes` reads. Declared locally (rather than
+ * importing `RootState`) to avoid a store import cycle.
+ */
+interface SubtypesSelectorState {
+  projects?: {
+    selectedProjectId?: string | null;
+    projects?: Record<string, { subtypes?: string[] } | undefined>;
+  };
+}
+
+/**
  * Selects the ordered resource-subtype list for the currently active
  * project. An absent list is equivalent to an empty one (Feature 72, FR-1).
  * A failed write never reaches the store (the thunk's rejected case leaves
  * the record untouched), so this never reports a list that was not saved.
  *
- * @param state - Redux root state (typed as `any` to avoid circular imports).
+ * @param state - Redux root state (structurally typed to avoid circular imports).
  * @returns The active project's subtype labels, or a shared empty array.
  */
-export const selectActiveProjectSubtypes = (state: any): string[] => {
+export const selectActiveProjectSubtypes = (
+  state: SubtypesSelectorState,
+): string[] => {
   const id = state?.projects?.selectedProjectId;
+  if (id === undefined || id === null) return EMPTY_SUBTYPES;
   return state?.projects?.projects?.[id]?.subtypes ?? EMPTY_SUBTYPES;
 };
 
