@@ -14,6 +14,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import { createTextResource } from "../../src/lib/models/resource";
 import type { AnyResource } from "../../src/lib/models/types";
+import { flushPendingEffects } from "../helpers/flushEffects";
 
 const PROJECT_PATH = "/tmp/test-project";
 
@@ -157,7 +158,7 @@ describe("EntitySection", () => {
     expect(warning.className).not.toContain("text-gw-nano");
   });
 
-  it("sets its inputs at the 11px label size", () => {
+  it("sets its inputs at the 11px label size", async () => {
     makeFetchStub();
     const store = setupStore("res-2d", { entityKind: "character" });
 
@@ -166,6 +167,11 @@ describe("EntitySection", () => {
         <EntitySection />
       </Provider>,
     );
+    // EntitySection fires its own noise-word-list fetch-then-setState
+    // effects on mount; this test doesn't assert on them, so flush them
+    // inside act() rather than leaving their eventual update to land
+    // outside any act() scope.
+    await flushPendingEffects();
 
     for (const label of ["entity-kind-input", "new-alias-input"]) {
       expect(screen.getByLabelText(label).className).toContain("text-gw-label");
@@ -254,7 +260,7 @@ describe("EntitySection", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows no name warning for a resource that is not a declared entity", () => {
+  it("shows no name warning for a resource that is not a declared entity", async () => {
     makeFetchStub();
     // No entityKind set, so `isEntity` is false — the name check (like the
     // alias editor itself) is gated on the resource actually being an
@@ -266,6 +272,7 @@ describe("EntitySection", () => {
         <EntitySection />
       </Provider>,
     );
+    await flushPendingEffects();
 
     expect(
       screen.queryByText(/also reads as a common English word/i),
