@@ -11,6 +11,7 @@ import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { StoredProject } from "../src/store/projectsSlice";
+import { flushPendingEffects } from "./helpers/flushEffects";
 
 function makeStore() {
   return configureStore({
@@ -57,10 +58,12 @@ function makeStore() {
   });
 }
 
-function renderDialog(overrides: Partial<ProjectSettingsDialogProps> = {}): {
+async function renderDialog(
+  overrides: Partial<ProjectSettingsDialogProps> = {},
+): Promise<{
   onOpenChange: ReturnType<typeof vi.fn>;
   onSaveHeadingSettings: ReturnType<typeof vi.fn>;
-} {
+}> {
   const onOpenChange = vi.fn();
   const onSaveHeadingSettings = vi.fn().mockResolvedValue(undefined);
   const props: ProjectSettingsDialogProps = {
@@ -81,6 +84,11 @@ function renderDialog(overrides: Partial<ProjectSettingsDialogProps> = {}): {
       <ProjectSettingsDialog {...props} />
     </Provider>,
   );
+  // Every tab's panel mounts simultaneously (not lazily per-tab), so
+  // TagsManagerModal fires its own fetch-then-setState effect on every
+  // render here (when projectPath is set) regardless of which tab a test
+  // cares about.
+  await flushPendingEffects();
 
   return { onOpenChange, onSaveHeadingSettings };
 }
@@ -90,13 +98,13 @@ afterEach(() => {
 });
 
 describe("ProjectSettingsDialog", () => {
-  it("renders the 'Project Settings' title and 8 tabs, defaulting to Heading Styles", () => {
+  it("renders the 'Project Settings' title and 8 tabs, defaulting to Heading Styles", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
     } as Response);
 
-    renderDialog();
+    await renderDialog();
 
     expect(
       screen.getByRole("heading", { name: "Project Settings" }),
@@ -113,13 +121,13 @@ describe("ProjectSettingsDialog", () => {
     ).toHaveAttribute("aria-selected", "false");
   });
 
-  it("switches tabs without unmounting inactive panels, preserving draft state", () => {
+  it("switches tabs without unmounting inactive panels, preserving draft state", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
     } as Response);
 
-    renderDialog();
+    await renderDialog();
 
     const fontSizeInput = screen.getByLabelText(
       "H1 Font Size",
@@ -141,8 +149,8 @@ describe("ProjectSettingsDialog", () => {
     expect(fontSizeInputAfter.value).toBe("42");
   });
 
-  it("disables the Tags tab and does not render TagsManagerModal when projectPath is absent", () => {
-    renderDialog({ projectPath: undefined });
+  it("disables the Tags tab and does not render TagsManagerModal when projectPath is absent", async () => {
+    await renderDialog({ projectPath: undefined });
 
     const tagsTab = screen.getByRole("tab", { name: /Manage Tags/ });
     expect(tagsTab).toBeDisabled();
@@ -155,7 +163,7 @@ describe("ProjectSettingsDialog", () => {
       json: async () => ({ tags: [] }),
     } as Response);
 
-    renderDialog({ projectPath: "/story" });
+    await renderDialog({ projectPath: "/story" });
 
     const tagsTab = screen.getByRole("tab", { name: /Manage Tags/ });
     expect(tagsTab).not.toBeDisabled();
@@ -174,7 +182,7 @@ describe("ProjectSettingsDialog", () => {
       json: async () => ({ tags: [] }),
     } as Response);
 
-    const { onOpenChange, onSaveHeadingSettings } = renderDialog();
+    const { onOpenChange, onSaveHeadingSettings } = await renderDialog();
 
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/ }));
 
@@ -185,13 +193,13 @@ describe("ProjectSettingsDialog", () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
-  it("calls onOpenChange(false) when the dialog is dismissed via Escape", () => {
+  it("calls onOpenChange(false) when the dialog is dismissed via Escape", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
     } as Response);
 
-    const { onOpenChange } = renderDialog();
+    const { onOpenChange } = await renderDialog();
 
     fireEvent.keyDown(document, { key: "Escape" });
 
