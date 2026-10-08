@@ -18,6 +18,7 @@ import {
   deprecateField,
   reorderFields,
   renameField,
+  renameFieldKey,
   updateFieldOptions,
   addGroup,
   removeGroup,
@@ -746,5 +747,36 @@ describe("getSchema migration: resource-ref multiple:true → multi-resource-ref
     expect(fields[0].multiple).toBeUndefined();
     expect(fields[1].type).toBe("resource-ref");
     expect(fields[2].type).toBe("text");
+  });
+});
+
+describe("sidecar key resourceSubtype cannot collide with a custom field (Feature 72, FR-6)", () => {
+  it("addField rejects the key resourceSubtype", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [{ id: GROUP_ID, label: "G", fields: [] }],
+    });
+    await expect(
+      addField(dir, GROUP_ID, {
+        key: "resourceSubtype",
+        label: "Subtype",
+        type: "text",
+      }),
+    ).rejects.toThrow(/Invalid field key/);
+  });
+
+  it("renameFieldKey rejects renaming a field to resourceSubtype", async () => {
+    const schema: MetadataSchema = {
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "G",
+          fields: [{ key: "my-field", label: "My Field", type: "text" }],
+        },
+      ],
+    };
+    const { dir } = await makeTmpProject(schema);
+    await expect(
+      renameFieldKey(dir, GROUP_ID, "my-field", "resourceSubtype"),
+    ).rejects.toThrow(/Invalid field key/);
   });
 });

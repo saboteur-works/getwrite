@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
+import { ZodError } from "zod";
 import {
+  AnyResourceSchema,
   EntitySidecarFieldsSchema,
+  MetadataFieldSchema,
+  ProjectConfigSchema,
   ResourceBaseSchema,
+  SubtypeListSchema,
 } from "../../src/lib/models/schemas";
 
 const baseResourceFields = {
@@ -133,5 +138,122 @@ describe("ResourceBaseSchema entity fields integration", () => {
     const result = ResourceBaseSchema.safeParse({ ...baseResourceFields });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("SubtypeListSchema (Feature 72, FR-2)", () => {
+  it("trims entries, preserves order and the writer's original case", () => {
+    expect(SubtypeListSchema.parse(["  Scene ", "Chapter", "Beat"])).toEqual([
+      "Scene",
+      "Chapter",
+      "Beat",
+    ]);
+  });
+
+  it("accepts an empty list", () => {
+    expect(SubtypeListSchema.parse([])).toEqual([]);
+  });
+
+  it.each([[[""]], [["   "]], [["Scene", "  "]]])(
+    "throws a ZodError for a blank or whitespace-only entry %j",
+    (list) => {
+      expect(() => SubtypeListSchema.parse(list)).toThrow(ZodError);
+    },
+  );
+
+  it("throws a ZodError for two entries equal under trim + lowercase", () => {
+    expect(() => SubtypeListSchema.parse(["Scene", " scene "])).toThrow(
+      ZodError,
+    );
+  });
+
+  it("keeps entries that differ beyond case and whitespace", () => {
+    expect(SubtypeListSchema.parse(["Scene", "Scenes"])).toEqual([
+      "Scene",
+      "Scenes",
+    ]);
+  });
+});
+
+describe("ProjectConfigSchema subtypes (Feature 72, FR-1)", () => {
+  it("accepts a config with a subtypes list", () => {
+    const result = ProjectConfigSchema.safeParse({ subtypes: ["Scene"] });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.subtypes).toEqual(["Scene"]);
+  });
+
+  it("accepts a config without subtypes and does not add the key", () => {
+    const result = ProjectConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) expect("subtypes" in result.data).toBe(false);
+  });
+
+  it("rejects a subtypes list with a duplicate entry", () => {
+    expect(
+      ProjectConfigSchema.safeParse({ subtypes: ["Scene", "scene"] }).success,
+    ).toBe(false);
+  });
+});
+
+describe("resourceSubtype on resource schemas (Feature 72, FR-5)", () => {
+  it("EntitySidecarFieldsSchema does not declare resourceSubtype", () => {
+    expect("resourceSubtype" in EntitySidecarFieldsSchema.shape).toBe(false);
+  });
+
+  it("ResourceBaseSchema keeps resourceSubtype", () => {
+    const result = ResourceBaseSchema.safeParse({
+      ...baseResourceFields,
+      resourceSubtype: "Scene",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.resourceSubtype).toBe("Scene");
+  });
+
+  it.each([
+    ["text", {}],
+    ["image", {}],
+    ["audio", {}],
+  ])("AnyResourceSchema keeps resourceSubtype for a %s resource", (type) => {
+    const result = AnyResourceSchema.safeParse({
+      ...baseResourceFields,
+      type,
+      resourceSubtype: "Scene",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(
+        (result.data as { resourceSubtype?: string }).resourceSubtype,
+      ).toBe("Scene");
+    }
+  });
+
+  it("does not add resourceSubtype when absent", () => {
+    const result = ResourceBaseSchema.safeParse({ ...baseResourceFields });
+    expect(result.success).toBe(true);
+    if (result.success) expect("resourceSubtype" in result.data).toBe(false);
+  });
+});
+
+describe("MetadataFieldSchema appliesTo (Feature 72, FR-13)", () => {
+  it("keeps appliesTo as an optional string array", () => {
+    const result = MetadataFieldSchema.safeParse({
+      key: "mood",
+      label: "Mood",
+      type: "text",
+      appliesTo: ["Scene", "Beat"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success)
+      expect(result.data.appliesTo).toEqual(["Scene", "Beat"]);
+  });
+
+  it("parses without appliesTo and does not add the key", () => {
+    const result = MetadataFieldSchema.safeParse({
+      key: "mood",
+      label: "Mood",
+      type: "text",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect("appliesTo" in result.data).toBe(false);
   });
 });

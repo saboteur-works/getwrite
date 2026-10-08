@@ -88,6 +88,36 @@ function baseSchema(): MetadataSchema {
 }
 
 // ---------------------------------------------------------------------------
+// Feature 72, FR-6: the sidecar key `resourceSubtype` (camelCase) can never
+// equal a validated custom field key, so the dispatch core rejects it.
+// ---------------------------------------------------------------------------
+
+describe("dispatch core rejects the key resourceSubtype (Feature 72, FR-6)", () => {
+  it("add-field rejects resourceSubtype with InvalidFieldKeyError", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      dispatchMetadataSchemaAction(dir, {
+        action: "add-field",
+        groupId: GROUP_ID,
+        field: { key: "resourceSubtype", label: "Subtype", type: "text" },
+      }),
+    ).rejects.toThrow(/Invalid field key/);
+  });
+
+  it("rename-key rejects resourceSubtype with InvalidFieldKeyError", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await expect(
+      dispatchMetadataSchemaAction(dir, {
+        action: "rename-key",
+        groupId: GROUP_ID,
+        fieldKey: "my-field",
+        newKey: "resourceSubtype",
+      }),
+    ).rejects.toThrow(/Invalid field key/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Slug validation (route-level guard for user-created fields)
 // ---------------------------------------------------------------------------
 

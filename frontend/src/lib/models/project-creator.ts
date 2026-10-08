@@ -144,6 +144,8 @@ export interface ProjectTypeSpec {
   statuses?: string[];
   /** Default project-scoped relationship-type values to seed on creation. */
   relationshipTypes?: string[];
+  /** Default project-scoped resource-subtype labels to seed on creation (Feature 72, FR-26). */
+  subtypes?: string[];
   /** Target word count for the project. */
   wordCountGoal?: number;
 }
@@ -230,6 +232,7 @@ export async function createProjectFromType(options: {
       editorConfig: specObj.editorConfig ?? {},
       statuses: specObj.statuses,
       relationshipTypes: specObj.relationshipTypes,
+      ...(specObj.subtypes !== undefined ? { subtypes: specObj.subtypes } : {}),
       wordCountGoal: specObj.wordCountGoal,
     },
   });

@@ -101,6 +101,8 @@ export interface ProjectConfig {
   statuses?: string[];
   /** Custom relationship-type values available to the project (e.g., ["ally of","rival of"]). */
   relationshipTypes?: string[];
+  /** Ordered resource-subtype labels (Feature 72, FR-1). Absent means none. */
+  subtypes?: string[];
   /** Per-project custom noise-word list, additive to the bundled noise-word list (FR-3). */
   customNoiseWords?: string[];
   /** Per-project exclusion list of specific global noise-word-list words (FR-6). */
@@ -163,6 +165,8 @@ export interface MetadataField {
   includeSubfolders?: boolean;
   /** Maximum number of selections; unset means unbounded. Only meaningful for `multi-resource-ref`. */
   maxSelections?: number;
+  /** Subtype labels this field is restricted to (Feature 72, FR-13). Absent or empty means unrestricted. */
+  appliesTo?: string[];
 }
 
 /** A named group of metadata fields, optionally scoped to one folder. */
@@ -265,6 +269,8 @@ export interface ResourceBase {
   orderIndex: number;
   /** Status tags (project-scoped values). */
   statuses?: string[];
+  /** At most one subtype label for this resource (Feature 72, FR-5). */
+  resourceSubtype?: string;
   /**
    * Marks this resource as an entity of the given kind (e.g. "character",
    * "place", "faction"). Open, user-definable value — not an enum. Absent

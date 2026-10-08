@@ -43,7 +43,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (model layer), FR-2 (Zod rejection), FR-5, FR-6, FR-13 (schema/type half), FR-26. Task 5 and Task 4 handle the other layers that drop unknown keys (store, client response schemas). The rejection MUST be a `ZodError` (the route maps only `ZodError` to 400). `resourceSubtype` is a trimmed non-empty string on the sidecar schema. This task owns `schemas.ts` and `types.ts` for the whole feature; no later task edits them.
 **POS:** task_dfa60f79
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Client response schemas and the survive-round-trip regression test
 **What:** Add `subtypes`, `appliesTo` and `resourceSubtype` to the client response schemas and prove all three survive a representative `GET /api/projects` parse.

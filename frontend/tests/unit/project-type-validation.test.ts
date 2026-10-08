@@ -306,3 +306,33 @@ describe("project-type folder freedom (Workspace requirement removed)", () => {
     }
   });
 });
+
+describe("project-type subtypes seeding (Feature 72, FR-26)", () => {
+  const base = { id: "t", name: "T", folders: [{ name: "Workspace" }] };
+
+  it("accepts an optional subtypes list, trimmed and in order", () => {
+    const res = validateProjectType({ ...base, subtypes: [" Scene ", "Beat"] });
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect(res.value.subtypes).toEqual(["Scene", "Beat"]);
+  });
+
+  it("accepts a spec without subtypes", () => {
+    const res = validateProjectType(base);
+    expect(res.success).toBe(true);
+    if (res.success && "value" in res && res.value)
+      expect("subtypes" in res.value).toBe(false);
+  });
+
+  it("rejects duplicate subtypes under trim + lowercase", () => {
+    expect(
+      validateProjectType({ ...base, subtypes: ["Scene", "scene"] }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a blank subtype entry", () => {
+    expect(validateProjectType({ ...base, subtypes: ["  "] }).success).toBe(
+      false,
+    );
+  });
+});

@@ -338,4 +338,53 @@ describe("models/project-creator", () => {
       await removeDirRetry(tmp);
     }
   });
+
+  it("seeds config.subtypes from the project-type spec (Feature 72, FR-26)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-subtypes-"));
+    try {
+      const spec = {
+        id: "test-subtypes",
+        name: "Subtypes Test",
+        folders: [{ name: "Workspace" }],
+        subtypes: ["Scene", "Beat"],
+      };
+      const { project } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Subtypes Project" },
+      );
+      expect(project.config?.subtypes).toEqual(["Scene", "Beat"]);
+      const onDisk = JSON.parse(
+        await fs.readFile(path.join(tmp, "project.json"), "utf8"),
+      ) as { config?: { subtypes?: string[] } };
+      expect(onDisk.config?.subtypes).toEqual(["Scene", "Beat"]);
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("writes no subtypes key to project.json when the spec has none (Feature 72, FR-26)", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-subtypes-none-"),
+    );
+    try {
+      const spec = {
+        id: "test-no-subtypes",
+        name: "No Subtypes Test",
+        folders: [{ name: "Workspace" }],
+      };
+      await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "No Subtypes Project" },
+      );
+      const onDisk = JSON.parse(
+        await fs.readFile(path.join(tmp, "project.json"), "utf8"),
+      ) as { config?: Record<string, unknown> };
+      expect(onDisk.config).toBeDefined();
+      expect("subtypes" in (onDisk.config ?? {})).toBe(false);
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });
