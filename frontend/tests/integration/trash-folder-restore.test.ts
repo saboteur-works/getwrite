@@ -182,3 +182,64 @@ describe("restoreFolder (Task 9, FR-5/FR-20)", () => {
     }
   });
 });
+
+describe("restoreFolder keeps descendants' resourceSubtype (FR-28)", () => {
+  it("restores every cascade-trashed descendant with its resourceSubtype intact", async () => {
+    const projectRoot = await makeProjectRoot();
+    try {
+      const top = createFolderResource({ name: "Top", orderIndex: 0 });
+      await writeResourceToFile(projectRoot, top);
+      const child = createFolderResource({
+        name: "Child",
+        parentFolderId: top.id,
+        orderIndex: 1,
+      });
+      await writeResourceToFile(projectRoot, child);
+      const inTop = createTextResource({
+        name: "In Top",
+        folderId: top.id,
+        plainText: "top",
+        orderIndex: 2,
+      });
+      await writeResourceToFile(projectRoot, inTop);
+      const inChild = createTextResource({
+        name: "In Child",
+        folderId: child.id,
+        plainText: "child",
+        orderIndex: 3,
+      });
+      await writeResourceToFile(projectRoot, inChild);
+
+      for (const [id, subtype] of [
+        [inTop.id, "Memoir"],
+        [inChild.id, "Essay"],
+      ] as const) {
+        const sidecarPath = path.join(
+          projectRoot,
+          "meta",
+          `resource-${id}.meta.json`,
+        );
+        const raw = JSON.parse(
+          await fs.readFile(sidecarPath, "utf8"),
+        ) as Record<string, unknown>;
+        await fs.writeFile(
+          sidecarPath,
+          JSON.stringify({ ...raw, resourceSubtype: subtype }, null, 2),
+          "utf8",
+        );
+      }
+
+      await softDeleteFolder(projectRoot, top.id);
+      await restoreFolder(projectRoot, top.id);
+
+      expect(
+        (await readSidecar(projectRoot, inTop.id))?.["resourceSubtype"],
+      ).toBe("Memoir");
+      expect(
+        (await readSidecar(projectRoot, inChild.id))?.["resourceSubtype"],
+      ).toBe("Essay");
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+});

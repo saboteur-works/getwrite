@@ -130,6 +130,43 @@ describe("reindex command — functional", () => {
     delete process.env.GETWRITE_CLI_TESTING;
   });
 
+  it("leaves a sidecar's resourceSubtype byte-identical (FR-28)", async () => {
+    const resourceId = "55555555-6666-4777-8888-999999999999";
+    const resourceDir = path.join(tmpDir, "resources", resourceId);
+    await fs.mkdir(resourceDir, { recursive: true });
+    await fs.writeFile(path.join(resourceDir, "content.txt"), "some prose");
+
+    const metaDir = path.join(tmpDir, "meta");
+    await fs.mkdir(metaDir, { recursive: true });
+    const sidecarPath = path.join(metaDir, `resource-${resourceId}.meta.json`);
+    await fs.writeFile(
+      sidecarPath,
+      JSON.stringify({
+        id: resourceId,
+        name: "Scene",
+        type: "text",
+        resourceSubtype: "Memoir",
+      }),
+    );
+    const before = await fs.readFile(sidecarPath);
+
+    const program = new Command();
+    registerReindex(program);
+    process.env.GETWRITE_CLI_TESTING = "1";
+    try {
+      await program.parseAsync(["node", "test", "reindex", tmpDir]);
+    } finally {
+      delete process.env.GETWRITE_CLI_TESTING;
+    }
+
+    // Reindex really ran...
+    await fs.access(path.join(tmpDir, "meta", "index", "inverted.json"));
+    // ...and left the sidecar, including its subtype, untouched.
+    const after = await fs.readFile(sidecarPath);
+    expect(after.equals(before)).toBe(true);
+    expect(JSON.parse(after.toString("utf8")).resourceSubtype).toBe("Memoir");
+  });
+
   it("rebuilds meta/index/mentions.json from a declared entity and a mentioning resource", async () => {
     const entityId = "22222222-3333-4444-8555-666666666666";
     const entityDir = path.join(tmpDir, "resources", entityId);

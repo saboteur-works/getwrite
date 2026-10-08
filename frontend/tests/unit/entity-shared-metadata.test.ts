@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest";
 
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
-import { writeSidecar } from "../../src/lib/models/sidecar";
+import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import { createTag, assignTagToResource } from "../../src/lib/models/tags";
 import { addGroup, addField } from "../../src/lib/models/metadata-schema";
 import { getEntitySharedMetadataEdges } from "../../src/lib/models/entity-shared-metadata";
@@ -184,5 +184,50 @@ describe("getEntitySharedMetadataEdges (FR-5)", () => {
     const edge = findEdge(edges, "entity-a", "entity-b");
     expect(edge?.sharedTagIds).toEqual([tag.id]);
     expect(edge?.sharedFieldKeys).toEqual(["faction"]);
+  });
+
+  it("is unchanged by resourceSubtype and by an appliesTo restriction the entities' subtypes fall outside (FR-20)", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    await addGroup(projectRoot, {
+      id: "custom-group",
+      label: "Custom",
+      fields: [],
+    });
+    await addField(projectRoot, "custom-group", {
+      key: "faction",
+      label: "Faction",
+      type: "text",
+      appliesTo: ["Memoir"],
+    });
+
+    await declareEntity(projectRoot, "entity-a", "Aria", { faction: "Empire" });
+    await declareEntity(projectRoot, "entity-b", "Jones", {
+      faction: "Empire",
+    });
+    const before = await getEntitySharedMetadataEdges(projectRoot);
+
+    // Give both entities a subtype that the field's restriction excludes.
+    for (const [id, name] of [
+      ["entity-a", "Aria"],
+      ["entity-b", "Jones"],
+    ] as const) {
+      await writeSidecar(projectRoot, id, {
+        id,
+        name,
+        entityKind: "character",
+        resourceSubtype: "Essay",
+        userMetadata: { faction: "Empire" },
+      });
+    }
+    const after = await getEntitySharedMetadataEdges(projectRoot);
+
+    expect((await readSidecar(projectRoot, "entity-a"))?.resourceSubtype).toBe(
+      "Essay",
+    );
+    expect(before).toHaveLength(1);
+    expect(after).toEqual(before);
+    expect(findEdge(after, "entity-a", "entity-b")?.sharedFieldKeys).toEqual([
+      "faction",
+    ]);
   });
 });

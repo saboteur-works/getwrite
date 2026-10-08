@@ -93,7 +93,7 @@ Source spec: `specs/features/resource-subtype.md` (FR-1..FR-32, final, owner-app
 **Estimate:** 3
 **Notes:** Satisfies FR-20 (unchanged surfaces, non-sidebar half), FR-27, FR-28. If a test unexpectedly fails, report it as a finding in the Notes; do not change production code to make it pass without flagging it.
 **POS:** task_381dd524
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: SubtypesSettings list editor in the Metadata tab
 **What:** Build the `SubtypesSettings` list editor and render it directly above `<SchemaManager>` in the existing Metadata tab.

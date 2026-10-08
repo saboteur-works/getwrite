@@ -431,3 +431,39 @@ describe("importPlainTextProject — writing log (Feature 59, FR-8)", () => {
     await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
   });
 });
+
+/** Reads every raw sidecar file text under `<projectRoot>/meta`. */
+async function readRawSidecarTexts(projectRoot: string): Promise<string[]> {
+  const metaDir = path.join(projectRoot, "meta");
+  const entries = await fs.readdir(metaDir);
+  const texts: string[] = [];
+  for (const entry of entries) {
+    if (!entry.startsWith("resource-") || !entry.endsWith(".meta.json"))
+      continue;
+    texts.push(await fs.readFile(path.join(metaDir, entry), "utf8"));
+  }
+  return texts;
+}
+
+describe("importPlainTextProject — writes no resourceSubtype (FR-27)", () => {
+  it("creates sidecars none of which contain resourceSubtype", async () => {
+    const projectRoot = await mkTempProjectRoot(
+      "getwrite-plaintext-import-nosub-",
+    );
+    try {
+      await importPlainTextProject({
+        sourcePath: path.join(FIXTURES_DIR, "single-document.txt"),
+        projectRoot,
+      });
+      await flushIndexer();
+
+      const texts = await readRawSidecarTexts(projectRoot);
+      expect(texts.length).toBeGreaterThan(0);
+      for (const text of texts) {
+        expect(text).not.toContain("resourceSubtype");
+      }
+    } finally {
+      await fs.rm(path.dirname(projectRoot), { recursive: true, force: true });
+    }
+  });
+});

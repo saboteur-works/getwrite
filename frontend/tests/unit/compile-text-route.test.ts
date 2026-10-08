@@ -127,4 +127,47 @@ describe("POST /api/compile/text", () => {
     const json = await res.json();
     expect(json.error).toBe("Invalid projectId");
   });
+
+  it("produces identical output for a project whose resources carry a subtype (FR-28)", async () => {
+    const projectsDir = await makeProjectsDir();
+    const plainId = generateUUID();
+    const subtypedId = generateUUID();
+    const plainPath = path.join(projectsDir, plainId);
+    const subtypedPath = path.join(projectsDir, subtypedId);
+    for (const projectPath of [plainPath, subtypedPath]) {
+      await writeResource(projectPath, "r1", paragraphDoc("one"), "one");
+      await writeResource(projectPath, "r2", paragraphDoc("two"), "two");
+    }
+    await fs.mkdir(path.join(subtypedPath, "meta"), { recursive: true });
+    for (const id of ["r1", "r2"]) {
+      await fs.writeFile(
+        path.join(subtypedPath, "meta", `resource-${id}.meta.json`),
+        JSON.stringify({ id, type: "text", resourceSubtype: "Memoir" }),
+        "utf8",
+      );
+    }
+
+    const run = async (projectId: string): Promise<unknown> => {
+      const res = await withProjectsDir(projectsDir, () =>
+        POST(
+          compileRequest({
+            projectId,
+            resourceIds: ["r1", "r2"],
+            resources: [
+              { id: "r1", name: "Chapter One", type: "text" },
+              { id: "r2", name: "Chapter Two", type: "text" },
+            ],
+            includeHeaders: true,
+            projectName: "My Novel",
+          }) as never,
+        ),
+      );
+      return res.json();
+    };
+
+    const plain = await run(plainId);
+    const subtyped = await run(subtypedId);
+    expect(subtyped).toEqual(plain);
+    expect((plain as { text: string }).text).toContain("Chapter Two");
+  });
 });

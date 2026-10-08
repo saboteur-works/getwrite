@@ -349,3 +349,57 @@ describe("restoreResource (Task 8, FR-5/FR-9/FR-16/FR-22)", () => {
     }
   });
 });
+
+describe("restoreResource keeps resourceSubtype (FR-28)", () => {
+  it("round-trips a resource's resourceSubtype through soft delete and restore, including a relocated restore", async () => {
+    const projectRoot = await makeProjectRoot();
+    try {
+      const resource = createTextResource({
+        name: "Scene A",
+        plainText: "Some prose.",
+      });
+      await writeResourceToFile(projectRoot, resource);
+      await patchSidecarDirect(projectRoot, resource.id, {
+        resourceSubtype: "Memoir",
+      });
+
+      await softDeleteResource(projectRoot, resource.id);
+      await restoreResource(projectRoot, resource.id);
+
+      const sidecar = await readSidecar(projectRoot, resource.id);
+      expect(sidecar?.["resourceSubtype"]).toBe("Memoir");
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("keeps resourceSubtype when the restore falls back to the project root", async () => {
+    const projectRoot = await makeProjectRoot();
+    try {
+      const folder = createFolderResource({ name: "Chapter One" });
+      await writeResourceToFile(projectRoot, folder);
+      const resource = createTextResource({
+        name: "Scene A",
+        folderId: folder.id,
+        plainText: "Some prose.",
+      });
+      await writeResourceToFile(projectRoot, resource);
+      await patchSidecarDirect(projectRoot, resource.id, {
+        resourceSubtype: "Essay",
+      });
+      await fs.rm(path.join(projectRoot, "folders", folder.slug), {
+        recursive: true,
+        force: true,
+      });
+
+      await softDeleteResource(projectRoot, resource.id);
+      const result = await restoreResource(projectRoot, resource.id);
+
+      expect(result.relocated).toBe(true);
+      const sidecar = await readSidecar(projectRoot, resource.id);
+      expect(sidecar?.["resourceSubtype"]).toBe("Essay");
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+});

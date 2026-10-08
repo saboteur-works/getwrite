@@ -227,6 +227,49 @@ describe("FR7 — querying field keys hidden or removed from the schema", () => 
   });
 });
 
+// ── FR-20: querying a field restricted by subtype (appliesTo) ─────────────
+
+describe("FR-20 — a field carrying appliesTo stays queryable regardless of subtype", () => {
+  // The evaluator takes no metadata schema, so an `appliesTo` restriction on a
+  // MetadataField cannot reach it. The field-key values below are stored on all
+  // three resources; resources R1 and R3 carry a subtype that a restriction
+  // would hide the field for, R2 has none.
+  const baseline = async (): Promise<string[]> =>
+    ids({ op: "eq", field: "active", value: true });
+
+  const withSubtypes: Record<string, Record<string, MetadataValue>> = {
+    [R1]: { ...sidecars[R1], resourceSubtype: "Memoir" },
+    [R2]: { ...sidecars[R2] },
+    [R3]: { ...sidecars[R3], resourceSubtype: "Essay" },
+  };
+
+  it("returns identical results for eq whether or not resources carry resourceSubtype", async () => {
+    const without = await baseline();
+    const withSub = await ids(
+      { op: "eq", field: "active", value: true },
+      { sidecars: withSubtypes },
+    );
+    expect(withSub).toEqual(without);
+    expect(withSub).toEqual([R1, R3]);
+  });
+
+  it("returns identical results for a numeric comparison with subtypes present", async () => {
+    const ast: QueryAST = { op: "gte", field: "score", value: 6 };
+    const without = await ids(ast);
+    const withSub = await ids(ast, { sidecars: withSubtypes });
+    expect(withSub).toEqual(without);
+    expect(withSub).toEqual([R1, R3]);
+  });
+
+  it("can query resourceSubtype itself as a stored key, leaving other fields unaffected", async () => {
+    const result = await ids(
+      { op: "eq", field: "resourceSubtype", value: "Memoir" },
+      { sidecars: withSubtypes },
+    );
+    expect(result).toEqual([R1]);
+  });
+});
+
 // ── lt / gt / gte / lte predicates ───────────────────────────────────────
 
 describe("comparison predicates on numbers", () => {
