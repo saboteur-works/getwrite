@@ -24,6 +24,7 @@ import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
 import { updateSidecarCore } from "../../src/lib/models/resource-crud-core";
+import { writeInitialCanonicalRevision } from "../../src/lib/models/resource-initial-revision";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
@@ -83,5 +84,19 @@ describe("updateSidecarCore — locked-access propagation", () => {
     await expect(
       updateSidecarCore(plainProjectId, resourceId, { title: "New title" }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("writeInitialCanonicalRevision — locked-access propagation (Feature 73, Task 1)", () => {
+  it("propagates the locked-access error from the config read instead of defaulting the name", async () => {
+    keyring.lock();
+    io.setStorageAdapter(workspaceEncryptionAdapter(base, WORKSPACE, keyring));
+
+    await expect(
+      writeInitialCanonicalRevision(projectRoot, generateUUID(), {
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      }),
+    ).rejects.toSatisfy((err: unknown) => isLockedAccessError(err));
   });
 });

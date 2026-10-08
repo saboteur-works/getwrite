@@ -294,6 +294,44 @@ describe("models/project-creator", () => {
     }
   });
 
+  it("persists no resourceSubtype on defaultResources sidecars (Feature 73 FR-6, FR-23)", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-no-subtype-seed-"),
+    );
+    try {
+      const spec = {
+        id: "test-no-subtype-seed",
+        name: "No Subtype Seed",
+        folders: [{ name: "Drafts" }],
+        defaultResources: [
+          {
+            folder: "Drafts",
+            name: "Intro",
+            type: "text" as const,
+            template: "Hello",
+          },
+        ],
+      };
+      const { projectPath, resources } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "No Subtype Seed Project" },
+      );
+      expect(resources.length).toBeGreaterThan(0);
+      for (const r of resources) {
+        const raw = JSON.parse(
+          await fs.readFile(
+            path.join(projectPath, "meta", `resource-${r.id}.meta.json`),
+            "utf8",
+          ),
+        ) as Record<string, unknown>;
+        expect(raw).not.toHaveProperty("resourceSubtype");
+      }
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("novel template creates correct nested folder structure without orphan directories", async () => {
     const tmp = await fs.mkdtemp(
       path.join(os.tmpdir(), "getwrite-novel-struct-"),

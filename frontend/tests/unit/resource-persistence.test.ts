@@ -13,7 +13,10 @@ import {
   writeResourceToFile,
 } from "../../src/lib/models/resource";
 import { readSidecar } from "../../src/lib/models/sidecar";
-import { readResourceExcerpts } from "../../src/lib/models/resource-persistence";
+import {
+  buildResourceSidecarData,
+  readResourceExcerpts,
+} from "../../src/lib/models/resource-persistence";
 import {
   getStorageAdapter,
   mkdir,
@@ -458,5 +461,102 @@ describe("resource persistence reads route through the active storage adapter", 
     const excerpts = await readResourceExcerpts(projectRoot, [resource.id], 10);
     // Trimmed to "the lighthouse ...", then capped to cap + 1 (11) chars.
     expect(excerpts[resource.id]).toBe("the lightho");
+  });
+});
+
+describe("buildResourceSidecarData (Feature 73, Task 1)", () => {
+  it("yields exactly the base key set for a text resource", () => {
+    const resource = createTextResource({
+      name: "Scene",
+      folderId,
+      plainText: "one two three",
+    });
+    const data = buildResourceSidecarData(resource);
+    expect(Object.keys(data).sort()).toEqual(
+      [
+        "id",
+        "name",
+        "type",
+        "createdAt",
+        "orderIndex",
+        "folderId",
+        "slug",
+        "userMetadata",
+        "wordCount",
+      ].sort(),
+    );
+    expect(data.wordCount).toBe(3);
+  });
+
+  it("yields the media keys for image and audio resources when set", () => {
+    const image = createImageResource({
+      name: "Pic",
+      file: "original.png",
+      width: 10,
+      height: 20,
+    });
+    const imageData = buildResourceSidecarData(image);
+    expect(imageData).toMatchObject({
+      file: "original.png",
+      width: 10,
+      height: 20,
+    });
+    expect(imageData).not.toHaveProperty("wordCount");
+
+    const audio = createAudioResource({
+      name: "Clip",
+      file: "original.mp3",
+      durationSeconds: 5,
+      format: "mp3",
+    });
+    expect(buildResourceSidecarData(audio)).toMatchObject({
+      file: "original.mp3",
+      durationSeconds: 5,
+      format: "mp3",
+    });
+  });
+
+  it("includes a trimmed resourceSubtype when the resource carries one", () => {
+    const resource = {
+      ...createTextResource({ name: "Scene", plainText: "" }),
+      resourceSubtype: "  Scene ",
+    };
+    expect(buildResourceSidecarData(resource).resourceSubtype).toBe("Scene");
+  });
+
+  it("omits resourceSubtype when absent, empty, or blank", () => {
+    const base = createTextResource({ name: "Scene", plainText: "" });
+    expect(buildResourceSidecarData(base)).not.toHaveProperty(
+      "resourceSubtype",
+    );
+    expect(
+      buildResourceSidecarData({ ...base, resourceSubtype: "" }),
+    ).not.toHaveProperty("resourceSubtype");
+    expect(
+      buildResourceSidecarData({ ...base, resourceSubtype: "   " }),
+    ).not.toHaveProperty("resourceSubtype");
+  });
+
+  it("writeResourceToFile persists the builder output, subtype included", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-sidecar-builder-"),
+    );
+    try {
+      const withSubtype = {
+        ...createTextResource({ name: "A", plainText: "x" }),
+        resourceSubtype: "Scene",
+      };
+      await writeResourceToFile(projectRoot, withSubtype);
+      const written = await readSidecar(projectRoot, withSubtype.id);
+      expect(written?.resourceSubtype).toBe("Scene");
+
+      const plain = createTextResource({ name: "B", plainText: "x" });
+      await writeResourceToFile(projectRoot, plain);
+      expect(await readSidecar(projectRoot, plain.id)).not.toHaveProperty(
+        "resourceSubtype",
+      );
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
   });
 });

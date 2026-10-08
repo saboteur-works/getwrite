@@ -30,7 +30,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 5
 **Notes:** Satisfies FR-1 (extraction and narrowed config read; callers added by Tasks 3, 4, 6), FR-6 (builder passthrough and last clause), FR-9 (the pure builder the dry run will call), FR-23. The new shared writer goes in a NEW file on purpose: `resource-crud-core.ts` imports from `"."` (the models index, which re-exports `resource-templates.ts`), so `resource-templates.ts` importing from `resource-crud-core.ts` risks an import cycle; the new file imports only leaf modules (`resource-persistence`, `revision`, `resource-revision`, `project-config`, `tiptap-doc`, `locked-access`). The narrowed catch is a deliberate change: only `isLockedAccessError` propagates, every other config-read failure (ENOENT, bad JSON, schema failure) falls back to "Initial Draft". Function (a) is what copy and duplicate call (they already have their content on disk), function (b) is what `createResourceCore` and template creation call. This task owns `resource-persistence.ts` and `resource-crud-core.ts` until Task 3.
 **POS:** task_9d38e440
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Template shape: `resourceSubtype` on `ResourceTemplate`, schema and validation
 **What:** Add the optional top-level `resourceSubtype` to the `ResourceTemplate` interface and `ResourceTemplateSchema`, and prove `validateResourceTemplate` reports a blank or non-string value.
