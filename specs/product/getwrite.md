@@ -755,6 +755,40 @@ lost work.
   provided by FR-65. Status: Shipped.
   Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
   [US-6][US-9]
+- FR-65: A writer MUST be able to repair, with one `getwrite-cli` command
+  (`repair-revisions [projectRoot] [--dry-run]`) that has a dry-run option,
+  every text resource in a project that has content but no revision, by
+  giving it an initial canonical revision holding its own document. The
+  repair MUST NOT write over an existing revision, MUST leave content files,
+  sidecars and project config untouched, MUST report what it repaired and
+  what it could not (a text resource with no content files is reported, not
+  repaired), and MUST refuse an encrypted project. Investigated 2026-10-08:
+  the repo's own `projects/` store held 11 such resources, all in one
+  project and all created on that project's first day, 2026-05-13, on which
+  12 text resources had a revision (the first named by hand) and 11 did not;
+  every text resource created from 2026-05-14 onward has one, named "Initial
+  Draft" and created at the same instant as the resource. The cutover lines
+  up with commit `93fcab45` (2026-05-13), which made creation write a
+  revision (the pre-May code was not re-run). So there are two known
+  sources, both closed: resources created before that commit, and copies
+  and duplicates made before FR-64. By reading call sites (not by running
+  each), every current path that creates a text resource writes a first
+  revision; whether anything can delete a resource's last revision was not
+  checked. Healing such a resource automatically when it is opened or edited
+  in the app is deliberately not part of this requirement (owner decision,
+  2026-10-08): a writer who does not run the command is not helped, and the
+  installed desktop app gains nothing from it. Status: Shipped.
+  Verified by tests (model and CLI, the latter through the
+  registered command) and a dry run of the model function against the repo's
+  affected project, which reported exactly the 11 and skipped none. Run by
+  the owner the same day against the affected project in their own workspace:
+  it reported 11 repaired; each then had one canonical revision equal to its
+  document with its content files and sidecar untouched, and a rescan of that
+  workspace found no text resource without a revision. An edit then typed
+  into one repaired resource in the running app was written to its content
+  files and its canonical revision within seconds. Resolved (OQ-65
+  addition): Owner decision, 2026-10-08, made as a direct change outside the
+  pipeline. [US-6][US-9]
 
 ### In Progress Requirements
 
@@ -1126,41 +1160,6 @@ lost work.
   belongs at the feature-spec rung. This requirement rides the existing
   per-project `entities` feature flag and MUST NOT introduce a flag of its
   own, consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-56): "done" for this pass is qualitative owner sign-off against a built implementation, not a predefined checklist — the feature spec and task breakdown for this requirement MUST include an explicit owner review/sign-off step rather than treating completion as self-certifiable against fixed criteria. [US-17]
-- FR-65: A writer MUST be able to repair, with one `getwrite-cli` command
-  (`repair-revisions [projectRoot] [--dry-run]`) that has a dry-run option,
-  every text resource in a project that has content but no revision, by
-  giving it an initial canonical revision holding its own document. The
-  repair MUST NOT write over an existing revision, MUST leave content files,
-  sidecars and project config untouched, MUST report what it repaired and
-  what it could not (a text resource with no content files is reported, not
-  repaired), and MUST refuse an encrypted project. Investigated 2026-10-08:
-  the repo's own `projects/` store held 11 such resources, all in one
-  project and all created on that project's first day, 2026-05-13, on which
-  12 text resources had a revision (the first named by hand) and 11 did not;
-  every text resource created from 2026-05-14 onward has one, named "Initial
-  Draft" and created at the same instant as the resource. The cutover lines
-  up with commit `93fcab45` (2026-05-13), which made creation write a
-  revision (the pre-May code was not re-run). So there are two known
-  sources, both closed: resources created before that commit, and copies
-  and duplicates made before FR-64. By reading call sites (not by running
-  each), every current path that creates a text resource writes a first
-  revision; whether anything can delete a resource's last revision was not
-  checked. Healing such a resource automatically when it is opened or edited
-  in the app is deliberately not part of this requirement (owner decision,
-  2026-10-08): a writer who does not run the command is not helped, and the
-  installed desktop app gains nothing from it. Status: Shipped on branch
-  `fix/repair-revisionless-text-resources`, not yet merged to `main`
-  (2026-10-08). Verified by tests (model and CLI, the latter through the
-  registered command) and a dry run of the model function against the repo's
-  affected project, which reported exactly the 11 and skipped none. Run by
-  the owner the same day against the affected project in their own workspace:
-  it reported 11 repaired; each then had one canonical revision equal to its
-  document with its content files and sidecar untouched, and a rescan of that
-  workspace found no text resource without a revision. An edit then typed
-  into one repaired resource in the running app was written to its content
-  files and its canonical revision within seconds. Resolved (OQ-65
-  addition): Owner decision, 2026-10-08, made as a direct change outside the
-  pipeline. [US-6][US-9]
 
 ### Later Requirements
 
@@ -2707,9 +2706,8 @@ were built around.
   none with "copy" in its name; how they came to lack one was not
   established. This is deferred, not decided against.
   Update, 2026-10-08: the CLI repair is no longer deferred; it is FR-65
-  (shipped on branch `fix/repair-revisionless-text-resources`, not yet
-  merged to `main`). What remains deferred is healing such a resource
-  automatically when it is opened or edited in the app, and detecting it in
+  (shipped and merged to `main`, 2026-10-08). What remains deferred is
+  healing such a resource automatically when it is opened or edited in the app, and detecting it in
   `doctor`. The cause of the 11 has since been investigated (see FR-65): they
   are text resources created on that project's first day, 2026-05-13, before
   creation wrote a revision (commit `93fcab45`), for which no revision was

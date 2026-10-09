@@ -2843,8 +2843,8 @@ not be repaired, 2 error, 3 encrypted project). Tests: model and CLI. No UI.
 **User stories:** US-6, US-9
 **Depends on:** Feature 73
 **Branch suggestion:** fix/repair-revisionless-text-resources
-**Notes:** Shipped on branch `fix/repair-revisionless-text-resources`, not yet
-merged to `main` as of this entry (2026-10-08). Done as a small direct change
+**Notes:** Shipped on branch `fix/repair-revisionless-text-resources`, and merged to
+`main` via PR #262 on 2026-10-08 (merge commit `82ab0f05`). Done as a small direct change
 outside the pipeline, by owner decision (2026-10-08), after an investigation;
 it follows Feature 73, which fixed copy and duplicate going forward and
 deferred repair of resources that already lacked a revision.
@@ -3044,7 +3044,7 @@ helped, and the installed desktop app gains nothing from this feature.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73, 74 (Features 72 and 73 having both merged, and 74 shipped on its branch, not yet merged; 30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73, 74 (Features 72, 73 and 74 having all merged; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
 - Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
