@@ -197,7 +197,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-9 (enumeration from the tree, fails if any enumerated route or page answers an unconfirmed request with project data or an application page), FR-10, FR-26 (unknown, absent, malformed, other-install and corrupt cases; forged header; window works with no pairing; expired, used and over-limit codes are covered in Tasks 11 and 15 and re-checked here through the smoke script by writing fixture states), FR-23 (a case with sharing off asserting pass-through for every enumerated URL). FR-9 stands whichever way OQ-2 resolved: if Task 6 chose per-route gating, this test is the net. Record the observed counts of routes and pages; do not assume them. The exact-count check of exceptions is deliberate so loosening the gate is a visible diff.
 **POS:** task_7ef54179
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Desktop data: addresses, status, and the IPC and bridge surface
 **What:** Add the electron-side pure logic and IPC channels the desktop controls need: list candidate LAN addresses with the shared port, report sharing status including the hosted-auth block and a corrupt credential store, get and set the sharing flag, generate and read the pairing code, and the typed bridge surface the renderer calls.
