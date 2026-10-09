@@ -187,7 +187,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-20 (a refused in-app fetch from a device whose credential is no longer valid is visible). Wrapping `fetch` is chosen because the 31 validated response sites across 15 `lib/api` modules plus the store transports all call `fetch` directly; changing each would be far larger. This task does NOT change how locked-access 401/409 responses render. Whether those render as an empty list is OQ-10 (Task 5); if Task 5 shows they do, a separate task must be added at Task 6 (see Open Questions).
 **POS:** task_f0f1d581
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: The FR-9 tree-walking enumeration test and the refusal smoke script
 **What:** Add the test that enumerates every route and page from the source tree and asserts the gate refuses each when unconfirmed, and a script that runs the same refusal checks against a real built server.
