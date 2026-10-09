@@ -5,6 +5,7 @@ import registerScreenshots from "./commands/screenshots";
 import registerProject from "./commands/project";
 import registerReindex from "./commands/reindex";
 import registerDoctor from "./commands/doctor";
+import registerRepairRevisions from "./commands/repair-revisions";
 import registerQa from "./commands/qa";
 
 const program = new Command("getwrite-cli");
@@ -18,6 +19,7 @@ registerScreenshots(program);
 registerProject(program);
 registerReindex(program);
 registerDoctor(program);
+registerRepairRevisions(program);
 registerQa(program);
 
 export async function main(argv: string[]): Promise<number> {
