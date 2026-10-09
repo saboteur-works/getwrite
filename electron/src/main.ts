@@ -270,7 +270,7 @@ function registerWorkspaceHandlers(): void {
   });
 
   ipcMain.handle("getwrite:restart", () => {
-    log("Restarting to apply a new workspace location");
+    log("Restarting to apply a workspace location or sharing change");
     app.relaunch();
     app.quit();
   });

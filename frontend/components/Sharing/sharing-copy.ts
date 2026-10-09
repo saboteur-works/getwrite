@@ -1,7 +1,8 @@
 /**
- * All user-visible sharing strings (Feature 75). Working copy from
- * `specs/features/home-network-sharing.md`; used verbatim. Later tasks add
- * their strings here as named exports.
+ * All user-visible sharing strings (Feature 75), used verbatim from
+ * `specs/features/home-network-sharing.md`. The owner reviewed this copy on
+ * 2026-10-09 and changed two strings (the unencrypted-HTTP statement and the
+ * interim exposure note); the rest was accepted as written.
  */
 
 /** FR-20: shown to a device that is not paired. */
@@ -27,9 +28,9 @@ export const PAIRING_SUBMIT = "Pair";
 export const PAIRING_SUBMITTING = "Pairing…";
 
 // ---------------------------------------------------------------------------
-// Desktop sharing controls (Task 20). Strings marked "spec" are the spec's
-// working copy, used verbatim; strings marked "working copy" are this task's
-// own wording and are proposals, not owner-approved copy.
+// Desktop sharing controls (Task 20). Strings marked "spec" come from the
+// spec, verbatim; strings marked "working copy" were this task's own wording.
+// The owner reviewed both kinds on 2026-10-09 (see the note at the top).
 // ---------------------------------------------------------------------------
 
 /** FR-7(a), spec. */
