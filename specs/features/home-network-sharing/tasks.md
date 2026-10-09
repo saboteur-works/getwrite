@@ -167,7 +167,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (the only endpoint an unconfirmed device may use), FR-17 (cookie attributes, credential shown only at pairing), FR-18, FR-19. Cookie writing uses `next/headers` or `NextResponse` cookies, whichever the code base already uses elsewhere (search `cookies` under `frontend/app`); do not add a dependency. This endpoint is not hosted-auth aware: sharing and hosted auth are mutually exclusive and Task 8 and Task 22 stop sharing from starting with hosted auth present. The route returns the user-facing copy only from the client (Task 16), not in the response body. Its same-origin check is Task 12's `isSameOrigin` (FR-29), with no other host comparison.
 **POS:** task_5ce3eb7b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: The browser pairing screen
 **What:** Add the `/pair` page and its component: a labelled code input, a submit, refusal messages with the spec's working copy, and an explanation of how to pair, accessible by keyboard and screen reader.
