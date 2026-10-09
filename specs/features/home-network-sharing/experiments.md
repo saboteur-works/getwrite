@@ -454,3 +454,21 @@ Owner, in the desktop app: created a project, encrypted it, locked the workspace
 ### Unrelated observation
 
 While running run 1 the owner found that closing a project with the Data view open leaves the Data view over the Start page until the window is refreshed. Filed as a POS note; not part of this feature.
+
+## Owner confirmation
+
+Recorded by the pipeline lead at the Task 6 stop, 2026-10-09, after the owner read the results above. Owner's words: "1-7 confirmed, 8a, 9a, I think 163 was my phone and I ran curl -4 before the paste".
+
+1. Window recognition: the per-launch secret sent as a request header. Image and font request kinds remain unmeasured. The desktop app's own non-window requests arrive without the secret, so the gate tasks must handle them (for example the startup readiness check sends the secret).
+2. Where the gate lives: a single `frontend/proxy.ts` in front of every route and page. Because a module-level value set in the proxy was not visible to route code (section A (7)), the gate task must measure whether a request header set by the proxy reaches route handlers, and route code must not rely on shared module state to learn the classification.
+3. `/_next/static`: left ungated. Accepted cost: an unpaired device can tell GetWrite is running and see its build version.
+4. Pairing code and credential store: the planned shape of Tasks 9 to 11 (main generates the code and writes a hashed pairing-state file in `userData`; the server verifies and counts attempts in that file under a lock; credentials in a separate `userData` file read by the server per request).
+5. FR-29 same-origin check: compare `Origin` (falling back to `Referer`) against `Host`, never `X-Forwarded-Host`.
+6. OQ-10: no task is added for locked-access responses rendering as an empty list. Observed: editor save and Trash view render an error. Not checked: the other views. Recorded as a known gap and an input to Feature 77.
+7. The unrun items (image and font request kinds; the window's request summary under the non-loopback bind) do not block the plan. Task 24 can cover them.
+8. Native export build: `pnpm build:native` already fails on this tree with a type error in `stories/Start/CreateProjectModal.stories.tsx` (section B and its addendum). Final verification checks that it fails the same way as this baseline and no worse; fixing the stories error is separate work, not part of this plan.
+9. The unlock dialog blocks keyboard access to "App Settings" until it is dismissed (section C, D part (4)). Accepted; no work added.
+
+Attribution supplied by the owner, as recalled and not verified from the log: 10.0.0.163 (run 2, lines 2 and 3) was the owner's phone; the owner ran the `curl -4` localhost check once before the pasted output, which would account for line 8. Line 1, and the one no-secret request in run 1, remain unattributed.
+
+Plan consequence: the tasks after Task 6 stand as written for the primary candidates, with the additions in items 1, 2 and 8 folded into the task list before Task 7 starts.
