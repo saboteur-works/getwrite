@@ -137,7 +137,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-8 (classification), FR-12 (window distinguishable and available to route code), FR-29 (same-origin check), part of FR-26. No peer-address logic anywhere (spec: peer address alone is not acceptable). The function takes the store reading as an input so it is pure and testable; the caller (Task 14) reads the store. Task 6 confirmed the header for the window secret (the cookie is not used). The classification output being expressible as a header value matters for Feature 77, which needs routes to tell the window from a paired device (FR-12); route code must never read the classification from shared module state (measured not to cross from `proxy.ts` to a route, section A (7)). Optional hardening (Host is loopback, private-range or `.local`) is a suggestion and is NOT built.
 **POS:** task_39c404e4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Electron: per-launch window secret, header attach, and the server's sharing env (no bind change)
 **What:** Generate a per-launch window secret in the main process, attach it to the window's requests, and pass the server the secret, the sharing directory and the effective sharing flag, without touching the listen address.
