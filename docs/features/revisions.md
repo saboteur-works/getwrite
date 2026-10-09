@@ -49,7 +49,7 @@ Each `metadata.json` contains a `Revision` object:
 
 **Exactly one revision per resource is canonical at any time.**
 
-- When a project is created, the initial revision (v-1) is written with `isCanonical: true`.
+- When a text resource is created, the initial revision (v-1) is written with `isCanonical: true`. This covers a blank create, creation from a template (`templates create`), and a copy or duplicate (the app's Copy/Duplicate actions and `templates duplicate`); all four go through `resource-initial-revision.ts`. A copy or duplicate gets one new `v-1` holding the copy's own document; the source's revisions are not copied. Image and audio resources get no revision. A text resource that has no revision (for example a copy made before this was added) is not repaired; see [cli.md](cli.md#templates-duplicate).
 - When `setCanonicalRevision(projectRoot, resourceId, versionNumber)` is called, it rewrites every `metadata.json` under `revisions/<resourceId>/`: the target version is set to `isCanonical: true`, all others to `isCanonical: false`.
 - The Redux layer enforces this invariant client-side via `revision-canonical-guards.ts`, which provides `applyCanonicalRevision` (marks one entry canonical, clears all others) and `isStaleCanonicalUpdate` (guards against out-of-order updates).
 

@@ -11,6 +11,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { writeSidecar } from "../../src/lib/models/sidecar";
+import { ResourceResponseSchema } from "../../src/lib/api/schemas";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
@@ -103,6 +104,51 @@ describe("POST /api/resource/[resource-id] (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  it("copy action returns the copy's resourceSubtype and the body survives ResourceResponseSchema", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Source",
+        slug: "source",
+        type: "text",
+        createdAt: new Date().toISOString(),
+        orderIndex: 0,
+        resourceSubtype: "scene",
+      });
+      await fs.mkdir(path.join(projectPath, "resources", resourceId), {
+        recursive: true,
+      });
+      await fs.writeFile(
+        path.join(projectPath, "resources", resourceId, "content.txt"),
+        "hello",
+        "utf8",
+      );
+
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/route");
+      const res = await POST(
+        actionRequest(resourceId, {
+          projectId,
+          action: "copy",
+          newName: "Source Copy",
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        resource: { id: string; resourceSubtype?: string };
+      };
+      expect(body.resource.resourceSubtype).toBe("scene");
+      expect(body.resource.id).not.toBe(resourceId);
+
+      const parsed = ResourceResponseSchema.parse(body);
+      expect(parsed.resource.resourceSubtype).toBe("scene");
     });
   });
 });

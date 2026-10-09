@@ -94,6 +94,28 @@ describe("templates command — encryption guard", () => {
     expect(exitSpy).toHaveBeenCalledWith(3);
   });
 
+  it("`templates save-from-resource` refuses an encrypted project with exit 3 and writes no template", async () => {
+    await writeEncryptionMarker(tmpDir);
+
+    const program = new Command();
+    registerTemplates(program);
+    await program.parseAsync([
+      "node",
+      "test",
+      "templates",
+      "save-from-resource",
+      tmpDir,
+      "some-resource-id",
+      "scene",
+    ]);
+
+    expect(exitSpy).toHaveBeenCalledWith(3);
+    expect(errSpy).toHaveBeenCalled();
+    await expect(
+      fs.access(path.join(tmpDir, "meta", "templates", "scene.json")),
+    ).rejects.toThrow();
+  });
+
   it("`templates save` on an unencrypted project still writes the template as before", async () => {
     const program = new Command();
     registerTemplates(program);

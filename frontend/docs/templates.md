@@ -1,22 +1,26 @@
 # Templates CLI
 
+> **Which commands are shipped.** The bundled CLI (`cli/src/commands/templates.ts`, registered by `cli/src/getwrite-cli.ts`) registers only five `templates` subcommands: `save`, `save-from-resource`, `create`, `duplicate` and `list`. `create` takes `<projectRoot> <templateId> [name]` and no other options (no `--vars`, no `--dry-run`); `list` takes `<projectRoot>` and no `--query`. The other subcommands and options described below exist only in an unbundled developer helper, `cli/src/templates.ts`, which is not part of the shipped binary. For the shipped commands, see [docs/features/cli.md](../../docs/features/cli.md).
+
 The `templates` subcommand group provides helpers for creating, inspecting, exporting, importing and auditing resource templates in a project.
 
 Common subcommands (each section shows Usage, example and expected output)
 
 ### save-from-resource
 
-`templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` — Capture an existing resource into `meta/templates/<templateId>.json`.
+`templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` — Capture an existing text resource into `meta/templates/<templateId>.json` (shipped). Records the id, name (`--name`, else the resource's), type, the body as plain text, the resource's `userMetadata` when it has any keys, and its `resourceSubtype`; formatting in the body is not preserved. Only text resources are supported. An existing template with the same id is overwritten without prompting.
 
 ```bash
 node cli/dist/bin/getwrite-cli.cjs templates save-from-resource ./my/project <resourceId> my-template --name "My Template"
 ```
 
-Expected output:
+Expected output (shipped binary):
 
 ```
-Saved template my-template from resource <resourceId>
+Saved template my-template
 ```
+
+(The unbundled helper prints `Saved template my-template from resource <resourceId>`.)
 
 ### save
 
@@ -44,12 +48,15 @@ node cli/dist/bin/getwrite-cli.cjs templates create ./my/project my-template --v
 node cli/dist/bin/getwrite-cli.cjs templates create ./my/project my-template --vars '{"TITLE":"Hello"}'
 ```
 
-Expected output (dry-run):
+Expected output (dry-run, unbundled helper only; the shipped `create` has no `--dry-run`). A text creation plans five writes, in the app's resource layout:
 
 ```
 Dry-run planned writes:
-/path/to/resources/--dry-run-<id>.txt
+/path/to/resources/<id>/content.tiptap.json
+/path/to/resources/<id>/content.txt
 /path/to/meta/resource-<id>.meta.json
+/path/to/revisions/<id>/v-1/content.bin
+/path/to/revisions/<id>/v-1/metadata.json (no content)
 ```
 
 Expected output (real):
@@ -58,9 +65,11 @@ Expected output (real):
 Created resource <id>
 ```
 
+`create` produces a text resource in the same layout the app uses (`resources/<id>/` content files, a full sidecar, and an initial canonical revision `v-1`). Text templates only: image, audio and unknown template types are rejected.
+
 ### duplicate
 
-`templates duplicate <projectRoot> <resourceId>` — Duplicate a resource (new id, cloned sidecar/file).
+`templates duplicate <projectRoot> <resourceId>` — Duplicate a resource (new id, cloned sidecar/file). A text duplicate also gets its own initial canonical revision `v-1`; the source's revisions are not copied.
 
 ```bash
 node cli/dist/bin/getwrite-cli.cjs templates duplicate ./my/project <resourceId>

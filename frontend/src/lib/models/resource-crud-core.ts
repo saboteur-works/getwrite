@@ -39,7 +39,6 @@ import path from "node:path";
 import type { Dirent } from "node:fs";
 import { cp, exists, readdir, readFile, writeFile } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
-import { plainTextToTipTapDocument } from "./tiptap-doc";
 import {
   InvalidProjectIdCoreError,
   findProjectRootByInternalId,
@@ -53,9 +52,13 @@ import {
 } from ".";
 import { validateMediaFile } from "./media-validation";
 import { extractAudioMetadata, extractImageMetadata } from "./media-metadata";
-import { loadProjectConfig } from "./project-config";
-import { writeRevision, listRevisions } from "./revision";
-import { resolveInitialRevisionName } from "./resource-revision";
+import { listRevisions } from "./revision";
+import {
+  writeInitialCanonicalRevision,
+  writeResourceWithInitialRevision,
+} from "./resource-initial-revision";
+import { loadResourceContent } from "../tiptap-utils";
+import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { readSidecar, writeSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
@@ -71,7 +74,6 @@ import { generateUUID } from "./uuid";
 import type {
   AnyResource,
   MetadataValue,
-  TextResource,
   TipTapDocument,
   Revision,
 } from "./types";
@@ -118,26 +120,7 @@ export async function createResourceCore(
   const projectPath = resolveResourceProjectRootOrThrow(projectId);
 
   const resource = createResourceOfType(resourceData.type, resourceData);
-  await writeResourceToFile(projectPath, resource);
-
-  if (resource.type === "text") {
-    const config = await loadProjectConfig(projectPath).catch(() => null);
-    const revisionName = config
-      ? resolveInitialRevisionName(config)
-      : "Initial Draft";
-    // Store the first canonical revision as a serialized TipTap document.
-    // The editor only recognises a JSON payload when it loads a revision; a
-    // plain-text one reaches Tiptap as HTML and collapses to one paragraph,
-    // which the canonical autosave then writes back over the resource.
-    const text = resource as TextResource;
-    const content = JSON.stringify(
-      text.tiptap ?? plainTextToTipTapDocument(text.plainText ?? ""),
-    );
-    await writeRevision(projectPath, resource.id, 1, content, {
-      isCanonical: true,
-      metadata: { name: revisionName },
-    });
-  }
+  await writeResourceWithInitialRevision(projectPath, resource);
 
   return resource;
 }
@@ -253,8 +236,9 @@ export async function uploadMediaResourceCore(
  * Copies a resource's on-disk content directory (if any) and sidecar under a
  * newly generated id.
  *
- * Lifted verbatim from `POST /api/resource/[resource-id]`'s local
- * `copyResource` helper.
+ * Lifted from `POST /api/resource/[resource-id]`'s local `copyResource`
+ * helper. A text copy also gets its own initial canonical revision (FR-28),
+ * and a text source with no content files is rejected before any write.
  */
 export async function copyResourceCore(
   projectId: string,
@@ -267,11 +251,22 @@ export async function copyResourceCore(
   const srcDir = path.join(projectRoot, "resources", sourceId);
   const dstDir = path.join(projectRoot, "resources", newId);
 
+  // All reads complete before the first write (FR-33).
+  const sourceSidecar = await readSidecar(projectRoot, sourceId);
+  const isText = sourceSidecar?.type === "text";
+  if (isText) {
+    const content = await loadResourceContent(projectRoot, sourceId);
+    if (content.tiptap === undefined && content.plainText === undefined) {
+      throw new Error(
+        `Cannot copy text resource ${sourceId}: it has no content files to copy.`,
+      );
+    }
+  }
+
   if (await exists(srcDir)) {
     await cp(srcDir, dstDir, { recursive: true });
   }
 
-  const sourceSidecar = await readSidecar(projectRoot, sourceId);
   const newSidecar = {
     ...(sourceSidecar ?? {}),
     id: newId,
@@ -280,6 +275,16 @@ export async function copyResourceCore(
   };
 
   await writeSidecar(projectRoot, newId, newSidecar);
+
+  if (isText) {
+    // The revision holds the copy's own document, written last (FR-28).
+    const copied = await loadResourceContent(projectRoot, newId);
+    await writeInitialCanonicalRevision(
+      projectRoot,
+      newId,
+      copied.tiptap ?? plainTextToTipTapDocument(copied.plainText ?? ""),
+    );
+  }
   return newSidecar;
 }
 

@@ -19,10 +19,19 @@ import {
   writeRevision,
   getCanonicalRevision,
 } from "../../src/lib/models/revision";
+import { plainTextToTipTapDocument } from "../../src/lib/models/tiptap-doc";
 import { resolveInitialRevisionName } from "../../src/lib/models/resource-revision";
+import {
+  writeInitialCanonicalRevision,
+  writeResourceWithInitialRevision,
+} from "../../src/lib/models/resource-initial-revision";
+import {
+  createImageResource,
+  createAudioResource,
+} from "../../src/lib/models/resource";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { removeDirRetry } from "./helpers/fs-utils";
-import type { ProjectConfig } from "../../src/lib/models/types";
+import type { ProjectConfig, TipTapDocument } from "../../src/lib/models/types";
 
 async function makeTmpProject(configOverrides?: Partial<ProjectConfig>) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-rev-create-"));
@@ -144,6 +153,100 @@ describe("resource creation — initial canonical revision (T016)", () => {
 
       const canonical = await getCanonicalRevision(dir, folder.id);
       expect(canonical).toBeNull();
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+});
+
+describe("shared initial-revision writer (Feature 73, Task 1)", () => {
+  const doc: TipTapDocument = {
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "Hello" }] },
+    ],
+  };
+
+  async function readV1Content(dir: string, id: string): Promise<string> {
+    return fs.readFile(
+      path.join(dir, "revisions", id, "v-1", "content.bin"),
+      "utf8",
+    );
+  }
+
+  it("writes v-1 canonical with the default name and the plain text as a TipTap document", async () => {
+    const { dir } = await makeTmpProject();
+    try {
+      const resource = createTextResource({ name: "T", plainText: "Hello" });
+      await writeResourceWithInitialRevision(dir, resource);
+      const canonical = await getCanonicalRevision(dir, resource.id);
+      expect(canonical?.versionNumber).toBe(1);
+      expect(canonical?.isCanonical).toBe(true);
+      expect(canonical?.metadata?.name).toBe("Initial Draft");
+      expect(JSON.parse(await readV1Content(dir, resource.id))).toEqual(
+        plainTextToTipTapDocument("Hello"),
+      );
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("stores content JSON-equal to the supplied document and uses the configured name", async () => {
+    const { dir, proj } = await makeTmpProject({
+      defaultRevisionName: "Opening Scene",
+    });
+    try {
+      const resource = createTextResource({ name: "T", plainText: "Hello" });
+      await writeResourceToFile(dir, resource);
+      await writeInitialCanonicalRevision(dir, resource.id, doc);
+      const canonical = await getCanonicalRevision(dir, resource.id);
+      expect(canonical?.metadata?.name).toBe(
+        resolveInitialRevisionName(proj.config!),
+      );
+      expect(canonical?.metadata?.name).toBe("Opening Scene");
+      expect(JSON.parse(await readV1Content(dir, resource.id))).toEqual(doc);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("falls back to 'Initial Draft' when project.json is absent", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-rev-noproj-"));
+    try {
+      const resource = createTextResource({ name: "T", plainText: "Hello" });
+      await writeResourceWithInitialRevision(dir, resource);
+      const canonical = await getCanonicalRevision(dir, resource.id);
+      expect(canonical?.metadata?.name).toBe("Initial Draft");
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("falls back to 'Initial Draft' when project.json is unparseable", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-rev-badjson-"));
+    try {
+      // The sidecar write itself parses project.json, so persist the resource
+      // first and corrupt the file only for the config read under test.
+      const resource = createTextResource({ name: "T", plainText: "Hello" });
+      await writeResourceToFile(dir, resource);
+      await fs.writeFile(path.join(dir, PROJECT_FILENAME), "{not json", "utf8");
+      await writeInitialCanonicalRevision(dir, resource.id, doc);
+      const canonical = await getCanonicalRevision(dir, resource.id);
+      expect(canonical?.metadata?.name).toBe("Initial Draft");
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("writes no revision for image or audio resources", async () => {
+    const { dir } = await makeTmpProject();
+    try {
+      const image = createImageResource({ name: "I", file: "original.png" });
+      const audio = createAudioResource({ name: "A", file: "original.mp3" });
+      await writeResourceWithInitialRevision(dir, image);
+      await writeResourceWithInitialRevision(dir, audio);
+      expect(await getCanonicalRevision(dir, image.id)).toBeNull();
+      expect(await getCanonicalRevision(dir, audio.id)).toBeNull();
     } finally {
       await removeDirRetry(dir);
     }

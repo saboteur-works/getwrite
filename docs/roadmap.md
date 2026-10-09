@@ -10,7 +10,7 @@ Horizons reflect priority and readiness, not committed dates. This document cove
 
 ### Templates & Scaffolding
 
-- **Template CLI expansion** — Additional template commands: `save-from-resource`, `parametrize`, `create --vars` (with `--dry-run`), `inspect`, `export`, `import`, and `validate`. _Status: partial — `save`, `create`, `duplicate`, and `list` shipped._ → [cli.md](features/cli.md)
+- **Template CLI expansion** — Additional template commands: `parametrize`, `create --vars` (with `--dry-run`), `inspect`, `export`, `import`, and `validate`. _Status: partial — `save`, `save-from-resource`, `create`, `duplicate`, and `list` shipped._ → [cli.md](features/cli.md)
 
 ### Platform
 

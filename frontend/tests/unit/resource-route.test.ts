@@ -52,6 +52,28 @@ async function withProjectsDirEnv<T>(
   }
 }
 
+describe("createResourceCore — blank create regression (Feature 73, Task 1)", () => {
+  it("persists no resourceSubtype key even when the request carries one", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resource = await resourceCrudCore.createResourceCore(projectId, {
+        name: "Stray",
+        type: "text",
+        text: { plainText: "body" },
+        resourceSubtype: "Scene",
+      } as never);
+      const sidecar = JSON.parse(
+        await fs.readFile(
+          path.join(projectPath, "meta", `resource-${resource.id}.meta.json`),
+          "utf8",
+        ),
+      ) as Record<string, unknown>;
+      expect(sidecar).not.toHaveProperty("resourceSubtype");
+      expect(sidecar.name).toBe("Stray");
+    });
+  });
+});
+
 describe("POST /api/resource (projectId-based)", () => {
   it("resolves projectId to the on-disk project and persists the resource", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();

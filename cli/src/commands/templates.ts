@@ -15,6 +15,7 @@
  * | Command | Description |
  * |---------|-------------|
  * | `templates save <projectRoot> <templateId> <name>` | Persist a new empty template to disk |
+ * | `templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` | Capture an existing text resource as a template |
  * | `templates create <projectRoot> <templateId> [name]` | Create a resource from an existing template |
  * | `templates duplicate <projectRoot> <resourceId>` | Duplicate an existing resource as a new resource |
  * | `templates list <projectRoot>` | Print all templates found in the project |
@@ -45,6 +46,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import {
   saveResourceTemplate,
+  saveResourceTemplateFromResource,
   createResourceFromTemplate,
   duplicateResource,
   runForTenant,
@@ -55,8 +57,8 @@ import { guardAgainstEncryptedProject } from "../lib/encryption-guard";
  * Registers the `templates` sub-command group on the provided Commander
  * `program`.
  *
- * Attaches four child commands covering the full template lifecycle:
- * `save`, `create`, `duplicate`, and `list`.
+ * Attaches five child commands covering the full template lifecycle:
+ * `save`, `save-from-resource`, `create`, `duplicate`, and `list`.
  *
  * @param program - The root Commander `Command` instance to attach the
  *   sub-command group to.
@@ -115,6 +117,58 @@ export function registerTemplates(program: Command) {
           } as const;
           await runForTenant(projectRoot, () =>
             saveResourceTemplate(projectRoot, template as any),
+          );
+          console.log(`Saved template ${templateId}`);
+        } catch (err) {
+          console.error("Error:", (err as Error).message);
+          process.exit(2);
+        }
+      },
+    );
+
+  /**
+   * `templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]`
+   *
+   * Captures an existing text resource as a template at
+   * `<projectRoot>/meta/templates/<templateId>.json` (body as plain text,
+   * metadata, and resource subtype). An existing template with the same id is
+   * overwritten without prompting. `--name` overrides the template name,
+   * which otherwise defaults to the resource's name.
+   *
+   * Exits with code `2` (and writes no template) when the resource cannot be
+   * captured.
+   */
+  tpl
+    .command("save-from-resource <projectRoot> <resourceId> <templateId>")
+    .description("Save an existing text resource as a template")
+    .option("--name <name>", "Name for the template (default: the resource's)")
+    .action(
+      async (
+        projectRoot: string,
+        resourceId: string,
+        templateId: string,
+        options: { name?: string },
+      ): Promise<void> => {
+        try {
+          const guardCode = await guardAgainstEncryptedProject(
+            projectRoot,
+            "templates save-from-resource",
+            "It would write the new template's JSON straight into " +
+              "meta/templates/, landing as plaintext inside an otherwise " +
+              "sealed project.",
+          );
+          if (guardCode !== null) {
+            process.exit(guardCode);
+            return;
+          }
+
+          await runForTenant(projectRoot, () =>
+            saveResourceTemplateFromResource(
+              projectRoot,
+              resourceId,
+              templateId,
+              { name: options.name },
+            ),
           );
           console.log(`Saved template ${templateId}`);
         } catch (err) {

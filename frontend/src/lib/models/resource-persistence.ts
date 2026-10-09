@@ -174,6 +174,24 @@ export async function writeResourceToFile(
     }
   }
 
+  await writeSidecar(
+    projectPath,
+    resource.id,
+    buildResourceSidecarData(resource),
+  );
+  return resource;
+}
+
+/**
+ * Builds the sidecar object persisted for a non-folder resource. Pure: no I/O.
+ *
+ * `resourceSubtype` is included (trimmed) only when the resource object
+ * carries a non-blank one. The blank-create factory never copies a request's
+ * subtype onto the resource, so ordinary creation paths yield no such key.
+ */
+export function buildResourceSidecarData(
+  resource: AnyResource,
+): Record<string, MetadataValue> {
   const sidecarData: Record<string, MetadataValue> = {
     id: resource.id,
     name: resource.name,
@@ -184,6 +202,12 @@ export async function writeResourceToFile(
     slug: resource.slug || null,
     userMetadata: resource.userMetadata || {},
   };
+
+  const subtype =
+    typeof resource.resourceSubtype === "string"
+      ? resource.resourceSubtype.trim()
+      : "";
+  if (subtype !== "") sidecarData.resourceSubtype = subtype;
 
   if (isTextResource(resource)) {
     // A caller that saves content without also supplying a count would
@@ -209,8 +233,7 @@ export async function writeResourceToFile(
     }
   }
 
-  await writeSidecar(projectPath, resource.id, sidecarData);
-  return resource;
+  return sidecarData;
 }
 
 /**
