@@ -127,7 +127,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-14 (an expired code confirms nothing), FR-15, FR-16 (the attempt counter is held server-side, not by the browser), FR-11 (a refusal reveals only what FR-19 requires: `wrong` versus `unusable`). There is no separate lockout on the endpoint (spec). If the file is replaced by main (a new code) between the read and the write, the server's write must not resurrect the old state: re-read under the lock and compare `generatedAt` before writing, with a test.
 **POS:** task_0e68d3c0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Request classification and the same-origin check (pure, decision only)
 **What:** Add the pure frontend function that classifies a request as window, confirmed or not confirmed, and the same-origin check for state-changing methods.

@@ -11,16 +11,7 @@
  * clean read (unparseable, schema-invalid, unreadable) is reported as
  * `corrupt`, which callers must treat as refusing (fail closed).
  */
-import {
-  chmod,
-  mkdir,
-  open,
-  readFile,
-  rename,
-  rm,
-  stat,
-  unlink,
-} from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import {
   createHash,
   randomBytes,
@@ -30,22 +21,14 @@ import {
 import path from "node:path";
 import { z } from "zod";
 
+import { LOCK_SUFFIX, withFileLock, writeFileAtomically } from "./file-lock";
+
 export const CREDENTIALS_FILE_NAME = "device-credentials.json";
-const LOCK_SUFFIX = ".lock";
 
 const TOKEN_BYTES = 32;
 /** base64url length of TOKEN_BYTES bytes, unpadded. */
 const TOKEN_LENGTH = 43;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
-
-const LOCK_RETRY_LIMIT = 200;
-const LOCK_RETRY_DELAY_MS = 25;
-/**
- * A lock file older than this is assumed to belong to a process that died
- * while holding it, and is removed. The critical section is a read plus one
- * small write, so a held lock this old cannot be live.
- */
-const LOCK_STALE_MS = 30_000;
 
 const DeviceRecordSchema = z.object({
   id: z.string().min(1),
@@ -148,56 +131,6 @@ export async function findDeviceByToken(
   return device ? { kind: "found", device } : { kind: "unknown" };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function removeIfStale(lockPath: string): Promise<void> {
-  try {
-    const info = await stat(lockPath);
-    if (Date.now() - info.mtimeMs > LOCK_STALE_MS) await unlink(lockPath);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-}
-
-async function acquireLock(lockPath: string): Promise<void> {
-  for (let attempt = 0; attempt < LOCK_RETRY_LIMIT; attempt += 1) {
-    try {
-      const handle = await open(lockPath, "wx", 0o600);
-      await handle.close();
-      return;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      await removeIfStale(lockPath);
-      await sleep(LOCK_RETRY_DELAY_MS);
-    }
-  }
-  throw new Error("Could not acquire the credential store lock");
-}
-
-async function writeAtomically(
-  filePath: string,
-  devices: DeviceRecord[],
-): Promise<void> {
-  const tempPath = `${filePath}.${randomBytes(6).toString("hex")}.tmp`;
-  const body = `${JSON.stringify({ version: 1, devices }, null, 2)}\n`;
-  try {
-    const handle = await open(tempPath, "wx", 0o600);
-    try {
-      await handle.writeFile(body, "utf8");
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
-    await chmod(tempPath, 0o600);
-    await rename(tempPath, filePath);
-  } catch (error) {
-    await rm(tempPath, { force: true });
-    throw error;
-  }
-}
-
 /**
  * Append a device. Serialised by an exclusive lock file so concurrent calls
  * all persist. Refuses (throws) when the existing store is corrupt, so a
@@ -210,8 +143,7 @@ export async function addDevice(
   await mkdir(dir, { recursive: true });
   const filePath = path.join(dir, CREDENTIALS_FILE_NAME);
   const lockPath = `${filePath}${LOCK_SUFFIX}`;
-  await acquireLock(lockPath);
-  try {
+  await withFileLock(lockPath, async () => {
     const state = await readCredentialStore(dir);
     if (state.kind === "corrupt") {
       throw new Error(
@@ -219,8 +151,7 @@ export async function addDevice(
       );
     }
     const existing = state.kind === "ok" ? state.devices : [];
-    await writeAtomically(filePath, [...existing, device]);
-  } finally {
-    await rm(lockPath, { force: true });
-  }
+    const body = `${JSON.stringify({ version: 1, devices: [...existing, device] }, null, 2)}\n`;
+    await writeFileAtomically(filePath, body);
+  });
 }
