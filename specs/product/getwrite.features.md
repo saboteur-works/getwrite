@@ -279,11 +279,11 @@ Note, 2026-10-08: template creation was measured on this date to write
 resources the project loaders reject (a flat content file and a four-key
 sidecar, after which `loadProjectFromDisk` and `getLocalResources` both throw
 for the whole project); Feature 73 fixes it and adds `save-from-resource` to
-the shipped commands, and has shipped on branch `feat/subtype-templates-duplicate`
-(not yet merged to `main`; 2026-10-08). Correction, 2026-10-08: the statement
+the shipped commands, and has shipped and merged to `main`
+(PR #261, 2026-10-08). Correction, 2026-10-08: the statement
 above that the richer template CLI is not wired into the shipped binary no
 longer holds for one command: `templates save-from-resource` is now a registered
-command in the shipped `getwrite-cli` on that branch; the other helper
+command in the shipped `getwrite-cli` (merged to `main`); the other helper
 subcommands remain unbundled and reachable only from tests. This entry's status
 and references are unchanged.
 
@@ -2785,8 +2785,9 @@ none with "copy" in its name, 9 of the 11 with a word count of zero or absent;
 how they came to lack a revision was not established, and only the repo's
 store was checked. The owner then approved the feature spec.
 
-Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main`
-as of this entry (2026-10-08); accepted by the owner 2026-10-08.
+Shipped on branch `feat/subtype-templates-duplicate`, accepted by the owner
+2026-10-08, and merged to `main` via PR #261 on 2026-10-08 (merge commit
+`f1e3ffbe`).
 `specs/features/subtype-templates-duplicates.md` and its `tasks.md` (eleven
 tasks, all done) are the authoritative record of the shipped scope. Tests:
 frontend `pnpm typecheck` clean and the suite at 5557 passed, 1 skipped,
@@ -2897,8 +2898,8 @@ follow-up.
 - Total features: 73
 - Suggested build order: 72 → 73 for resource subtype (73 needs 72's
   sidecar key; 72 has since shipped and merged to `main` (PR #260,
-  2026-10-08), and 73 has since shipped on branch
-  `feat/subtype-templates-duplicate`, not yet merged to `main`, 2026-10-08). Features 1 through 23
+  2026-10-08), and 73 has since shipped and merged to `main` (PR #261,
+  2026-10-08)). Features 1 through 23
   are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2979,7 +2980,7 @@ follow-up.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73 (Feature 72 having merged and 73 having shipped on its branch, not yet merged; 30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73 (Features 72 and 73 having both merged; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
 - Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything

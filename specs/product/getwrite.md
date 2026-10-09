@@ -299,12 +299,11 @@ lost work.
   2026-10-08: template creation was measured on this date to write resources
   the project loaders reject (a flat content file and a four-key sidecar,
   after which the project fails to load and to list); FR-63 addresses it and
-  adds `save-from-resource` to the shipped commands; the fix has shipped on
-  branch `feat/subtype-templates-duplicate`, not yet merged to `main`
-  (2026-10-08). Correction, 2026-10-08: the statement above that the richer
+  adds `save-from-resource` to the shipped commands; the fix has shipped and
+  merged to `main` (merged 2026-10-08). Correction, 2026-10-08: the statement above that the richer
   template CLI is not wired into the shipped binary no longer holds for one
   command: `templates save-from-resource` is now a registered command in the
-  shipped `getwrite-cli` on that branch; the other helper subcommands remain
+  shipped `getwrite-cli` (merged to `main` 2026-10-08); the other helper subcommands remain
   unbundled and reachable only from tests. This requirement's history is
   otherwise unchanged. [US-13]
 - FR-20: Users MUST be able to define and manage custom metadata field
@@ -326,9 +325,8 @@ lost work.
   running app was measured on this date to have no revision directory, and
   edits typed into it were not saved and were lost on page reload, with no
   error shown (the Duplicate action was measured; the menu's "Copy" action was
-  not). FR-64 addresses it, and the fix has shipped on branch
-  `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08).
-  This requirement's history is otherwise unchanged. [US-6]
+  not). FR-64 addresses it, and the fix has shipped and merged
+  to `main` (merged 2026-10-08). This requirement's history is otherwise unchanged. [US-6]
 - FR-22: The editor MUST provide TipTap-based WYSIWYG rich-text editing with
   a config-driven toolbar, heading/body styling, tables, and paste
   normalization. [US-9]
@@ -705,6 +703,58 @@ lost work.
   should later ship lists is a deferred content decision (see Out of Scope
   (Deferred)). [US-25][US-26]
 
+- FR-62: A resource created from a resource template, and a duplicate or
+  copy of a resource, MUST carry the source's subtype (a resource created
+  from a "Scene" template is a Scene; a duplicate keeps its original's
+  subtype). A resource created blank MUST have no subtype. The import
+  pipelines (Scrivener, DOCX and plain text) MUST NOT assign a subtype.
+  Amended 2026-10-08 (Gate 3): the Gate 1 sentence that it was not verified
+  whether templates and duplicate carry the entity declaration is replaced
+  by what is now known. Copy and duplicate spread the whole source sidecar
+  and so carry `entityKind`, `aliases`, `wordCountGoal` and
+  `dismissedNoiseTerms` (established by reading the code; no test asserts
+  it). Templates carry none of those four and are not required to (Gate 3,
+  default accepted). That a resource created from a template can be opened
+  at all is FR-63, which this requirement depends on for its template half.
+  That a copy or duplicate of a text resource can be edited at all is FR-64
+  (added 2026-10-08, Gate 3). Status: Shipped. Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08;
+  amended by the Gate 3 additions recorded under OQ-65. [US-25]
+- FR-63: A resource created from a resource template MUST be a normal
+  resource the app can open: it MUST be written the way the app's own
+  create path writes a resource (a per-resource content folder, a complete
+  valid sidecar, and for a text resource an initial canonical revision), and
+  it MUST carry the template's own metadata and subtype. Measured
+  2026-10-08: today it is not; template creation writes a flat content file
+  and a four-key sidecar, after which the project loader and the resource
+  lister both throw for the whole project. A writer MUST also be able to
+  save a template from an existing resource through the shipped
+  `getwrite-cli`, capturing the resource's type, text body, own metadata and
+  subtype and nothing else from its sidecar. A subtype the template or the
+  source resource holds in an invalid form MUST be rejected with an error
+  naming it, not dropped. Status: Shipped. Resolved (OQ-65 addition):
+  Owner decision, Gate 3, 2026-10-08. [US-13][US-25]
+- FR-64: A copy or duplicate of a text resource MUST be editable like any
+  other resource: it MUST have an initial canonical revision, so that an
+  edit made to it is autosaved and survives a reload. That revision is
+  written by the same code that gives a new, template-created or imported
+  text resource its first revision, so that the ways of making a text
+  resource cannot drift apart; the source's other revisions are not copied,
+  and an image or audio copy is unchanged (it has no revision, as no media
+  resource does). Measured 2026-10-08 in the running app (`next dev` with a
+  disposable projects directory, the browser driven by Playwright, files
+  checked on disk): after Duplicate on a text resource, edits typed into the
+  copy were in neither content file after about 25 seconds, the copy had no
+  revision directory, and after a page reload and reopening the copy the
+  edits were gone, with no error or unsaved-changes prompt. A model-level
+  check the same day found the same missing revision after a copy and after
+  a duplicate. The cause of the lost edits was not established by an
+  experiment. Copies and duplicates made before this requirement is met are
+  not repaired by it (decided: not repaired; a repair command is deferred to
+  a follow-up feature, see Out of Scope (Deferred); Owner decision, Gate 3,
+  2026-10-08). Status: Shipped.
+  Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
+  [US-6][US-9]
+
 ### In Progress Requirements
 
 - FR-26: Organizer view MUST support filtering cards by Status, by word
@@ -1075,57 +1125,6 @@ lost work.
   belongs at the feature-spec rung. This requirement rides the existing
   per-project `entities` feature flag and MUST NOT introduce a flag of its
   own, consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-56): "done" for this pass is qualitative owner sign-off against a built implementation, not a predefined checklist — the feature spec and task breakdown for this requirement MUST include an explicit owner review/sign-off step rather than treating completion as self-certifiable against fixed criteria. [US-17]
-- FR-62: A resource created from a resource template, and a duplicate or
-  copy of a resource, MUST carry the source's subtype (a resource created
-  from a "Scene" template is a Scene; a duplicate keeps its original's
-  subtype). A resource created blank MUST have no subtype. The import
-  pipelines (Scrivener, DOCX and plain text) MUST NOT assign a subtype.
-  Amended 2026-10-08 (Gate 3): the Gate 1 sentence that it was not verified
-  whether templates and duplicate carry the entity declaration is replaced
-  by what is now known. Copy and duplicate spread the whole source sidecar
-  and so carry `entityKind`, `aliases`, `wordCountGoal` and
-  `dismissedNoiseTerms` (established by reading the code; no test asserts
-  it). Templates carry none of those four and are not required to (Gate 3,
-  default accepted). That a resource created from a template can be opened
-  at all is FR-63, which this requirement depends on for its template half.
-  That a copy or duplicate of a text resource can be edited at all is FR-64
-  (added 2026-10-08, Gate 3). Status: Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08). Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08;
-  amended by the Gate 3 additions recorded under OQ-65. [US-25]
-- FR-63: A resource created from a resource template MUST be a normal
-  resource the app can open: it MUST be written the way the app's own
-  create path writes a resource (a per-resource content folder, a complete
-  valid sidecar, and for a text resource an initial canonical revision), and
-  it MUST carry the template's own metadata and subtype. Measured
-  2026-10-08: today it is not; template creation writes a flat content file
-  and a four-key sidecar, after which the project loader and the resource
-  lister both throw for the whole project. A writer MUST also be able to
-  save a template from an existing resource through the shipped
-  `getwrite-cli`, capturing the resource's type, text body, own metadata and
-  subtype and nothing else from its sidecar. A subtype the template or the
-  source resource holds in an invalid form MUST be rejected with an error
-  naming it, not dropped. Status: Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08). Resolved (OQ-65 addition):
-  Owner decision, Gate 3, 2026-10-08. [US-13][US-25]
-- FR-64: A copy or duplicate of a text resource MUST be editable like any
-  other resource: it MUST have an initial canonical revision, so that an
-  edit made to it is autosaved and survives a reload. That revision is
-  written by the same code that gives a new, template-created or imported
-  text resource its first revision, so that the ways of making a text
-  resource cannot drift apart; the source's other revisions are not copied,
-  and an image or audio copy is unchanged (it has no revision, as no media
-  resource does). Measured 2026-10-08 in the running app (`next dev` with a
-  disposable projects directory, the browser driven by Playwright, files
-  checked on disk): after Duplicate on a text resource, edits typed into the
-  copy were in neither content file after about 25 seconds, the copy had no
-  revision directory, and after a page reload and reopening the copy the
-  edits were gone, with no error or unsaved-changes prompt. A model-level
-  check the same day found the same missing revision after a copy and after
-  a duplicate. The cause of the lost edits was not established by an
-  experiment. Copies and duplicates made before this requirement is met are
-  not repaired by it (decided: not repaired; a repair command is deferred to
-  a follow-up feature, see Out of Scope (Deferred); Owner decision, Gate 3,
-  2026-10-08). Status: Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08).
-  Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
-  [US-6][US-9]
 
 ### Later Requirements
 
@@ -2649,8 +2648,7 @@ were built around.
   is not wired into the shipped `getwrite-cli` binary and is reachable only
   from tests (see FR-19). Correction, 2026-10-08: `templates save-from-resource`
   is the one exception; it is now a registered command in the shipped
-  `getwrite-cli` on branch `feat/subtype-templates-duplicate` (not yet merged
-  to `main`); the other helper subcommands remain unbundled.
+  `getwrite-cli` (merged to `main` 2026-10-08); the other helper subcommands remain unbundled.
 - Resource subtype follow-ups (FR-57 to FR-62, resolved: OQ-58, OQ-60, OQ-62,
   OQ-63, OQ-65; Owner decision, Gate 1, 2026-10-08), deferred or excluded
   from the first slice: a rename operation for subtypes (renaming is remove
