@@ -109,6 +109,81 @@ Both servers were killed (PID 20692, then PID 23863; the first `kill` inside the
 ?? specs/features/home-network-sharing/experiments.md
 ```
 
+## B: native export build with proxy.ts
+
+Run 2026-10-09, macOS (Darwin 25.5.0), inside the Claude Code OS sandbox, from `frontend/` of a git worktree (`frontend/node_modules` was a temporary symlink to the main checkout's, removed afterwards). Nothing outside the sandbox was used. No cause is named below unless a run discriminated it. Before the first run there was no `frontend/out/`, no `frontend/.native-build/` and no `frontend/proxy.ts`, so stale output cannot confuse the searches.
+
+### What `build-native-static.mjs` copies (as read, not run-derived)
+
+It builds `frontend/.native-build/` by iterating the top-level entries of `frontend/`. Skipped entirely: `.next`, `out`, `.native-build`. Physically copied: `app/` (then `api`, `login`, `reset-password`, `verify-email`, `project-types` are removed from the copy only), `package.json`, `tsconfig.json`, `next.config.mjs`, `next-env.d.ts`. Every other top-level entry, files included, is symlinked into the shadow root. `proxy.ts` is not in the copy list, so it is symlinked. `next build` then runs with `cwd` = the shadow root, `GETWRITE_BUILD_TARGET=native`, `NEXT_PUBLIC_GETWRITE_RUNTIME=native`, `GETWRITE_TEMPLATES_DIR=<repo>/getwrite-config/templates/project-types`, and `distDir: "../out"` from `next.config.mjs`.
+
+### (1) Control run, no `proxy.ts`
+
+`cd frontend && pnpm build:native`, Fri Oct 9 12:24:04 MDT 2026 to 12:24:15. Exit status `1` (repeated at 12:26:12 with the same result). The Next compile step printed `✓ Compiled successfully in 3.6s`, then:
+
+```
+  Running TypeScript ...
+Failed to type check.
+
+./stories/Start/CreateProjectModal.stories.tsx:6:8
+Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal' or its corresponding type declarations.
+...
+Next.js build worker exited with code: 1 and signal: null
+[build-native-static] ERROR: `next build` exited with status 1.
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+`frontend/out/` did not exist afterwards. The error is a type error, not a sandbox-shaped error (no EPERM or "operation not permitted" in the build output other than the `.npmrc` read warning that every `pnpm` call in this sandbox prints), so no retry outside the sandbox was made. Observations only: `frontend/.native-build/stories` is a symlink to `frontend/stories` (per the script), and the failing import is a relative path (`../../../frontend/components/...`) written in `frontend/stories/`. The runs did not test whether either fact is the cause, and did not run the same build in the main checkout.
+
+So the build as written does not complete in this worktree, with or without `proxy.ts`.
+
+### (2) Same build with `frontend/proxy.ts`
+
+First version: `proxy()` returned `NextResponse.next()` and held `"SPIKE-PROXY-MARKER"` only in an unused local. Second version (used for the results below): `const response = NextResponse.next(); response.headers.set("x-spike", "SPIKE-PROXY-MARKER"); return response;`, because the string in the first version was observed not to appear in the emitted JS (see (4)).
+
+`pnpm build:native`: Fri Oct 9 12:24:40 MDT 2026, exit `1`; second version Fri Oct 9 12:25:35 MDT 2026, exit `1`. In both, the output was the same as the control: `✓ Compiled successfully`, then the same `Failed to type check` error in `./stories/Start/CreateProjectModal.stories.tsx:6:8`. `frontend/out/` did not exist afterwards. The first lines of the failure were therefore identical to the control's; the proxy file did not change the outcome of the script as run.
+
+### (3) Does the shadow root contain `proxy.ts`
+
+`ls -la frontend/.native-build/proxy.ts` after the with-proxy run: `lrwxr-xr-x ... .native-build/proxy.ts -> /Users/jedaisaboteur/Repositories/getwrite/.claude/worktrees/agent-aa93d7769971cdef2/frontend/proxy.ts`, i.e. a symlink to `frontend/proxy.ts`, as the script's symlink-everything-else rule predicts. After the control run (proxy.ts deleted) `ls -a .native-build | grep -i proxy` printed nothing.
+
+### Supplementary runs (not the script as written)
+
+Because both script runs stop at the type check, `frontend/out/` was never produced, so (4) could not be answered from them. To get an `out/` I ran, after each failed script run, the same `next build` the script runs, by hand, in the freshly assembled shadow root, with one change to the shadow copy only: `"stories"` added to `exclude` in `frontend/.native-build/tsconfig.json` (the script's own copy; `frontend/tsconfig.json` and the script were not edited). Command, with the script's environment:
+
+`cd frontend/.native-build && GETWRITE_BUILD_TARGET=native NEXT_PUBLIC_GETWRITE_RUNTIME=native GETWRITE_TEMPLATES_DIR=<repo>/getwrite-config/templates/project-types ./node_modules/.bin/next build`
+
+- With `proxy.ts` (first version): 2026-10-09 12:25:09 to 12:25:20, exit `0`. The route table ended with `ƒ Proxy (Middleware)` and the output included `⚠ Statically exporting a Next.js application via 'next export' disables API routes and middleware.`
+- With `proxy.ts` (second version): 12:25:53 to 12:26:05, exit `0`.
+- Control (no `proxy.ts`, script rerun to rebuild the shadow root, then the same hand command): 12:26:27 to 12:26:38, exit `0`; no `Proxy` line in its output.
+
+So with the type-check obstacle removed from the shadow tsconfig only, the build exits 0 with and without `proxy.ts`.
+
+### (4) Search of `frontend/out/` (supplementary runs)
+
+- `grep -rl "SPIKE-PROXY-MARKER" out`: no match, exit `1`, in both with-proxy runs. In the first version the marker was also not in the emitted server JS; in the second version it was found in `frontend/.native-build/.next/server/chunks/[root-of-the-server]__0dplkwz._.js` (and its `.map`), and not in `out/`.
+- `find out -iname "*proxy*" -o -iname "*middleware*"`: with proxy, `out/_next/static/wgy-P_wCWYA0DtK7vgcgp/_clientMiddlewareManifest.js`; control, `out/_next/static/Oke7wZuUVBE3MYf95NNrr/_clientMiddlewareManifest.js`. No file named `proxy*`.
+- Contents, with proxy (first version): `self.__MIDDLEWARE_MATCHERS = [ { "regexp": "^.*$", "originalSource": "/:path*" } ];self.__MIDDLEWARE_MATCHERS_CB && self.__MIDDLEWARE_MATCHERS_CB()`. Contents, control: `self.__MIDDLEWARE_MATCHERS = [];self.__MIDDLEWARE_MATCHERS_CB && self.__MIDDLEWARE_MATCHERS_CB()`.
+- File lists of `out/` (179 files each) differed only in the build-id directory name (`wgy-P_wCWYA0DtK7vgcgp` vs `Oke7wZuUVBE3MYf95NNrr`); every other path was identical (`diff` of the sorted `find out -type f` lists).
+- `grep -rli proxy out` matched 34 files with the proxy present; the matches were not inspected. The control's count was not taken.
+
+### (5) Implication, per the spec
+
+- The build as written (`pnpm build:native`) failed identically with and without `proxy.ts` in this worktree, at a TypeScript error in `stories/`, so `proxy.ts` is not shown here to break it. The failure is pre-existing in this worktree and was not caused by this experiment; its cause was not established.
+- Where the build could be completed (supplementary, shadow tsconfig edited), `proxy.ts` did not break it, and no proxy code or marker reached `out/`. One proxy-related artefact did: the client file `_clientMiddlewareManifest.js` exists in `out/` in both runs, with a matcher entry only when `proxy.ts` is present. It is an inert manifest, not the proxy function; the runs did not test whether anything reads it in the Capacitor WebView.
+- Per the spec's rule this reads as "clean" for the native export on the supplementary evidence, with the caveat above. No exclusion in `build-native-static.mjs` was needed or tried; Task 6 (or whichever task adds `frontend/proxy.ts`) should not rely on the script building successfully until the `stories/` type error is dealt with, or should name it as a separate pre-existing problem.
+- Not measured: the same build in the main checkout (so whether the `stories/` failure is specific to this worktree is unknown); the Capacitor/Android runtime; `pnpm build:native` outside the sandbox (not needed, the failure was a type error).
+
+### Final state
+
+Throwaway `frontend/proxy.ts` deleted; `frontend/out`, `frontend/.native-build`, the `frontend/node_modules` symlink and the generated `frontend/getwrite-config` link (created by the script's `ensure-config-link`) were removed. `git check-ignore -v` output: `frontend/.gitignore:25:/out/	out`, `frontend/.gitignore:26:.native-build/	.native-build`, `frontend/.gitignore:28:/getwrite-config	getwrite-config`; so `out` and `.native-build` are gitignored (neither existed before the run). `git status --short` at the worktree root, run before this section was appended:
+
+```
+?? node_modules
+```
+
+`node_modules` is the pre-existing root symlink. `experiments.md` is tracked and shows as modified by this append.
+
 ## C: preparation
 
 Prepared 2026-10-09 by Task 3 (an agent, inside the Claude Code OS sandbox). This section contains the patch, what was verified about it, and the steps for the owner to run Task 4. No result of the experiment itself is recorded here; nothing was launched.
