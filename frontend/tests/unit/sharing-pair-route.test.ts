@@ -11,7 +11,10 @@ import {
   CREDENTIALS_FILE_NAME,
   readCredentialStore,
 } from "../../src/lib/sharing/credential-store";
-import { classifyRequest } from "../../src/lib/sharing/classify-request";
+import {
+  DEVICE_COOKIE_MAX_AGE_SECONDS,
+  classifyRequest,
+} from "../../src/lib/sharing/classify-request";
 import { POST } from "../../app/api/sharing/pair/route";
 
 // Injected machine identity (Task 25): the route reads the machine at request
@@ -103,8 +106,8 @@ describe("POST /api/sharing/pair", () => {
     expect(cookie).toMatch(/SameSite=strict/i);
     expect(cookie).toContain("Path=/");
     expect(cookie).not.toMatch(/Secure/i);
-    expect(cookie).not.toMatch(/Max-Age/i);
-    expect(cookie).not.toMatch(/Expires/i);
+    expect(cookie).toContain("Max-Age=31536000");
+    expect(cookie).toContain(`Max-Age=${DEVICE_COOKIE_MAX_AGE_SECONDS}`);
   });
 
   it("never puts the token or a hash in the body, and stores a hash with a name from the User-Agent", async () => {

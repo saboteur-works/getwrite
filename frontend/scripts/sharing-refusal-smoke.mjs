@@ -347,6 +347,10 @@ async function main() {
     const authStatus = { url: "/api/auth-status", method: "GET" };
     const okGet = await send(authStatus, { cookie });
     check("paired cookie passes a GET", okGet.status === 200);
+    check(
+      "paired cookie on a GET returns Set-Cookie with Max-Age (FR-33)",
+      (okGet.headers.get("set-cookie") ?? "").includes("Max-Age=31536000"),
+    );
     const crossOrigin = await send(
       { url: "/api/project/rename", method: "POST" },
       { cookie, origin: "http://evil.example" },

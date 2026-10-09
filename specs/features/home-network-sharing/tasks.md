@@ -288,7 +288,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-33; consistent with "no expiry until revoked" (resolved OQ-8). Unverified, to be settled in Task 24 item 16: whether the owner's phone browser keeps the cookie across a browser restart; browsers may cap cookie lifetimes and no cap is stated or relied on here (nothing in this repository establishes one), so a value above a browser's cap is simply clamped by that browser as far as is known. Unverified until Task 23's built-server run: that a `Set-Cookie` set on `NextResponse.next(...)` in `proxy.ts` reaches the client when a route handler produces the response. Renewal on every confirmed response adds a `Set-Cookie` header to each; asset requests are not confirmed-gated, so they are not touched. The cookie is still cleartext (accepted, review H1) and still not port-scoped (accepted, L2). Run after Task 25 (the tests use its injected machine).
 **POS:** task_9335b644
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Window navigation guard compares the exact origin; sharing IPC refuses a foreign sender (FR-35)
 **What:** Replace the string-prefix navigation test with a comparison of the parsed origin, and make the four sharing IPC handlers refuse a call whose sender frame is not the local origin.

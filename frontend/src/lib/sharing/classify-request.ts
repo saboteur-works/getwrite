@@ -19,6 +19,12 @@ import { readSharingEnv, type EnvLike } from "./sharing-env";
 export const WINDOW_HEADER = "x-getwrite-window";
 /** Cookie carrying a paired device's credential. */
 export const DEVICE_COOKIE = "getwrite_device";
+
+/**
+ * Lifetime of the device cookie, 365 days (FR-33). A working value pending
+ * owner confirmation (spec OQ-13); re-issued on every confirmed request.
+ */
+export const DEVICE_COOKIE_MAX_AGE_SECONDS = 31536000;
 /** Request header the gate may use to carry a serialized classification to routes. */
 export const CLASSIFICATION_HEADER = "x-getwrite-classification";
 

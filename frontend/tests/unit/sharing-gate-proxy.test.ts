@@ -23,6 +23,7 @@ import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
 import {
   CLASSIFICATION_HEADER,
   DEVICE_COOKIE,
+  DEVICE_COOKIE_MAX_AGE_SECONDS,
   WINDOW_HEADER,
 } from "../../src/lib/sharing/classify-request";
 import {
@@ -615,5 +616,155 @@ describe("Host allowlist (FR-31)", () => {
   it("the exported proxy reads the real machine when none is injected", async () => {
     const res = await realProxy(foreign("/pair"));
     expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+  });
+});
+
+describe("Device cookie renewal (FR-33)", () => {
+  const setCookies = (res: NextResponse): string[] =>
+    res.headers.getSetCookie();
+  const deviceCookies = (res: NextResponse): string[] =>
+    setCookies(res).filter((c) => c.startsWith(`${DEVICE_COOKIE}=`));
+
+  function expectRenewed(res: NextResponse, token: string): void {
+    const cookies = deviceCookies(res);
+    expect(cookies).toHaveLength(1);
+    const cookie = cookies[0];
+    expect(cookie.startsWith(`${DEVICE_COOKIE}=${token};`)).toBe(true);
+    expect(cookie).toContain(`Max-Age=${DEVICE_COOKIE_MAX_AGE_SECONDS}`);
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toMatch(/SameSite=strict/i);
+    expect(cookie).toContain("Path=/");
+    expect(cookie).not.toMatch(/Secure/i);
+  }
+
+  it("uses the working lifetime of 365 days", () => {
+    expect(DEVICE_COOKIE_MAX_AGE_SECONDS).toBe(31536000);
+  });
+
+  it("renews the presented token on a confirmed GET", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+      }),
+    );
+    expect(isPassThrough(res)).toBe(true);
+    expectRenewed(res, token);
+  });
+
+  it("renews the presented token on a confirmed same-origin POST", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      req("/api/projects", {
+        method: "POST",
+        headers: { cookie: `${DEVICE_COOKIE}=${token}`, origin: ORIGIN },
+      }),
+    );
+    expect(isPassThrough(res)).toBe(true);
+    expectRenewed(res, token);
+  });
+
+  it("renews the presented token, not a new one: the renewed value still confirms", async () => {
+    const token = await pairedToken();
+    const first = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+      }),
+    );
+    const renewed = /getwrite_device=([^;]+)/.exec(
+      deviceCookies(first)[0],
+    )?.[1];
+    expect(renewed).toBe(token);
+    const second = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${renewed}` },
+      }),
+    );
+    expect(forwarded(second)).toMatch(/^confirmed:.+/);
+  });
+
+  it("puts the token in no header other than Set-Cookie and in no body", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+      }),
+    );
+    for (const [name, value] of res.headers.entries()) {
+      // `x-middleware-request-*` is Next's internal forwarded-request override
+      // (the request's own cookie), consumed by the server, not sent to the client.
+      // `x-middleware-set-cookie` is Next's internal copy of the same Set-Cookie.
+      if (name.toLowerCase() === "set-cookie") continue;
+      if (name.toLowerCase() === "x-middleware-set-cookie") continue;
+      if (name.toLowerCase().startsWith("x-middleware-request-")) continue;
+      expect(value).not.toContain(token);
+    }
+    expect(await res.text()).not.toContain(token);
+  });
+
+  it("sets no device cookie for a window request or with sharing off", async () => {
+    const win = await proxy(
+      req("/api/projects", { headers: { [WINDOW_HEADER]: SECRET } }),
+    );
+    expect(deviceCookies(win)).toHaveLength(0);
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    const token = await pairedToken();
+    const off = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+      }),
+    );
+    expect(deviceCookies(off)).toHaveLength(0);
+  });
+
+  it("sets no device cookie for unconfirmed requests, including the static allowance", async () => {
+    const unknown = `${DEVICE_COOKIE}=${"A".repeat(43)}`;
+    for (const p of ["/api/projects", "/pair", "/_next/static/x"]) {
+      const res = await proxy(req(p, { headers: { cookie: unknown } }));
+      expect(deviceCookies(res)).toHaveLength(0);
+      const none = await proxy(req(p));
+      expect(deviceCookies(none)).toHaveLength(0);
+    }
+  });
+
+  it("sets no device cookie on a confirmed cross-origin 403", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      req("/api/projects", {
+        method: "POST",
+        headers: {
+          cookie: `${DEVICE_COOKIE}=${token}`,
+          origin: "http://evil.example",
+        },
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(deviceCookies(res)).toHaveLength(0);
+  });
+
+  it("sets no device cookie on a request refused for its Host", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      new NextRequest("http://evil.example:3000/api/projects", {
+        headers: {
+          host: "evil.example:3000",
+          cookie: `${DEVICE_COOKIE}=${token}`,
+        },
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(deviceCookies(res)).toHaveLength(0);
+  });
+
+  it("sets no device cookie on the bind-without-gate refusal (store corrupt)", async () => {
+    const token = await pairedToken();
+    await writeFile(path.join(dir, CREDENTIALS_FILE_NAME), "{ not json");
+    const res = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+      }),
+    );
+    expect(res.status).toBe(401);
+    expect(deviceCookies(res)).toHaveLength(0);
   });
 });

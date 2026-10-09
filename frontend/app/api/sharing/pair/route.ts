@@ -13,7 +13,10 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
-import { DEVICE_COOKIE } from "../../../../src/lib/sharing/classify-request";
+import {
+  DEVICE_COOKIE,
+  DEVICE_COOKIE_MAX_AGE_SECONDS,
+} from "../../../../src/lib/sharing/classify-request";
 import {
   addDevice,
   mintCredential,
@@ -118,14 +121,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const response = NextResponse.json({ ok: true }, { status: 200 });
     // Known limitation: no `Secure` attribute, because the server speaks plain
-    // HTTP on the home network (no TLS in this feature). Session cookie: no
-    // Max-Age or Expires.
+    // HTTP on the home network (no TLS in this feature). Long Max-Age (FR-33),
+    // renewed by the gate on every confirmed request.
     response.cookies.set({
       name: DEVICE_COOKIE,
       value: token,
       httpOnly: true,
       sameSite: "strict",
       path: "/",
+      maxAge: DEVICE_COOKIE_MAX_AGE_SECONDS,
     });
     return response;
   } catch (error) {

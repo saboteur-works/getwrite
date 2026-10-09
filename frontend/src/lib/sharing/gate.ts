@@ -11,6 +11,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import {
   CLASSIFICATION_HEADER,
+  DEVICE_COOKIE,
+  DEVICE_COOKIE_MAX_AGE_SECONDS,
   classifyRequest,
   type ClassifyInput,
   serializeClassification,
@@ -77,6 +79,27 @@ function forward(
   headers.delete(CLASSIFICATION_HEADER);
   headers.set(CLASSIFICATION_HEADER, serializeClassification(classification));
   return NextResponse.next({ request: { headers } });
+}
+
+/**
+ * FR-33: sliding renewal. Repeats the presented token (never a new one) with a
+ * fresh Max-Age on the forwarded response, with the same attributes as pairing.
+ */
+function renewDeviceCookie(
+  request: NextRequest,
+  response: NextResponse,
+): NextResponse {
+  const token = request.cookies.get(DEVICE_COOKIE)?.value;
+  if (token === undefined) return response;
+  response.cookies.set({
+    name: DEVICE_COOKIE,
+    value: token,
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: DEVICE_COOKIE_MAX_AGE_SECONDS,
+  });
+  return response;
 }
 
 function refuseNotPaired(request: NextRequest, asJson: boolean): NextResponse {
@@ -177,7 +200,7 @@ export async function runGate(
       return forward(request, classification);
     case "confirmed":
       return isSameOrigin({ method: request.method, headers: request.headers })
-        ? forward(request, classification)
+        ? renewDeviceCookie(request, forward(request, classification))
         : refuseCrossOrigin();
     case "not-confirmed": {
       if (isStaticAsset(pathname)) return forward(request, classification);
