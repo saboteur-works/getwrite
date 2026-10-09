@@ -201,7 +201,7 @@ lost work.
 - US-25: As a writer on deadline, I want to label a resource with a subtype
   of my own naming (for example "Scene", "Profile" or "Outline") so that the
   project can tell what kind of thing each resource is without relying on
-  where it sits in the tree. [Next]
+  where it sits in the tree. [Shipped]
 - US-26: As a writer on deadline, I want to limit a custom metadata field to
   particular subtypes so that a field that only makes sense for scenes does
   not clutter resources that exist for outlining or character profiles,
@@ -299,8 +299,14 @@ lost work.
   2026-10-08: template creation was measured on this date to write resources
   the project loaders reject (a flat content file and a four-key sidecar,
   after which the project fails to load and to list); FR-63 addresses it and
-  adds `save-from-resource` to the shipped commands. This requirement's
-  history is otherwise unchanged. [US-13]
+  adds `save-from-resource` to the shipped commands; the fix has shipped on
+  branch `feat/subtype-templates-duplicate`, not yet merged to `main`
+  (2026-10-08). Correction, 2026-10-08: the statement above that the richer
+  template CLI is not wired into the shipped binary no longer holds for one
+  command: `templates save-from-resource` is now a registered command in the
+  shipped `getwrite-cli` on that branch; the other helper subcommands remain
+  unbundled and reachable only from tests. This requirement's history is
+  otherwise unchanged. [US-13]
 - FR-20: Users MUST be able to define and manage custom metadata field
   definitions per project through a schema manager UI, beyond the built-in
   fields: add, edit, and delete field definitions; rename a field's label;
@@ -320,8 +326,9 @@ lost work.
   running app was measured on this date to have no revision directory, and
   edits typed into it were not saved and were lost on page reload, with no
   error shown (the Duplicate action was measured; the menu's "Copy" action was
-  not). FR-64 addresses it. This requirement's history is otherwise
-  unchanged. [US-6]
+  not). FR-64 addresses it, and the fix has shipped on branch
+  `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08).
+  This requirement's history is otherwise unchanged. [US-6]
 - FR-22: The editor MUST provide TipTap-based WYSIWYG rich-text editing with
   a config-driven toolbar, heading/body styling, tables, and paste
   normalization. [US-9]
@@ -1082,7 +1089,7 @@ lost work.
   default accepted). That a resource created from a template can be opened
   at all is FR-63, which this requirement depends on for its template half.
   That a copy or duplicate of a text resource can be edited at all is FR-64
-  (added 2026-10-08, Gate 3). Status: Not started. Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08;
+  (added 2026-10-08, Gate 3). Status: Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08). Resolved (OQ-65): Owner decision, Gate 1, 2026-10-08;
   amended by the Gate 3 additions recorded under OQ-65. [US-25]
 - FR-63: A resource created from a resource template MUST be a normal
   resource the app can open: it MUST be written the way the app's own
@@ -1096,7 +1103,7 @@ lost work.
   `getwrite-cli`, capturing the resource's type, text body, own metadata and
   subtype and nothing else from its sidecar. A subtype the template or the
   source resource holds in an invalid form MUST be rejected with an error
-  naming it, not dropped. Status: Not started. Resolved (OQ-65 addition):
+  naming it, not dropped. Status: Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08). Resolved (OQ-65 addition):
   Owner decision, Gate 3, 2026-10-08. [US-13][US-25]
 - FR-64: A copy or duplicate of a text resource MUST be editable like any
   other resource: it MUST have an initial canonical revision, so that an
@@ -1116,8 +1123,8 @@ lost work.
   experiment. Copies and duplicates made before this requirement is met are
   not repaired by it (decided: not repaired; a repair command is deferred to
   a follow-up feature, see Out of Scope (Deferred); Owner decision, Gate 3,
-  2026-10-08). Status: Not
-  started. Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
+  2026-10-08). Status: Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main` (2026-10-08).
+  Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
   [US-6][US-9]
 
 ### Later Requirements
@@ -2640,7 +2647,10 @@ were built around.
   `.zip`, scaffold, `--vars`, inspect, validate, preview, version,
   changeset) — this exists in the source tree (`cli/src/templates.ts`) but
   is not wired into the shipped `getwrite-cli` binary and is reachable only
-  from tests (see FR-19).
+  from tests (see FR-19). Correction, 2026-10-08: `templates save-from-resource`
+  is the one exception; it is now a registered command in the shipped
+  `getwrite-cli` on branch `feat/subtype-templates-duplicate` (not yet merged
+  to `main`); the other helper subcommands remain unbundled.
 - Resource subtype follow-ups (FR-57 to FR-62, resolved: OQ-58, OQ-60, OQ-62,
   OQ-63, OQ-65; Owner decision, Gate 1, 2026-10-08), deferred or excluded
   from the first slice: a rename operation for subtypes (renaming is remove

@@ -279,7 +279,13 @@ Note, 2026-10-08: template creation was measured on this date to write
 resources the project loaders reject (a flat content file and a four-key
 sidecar, after which `loadProjectFromDisk` and `getLocalResources` both throw
 for the whole project); Feature 73 fixes it and adds `save-from-resource` to
-the shipped commands. This entry's status and references are unchanged.
+the shipped commands, and has shipped on branch `feat/subtype-templates-duplicate`
+(not yet merged to `main`; 2026-10-08). Correction, 2026-10-08: the statement
+above that the richer template CLI is not wired into the shipped binary no
+longer holds for one command: `templates save-from-resource` is now a registered
+command in the shipped `getwrite-cli` on that branch; the other helper
+subcommands remain unbundled and reachable only from tests. This entry's status
+and references are unchanged.
 
 ### Feature 18: User-definable metadata schema — Shipped
 **Value:** A writer on deadline tracks attributes specific to their project
@@ -2675,7 +2681,7 @@ not measured.
 
 ---
 
-### Feature 73: Loadable template resources, save from a resource, editable copies, and subtype carried through — Not started
+### Feature 73: Loadable template resources, save from a resource, editable copies, and subtype carried through — Shipped
 **Value:** A writer who creates a resource from a template gets a normal
 resource the project can open (it does not today), and a writer who creates a
 resource from a "Scene" template, or copies or duplicates a Scene, gets a
@@ -2779,6 +2785,40 @@ none with "copy" in its name, 9 of the 11 with a word count of zero or absent;
 how they came to lack a revision was not established, and only the repo's
 store was checked. The owner then approved the feature spec.
 
+Shipped on branch `feat/subtype-templates-duplicate`, not yet merged to `main`
+as of this entry (2026-10-08); accepted by the owner 2026-10-08.
+`specs/features/subtype-templates-duplicates.md` and its `tasks.md` (eleven
+tasks, all done) are the authoritative record of the shipped scope. Tests:
+frontend `pnpm typecheck` clean and the suite at 5557 passed, 1 skipped,
+0 failed on the integrated branch (the pipeline lead's own run; baseline 5459
+passed and 1 skipped). As reported by the implementation run: lint 0 errors
+and 395 warnings (399 on `main`); CLI suite 130 passed with
+`tests/qa/server.test.ts` excluded, and that file passing when run alone.
+Exercised in the running app on the fixed code (a disposable project, on-disk
+state checked; the CLI commands run outside the sandbox from the branch
+build): an edit typed into a UI duplicate, a CLI duplicate
+(`templates duplicate`), a template-created resource (`templates create`) and
+a round-trip resource (`templates save-from-resource` then `create`) was in
+each case saved and survived a page reload; each had an initial revision and
+showed the subtype in the sidebar; the project containing a template-created
+resource loaded. Before the fix, edits to a duplicate were lost and a
+template-created resource made the project fail to load (both measured
+2026-10-08 on `main`). Measured with the built CLI: a CLI-created and a
+CLI-duplicated resource were in the search index without a reindex and absent
+from the mention index until `reindex`; the cause was not investigated. Not
+exercised live (tests only): the menu's "Copy" action (Duplicate was used),
+image and audio copies, a template with a folder, an invalid stored subtype,
+an encrypted project. Deviations and accepted items: `pnpm knip` lists two
+pre-existing exported types (`ReorderFolderEntry`, `ReorderResourceEntry`) as
+unused on this branch only, the cause not established, accepted by the owner
+without a fix; the measurement task could not run inside the sandbox (the
+built CLI exited with a file-watch error there) and was run outside it; one
+CLI test file (`tests/qa/server.test.ts`) was intermittent on unchanged code,
+cause not established. Not repaired, by owner decision: resources created by
+the old template path, and text resources that already lack a revision (11 of
+160 in the repo's own store, cause not established); a repair command is a
+follow-up.
+
 ---
 
 ## Coverage check
@@ -2857,7 +2897,8 @@ store was checked. The owner then approved the feature spec.
 - Total features: 73
 - Suggested build order: 72 → 73 for resource subtype (73 needs 72's
   sidecar key; 72 has since shipped and merged to `main` (PR #260,
-  2026-10-08), so 73 is the remaining one and is now unblocked). Features 1 through 23
+  2026-10-08), and 73 has since shipped on branch
+  `feat/subtype-templates-duplicate`, not yet merged to `main`, 2026-10-08). Features 1 through 23
   are already shipped
   (foundational chain: 1 → 2 → 6 → 7 → {8, 9, 18} → {9 → 11, 10} → 11 → {4 →
   5 → 11, 20}; 3, 13, 14, 15, 16, 17, 19, 21, 22, 23 hang off earlier shipped
@@ -2938,10 +2979,10 @@ store was checked. The owner then approved the feature spec.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72 (73 is now unblocked and independently shippable, Feature 72 having merged; 30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73 (Feature 72 having merged and 73 having shipped on its branch, not yet merged; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
-- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47, 73. Everything
+- Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything
   else in this list has shipped (Feature 24 shipped, merged in PR #249 as
   `f1254f76` — see its own entry's Notes; Feature 26 shipped on
   hosted web and Electron desktop; its native Android gap shipped
