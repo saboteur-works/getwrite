@@ -97,7 +97,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-2, FR-5, FR-23 (off by default, nothing deleted), FR-24 (decision half). A corrupt `workspace.json` reads as sharing off, which is the safe direction. Nothing here starts the server differently; Task 13 passes the result to the server and Task 22 uses it for the bind. Credentials are not touched by this setting (FR-23: turning sharing off does not delete paired-device credentials).
 **POS:** task_2e9015ef
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Pairing-code lifecycle, main side (generate, hash, persist) and the shared file contract
 **What:** Implement, in the electron package, generation of a one-time 6-digit pairing code from `crypto.randomInt`, its 5-minute expiry, replacement of any previous code, and writing the hashed pairing state to a 0600 file in `userData`, plus a shared JSON fixture that fixes the file format for the server side.

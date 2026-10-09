@@ -20,10 +20,12 @@ import {
   migrateLegacyProjectsDir,
   readConfiguredProjectsDir,
   readGlobalNoiseWords,
+  readSharingEnabled,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
   writeGlobalNoiseWords,
+  writeSharingEnabled,
   type ProjectsDirEnvironment,
 } from "../src/projects-dir";
 
@@ -213,6 +215,63 @@ describe("the global noise-word list", () => {
     } finally {
       fs.chmodSync(readOnlyUserData, 0o755);
     }
+  });
+});
+
+describe("the sharing setting", () => {
+  const configFile = (): string => path.join(userDataDir, "workspace.json");
+
+  it("reads as off for a fresh userData directory", () => {
+    expect(readSharingEnabled(userDataDir)).toBe(false);
+  });
+
+  it("reads as off for an empty object", () => {
+    write(configFile(), "{}");
+    expect(readSharingEnabled(userDataDir)).toBe(false);
+  });
+
+  it("reads as off for a corrupt file", () => {
+    write(configFile(), "{not json");
+    expect(readSharingEnabled(userDataDir)).toBe(false);
+  });
+
+  it.each(['"true"', "1", "null", '"yes"'])(
+    "reads as off for the non-boolean value %s",
+    (value) => {
+      write(configFile(), `{"sharingEnabled": ${value}}`);
+      expect(readSharingEnabled(userDataDir)).toBe(false);
+    },
+  );
+
+  it("reads as on only for true", () => {
+    write(configFile(), '{"sharingEnabled": true}');
+    expect(readSharingEnabled(userDataDir)).toBe(true);
+  });
+
+  it("round-trips and keeps projectsDir and globalNoiseWords unchanged", () => {
+    const chosen = path.join(root, "elsewhere");
+    writeConfiguredProjectsDir(userDataDir, chosen);
+    writeGlobalNoiseWords(userDataDir, ["alpha", "beta"]);
+
+    writeSharingEnabled(userDataDir, true);
+
+    expect(readSharingEnabled(userDataDir)).toBe(true);
+    expect(readConfiguredProjectsDir(userDataDir)).toBe(chosen);
+    expect(readGlobalNoiseWords(userDataDir)).toEqual(["alpha", "beta"]);
+
+    writeSharingEnabled(userDataDir, false);
+    expect(readSharingEnabled(userDataDir)).toBe(false);
+    expect(readConfiguredProjectsDir(userDataDir)).toBe(chosen);
+  });
+
+  it("is unchanged by setting or clearing the workspace folder (FR-5)", () => {
+    writeSharingEnabled(userDataDir, true);
+
+    writeConfiguredProjectsDir(userDataDir, path.join(root, "one"));
+    expect(readSharingEnabled(userDataDir)).toBe(true);
+
+    clearConfiguredProjectsDir(userDataDir);
+    expect(readSharingEnabled(userDataDir)).toBe(true);
   });
 });
 
