@@ -104,7 +104,7 @@ Source spec: `specs/features/subtype-templates-duplicates.md` (FR-1..FR-33, fina
 **Estimate:** 5
 **Notes:** Satisfies FR-15, FR-24, FR-12 (CLI `create` output and layout statements as tested), FR-22 (CLI half), FR-26 (CLI tests), FR-10 (encrypted-project guard half). Follow `templates save`'s shape exactly: guard first (message explaining it would write a plaintext template into a sealed project), work inside `runForTenant`, `console.log("Saved template ...")`, `console.error("Error:", message)` then `process.exit(2)`. No other option or subcommand is added. `CLI` tests import `@gw/core` and run `cli/tests/setup.ts` (closes the indexer watcher after each test); keep that in mind for temp-dir cleanup.
 **POS:** task_8edc8b31
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Measurement: does a CLI-created or CLI-duplicated resource appear in search and mentions before `reindex`?
 **What:** Build the CLI and observe, with no code change, whether a resource made by `templates create` and by `templates duplicate` appears in the inverted index and mention index before any `reindex`.
