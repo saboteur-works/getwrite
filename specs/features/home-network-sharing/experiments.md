@@ -331,3 +331,57 @@ Expected: no change outside `specs/` (`frontend/proxy.ts` removed, `electron/src
 7. That the patched build started at all, and whether the packaged `standalone/frontend` layout wrote a proxy log. An empty or missing `$SPIKE_LOG` after the actions means the proxy wrote nothing there; record that and do not guess why.
 8. The implication per the spec (OQ-1): header covers all kinds, use the header; header misses some, use the cookie; neither covers every kind, stop and report, naming the two unchosen fallbacks (a thin launcher that overwrites the address header from the real socket, and a second loopback listener).
 9. The reversal and the final `git status --short`.
+
+## D: locked workspace (partial)
+
+Run 2026-10-09 by the pipeline lead, in the main checkout on branch `feat/home-network-sharing` (source identical to `main`; the branch differs only under `specs/`). Parts (1) to (3) of Task 5 were run. Part (4), the Electron window, was NOT run. No cause is named below that the runs did not discriminate.
+
+### Setup as run, and how it differs from the task's wording
+
+- `cd frontend && pnpm build` at 12:30 MDT, exit 0, inside the command sandbox. `.next/static` and `public` copied into `.next/standalone/frontend/`.
+- Server: `PORT=4821 HOSTNAME=127.0.0.1 GETWRITE_PROJECTS_DIR=/tmp/claude-501/gw-exp-d GETWRITE_TEMPLATES_DIR=<repo>/getwrite-config/templates/project-types node server.js` from `.next/standalone/frontend/`. This is the standalone server, not `next dev` and not the packaged app. `GETWRITE_DESKTOP` was not set. Port 3000 was not touched.
+- "Ordinary browser": the Playwright MCP browser (Chromium) at `http://127.0.0.1:4821/`. It has no desktop bridge.
+- Deviation: the task says to lock "from the desktop window". No Electron window was used. The lock, and one later unlock, were sent from a second client with `curl` to `POST /api/encryption`. The requests carried no `Origin` header and no cookie, and each returned 200.
+- In the plain browser: created project "Lock Experiment" (Novel type) from the Start page; opened Project Settings, tab "Project Encryption", "Encrypt this project…", entered a throwaway passphrase twice, ticked the acknowledgement, "Encrypt project". Afterwards `GET /api/encryption` returned `{"isAvailable":true,"hasKeyring":true,"isUnlocked":true,"encryptedProjectIds":["a7605f9e-228f-4c25-a7be-f5749bb07964"]}` and the project folder held `.encrypted.json`.
+
+### (3) Project open in the plain browser, then locked from a second client
+
+1. Opened "Scene 1", typed "Before lock sentence. ". Five seconds later `grep -rl "Before lock"` over the project folder found no file (no plaintext copy on disk).
+2. Locked with `curl -X POST -d '{"action":"lock"}' /api/encryption` (200, `isUnlocked:false`).
+3. Typed "After lock sentence. " in the still-open editor and waited 6 seconds. Rendered: the editor kept both sentences; the footer read "Words: 8 | Node: Body | Today's writing | Today: 3 | Autosave failed | Retry now". No toast, no dialog, no unlock prompt. The browser's resource timing showed the last request to `/api/resource/revision/<id>` with status 404; the earlier ones were 200. The status was 404, not 401. Which request that was (the save, or a read before it) was not separated.
+4. Trash tab with nothing in the trash and the workspace locked: `GET /api/project/<id>/trash` returned 200 `{"resources":[],"folders":[]}` and the view read "Trash is empty." At that point the project had no trashed item, so this is a true empty and does not show how a refusal renders.
+5. To get a refusal: unlocked from the second client, soft-deleted "Scene 1" with `POST /api/resource/<id>/delete` (200), confirmed the trash listing returned that one resource, locked again. `GET /api/project/<id>/trash` then returned 401 `{"error":"Project \"…\" is encrypted and the workspace is locked. Unlock to continue."}`. In the browser, switching to Data and back to Trash rendered "Could not load Trash. Try again later." in the view and in an alert region. The text does not say the workspace is locked.
+6. `GET /api/projects` while locked returned 200 with `[{"isEncrypted":true,"isLocked":true,"project":{"id":…,"createdAt":…},"resources":[],"folders":[]}]`: no name, empty resource and folder lists.
+7. A 409 (`MissingProjectKeyError`) was not reproduced.
+
+Not exercised: the resource tree refresh, the Data, Organizer, Timeline, Entities and Graph views, search, and the metadata sidebar while locked. So "no locked response renders as an empty list" is NOT established for the app as a whole; it was observed for the editor save and for the Trash view only.
+
+### (2) Start page for a locked workspace, plain browser
+
+Reloaded `http://127.0.0.1:4821/` with the workspace locked. Rendered:
+
+- A project card: "Project · Locked", heading "Encrypted project", text "Unlock this workspace to see this project's name and open it." Counters read "1 active project, 0 writing assets, 0 folders organized".
+- A dialog (role `dialog`, no `aria-modal` attribute): "Unlock your encrypted projects. One project in this workspace is encrypted. Enter your passphrase to open it." with a "Passphrase" password field, "Continue without unlocking" and "Unlock" (disabled until text is entered).
+- Buttons in the page: "Start a New Project" and "App Settings". Both were present while locked. Neither was operated, and keyboard operation was not checked.
+
+Entered the passphrase in that dialog and pressed Enter. Three seconds later `GET /api/encryption` returned `isUnlocked:true` and `GET /api/projects` returned the project with its name and `isLocked:false`. So a plain browser with no desktop bridge unlocked the workspace.
+
+Also observed during setup: the "Project Encryption" tab and its "Encrypt this project…" control were present and worked in the plain browser.
+
+### (4) Electron window: NOT RUN
+
+Whether the Start page's "App Settings" button is reachable and keyboard-operable in the Electron window while the workspace is locked was not checked. It needs `pnpm electron:dev` and a person at the window.
+
+### (5) Implication, per the spec
+
+- OQ-10, unlock prompt: observed. A plain browser is shown the unlock dialog and can unlock; it can also enable encryption and, by a direct request, lock. Per the spec this is recorded for Feature 77 (blocking lock and unlock from a paired device), and FR-30's interim note covers it until then.
+- OQ-10, empty list: not observed in the two places checked (editor save: "Autosave failed"; Trash: "Could not load Trash"). Not established elsewhere (see "Not exercised"). No extra task is added on this evidence; the gap in coverage is stated here rather than closed.
+- Two observations outside this feature's scope, recorded and not investigated: a save against a locked project returned 404 where the spec's reading expected 401; and the project's folder name on disk (`a7605f9e-…`) differed from the `id` inside its `project.json` (`35986554-…`), with the API reporting the folder name as the id after encryption.
+
+### Cleanup
+
+Browser closed. The server (PID 57805) was killed; `kill` inside the sandbox failed with "operation not permitted", so that one `kill` was run with the sandbox disabled. `/tmp/claude-501/gw-exp-d` was removed. `git status --short` showed no change outside this file. `.playwright-mcp/` is gitignored.
+
+## Addendum to B: the same build in the main checkout
+
+Run 2026-10-09 by the pipeline lead: `cd frontend && pnpm build:native` in the main checkout on `feat/home-network-sharing`, inside the command sandbox, with no `proxy.ts`. It failed with the same error section B recorded in a worktree: `./stories/Start/CreateProjectModal.stories.tsx:6:8 Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal'`, then `[build-native-static] ERROR: next build exited with status 1`. So the failure is not specific to the worktree. Its cause was not established, and it was not run outside the sandbox or on `main` itself (the two trees have the same source).
