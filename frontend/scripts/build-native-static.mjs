@@ -44,7 +44,13 @@
 // by setting `output: "export"` and a custom `distDir: "../out"`, which
 // (per Next's `hasCustomExportOutput` handling) makes the static export land
 // directly at `frontend/out/` — no separate copy-back step is needed.
-import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { cpSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -59,8 +65,9 @@ const appSrc = join(frontendRoot, "app");
 const appDest = join(buildDir, "app");
 
 // Excluded natively-dead app/ subtrees (FR4): API route handlers (no server
-// on device) and the three hosted-auth pages (hosted auth never runs
-// natively).
+// on device), the three hosted-auth pages (hosted auth never runs
+// natively), and the home-network pairing page `pair` (there is no server on
+// device to pair with).
 // Note: `project-types` is the standalone project-type *management* page — a
 // server component that reads template JSON via node:fs at prerender time, which
 // can't coexist with the client bundle's shimmed fs in a static export. It's
@@ -73,6 +80,7 @@ const EXCLUDED_APP_SUBPATHS = [
   "reset-password",
   "verify-email",
   "project-types",
+  "pair",
 ];
 
 // Never symlinked or copied into the shadow root: build outputs and the
@@ -193,7 +201,9 @@ function verifyOutput() {
   if (outEntries.length === 0) {
     fail(`Static export output at ${outDir} is empty.`);
   }
-  log(`Native static export produced at ${outDir} (${outEntries.length} top-level entries).`);
+  log(
+    `Native static export produced at ${outDir} (${outEntries.length} top-level entries).`,
+  );
 }
 
 function main() {

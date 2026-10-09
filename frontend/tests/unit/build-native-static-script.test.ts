@@ -47,6 +47,27 @@ describe("build-native-static.mjs copy-forward guarantee", () => {
     expect(contents).toMatch(/rmSync\(join\(appDest, subpath\)/);
   });
 
+  it("lists pair alongside the other excluded app subpaths in EXCLUDED_APP_SUBPATHS", () => {
+    const match = /const EXCLUDED_APP_SUBPATHS = \[([^\]]*)\]/.exec(contents);
+    expect(match).not.toBeNull();
+    const entries = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    for (const expected of [
+      "pair",
+      "api",
+      "login",
+      "reset-password",
+      "verify-email",
+      "project-types",
+    ]) {
+      expect(entries).toContain(expected);
+    }
+    // The loop still removes from the copy (appDest) only.
+    expect(contents).toMatch(/for \(const subpath of EXCLUDED_APP_SUBPATHS\)/);
+    expect(contents).not.toMatch(/rmSync\(join\(appSrc/);
+  });
+
   it("runs next build with GETWRITE_BUILD_TARGET and NEXT_PUBLIC_GETWRITE_RUNTIME set to native", () => {
     expect(contents).toContain('GETWRITE_BUILD_TARGET: "native"');
     expect(contents).toContain('NEXT_PUBLIC_GETWRITE_RUNTIME: "native"');
