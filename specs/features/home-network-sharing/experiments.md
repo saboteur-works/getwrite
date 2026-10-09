@@ -108,3 +108,151 @@ Both servers were killed (PID 20692, then PID 23863; the first `kill` inside the
 ?? node_modules
 ?? specs/features/home-network-sharing/experiments.md
 ```
+
+## C: preparation
+
+Prepared 2026-10-09 by Task 3 (an agent, inside the Claude Code OS sandbox). This section contains the patch, what was verified about it, and the steps for the owner to run Task 4. No result of the experiment itself is recorded here; nothing was launched.
+
+### The patch
+
+File: `specs/features/home-network-sharing/experiments/oq1-window-secret.patch` (a `git diff`, not applied). It changes:
+
+- `electron/src/main.ts`:
+  - imports `session` from `electron` and `crypto` from `crypto`;
+  - `const SPIKE_SECRET = crypto.randomBytes(32).toString("hex")` at module level;
+  - in `startServer`, the server env gets `HOSTNAME: process.env.SPIKE_HOSTNAME ?? "127.0.0.1"` (the default stays `127.0.0.1`) and `GETWRITE_SPIKE_SECRET: SPIKE_SECRET`;
+  - in `app.whenReady`, before `resolveDirectories()` and `openMainWindow()`: `session.defaultSession.webRequest.onBeforeSendHeaders` for `http://localhost:3000/*` adding header `x-getwrite-spike: <secret>`, and `session.defaultSession.cookies.set` of cookie `getwrite_spike=<secret>` for `http://localhost:3000`. A failed cookie set writes `spike cookie set failed: <error>` to the app log (the error, never the secret).
+- `frontend/proxy.ts` (new, throwaway): `export function proxy(request: NextRequest)`, no `config` export (so no matcher, as in the section A (a) variant). If `process.env.SPIKE_LOG` is set it appends one JSON line per request with keys `pathname`, `method`, `sec-fetch-dest`, `sec-fetch-mode`, `headerPresent`, `headerMatches`, `cookiePresent`, `cookieMatches`, `x-forwarded-for`. The secret is read from `GETWRITE_SPIKE_SECRET` only to compare; the log holds booleans, never the value.
+
+### What was verified in Task 3, and what was not
+
+Verified (on a worktree whose tracked tree was clean; `node_modules` symlinked from the main checkout for `frontend/` and `electron/`, removed afterwards):
+
+- `git apply --check specs/features/home-network-sharing/experiments/oq1-window-secret.patch`: exit 0, no output.
+- After `git apply`, `git status --short` showed ` M electron/src/main.ts` and `?? frontend/proxy.ts` (plus the untracked `specs/` files and the pre-existing `node_modules` symlink).
+- `pnpm typecheck` in `electron/` (`tsc --noEmit && tsc --noEmit --project tsconfig.worker.json`): exit 0, no diagnostics. `pnpm typecheck` in `frontend/` (`tsc --noEmit`): exit 0, no diagnostics. Both printed only the pnpm warning `WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted`.
+- After `git apply -R`, `git status --short` showed only `?? node_modules` (pre-existing symlink) and `?? specs/features/home-network-sharing/experiments/`. No change outside `specs/`.
+
+Not run, left to Task 4: `pnpm build`, `electron-builder`, launching Electron, any request to the server. So it is not known whether the patched app starts, whether `proxy.ts` is picked up in the packaged `standalone/frontend` layout, or how the packaged build behaves at runtime. Typechecking does not exercise `onBeforeSendHeaders` or `cookies.set`.
+
+### Run steps for the owner (Task 4)
+
+Run these in the main checkout, from the repo root, with the tracked tree clean. Build in the main checkout, not a worktree: section A observed that a build inside a worktree nests `server.js` away from `standalone/frontend/server.js`, which is the path `electron/src/main.ts` forks.
+
+1. Apply the patch:
+
+```
+git apply --check specs/features/home-network-sharing/experiments/oq1-window-secret.patch && git apply specs/features/home-network-sharing/experiments/oq1-window-secret.patch
+git status --short
+```
+
+Expected: ` M electron/src/main.ts` and `?? frontend/proxy.ts`.
+
+2. Build the frontend (writes `frontend/.next/standalone`, gitignored), then the Electron main process, the workers, and an unpacked app:
+
+```
+pnpm --filter getwrite-frontend build
+cd electron
+pnpm build && pnpm build:worker && pnpm exec electron-builder --config electron-builder.yml --dir
+cd ..
+```
+
+3. Locate the app. `electron-builder.yml` sets `directories.output: ../dist-electron`, i.e. `dist-electron/` at the repo root (gitignored). With `--dir` on macOS the unpacked app is in a per-arch subdirectory; list it for the exact name on your machine:
+
+```
+ls dist-electron
+```
+
+Expected on Apple silicon: `dist-electron/mac-arm64/GetWrite.app` (Intel: `dist-electron/mac/GetWrite.app`; this is electron-builder's usual naming, not observed in this task). The binary is `<that .app>/Contents/MacOS/GetWrite`. The commands below assume `mac-arm64`.
+
+4. Quit any running GetWrite first (the app holds a single-instance lock; a second launch hands off to the first and starts no new server). Port 3000 must be free: `lsof -iTCP:3000 -sTCP:LISTEN` should print nothing.
+
+5. Run 1, loopback bind (default). Launch from a terminal so the environment reaches the forked server (the server env is built from `...process.env` in `startServer`):
+
+```
+export SPIKE_LOG="$TMPDIR/oq1-loopback.log"; rm -f "$SPIKE_LOG"
+"dist-electron/mac-arm64/GetWrite.app/Contents/MacOS/GetWrite"
+```
+
+If macOS refuses to open the unsigned local build, allow it in System Settings > Privacy & Security, or (if it carries a quarantine attribute) run `xattr -dr com.apple.quarantine dist-electron/mac-arm64/GetWrite.app` and launch again.
+
+6. Actions in the window, in this order (run `wc -l "$SPIKE_LOG"` from another terminal after each, to read the log against the actions):
+   1. Cold load: wait for the Start page.
+   2. Open a project.
+   3. Edit text in a resource (type a few words, wait a few seconds for autosave).
+   4. Switch views (Edit, Data, Entities, Graph, Trash tabs as available).
+   5. Open App Settings from the Start page (close the project first if needed), then close it.
+   6. Reload the window once if the menu offers it (Cmd+R), then quit with Cmd+Q.
+
+7. Summarise the log (counts per `sec-fetch-dest`/`sec-fetch-mode` and header/cookie presence; plain Node, no `jq` needed):
+
+```
+node -e '
+const lines = require("fs").readFileSync(process.env.SPIKE_LOG, "utf8").trim().split("\n").map((s) => JSON.parse(s));
+const t = {};
+for (const l of lines) {
+  const k = [l["sec-fetch-dest"], l["sec-fetch-mode"], "hdr:" + l.headerPresent + "/" + l.headerMatches, "cookie:" + l.cookiePresent + "/" + l.cookieMatches].join("  ");
+  t[k] = (t[k] || 0) + 1;
+}
+console.log("total", lines.length);
+console.table(t);
+console.log("neither header nor cookie:", lines.filter((l) => !l.headerPresent && !l.cookiePresent).map((l) => l.pathname + " [" + l["sec-fetch-dest"] + "]"));
+'
+```
+
+`hdr:a/b` is header present / header equals the server's secret; `cookie:a/b` likewise.
+
+8. Run 2, non-loopback bind. Same as run 1 with a new log and `SPIKE_HOSTNAME=0.0.0.0`:
+
+```
+export SPIKE_LOG="$TMPDIR/oq1-lan.log"; rm -f "$SPIKE_LOG"
+SPIKE_HOSTNAME=0.0.0.0 "dist-electron/mac-arm64/GetWrite.app/Contents/MacOS/GetWrite"
+```
+
+With the window up (confirm it still loads `http://localhost:3000`), find the LAN address (`ifconfig en0 | grep 'inet '`), then from the second device send the following (replace `<lan-ip>`; `/api/projects` is a project-data route):
+
+```
+curl -i http://<lan-ip>:3000/
+curl -i http://<lan-ip>:3000/api/projects
+curl -i -H 'X-Forwarded-For: 127.0.0.1' http://<lan-ip>:3000/api/projects
+curl -i -H 'x-getwrite-spike: not-the-secret' -H 'Cookie: getwrite_spike=not-the-secret' http://<lan-ip>:3000/api/projects
+```
+
+From a phone only the first two are practical (open `http://<lan-ip>:3000/` and `http://<lan-ip>:3000/api/projects` in its browser); the forged-header requests need a second computer, otherwise record them as not run from a second device. Do not substitute a request from the host for the second-device requests. Then, from the host:
+
+```
+curl -4 -sS -o /dev/null -w '%{http_code}\n' http://localhost:3000/
+curl -6 -sS -o /dev/null -w '%{http_code}\n' http://localhost:3000/
+```
+
+Run the step 7 summary on `oq1-lan.log`, then quit the app.
+
+9. Run 3, unpackaged `next dev` and `HOSTNAME` (Task 4 item 5; outside the sandbox, with the run 2 app quit and port 3000 free):
+
+```
+cd frontend
+HOSTNAME=0.0.0.0 pnpm dev
+```
+
+Then from another device (or the machine's LAN address) run `curl -i http://<lan-ip>:3000/api/auth-status`. Record whether it connects. Stop the server with Ctrl-C and `cd ..`.
+
+10. Reverse the patch and check:
+
+```
+git apply -R specs/features/home-network-sharing/experiments/oq1-window-secret.patch
+git status --short
+```
+
+Expected: no change outside `specs/` (`frontend/proxy.ts` removed, `electron/src/main.ts` restored). `electron/dist/`, `dist-electron/` and `frontend/.next/` are gitignored build output and may remain.
+
+### Observations Task 4 must record (counts and pasted output, not impressions; never paste the secret)
+
+1. From `oq1-loopback.log`: for each `sec-fetch-dest` value seen (`document`, `empty`, `script`, `style`, `image`, `font`, any other; and `sec-fetch-mode` where it differs), the number of requests, and how many carried the header, the correct header, the cookie, the correct cookie.
+2. Whether any request kind from the window arrived with neither header nor cookie (the "neither" list from step 7, with paths).
+3. Whether the cookie set succeeded: search the app log (`app.getPath("logs")/getwrite.log`; the app logs its resolved paths at start) for `spike cookie set failed`. Also whether the earliest requests in the log lack the cookie.
+4. Run 2, from the second device: for the plain page and API requests and the forged `X-Forwarded-For: 127.0.0.1` and made-up header/cookie requests, what the proxy log lines show (`headerPresent`, `headerMatches`, `cookiePresent`, `cookieMatches`, `x-forwarded-for`) and what the device received (status, body shape). Say which requests came from which device.
+5. Run 2: whether the window still loads `http://localhost:3000`, and the pasted output of `curl -4` and `curl -6` to `localhost`. Record the result without naming a cause.
+6. Run 3: whether `HOSTNAME=0.0.0.0 pnpm dev` accepted a connection on the LAN address (spec OQ-3a), with the output.
+7. That the patched build started at all, and whether the packaged `standalone/frontend` layout wrote a proxy log. An empty or missing `$SPIKE_LOG` after the actions means the proxy wrote nothing there; record that and do not guess why.
+8. The implication per the spec (OQ-1): header covers all kinds, use the header; header misses some, use the cookie; neither covers every kind, stop and report, naming the two unchosen fallbacks (a thin launcher that overwrites the address header from the real socket, and a second loopback listener).
+9. The reversal and the final `git status --short`.
