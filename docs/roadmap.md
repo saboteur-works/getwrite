@@ -16,6 +16,10 @@ Horizons reflect priority and readiness, not committed dates. This document cove
 
 - **Android packaging and distribution** — Wire a real Gradle build and produce a distributable Android artifact. _Status: not started. The app itself runs in-process; `pnpm --filter getwrite-android build` is still a `console.log` placeholder and CI runs only that._
 
+### Sharing
+
+- **Home-network sharing, gated by device pairing** — Open desktop projects from a paired device's browser over the home network. _Status: implemented on `feat/home-network-sharing`, not merged, not released. Release is held until paired-device list/rename/revoke (Feature 76), capability limits for paired devices (Feature 77) and the default-port change (Feature 80) are merged; manual verification from a second device has not been done. TLS, headless delivery and the Android app as a client are not part of it._ → [home-network-sharing.md](features/home-network-sharing.md)
+
 ### Search & Discovery
 
 - **Scalable search backend** — Evaluate a durable backend (SQLite FTS, Tantivy) to replace the JSON inverted index for large projects where it becomes a bottleneck. _Status: under evaluation._ → [indexing.md](features/indexing.md)

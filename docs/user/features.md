@@ -34,6 +34,10 @@ Opening GetWrite shows all your projects at a glance, along with totals for how 
 
 When you open a text document, GetWrite gives you a focused rich-text editor designed to get out of the way. You get inline formatting (bold, italic, underline, and more) from the toolbar or keyboard shortcuts, and a live word, character, and paragraph count in the footer so you always know where you stand.
 
+### Home-network sharing (not yet released)
+
+In the desktop app, App Settings has an off-by-default setting to open your projects from another device's browser on your home network. Each device is paired once with a short-lived code shown on your computer, and an unpaired device is refused. It uses unencrypted HTTP, so it is meant for networks you trust. This is implemented but not yet merged or released. See [Home-network sharing](../features/home-network-sharing.md).
+
 ### Daily writing log and goal
 
 GetWrite keeps a per-project record of the words you add and delete each day, and shows today's figure in a "Today's writing" control in the editor footer. See [Daily writing log](writing-log.md).

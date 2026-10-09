@@ -4,8 +4,11 @@ This document applies when writing API routes, handling user input, touching the
 storage layer, or working on authentication, tenancy, or encryption.
 
 GetWrite's default deployment is local-first and account-free: on desktop there
-is no server to attack and no account to compromise. That is a security property
-worth protecting, and most of the rules below exist to keep it true as hosted and
+is no server to attack and no account to compromise. (The exception is the opt-in,
+off-by-default home-network sharing setting, Feature 75 — not yet merged or
+released — under which the desktop server listens on all interfaces behind a
+device-pairing gate; see `docs/features/home-network-sharing.md`.) That is a
+security property worth protecting, and most of the rules below exist to keep it true as hosted and
 native builds grow alongside it.
 
 ---
