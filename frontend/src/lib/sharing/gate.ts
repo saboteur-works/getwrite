@@ -14,6 +14,7 @@ import {
   DEVICE_COOKIE,
   DEVICE_COOKIE_MAX_AGE_SECONDS,
   classifyRequest,
+  presentsWindowSecret,
   type ClassifyInput,
   serializeClassification,
   type Classification,
@@ -30,7 +31,11 @@ import {
   type OwnMachine,
 } from "./host-allowlist";
 import { isSameOrigin } from "./same-origin";
-import { readSharingEnv, type EnvLike } from "./sharing-env";
+import {
+  bindBeyondLoopback,
+  readSharingEnv,
+  type EnvLike,
+} from "./sharing-env";
 
 const PAIR_PAGE = "/pair";
 const PAIR_ENDPOINT = "/api/sharing/pair";
@@ -157,6 +162,18 @@ function hostIsAllowed(
   });
 }
 
+/**
+ * FR-34: the server was told it is bound beyond loopback but the gate is not
+ * on. Refuses with a 403, never a redirect (the redirect target would be
+ * refused too).
+ */
+function refuseBindWithoutGate(): NextResponse {
+  return NextResponse.json(
+    { error: "bind-without-gate" },
+    { status: 403, headers: { [GATE_HEADER]: "bind-without-gate" } },
+  );
+}
+
 function requestInputs(
   request: NextRequest,
   env: EnvLike,
@@ -179,6 +196,12 @@ export async function runGate(
   machine?: OwnMachine,
 ): Promise<NextResponse> {
   const inputs = requestInputs(request, env);
+  // FR-34: bound beyond loopback without the gate on. Only the window passes.
+  if (bindBeyondLoopback(env) && !readSharingEnv(env).sharingOn) {
+    return presentsWindowSecret(request.headers, env)
+      ? forward(request, { kind: "window" })
+      : refuseBindWithoutGate();
+  }
   // The window check does not depend on the store, so a window request never reads it.
   const first = classifyRequest({ ...inputs, store: { kind: "empty" } });
   if (first.kind === "off" || first.kind === "window") {

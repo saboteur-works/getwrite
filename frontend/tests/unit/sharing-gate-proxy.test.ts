@@ -768,3 +768,108 @@ describe("Device cookie renewal (FR-33)", () => {
     expect(deviceCookies(res)).toHaveLength(0);
   });
 });
+
+describe("bound beyond loopback without the gate on (FR-34)", () => {
+  const BIND_VALUES_NOT_ON = [undefined, "0", "true", "yes", ""] as const;
+
+  function stubBind(sharing: string | undefined, bind = "0.0.0.0"): void {
+    vi.stubEnv("GETWRITE_BIND", bind);
+    if (sharing === undefined) delete process.env.GETWRITE_SHARING;
+    else vi.stubEnv("GETWRITE_SHARING", sharing);
+  }
+
+  async function expectBindRefusal(res: NextResponse): Promise<void> {
+    expect(res.status).toBe(403);
+    expect(res.headers.get("x-getwrite-gate")).toBe("bind-without-gate");
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("content-type")).toContain("application/json");
+  }
+
+  it.each(BIND_VALUES_NOT_ON)(
+    "with GETWRITE_SHARING=%j refuses every request but the window's",
+    async (sharing) => {
+      stubBind(sharing);
+      const token = await pairedToken();
+      const cases: NextRequest[] = [
+        req("/api/projects"),
+        req("/"),
+        req("/api/projects", {
+          headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+        }),
+        req("/pair"),
+        req("/api/sharing/pair", { method: "POST" }),
+        req("/_next/static/x"),
+      ];
+      for (const request of cases) {
+        await expectBindRefusal(await proxy(request));
+      }
+    },
+  );
+
+  it.each(BIND_VALUES_NOT_ON)(
+    "with GETWRITE_SHARING=%j passes a request with the correct window secret",
+    async (sharing) => {
+      stubBind(sharing);
+      const res = await proxy(
+        req("/api/projects", { headers: { [WINDOW_HEADER]: SECRET } }),
+      );
+      expect(isPassThrough(res)).toBe(true);
+      expect(forwarded(res)).toBe("window");
+    },
+  );
+
+  it("refuses a wrong window secret", async () => {
+    stubBind("0");
+    await expectBindRefusal(
+      await proxy(req("/", { headers: { [WINDOW_HEADER]: "x".repeat(64) } })),
+    );
+  });
+
+  it("refuses everything when no window secret is configured", async () => {
+    stubBind("0");
+    vi.stubEnv("GETWRITE_WINDOW_SECRET", "");
+    await expectBindRefusal(
+      await proxy(req("/", { headers: { [WINDOW_HEADER]: "" } })),
+    );
+  });
+
+  it("treats a present but empty GETWRITE_BIND as beyond loopback", async () => {
+    stubBind("0", "");
+    await expectBindRefusal(await proxy(req("/api/projects")));
+  });
+
+  it.each(["127.0.0.1", "localhost", "::1"])(
+    "GETWRITE_BIND=%s with sharing off passes everything",
+    async (bind) => {
+      stubBind("0", bind);
+      for (const p of ["/api/projects", "/", "/pair", "/_next/static/x"]) {
+        const res = await proxy(req(p));
+        expect(isPassThrough(res)).toBe(true);
+        expect(forwarded(res)).toBe("off");
+      }
+    },
+  );
+
+  it("unset GETWRITE_BIND with sharing off passes everything", async () => {
+    delete process.env.GETWRITE_BIND;
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    expect(isPassThrough(await proxy(req("/api/projects")))).toBe(true);
+  });
+
+  it("with sharing on (GETWRITE_SHARING=1) a non-loopback bind uses the normal gate", async () => {
+    stubBind("1");
+    const res = await proxy(req("/api/projects"));
+    expect(res.status).toBe(401);
+    expect(res.headers.get("x-getwrite-gate")).toBe("not-paired");
+    const win = await proxy(
+      req("/api/projects", { headers: { [WINDOW_HEADER]: SECRET } }),
+    );
+    expect(isPassThrough(win)).toBe(true);
+  });
+
+  it("refuses without consulting the Host allowlist or PORT", async () => {
+    stubBind("0");
+    vi.stubEnv("PORT", "");
+    await expectBindRefusal(await proxy(req("/")));
+  });
+});

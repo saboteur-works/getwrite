@@ -31,7 +31,10 @@ import {
 } from "../../../../src/lib/sharing/host-allowlist";
 import { verifyAndConsume } from "../../../../src/lib/sharing/pairing-verify";
 import { isSameOrigin } from "../../../../src/lib/sharing/same-origin";
-import { readSharingEnv } from "../../../../src/lib/sharing/sharing-env";
+import {
+  bindBeyondLoopback,
+  readSharingEnv,
+} from "../../../../src/lib/sharing/sharing-env";
 
 const WRONG = { ok: false, reason: "wrong" } as const;
 const UNUSABLE = { ok: false, reason: "unusable" } as const;
@@ -92,6 +95,13 @@ function hostNotAllowed(): NextResponse {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const sharing = readSharingEnv(process.env);
+  // FR-34: bound beyond loopback with the gate not on; this endpoint refuses too.
+  if (bindBeyondLoopback(process.env) && !sharing.sharingOn) {
+    return NextResponse.json(
+      { error: "bind-without-gate" },
+      { status: 403, headers: { "x-getwrite-gate": "bind-without-gate" } },
+    );
+  }
   if (!sharing.sharingOn) return new NextResponse(null, { status: 404 });
 
   if (!hostIsAllowed(request)) return hostNotAllowed();

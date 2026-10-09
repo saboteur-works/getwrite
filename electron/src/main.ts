@@ -19,7 +19,7 @@ import {
   installWindowSecret,
 } from "./sharing/window-secret";
 import { waitForServer, type ReadinessGet } from "./sharing/server-readiness";
-import { resolveSharingMode } from "./sharing/sharing-mode";
+import { buildServerBindEnv, resolveSharingMode } from "./sharing/sharing-mode";
 import os from "os";
 import {
   buildSharingStatus,
@@ -155,10 +155,20 @@ const windowSecret = createWindowSecret(randomBytes);
 function startServer(
   dirs: ReturnType<typeof resolveDirectories>,
 ): ChildProcess | UtilityProcess {
+  // The mode is computed once; the bind and the gate-on signal both come from
+  // it through buildServerBindEnv (FR-34).
+  const mode = resolveSharingMode({
+    enabled: readSharingEnabled(app.getPath("userData")),
+    env: process.env,
+  });
+  if (mode.blockedByHostedAuth) {
+    log(
+      "sharing is not started: hosted auth is configured; listening on loopback only",
+    );
+  }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PORT: String(PORT),
-    HOSTNAME: "127.0.0.1",
     GETWRITE_PROJECTS_DIR: dirs.projectsDir,
     GETWRITE_TEMPLATES_DIR: dirs.templatesDir,
     // Marks this server as the Electron desktop build so the frontend can gate
@@ -168,15 +178,11 @@ function startServer(
     GETWRITE_REPO: "saboteur-works/getwrite",
     GETWRITE_APP_VERSION: resolveAppVersion(),
     // Sharing gate inputs (FR-12, FR-24). The secret stays in this process and
-    // the server's env. The bind address is unchanged.
+    // the server's env. HOSTNAME, GETWRITE_BIND and GETWRITE_SHARING come only
+    // from buildServerBindEnv.
     GETWRITE_WINDOW_SECRET: windowSecret,
     GETWRITE_SHARING_DIR: app.getPath("userData"),
-    GETWRITE_SHARING: resolveSharingMode({
-      enabled: readSharingEnabled(app.getPath("userData")),
-      env: process.env,
-    }).effective
-      ? "1"
-      : "0",
+    ...buildServerBindEnv(mode),
   };
 
   log(`standaloneDir: ${dirs.standaloneDir}`);

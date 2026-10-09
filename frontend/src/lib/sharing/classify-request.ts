@@ -70,18 +70,26 @@ function secretsEqual(presented: string, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-export function classifyRequest(input: ClassifyInput): Classification {
-  const sharing = readSharingEnv(input.env);
-  const windowSecret = sharing.windowSecret;
-  if (!sharing.sharingOn) return { kind: "off" };
-
-  const presented = input.headers.get(WINDOW_HEADER);
-  if (
+/** True when the request carries the correct per-launch window secret. */
+export function presentsWindowSecret(
+  headers: HeaderReader,
+  env: EnvLike,
+): boolean {
+  const windowSecret = readSharingEnv(env).windowSecret;
+  const presented = headers.get(WINDOW_HEADER);
+  return (
     windowSecret !== undefined &&
     presented !== null &&
     presented !== "" &&
     secretsEqual(presented, windowSecret)
-  ) {
+  );
+}
+
+export function classifyRequest(input: ClassifyInput): Classification {
+  const sharing = readSharingEnv(input.env);
+  if (!sharing.sharingOn) return { kind: "off" };
+
+  if (presentsWindowSecret(input.headers, input.env)) {
     return { kind: "window" };
   }
 

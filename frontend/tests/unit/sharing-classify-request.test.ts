@@ -9,6 +9,10 @@ import {
   serializeClassification,
   type Classification,
 } from "../../src/lib/sharing/classify-request";
+import {
+  BIND_ENV,
+  bindBeyondLoopback,
+} from "../../src/lib/sharing/sharing-env";
 import { mintCredential } from "../../src/lib/sharing/credential-store";
 import type { CredentialStoreState } from "../../src/lib/sharing/credential-store";
 
@@ -177,4 +181,26 @@ describe("classification serialization", () => {
       expect(parseClassification(v)).toBeUndefined();
     }
   });
+});
+
+describe("bindBeyondLoopback (FR-34)", () => {
+  it("names the variable GETWRITE_BIND", () => {
+    expect(BIND_ENV).toBe("GETWRITE_BIND");
+  });
+
+  it("is false when the variable is absent (undeclared)", () => {
+    expect(bindBeyondLoopback({})).toBe(false);
+    expect(bindBeyondLoopback({ GETWRITE_BIND: undefined })).toBe(false);
+  });
+
+  it.each(["127.0.0.1", "localhost", "::1"])("is false for %s", (value) => {
+    expect(bindBeyondLoopback({ GETWRITE_BIND: value })).toBe(false);
+  });
+
+  it.each(["0.0.0.0", "", "::", "192.168.1.5", "LOCALHOST", " 127.0.0.1"])(
+    "is true for %j",
+    (value) => {
+      expect(bindBeyondLoopback({ GETWRITE_BIND: value })).toBe(true);
+    },
+  );
 });

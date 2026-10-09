@@ -347,3 +347,21 @@ describe("POST /api/sharing/pair Host allowlist (FR-31)", () => {
     expect((await POST(submit(CODE))).status).toBe(200);
   });
 });
+
+describe("POST /api/sharing/pair bound beyond loopback without the gate (FR-34)", () => {
+  it.each([undefined, "0", "true", ""])(
+    "refuses with bind-without-gate and does not verify, GETWRITE_SHARING=%j",
+    async (sharing) => {
+      await writeState();
+      vi.stubEnv("GETWRITE_BIND", "0.0.0.0");
+      if (sharing === undefined) delete process.env.GETWRITE_SHARING;
+      else vi.stubEnv("GETWRITE_SHARING", sharing);
+      const spy = vi.spyOn(pairingVerify, "verifyAndConsume");
+      const res = await POST(submit(CODE));
+      expect(res.status).toBe(403);
+      expect(res.headers.get("x-getwrite-gate")).toBe("bind-without-gate");
+      expect(res.headers.get("set-cookie")).toBeNull();
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
+});

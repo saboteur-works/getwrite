@@ -388,6 +388,46 @@ describe("sharing on: every enumerated URL is refused when unconfirmed", () => {
   });
 });
 
+describe("bound beyond loopback, gate not on (FR-34): every enumerated URL is refused", () => {
+  for (const credentialCase of CASES) {
+    it(`refuses all enumerated URLs, the exceptions and static assets: ${credentialCase.name}`, async () => {
+      vi.stubEnv("GETWRITE_BIND", "0.0.0.0");
+      vi.stubEnv("GETWRITE_SHARING", "0");
+      const headers = await credentialCase.setup();
+      const { entries } = await enumerate(APP_DIR);
+      const all = [
+        ...entries,
+        { url: "/_next/static/chunks/a.js", method: "GET" },
+      ];
+      const wrong: string[] = [];
+      for (const entry of all) {
+        const res = await proxy(
+          makeRequest(entry, { host: credentialCase.host, headers }),
+        );
+        if (
+          res.status !== 403 ||
+          res.headers.get("x-getwrite-gate") !== "bind-without-gate"
+        ) {
+          wrong.push(`${entry.method} ${entry.url}`);
+        }
+      }
+      expect(wrong).toEqual([]);
+    });
+  }
+
+  it("still lets the window header through every enumerated URL", async () => {
+    vi.stubEnv("GETWRITE_BIND", "0.0.0.0");
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    const { entries } = await enumerate(APP_DIR);
+    for (const entry of entries) {
+      const res = await proxy(
+        makeRequest(entry, { headers: { [WINDOW_HEADER]: SECRET } }),
+      );
+      expect(isPassThrough(res)).toBe(true);
+    }
+  });
+});
+
 describe("sharing off: every enumerated URL passes through (FR-23)", () => {
   it("forwards every entry", async () => {
     vi.stubEnv("GETWRITE_SHARING", "0");
