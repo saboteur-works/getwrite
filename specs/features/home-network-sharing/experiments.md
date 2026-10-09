@@ -472,3 +472,26 @@ Recorded by the pipeline lead at the Task 6 stop, 2026-10-09, after the owner re
 Attribution supplied by the owner, as recalled and not verified from the log: 10.0.0.163 (run 2, lines 2 and 3) was the owner's phone; the owner ran the `curl -4` localhost check once before the pasted output, which would account for line 8. Line 1, and the one no-secret request in run 1, remain unattributed.
 
 Plan consequence: the tasks after Task 6 stand as written for the primary candidates, with the additions in items 1, 2 and 8 folded into the task list before Task 7 starts.
+
+## E: does a request header set by proxy.ts reach a route handler (Task 14, step 1)
+
+Run 2026-10-09 (Fri Oct 9 13:31 MDT), macOS (Darwin 25.5.0), Next.js 16.2.6, inside the Claude Code OS sandbox, from `frontend/` of the worktree `getwrite-hns-w14`.
+
+Throwaway files (deleted afterwards): `frontend/proxy.ts` (`export function proxy(request: NextRequest)`; copies `request.headers`, deletes `x-getwrite-classification`, sets it to `set-by-proxy`, returns `NextResponse.next({ request: { headers } })`, no matcher) and `frontend/app/api/spike-class-echo/route.ts` (GET, `force-dynamic`, returns `{ seen: request.headers.get("x-getwrite-classification") }`).
+
+Build: the first `pnpm build` (13:31:13) failed with `Symlink [project]/frontend/node_modules is invalid, it points out of the filesystem root` (the worktree's `frontend/node_modules` is a symlink to the main checkout, outside the worktree, which is a sibling of the main checkout rather than nested in it as in sections A and B). To get a build, `frontend/next.config.mjs` was temporarily given `turbopack: { root: "/Users/jedaisaboteur/Repositories" }`, `pnpm build` was rerun (13:31:30, completed; the route table ended with `ƒ Proxy (Middleware)`), and `next.config.mjs` was restored with `git checkout -- frontend/next.config.mjs`. No other change to the build.
+
+Server: standalone output was at `.next/standalone/getwrite-hns-w14/frontend/server.js`; `.next/static` copied to `.next/standalone/getwrite-hns-w14/frontend/.next/static`; started from that directory with `PORT=3457 HOSTNAME=127.0.0.1 node server.js`.
+
+Commands and output:
+
+```
+curl -s http://127.0.0.1:3457/api/spike-class-echo
+{"seen":"set-by-proxy"}
+curl -s -H 'x-getwrite-classification: confirmed:forged' http://127.0.0.1:3457/api/spike-class-echo
+{"seen":"set-by-proxy"}
+```
+
+Observation: a header set by the proxy on the forwarded request (`NextResponse.next({ request: { headers } })`) was visible to the route handler, and a client-sent value for the same header name, which the proxy deleted before setting its own, did not reach the route (the route saw `set-by-proxy`). Not measured: a pass-through that does NOT delete the client copy (the proxy here always replaced it); POST, page (non-route) requests, the packaged `standalone/frontend` layout, and behaviour under `next dev`.
+
+Cleanup: throwaway files deleted; `git status --short` after the deletion showed only the new gate files from this task (no change outside `specs/` from the experiment). The server started for this run could not be stopped from inside the sandbox (`kill` returned `operation not permitted`, and the attempt to retry outside the sandbox was denied by the permission gate); it was still listening on `127.0.0.1:3457` (PID 67566) when this section was written.

@@ -1,0 +1,483 @@
+/**
+ * Feature 75, Task 14: the root `proxy.ts` gate. Built from real `NextRequest`
+ * objects against a temp-directory credential store. No test name, message or
+ * assertion prints a window secret or a credential.
+ */
+import {
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { NextRequest, type NextResponse } from "next/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { proxy } from "../../proxy";
+import {
+  CLASSIFICATION_HEADER,
+  DEVICE_COOKIE,
+  WINDOW_HEADER,
+} from "../../src/lib/sharing/classify-request";
+import {
+  CREDENTIALS_FILE_NAME,
+  addDevice,
+  mintCredential,
+} from "../../src/lib/sharing/credential-store";
+
+const SECRET = "w".repeat(64);
+const ORIGIN = "http://10.0.0.5:3000";
+const FRONTEND = path.resolve(__dirname, "../..");
+
+let dir: string;
+
+beforeEach(async () => {
+  dir = await mkdtemp(path.join(tmpdir(), "gw-gate-"));
+  vi.stubEnv("GETWRITE_SHARING", "1");
+  vi.stubEnv("GETWRITE_SHARING_DIR", dir);
+  vi.stubEnv("GETWRITE_WINDOW_SECRET", SECRET);
+});
+
+afterEach(async () => {
+  vi.unstubAllEnvs();
+  await rm(dir, { recursive: true, force: true });
+});
+
+function req(
+  pathname: string,
+  init: { method?: string; headers?: Record<string, string> } = {},
+): NextRequest {
+  return new NextRequest(`${ORIGIN}${pathname}`, {
+    method: init.method ?? "GET",
+    headers: { host: "10.0.0.5:3000", ...(init.headers ?? {}) },
+  });
+}
+
+async function pairedToken(): Promise<string> {
+  const { token, device } = mintCredential("Test device");
+  await addDevice(dir, device);
+  return token;
+}
+
+function isPassThrough(res: NextResponse): boolean {
+  return res.headers.get("x-middleware-next") === "1";
+}
+
+/** The value of the classification header the gate forwards to the route, or null. */
+function forwarded(res: NextResponse): string | null {
+  return res.headers.get(`x-middleware-request-${CLASSIFICATION_HEADER}`);
+}
+
+const API_PATHS = [
+  "/api/projects",
+  "/api/version-check",
+  "/api/auth-status",
+  "/api/auth/anything",
+  "/api/encryption",
+];
+const PAGE_PATHS = [
+  "/",
+  "/login",
+  "/preferences",
+  "/project-types",
+  "/reset-password",
+  "/verify-email",
+];
+
+describe("sharing off", () => {
+  it("passes every path through, without reading any store", async () => {
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    vi.stubEnv("GETWRITE_SHARING_DIR", path.join(dir, "does-not-exist"));
+    for (const p of [
+      ...API_PATHS,
+      ...PAGE_PATHS,
+      "/pair",
+      "/api/sharing/pair",
+    ]) {
+      const res = await proxy(req(p));
+      expect(isPassThrough(res)).toBe(true);
+      expect(forwarded(res)).toBe("off");
+    }
+  });
+
+  it("passes when the sharing variable is unset", async () => {
+    vi.stubEnv("GETWRITE_SHARING", "");
+    const res = await proxy(req("/api/projects", { method: "POST" }));
+    expect(isPassThrough(res)).toBe(true);
+  });
+
+  it("replaces a client-sent classification header even when sharing is off", async () => {
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    const res = await proxy(
+      req("/api/projects", { headers: { [CLASSIFICATION_HEADER]: "window" } }),
+    );
+    expect(forwarded(res)).toBe("off");
+  });
+});
+
+describe("sharing on, no credential", () => {
+  it.each(API_PATHS)("refuses %s with a typed 401 JSON", async (p) => {
+    for (const method of ["GET", "POST"]) {
+      const res = await proxy(req(p, { method }));
+      expect(res.status).toBe(401);
+      expect(res.headers.get("x-getwrite-gate")).toBe("not-paired");
+      expect(res.headers.get("content-type")).toContain("application/json");
+      const body: unknown = await res.json();
+      expect(body).toEqual({
+        error: "not-paired",
+        message:
+          "This device is not paired. On your computer, open GetWrite, turn on sharing, and enter the code shown there.",
+      });
+    }
+  });
+
+  it("uses one fixed body for every refusal (nothing about a project)", async () => {
+    const bodies = new Set<string>();
+    for (const p of API_PATHS) {
+      bodies.add(await (await proxy(req(p))).text());
+    }
+    expect(bodies.size).toBe(1);
+  });
+
+  it.each(PAGE_PATHS)("redirects page %s to /pair", async (p) => {
+    const res = await proxy(req(`${p}?x=1`));
+    expect([307, 303]).toContain(res.status);
+    const location = new URL(res.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/pair");
+    expect(location.search).toBe("");
+    expect(res.headers.get("x-getwrite-gate")).toBe("not-paired");
+  });
+
+  it("passes the pairing page and the code-entry POST", async () => {
+    expect(isPassThrough(await proxy(req("/pair")))).toBe(true);
+    const res = await proxy(req("/api/sharing/pair", { method: "POST" }));
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toBe("not-confirmed:no-credential");
+  });
+
+  it("refuses other methods on the pairing endpoint and sub-paths of it", async () => {
+    expect((await proxy(req("/api/sharing/pair"))).status).toBe(401);
+    expect(
+      (await proxy(req("/api/sharing/pair", { method: "DELETE" }))).status,
+    ).toBe(401);
+    expect(
+      (await proxy(req("/api/sharing/pair/extra", { method: "POST" }))).status,
+    ).toBe(401);
+    expect((await proxy(req("/api/sharing", { method: "POST" }))).status).toBe(
+      401,
+    );
+  });
+
+  it("passes /_next/static with no credential and refuses /_next/image and others", async () => {
+    expect(isPassThrough(await proxy(req("/_next/static/chunks/x.js")))).toBe(
+      true,
+    );
+    expect(
+      (await proxy(req("/_next/image?url=%2Fa.png&w=64&q=75"))).status,
+    ).toBe(307);
+    expect((await proxy(req("/favicon.ico"))).status).toBe(307);
+    expect((await proxy(req("/_next/data/x.json"))).status).toBe(307);
+  });
+
+  it("does not let a traversal-shaped path borrow the static allowance", async () => {
+    const res = await proxy(req("/_next/static/%2e%2e/%2e%2e/api/projects"));
+    expect(isPassThrough(res)).toBe(false);
+    const res2 = await proxy(req("/_next/static/..%2fapi/projects"));
+    expect(isPassThrough(res2)).toBe(false);
+  });
+});
+
+describe("forged identity without the window secret", () => {
+  it("refuses a forged X-Forwarded-For: 127.0.0.1", async () => {
+    const res = await proxy(
+      req("/api/projects", { headers: { "x-forwarded-for": "127.0.0.1" } }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("classifies a loopback request without the secret like any other client", async () => {
+    const loopback = new NextRequest("http://127.0.0.1:3000/api/projects", {
+      headers: { host: "127.0.0.1:3000" },
+    });
+    expect((await proxy(loopback)).status).toBe(401);
+    const forgedLoopback = new NextRequest(
+      "http://127.0.0.1:3000/api/projects",
+      { headers: { host: "localhost:3000", "x-forwarded-for": "127.0.0.1" } },
+    );
+    expect((await proxy(forgedLoopback)).status).toBe(401);
+    const page = new NextRequest("http://127.0.0.1:3000/", {
+      headers: { host: "127.0.0.1:3000", "x-forwarded-for": "127.0.0.1" },
+    });
+    expect(
+      new URL((await proxy(page)).headers.get("location") ?? "").pathname,
+    ).toBe("/pair");
+  });
+
+  it("refuses a wrong window secret", async () => {
+    const res = await proxy(
+      req("/api/projects", { headers: { [WINDOW_HEADER]: "x".repeat(64) } }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("refuses everything when the window secret is not set in the env", async () => {
+    vi.stubEnv("GETWRITE_WINDOW_SECRET", "");
+    const res = await proxy(
+      req("/api/projects", { headers: { [WINDOW_HEADER]: SECRET } }),
+    );
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("window requests", () => {
+  const win = { [WINDOW_HEADER]: SECRET };
+
+  it("passes API and page requests, including state-changing ones without Origin", async () => {
+    for (const p of [...API_PATHS, ...PAGE_PATHS]) {
+      const res = await proxy(req(p, { headers: win }));
+      expect(isPassThrough(res)).toBe(true);
+      expect(forwarded(res)).toBe("window");
+    }
+    const post = await proxy(
+      req("/api/projects", { method: "POST", headers: win }),
+    );
+    expect(isPassThrough(post)).toBe(true);
+  });
+
+  it("passes with a corrupt store (FR-27)", async () => {
+    await writeFile(path.join(dir, CREDENTIALS_FILE_NAME), "{ not json");
+    const res = await proxy(req("/api/projects", { headers: win }));
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toBe("window");
+  });
+});
+
+describe("confirmed device", () => {
+  it("passes GET requests and forwards the confirmed classification", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+      }),
+    );
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toMatch(/^confirmed:.+/);
+  });
+
+  it("passes a same-origin POST (Origin, or Referer when Origin is absent)", async () => {
+    const token = await pairedToken();
+    const cookie = `${DEVICE_COOKIE}=${token}`;
+    const viaOrigin = await proxy(
+      req("/api/projects", {
+        method: "POST",
+        headers: { cookie, origin: ORIGIN },
+      }),
+    );
+    expect(isPassThrough(viaOrigin)).toBe(true);
+    const viaReferer = await proxy(
+      req("/api/projects", {
+        method: "POST",
+        headers: { cookie, referer: `${ORIGIN}/` },
+      }),
+    );
+    expect(isPassThrough(viaReferer)).toBe(true);
+  });
+
+  it("answers 403 for a cross-origin POST and for a POST with neither Origin nor Referer", async () => {
+    const token = await pairedToken();
+    const cookie = `${DEVICE_COOKIE}=${token}`;
+    const cross = await proxy(
+      req("/api/projects", {
+        method: "POST",
+        headers: { cookie, origin: "http://evil.example" },
+      }),
+    );
+    expect(cross.status).toBe(403);
+    expect(cross.headers.get("x-getwrite-gate")).toBe("cross-origin");
+    const none = await proxy(
+      req("/api/projects", { method: "POST", headers: { cookie } }),
+    );
+    expect(none.status).toBe(403);
+    const forgedForwardedHost = await proxy(
+      req("/api/projects", {
+        method: "DELETE",
+        headers: {
+          cookie,
+          origin: "http://other.example",
+          "x-forwarded-host": "other.example",
+        },
+      }),
+    );
+    expect(forgedForwardedHost.status).toBe(403);
+  });
+
+  it("refuses an unknown credential like no credential", async () => {
+    await pairedToken();
+    const res = await proxy(
+      req("/api/projects", {
+        headers: { cookie: `${DEVICE_COOKIE}=${"A".repeat(43)}` },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("corrupt store", () => {
+  beforeEach(async () => {
+    await writeFile(path.join(dir, CREDENTIALS_FILE_NAME), "{ not json");
+  });
+
+  it("refuses every non-window request, including the pairing POST and the pairing page", async () => {
+    for (const p of API_PATHS) {
+      expect((await proxy(req(p))).status).toBe(401);
+    }
+    const pairPost = await proxy(req("/api/sharing/pair", { method: "POST" }));
+    expect(pairPost.status).toBe(401);
+    expect(isPassThrough(pairPost)).toBe(false);
+    const pairPage = await proxy(req("/pair"));
+    expect(pairPage.status).toBe(401);
+  });
+
+  it("still redirects other pages to /pair and still passes static assets", async () => {
+    expect(
+      new URL((await proxy(req("/"))).headers.get("location") ?? "").pathname,
+    ).toBe("/pair");
+    expect(isPassThrough(await proxy(req("/_next/static/a.js")))).toBe(true);
+  });
+
+  it("refuses when the sharing directory is not configured", async () => {
+    vi.stubEnv("GETWRITE_SHARING_DIR", "");
+    expect((await proxy(req("/api/projects"))).status).toBe(401);
+    expect(
+      (await proxy(req("/api/sharing/pair", { method: "POST" }))).status,
+    ).toBe(401);
+  });
+});
+
+describe("forwarded classification header", () => {
+  const forgeries = ["confirmed:forged-device", "window", "off"];
+
+  it.each(forgeries)(
+    "ignores and replaces a client-sent %s on every pass-through",
+    async (forged) => {
+      const token = await pairedToken();
+      const cases: Array<{
+        p: string;
+        method?: string;
+        headers: Record<string, string>;
+        expected: RegExp;
+      }> = [
+        { p: "/pair", headers: {}, expected: /^not-confirmed:no-credential$/ },
+        {
+          p: "/api/sharing/pair",
+          method: "POST",
+          headers: {},
+          expected: /^not-confirmed:no-credential$/,
+        },
+        {
+          p: "/_next/static/a.js",
+          headers: {},
+          expected: /^not-confirmed:no-credential$/,
+        },
+        {
+          p: "/api/projects",
+          headers: { [WINDOW_HEADER]: SECRET },
+          expected: /^window$/,
+        },
+        {
+          p: "/api/projects",
+          headers: { cookie: `${DEVICE_COOKIE}=${token}` },
+          expected: /^confirmed:(?!forged-device$).+/,
+        },
+      ];
+      for (const c of cases) {
+        const res = await proxy(
+          req(c.p, {
+            method: c.method,
+            headers: {
+              ...c.headers,
+              [CLASSIFICATION_HEADER]: forged,
+              origin: ORIGIN,
+            },
+          }),
+        );
+        expect(isPassThrough(res)).toBe(true);
+        expect(forwarded(res)).toMatch(c.expected);
+        const overridden =
+          res.headers.get("x-middleware-override-headers") ?? "";
+        expect(overridden.split(",")).toContain(CLASSIFICATION_HEADER);
+      }
+    },
+  );
+
+  it("does not let a forged classification turn a refusal into a pass", async () => {
+    const res = await proxy(
+      req("/api/projects", {
+        headers: { [CLASSIFICATION_HEADER]: "confirmed:x" },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("shared module state and import hygiene", () => {
+  async function walk(root: string): Promise<string[]> {
+    const out: string[] = [];
+    for (const entry of await readdir(root)) {
+      const full = path.join(root, entry);
+      const info = await stat(full);
+      if (info.isDirectory()) out.push(...(await walk(full)));
+      else if (/\.(ts|tsx|mjs)$/.test(entry)) out.push(full);
+    }
+    return out;
+  }
+
+  it("imports src/lib/sharing from app/ only in the pairing route", async () => {
+    const files = await walk(path.join(FRONTEND, "app"));
+    const offenders: string[] = [];
+    for (const file of files) {
+      const text = await readFile(file, "utf8");
+      if (/from\s+["'][^"']*lib\/sharing\//.test(text)) {
+        offenders.push(path.relative(FRONTEND, file));
+      }
+    }
+    const allowed = new Set(["app/api/sharing/pair/route.ts"]);
+    expect(offenders.filter((f) => !allowed.has(f))).toEqual([]);
+  });
+
+  it("reads GETWRITE_SHARING only in sharing-env.ts", async () => {
+    const roots = ["app", "src", "components"].map((r) =>
+      path.join(FRONTEND, r),
+    );
+    const files = [
+      path.join(FRONTEND, "proxy.ts"),
+      ...(await Promise.all(roots.map(walk))).flat(),
+    ];
+    const offenders: string[] = [];
+    for (const file of files) {
+      if (file.endsWith(path.join("sharing", "sharing-env.ts"))) continue;
+      const text = await readFile(file, "utf8");
+      if (
+        /process\.env\.GETWRITE_SHARING\b(?!_)|["']GETWRITE_SHARING["']/.test(
+          text,
+        )
+      ) {
+        offenders.push(path.relative(FRONTEND, file));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("proxy.ts and the gate hold no module-level mutable state and import no route module", async () => {
+    for (const rel of ["proxy.ts", "src/lib/sharing/gate.ts"]) {
+      const text = await readFile(path.join(FRONTEND, rel), "utf8");
+      expect(text).not.toMatch(/^(let|var)\s/m);
+      expect(text).not.toMatch(/from\s+["'][^"']*app\/api\//);
+      expect(text).not.toMatch(/globalThis|process\.env\.[A-Z_]+\s*=/);
+    }
+  });
+});

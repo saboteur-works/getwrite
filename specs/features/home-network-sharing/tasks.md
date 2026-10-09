@@ -157,7 +157,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-9 (the interception layer), FR-10 (routes not wrapped by `withStorageContext`, including `version-check`, cannot be reached unconfirmed), FR-11, FR-20 (refusals are explicit and typed, never empty), part of FR-29 (applied to state-changing requests). The gate also runs for the window with sharing on, where the window header is the only thing that distinguishes it. `proxy.ts` must not rely on shared module state (spec). The `(app)/layout.tsx` hosted-auth redirect is untouched. Task 6 confirmed the single `proxy.ts`. The same-origin check for state-changing requests uses Task 12's `isSameOrigin` (compares `Origin`, else `Referer`, against `Host`; never `X-Forwarded-Host`; fails closed when both are absent) and no other host comparison. The cookie name for devices is `getwrite_device`, set by Task 15.
 **POS:** task_1dca3da9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Pairing endpoint and automatic device naming
 **What:** Add `POST /api/sharing/pair`, which verifies a submitted code, mints a credential, stores its hash with an automatically derived device name, and sets the device cookie.

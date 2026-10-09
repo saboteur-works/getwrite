@@ -46,5 +46,9 @@ export const access = unavailable("access");
 export const unlink = unavailable("unlink");
 export const rename = unavailable("rename");
 export const copyFile = unavailable("copyFile");
+// `chmod` is imported by the home-network-sharing credential-store helpers
+// (`lib/sharing/file-lock.ts`), which `frontend/proxy.ts` pulls into the
+// native build as Middleware; never invoked on native.
+export const chmod = unavailable("chmod");
 
 export default fsPromises;

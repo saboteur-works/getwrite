@@ -11,7 +11,9 @@
  * back to `defaultProjectsDir()`'s legacy env/cwd rules. Rather than
  * duplicating a `runInStorageContext(...)` call inline in every such route
  * handler — or introducing a `middleware.ts` (this repo has none, and this
- * feature does not add one) — route authors wrap their exported handler with
+ * feature does not add one; a root `proxy.ts` request gate exists, but it only
+ * refuses requests when home-network sharing is on and establishes no storage
+ * context) — route authors wrap their exported handler with
  * {@link withStorageContext} once, at the export site.
  *
  * The `tenantRoot` used here is resolved per-request by
