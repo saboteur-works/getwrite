@@ -298,7 +298,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-35 (security review M4). The prefix test predates this branch; the IPC handlers and the bridge methods are new on this branch. The other IPC handlers (`workspace-dir`, `choose-workspace-dir`, `restart`, the Scrivener/DOCX import channels, the global noise-word channels) predate the branch and are not changed here; whether they should also check the sender is not decided by this task. `main.ts` cannot be imported outside Electron, so the logic lives in `navigation-guard.ts` and the `main.ts` wiring is covered only by text tests until Task 24 item 18. A frame that has navigated away may no longer be the window's: this task checks the sender at call time only.
 **POS:** task_ecc54264
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Exclude the pairing page from the native export (Owner decision, 2026-10-09)
 **What:** Add `pair` to the paths removed from the native app tree, the way the hosted-auth pages are removed, so the Android build has no `/pair` page.

@@ -7,12 +7,13 @@ import {
   shell,
   utilityProcess,
 } from "electron";
-import type { UtilityProcess } from "electron";
+import type { IpcMainInvokeEvent, UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
 import { randomBytes } from "crypto";
 import { PORT, localOrigin } from "./server-config";
+import { isLocalOriginUrl, isTrustedSender } from "./navigation-guard";
 import {
   createWindowSecret,
   installWindowSecret,
@@ -278,24 +279,30 @@ function registerWorkspaceHandlers(): void {
  * returned to the window only; nothing here logs it.
  */
 function registerSharingHandlers(): void {
+  /** Refuses a call whose sender frame is not the local origin (FR-35). */
+  const assertTrustedSender = (event: IpcMainInvokeEvent): void => {
+    if (!isTrustedSender(event.senderFrame?.url, localOrigin(PORT))) {
+      throw new Error("Refused: untrusted sender");
+    }
+  };
   const userData = app.getPath("userData");
   const pairing = createPairingSession(userData, () => Date.now());
 
-  ipcMain.handle(
-    "getwrite:sharing-get-status",
-    (): SharingStatus =>
-      buildSharingStatus({
-        enabled: readSharingEnabled(userData),
-        env: process.env,
-        interfaces: os.networkInterfaces(),
-        port: PORT,
-        credentialStore: readCredentialStoreStatus(userData),
-      }),
-  );
+  ipcMain.handle("getwrite:sharing-get-status", (event): SharingStatus => {
+    assertTrustedSender(event);
+    return buildSharingStatus({
+      enabled: readSharingEnabled(userData),
+      env: process.env,
+      interfaces: os.networkInterfaces(),
+      port: PORT,
+      credentialStore: readCredentialStoreStatus(userData),
+    });
+  });
 
   ipcMain.handle(
     "getwrite:sharing-set-enabled",
-    (_event, enabled: unknown): void => {
+    (event, enabled: unknown): void => {
+      assertTrustedSender(event);
       if (typeof enabled !== "boolean") {
         throw new Error("Sharing setting must be true or false");
       }
@@ -304,13 +311,17 @@ function registerSharingHandlers(): void {
     },
   );
 
-  ipcMain.handle(
-    "getwrite:sharing-generate-code",
-    (): PairingCodeInfo => pairing.generate(),
-  );
+  ipcMain.handle("getwrite:sharing-generate-code", (event): PairingCodeInfo => {
+    assertTrustedSender(event);
+    return pairing.generate();
+  });
 
-  ipcMain.handle("getwrite:sharing-get-code", (): PairingCodeInfo | null =>
-    pairing.get(),
+  ipcMain.handle(
+    "getwrite:sharing-get-code",
+    (event): PairingCodeInfo | null => {
+      assertTrustedSender(event);
+      return pairing.get();
+    },
   );
 }
 
@@ -608,7 +619,7 @@ function createWindow(): BrowserWindow {
   // external sites are handed to the default browser instead of navigating the
   // window away from localhost (setWindowOpenHandler only covers window.open).
   win.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(localOrigin(PORT))) {
+    if (!isLocalOriginUrl(url, localOrigin(PORT))) {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) {
         void shell.openExternal(url);
