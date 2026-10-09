@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "salt": "00112233445566778899aabbccddeeff",
+  "codeHash": "0b99628855f5400d867142c5f325b6ba6c6efa34717932c4d4f8a184f9ea6e1c",
+  "expiresAt": 1800000300000,
+  "attempts": 0,
+  "dead": false,
+  "used": false,
+  "generatedAt": 1800000000000
+}

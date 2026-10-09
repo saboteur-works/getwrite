@@ -107,7 +107,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-13 (generation, replace), FR-14 (expiry, the part main owns), part of FR-15 and FR-16 (the state fields `used`, `attempts`, `dead`; the server in Task 11 changes them). Main keeps the plain code in memory only so the window can display it (Task 19); after a main-process restart only the hash exists, so the window can only show "generate a new code". The cross-process write rule is: main writes this file only when generating a new code (replacing everything); the server only increments `attempts` and sets `dead`/`used`, both under the lock in Task 11. The 6-digit code space is small; the protection is the 5-attempt per-code limit, not the hash. The file lives in the directory the server is given via `GETWRITE_SHARING_DIR` (Task 13), which is `userData`.
 **POS:** task_d8b5d61b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Server-side credential store (hashes only, fail-closed read)
 **What:** Add the frontend module that reads and writes the device-credential store file in `GETWRITE_SHARING_DIR`, mints credentials, stores only their hashes, and reports a missing file as "no devices" and a corrupt or unreadable file as an explicit corrupt state.

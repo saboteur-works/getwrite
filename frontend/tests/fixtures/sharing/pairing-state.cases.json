@@ -1,0 +1,18 @@
+{
+  "cases": [
+    {
+      "fixture": "pairing-state.valid.json",
+      "code": "012345",
+      "now": 1800000000000,
+      "remainingMs": 300000,
+      "codeMatchesHash": true
+    },
+    {
+      "fixture": "pairing-state.expired.json",
+      "code": "654321",
+      "now": 1700000300000,
+      "remainingMs": 0,
+      "codeMatchesHash": true
+    }
+  ]
+}
