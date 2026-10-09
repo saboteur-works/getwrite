@@ -20,6 +20,12 @@ import {
   readCredentialStore,
 } from "../../../../src/lib/sharing/credential-store";
 import { deriveDeviceName } from "../../../../src/lib/sharing/device-name";
+import {
+  HOST_NOT_ALLOWED_MESSAGE,
+  isAllowedHost,
+  parseServerPort,
+  readOwnMachine,
+} from "../../../../src/lib/sharing/host-allowlist";
 import { verifyAndConsume } from "../../../../src/lib/sharing/pairing-verify";
 import { isSameOrigin } from "../../../../src/lib/sharing/same-origin";
 import { readSharingEnv } from "../../../../src/lib/sharing/sharing-env";
@@ -55,9 +61,37 @@ function serverFailure(): NextResponse {
   return NextResponse.json(UNUSABLE, { status: 500 });
 }
 
+/**
+ * FR-31, checked here as well as in the gate so the endpoint does not rely
+ * only on `proxy.ts`. A missing or non-numeric PORT refuses.
+ */
+function hostIsAllowed(request: NextRequest): boolean {
+  const port = parseServerPort(process.env.PORT);
+  if (port === undefined) return false;
+  const machine = readOwnMachine();
+  return isAllowedHost({
+    hostHeader: request.headers.get("host"),
+    port,
+    interfaces: machine.interfaces,
+    hostname: machine.hostname,
+  });
+}
+
+function hostNotAllowed(): NextResponse {
+  return new NextResponse(HOST_NOT_ALLOWED_MESSAGE, {
+    status: 403,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "x-getwrite-gate": "host-not-allowed",
+    },
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const sharing = readSharingEnv(process.env);
   if (!sharing.sharingOn) return new NextResponse(null, { status: 404 });
+
+  if (!hostIsAllowed(request)) return hostNotAllowed();
 
   if (!isSameOrigin({ method: request.method, headers: request.headers })) {
     return NextResponse.json({ error: "cross-origin" }, { status: 403 });

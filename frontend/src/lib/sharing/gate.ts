@@ -12,6 +12,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   CLASSIFICATION_HEADER,
   classifyRequest,
+  type ClassifyInput,
   serializeClassification,
   type Classification,
 } from "./classify-request";
@@ -19,6 +20,13 @@ import {
   readCredentialStore,
   type CredentialStoreState,
 } from "./credential-store";
+import {
+  HOST_NOT_ALLOWED_MESSAGE,
+  isAllowedHost,
+  parseServerPort,
+  readOwnMachine,
+  type OwnMachine,
+} from "./host-allowlist";
 import { isSameOrigin } from "./same-origin";
 import { readSharingEnv, type EnvLike } from "./sharing-env";
 
@@ -29,6 +37,8 @@ const STATIC_PREFIX = "/_next/static/";
 /** Shown to a person whose device is refused; the FR-20 working copy, verbatim. */
 export const NOT_PAIRED_MESSAGE =
   "This device is not paired. On your computer, open GetWrite, turn on sharing, and enter the code shown there.";
+
+export { HOST_NOT_ALLOWED_MESSAGE };
 
 const GATE_HEADER = "x-getwrite-gate";
 
@@ -94,28 +104,71 @@ function refuseCrossOrigin(): NextResponse {
   );
 }
 
-async function classify(
+/**
+ * The FR-31 refusal: plain text, 403, never a redirect (the redirect target,
+ * `/pair`, would be refused for the same Host).
+ */
+function refuseHostNotAllowed(): NextResponse {
+  return new NextResponse(HOST_NOT_ALLOWED_MESSAGE, {
+    status: 403,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      [GATE_HEADER]: "host-not-allowed",
+    },
+  });
+}
+
+/** True when the Host names this machine on the server's own port; a missing or non-numeric PORT refuses. */
+function hostIsAllowed(
   request: NextRequest,
   env: EnvLike,
-): Promise<Classification> {
-  const base = {
+  machine: OwnMachine,
+): boolean {
+  const port = parseServerPort(env.PORT);
+  if (port === undefined) return false;
+  return isAllowedHost({
+    hostHeader: request.headers.get("host"),
+    port,
+    interfaces: machine.interfaces,
+    hostname: machine.hostname,
+  });
+}
+
+function requestInputs(
+  request: NextRequest,
+  env: EnvLike,
+): Omit<ClassifyInput, "store"> {
+  return {
     headers: request.headers,
     cookies: request.cookies,
     method: request.method,
     env,
   };
-  // The window check does not depend on the store, so a window request never reads it.
-  const first = classifyRequest({ ...base, store: { kind: "empty" } });
-  if (first.kind === "off" || first.kind === "window") return first;
-  const store = await loadStore(readSharingEnv(env).sharingDir);
-  return classifyRequest({ ...base, store });
 }
 
+/**
+ * Runs the gate. `machine` is read at call time by default so an address
+ * change needs no restart; tests inject one.
+ */
 export async function runGate(
   request: NextRequest,
   env: EnvLike,
+  machine?: OwnMachine,
 ): Promise<NextResponse> {
-  const classification = await classify(request, env);
+  const inputs = requestInputs(request, env);
+  // The window check does not depend on the store, so a window request never reads it.
+  const first = classifyRequest({ ...inputs, store: { kind: "empty" } });
+  if (first.kind === "off" || first.kind === "window") {
+    return forward(request, first);
+  }
+
+  // Everything that is not the window, exempt requests and static assets
+  // included, must name this machine (FR-31) before anything else is decided.
+  const own = machine ?? readOwnMachine();
+  if (!hostIsAllowed(request, env, own)) return refuseHostNotAllowed();
+
+  const store = await loadStore(readSharingEnv(env).sharingDir);
+  const classification = classifyRequest({ ...inputs, store });
   const { pathname } = request.nextUrl;
 
   switch (classification.kind) {

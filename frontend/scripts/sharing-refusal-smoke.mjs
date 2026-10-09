@@ -14,6 +14,7 @@
  */
 import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomInt } from "node:crypto";
+import { request as httpRequest } from "node:http";
 import { createServer } from "node:net";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -112,6 +113,31 @@ function isRefusal(res) {
     location !== null &&
     new URL(location, "http://x").pathname === "/pair"
   );
+}
+
+/** node:http, because a `Host` override through `fetch` is not assumed to work. */
+function rawRequest(port, method, pathname, headers) {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest(
+      { host: "127.0.0.1", port, method, path: pathname, headers },
+      (res) => {
+        let body = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            gate: res.headers["x-getwrite-gate"],
+            location: res.headers.location,
+            setCookie: res.headers["set-cookie"],
+            body,
+          }),
+        );
+      },
+    );
+    req.once("error", reject);
+    req.end(method === "POST" ? JSON.stringify({ code: "000000" }) : undefined);
+  });
 }
 
 async function waitForServer(base, secret, child) {
@@ -239,6 +265,46 @@ async function main() {
       headers: { "x-getwrite-window": "x".repeat(64) },
     });
     check("wrong window header refused", isRefusal(wrongWindow));
+
+    // FR-31: a forged Host/Origin naming a foreign host is refused for its Host,
+    // on the exempt pairing paths too, and is never redirected to /pair.
+    const foreignHost = `evil.example:${port}`;
+    for (const [method, pathname] of [
+      ["GET", "/pair"],
+      ["POST", "/api/sharing/pair"],
+      ["GET", "/api/auth-status"],
+    ]) {
+      const res = await rawRequest(port, method, pathname, {
+        host: foreignHost,
+        origin: `http://${foreignHost}`,
+        "content-type": "application/json",
+      });
+      check(
+        `foreign Host refused with host-not-allowed: ${method} ${pathname} (${res.status})`,
+        res.status === 403 &&
+          res.gate === "host-not-allowed" &&
+          res.location === undefined &&
+          res.setCookie === undefined &&
+          res.body.includes("does not name the computer running GetWrite"),
+      );
+    }
+    const wrongPortHost = await rawRequest(port, "GET", "/pair", {
+      host: `127.0.0.1:${port + 1}`,
+    });
+    check(
+      "own address on the wrong port refused with host-not-allowed",
+      wrongPortHost.status === 403 && wrongPortHost.gate === "host-not-allowed",
+    );
+    const windowForeignHost = await rawRequest(
+      port,
+      "GET",
+      "/api/auth-status",
+      { host: foreignHost, "x-getwrite-window": secret },
+    );
+    check(
+      "window header passes with any Host",
+      windowForeignHost.status === 200,
+    );
 
     // Pairing-code states written as fixtures: expired, over the attempt limit, used.
     let code = newCode();

@@ -32,8 +32,26 @@ function isPrivateIPv4(address: string): boolean {
 }
 
 /**
- * Lists `http://<ip>:<port>` for each non-internal private IPv4 address.
- * IPv6, loopback, link-local and public addresses are skipped.
+ * Every non-internal IPv4 address of the machine. This is the one enumeration
+ * both the window's display and the server's Host allowlist (FR-31,
+ * `frontend/src/lib/sharing/host-allowlist.ts`) start from.
+ */
+export function ownIPv4Addresses(interfaces: NetworkInterfaces): string[] {
+  const addresses: string[] = [];
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries ?? []) {
+      if (entry.internal || entry.family !== "IPv4") continue;
+      addresses.push(entry.address);
+    }
+  }
+  return addresses;
+}
+
+/**
+ * Lists `http://<ip>:<port>` for each private-range address of
+ * {@link ownIPv4Addresses}. IPv6, loopback, link-local and public addresses
+ * are skipped; every address listed is accepted by the server's Host
+ * allowlist.
  *
  * @param interfaces - Result of `os.networkInterfaces()`.
  * @param port - The shared server port (single source: `server-config.ts`).
@@ -43,13 +61,7 @@ export function candidateAddresses(
   interfaces: NetworkInterfaces,
   port: number,
 ): string[] {
-  const urls: string[] = [];
-  for (const entries of Object.values(interfaces)) {
-    for (const entry of entries ?? []) {
-      if (entry.internal || entry.family !== "IPv4") continue;
-      if (!isPrivateIPv4(entry.address)) continue;
-      urls.push(`http://${entry.address}:${port}`);
-    }
-  }
-  return urls;
+  return ownIPv4Addresses(interfaces)
+    .filter(isPrivateIPv4)
+    .map((address) => `http://${address}:${port}`);
 }

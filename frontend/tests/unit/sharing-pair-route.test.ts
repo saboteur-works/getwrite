@@ -14,6 +14,20 @@ import {
 import { classifyRequest } from "../../src/lib/sharing/classify-request";
 import { POST } from "../../app/api/sharing/pair/route";
 
+// Injected machine identity (Task 25): the route reads the machine at request
+// time; here it owns 192.168.1.20, the host these requests use.
+vi.mock("../../src/lib/sharing/host-allowlist", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../src/lib/sharing/host-allowlist")
+  >()),
+  readOwnMachine: () => ({
+    hostname: "test-machine",
+    interfaces: {
+      en0: [{ address: "192.168.1.20", family: "IPv4", internal: false }],
+    },
+  }),
+}));
+
 const CODE = "123456";
 const SALT = "00112233445566778899aabbccddeeff";
 const HOST = "192.168.1.20:3000";
@@ -67,6 +81,7 @@ beforeEach(async () => {
   vi.stubEnv("GETWRITE_SHARING", "1");
   vi.stubEnv("GETWRITE_SHARING_DIR", dir);
   vi.stubEnv("GETWRITE_WINDOW_SECRET", "window-secret-for-tests");
+  vi.stubEnv("PORT", "3000");
   await writeState();
 });
 
@@ -289,5 +304,43 @@ describe("POST /api/sharing/pair", () => {
     const logged = JSON.stringify(spies.flatMap((s) => s.mock.calls));
     expect(logged).not.toContain(CODE);
     expect(logged).not.toMatch(/[0-9a-f]{64}/);
+  });
+});
+
+describe("POST /api/sharing/pair Host allowlist (FR-31)", () => {
+  it("refuses a foreign Host with a matching foreign Origin, without verifying the code", async () => {
+    const verify = vi.spyOn(pairingVerify, "verifyAndConsume");
+    const res = await POST(
+      pairRequest(JSON.stringify({ code: CODE }), {
+        host: "evil.example:3000",
+        origin: "http://evil.example:3000",
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(res.headers.get("x-getwrite-gate")).toBe("host-not-allowed");
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(await res.text()).toContain(
+      "This address does not name the computer running GetWrite.",
+    );
+    expect(verify).not.toHaveBeenCalled();
+    const state = await readCredentialStore(dir);
+    expect(state.kind === "ok" ? state.devices : []).toHaveLength(0);
+  });
+
+  it("refuses the right name on the wrong port and a missing PORT", async () => {
+    const wrongPort = await POST(
+      pairRequest(JSON.stringify({ code: CODE }), {
+        host: "192.168.1.20:3001",
+        origin: "http://192.168.1.20:3001",
+      }),
+    );
+    expect(wrongPort.headers.get("x-getwrite-gate")).toBe("host-not-allowed");
+    vi.stubEnv("PORT", "");
+    const noPort = await POST(submit(CODE));
+    expect(noPort.headers.get("x-getwrite-gate")).toBe("host-not-allowed");
+  });
+
+  it("an allowed Host still pairs", async () => {
+    expect((await POST(submit(CODE))).status).toBe(200);
   });
 });

@@ -28,7 +28,8 @@ import path from "node:path";
 import { NextRequest, type NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { proxy } from "../../proxy";
+import { runGate } from "../../src/lib/sharing/gate";
+import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
 import {
   DEVICE_COOKIE,
   WINDOW_HEADER,
@@ -135,6 +136,18 @@ async function enumerate(
   return { routeFiles, pageFiles, entries };
 }
 
+/** Injected machine identity (Task 25): the requests use 10.0.0.5:3000 and loopback. */
+const MACHINE: OwnMachine = {
+  hostname: "test-machine",
+  interfaces: {
+    en0: [{ address: "10.0.0.5", family: "IPv4", internal: false }],
+  } as OwnMachine["interfaces"],
+};
+
+function proxy(request: NextRequest): Promise<NextResponse> {
+  return runGate(request, process.env, MACHINE);
+}
+
 const label = (e: { method: string; url: string }): string =>
   `${e.method} ${e.url}`;
 const isException = (e: Entry): boolean =>
@@ -149,6 +162,7 @@ beforeEach(async () => {
   vi.stubEnv("GETWRITE_SHARING", "1");
   vi.stubEnv("GETWRITE_SHARING_DIR", dir);
   vi.stubEnv("GETWRITE_WINDOW_SECRET", SECRET);
+  vi.stubEnv("PORT", "3000");
 });
 
 afterEach(async () => {
@@ -325,6 +339,33 @@ describe("sharing on: every enumerated URL is refused when unconfirmed", () => {
         if (!isRefusal(res)) wrong.push(label(entry));
       }
       expect(exceptionsSeen).toBe(ENUMERATED_EXCEPTIONS.length);
+      expect(wrong).toEqual([]);
+    });
+  }
+
+  for (const credentialCase of CASES) {
+    it(`refuses every enumerated URL, the exceptions and static assets with the host refusal when the Host is foreign: ${credentialCase.name}`, async () => {
+      const headers = await credentialCase.setup();
+      const { entries } = await enumerate(APP_DIR);
+      const wrong: string[] = [];
+      const all = [
+        ...entries,
+        { url: "/_next/static/chunks/a.js", method: "GET" },
+      ];
+      for (const entry of all) {
+        const res = await proxy(
+          makeRequest(entry, {
+            host: "evil.example:3000",
+            headers: { ...headers, origin: "http://evil.example:3000" },
+          }),
+        );
+        if (
+          res.status !== 403 ||
+          res.headers.get("x-getwrite-gate") !== "host-not-allowed"
+        ) {
+          wrong.push(`${entry.method} ${entry.url}`);
+        }
+      }
       expect(wrong).toEqual([]);
     });
   }

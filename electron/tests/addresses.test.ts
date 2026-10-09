@@ -1,7 +1,9 @@
 /** Candidate LAN addresses (Feature 75, FR-6, FR-25). */
 import { describe, it, expect } from "vitest";
 import type { NetworkInterfaceInfo } from "os";
-import { candidateAddresses } from "../src/sharing/addresses";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { candidateAddresses, ownIPv4Addresses } from "../src/sharing/addresses";
 
 type Interfaces = Record<string, NetworkInterfaceInfo[] | undefined>;
 
@@ -78,5 +80,63 @@ describe("candidateAddresses", () => {
 
   it("tolerates an interface with no address list", () => {
     expect(candidateAddresses({ en0: undefined }, 3000)).toEqual([]);
+  });
+});
+
+interface FixtureCase {
+  name: string;
+  port: number;
+  hostname: string;
+  interfaces: Interfaces;
+  displayed: string[];
+  accepted: string[];
+  refused: string[];
+}
+
+/**
+ * The contract fixture shared with the frontend Host allowlist test
+ * (`frontend/tests/unit/sharing-host-allowlist.test.ts`): FR-31 says the window
+ * and the gate follow one rule.
+ */
+const FIXTURE_CASES = (
+  JSON.parse(
+    readFileSync(
+      path.resolve(
+        __dirname,
+        "../../frontend/tests/fixtures/sharing/host-allowlist.cases.json",
+      ),
+      "utf8",
+    ),
+  ) as { cases: FixtureCase[] }
+).cases;
+
+describe.each(FIXTURE_CASES)("host-allowlist contract: $name", (c) => {
+  it("shows exactly the fixture's displayed URLs", () => {
+    expect(candidateAddresses(c.interfaces, c.port)).toEqual(c.displayed);
+  });
+
+  it("every displayed host is one the gate accepts", () => {
+    for (const url of candidateAddresses(c.interfaces, c.port)) {
+      expect(c.accepted).toContain(new URL(url).host);
+    }
+  });
+
+  it("displayed addresses are a subset of ownIPv4Addresses", () => {
+    const own = ownIPv4Addresses(c.interfaces);
+    for (const url of candidateAddresses(c.interfaces, c.port)) {
+      expect(own).toContain(new URL(url).hostname);
+    }
+  });
+});
+
+describe("ownIPv4Addresses", () => {
+  it("lists non-internal IPv4 addresses, public and link-local included", () => {
+    expect(
+      ownIPv4Addresses({
+        lo0: [v4("127.0.0.1", true), v6("::1", true)],
+        en0: [v6("fe80::1"), v4("8.8.8.8"), v4("169.254.1.1"), v4("10.0.0.5")],
+        en1: undefined,
+      }),
+    ).toEqual(["8.8.8.8", "169.254.1.1", "10.0.0.5"]);
   });
 });

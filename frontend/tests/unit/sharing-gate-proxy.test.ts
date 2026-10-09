@@ -17,7 +17,9 @@ import path from "node:path";
 import { NextRequest, type NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { proxy } from "../../proxy";
+import { proxy as realProxy } from "../../proxy";
+import { runGate } from "../../src/lib/sharing/gate";
+import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
 import {
   CLASSIFICATION_HEADER,
   DEVICE_COOKIE,
@@ -33,6 +35,18 @@ const SECRET = "w".repeat(64);
 const ORIGIN = "http://10.0.0.5:3000";
 const FRONTEND = path.resolve(__dirname, "../..");
 
+/** Injected machine identity (Task 25): the requests below use 10.0.0.5:3000. */
+const MACHINE: OwnMachine = {
+  hostname: "test-machine",
+  interfaces: {
+    en0: [{ address: "10.0.0.5", family: "IPv4", internal: false }],
+  } as OwnMachine["interfaces"],
+};
+
+function proxy(request: NextRequest): Promise<NextResponse> {
+  return runGate(request, process.env, MACHINE);
+}
+
 let dir: string;
 
 beforeEach(async () => {
@@ -40,6 +54,7 @@ beforeEach(async () => {
   vi.stubEnv("GETWRITE_SHARING", "1");
   vi.stubEnv("GETWRITE_SHARING_DIR", dir);
   vi.stubEnv("GETWRITE_WINDOW_SECRET", SECRET);
+  vi.stubEnv("PORT", "3000");
 });
 
 afterEach(async () => {
@@ -479,5 +494,126 @@ describe("shared module state and import hygiene", () => {
       expect(text).not.toMatch(/from\s+["'][^"']*app\/api\//);
       expect(text).not.toMatch(/globalThis|process\.env\.[A-Z_]+\s*=/);
     }
+  });
+});
+
+describe("Host allowlist (FR-31)", () => {
+  const REFUSED_HOST = "host-not-allowed";
+  const foreign = (
+    pathname: string,
+    method = "GET",
+    extra: Record<string, string> = {},
+  ): NextRequest =>
+    new NextRequest(`http://evil.example:3000${pathname}`, {
+      method,
+      headers: {
+        host: "evil.example:3000",
+        origin: "http://evil.example:3000",
+        ...extra,
+      },
+    });
+
+  it.each([
+    ["GET", "/pair"],
+    ["POST", "/api/sharing/pair"],
+    ["GET", "/api/projects"],
+    ["GET", "/_next/static/x"],
+  ])(
+    "refuses the rebinding shape on %s %s with a text message, no redirect",
+    async (method, p) => {
+      const res = await proxy(foreign(p, method));
+      expect(res.status).toBe(403);
+      expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+      expect(res.headers.get("location")).toBeNull();
+      expect(await res.text()).toContain(
+        "This address does not name the computer running GetWrite. Open the address shown in the GetWrite window on that computer.",
+      );
+    },
+  );
+
+  it("refuses a paired cookie sent with a foreign Host", async () => {
+    const token = await pairedToken();
+    const res = await proxy(
+      foreign("/api/projects", "GET", { cookie: `${DEVICE_COOKIE}=${token}` }),
+    );
+    expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+  });
+
+  it.each([
+    "10.0.0.5:3000",
+    "localhost:3000",
+    "127.0.0.1:3000",
+    "LOCALHOST:3000",
+    "test-machine.local:3000",
+  ])(
+    "an allowed Host %s reaches the pairing exception and the credential refusal",
+    async (host) => {
+      const page = await proxy(req("/pair", { headers: { host } }));
+      expect(isPassThrough(page)).toBe(true);
+      const post = await proxy(
+        req("/api/sharing/pair", { method: "POST", headers: { host } }),
+      );
+      expect(isPassThrough(post)).toBe(true);
+      const api = await proxy(req("/api/projects", { headers: { host } }));
+      expect(api.status).toBe(401);
+      expect(api.headers.get("x-getwrite-gate")).toBe("not-paired");
+      expect(
+        isPassThrough(
+          await proxy(req("/_next/static/x", { headers: { host } })),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it("refuses the wrong port and a missing port", async () => {
+    for (const host of ["10.0.0.5:3001", "10.0.0.5", "[::1]:3000"]) {
+      const res = await proxy(req("/pair", { headers: { host } }));
+      expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+    }
+  });
+
+  it("refuses everything for a non-window request when PORT is missing or not numeric", async () => {
+    for (const value of ["", "abc", "3000x", "0"]) {
+      vi.stubEnv("PORT", value);
+      const res = await proxy(req("/pair"));
+      expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+    }
+  });
+
+  it("does not subject a window request to the allowlist, whatever Host it sends", async () => {
+    const res = await proxy(
+      new NextRequest("http://anything.example:9/api/projects", {
+        headers: { host: "anything.example:9", [WINDOW_HEADER]: SECRET },
+      }),
+    );
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toBe("window");
+  });
+
+  it("does nothing with sharing off", async () => {
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    const res = await proxy(foreign("/api/projects"));
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toBe("off");
+  });
+
+  it("follows a changed interface list with no restart", async () => {
+    const moved: OwnMachine = {
+      hostname: "test-machine",
+      interfaces: {
+        en0: [{ address: "10.0.0.9", family: "IPv4", internal: false }],
+      } as OwnMachine["interfaces"],
+    };
+    const request = (): NextRequest =>
+      req("/pair", { headers: { host: "10.0.0.9:3000" } });
+    const before = await runGate(request(), process.env, MACHINE);
+    const after = await runGate(request(), process.env, moved);
+    expect(before.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+    expect(isPassThrough(after)).toBe(true);
+  });
+
+  it("the exported proxy reads the real machine when none is injected", async () => {
+    const res = await realProxy(foreign("/pair"));
+    expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
   });
 });
