@@ -238,7 +238,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** ORDERING: also depends on Tasks 25, 26, 27, 28 and 29, which the schema does not let this field list (see the header's ordering exception); do not start until all five are ticked. Satisfies FR-34 and, with Tasks 25 to 29, the review fixes. Satisfies FR-1 (the gate and its tests exist and pass before this change), FR-3, FR-4 (all interfaces; the accepted consequence is non-LAN adapters are also bound, the gate is the control), FR-24, part of FR-26. This is the only task that changes the listen address; if any gate task is unticked, do not start it. Two items are unverified until Task 4: whether `next dev` honours `HOSTNAME` (the unpackaged path spawns `pnpm dev`), and whether the window's `http://localhost:<port>` load URL stays correct under a `0.0.0.0` bind. Read those results from `experiments.md`; if Task 4 recorded a problem, record in Notes what it was and what this task did about it, within this task's scope, and report a blocker otherwise. A sharing change takes effect only at restart (Task 20); the bind is fixed when the server starts.
 **POS:** task_7c729704
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Final verification gate
 **What:** Run the full verification suite against freshly measured baselines, run the built-server checks the review fixes need, and confirm nothing out of scope was added. Runs only after Tasks 22 and 25 to 29 are ticked.

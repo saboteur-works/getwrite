@@ -507,3 +507,119 @@ Run 2026-10-09 by the pipeline lead in the main checkout on `feat/home-network-s
 - The shadow root's `app/` contained `(app)`, `globals.css`, `layout.tsx`, `preferences`: no `pair` directory.
 - Supplementary build (section B's procedure: `"stories"` added to `exclude` in `frontend/.native-build/tsconfig.json` only, then the script's `next build` by hand with its environment): exit 0. `frontend/out/` held `index.html`, `preferences.html`, `_not-found.html`, `404.html` and `_next/`; `find out -ipath "*pair*"` printed nothing; `grep -rl "getwrite_device\|x-getwrite-window\|host-not-allowed\|GETWRITE_WINDOW_SECRET" out` printed nothing; the only proxy-related file was `out/_next/static/<build-id>/_clientMiddlewareManifest.js`, as in section B.
 - Not run here: the 12 MB upload against the built server (Task 23), and anything from a second device.
+
+## G: final verification
+
+Run 2026-10-09 (about 15:34 to 15:55 MDT) by the Task 23 implementor in the main checkout `/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/home-network-sharing` at `b5a8a889`, inside the command sandbox (no command needed the sandbox disabled; binding `0.0.0.0` worked inside it). No source file was edited. Machine LAN address at the time: `10.0.0.226` (from `ifconfig`; the only non-loopback IPv4). Scripts used for the checks below were written under the session scratchpad, not in the repo. No pairing code, window secret or device token is reproduced here (cookie values are shown as `<redacted>`).
+
+### Baselines (measured fresh)
+
+`git worktree add --detach ../getwrite-baseline main` (HEAD `69f1bf53`), `node_modules`, `frontend/node_modules`, `electron/node_modules` (and for the second knip run `android/node_modules`, `cli/node_modules`) symlinked from the main checkout, `node frontend/scripts/ensure-config-link.mjs` run there. The worktree was removed afterwards (`git worktree list` no longer shows it; `ls ..` shows no `getwrite-baseline`).
+
+| Check | `main` baseline | tip `b5a8a889` |
+|---|---|---|
+| frontend `pnpm lint` | exit 0; 0 errors, 395 warnings | exit 0; 0 errors, 395 warnings |
+| frontend `pnpm typecheck` | exit 0 | exit 0 |
+| frontend `pnpm test:ci` | exit 0; 572 files passed; 5566 passed, 1 skipped (5567) | exit 0; 591 files passed; 5931 passed, 1 skipped (5932); 0 failed |
+| electron `pnpm test` | exit 0; 11 files, 82 tests passed | exit 0; 20 files, 250 tests passed |
+| electron `pnpm typecheck` | exit 0 | exit 0 |
+| repo-root `pnpm knip` | exit 1; Unused files 50, unused exports 167, unused exported types 170, duplicate exports 14 | exit 1; Unused files 50, unused exports 172, unused exported types 176, duplicate exports 14 |
+
+Test counts: 19 more files, 365 more tests passed, skipped count 1 in both. `grep -rnE "\.(skip|todo)\(|xit\(|xdescribe\(" ` over the test files in `git diff --name-only main` printed nothing. Which test is the one skipped was not looked up. Storybook story tests are not part of this gate and were not run.
+
+#### knip, name-level difference (baseline vs tip)
+
+Unused files: 50 in both, no new file. New in the tip list, not in the baseline (11):
+
+- Unused exports (+5): `CREDENTIALS_FILE` (`electron/src/sharing/store-status.ts:13`), `PAIR_REDIRECT_PATH` (`frontend/components/Sharing/DeviceNotPairedGuard.tsx:21`), `acquireLock` (`frontend/src/lib/sharing/file-lock.ts:33`), `NOT_PAIRED_MESSAGE` (`frontend/src/lib/sharing/gate.ts:45`), `HOST_NOT_ALLOWED_MESSAGE` (`frontend/src/lib/sharing/gate.ts:48`).
+- Unused exported types (+6): `ReadinessRequest` (`electron/src/sharing/server-readiness.ts:11`), `CredentialStoreStatus` (`frontend/src/lib/desktop-bridge.ts:146`), `NotConfirmedReason` and `CookieReader` (`frontend/src/lib/sharing/classify-request.ts:31`, `:54`), `MachineInterfaceEntry` (`frontend/src/lib/sharing/host-allowlist.ts:39`), `UnusableReason` (`frontend/src/lib/sharing/pairing-verify.ts:41`).
+- A `grep -rlw` over electron and frontend source and tests shows, for each name, the files that mention it; for most of them only the defining file (for example `NOT_PAIRED_MESSAGE` only in `gate.ts`, though `HOST_NOT_ALLOWED_MESSAGE` is also named in `host-allowlist.ts` and `app/api/sharing/pair/route.ts`). Why knip flags each was not investigated.
+- Other lines that differ are line-number shifts only (`typedoc`, `isDesktopApp`, `AppShellResourceActionOptions`, three devDependency lines).
+- The baseline run also listed `@capacitor/android`, `@capacitor/core` as unused devDependencies and `cap` as an unlisted binary (android/package.json); the tip run does not. A first baseline run without `android/node_modules` symlinked and a second with it gave the same 6 devDependencies, so that difference is not explained by the symlink. Cause not established; no android file is in the feature's diff.
+
+Result against the Task 23 Done-when ("no new unused file or export beyond a freshly measured baseline"): NOT met, 11 new entries as listed.
+
+### Built server (fresh `pnpm build` of HEAD)
+
+- `lsof -iTCP:3000 -sTCP:LISTEN` before the build printed nothing (exit 1). `cd frontend && pnpm build`: exit 0; route table ends with `ƒ Proxy (Middleware)`; `/pair` is `○` (static), `/api/sharing/pair` is `ƒ`.
+- `.next/static` copied to `.next/standalone/frontend/.next/static`. `.next/standalone/frontend/server.js` line 9 is `const hostname = process.env.HOSTNAME || '0.0.0.0'` (confirms the Task 22 reading).
+- `node ./scripts/sharing-refusal-smoke.mjs; echo "exit=$?"`: `enumerated entries: 90; checks: 24; failures: 0`, `sharing refusal smoke: all checks passed`, `exit=0`.
+- `pnpm test:sharing-smoke > log 2>&1; echo "exit=$?"` (status not piped): `exit=0`; output `enumerated entries: 90; checks: 24; failures: 0` / `sharing refusal smoke: all checks passed`. This includes the script's own FR-33 case "paired cookie on a GET returns Set-Cookie with Max-Age" and the FR-31 host cases.
+- Smoke script against the LAN address, server on `HOSTNAME=0.0.0.0`: a copy of the script in the scratchpad with four substitutions only (server `HOSTNAME` `0.0.0.0`; the base URL, the raw-request host and the wrong-port Host changed from `127.0.0.1` to `10.0.0.226`; the `FRONTEND` path made absolute because the copy lives outside the repo), run with `GETWRITE_PROJECTS_DIR` set to an empty throwaway directory. Server up for the length of the script run (seconds), stopped by the script (`child.kill("SIGTERM")` worked inside the sandbox). Output: `enumerated entries: 90; checks: 24; failures: 0`, `sharing refusal smoke: all checks passed`, `exit=0`. So every enumerated URL refused with no credential, with a forged `X-Forwarded-For: 127.0.0.1` and with a made-up cookie, requested through `10.0.0.226`; the window-header case passed; foreign-Host cases refused. This request still came from the host machine to its own LAN address, not from a second device. Afterwards `lsof -iTCP -sTCP:LISTEN -P | grep -i node` printed nothing.
+
+### Task 23 built-server checks (b), (c), (d), allowlist, FR-34
+
+One scratchpad script started the built server as its own child on spare random ports (never 3000), 127.0.0.1 unless noted, and stopped each (SIGTERM, SIGKILL in `finally`); afterwards `lsof ... | grep -i node` printed nothing. Disposable `GETWRITE_PROJECTS_DIR` under `$TMPDIR` with one project created through `POST /api/projects` (`{"name":"t23","projectType":"blank"}`, 200).
+
+(b) Host allowlist, sharing on, 127.0.0.1 bind, port `<port>`:
+
+```
+Host+Origin = evil.example:<port>   GET  /pair                  -> 403 x-getwrite-gate: host-not-allowed, no Location, no Set-Cookie
+Host+Origin = evil.example:<port>   POST /api/sharing/pair      -> 403 host-not-allowed
+Host+Origin = evil.example:<port>   GET  /api/auth-status       -> 403 host-not-allowed
+Host+Origin = evil.example:<port>   GET  /api/projects          -> 403 host-not-allowed
+Host+Origin = evil.example:<port>   GET  /_next/static/x        -> 403 host-not-allowed
+Host = localhost:<port>   GET /pair 200; POST /api/sharing/pair 400 (no gate header); GET /api/projects 401 gate=not-paired
+Host = 127.0.0.1:<port>   GET /pair 200; POST /api/sharing/pair 400; GET /api/projects 401 gate=not-paired
+Host = 10.0.0.226:<port>  GET /pair 200; POST /api/sharing/pair 400; GET /api/projects 401 gate=not-paired
+```
+
+With an allowed Host none of the three was refused with `host-not-allowed`. The 400 on the pair POST is the pairing refusal for a code when no pairing state exists (the body was not inspected beyond the status).
+
+(c) Upload size (FR-32), 12 MB WAV files (valid 44-byte header plus zero samples; extension `.wav`, form fields `file`, `projectId`, `title` as the route reads them):
+
+```
+sharing off, 127.0.0.1                     12 MiB (12582912 bytes)        -> 200 {"success":true,"resource":{...}}
+sharing off                                98 MiB (102760448 bytes)       -> 200 {"success":true,...}
+sharing off                                100 MiB + 1 byte               -> 400 {"error":"File exceeds the 100 MB limit.","reason":"file-too-large"}
+sharing on + x-getwrite-window header      12 MiB                         -> 200 {"success":true,...}
+sharing on + x-getwrite-window header      98 MiB                         -> 200 {"success":true,...}
+sharing on, no credential                  12 MiB                         -> 401 {"error":"not-paired",...}
+```
+
+So a result above 12 MB WAS measured: 98 MiB succeeded with sharing off and with sharing on and the window header. "Just under 100 MB" here means 98 MiB; a file at 99.9 MiB was not run. A file of exactly the cap and server memory use were not measured. Only this audio file type was uploaded; no image upload was run.
+
+(d) Cookie renewal, sharing on (pairing state written as a fixture file and a live code used, as the smoke script does):
+
+```
+POST /api/sharing/pair -> 200; Set-Cookie: getwrite_device=<redacted>; Path=/; Expires=Sat, 09 Oct 2027 21:38:52 GMT; Max-Age=31536000; HttpOnly; SameSite=strict
+confirmed GET /api/auth-status -> 200; Set-Cookie: getwrite_device=<redacted>; Path=/; Expires=...; Max-Age=31536000; HttpOnly; SameSite=strict; token equals the presented token: true
+confirmed GET /pair -> 200; Set-Cookie with Max-Age=31536000 (same shape)
+window-secret GET /api/auth-status -> 200; no Set-Cookie
+```
+
+So the `Set-Cookie` set on the proxy's `NextResponse.next(...)` reached the client for a route handler response (`/api/auth-status`) and for a page response (`/pair`).
+
+FR-34, built server started with `HOSTNAME=0.0.0.0` and `GETWRITE_BIND=0.0.0.0`, `GETWRITE_SHARING` unset in one run and `0` in another, an empty throwaway projects directory, a window secret set; each server up for a few seconds. For both runs, requested through `127.0.0.1` and through `10.0.0.226` (Host set to the address used):
+
+```
+no secret   GET /api/auth-status, GET /pair, POST /api/sharing/pair, GET /_next/static/x, GET /   -> 403, x-getwrite-gate: bind-without-gate, no Location (10 of 10 per run)
+wrong secret GET /api/auth-status                                                                  -> 403 bind-without-gate
+window secret GET /api/auth-status -> 200;  window secret GET /pair -> 200
+```
+
+These came from the host machine, not from a second device.
+
+### Native export (header rule)
+
+- `pnpm build:native`: exit 1. `✓ Compiled successfully in 3.6s`, then `./stories/Start/CreateProjectModal.stories.tsx:6:8 Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal' or its corresponding type declarations.` and `[build-native-static] ERROR: `next build` exited with status 1.` Same first error as sections B and F. `frontend/out/` did not exist before or after this run. `ls frontend/.native-build/app`: `(app)`, `globals.css`, `layout.tsx`, `preferences`; no `pair` directory.
+- Supplementary (section B procedure): `"stories"` appended to `exclude` in `frontend/.native-build/tsconfig.json` only, then `GETWRITE_BUILD_TARGET=native NEXT_PUBLIC_GETWRITE_RUNTIME=native GETWRITE_TEMPLATES_DIR=<repo>/getwrite-config/templates/project-types ./node_modules/.bin/next build` in `.native-build`: exit 0; routes `/`, `/_not-found`, `/preferences`; the output includes `ƒ Proxy (Middleware)`. `frontend/out/` held `404.html`, `index.html`, `preferences.html`, `_not-found.html`, `_next/` and the `.txt` payload files. `find out -ipath "*pair*"` printed nothing; `grep -rl "getwrite_device\|x-getwrite-window\|host-not-allowed\|GETWRITE_WINDOW_SECRET" out` printed nothing (exit 1); the only proxy-related file was `out/_next/static/Eshs5ANNrx2sa5-3g_ECC/_clientMiddlewareManifest.js`. `frontend/out/` was deleted afterwards (it did not exist when this run started); `frontend/.native-build/` existed before this run and is gitignored.
+
+### Static checks
+
+- `grep -rn "Math.random" electron/src frontend/src/lib/sharing frontend/app/api/sharing frontend/proxy.ts`: no output (exit 1).
+- Log calls in the sharing code (`electron/src/sharing`, `frontend/src/lib/sharing`, `frontend/app/api/sharing`, `frontend/proxy.ts`, `frontend/components/Sharing`): one hit, `frontend/app/api/sharing/pair/route.ts:146` `console.error("Pairing failed with an I/O error:", error.code ?? "unknown")`, which logs only an errno code string. In `electron/src/main.ts` the sharing-related `log(...)` calls are `sharing is not started: hosted auth is configured; listening on loopback only` and `Sharing setting recorded: on|off`; none takes a code, token, hash or secret variable. The other `log` calls in `main.ts` were not read for secrets beyond their message text (they are pre-existing and non-sharing).
+- `git diff --name-only main`: 90 files. No `.md` outside `specs/`; nothing under `frontend/src/lib/models/crypto/`, `frontend/src/lib/auth/`, `workspace-adapter.ts`, `encryptingAdapter.ts`.
+- `grep -rniE "revoke|rename|device list|forget" frontend/components/Sharing`: no output. No device list, revoke or rename UI found.
+- `git diff main -- electron/src/server-config.ts`: the file is new on the branch (Task 7), `export const PORT = 3000;` and the removed line in `main.ts` was `const PORT = 3000;`: same value. No TLS found in the diff (not grepped for beyond reading the names in the file list).
+- Red: `grep -rnE "(text|bg|border|fill|stroke|ring|outline|decoration)-red|red-[0-9]|D44040|\bred\b|\"red\"|'red'" frontend/components/Sharing frontend/app/pair`: no output. (The plain `grep -rn "red"` hits are substrings of words such as `credential`, `required`, `restored`, read and none is a colour.)
+- `HOSTNAME`: in `electron/src/main.ts` it occurs only in a comment (line 181); the server env gets `HOSTNAME`, `GETWRITE_BIND` and `GETWRITE_SHARING` through `buildServerBindEnv` (text test `electron/tests/sharing-mode.test.ts:164`). `electron/src/sharing/sharing-mode.ts` holds the `127.0.0.1` / `0.0.0.0` literals (`resolveServerHostname`, `buildServerBindEnv`). Also present: `electron/src/server-config.ts:11` `export const HOSTNAME = "127.0.0.1"` (added by Task 7, tested at `electron/tests/server-config.test.ts:27`, not imported by `main.ts`). `git show --stat b5a8a889` (Task 22's commit) touches `main.ts`, `sharing-mode.ts` and their tests for the bind, plus the frontend gate files.
+- Observation, not a Done-when item: `git diff main -- frontend/scripts/build-native-static.mjs` contains, besides the `"pair"` exclusion and its comment, formatting-only changes (the `node:fs` import split over lines, and the `log(...)` line near the end re-wrapped). Task 29's note says no other edit to that script is allowed.
+
+### Cleanup
+
+Baseline worktree removed. `lsof -iTCP -sTCP:LISTEN -P | grep -i node` printed nothing after every server run and at the end. `git status --short` printed nothing before this section was appended (build outputs `.next`, `out`, `.native-build` are gitignored: `git check-ignore -v` names `.gitignore:2:.next/`, `frontend/.gitignore:25:/out/`, `frontend/.gitignore:26:.native-build/`).
+
+### Outcome
+
+All Task 22 remaining items (fresh build, `pnpm test:sharing-smoke`, LAN-address smoke under a `0.0.0.0` bind, FR-34 built-server check) ran and passed. Task 23: everything above passed except the knip comparison (11 new unused exports/types, listed above). Task 23 therefore stays unticked; Task 22 is ticked.
