@@ -318,7 +318,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Depends on:** 14, 18, 25
 **Estimate:** 5
 **Notes:** Satisfies FR-9 and FR-11 (the exemption must admit every asset path the build emits; spec sentence added, provenance "defect found at the exercise stage, 2026-10-09 (measured)"), and the verification half of FR-26. ORDERING: runs before Tasks 23 and 24 (see the header); Task 23 is not ticked until this task is ticked and Task 23's built-server checks are re-run on the new tip. The estimate is 5, not less: a small gate change, but two test files, a smoke script extension, a real build and a built-server run whose outcome is not known in advance (a third unadmitted name shape would add work). The change must not weaken the Host allowlist, the pairing exception or any other refusal; the existing gate tests stay green and unchanged. Never print a pairing code or credential in the smoke output.
-**POS:** none
+**POS:** task_d4aa765d
 **Done:** [ ]
 
 ### Task 31: Unused exports reported by knip (Owner decision, fix)
@@ -328,7 +328,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Depends on:** 22
 **Estimate:** 3
 **Notes:** Owner decision (2026-10-09, "Fix the knip exports"). Independent of Task 30. ORDERING: comes before Task 23's ticking and before Task 24 (see the header); Task 23 re-runs its `pnpm knip` comparison on the tip that contains this task. Counts "167 exports, 170 types, 50 files" are the `main` baseline measured by Task 23.
-**POS:** none
+**POS:** task_5995979f
 **Done:** [ ]
 
 ## Summary
