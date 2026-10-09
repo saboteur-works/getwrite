@@ -27,7 +27,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-28 (OQ-2 experiment 1, the OQ-1 confirming experiment, the OQ-6a fact). Throwaway `proxy.ts` shape: `export function proxy(request: NextRequest)` per the bundled Next 16 docs (read the file above first; the file convention name and the exported function name are what that doc says, not what older Next versions used), appending one JSON line per request (pathname, method, `x-forwarded-for`, `host`, `x-forwarded-host`, `origin`, `referer`, `sec-fetch-dest`) with `fs.appendFileSync` to the path in `process.env.SPIKE_LOG`, and calling `NextResponse.next()`. `pnpm build` writes `frontend/.next/standalone`, which the repo already has from earlier builds; it is gitignored, so overwriting it is harmless. If the standalone server cannot be started or reached in the sandbox even after retrying outside, record that and what was tried, and do not guess the results. Do not edit `electron/src/main.ts`; that is Task 3's patch.
 **POS:** task_be40ede9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Experiment B (agent): does `pnpm build:native` break or leak with proxy.ts present
 **What:** Run the native static-export build once without and once with a throwaway root `proxy.ts`, and record whether it breaks and whether anything proxy-related reaches `frontend/out/`.
@@ -37,7 +37,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 2
 **Notes:** Satisfies FR-28 (OQ-2 experiment 2). The native build is slow; allow for it. Edit nothing in `build-native-static.mjs`: even if it leaks, only record it. If a pre-existing `frontend/out/` was present before the run, note that so the search in (4) is not confused by stale output.
 **POS:** task_c1338c58
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Experiment C preparation (agent): a throwaway patch that logs which request kinds carry a window secret
 **What:** Write and verify an unapplied patch file that, when applied by hand, makes the Electron main process generate a per-launch secret, attach it to the window's requests as a header and as a cookie, pass it to the server, make the bind address selectable by an env var, and make a spike `proxy.ts` log which request kinds carry which.
@@ -47,7 +47,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-28 (OQ-1 experiment preparation). The packaged path matters because `electron/src/main.ts` forks the standalone `server.js` only when `app.isPackaged`; the unpackaged path spawns `pnpm dev`, which exercises `next dev`, not the standalone build. If `electron-builder --dir` cannot run in the sandbox, say so in the section and leave the run to Task 4; verify what can be verified (apply check and typechecks). Electron 34.5.8 typings include `webRequest.onBeforeSendHeaders` and `cookies.set` per the spec. A packaged-but-unsigned local build may need the owner to allow it to run; mention that in the steps. The patch must not touch `HOSTNAME` unconditionally: the default stays `127.0.0.1`.
 **POS:** task_b074e802
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Experiment C run (MANUAL, owner or pipeline lead): window secret reach, bind address, `next dev` HOSTNAME
 **What:** Apply the Task 3 patch, run the packaged app, and record which request kinds carry the header and the cookie, how the window behaves under a non-loopback bind, and whether `next dev` honours `HOSTNAME`.
@@ -57,7 +57,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** NOT executable by a non-interactive implementor: it launches a packaged Electron GUI and needs a second device. The orchestrator MUST leave this task unticked until a person has done it and MUST NOT treat that as a failure; the run then waits at Task 6. Record what was observed and name no cause the observation did not discriminate. Never paste the secret value into the file. If the second device is unavailable, record (3) and (5) as not run and say so in the checkpoint; do not substitute a loopback test for them.
 **POS:** task_4a57b5bd
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Experiment D (MANUAL, owner or pipeline lead): what a plain browser sees when the workspace is locked (OQ-10)
 **What:** Open a locked encrypted workspace in an ordinary browser on localhost and in the desktop window, and record what is shown, what an in-app fetch returning 401 or 409 renders, and whether the desktop sharing controls' home (App Settings) is reachable while locked.
@@ -67,7 +67,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 2
 **Notes:** NOT executable by a non-interactive implementor: it needs a browser and a running dev server (`next dev` fails inside the sandbox with EMFILE per the repo's notes; the owner starts it). The orchestrator MUST leave this task unticked until a person has done it. This experiment runs without sharing and without any code from this feature.
 **POS:** task_d8efd9cb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: STOP: report experiment results to the owner (checkpoint, NOT executable by an implementor)
 **What:** Present `specs/features/home-network-sharing/experiments.md` to the owner and record the owner's confirmation of the mechanism choices.

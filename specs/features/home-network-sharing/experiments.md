@@ -385,3 +385,72 @@ Browser closed. The server (PID 57805) was killed; `kill` inside the sandbox fai
 ## Addendum to B: the same build in the main checkout
 
 Run 2026-10-09 by the pipeline lead: `cd frontend && pnpm build:native` in the main checkout on `feat/home-network-sharing`, inside the command sandbox, with no `proxy.ts`. It failed with the same error section B recorded in a worktree: `./stories/Start/CreateProjectModal.stories.tsx:6:8 Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal'`, then `[build-native-static] ERROR: next build exited with status 1`. So the failure is not specific to the worktree. Its cause was not established, and it was not run outside the sandbox or on `main` itself (the two trees have the same source).
+
+## C: run (Task 4) and D part (4)
+
+Run 2026-10-09 by the owner in the main checkout on `feat/home-network-sharing`, with `experiments/oq1-window-secret.patch` applied, an unpacked desktop build, a Windows PC (10.0.0.47) and a phone as second devices. Recorded here by the pipeline lead from the owner's pasted output and statements. No cause is named that the runs did not discriminate. The secret was never pasted.
+
+### Run 1: loopback bind (default)
+
+- The patched build started. After the cold load `wc -l` on the log printed 13, so the proxy ran in the packaged `standalone/frontend` layout and wrote its log (section A had not measured that layout).
+- Actions: cold load, open a project, edit, switch views, App Settings, reload, quit; the owner also restarted and reopened a project several times while reproducing an unrelated bug (below).
+- Step 7 summary, total 69 lines:
+
+| `sec-fetch-dest` | `sec-fetch-mode` | count | header present / correct | cookie present / correct |
+|---|---|---|---|---|
+| `document` | `navigate` | 3 | yes / yes | yes / yes |
+| `style` | `no-cors` | 1 | yes / yes | yes / yes |
+| `script` | `no-cors` | 5 | yes / yes | yes / yes |
+| `empty` | `cors` | 59 | yes / yes | yes / yes |
+| (none) | (none) | 1 | no / no | no / no |
+
+- "Neither header nor cookie": one request, `/`, with no `sec-fetch-dest` and no `sec-fetch-mode`. Which component sent it was not established; its position in the log was not recorded.
+- No request with `sec-fetch-dest` `image` or `font` appeared, so those two kinds are unmeasured.
+- The app log was not searched for `spike cookie set failed`. Every window request in the summary carried the correct cookie.
+
+### Run 2: `SPIKE_HOSTNAME=0.0.0.0`
+
+- The desktop window loaded and worked.
+- From the PC, with `curl.exe`: the plain page request, the plain `/api/projects` request, the request with `X-Forwarded-For: 127.0.0.1` and the request with a made-up header and cookie all returned 200. The page request returned the Start page's markup and the API requests returned the expected API responses. (This patch adds no gate, so nothing was refused.)
+- Proxy log lines that did not carry the correct secret, in log order (`grep -v '"headerMatches":true'`); every one had `sec-fetch-dest` and `sec-fetch-mode` null:
+
+| # | path | `x-forwarded-for` seen | header present / correct | cookie present / correct |
+|---|---|---|---|---|
+| 1 | `/` | 127.0.0.1 | no / no | no / no |
+| 2 | `/api/projects` | 10.0.0.163 | no / no | no / no |
+| 3 | `/favicon.ico` | 10.0.0.163 | no / no | no / no |
+| 4 | `/` | 10.0.0.47 | no / no | no / no |
+| 5 | `/api/projects` | 10.0.0.47 | no / no | no / no |
+| 6 | `/api/projects` | 127.0.0.1 | no / no | no / no |
+| 7 | `/api/projects` | 10.0.0.47 | yes / no | yes / no |
+| 8 | `/` | 127.0.0.1 | no / no | no / no |
+
+- Reading the table against the requests sent: lines 4, 5 and 7 match the PC's plain and made-up-secret requests. Line 6 matches the PC's forged request: a request sent from 10.0.0.47 with `X-Forwarded-For: 127.0.0.1` was logged as `127.0.0.1`. The log itself does not carry the sender's real address, so the match is by path, order and the absence of any other `/api/projects` request claimed from the host.
+- Lines 2 and 3 came from a third address, 10.0.0.163. The owner has not said which device that was.
+- Lines 1 and 8 are requests for `/` from 127.0.0.1 with no secret and no fetch metadata. Line 8 was logged before the `curl -4` below was run. What sent lines 1 and 8 was not established.
+- Summary of the window's own requests in this run was not pasted; the owner reported the window worked.
+- From the host: `curl -4 ... http://localhost:3000/` printed `200`. `curl -6 ... http://localhost:3000/` printed `curl: (7) Failed to connect to localhost port 3000 after 0 ms: Couldn't connect to server` and `000`.
+
+### Run 3: `HOSTNAME=0.0.0.0 pnpm dev`
+
+The phone loaded `http://<lan-ip>:3000/api/auth-status` and received `{"hostedAuthActive": false}`. So with `HOSTNAME=0.0.0.0` the dev server accepted a connection on the LAN address. No control run without `HOSTNAME` was made, so this does not show whether `next dev` uses the variable or listens on all interfaces regardless.
+
+### Reversal
+
+The owner reversed the patch. `git status --short` run afterwards by the pipeline lead printed nothing.
+
+### D part (4): Electron window, workspace locked
+
+Owner, in the desktop app: created a project, encrypted it, locked the workspace, closed the project, then tried to reach the Start page's "App Settings" button by keyboard. With the unlock dialog open it could not be reached. After the dialog was closed it could. Whether it was then operated, and what App Settings showed, was not reported.
+
+### Implication, per the spec (OQ-1)
+
+- Header: every request kind observed from the window (document, style, script, in-app fetch) carried the correct header on a loopback bind, and no request from another device carried it, including one that tried a made-up value. By the spec's rule ("header covers all kinds, use the header") the header is supported on this evidence. The cookie was equally complete on the same evidence.
+- Limits: image and font request kinds were not observed. The window's request summary under the non-loopback bind was not captured.
+- Peer address: a forged `X-Forwarded-For` from a second device was logged as `127.0.0.1`. The address cannot identify the window.
+- Requests with no secret also arrive from 127.0.0.1 (lines 1 and 8, and the one in run 1). Whatever sends them, a gate that refuses everything without the secret will refuse them too, so the gate design must account for the desktop app's own non-window requests.
+- `localhost` did not connect over IPv6 under the `0.0.0.0` bind while IPv4 did, and the window still loaded.
+
+### Unrelated observation
+
+While running run 1 the owner found that closing a project with the Data view open leaves the Data view over the Start page until the window is refreshed. Filed as a POS note; not part of this feature.
