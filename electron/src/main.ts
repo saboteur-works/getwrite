@@ -19,6 +19,16 @@ import {
 } from "./sharing/window-secret";
 import { waitForServer, type ReadinessGet } from "./sharing/server-readiness";
 import { resolveSharingMode } from "./sharing/sharing-mode";
+import os from "os";
+import {
+  buildSharingStatus,
+  type SharingStatus,
+} from "./sharing/sharing-status";
+import { readCredentialStoreStatus } from "./sharing/store-status";
+import {
+  createPairingSession,
+  type PairingCodeInfo,
+} from "./sharing/pairing-session";
 import fs from "fs";
 import {
   ensureProjectsDir,
@@ -26,6 +36,7 @@ import {
   migrateLegacyProjectsDir,
   readGlobalNoiseWords,
   readSharingEnabled,
+  writeSharingEnabled,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
@@ -256,6 +267,51 @@ function registerWorkspaceHandlers(): void {
     app.relaunch();
     app.quit();
   });
+}
+
+/**
+ * Wires the four sharing channels the preload bridge calls (Feature 75).
+ *
+ * Reachable only from the desktop window's preload bridge; no HTTP route
+ * exposes any of this. `set-enabled` only records the flag (it takes effect
+ * on restart). The plain pairing code is held in memory by the session and is
+ * returned to the window only; nothing here logs it.
+ */
+function registerSharingHandlers(): void {
+  const userData = app.getPath("userData");
+  const pairing = createPairingSession(userData, () => Date.now());
+
+  ipcMain.handle(
+    "getwrite:sharing-get-status",
+    (): SharingStatus =>
+      buildSharingStatus({
+        enabled: readSharingEnabled(userData),
+        env: process.env,
+        interfaces: os.networkInterfaces(),
+        port: PORT,
+        credentialStore: readCredentialStoreStatus(userData),
+      }),
+  );
+
+  ipcMain.handle(
+    "getwrite:sharing-set-enabled",
+    (_event, enabled: unknown): void => {
+      if (typeof enabled !== "boolean") {
+        throw new Error("Sharing setting must be true or false");
+      }
+      writeSharingEnabled(userData, enabled);
+      log(`Sharing setting recorded: ${enabled ? "on" : "off"}`);
+    },
+  );
+
+  ipcMain.handle(
+    "getwrite:sharing-generate-code",
+    (): PairingCodeInfo => pairing.generate(),
+  );
+
+  ipcMain.handle("getwrite:sharing-get-code", (): PairingCodeInfo | null =>
+    pairing.get(),
+  );
 }
 
 /** What persisting a new global noise-word list can result in. */
@@ -656,6 +712,7 @@ if (!app.requestSingleInstanceLock()) {
     );
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
+    registerSharingHandlers();
     registerScrivenerImportHandlers();
     registerDocxImportHandlers();
 

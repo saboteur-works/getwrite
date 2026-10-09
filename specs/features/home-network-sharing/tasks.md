@@ -207,7 +207,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-2 (setting reachable only from the desktop window: IPC, not an HTTP route), FR-6 (data: every candidate address, empty list handled), FR-13 (window obtains the code and can generate a new one), FR-24 (hosted-auth message data), FR-25 (the address uses the single port source), FR-27 (window can say the store is corrupt). `os.networkInterfaces()` is the only network call and it is not a connection. The code returned over IPC is shown in the window only; it is never written to the log (`log()` in `main.ts`). The renderer in a shared browser tab must not be able to call these channels: confirm `window.getwriteDesktop` exists only in Electron (it does, per `preload.ts`) and that no HTTP route exposes any of this.
 **POS:** task_2673ab49
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Desktop sharing controls in App Settings
 **What:** Add the sharing section to the App Settings dialog: the on/off switch, the restart handling, the pairing code with its expiry, the two statements, the interim note, the address list, and the hosted-auth and corrupt-store messages.

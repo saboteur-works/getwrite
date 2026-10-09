@@ -59,6 +59,32 @@ export interface GlobalNoiseWordsSetResult {
 /** The five-kind discriminated outcome of a DOCX import (FR-17). */
 export type DocxImportOutcome = DocxImportOutcomeType;
 
+/** Whether the paired-device store is absent, valid, or damaged. */
+export type CredentialStoreStatus = "ok" | "missing" | "corrupt";
+
+/** What the renderer is told about home-network sharing. */
+export interface SharingStatus {
+  /** The recorded setting. */
+  enabled: boolean;
+  /** Whether sharing is actually in effect. */
+  effective: boolean;
+  /** Enabled, but excluded because hosted auth is configured. */
+  blockedByHostedAuth: boolean;
+  /** URLs other devices open; filled whenever sharing is effective. */
+  addresses: string[];
+  /** State of the paired-device store. */
+  credentialStore: CredentialStoreStatus;
+  /** The shared server port. */
+  port: number;
+}
+
+/** The current pairing code and its lifetime (epoch ms). */
+export interface PairingCodeInfo {
+  code: string;
+  generatedAt: number;
+  expiresAt: number;
+}
+
 /** The surface the renderer may call. */
 export interface GetWriteDesktopBridge {
   /** Returns where projects are currently stored. */
@@ -87,6 +113,14 @@ export interface GetWriteDesktopBridge {
   getGlobalNoiseWords(): Promise<string[]>;
   /** Persists the cross-project global noise-word list (FR-5b). */
   setGlobalNoiseWords(words: string[]): Promise<GlobalNoiseWordsSetResult>;
+  /** Returns the sharing status (setting, effect, addresses, store state). */
+  getSharingStatus(): Promise<SharingStatus>;
+  /** Records the sharing setting; it takes effect on restart. */
+  setSharingEnabled(enabled: boolean): Promise<void>;
+  /** Generates a new pairing code, replacing any earlier one. */
+  generatePairingCode(): Promise<PairingCodeInfo>;
+  /** Returns the code generated in this run, or null when there is none. */
+  getPairingCode(): Promise<PairingCodeInfo | null>;
 }
 
 const bridge: GetWriteDesktopBridge = {
@@ -110,6 +144,12 @@ const bridge: GetWriteDesktopBridge = {
     ipcRenderer.invoke("getwrite:global-noise-words-get"),
   setGlobalNoiseWords: (words: string[]) =>
     ipcRenderer.invoke("getwrite:global-noise-words-set", words),
+  getSharingStatus: () => ipcRenderer.invoke("getwrite:sharing-get-status"),
+  setSharingEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke("getwrite:sharing-set-enabled", enabled),
+  generatePairingCode: () =>
+    ipcRenderer.invoke("getwrite:sharing-generate-code"),
+  getPairingCode: () => ipcRenderer.invoke("getwrite:sharing-get-code"),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

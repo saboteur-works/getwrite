@@ -142,6 +142,32 @@ export type DocxImportOutcome =
   | DocxImportRefusalUnknownProjectTypeOutcome
   | DocxImportFatalOutcome;
 
+/** Whether the paired-device store is absent, valid, or damaged. */
+export type CredentialStoreStatus = "ok" | "missing" | "corrupt";
+
+/** What the renderer is told about home-network sharing. */
+export interface SharingStatus {
+  /** The recorded setting. */
+  enabled: boolean;
+  /** Whether sharing is actually in effect. */
+  effective: boolean;
+  /** Enabled, but excluded because hosted auth is configured. */
+  blockedByHostedAuth: boolean;
+  /** URLs other devices open; filled whenever sharing is effective. */
+  addresses: string[];
+  /** State of the paired-device store. */
+  credentialStore: CredentialStoreStatus;
+  /** The shared server port. */
+  port: number;
+}
+
+/** The current pairing code and its lifetime (epoch ms). */
+export interface PairingCodeInfo {
+  code: string;
+  generatedAt: number;
+  expiresAt: number;
+}
+
 /** The surface `preload.ts` exposes. Mirrors its `GetWriteDesktopBridge`. */
 export interface DesktopBridge {
   getWorkspaceDir(): Promise<string>;
@@ -167,6 +193,14 @@ export interface DesktopBridge {
   getGlobalNoiseWords(): Promise<string[]>;
   /** Persists the cross-project global noise-word list (FR-5b). */
   setGlobalNoiseWords(words: string[]): Promise<GlobalNoiseWordsSetResult>;
+  /** Returns the sharing status (setting, effect, addresses, store state). */
+  getSharingStatus(): Promise<SharingStatus>;
+  /** Records the sharing setting; it takes effect on restart. */
+  setSharingEnabled(enabled: boolean): Promise<void>;
+  /** Generates a new pairing code, replacing any earlier one. */
+  generatePairingCode(): Promise<PairingCodeInfo>;
+  /** Returns the code generated in this run, or null when there is none. */
+  getPairingCode(): Promise<PairingCodeInfo | null>;
 }
 
 /**
