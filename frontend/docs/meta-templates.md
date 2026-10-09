@@ -1,5 +1,7 @@
 # Project Meta: Templates
 
+> **Which commands are shipped.** The bundled CLI (`cli/src/commands/templates.ts`, registered by `cli/src/getwrite-cli.ts`) registers only five `templates` subcommands: `save`, `save-from-resource`, `create`, `duplicate` and `list`. `create` takes `<projectRoot> <templateId> [name]` and no other options (no `--vars`, no `--dry-run`); `list` takes `<projectRoot>` and no `--query`. The other subcommands and options described below exist only in an unbundled developer helper, `cli/src/templates.ts`, which is not part of the shipped binary. For the shipped commands, see [docs/features/cli.md](../../docs/features/cli.md).
+
 This document explains the on-disk layout and usage for resource templates.
 
 Location
@@ -15,12 +17,14 @@ Format
   - `name`: string (human readable name)
   - `type`: `text|image|audio`
   - `plainText` (optional): for `text` templates the initial body
-  - `metadata` (optional): sidecar metadata to apply on creation
+  - `userMetadata` (optional): metadata applied to the created resource's sidecar (`{{VAR}}` placeholders are substituted)
+  - `resourceSubtype` (optional): top-level subtype label for the created resource; absent when unset, and a template without it creates a resource with no subtype
+  - `folderId` (optional): target folder; must name an existing folder when set
 
 Operations
 
-- Use the CLI helper at `cli/src/templates.ts` for quick management in development. The helper supports the following commands (developer-facing):
-  - `save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` — capture an existing resource and persist it as a template.
+- Use the CLI helper at `cli/src/templates.ts` for quick management in development. The helper supports the following commands (developer-facing). Only `save-from-resource`, `save`, `create` (without `--vars`/`--dry-run`), `duplicate` and `list` (without `--query`) are also registered in the shipped CLI:
+  - `save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` — capture an existing text resource (plain-text body, `userMetadata`, `resourceSubtype`) and persist it as a template; shipped.
   - `save <projectRoot> <templateId> <name>` — create an empty template stub.
   - `create <projectRoot> <templateId> [name] [--vars '{}'] [--dry-run]` — create a resource from a template; `--vars` accepts a JSON object of substitutions; `--dry-run` prints planned writes.
   - `duplicate <projectRoot> <resourceId>` — duplicate an existing resource in-place.

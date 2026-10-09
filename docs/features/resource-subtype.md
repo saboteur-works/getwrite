@@ -69,13 +69,23 @@ No new route, transport module, or native backend pair was added. Everything rid
 
 Measured at the request-payload level (`frontend/tests/page-stale-sidecar-save.test.tsx`, Task 2 in the task list, with `updateSidecar` mocked): after setting `entityKind` through `EntitySection` and then editing a custom field, the second `updateSidecar` payload did not contain `entityKind`, while the Redux resource held both changes. The same shape of payload is possible for `aliases` and `wordCountGoal`; only `entityKind` was measured. This was deliberately not fixed. A cause is not established (it is a hypothesis from code reading that the page-local copies are stale), and what the server stores after the second call was not measured, because `updateSidecar` was mocked.
 
+## Templates, copy and duplicate
+
+Feature 73. Spec: [specs/features/subtype-templates-duplicates.md](../../specs/features/subtype-templates-duplicates.md). The `templates` CLI commands are documented in [cli.md](cli.md).
+
+- A resource template (`ResourceTemplate`, `ResourceTemplateSchema`) may carry an optional top-level `resourceSubtype`, a trimmed non-empty string, absent when unset. `createResourceFromTemplate` sets it on the created resource's sidecar. A template without the key creates a resource with no subtype; there is no migration of old template files and no fallback read from `userMetadata`.
+- `saveResourceTemplateFromResource` (CLI `templates save-from-resource`) records the source's subtype as the template's top-level key, never inside `userMetadata`.
+- `copyResourceCore` (the app's Copy/Duplicate actions) and `duplicateResource` (CLI `templates duplicate`) keep the source's sidecar, so the copy has the source's `resourceSubtype`; a source with none yields a copy with none.
+- A resource created blank has no subtype, including when the create request carries a stray `resourceSubtype`, which is ignored.
+- The label is not looked up in `config.subtypes` when a template or copy applies it; as elsewhere, a label not in the list shows as "<value> (not in the current list)".
+
 ## Out of scope
 
 - Renaming a subtype (see above).
 - Restricting built-in fields.
 - Offering subtype in the query builder.
 - Importers: the DOCX, plain-text, and Scrivener importers do not seed `config.subtypes` and never set a resource's subtype (each importer's integration test was extended to assert that no written resource sidecar contains `resourceSubtype`; the tests do not assert anything about `config.subtypes`).
-- Resource templates and subtype-based defaults: Feature 73.
+- Subtype-based defaults (a subtype choosing default fields or content) are not part of this feature. Templates, copy and duplicate carrying the subtype are Feature 73; see "Templates, copy and duplicate" below.
 - `getwrite-config/templates/project-types/project-type.schema.json` is deliberately untouched; it already lacked `statuses`, `relationshipTypes`, and `wordCountGoal` (pre-existing drift), and does not list `subtypes`. The runtime validator is the Zod `ProjectTypeSchema`.
 
 ## Known limitations / not verified

@@ -62,7 +62,7 @@ Things worth knowing:
 - **Subtype is not an entity kind and not a folder.** Moving a resource to another folder doesn't change its subtype, and marking a resource as an entity is a separate setting.
 - If you haven't defined any subtypes yet, the sidebar's Subtype control is greyed out and points you to the Metadata tab.
 
-Not available yet: filtering by subtype in smart folders and the query builder, and having a resource template set a subtype for you.
+Not available yet: filtering by subtype in smart folders and the query builder. A resource created from a resource template (available through the command-line tool only, not in the app) takes the template's subtype, and a copy or duplicate of a resource keeps the original's subtype.
 
 ## Prose diagnostics
 

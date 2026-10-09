@@ -222,6 +222,41 @@ node cli/dist/bin/getwrite-cli.cjs templates save ./my-novel scene "Scene"
 
 ---
 
+### `templates save-from-resource`
+
+Captures an existing text resource as a template.
+
+```sh
+getwrite-cli templates save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]
+```
+
+Writes `<projectRoot>/meta/templates/<templateId>.json` and prints `Saved template <templateId>`. An existing template with the same id is overwritten without prompting. `--name` sets the template name; without it the resource's name is used. An encrypted project is refused. On any error the command prints `Error: <message>` to stderr and exits with code 2, writing no template.
+
+The template records exactly these keys and nothing else from the resource's sidecar:
+
+- `id` (the `templateId` argument), `name`, and `type` (always `text`).
+- `plainText`: the resource body, read from the app's layout (`resources/<resourceId>/content.txt`, or text derived from `content.tiptap.json` when `content.txt` is missing).
+- `userMetadata`: the sidecar's `userMetadata`, only when it has at least one key.
+- `resourceSubtype`: the sidecar's subtype (trimmed), only when the resource has one. It is recorded as a top-level key, not inside `userMetadata`.
+
+Placement and identity (`folderId`, `orderIndex`, `slug`, `createdAt`, `wordCount`) and the entity and goal fields (`entityKind`, `aliases`, `wordCountGoal`, `dismissedNoiseTerms`) are not recorded.
+
+The command fails, writing nothing, when the resource has no sidecar, when its type is not `text` (image, audio and any unknown type are rejected), when its `resourceSubtype` is present but not a non-blank string, when no body can be read, or when the composed template fails schema validation.
+
+**Limitations:**
+
+- The body is saved as plain text only. Paragraph breaks survive; marks (bold, italic), headings, lists and other structure are flattened; soft line breaks (`hardBreak` nodes) contribute no text, so the text on either side of one is joined; trailing blank paragraphs are dropped. A resource created from the template therefore has plain paragraphs, not the original formatting.
+- `userMetadata` is copied as recorded. If it contains links to other resources (`resource-ref` or `multi-resource-ref` values, which are ids of resources in the source project), every resource created from the template carries those ids.
+
+**Example:**
+
+```sh
+node cli/dist/bin/getwrite-cli.cjs templates save-from-resource ./my-novel b19abcd4-81b2-44ef-b4b4-ba1310dbdf87 scene --name "Scene"
+# Saved template scene
+```
+
+---
+
 ### `templates create`
 
 Creates a new resource from an existing template.
@@ -230,7 +265,16 @@ Creates a new resource from an existing template.
 getwrite-cli templates create <projectRoot> <templateId> [name]
 ```
 
-Loads `<projectRoot>/meta/templates/<templateId>.json` and instantiates a new resource from it, optionally overriding the display name. Prints the new resource's UUID on success.
+Loads `<projectRoot>/meta/templates/<templateId>.json` and instantiates a new resource from it, optionally overriding the display name. Prints `Created resource <id>` on success. The command has no other options (no `--folder`, `--vars` or `--dry-run`). An encrypted project is refused. On any error it prints `Error: <message>` and exits with code 2.
+
+The resource is written the way the app writes a resource, so the app can open it: `resources/<id>/content.tiptap.json` and `content.txt`, a full sidecar at `meta/resource-<id>.meta.json`, and an initial canonical revision `revisions/<id>/v-1`.
+
+- Text templates only. A template whose type is `image`, `audio` or anything else is rejected with an error and nothing is written.
+- The template's `userMetadata` (with `{{VAR}}` placeholders substituted) and its top-level `resourceSubtype` are carried onto the resource. A template without `resourceSubtype`, including every template saved before that key existed, creates a resource with no subtype; the subtype is not read from `userMetadata`.
+- If the template has a `folderId`, the folder must exist in the project, otherwise the command is rejected. The resource's `orderIndex` is one more than the largest among its siblings (resources and folders in the same parent), or 0 when there are none.
+- Validation and reads complete before the first write.
+
+**Entity mentions need a reindex.** Measured 2026-10-08 with the CLI built from this branch, run outside the sandbox against a scratch project: after `templates create`, the new resource was present in `meta/index/inverted.json` (the search index) before any `reindex`, and was absent from `meta/index/mentions.json` until `getwrite-cli reindex` was run. Run `reindex` for entity mentions to include a resource created from the CLI. The cause of the difference between the two indexes was not investigated.
 
 **Example:**
 
@@ -238,6 +282,8 @@ Loads `<projectRoot>/meta/templates/<templateId>.json` and instantiates a new re
 node cli/dist/bin/getwrite-cli.cjs templates create ./my-novel scene "Opening Scene"
 # Created resource b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
 ```
+
+**Projects with a resource made by the older `templates create`.** Before this change, `templates create` wrote a flat `resources/<slug>-<id>.txt` file and a four-key sidecar. Measured 2026-10-08 on `main`, after such a resource existed, `loadProjectFromDisk` and `getLocalResources` threw for the whole project. These resources are not repaired. Workaround: delete the stray `meta/resource-<id>.meta.json` and the flat `resources/<slug>-<id>.*` file. `doctor` cannot report such a resource, because it loads the project's resources first and that call throws. While such a sidecar remains, `templates create` itself refuses to place a new resource and says so. Template files made by the older tooling are left as they are.
 
 ---
 
@@ -255,11 +301,19 @@ Copies the resource's content and sidecar to a new UUID. Prints the new resource
 Duplicated resource -> <newId>
 ```
 
+The duplicate keeps the source's whole sidecar, including `resourceSubtype`, `entityKind`, `aliases`, `wordCountGoal` and `dismissedNoiseTerms`, and its name and `createdAt` unchanged. A text duplicate also gets one initial canonical revision `v-1` whose content is the duplicate's own document; the source's revision history is not copied. Image and audio duplicates get no revision. A text source with no readable content files is rejected before anything is written. An encrypted project is refused; errors print `Error: <message>` and exit with code 2.
+
+As with `create`, run `getwrite-cli reindex` for entity mentions to include a duplicated resource (measured 2026-10-08: present in the search index and absent from `meta/index/mentions.json` until `reindex`; cause not investigated).
+
 **Example:**
 
 ```sh
 node cli/dist/bin/getwrite-cli.cjs templates duplicate ./my-novel b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
 ```
+
+**Text resources that already have no revision are not repaired.** Copies made in the app (Copy/Duplicate) and duplicates made with this command before this change had no revision, as may other text resources. Measured 2026-10-08 in the running app on `main`: edits typed into a duplicated text resource were not saved and were lost on reload, with no error, and the copy had no revision. The cause was not established by experiment; reading the code suggests the editor only autosaves into a canonical revision. This change fixes copy and duplicate going forward only: it does not detect or repair an existing revision-less resource. Workaround for a copy: duplicate it again (with this command or the app's Duplicate action) and work in the new copy, which gets its own initial revision. For a revision-less resource that is not a copy, there is no workaround in this change. A repair command is deferred to a follow-up.
+
+The app's Copy and Duplicate actions (`copyResourceCore`) behave the same way: a text copy gets its own single initial canonical revision, and a text source with no content files is rejected before any write.
 
 ---
 
