@@ -177,7 +177,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-19 (copy and message display), FR-20 (a page load ends on this screen and says how to pair), FR-21 (keyboard, label, associated announced error, focus movement, visible focus, AA contrast, no red). Copy is working copy; use it verbatim. The page is served unauthenticated by design (Task 14's exception) so it must contain nothing about any project. Do not add a "name this device" field (FR-18).
 **POS:** task_f77983b7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: A refused in-app fetch shows "not paired", never an empty app
 **What:** Detect the gate's typed 401 on any in-app fetch and send the person to the pairing screen with the not-paired explanation instead of letting the app render an empty list or project.
