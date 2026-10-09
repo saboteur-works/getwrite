@@ -87,7 +87,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 2
 **Notes:** Satisfies FR-25 (this task is its electron half; the displayed address in Task 19 reads the same constant). No requirement or test in this feature may depend on the value; the text-reading test checks structure, not the number. Change nothing about `HOSTNAME`.
 **POS:** task_8ca57fe5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Sharing setting persistence and the effective-sharing decision (pure)
 **What:** Persist a sharing on/off flag for the install in `userData/workspace.json` (absent means off) and add a pure function that decides whether sharing is effective given the flag and the server environment, including the hosted-auth exclusion.

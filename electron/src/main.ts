@@ -10,6 +10,7 @@ import type { UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
+import { PORT, localOrigin } from "./server-config";
 import fs from "fs";
 import {
   ensureProjectsDir,
@@ -42,7 +43,6 @@ import type {
   ImportRequest as DocxImportRequest,
 } from "./docx-import/handle-import-request";
 
-const PORT = 3000;
 let serverProcess: ChildProcess | UtilityProcess | null = null;
 let logStream: fs.WriteStream | null = null;
 
@@ -543,7 +543,7 @@ function createWindow(): BrowserWindow {
   // external sites are handed to the default browser instead of navigating the
   // window away from localhost (setWindowOpenHandler only covers window.open).
   win.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(`http://localhost:${PORT}`)) {
+    if (!url.startsWith(localOrigin(PORT))) {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) {
         void shell.openExternal(url);
@@ -592,16 +592,16 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
     log(`did-fail-load ${code} ${desc} — retrying in 1s`);
     retryTimer = setTimeout(() => {
       if (!stopped && !win.isDestroyed()) {
-        win.loadURL(`http://localhost:${PORT}`).catch(() => {});
+        win.loadURL(localOrigin(PORT)).catch(() => {});
       }
     }, 1000);
   });
 
-  waitForServer(`http://localhost:${PORT}`)
+  waitForServer(localOrigin(PORT))
     .then(() => {
       log("server ready");
       if (!stopped && !win.isDestroyed()) {
-        win.loadURL(`http://localhost:${PORT}`).catch(() => {});
+        win.loadURL(localOrigin(PORT)).catch(() => {});
       }
     })
     .catch((err) => abort(`Server failed to start: ${err}`));
