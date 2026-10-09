@@ -751,7 +751,8 @@ lost work.
   experiment. Copies and duplicates made before this requirement is met are
   not repaired by it (decided: not repaired; a repair command is deferred to
   a follow-up feature, see Out of Scope (Deferred); Owner decision, Gate 3,
-  2026-10-08). Status: Shipped.
+  2026-10-08). Addition, 2026-10-08, after merge: the repair command is now
+  provided by FR-65. Status: Shipped.
   Resolved (OQ-65 addition): Owner decision, Gate 3, 2026-10-08.
   [US-6][US-9]
 
@@ -1125,6 +1126,41 @@ lost work.
   belongs at the feature-spec rung. This requirement rides the existing
   per-project `entities` feature flag and MUST NOT introduce a flag of its
   own, consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-56): "done" for this pass is qualitative owner sign-off against a built implementation, not a predefined checklist — the feature spec and task breakdown for this requirement MUST include an explicit owner review/sign-off step rather than treating completion as self-certifiable against fixed criteria. [US-17]
+- FR-65: A writer MUST be able to repair, with one `getwrite-cli` command
+  (`repair-revisions [projectRoot] [--dry-run]`) that has a dry-run option,
+  every text resource in a project that has content but no revision, by
+  giving it an initial canonical revision holding its own document. The
+  repair MUST NOT write over an existing revision, MUST leave content files,
+  sidecars and project config untouched, MUST report what it repaired and
+  what it could not (a text resource with no content files is reported, not
+  repaired), and MUST refuse an encrypted project. Investigated 2026-10-08:
+  the repo's own `projects/` store held 11 such resources, all in one
+  project and all created on that project's first day, 2026-05-13, on which
+  12 text resources had a revision (the first named by hand) and 11 did not;
+  every text resource created from 2026-05-14 onward has one, named "Initial
+  Draft" and created at the same instant as the resource. The cutover lines
+  up with commit `93fcab45` (2026-05-13), which made creation write a
+  revision (the pre-May code was not re-run). So there are two known
+  sources, both closed: resources created before that commit, and copies
+  and duplicates made before FR-64. By reading call sites (not by running
+  each), every current path that creates a text resource writes a first
+  revision; whether anything can delete a resource's last revision was not
+  checked. Healing such a resource automatically when it is opened or edited
+  in the app is deliberately not part of this requirement (owner decision,
+  2026-10-08): a writer who does not run the command is not helped, and the
+  installed desktop app gains nothing from it. Status: Shipped on branch
+  `fix/repair-revisionless-text-resources`, not yet merged to `main`
+  (2026-10-08). Verified by tests (model and CLI, the latter through the
+  registered command) and a dry run of the model function against the repo's
+  affected project, which reported exactly the 11 and skipped none. Run by
+  the owner the same day against the affected project in their own workspace:
+  it reported 11 repaired; each then had one canonical revision equal to its
+  document with its content files and sidecar untouched, and a rescan of that
+  workspace found no text resource without a revision. An edit then typed
+  into one repaired resource in the running app was written to its content
+  files and its canonical revision within seconds. Resolved (OQ-65
+  addition): Owner decision, 2026-10-08, made as a direct change outside the
+  pipeline. [US-6][US-9]
 
 ### Later Requirements
 
@@ -2570,6 +2606,7 @@ were built around.
 **Addition, 2026-10-08 (Gate 3), owner decisions:** (A) Fix template creation as part of this work: a resource created from a template is a normal, app-loadable resource, written the way the app's own create path writes one, and carries the template's subtype. (B) The shipped CLI gains `templates save-from-resource <projectRoot> <resourceId> <templateId> [--name]`, and what it captures is corrected: the source's real `userMetadata`, the source's `resourceSubtype` as its own top-level template key, and nothing else from the sidecar. Defaults accepted at Gate 3 (the owner did not object): `templates list` output is unchanged; an invalid stored subtype in a template or source resource is rejected with an error naming it; no fallback read of a label from an older template's `userMetadata`; templates do not carry `entityKind`, `aliases`, `wordCountGoal` or `dismissedNoiseTerms`; project-type `defaultResources` are out of scope. A consequence of (A) and (B) taken together: templates now carry a resource's `userMetadata` onto the resources created from them.
 **Addition, 2026-10-08 (Gate 3), copy and duplicate measured, and owner decision C:** Measured by the pipeline lead the same day, two ways. At model level (a temp project, the real functions, the scratch test deleted): `copyResourceCore` and `duplicateResource` each returned and persisted a sidecar that carried `resourceSubtype` and `entityKind` and the content directory, left `revisions/<newId>/` absent (0 revisions; the source had 1), and `loadProjectFromDisk` and `getLocalResources` both succeeded afterwards; `duplicateResource` also kept the source's `name` and `createdAt`. In the running app (`next dev`, a disposable projects directory, Playwright, files checked on disk): a baseline edit typed into a text resource reached `content.txt` and `content.tiptap.json` within 5 seconds (revisions: `v-1`); after Duplicate, an edit typed into the copy was in neither file after 8 and again about 25 seconds, no revision existed, and after a page reload and reopening the copy the edit was gone, with no toast, error or unsaved-changes prompt. Not measured: the menu's "Copy" action (Duplicate was used), image and audio copies, a manual "save revision" on the copy, and CLI `templates duplicate` output opened in the app. The cause is not established by experiment; triage's reading (the editor queues autosave only when editing the canonical revision, and a copy has none) is consistent with the measurement and untested. Owner decision C: fix it inside this work. A copy or duplicate of a text resource gets an initial canonical revision, written by the same code as a new resource's; the source's other revisions are not copied; image and audio copies get none. This is FR-64. Whether a duplicate should also get a fresh `createdAt` or a distinct name is not decided and is not part of this fix. Copies made before the fix are an open question in the feature spec, not decided here.
 **Addition, 2026-10-08 (Gate 3), defaults confirmed by the owner ("defaults OK") for the feature spec's eight open questions:** (1) Image and audio templates are rejected, as is any template type other than text, with an error naming the type; image and audio remain supported for copy and duplicate. (2) A template's folder is honoured when it exists and rejected, naming the template and the folder id, when it does not. (3) `templates create` gains no `--folder` option or any other new option. (4) Variable substitution applies to a template's metadata string values too; the shipped command passes no variables, so shipped behaviour is the same either way. (5) A template's body is captured as plain text only; paragraph breaks survive, while marks, headings, lists and other structure are flattened, soft line breaks contribute no text and trailing blank paragraphs are dropped. (6) Resources already created by the old template path are out of scope, with a documented workaround (delete the stray sidecar and the flat content file); the repo's own `projects/` directory holds 160 sidecars, all with a `slug`, and no flat-layout resource files (triage count, 2026-10-08; only the repo's store was checked, not a writer's workspace). (7) Duplicate fidelity is closed by the measurement and owner decision C above. (8) Templates made by the old unbundled helper are left as they are and documented; they are unreachable from the shipped CLI and no template files exist under the repo's `projects/`.
+**Addition, 2026-10-08, after merge:** The 11 revision-less text resources counted in the repo's own store (see Out of Scope (Deferred)) were investigated by the pipeline lead the same day. All 11 are in one project and were created on that project's first day, 2026-05-13; that day's text resources split 12 with a revision and 11 without, and every text resource created from 2026-05-14 onward (53) has one. The 12 show a first revision named by hand ("V1", "Rev 1") seconds to minutes after the resource; from the cutover on the first revision is "Initial Draft", created at the same instant. The cutover lines up with commit `93fcab45` (2026-05-13 18:47 local); the pre-May code was not re-run. So the 11 are resources created before the app wrote a revision at creation, not copies; 9 are empty and 2 have content. A read-only scan of the owner's `~/Documents/GetWrite` workspace found the same 11 in that project's copy and none in the other three projects (132 text resources scanned). By reading call sites (not by running each), every current path that creates a text resource writes a first revision; whether anything can delete a resource's last revision was not checked. Owner decision, 2026-10-08: ship a CLI repair (`getwrite-cli repair-revisions [projectRoot] [--dry-run]`) as a small direct change outside the pipeline, not healing on open, because both known sources are closed and the population cannot grow. This is FR-65. Not yet done at the time of this addition: running the repair against the owner's real project, and opening a repaired resource in the app to confirm an edit is saved. Both were done later the same day: the owner ran the command against the affected project in their own workspace (11 repaired; each with one canonical revision equal to its document, content files and sidecar untouched; a rescan found none left without a revision), and an edit typed into one repaired resource in the running app was written to its content files and canonical revision within seconds.
 **Impact:** FR-62, FR-63, FR-64; FR-19, FR-21 and the import requirements.
 
 **OQ-66 (resolved): How do the Organizer card body, Organizer filters and the Timeline treat a field that is out of scope for a resource's subtype?**
@@ -2669,3 +2706,14 @@ were built around.
   11 of 160 text resources with no revision directory, all in one project,
   none with "copy" in its name; how they came to lack one was not
   established. This is deferred, not decided against.
+  Update, 2026-10-08: the CLI repair is no longer deferred; it is FR-65
+  (shipped on branch `fix/repair-revisionless-text-resources`, not yet
+  merged to `main`). What remains deferred is healing such a resource
+  automatically when it is opened or edited in the app, and detecting it in
+  `doctor`. The cause of the 11 has since been investigated (see FR-65): they
+  are text resources created on that project's first day, 2026-05-13, before
+  creation wrote a revision (commit `93fcab45`), for which no revision was
+  saved by hand; they are not copies. 9 of the 11 are empty and 2 have
+  content. A read-only scan of the owner's `~/Documents/GetWrite` workspace
+  found the same 11 in that project's copy there and none in its other three
+  projects (132 text resources scanned).

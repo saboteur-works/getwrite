@@ -311,7 +311,7 @@ As with `create`, run `getwrite-cli reindex` for entity mentions to include a du
 node cli/dist/bin/getwrite-cli.cjs templates duplicate ./my-novel b19abcd4-81b2-44ef-b4b4-ba1310dbdf87
 ```
 
-**Text resources that already have no revision are not repaired.** Copies made in the app (Copy/Duplicate) and duplicates made with this command before this change had no revision, as may other text resources. Measured 2026-10-08 in the running app on `main`: edits typed into a duplicated text resource were not saved and were lost on reload, with no error, and the copy had no revision. The cause was not established by experiment; reading the code suggests the editor only autosaves into a canonical revision. This change fixes copy and duplicate going forward only: it does not detect or repair an existing revision-less resource. Workaround for a copy: duplicate it again (with this command or the app's Duplicate action) and work in the new copy, which gets its own initial revision. For a revision-less resource that is not a copy, there is no workaround in this change. A repair command is deferred to a follow-up.
+**Text resources that already have no revision.** Copies made in the app (Copy/Duplicate) and duplicates made with this command before this change had no revision, as do text resources created before the app wrote a revision at creation. Measured 2026-10-08 in the running app on `main`: edits typed into a duplicated text resource were not saved and were lost on reload, with no error, and the copy had no revision. The cause was not established by experiment; reading the code suggests the editor only autosaves into a canonical revision. This command fixes copies going forward only. To repair existing ones, run [`repair-revisions`](#repair-revisions).
 
 The app's Copy and Duplicate actions (`copyResourceCore`) behave the same way: a text copy gets its own single initial canonical revision, and a text source with no content files is rejected before any write.
 
@@ -448,6 +448,54 @@ node cli/dist/bin/getwrite-cli.cjs doctor ./my-novel
 ```
 
 To repair, recreate the missing folder reusing its id (so the existing `folderId` references resolve) or move the orphaned items into an existing folder.
+
+---
+
+### `repair-revisions`
+
+Gives every text resource that has content but no revision its initial canonical revision.
+
+```sh
+getwrite-cli repair-revisions [projectRoot] [--dry-run]
+```
+
+**Why it exists.** The editor autosaves into a resource's canonical revision. A text resource with no revision at all has nowhere for those saves to go: measured 2026-10-08 in the running app, text typed into one was not written to disk and was gone after a reload, with no error. Two sources of such resources are known, and both are closed:
+
+- text resources created before 2026-05-13, when the app began writing a revision at creation, for which no revision was ever saved by hand;
+- copies and duplicates made before copy and duplicate began writing one.
+
+By reading the code, nothing creates a revision-less text resource today, so this is a one-time repair. Run it once per project.
+
+**Arguments and options:**
+
+- `projectRoot` (optional) — project to repair. Defaults to `process.cwd()`.
+- `--dry-run` — list what would be repaired and write nothing.
+
+**What it does:**
+
+1. Lists the project's text resources. Image and audio resources are ignored; they have no revisions.
+2. Skips any resource that has a `revisions/<id>/v-*` directory, including one whose metadata is unreadable. It never writes over an existing revision.
+3. For each remaining resource, writes `v-1` as the canonical revision, holding the resource's own document (`content.tiptap.json`, or `content.txt` converted when that file is missing) and named by the project's default revision name.
+4. A resource with neither content file is reported and left alone.
+
+It writes only under `revisions/`. Content files, sidecars and `project.json` are not modified, and running it again repairs nothing.
+
+**Exit codes:** `0` = nothing needed repair, or everything that did was repaired; `1` = at least one revision-less resource could not be repaired; `2` = unexpected error; `3` = the project is encrypted and was not examined.
+
+**Example:**
+
+```sh
+node cli/dist/bin/getwrite-cli.cjs repair-revisions ./my-novel --dry-run
+# [repair-revisions] Would repair 2 text resource(s) with no revision in ./my-novel:
+#   - "Casey Thorne" (0f3c…)
+#   - "Dolores Park" (9a1e…)
+
+node cli/dist/bin/getwrite-cli.cjs repair-revisions ./my-novel
+# [repair-revisions] Repaired 2 text resource(s) with no revision in ./my-novel:
+#   ...
+```
+
+Close the project in the app before running it, and reopen it afterwards so the editor loads the new revision.
 
 ---
 

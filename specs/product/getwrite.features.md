@@ -2819,6 +2819,69 @@ cause not established. Not repaired, by owner decision: resources created by
 the old template path, and text resources that already lack a revision (11 of
 160 in the repo's own store, cause not established); a repair command is a
 follow-up.
+Addition, 2026-10-08, after merge: the repair command is now Feature 74, and
+the cause of the 11 has since been investigated (see Feature 74's Notes).
+
+### Feature 74: Repair for text resources with no revision — Shipped
+**Value:** A writer whose project holds text resources that have content but
+no revision (the editor cannot autosave into them, so edits are lost on
+reload) can repair them with one command, and can preview what it would do
+first. Without it the only remedy is to copy the resource's text into a new
+resource by hand.
+**Vertical slice:** Data and logic: `repairMissingInitialRevisions(projectRoot,
+{ dryRun })` in `frontend/src/lib/models/revision-repair.ts`; for each text
+resource with no `revisions/<id>/v-*` directory and readable content it
+writes `v-1`, canonical, holding the resource's own document, through the
+shared `writeInitialCanonicalRevision` that Feature 73 extracted. It never
+writes over an existing revision directory (even one with unreadable
+metadata), skips and reports a text resource with no content files, ignores
+image and audio resources, is idempotent, and writes only under
+`revisions/`. Interface: the CLI command `getwrite-cli repair-revisions
+[projectRoot] [--dry-run]` (exit 0 clean or repaired, 1 if something could
+not be repaired, 2 error, 3 encrypted project). Tests: model and CLI. No UI.
+**Requirements covered:** FR-65
+**User stories:** US-6, US-9
+**Depends on:** Feature 73
+**Branch suggestion:** fix/repair-revisionless-text-resources
+**Notes:** Shipped on branch `fix/repair-revisionless-text-resources`, not yet
+merged to `main` as of this entry (2026-10-08). Done as a small direct change
+outside the pipeline, by owner decision (2026-10-08), after an investigation;
+it follows Feature 73, which fixed copy and duplicate going forward and
+deferred repair of resources that already lacked a revision.
+Investigation (pipeline lead, 2026-10-08): the repo's `projects/` store held
+11 revision-less text resources, all in one project, all created on that
+project's first day, 2026-05-13. That day's text resources split 12 with a
+revision and 11 without; every text resource created from 2026-05-14 onward
+(53) has one. The 12 show a first revision named by hand ("V1", "Rev 1")
+seconds to minutes after the resource; from the cutover on the first
+revision is "Initial Draft", created at the same instant as the resource. The
+cutover lines up with commit `93fcab45` (2026-05-13 18:47 local); the
+pre-May code was not re-run, but the data cutover and the commit's stated
+purpose agree. So the 11 are resources created before the app wrote a
+revision at creation, not copies; 9 are empty and 2 have content. A
+read-only scan of the owner's `~/Documents/GetWrite` workspace found the same
+11 in that project's copy there and none in its other three projects (132
+text resources scanned). By reading call sites (not by running each), every
+current path that creates a text resource writes a first revision: app
+create, template create, copy, duplicate, project creation from a project
+type, and the Scrivener, DOCX and plain-text importers. Not checked: whether
+anything can delete a resource's last revision. The two known sources, resources created before that
+commit and copies made before Feature 73, are both closed.
+Verified: 9 model tests and 5 CLI tests (through the registered command);
+frontend suite 5566 passed, 1 skipped; CLI suite 135 passed with
+`tests/qa/server.test.ts` excluded; a dry run of the model function against
+the repo's affected project reported exactly the 11 and skipped none. Run by
+the owner the same day against the affected project in their own workspace:
+the command reported eleven repaired; each then had one canonical revision
+equal to its document, with content files and sidecar untouched, and a rescan
+of that workspace found no text resource without a revision. An edit then
+typed into one repaired resource in the running app was written to its
+content files and canonical revision within seconds. Not exercised: a project
+with a text resource that has no content files, outside tests. Deliberately not
+done: healing on open in the app or editor, and detection in `doctor`; the
+owner chose the CLI repair because both sources are closed, so the population
+cannot grow. Consequence: a writer who does not run the command is not
+helped, and the installed desktop app gains nothing from this feature.
 
 ---
 
@@ -2891,11 +2954,12 @@ follow-up.
   - FR-62: Feature 73
   - FR-63: Feature 73
   - FR-64: Feature 73
+  - FR-65: Feature 74
 - Unassigned requirements: none
 
 ## Summary
 
-- Total features: 73
+- Total features: 74
 - Suggested build order: 72 → 73 for resource subtype (73 needs 72's
   sidecar key; 72 has since shipped and merged to `main` (PR #260,
   2026-10-08), and 73 has since shipped and merged to `main` (PR #261,
@@ -2980,7 +3044,7 @@ follow-up.
 - Independently shippable: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73 (Features 72 and 73 having both merged; 30 and 28 are the only pair left with an unmet hard dependency;
+  57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73, 74 (Features 72 and 73 having both merged, and 74 shipped on its branch, not yet merged; 30 and 28 are the only pair left with an unmet hard dependency;
   Feature 31 and Feature 43 have both since shipped, so 44's former
   dependency on 31 and 46/47's former dependency on 43 are now satisfied)
 - Not yet built: 27, 28, 29, 30, 32, 44, 46, 47. Everything

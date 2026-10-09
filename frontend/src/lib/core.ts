@@ -66,6 +66,9 @@ export {
 // extraction).
 export { loadResourceContent } from "./tiptap-utils";
 
+// Revision repair (one-time fix for text resources with no revision)
+export { repairMissingInitialRevisions } from "./models/revision-repair";
+
 // Storage context (imperative helper for non-route entry points, e.g. the CLI)
 export { runForTenant } from "./models/io";
 
