@@ -36,6 +36,7 @@ import {
 import { getProjectDirectoryId } from "../../src/store/projectsSlice";
 import { formatRelativeTimestamp } from "../../src/lib/timestamp-utils";
 import Button from "../common/UI/Button";
+import SharingStatus from "../Sharing/SharingStatus";
 import UnlockModal from "../common/UnlockModal";
 import {
   getDesktopBridge,
@@ -580,6 +581,7 @@ export default function StartPage({
 
       <div className=" mx-auto">
         <div className="bg-gw-chrome start-page-fade-in px-6 py-8 lg:px-10 lg:py-10">
+          <SharingStatus />
           <div className="start-page-hero-grid">
             <div className="flex flex-col">
               <div className="inline-flex items-center gap-2 font-mono text-gw-micro tracking-label uppercase text-gw-secondary border border-gw-border px-2 py-1 w-fit">

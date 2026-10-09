@@ -227,7 +227,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 3
 **Notes:** Satisfies FR-6 (state and addresses at launch and whenever the main view is shown), FR-7 (statements visible), FR-22 (text readable by a screen reader), FR-30 (interim note). With sharing off nothing renders, so the local path is unchanged. The component must not poll the network.
 **POS:** task_89e938bc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: The bind change: listen on all interfaces when sharing is effective (LAST code task)
 **What:** Make the server listen on all interfaces when sharing is effective and on loopback otherwise, and re-run the full refusal suite.
