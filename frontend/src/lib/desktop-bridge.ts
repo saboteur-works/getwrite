@@ -143,7 +143,7 @@ export type DocxImportOutcome =
   | DocxImportFatalOutcome;
 
 /** Whether the paired-device store is absent, valid, or damaged. */
-export type CredentialStoreStatus = "ok" | "missing" | "corrupt";
+type CredentialStoreStatus = "ok" | "missing" | "corrupt";
 
 /** What the renderer is told about home-network sharing. */
 export interface SharingStatus {

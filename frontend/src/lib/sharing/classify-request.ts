@@ -28,7 +28,7 @@ export const DEVICE_COOKIE_MAX_AGE_SECONDS = 31536000;
 /** Request header the gate may use to carry a serialized classification to routes. */
 export const CLASSIFICATION_HEADER = "x-getwrite-classification";
 
-export type NotConfirmedReason =
+type NotConfirmedReason =
   | "store-corrupt"
   | "no-credential"
   | "unknown-credential"
@@ -51,7 +51,7 @@ export interface HeaderReader {
   get(name: string): string | null;
 }
 
-export interface CookieReader {
+interface CookieReader {
   get(name: string): { value: string } | undefined;
 }
 

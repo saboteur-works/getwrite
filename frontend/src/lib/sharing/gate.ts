@@ -42,10 +42,8 @@ const PAIR_ENDPOINT = "/api/sharing/pair";
 const STATIC_PREFIX = "/_next/static/";
 
 /** Shown to a person whose device is refused; the FR-20 working copy, verbatim. */
-export const NOT_PAIRED_MESSAGE =
+const NOT_PAIRED_MESSAGE =
   "This device is not paired. On your computer, open GetWrite, turn on sharing, and enter the code shown there.";
-
-export { HOST_NOT_ALLOWED_MESSAGE };
 
 const GATE_HEADER = "x-getwrite-gate";
 

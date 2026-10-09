@@ -30,7 +30,7 @@ async function removeIfStale(lockPath: string): Promise<void> {
   }
 }
 
-export async function acquireLock(lockPath: string): Promise<void> {
+async function acquireLock(lockPath: string): Promise<void> {
   for (let attempt = 0; attempt < LOCK_RETRY_LIMIT; attempt += 1) {
     try {
       const handle = await open(lockPath, "wx", 0o600);

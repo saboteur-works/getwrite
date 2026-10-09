@@ -10,8 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 /** Name of the credential file inside the sharing directory. */
-export const CREDENTIALS_FILE = "device-credentials.json";
-export { CREDENTIALS_FILE as CREDENTIALS_FILE_NAME };
+export const CREDENTIALS_FILE_NAME = "device-credentials.json";
 
 /** Whether the store is absent, readable and valid, or damaged. */
 export type CredentialStoreStatus = "ok" | "missing" | "corrupt";
@@ -43,7 +42,7 @@ function isDeviceRecord(value: unknown): boolean {
 export function readCredentialStoreStatus(dir: string): CredentialStoreStatus {
   let text: string;
   try {
-    text = fs.readFileSync(path.join(dir, CREDENTIALS_FILE), "utf8");
+    text = fs.readFileSync(path.join(dir, CREDENTIALS_FILE_NAME), "utf8");
   } catch (error) {
     return (error as NodeJS.ErrnoException).code === "ENOENT"
       ? "missing"

@@ -8,7 +8,7 @@
 import { WINDOW_HEADER } from "./window-secret";
 
 /** Handle returned by a sender so the poll can observe connection errors. */
-export interface ReadinessRequest {
+interface ReadinessRequest {
   onError: (callback: () => void) => void;
 }
 

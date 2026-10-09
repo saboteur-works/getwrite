@@ -18,7 +18,7 @@ import { useEffect } from "react";
  * intercepted. Renders nothing.
  */
 
-export const PAIR_REDIRECT_PATH = "/pair?reason=unpaired";
+const PAIR_REDIRECT_PATH = "/pair?reason=unpaired";
 
 const GATE_HEADER = "x-getwrite-gate";
 const NOT_PAIRED = "not-paired";

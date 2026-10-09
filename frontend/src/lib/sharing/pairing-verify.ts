@@ -38,7 +38,7 @@ const PairingStateSchema = z.object({
 
 type PairingState = z.infer<typeof PairingStateSchema>;
 
-export type UnusableReason =
+type UnusableReason =
   | "missing"
   | "corrupt"
   | "expired"

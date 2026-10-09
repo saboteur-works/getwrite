@@ -329,8 +329,15 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Depends on:** 22
 **Estimate:** 3
 **Notes:** Owner decision (2026-10-09, "Fix the knip exports"). Independent of Task 30. ORDERING: comes before Task 23's ticking and before Task 24 (see the header); Task 23 re-runs its `pnpm knip` comparison on the tip that contains this task. Counts "167 exports, 170 types, 50 files" are the `main` baseline measured by Task 23.
+
+Implementation (2026-10-09): `pnpm knip` re-run first: Unused files (50), Unused exports (172), Unused exported types (176), Duplicate exports (14); all 11 entries still appeared. Dispositions (grep over frontend, electron, cli incl. tests):
+- `CREDENTIALS_FILE` (electron `store-status.ts`): only used in its own file; the alias `CREDENTIALS_FILE_NAME` is what tests import (`electron/tests/store-status.test.ts`). Renamed the constant to `CREDENTIALS_FILE_NAME` and dropped the alias line; `CREDENTIALS_FILE_NAME` stays exported (test needs it).
+- `PAIR_REDIRECT_PATH`, `acquireLock` (sharing `file-lock.ts`; the same-named export in `models/locks.ts` is a different function and untouched), `ReadinessRequest`, `CredentialStoreStatus` (`desktop-bridge.ts` only; electron's own copies in `store-status.ts` and `preload.ts` untouched), `NotConfirmedReason`, `CookieReader`, `MachineInterfaceEntry`, `UnusableReason`: nothing outside the declaring file used them; un-exported.
+- `NOT_PAIRED_MESSAGE`: only used inside `gate.ts`; un-exported.
+- `HOST_NOT_ALLOWED_MESSAGE`: the flagged item was the `export { HOST_NOT_ALLOWED_MESSAGE };` re-export in `gate.ts`; nobody imports it from `gate.ts` (the pair route and `gate.ts` import it from `host-allowlist.ts`). Removed the re-export; the original in `host-allowlist.ts` is unchanged and still used.
+No knip ignore rule added, no test touched. Final `pnpm knip` (repo root): Unused files (50), Unused exports (167), Unused exported types (170), Duplicate exports (14) = main baseline. Checks: frontend typecheck clean, lint 0 errors/395 warnings, test:ci 591 files/5955 passed, 1 skipped; electron typecheck clean, test 20 files/250 passed.
 **POS:** task_5995979f
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 31

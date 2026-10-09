@@ -36,7 +36,7 @@
 import os from "node:os";
 
 /** One entry of `os.networkInterfaces()`, reduced to what the rule reads. */
-export interface MachineInterfaceEntry {
+interface MachineInterfaceEntry {
   address: string;
   family: string;
   internal: boolean;
