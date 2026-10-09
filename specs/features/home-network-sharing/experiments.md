@@ -746,3 +746,34 @@ Baseline worktree removed (see above). `git status --short` printed nothing at t
 ### Outcome
 
 Every Done-when item ran. Met: typecheck (frontend, electron), lint (0 errors, 395 = baseline), tests (no failure, 1 skipped as baseline, +389 passed), knip (counts and names equal to baseline), native export (baseline error, supplementary build exit 0, no gate code), Math.random, log calls, forbidden paths, device/revoke/rename UI, port, red, HOSTNAME, built-server (a) to (d) and FR-34 on a fresh build of `0103e07a`. NOT met: "`git diff --name-only main` shows no `.md` file outside `specs/`": 8 files (list above). Task 23 is therefore left unticked.
+
+## I: exercise in a browser (pipeline lead, 2026-10-09)
+
+The built standalone server started by hand with the environment the desktop app would give it (`GETWRITE_SHARING=1`, `GETWRITE_BIND=127.0.0.1`, `HOSTNAME=127.0.0.1`, a window secret, a throwaway sharing directory and projects directory), a pairing-state file written by hand in the Task 9 format with a random code, and a Playwright Chromium as the unpaired device. Loopback only. The Electron window, the desktop controls and a second device were NOT part of this exercise.
+
+### First run, build of `b5a8a889` plus docs (port 4841): defect
+
+- `GET /` redirected to `/pair`; the page rendered its heading, the not-paired sentence, the code field and "Pair".
+- Console: `Unexpected token '<'` twice. Of the 18 script, stylesheet and preload URLs on the page, one, `/_next/static/chunks/15-qbq4xx9k5..js`, returned the `/pair` HTML after a redirect.
+- Entering a value and pressing Enter navigated to `/pair?`; the pairing-state file still read `attempts: 0`.
+- `curl -D -`: `/_next/static/chunks/15-qbq4xx9k5..js` and `/_next/static/chunks/does-not-exist..js` returned `307`, `location: /pair`, `x-getwrite-gate: not-paired`; `/_next/static/chunks/does-not-exist.js` returned 404; another real chunk returned 200 JavaScript. 3 of 59 files in `.next/static/chunks` had `..` in their names.
+- Fixed by Task 30 (`e0a6398f`).
+
+### Second run, build of `0103e07a` (port 4842)
+
+- `GET /` redirected to `/pair`. No console error on load.
+- Entering `12` and pressing Enter: stayed on `/pair`; an alert read "That code is not right. Check the code on your computer and try again."; the field was marked invalid and kept focus; the state file read `attempts: 1`.
+- Entering the correct code: navigated to `/`, the Start page. `document.cookie` was empty (the cookie is not readable by page script). `device-credentials.json` (mode 0600) held one device named "Chrome on Mac" with a `credentialHash`.
+- From the paired page: `GET /api/projects` 200; `POST /api/projects` 200 (created "Paired Device Test"); `GET /api/encryption` 200; `POST /api/sharing/pair` with the already-used code 400 `{"ok":false,"reason":"unusable"}`.
+- In the UI: opened the project, created a document "Paired Draft", typed a sentence; five seconds later the sentence was in that resource's `content.txt`, `content.tiptap.json` and `revisions/<id>/v-1/content.bin` on disk.
+- The Start page in the paired browser showed "Start a New Project" and "App Settings" and no text containing "sharing".
+- An unpaired client (`curl`, no cookie): `/` 307 to `/pair` (`not-paired`); `/api/projects` 401 `not-paired`; `/pair` 200; a request with `X-Forwarded-For: 127.0.0.1` and a made-up `x-getwrite-window` 401 `not-paired`; `/pair` with `Host: evil.example:4842` 403 `host-not-allowed` and the FR-31 message as text.
+- With `device-credentials.json` moved away (standing in for a revoke, which this feature does not have): typing in the open editor led, within six seconds, to `/pair?reason=unpaired` showing the not-paired sentence. The sentence typed after the removal was not saved; the page left the editor.
+
+### Not exercised
+
+The desktop window and its sharing controls; the pairing code as displayed by the desktop app; a real second device; the phone's browser; a network bind in the desktop app; App Settings in a paired browser; lock, unlock and project deletion from a paired device.
+
+### Cleanup
+
+Both servers stopped (each needed one `kill` with the sandbox disabled); the throwaway directories removed.
