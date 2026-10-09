@@ -34,7 +34,7 @@ export const PAIRING_SUBMITTING = "Pairing…";
 
 /** FR-7(a), spec. */
 export const SHARING_STATEMENT_UNENCRYPTED =
-  "Sharing uses unencrypted HTTP. Turn it on only on a network you trust.";
+  "Sharing uses unencrypted HTTP. Enable it only on a network you trust.";
 
 /** FR-7(b), spec. */
 export const SHARING_STATEMENT_AVAILABILITY =
@@ -45,7 +45,7 @@ export const SHARING_STATEMENT_AVAILABILITY =
  * constant and its render sites when that feature ships).
  */
 export const INTERIM_EXPOSURE_NOTE =
-  "For now, a paired device can also lock, unlock and delete your projects.";
+  "A paired device can also lock, unlock and delete your projects.";
 
 /** FR-6, spec: shown instead of a blank address list. */
 export const NO_NETWORK_ADDRESS = "No network address found.";

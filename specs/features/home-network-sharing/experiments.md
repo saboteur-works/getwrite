@@ -777,3 +777,41 @@ The desktop window and its sharing controls; the pairing code as displayed by th
 ### Cleanup
 
 Both servers stopped (each needed one `kill` with the sandbox disabled); the throwaway directories removed.
+
+## J: manual verification on real devices (Task 24)
+
+Run 2026-10-09 by the owner: an unpacked desktop build of `feat/home-network-sharing` (built after `4b4d0d98`: `pnpm --filter getwrite-frontend build`, then in `electron/` `pnpm build && pnpm build:worker && pnpm exec electron-builder --config electron-builder.yml --dir`, launched from `dist-electron/mac-arm64/GetWrite.app/Contents/MacOS/GetWrite`), and an Android phone with Chrome 153.0.8010.52 on the same Wi-Fi. Recorded by the pipeline lead from the owner's statements in conversation; the owner reported outcomes ("works as expected") against steps the lead had listed, and did not paste output. No cause is named. The owner's PC was no longer available.
+
+Environment fact supplied by the owner: this build's `userData` folder is `~/Library/Application Support/getwrite-electron/` (the lead had guessed `GetWrite`; that was wrong).
+
+| Item | Result |
+|---|---|
+| (1) Sharing off: phone cannot connect | Reported as expected after switching sharing off and restarting. |
+| (2) Sharing on after restart: status, addresses, both statements, interim note | Reported: sharing on, addresses shown, a pairing code rendered, both statements and the interim note shown; the app worked normally in its window. |
+| (3) Wrong code message | Reported shown, on the phone. |
+| (3) Five wrong attempts, then the correct code is refused; a new code works | Reported as expected (private tab on the phone). |
+| (3) A code left more than 5 minutes shows expired and is refused | Not exercised. |
+| (4) Correct code pairs the phone; edit on the phone appears on the desktop | Reported as expected. The stored device name was not read from the file. |
+| (5) Forged `X-Forwarded-For` from the phone | Not exercised. |
+| (6) Quit and relaunch the desktop app: sharing still on, phone still paired | Reported as expected. |
+| (6) Without its cookie the phone is refused | A private tab on the phone was treated as unpaired (reported). Clearing cookies in the paired tab was not done. |
+| (7) Sharing off and restart: phone cannot connect; back on: phone still paired | Reported as expected. Sharing was left off afterwards. |
+| (8) Corrupt credential store | Not exercised. |
+| (9) Hosted-auth variables set | Not exercised. |
+| (10) Upgrade survival | Not exercised. |
+| (11) Paired phone can reach lock, unlock, delete | Not exercised. |
+| (12) Image and font requests from the window carry the secret | Not measured. |
+| (13) Window works under the non-loopback bind, none of its requests refused | The owner reported the app worked normally in its window with sharing on. No request log was taken. |
+| (14) Window still loads under the `0.0.0.0` bind | It loaded (same report). |
+| (15) Pairing from the Android phone by the displayed IP address | Reported: the pairing page opened and the phone paired and reached the Start page. |
+| (16) Phone's browser closed completely and reopened: still paired | Reported as expected (FR-33). |
+| (17) `.local` name on the phone | `http://Jedais-MacBook-Pro.local:3000` (Chrome changed it to lowercase) and `http://macbook-pro.local:3000` both gave Chrome's "This site can't be reached". Neither reached the server, so the gate's handling of a `.local` Host was not exercised from the phone. |
+| (18) Sharing controls work in the running Electron (Task 28's sender and origin guards) | The owner turned sharing on and off, restarted from the control and generated pairing codes; all worked as reported. In-app navigation: the app "works normally". No attempt was made to trigger a refused sender or a foreign navigation. |
+| (19) Forged-header and foreign-Host requests from a second device | Not possible (no second computer). The same requests sent from the host to its LAN address are in section H and are not second-device results. |
+| (20) Pairing page hydrates on the phone; Pair submits | Reported: the correct code paired the phone and the wrong code showed its message, on Chrome 153.0.8010.52. The phone's browser console was not inspected. |
+
+### Found during this run
+
+- Measured by the lead on the owner's Mac: `os.hostname()` printed `Jedais-MacBook-Pro.local`; `scutil --get LocalHostName` printed `MacBook-Pro`. The gate derives its accepted `.local` name from `os.hostname()` (`frontend/src/lib/sharing/host-allowlist.ts`), so on this machine it accepts `jedais-macbook-pro.local` and not `macbook-pro.local`. Whether a device that can resolve `macbook-pro.local` would be refused was not observed (the phone resolved neither). Recorded as a known gap; no fix task added (owner's "proceed").
+- There is no way to revoke a paired device in the app (Feature 76). Removing `device-credentials.json` from `userData` removes every pairing; this was exercised only in section I, against a server started by hand.
+- Copy review by the owner: two wording changes requested ("Turn it on only on a network you trust" becomes "Enable it only on a network you trust"; "For now, " removed from the interim note). Otherwise "looks good".
