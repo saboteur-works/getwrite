@@ -30,6 +30,7 @@ const DEFAULT_SERVER = path.join(
   FRONTEND,
   ".next/standalone/frontend/server.js",
 );
+const STATIC_DIR = path.join(FRONTEND, ".next/static");
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const DUMMY = "dummy";
 const ENUMERATED_EXCEPTIONS = ["GET /pair", "POST /api/sharing/pair"];
@@ -89,6 +90,31 @@ async function enumerate() {
     entries.push({ url: toUrl(file), method: "GET" });
   }
   return entries;
+}
+
+/** Every `/_next/static/...` URL a page's HTML references (src, href, preloads). */
+function extractStaticUrls(html) {
+  const urls = new Map();
+  for (const m of html.matchAll(/\b(?:src|href)="(\/_next\/static\/[^"]+)"/g)) {
+    const url = m[1].replaceAll("&amp;", "&");
+    const tag = html.slice(Math.max(0, m.index - 200), m.index + m[0].length);
+    const declared = /\btype="([^"]+)"/.exec(tag.slice(tag.lastIndexOf("<")));
+    urls.set(url, declared === null ? null : declared[1]);
+  }
+  return urls;
+}
+
+const ASSET_TYPE =
+  /^(?:application\/javascript|text\/javascript|text\/css|font\/|application\/font|application\/x-font)/;
+
+async function walkFiles(dir) {
+  const found = [];
+  for (const child of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, child.name);
+    if (child.isDirectory()) found.push(...(await walkFiles(full)));
+    else found.push(full);
+  }
+  return found.sort();
 }
 
 const label = (e) => `${e.method} ${e.url}`;
@@ -256,6 +282,49 @@ async function main() {
     check("static path is not gated (not a refusal)", !isRefusal(statik));
     const pairPage = await fetch(`${base}/pair`, { redirect: "manual" });
     check("pairing page reachable unpaired", pairPage.status === 200);
+
+    // Real asset URLs the pairing page references must be served as assets, not
+    // redirected to /pair (Task 30).
+    const pairHtml = await (
+      await fetch(`${base}/pair`, { headers: { host: `127.0.0.1:${port}` } })
+    ).text();
+    const referenced = extractStaticUrls(pairHtml);
+    check(
+      "pairing page references at least one static URL",
+      referenced.size > 0,
+    );
+    const badRef = [];
+    for (const [url, declared] of referenced) {
+      const res = await fetch(`${base}${url}`, { redirect: "manual" });
+      const type = res.headers.get("content-type") ?? "";
+      const typeOk =
+        declared !== null ? type.startsWith(declared) : ASSET_TYPE.test(type);
+      if (res.status !== 200 || !typeOk) {
+        badRef.push(`${url} -> ${res.status} ${type}`);
+      }
+    }
+    check(
+      `pairing page static URLs served as assets (${badRef.join("; ")})`,
+      badRef.length === 0,
+    );
+    console.log(`pairing page static URLs checked: ${referenced.size}`);
+
+    // Every real file in the build's static directory is admitted by the gate.
+    const staticFiles = await walkFiles(STATIC_DIR);
+    check("static directory is non-empty", staticFiles.length > 0);
+    const refused = [];
+    for (const file of staticFiles) {
+      const rel = path.relative(STATIC_DIR, file).split(path.sep).join("/");
+      const res = await fetch(`${base}/_next/static/${rel}`, {
+        redirect: "manual",
+      });
+      if (res.status !== 200) refused.push(`${rel} -> ${res.status}`);
+    }
+    check(
+      `every real static file admitted (${refused.join("; ")})`,
+      refused.length === 0,
+    );
+    console.log(`static files checked: ${staticFiles.length}`);
 
     const window = await fetch(`${base}/api/auth-status`, {
       headers: { "x-getwrite-window": secret },

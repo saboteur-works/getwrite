@@ -53,14 +53,19 @@ function isApiPath(pathname: string): boolean {
   return pathname === "/api" || pathname.startsWith("/api/");
 }
 
-/** Public build output only; any encoded or dotted segment is not trusted as static. */
-function isStaticAsset(pathname: string): boolean {
-  return (
-    pathname.startsWith(STATIC_PREFIX) &&
-    !pathname.includes("%") &&
-    !pathname.includes("..") &&
-    !pathname.includes("\\")
-  );
+/**
+ * Public build output only. The decision is made on path segments after the
+ * static prefix: a segment of `.`, `..` or nothing is refused (a name that
+ * merely contains dots is a real build file shape), and an encoded or
+ * backslash-bearing path is not trusted as static.
+ */
+export function isStaticAsset(pathname: string): boolean {
+  if (!pathname.startsWith(STATIC_PREFIX)) return false;
+  if (pathname.includes("%") || pathname.includes("\\")) return false;
+  return pathname
+    .slice(STATIC_PREFIX.length)
+    .split("/")
+    .every((segment) => segment !== "" && segment !== "." && segment !== "..");
 }
 
 function isPairingException(pathname: string, method: string): boolean {

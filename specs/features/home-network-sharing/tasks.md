@@ -318,8 +318,9 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Depends on:** 14, 18, 25
 **Estimate:** 5
 **Notes:** Satisfies FR-9 and FR-11 (the exemption must admit every asset path the build emits; spec sentence added, provenance "defect found at the exercise stage, 2026-10-09 (measured)"), and the verification half of FR-26. ORDERING: runs before Tasks 23 and 24 (see the header); Task 23 is not ticked until this task is ticked and Task 23's built-server checks are re-run on the new tip. The estimate is 5, not less: a small gate change, but two test files, a smoke script extension, a real build and a built-server run whose outcome is not known in advance (a third unadmitted name shape would add work). The change must not weaken the Host allowlist, the pairing exception or any other refusal; the existing gate tests stay green and unchanged. Never print a pairing code or credential in the smoke output.
+ IMPLEMENTATION (2026-10-09, main checkout): `isStaticAsset` now splits the path after `/_next/static/` on `/` and refuses a `.`, `..` or empty segment; it is exported. `%` and backslash refusals kept. Reading of `ls -R frontend/.next/static | grep -n '[%\\]'` on a fresh `pnpm build`: 122 files, 0 with `%`, 0 with a backslash ("none found", so no widening); 3 files have `..` in the name. Tests were seen failing first (19 failed: `isStaticAsset` not exported, the two dotted-name admissions, `/_next/static/.` through the gate, and the file-walk test). Note: `new NextRequest(url)` normalises `.`/`..` segments, so the through-the-gate traversal cases reach the gate already normalised; the raw-pathname `isStaticAsset` tests cover the unnormalised shapes. Smoke: 15 static URLs from `/pair`, 122 real files; total checks 28 (was 24). Playwright check of `/pair`: not run. Deviation: none.
 **POS:** task_d4aa765d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Unused exports reported by knip (Owner decision, fix)
 **What:** Remove the 11 unused exports and types that `pnpm knip` reports beyond `main`, or justify each one that stays.

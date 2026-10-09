@@ -14,6 +14,7 @@
  *
  * No test name, message or assertion prints a window secret or a credential.
  */
+import { existsSync } from "node:fs";
 import {
   mkdir,
   mkdtemp,
@@ -28,7 +29,7 @@ import path from "node:path";
 import { NextRequest, type NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runGate } from "../../src/lib/sharing/gate";
+import { isStaticAsset, runGate } from "../../src/lib/sharing/gate";
 import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
 import {
   DEVICE_COOKIE,
@@ -376,6 +377,35 @@ describe("sharing on: every enumerated URL is refused when unconfirmed", () => {
     );
     expect(isPassThrough(res)).toBe(true);
   });
+
+  const STATIC_DIR = path.join(FRONTEND, ".next/static");
+  it.skipIf(!existsSync(STATIC_DIR))(
+    existsSync(STATIC_DIR)
+      ? "admits every real file in the build's static directory"
+      : "SKIPPED: frontend/.next/static does not exist (run pnpm build first)",
+    async () => {
+      const files: string[] = [];
+      const walkAll = async (dirPath: string): Promise<void> => {
+        for (const child of await readdir(dirPath, { withFileTypes: true })) {
+          const full = path.join(dirPath, child.name);
+          if (child.isDirectory()) await walkAll(full);
+          else files.push(full);
+        }
+      };
+      await walkAll(STATIC_DIR);
+      const refused = files
+        .map(
+          (f) =>
+            `/_next/static/${path.relative(STATIC_DIR, f).split(path.sep).join("/")}`,
+        )
+        .filter((url) => !isStaticAsset(url));
+      expect(
+        refused,
+        `${files.length} files checked, ${refused.length} refused`,
+      ).toEqual([]);
+      expect(files.length, "files checked").toBeGreaterThan(0);
+    },
+  );
 
   it("lets the window header through every enumerated URL", async () => {
     const { entries } = await enumerate(APP_DIR);

@@ -18,7 +18,7 @@ import { NextRequest, type NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { proxy as realProxy } from "../../proxy";
-import { runGate } from "../../src/lib/sharing/gate";
+import { isStaticAsset, runGate } from "../../src/lib/sharing/gate";
 import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
 import {
   CLASSIFICATION_HEADER,
@@ -204,6 +204,64 @@ describe("sharing on, no credential", () => {
     expect(isPassThrough(res)).toBe(false);
     const res2 = await proxy(req("/_next/static/..%2fapi/projects"));
     expect(isPassThrough(res2)).toBe(false);
+  });
+
+  it.each([
+    "/_next/static/chunks/15-qbq4xx9k5..js",
+    "/_next/static/chunks/a...js",
+  ])(
+    "admits a real-shaped build file whose name contains dots: %s",
+    async (p) => {
+      const res = await proxy(req(p));
+      expect(isPassThrough(res)).toBe(true);
+      expect(forwarded(res)).toBe("not-confirmed:no-credential");
+      expect(res.headers.get("x-getwrite-gate")).toBeNull();
+    },
+  );
+
+  it("still applies the Host allowlist to a dotted-name static asset", async () => {
+    const res = await proxy(
+      req("/_next/static/chunks/15-qbq4xx9k5..js", {
+        headers: { host: "evil.example:3000" },
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(res.headers.get("x-getwrite-gate")).toBe("host-not-allowed");
+  });
+
+  it.each([
+    "/_next/static/../api/projects",
+    "/_next/static/%2e%2e/api/projects",
+    "/_next/static/..",
+    "/_next/static/chunks/../../api/projects",
+    "/_next/static/.",
+  ])("refuses the traversal shape through the gate: %s", async (p) => {
+    expect(isPassThrough(await proxy(req(p)))).toBe(false);
+  });
+
+  it.each([
+    "/_next/static/../api/projects",
+    "/_next/static/%2e%2e/api/projects",
+    "/_next/static/..",
+    "/_next/static/chunks/../../api/projects",
+    "/_next/static/.",
+    "/_next/static/chunks/./x.js",
+    "/_next/static/chunks//x.js",
+    "/_next/static/",
+    "/_next/static/a\\b.js",
+    "/_next/static/chunks/..%2fx.js",
+    "/_next/other/x.js",
+  ])("isStaticAsset refuses the raw pathname %s", (p) => {
+    expect(isStaticAsset(p)).toBe(false);
+  });
+
+  it.each([
+    "/_next/static/chunks/15-qbq4xx9k5..js",
+    "/_next/static/chunks/a...js",
+    "/_next/static/chunks/x.js",
+    "/_next/static/media/font.woff2",
+  ])("isStaticAsset admits the raw pathname %s", (p) => {
+    expect(isStaticAsset(p)).toBe(true);
   });
 });
 
