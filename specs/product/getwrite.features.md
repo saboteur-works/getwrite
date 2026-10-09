@@ -2870,9 +2870,14 @@ commit and copies made before Feature 73, are both closed.
 Verified: 9 model tests and 5 CLI tests (through the registered command);
 frontend suite 5566 passed, 1 skipped; CLI suite 135 passed with
 `tests/qa/server.test.ts` excluded; a dry run of the model function against
-the repo's affected project reported exactly the 11 and skipped none. NOT yet
-done: running the repair against the owner's real project, and opening a
-repaired resource in the app to confirm an edit is saved. Deliberately not
+the repo's affected project reported exactly the 11 and skipped none. Run by
+the owner the same day against the affected project in their own workspace:
+the command reported eleven repaired; each then had one canonical revision
+equal to its document, with content files and sidecar untouched, and a rescan
+of that workspace found no text resource without a revision. An edit then
+typed into one repaired resource in the running app was written to its
+content files and canonical revision within seconds. Not exercised: a project
+with a text resource that has no content files, outside tests. Deliberately not
 done: healing on open in the app or editor, and detection in `doctor`; the
 owner chose the CLI repair because both sources are closed, so the population
 cannot grow. Consequence: a writer who does not run the command is not
