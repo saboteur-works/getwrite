@@ -268,7 +268,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-31 (Owner decision on the design, 2026-10-09, "Both confirmed, go ahead": the set is computed by the server at request time from the live interfaces and hostname, loopback names included, the server port required, applied to the exempt pairing paths too, one rule with the address display, the IP shown first). Run this task FIRST of 25 to 29. Consequences to keep in the code comments and not to soften: a paired device's cookie belongs to the host it was set on (general browser behaviour, not tested here), so when the desktop's address changes the device must use the new address and pair again; a `.local` name avoids that where the device can resolve it, which is not assured on every Android version (not measured here); a router address reservation is the dependable remedy. IPv6 is not in scope: nothing here listens on IPv6 (`localhost` over IPv6 did not connect under a `0.0.0.0` bind, experiments section C run 2, cause not established). The proxy runs in the Node runtime per the bundled Next docs; whether `os.networkInterfaces()` per request costs anything noticeable was not measured, so cache only with a short, bounded lifetime if at all, and never in a way that hides an address change from the next request; module state is unreliable in `proxy.ts` (measured not shared with routes, section A (7)). Whether `os.hostname()` equals the name a phone resolves over mDNS was not measured on any platform. Whether to also show the `.local` URL in the window is OQ-12 in the spec: this task does not add it. Satisfies the first of the review fixes; the review's evidence for L1 was measured at gate level only.
 **POS:** task_662d5a85
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Keep the request body limit at or above the media cap (FR-32)
 **What:** Set Next's `experimental.proxyClientMaxBodySize` so that adding `frontend/proxy.ts` no longer lowers the size of request body the app accepts, and prove the value against the media cap without a 100 MB fixture.
@@ -278,7 +278,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 2
 **Notes:** Satisfies FR-32. Measured by the review, not re-measured by this task: a 9 MB upload returned 200 and a 12 MB upload returned 500 "Failed to parse body as FormData", in every mode including sharing off. The 500 is consistent with the docs' partial-body behaviour; no experiment here discriminated its cause. Read, from the docs: the body is buffered in memory up to the limit, per request, so a 100 MB upload now holds up to about that much in server memory; that cost was not measured. The unit test proves the configured value, not that a 100 MB upload succeeds end to end: whether the app reaches the cap is unverified until Task 23's upload check, and a result above 12 MB is only claimed if it was run. Because a config value cannot be changed from the proxy file, excluding the upload route from the proxy matcher is not an option: the gate must cover it.
 **POS:** task_26b4f3b9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Device cookie lifetime and sliding renewal (FR-33)
 **What:** Give the device cookie an explicit long `Max-Age` when it is set at pairing, and re-issue it with a fresh `Max-Age` on every confirmed request so a paired device keeps its pairing across browser restarts.
@@ -308,7 +308,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 2
 **Notes:** Owner decision (2026-10-09, "Both confirmed, go ahead"): exclude `app/pair` from the native export the way the hosted-auth pages are excluded. It supersedes the earlier header rule that `build-native-static.mjs` is not edited, for this one exclusion only; no other edit to that script is allowed. Why: `app/pair` is not in `EXCLUDED_APP_SUBPATHS`, so the page is copied into the Android build, where there is no server to pair with (read). `components/Sharing/*` stays in the tree; only the route is removed.
 **POS:** task_9727a2a5
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 29
