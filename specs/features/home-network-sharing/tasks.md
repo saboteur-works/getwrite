@@ -147,7 +147,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-12 (the window mechanism, primary candidate), part of FR-24 (the effective flag the server sees), FR-25 (uses the one origin source). With `GETWRITE_SHARING="1"` and the bind still on loopback, a plain browser on this machine is refused after Task 14 and the window is not: that is deliberate and is how the gate is exercised before the bind change. With sharing off the env is `"0"` and the gate is a no-op. The secret is held only in the main process and the server's env; it must not be exposed to the renderer through `preload.ts` or any IPC channel. If Task 6 chose the cookie or a fallback, re-plan this task first. Whether the header reaches `/_next` asset requests and in-app fetches is what Task 4 measured; if it did not, this task is wrong as written.
 **POS:** task_c37c91db
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Wire the gate in front of every route and page (`frontend/proxy.ts`)
 **What:** Add the root `proxy.ts` that classifies every request and refuses an unconfirmed one (a 401 JSON for API paths, a redirect to the pairing screen for page paths), with exceptions only for the pairing screen, the code-entry endpoint and the assets the screen needs.

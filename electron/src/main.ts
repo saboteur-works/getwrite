@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  session,
   shell,
   utilityProcess,
 } from "electron";
@@ -10,13 +11,21 @@ import type { UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
+import { randomBytes } from "crypto";
 import { PORT, localOrigin } from "./server-config";
+import {
+  createWindowSecret,
+  installWindowSecret,
+} from "./sharing/window-secret";
+import { waitForServer, type ReadinessGet } from "./sharing/server-readiness";
+import { resolveSharingMode } from "./sharing/sharing-mode";
 import fs from "fs";
 import {
   ensureProjectsDir,
   legacyProjectsDirs,
   migrateLegacyProjectsDir,
   readGlobalNoiseWords,
+  readSharingEnabled,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
@@ -116,30 +125,20 @@ function resolveDirectories() {
   };
 }
 
-function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeoutMs;
-    const check = () => {
-      http
-        .get(url, (res) => {
-          if (res.statusCode && res.statusCode < 500) {
-            resolve();
-          } else {
-            retry();
-          }
-        })
-        .on("error", retry);
-    };
-    const retry = () => {
-      if (Date.now() > deadline) {
-        reject(new Error("Server did not start in time"));
-        return;
-      }
-      setTimeout(check, 500);
-    };
-    check();
+/** Node `http` sender for the readiness check (see `server-readiness.ts`). */
+const httpReadinessGet: ReadinessGet = (url, headers, onResponse) => {
+  const request = http.get(url, { headers }, (res) => {
+    res.resume();
+    onResponse(res.statusCode);
   });
-}
+  return { onError: (callback) => void request.on("error", callback) };
+};
+
+/**
+ * Created once per launch. Held here and in the server's env only; never
+ * logged and never sent over IPC or exposed through the preload bridge.
+ */
+const windowSecret = createWindowSecret(randomBytes);
 
 function startServer(
   dirs: ReturnType<typeof resolveDirectories>,
@@ -156,6 +155,16 @@ function startServer(
     GETWRITE_DESKTOP: "1",
     GETWRITE_REPO: "saboteur-works/getwrite",
     GETWRITE_APP_VERSION: resolveAppVersion(),
+    // Sharing gate inputs (FR-12, FR-24). The secret stays in this process and
+    // the server's env. The bind address is unchanged.
+    GETWRITE_WINDOW_SECRET: windowSecret,
+    GETWRITE_SHARING_DIR: app.getPath("userData"),
+    GETWRITE_SHARING: resolveSharingMode({
+      enabled: readSharingEnabled(app.getPath("userData")),
+      env: process.env,
+    }).effective
+      ? "1"
+      : "0",
   };
 
   log(`standaloneDir: ${dirs.standaloneDir}`);
@@ -597,7 +606,11 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
     }, 1000);
   });
 
-  waitForServer(localOrigin(PORT))
+  waitForServer({
+    url: localOrigin(PORT),
+    secret: windowSecret,
+    get: httpReadinessGet,
+  })
     .then(() => {
       log("server ready");
       if (!stopped && !win.isDestroyed()) {
@@ -635,6 +648,12 @@ if (!app.requestSingleInstanceLock()) {
     initLog();
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
+    // Before any window loads: tags the window's requests to the local server.
+    installWindowSecret(
+      session.defaultSession,
+      localOrigin(PORT),
+      windowSecret,
+    );
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
     registerScrivenerImportHandlers();
