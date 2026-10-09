@@ -117,7 +117,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-17 (opaque high-entropy credential, hash only), FR-27 (separate `userData` file, 0600, missing means none, corrupt fails closed). The credential has no expiry (FR-17 resolved question); revocation is Feature 76 and nothing here removes a device except what a test needs, so do not add a revoke API. `sha256` is acceptable for a 32-byte random token (no password-stretching needed); use `node:crypto` only. Next's server may load modules more than once, so no state is held in module variables: read from disk each time (Task 1 observation 7 should confirm). The store file name is `device-credentials.json`.
 **POS:** task_809f7e0a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Server-side pairing-code verification (expiry, single use, per-code attempt limit)
 **What:** Add the frontend module that checks a submitted code against `pairing-state.json`, counts wrong attempts per code under a lock, and returns a result distinguishing wrong from unusable.
