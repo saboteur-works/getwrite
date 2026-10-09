@@ -623,3 +623,126 @@ Baseline worktree removed. `lsof -iTCP -sTCP:LISTEN -P | grep -i node` printed n
 ### Outcome
 
 All Task 22 remaining items (fresh build, `pnpm test:sharing-smoke`, LAN-address smoke under a `0.0.0.0` bind, FR-34 built-server check) ran and passed. Task 23: everything above passed except the knip comparison (11 new unused exports/types, listed above). Task 23 therefore stays unticked; Task 22 is ticked.
+
+
+## H: final verification on 0103e07a
+
+Run 2026-10-09 by the Task 23 implementor in the main checkout `/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/home-network-sharing`, HEAD `0103e07a` (Task 31; Task 30 is `e0a6398f`), tree clean before and after (build outputs are gitignored), inside the command sandbox (no command needed it disabled). `main` is `69f1bf53`. Machine LAN address: `10.0.0.226`. Method reused from section G; scripts (`t23-checks.mjs`, a LAN-address copy of `sharing-refusal-smoke.mjs`) live in the session scratchpad, not in the repo. No pairing code, window secret or device token appears below (cookie values `<redacted>`). Storybook story tests are not part of this gate and were not run.
+
+### Baselines and tree counts (measured fresh)
+
+`git worktree add --detach ../getwrite-baseline main` (HEAD `69f1bf53`), `node_modules` directories symlinked from the main checkout (root, `frontend`, `electron`, `android`, `cli`), `ensure-config-link.mjs` run there. Removed afterwards with `git worktree remove --force`; `ls ..` shows no `getwrite-baseline` and `git worktree list` has no entry for it. `git worktree list` is NOT only the main one: it still lists `integ/wave5` (`../getwrite-integ-wave5`, shown `prunable`) and nine `.claude/worktrees/agent-*` entries, all present before this run and not created or touched by it.
+
+| Check | `main` baseline | tip `0103e07a` |
+|---|---|---|
+| frontend `pnpm typecheck` | not run | exit 0 |
+| frontend `pnpm lint` | exit 0; 0 errors, 395 warnings | exit 0; 0 errors, 395 warnings |
+| frontend `pnpm test:ci` | exit 0; 572 files passed; 5566 passed, 1 skipped (5567) | exit 0; 591 files passed; 5955 passed, 1 skipped (5956); 0 failed |
+| electron `pnpm typecheck` | not run | exit 0 |
+| electron `pnpm test` | exit 0; 11 files, 82 tests passed | exit 0; 20 files, 250 tests passed |
+| root `pnpm knip` | exit 1; Unused files 50, unused exports 167, unused exported types 170, duplicate exports 14 | exit 1; Unused files 50, unused exports 167, unused exported types 170, duplicate exports 14 |
+
+Tests: +19 files, +389 passed, skipped 1 in both. `grep -nE "\.(skip|todo)\(|xit\(|xdescribe\("` over the test files in `git diff --name-only main` printed nothing (exit 1). Which test is the skipped one was not looked up. Compared with section G (5931 passed), +24 tests from Tasks 30 and 31.
+
+knip, name level: the log lines were normalised (line/column numbers and ANSI codes removed, sorted) and diffed. The unused-file, unused-export, unused-type and duplicate-export lists are identical between baseline and tip (no name-level difference; the 11 new entries of section G are gone). The only differences: the path in the header line, and the "Unused devDependencies" group is 6 on the baseline (`@capacitor/android`, `@capacitor/core` in `android/package.json`, plus the 4 present in both) against 4 on the tip. This devDependency difference was also seen in section G and its cause was not established (not the `android/node_modules` symlink, per G); no `android` file is in the feature's diff. Knip exits 1 on both (pre-existing findings).
+
+### Built server (fresh `pnpm build` of HEAD)
+
+- `lsof -iTCP:3000 -sTCP:LISTEN` before the build printed nothing (exit 1).
+- `cd frontend && pnpm build`: exit 0; route table lists `○ /pair`, ends with `ƒ Proxy (Middleware)`. `.next/static` copied into `.next/standalone/frontend/.next/static`. `server.js` line 9 is `const hostname = process.env.HOSTNAME || '0.0.0.0'`.
+
+(a) `pnpm test:sharing-smoke > log 2>&1; echo "exit=$?"` (status not piped):
+
+```
+exit=0
+> getwrite-frontend@2.2.0 test:sharing-smoke ...
+> node ./scripts/sharing-refusal-smoke.mjs
+
+pairing page static URLs checked: 15
+static files checked: 122
+enumerated entries: 90; checks: 28; failures: 0
+sharing refusal smoke: all checks passed
+```
+
+(a2) LAN address, server on `HOSTNAME=0.0.0.0`: a copy of the script in the scratchpad with substitutions only (server `HOSTNAME` `0.0.0.0`; the base URL, the raw-request host, the pairing-page `Host` and the wrong-port `Host` changed from `127.0.0.1` to `10.0.0.226`; `FRONTEND` made absolute because the copy is outside the repo), `GETWRITE_PROJECTS_DIR` an empty throwaway directory, server up seconds and stopped by the script:
+
+```
+pairing page static URLs checked: 15
+static files checked: 122
+enumerated entries: 90; checks: 28; failures: 0
+sharing refusal smoke: all checks passed
+exit=0
+```
+
+This request came from the host machine to its own LAN address, not from a second device.
+
+(b) Host allowlist, sharing on, 127.0.0.1 bind (`t23-checks.mjs`, server a child on a spare random port, stopped by the script):
+
+```
+Host+Origin=evil.example:<port>  GET  /pair               -> 403 gate=host-not-allowed, no Location, no Set-Cookie
+Host+Origin=evil.example:<port>  POST /api/sharing/pair   -> 403 gate=host-not-allowed
+Host+Origin=evil.example:<port>  GET  /api/auth-status    -> 403 gate=host-not-allowed
+Host+Origin=evil.example:<port>  GET  /api/projects       -> 403 gate=host-not-allowed
+Host+Origin=evil.example:<port>  GET  /_next/static/x     -> 403 gate=host-not-allowed
+Host=localhost:<port>   GET /pair 200; POST /api/sharing/pair 400 (no gate header); GET /api/projects 401 gate=not-paired
+Host=127.0.0.1:<port>   GET /pair 200; POST /api/sharing/pair 400; GET /api/projects 401 gate=not-paired
+Host=10.0.0.226:<port>  GET /pair 200; POST /api/sharing/pair 400; GET /api/projects 401 gate=not-paired
+```
+
+With an allowed Host none of the three was refused with `host-not-allowed`. The 400 on the pair POST is the refusal for a code when no pairing state exists (body not inspected).
+
+(c) Upload, FR-32. Disposable `GETWRITE_PROJECTS_DIR` under `$TMPDIR`, one project created through `POST /api/projects` (200). The route reads form fields `file`, `projectId`, `title`; files are valid WAV (44-byte header, zero samples):
+
+```
+sharing off, 127.0.0.1                    12 MiB (12582912 bytes)   -> 200 {"success":true,"resource":{...}}
+sharing off                               98 MiB (102760448 bytes)  -> 200 {"success":true,...}
+sharing off                               100 MiB + 1 byte          -> 400 {"error":"File exceeds the 100 MB limit.","reason":"file-too-large"}
+sharing on + x-getwrite-window header     12 MiB                    -> 200 {"success":true,...}
+sharing on + x-getwrite-window header     98 MiB                    -> 200 {"success":true,...}
+sharing on, no credential                 12 MiB                    -> 401 {"error":"not-paired",...}
+```
+
+A result above 12 MB WAS measured: 98 MiB succeeded with sharing off and with sharing on plus the window header. "Just under 100 MB" here is 98 MiB; a file at 99.9 MiB, a file of exactly the cap and server memory use were not measured. Only an audio file type was uploaded; no image upload was run.
+
+(d) Cookie renewal, sharing on (pairing-state fixture file and a live code, as the smoke script does):
+
+```
+POST /api/sharing/pair -> 200; Set-Cookie: getwrite_device=<redacted>; Path=/; Expires=Sat, 09 Oct 2027 22:09:35 GMT; Max-Age=31536000; HttpOnly; SameSite=strict
+confirmed GET /api/auth-status -> 200; Set-Cookie: ...; Max-Age=31536000; HttpOnly; SameSite=strict; same token as presented: true
+confirmed GET /pair -> 200; Set-Cookie with Max-Age=31536000 (same shape)
+window-secret GET /api/auth-status -> 200; no Set-Cookie
+```
+
+FR-34, built server started with `HOSTNAME=0.0.0.0` and `GETWRITE_BIND=0.0.0.0`, `GETWRITE_SHARING` unset in one run and `0` in another, an empty throwaway projects directory, a window secret set, each server up a few seconds and stopped by the script. For both runs, requested through `127.0.0.1` and `10.0.0.226` (Host set to the address used):
+
+```
+no secret   GET /api/auth-status, GET /pair, POST /api/sharing/pair, GET /_next/static/x, GET /   -> 403 gate=bind-without-gate, no Location (5 of 5 per address per run)
+wrong secret GET /api/auth-status                                                                  -> 403 bind-without-gate
+window secret GET /api/auth-status -> 200;  window secret GET /pair -> 200
+```
+
+These came from the host machine, not from a second device. After every server run `lsof -iTCP -sTCP:LISTEN -P` showed no node process.
+
+### Native export (header rule)
+
+- `pnpm build:native`: exit 1. `Compiled successfully in 4.0s`, then `./stories/Start/CreateProjectModal.stories.tsx:6:8` / `Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal' or its corresponding type declarations.` and `[build-native-static] ERROR: `next build` exited with status 1.` Same first error as sections B, F and G. `frontend/out/` did not exist before or after. `frontend/.native-build/app` held `(app)`, `globals.css`, `layout.tsx`, `preferences`; no `pair` directory.
+- Supplementary (section B procedure): `"stories"` prepended to `exclude` in `frontend/.native-build/tsconfig.json` only, then `GETWRITE_BUILD_TARGET=native NEXT_PUBLIC_GETWRITE_RUNTIME=native GETWRITE_TEMPLATES_DIR=<repo>/getwrite-config/templates/project-types ./node_modules/.bin/next build` in `.native-build`: exit 0; routes `/`, `/_not-found`, `/preferences`; the output includes `ƒ Proxy (Middleware)`. `find out -ipath "*pair*"` printed nothing; `grep -rl "getwrite_device\|x-getwrite-window\|host-not-allowed\|GETWRITE_WINDOW_SECRET" out` printed nothing (exit 1); the only proxy-related file was `out/_next/static/aYwTwCUbr56Ecoo3BEjPE/_clientMiddlewareManifest.js` (the inert file B recorded). `frontend/out/` deleted afterwards (it did not exist before); `.native-build/` is gitignored.
+
+### Static checks
+
+- `grep -rn "Math.random" electron/src frontend/src/lib/sharing frontend/app/api/sharing frontend/proxy.ts`: no output (exit 1).
+- Log calls in `electron/src/sharing`, `frontend/src/lib/sharing`, `frontend/app/api/sharing`, `frontend/proxy.ts`, `frontend/components/Sharing`, `frontend/app/pair`: one hit, `frontend/app/api/sharing/pair/route.ts:146` `console.error(...)` of an errno code string only (read in G; the file is unchanged since the line number is the same). In `electron/src/main.ts` the sharing-related `log(...)` calls are the sharing on/off message; the other `log` lines matching code/desc (`did-fail-load ${code} ${desc}`, `server exited with code ${code}`) log a load-failure code and a process exit code. None takes a pairing code, token, hash or window secret.
+- `git diff --name-only main`: 98 files. **Done-when item NOT MET as written:** 8 `.md` files outside `specs/` are in the diff: `CLAUDE.md`, `README.md`, `docs/features/home-network-sharing.md`, `docs/roadmap.md`, `docs/standards/security.md`, `docs/standards/storage-context.md`, `docs/user/features.md`, `docs/user/start-page.md`. Section G (90 files) had none. The branch log shows commit `77bb5996 docs: document home-network sharing (Feature 75) as implemented and unreleased` between G's tip and this one; the diff against `main` was not split per commit beyond that. The header says a separate stage writes documentation, so this is most likely that stage; it is recorded as a failure of the literal check, not judged. Nothing under `frontend/src/lib/models/crypto/`, `frontend/src/lib/auth/`, `workspace-adapter.ts`, `encryptingAdapter.ts` is in the diff (grep exit 1).
+- `grep -rniE "revoke|rename|device list|forget" frontend/components/Sharing frontend/app/pair`: no output. No device list, revoke or rename UI.
+- Port: `git diff main -- electron/src/server-config.ts` is a new file with `export const PORT = 3000;` and the `main.ts` side removes `const PORT = 3000;`: same value. No TLS: the only `https`/`tls` hits in the changed non-test source are the Google Fonts links in `layout.tsx` (not in the diff's feature code), a comment "no TLS in this feature" in `pair/route.ts`, a proxy-comment in `with-storage-context.ts`, and `/^https?:\/\//` URL tests in `main.ts`; none sets up TLS.
+- Red: `grep -rnE "(text|bg|border|fill|stroke|ring|outline|decoration)-red|red-[0-9]|D44040|\bred\b|\"red\"|'red'" frontend/components/Sharing frontend/app/pair`: no output (exit 1).
+- `HOSTNAME`: `electron/src/main.ts:181` only a comment; the server env gets `HOSTNAME`, `GETWRITE_BIND`, `GETWRITE_SHARING` through `buildServerBindEnv`; `sharing-mode.ts` holds the `127.0.0.1` / `0.0.0.0` literals (`resolveServerHostname`, `buildServerBindEnv`); `electron/src/server-config.ts:11` `export const HOSTNAME = "127.0.0.1"` (Task 7, not imported by `main.ts`). No other `HOSTNAME` in `electron/src`, `frontend/proxy.ts`, `frontend/src/lib/sharing`, `frontend/app/api/sharing`.
+- `git diff main -- frontend/scripts/build-native-static.mjs`: 14 insertions, 4 deletions; the formatting-only changes noted in G are still there (not a Done-when item).
+
+### Cleanup
+
+Baseline worktree removed (see above). `git status --short` printed nothing at the end. No server left running; no node listener in `lsof -iTCP -sTCP:LISTEN -P`.
+
+### Outcome
+
+Every Done-when item ran. Met: typecheck (frontend, electron), lint (0 errors, 395 = baseline), tests (no failure, 1 skipped as baseline, +389 passed), knip (counts and names equal to baseline), native export (baseline error, supplementary build exit 0, no gate code), Math.random, log calls, forbidden paths, device/revoke/rename UI, port, red, HOSTNAME, built-server (a) to (d) and FR-34 on a fresh build of `0103e07a`. NOT met: "`git diff --name-only main` shows no `.md` file outside `specs/`": 8 files (list above). Task 23 is therefore left unticked.
