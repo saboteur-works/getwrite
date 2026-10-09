@@ -217,7 +217,7 @@ The tasks after Task 6 are written for the primary candidates named in the spec:
 **Estimate:** 5
 **Notes:** Satisfies FR-2 (control reachable from the desktop window), FR-4 (restart message before the relaunch call; shared restart), FR-7 (both statements visible together with the control, non-alert styling), FR-13, FR-14 (time remaining and the expired state), FR-22 (labelled switch, text state, live region, keyboard), FR-24 (message when hosted auth blocks), FR-27 (corrupt store message), FR-30 (interim note, separable). FR-22 also requires the controls to be reachable while the workspace is locked: Task 5 records whether App Settings is reachable then; the implementor reads that section of `experiments.md` and, if it is not reachable, states in Notes that the requirement is unmet and why, without altering the Start page's locked behaviour in this task. Accepted finding (owner, 2026-10-09, `experiments.md` "Owner confirmation" item 9; do NOT try to fix it, no work is added): in the desktop window with the workspace locked, the Start page's "App Settings" button could not be reached by keyboard while the unlock dialog was open and could after it was closed; whether App Settings was then operated and what it showed was not reported. The sharing change is recorded immediately (Task 19) and takes effect on restart, matching `WorkspaceLocationSettings`' record-then-restart behaviour.
 **POS:** task_cf2ff260
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: "Sharing is on" status in the main views
 **What:** Show the sharing-on state, the addresses and both statements in the desktop window's main views (the Start page and the app shell), so the state is visible at launch and whenever the main view is shown.
