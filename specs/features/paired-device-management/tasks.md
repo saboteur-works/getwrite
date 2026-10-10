@@ -116,7 +116,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-4 (no route), FR-5(d), FR-8, FR-9(a), (b), (d), FR-10 (gate behaviour), FR-11 (server half), FR-12, FR-24. A sandboxed non-interactive agent can do all of this: build in the main checkout, start the standalone server on a spare port as a child of a script that stops it, and call the same functions the IPC handlers call. It cannot click in the real Electron window, so the IPC layer itself (preload to main to handler) is covered by Task 6's tests and by Task 14's manual steps, and this task says so. Builds do not work in worktrees; run here, one task at a time; the orchestrator commits the experiments section before Task 11 starts. If the build fails with a sandbox error, retry outside the sandbox and say so. Never print a pairing code, cookie or hash; print statuses and counts only.
 **POS:** task_b10bb1c6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Built-server verification B (RUNS DIRECTLY IN THE MAIN CHECKOUT): browser checks, experiments (ii) and (iii), page load in a browser
 **What:** With a real Playwright Chromium against the built server, load the pairing and app pages, revoke a paired browser through the store writer, and record what the revoked browser shows, what happens to unsaved text in its editor, and whether re-pairing replaces the old cookie.

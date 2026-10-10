@@ -331,3 +331,41 @@ After appending this section:
 ```
  M specs/features/paired-device-management/experiments.md
 ```
+
+## Built-server verification A
+
+Task 10. Date 2026-10-09, main checkout `/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/paired-device-management`, Node 24.15.0, all commands inside the sandbox (no sandbox error, no retry outside it). `git status --short` was empty before starting. Nothing was listening on `127.0.0.1:3000` (`lsof -iTCP:3000 -sTCP:LISTEN` printed nothing, exit 1). No pairing code, cookie, window secret or credentialHash was printed or is recorded here.
+
+### Builds
+
+1. `cd frontend && pnpm build` (20:50 MDT): exit=0.
+2. `.next/static` copied into `frontend/.next/standalone/frontend/.next/static`: done.
+3. `cd electron && pnpm build` (`tsc`): exit=0. `electron/dist/sharing/device-management.js` exists and exports `listDevices`, `renameDevice`, `revokeDevice`.
+
+### Driver run
+
+Throwaway driver (outside the tree, copy at `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/device-revoke-verify.mjs`, not kept in the repo). Command: `node device-revoke-verify.mjs`, run 20:51 MDT, exit=0. It started `.next/standalone/frontend/server.js` as a detached child on loopback port 53375 with `PORT`, `HOSTNAME=127.0.0.1`, `GETWRITE_BIND=127.0.0.1`, `GETWRITE_SHARING=1`, `GETWRITE_SHARING_DIR` (temp), `GETWRITE_WINDOW_SECRET`, `GETWRITE_PROJECTS_DIR` (temp), `GETWRITE_TEMPLATES_DIR`, and stopped it by process-group kill in a `finally` (plus exit/SIGINT/SIGTERM handlers). Afterwards `lsof -i :53375` printed nothing (exit 1); the temp directories were removed.
+
+Enumeration (same walk as `sharing-refusal-smoke.mjs`): 90 entries = 7 pages + 83 API route/method pairs. Excluded from the "refused" requests as the smoke script does: `GET /pair` and `POST /api/sharing/pair` (88 gated entries: 6 pages, 82 API).
+
+Driver result: 33 checks, 0 failures. Observed:
+
+- Done-when 3: A and B each paired through the real `POST /api/sharing/pair` (status 200 each, pairing state written by `generatePairingCode`/`writePairingState` from `electron/dist`); the two cookies differ.
+- Done-when 4: before revoke, `GET /` and `GET /api/auth-status` answered 200 for both A and B.
+- Done-when 5: `revokeDevice(dir, A.id)` returned `ok`; the server process was still running (not restarted).
+- Done-when 6: the first request with A's cookie after the revoke was refused (requests until refusal: 1). Across all 88 gated entries A's old cookie was refused: 6 of 6 pages redirected to `/pair`, 82 of 82 API entries answered 401 with `x-getwrite-gate: not-paired`. `GET /pair` itself is not gated and answered 200. No refused response for A carried `Set-Cookie`.
+- Done-when 7: with B's cookie, 88 of 88 gated entries were not refused by the gate (no `x-getwrite-gate` header, no redirect to `/pair`).
+- Done-when 8 (FR-12): A's cookie presented 5 times on `/api/auth-status`, then after `renameDevice(dir, B.id, ...)` (returned `ok`) on the API and on `/`: confirmed 0 times, `Set-Cookie` seen 0 times; after the rename the API answer was 401 not-paired and the page a redirect to `/pair`. B still answered 200 after its rename; `listDevices` showed one device named as renamed.
+- Done-when 9 (FR-11): with A's old cookie sent, `POST /api/sharing/pair` with a fresh code answered 200 with a new cookie different from A's old one; the new cookie answered 200 on API and page; A's old cookie was still refused (401 not-paired, redirect to `/pair`). `listDevices` then listed 2 devices.
+- Done-when 10 (FR-5(d)): with B's cookie, `GET /api/sharing/devices`, `POST /api/sharing/devices/rename`, `POST /api/sharing/devices/revoke`, `DELETE /api/sharing/devices`, `PATCH /api/sharing/devices` each answered 404 (no such route exists under `app/api/sharing`, only `pair`); the response bodies did not contain B's id, and the store file was byte-identical before and after.
+- `listDevices` output: keys per device `id`, `name`, `createdAt` only; the serialized result contained neither `credentialHash` nor any 64-hex string.
+- Done-when 13: `device-credentials.json` mode 0600; directory listing at the end: `device-credentials.json`, `pairing-state.json` (no `.lock`, no `.tmp`).
+
+Not exercised: the IPC layer (preload to main to handler) and the real Electron window; this task calls the same functions the handlers call. Covered by Task 6's tests and, for the window, by Task 14's manual steps.
+
+### Existing suites
+
+- `cd frontend && pnpm test:sharing-smoke; echo "exit=$?"` (20:51 MDT): exit=0. `pairing page static URLs checked: 15`, `static files checked: 122`, `enumerated entries: 90; checks: 28; failures: 0`, `sharing refusal smoke: all checks passed`. Compared with the last recorded run (90 entries, 24 checks, 0 failures): entries and failures match; the check count is 28, not 24. The cause of the 4-check difference was not investigated (the reference may predate checks added to the script; not established).
+- `cd frontend && pnpm exec vitest run tests/unit/sharing-gate-enumeration.test.ts` (20:51 MDT): exit=0, 1 file passed, 32 tests passed, 0 failed.
+
+`git status --short` afterwards: only `specs/features/paired-device-management/experiments.md` and `tasks.md` (this section and the Task 10 tick).
