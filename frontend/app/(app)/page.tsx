@@ -48,6 +48,7 @@ import { buildProjectView } from "../../src/lib/models/project-view";
 import { listProjects, openProject } from "../../src/lib/api/projects";
 import {
   checkWorkspaceLock,
+  isSerializedLimitRefusal,
   resumeConversions,
   unlockWorkspace,
 } from "../../src/store/cryptoSlice";
@@ -75,6 +76,7 @@ import { toastService } from "../../src/lib/toast-service";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import { exportMarkdown, exportText } from "../../src/lib/api/export";
 import { useTrashRefresh } from "../../components/Layout/TrashRefreshContext";
+import { useSharingLimits } from "../../components/Sharing/SharingLimitsContext";
 
 /**
  * Flat representation of a project that has been opened in the current session.
@@ -154,6 +156,7 @@ export default function Home(): JSX.Element {
   );
 
   const dispatch = useAppDispatch();
+  const { refresh: refreshLimits } = useSharingLimits();
 
   // ── Encryption lock state ───────────────────────────────────────────────
   // The keyring lives server-side on web and desktop, so this mirrors what
@@ -209,14 +212,22 @@ export default function Home(): JSX.Element {
       void dispatch(unlockWorkspace(passphrase))
         .unwrap()
         // Finish anything a crash left half-done, now that keys are available.
-        .then(() => dispatch(resumeConversions()))
+        // A refused or failed resume is recorded in the slice (shown by the
+        // encryption settings); a refusal also re-reads the limits.
+        .then(() =>
+          dispatch(resumeConversions())
+            .unwrap()
+            .catch((error: unknown) => {
+              if (isSerializedLimitRefusal(error)) void refreshLimits();
+            }),
+        )
         // Re-list: the entries currently on screen were fetched while locked,
         // so they carry no name by design (FR18). Without this the project
         // stays "Untitled Project" until something else refreshes the list.
         .then(() => refreshProjects())
         .catch(() => undefined);
     },
-    [dispatch, refreshProjects],
+    [dispatch, refreshProjects, refreshLimits],
   );
 
   // Fetch existing projects on mount

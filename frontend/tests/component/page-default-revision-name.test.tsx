@@ -1,6 +1,19 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+
+// Feature 77 Task 21: page.tsx now reads the shared limits hook (to re-read
+// after a refused resume); this file is not about limits, so it is fixed at
+// "exempt". No assertion changed.
+vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 import { Provider } from "react-redux";
 import { makeStore } from "../../src/store/store";
 import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";

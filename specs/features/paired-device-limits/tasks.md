@@ -229,7 +229,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-26 (lock and resume half). No red. Reuse the toast service only if the slice's neighbours do; a deduplicated stable toast id is acceptable, but the message must reach the view.
 **POS:** task_f78b5ba0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Failure-visibility fix 3: a refused Trash purge or revision delete is visible with the server's reason
 **What:** Replace the fixed "Could not permanently delete the selected items. Try again later." and the silent revision-delete failure with the refusal's own message, and leave the Trash contents unchanged.
