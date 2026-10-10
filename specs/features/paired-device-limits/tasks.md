@@ -69,7 +69,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 1
 **Notes:** NOT executable by an implementor. The orchestrator does not tick it itself and does not treat it as a failure while it is unticked. Every later task depends on this one.
 **POS:** task_99ed6d36
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Limits file format, shared fixtures and the main-side writer
 **What:** Define the `sharing-limits.json` format as shared JSON fixtures and add the electron module that reads it (fail closed to all-on) and writes it by read-modify-write under the same lock-file protocol as the device store.

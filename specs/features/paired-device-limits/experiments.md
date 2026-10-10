@@ -737,3 +737,13 @@ After all runs, `git status --short` from the repo root (before this section was
 ```
  M specs/features/paired-device-limits/experiments.md
 ```
+
+## Owner confirmation at the Task 5 stop
+
+Recorded by the pipeline lead, 2026-10-10, after the owner was shown the results of experiments (i) to (iii) and the baselines. Owner's words: "Fix the defect as suggested, no need for a note if it's fixed now, otherwise, proceed as planned (maybe hold for the merge though)".
+
+1. Experiment (i): the classification reaches a POST route handler in the standalone build and in `next dev`, and a forged client copy did not survive. Route-level enforcement stands; no re-plan.
+2. Experiment (ii): a traversal `projectId` is accepted by the encryption route's `enable` action. The owner chose to fix it at once as a separate branch and pull request to `main`, ahead of the rest of this feature, because it is independent of sharing and the route is in released builds. Branch `fix/encryption-project-id-validation`, commit `df62b9fa`, made in a separate worktree from `main`. Task 25 (the conditional fix inside this feature) is therefore satisfied by that pull request once it is merged and brought into this branch; Task 25 then only records that and re-checks the result on this branch.
+3. Experiment (iii) and the LAN-address observation in experiment (i) are context only; tracked separately; no fix in this feature.
+4. Tasks 6 onward proceed as planned, and are held until the fix's pull request is merged to `main` and merged into this branch.
+5. Lead's addition, accepted with the plan at Gate 4: the main-side writer of Task 6 reuses the lock helpers of Feature 76's `electron/src/sharing/device-store-writer.ts` rather than reimplementing the lock protocol a third time.
