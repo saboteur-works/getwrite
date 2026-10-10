@@ -41,6 +41,7 @@ import {
 import type { Revision } from "../../../../../src/lib/models/types";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
+import { checkLimit } from "../../../../../src/lib/sharing/limits-check";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface GetRevisionResponse {
@@ -318,5 +319,18 @@ async function handlePatch(
 
 export const GET = withStorageContext(handleGet);
 export const POST = withStorageContext(handlePost);
-export const DELETE = withStorageContext(handleDelete);
+const wrappedDelete = withStorageContext(handleDelete);
+
+/**
+ * Feature 77 (FR-11, FR-13): revision delete removes the revision directory
+ * with no Trash, so it is `permanentDeletion`. Checked before
+ * `withStorageContext` and before the body is parsed. GET, POST and PATCH are
+ * not limited (FR-12).
+ */
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ "resource-id": string }> },
+): Promise<Response> {
+  return checkLimit(req, "permanentDeletion") ?? wrappedDelete(req, context);
+}
 export const PATCH = withStorageContext(handlePatch);

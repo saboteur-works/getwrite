@@ -208,8 +208,13 @@ async function httpPurge(
     const { POST } =
       await import("../../app/api/project/[project-id]/trash/purge/route");
     const res = await POST(
-      jsonRequest(`http://localhost/api/project/${projectId}/trash/purge`, {
-        ids,
+      new Request(`http://localhost/api/project/${projectId}/trash/purge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-getwrite-classification": "off",
+        },
+        body: JSON.stringify({ ids }),
       }) as never,
       { params: Promise.resolve({ "project-id": projectId }) },
     );

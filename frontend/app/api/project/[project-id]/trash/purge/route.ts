@@ -32,6 +32,7 @@ import {
   type PurgeSelection,
 } from "../../../../../../src/lib/models/trash-core";
 import { resolveProjectPath } from "../../../../../../src/lib/models/project-path";
+import { checkLimit } from "../../../../../../src/lib/sharing/limits-check";
 import { withStorageContext } from "../../../../_tenant/with-storage-context";
 
 interface PurgeBatchBody {
@@ -82,6 +83,18 @@ async function handlePost(
   return NextResponse.json({ results }, { status: 200 });
 }
 
-export const POST = withStorageContext(handlePost);
+const wrappedPost = withStorageContext(handlePost);
+
+/**
+ * Feature 77 (FR-11, FR-13): `permanentDeletion` is checked before
+ * `withStorageContext`, before the path param is resolved and before the body
+ * is parsed, for a list of ids and `all: true` alike.
+ */
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ "project-id": string }> },
+): Promise<Response> {
+  return checkLimit(req, "permanentDeletion") ?? wrappedPost(req, context);
+}
 
 export const dynamic = "force-dynamic";

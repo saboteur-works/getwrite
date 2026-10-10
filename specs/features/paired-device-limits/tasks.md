@@ -119,7 +119,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (three of the routes), FR-12 (partly), FR-13. The call goes first inside the handler, before parsing the body into model calls; for the purge route a body that does not parse is decided by the same fail-closed rule for a paired device (refused) and keeps its present response for the window. Revision delete is Limit permanent deletion because it removes the revision directory with no Trash (read, not run: `revision-core.ts` ~612).
 **POS:** task_8414a77f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Enforce the limits per action on `POST /api/encryption`, with passphrase creation always refused
 **What:** Call the shared check in `postEncryptionAction` per action (unlock and resume: unlocking; lock: locking; enable with a non-null passphrase: always refused; enable with a null passphrase and export: encryption changes) before any session, storage or conversion call.

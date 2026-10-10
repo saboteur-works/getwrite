@@ -18,6 +18,7 @@ import { loadResourceContent } from "../../src/lib/tiptap-utils";
 import type { TipTapDocument } from "../../src/lib/models";
 import { removeDirRetry } from "./helpers/fs-utils";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
+import { LIMITS_FILE_NAME } from "../../src/lib/sharing/limits-store";
 
 // Feature 54, Task 16: a partial mock of revision-core so a single test per
 // handler can force its underlying core function to reject with a
@@ -72,11 +73,21 @@ async function withProjectsDirEnv<T>(
   }
 }
 
-function makeRequest(method: string, body: object): NextRequest {
+function makeRequest(
+  method: string,
+  body: object,
+  classification: string | null = "off",
+): NextRequest {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (classification !== null) {
+    headers["x-getwrite-classification"] = classification;
+  }
   return new NextRequest("http://localhost/api/resource/revision/test", {
     method,
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers,
   });
 }
 
@@ -746,6 +757,208 @@ describe("revision route — protect revision (FR-8, FR-10, FR-11)", () => {
         (r) => r.id,
       );
       expect(ids).toContain(rev.id);
+    });
+  });
+});
+
+describe("revision DELETE — permanentDeletion limit (Feature 77)", () => {
+  const sharingDirs: string[] = [];
+
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+    vi.mocked(deleteRevision).mockClear();
+  });
+
+  afterEach(async () => {
+    while (sharingDirs.length > 0) {
+      const dir = sharingDirs.pop();
+      if (dir) await removeDirRetry(dir);
+    }
+    delete process.env.GETWRITE_SHARING_DIR;
+  });
+
+  async function useSharingDir(limitsText: string | null): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-rev-sharing-"));
+    sharingDirs.push(dir);
+    if (limitsText !== null) {
+      await fs.writeFile(path.join(dir, LIMITS_FILE_NAME), limitsText, "utf8");
+    }
+    process.env.GETWRITE_SHARING_DIR = dir;
+    return dir;
+  }
+
+  function limitsFile(permanentDeletion: boolean, others = true): string {
+    return JSON.stringify({
+      version: 1,
+      limits: {
+        projectDeletion: others,
+        unlocking: others,
+        locking: others,
+        encryptionChanges: others,
+        permanentDeletion,
+      },
+    });
+  }
+
+  async function seedRevisions(): Promise<{
+    projectsDir: string;
+    projectId: string;
+    projectPath: string;
+    resourceId: string;
+    spareId: string;
+  }> {
+    const projectsDir = "/projects-" + generateUUID();
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
+    const resourceId = generateUUID();
+    await writeRevision(projectPath, resourceId, 1, "kept", {
+      isCanonical: true,
+    });
+    const spare = await writeRevision(projectPath, resourceId, 2, "spare", {});
+    return {
+      projectsDir,
+      projectId,
+      projectPath,
+      resourceId,
+      spareId: spare.id,
+    };
+  }
+
+  it("refuses a confirmed device with the limit on: 403 { error, limit }, core not called, revisions untouched", async () => {
+    const fx = await seedRevisions();
+    await useSharingDir(limitsFile(true));
+    await withProjectsDirEnv(fx.projectsDir, async () => {
+      const res = await DELETE(
+        makeRequest(
+          "DELETE",
+          { projectId: fx.projectId, revisionId: fx.spareId },
+          "confirmed:d1",
+        ),
+        { params: Promise.resolve({ "resource-id": fx.resourceId }) },
+      );
+      expect(res.status).toBe(403);
+      const json = (await res.json()) as { error: string; limit: string };
+      expect(json.limit).toBe("permanentDeletion");
+      expect(typeof json.error).toBe("string");
+    });
+    expect(deleteRevision).not.toHaveBeenCalled();
+    const remaining = await listRevisions(fx.projectPath, fx.resourceId);
+    expect(remaining.map((r) => r.id)).toContain(fx.spareId);
+  });
+
+  it("refuses before parsing the body", async () => {
+    await useSharingDir(limitsFile(true));
+    const res = await DELETE(
+      new NextRequest("http://localhost/api/resource/revision/test", {
+        method: "DELETE",
+        headers: { "x-getwrite-classification": "confirmed:d1" },
+        body: "not json",
+      }),
+      { params: Promise.resolve({ "resource-id": generateUUID() }) },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("treats a missing header as paired: refused with the limit on", async () => {
+    const fx = await seedRevisions();
+    await useSharingDir(limitsFile(true));
+    await withProjectsDirEnv(fx.projectsDir, async () => {
+      const res = await DELETE(
+        makeRequest(
+          "DELETE",
+          { projectId: fx.projectId, revisionId: fx.spareId },
+          null,
+        ),
+        { params: Promise.resolve({ "resource-id": fx.resourceId }) },
+      );
+      expect(res.status).toBe(403);
+    });
+    expect(deleteRevision).not.toHaveBeenCalled();
+  });
+
+  it("deletes as before for a confirmed device with the limit off", async () => {
+    const fx = await seedRevisions();
+    await useSharingDir(limitsFile(false));
+    await withProjectsDirEnv(fx.projectsDir, async () => {
+      const res = await DELETE(
+        makeRequest(
+          "DELETE",
+          { projectId: fx.projectId, revisionId: fx.spareId },
+          "confirmed:d1",
+        ),
+        { params: Promise.resolve({ "resource-id": fx.resourceId }) },
+      );
+      expect(res.status).toBe(200);
+    });
+    expect(deleteRevision).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["off", "window"])(
+    "never refuses %s and never reads the limits file even when it is unreadable",
+    async (classification) => {
+      const fx = await seedRevisions();
+      const dir = await useSharingDir(null);
+      await fs.mkdir(path.join(dir, LIMITS_FILE_NAME));
+      const nodeFs = (await import("node:fs")).default;
+      const readSpy = vi.spyOn(nodeFs, "readFileSync");
+      try {
+        await withProjectsDirEnv(fx.projectsDir, async () => {
+          const res = await DELETE(
+            makeRequest(
+              "DELETE",
+              { projectId: fx.projectId, revisionId: fx.spareId },
+              classification,
+            ),
+            { params: Promise.resolve({ "resource-id": fx.resourceId }) },
+          );
+          expect(res.status).toBe(200);
+        });
+        expect(
+          readSpy.mock.calls.filter((c) =>
+            String(c[0]).endsWith(LIMITS_FILE_NAME),
+          ),
+        ).toHaveLength(0);
+      } finally {
+        readSpy.mockRestore();
+      }
+    },
+  );
+
+  it("does not refuse a confirmed device on GET, POST or PATCH with all five limits on (FR-12)", async () => {
+    const fx = await seedRevisions();
+    await useSharingDir(limitsFile(true));
+    const params = {
+      params: Promise.resolve({ "resource-id": fx.resourceId }),
+    };
+    await withProjectsDirEnv(fx.projectsDir, async () => {
+      const getRes = await GET(
+        new NextRequest(
+          `http://localhost/api/resource/revision/${fx.resourceId}?projectId=${fx.projectId}&revisionId=${fx.spareId}`,
+          { headers: { "x-getwrite-classification": "confirmed:d1" } },
+        ),
+        params,
+      );
+      expect(getRes.status).not.toBe(403);
+
+      const postRes = await POST(
+        makeRequest(
+          "POST",
+          { projectId: fx.projectId, content: "new" },
+          "confirmed:d1",
+        ),
+        params,
+      );
+      expect(postRes.status).not.toBe(403);
+
+      const patchRes = await PATCH(
+        makeRequest(
+          "PATCH",
+          { projectId: fx.projectId, revisionId: fx.spareId },
+          "confirmed:d1",
+        ),
+        params,
+      );
+      expect(patchRes.status).not.toBe(403);
     });
   });
 });

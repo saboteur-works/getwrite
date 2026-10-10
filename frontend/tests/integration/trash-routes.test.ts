@@ -27,6 +27,8 @@ import {
   softDeleteResource,
 } from "../../src/lib/models/trash";
 import { removeDirRetry } from "../unit/helpers/fs-utils";
+import * as trashCore from "../../src/lib/models/trash-core";
+import { LIMITS_FILE_NAME } from "../../src/lib/sharing/limits-store";
 
 const tmpDirs: string[] = [];
 
@@ -65,12 +67,61 @@ async function withProjectsDirEnv<T>(
   }
 }
 
-function jsonRequest(url: string, body: unknown): Request {
+function jsonRequest(
+  url: string,
+  body: unknown,
+  classification?: string,
+): Request {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (classification !== undefined) {
+    headers["x-getwrite-classification"] = classification;
+  }
   return new Request(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
+}
+
+async function withSharingDir<T>(
+  limitsText: string | null,
+  fn: (sharingDir: string) => Promise<T>,
+): Promise<T> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-trash-sharing-"));
+  tmpDirs.push(dir);
+  if (limitsText !== null) {
+    await fs.writeFile(path.join(dir, LIMITS_FILE_NAME), limitsText, "utf8");
+  }
+  const original = process.env.GETWRITE_SHARING_DIR;
+  process.env.GETWRITE_SHARING_DIR = dir;
+  try {
+    return await fn(dir);
+  } finally {
+    if (original === undefined) delete process.env.GETWRITE_SHARING_DIR;
+    else process.env.GETWRITE_SHARING_DIR = original;
+  }
+}
+
+function limitsFile(permanentDeletion: boolean, others = true): string {
+  return JSON.stringify({
+    version: 1,
+    limits: {
+      projectDeletion: others,
+      unlocking: others,
+      locking: others,
+      encryptionChanges: others,
+      permanentDeletion,
+    },
+  });
+}
+
+async function exists(p: string): Promise<boolean> {
+  return fs.stat(p).then(
+    () => true,
+    () => false,
+  );
 }
 
 describe("GET /api/project/[project-id]/trash", () => {
@@ -336,9 +387,11 @@ describe("POST /api/project/[project-id]/trash/purge", () => {
         const { POST } =
           await import("../../app/api/project/[project-id]/trash/purge/route");
         const res = await POST(
-          jsonRequest(`http://localhost/api/project/${projectId}/trash/purge`, {
-            ids: [good.id, broken.id],
-          }) as never,
+          jsonRequest(
+            `http://localhost/api/project/${projectId}/trash/purge`,
+            { ids: [good.id, broken.id] },
+            "off",
+          ) as never,
           { params: Promise.resolve({ "project-id": projectId }) },
         );
 
@@ -427,9 +480,11 @@ describe("POST /api/project/[project-id]/trash/purge", () => {
         const { POST } =
           await import("../../app/api/project/[project-id]/trash/purge/route");
         const res = await POST(
-          jsonRequest(`http://localhost/api/project/${projectId}/trash/purge`, {
-            ids: [good.id, broken.id],
-          }) as never,
+          jsonRequest(
+            `http://localhost/api/project/${projectId}/trash/purge`,
+            { ids: [good.id, broken.id] },
+            "off",
+          ) as never,
           { params: Promise.resolve({ "project-id": projectId }) },
         );
 
@@ -511,9 +566,11 @@ describe("POST /api/project/[project-id]/trash/purge", () => {
       const { POST } =
         await import("../../app/api/project/[project-id]/trash/purge/route");
       const res = await POST(
-        jsonRequest(`http://localhost/api/project/${projectId}/trash/purge`, {
-          all: true,
-        }) as never,
+        jsonRequest(
+          `http://localhost/api/project/${projectId}/trash/purge`,
+          { all: true },
+          "off",
+        ) as never,
         { params: Promise.resolve({ "project-id": projectId }) },
       );
 
@@ -539,5 +596,200 @@ describe("POST /api/project/[project-id]/trash/purge", () => {
       expect(listBody.resources).toHaveLength(0);
       expect(listBody.folders).toHaveLength(0);
     });
+  });
+});
+
+describe("permanentDeletion limit on the Trash routes (Feature 77)", () => {
+  async function trashedFixture() {
+    const fx = await makeTmpProjectsDir();
+    const resource = createTextResource({ name: "Doomed", plainText: "x" });
+    await writeResourceToFile(fx.projectPath, resource);
+    await softDeleteResource(fx.projectPath, resource.id);
+    const sidecar = path.join(
+      fx.projectPath,
+      ".trash",
+      "meta",
+      `resource-${resource.id}.meta.json`,
+    );
+    return { ...fx, resource, sidecar };
+  }
+
+  it.each([
+    ["a list of ids", (id: string) => ({ ids: [id] })],
+    ["all: true", () => ({ all: true })],
+  ])(
+    "refuses a confirmed device with the limit on (%s): 403 { error, limit }, core not called, Trash untouched",
+    async (_label, makeBody) => {
+      const { projectsDir, projectId, resource, sidecar } =
+        await trashedFixture();
+      const spy = vi.spyOn(trashCore, "purgeBatchCore");
+      try {
+        await withSharingDir(limitsFile(true), () =>
+          withProjectsDirEnv(projectsDir, async () => {
+            const { POST } =
+              await import("../../app/api/project/[project-id]/trash/purge/route");
+            const res = await POST(
+              jsonRequest(
+                `http://localhost/api/project/${projectId}/trash/purge`,
+                makeBody(resource.id),
+                "confirmed:d1",
+              ) as never,
+              { params: Promise.resolve({ "project-id": projectId }) },
+            );
+            expect(res.status).toBe(403);
+            const json = (await res.json()) as { error: string; limit: string };
+            expect(json.limit).toBe("permanentDeletion");
+            expect(typeof json.error).toBe("string");
+          }),
+        );
+        expect(spy).not.toHaveBeenCalled();
+        expect(await exists(sidecar)).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
+
+  it("refuses a paired device whose body is not valid JSON (decided before parsing)", async () => {
+    const { projectsDir, projectId } = await trashedFixture();
+    await withSharingDir(limitsFile(true), () =>
+      withProjectsDirEnv(projectsDir, async () => {
+        const { POST } =
+          await import("../../app/api/project/[project-id]/trash/purge/route");
+        const res = await POST(
+          new Request(`http://localhost/api/project/${projectId}/trash/purge`, {
+            method: "POST",
+            headers: { "x-getwrite-classification": "confirmed:d1" },
+            body: "not json",
+          }) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+        expect(res.status).toBe(403);
+      }),
+    );
+  });
+
+  it("keeps the 400 for a non-JSON body from the window", async () => {
+    const { projectsDir, projectId } = await trashedFixture();
+    await withSharingDir(limitsFile(true), () =>
+      withProjectsDirEnv(projectsDir, async () => {
+        const { POST } =
+          await import("../../app/api/project/[project-id]/trash/purge/route");
+        const res = await POST(
+          new Request(`http://localhost/api/project/${projectId}/trash/purge`, {
+            method: "POST",
+            headers: { "x-getwrite-classification": "window" },
+            body: "not json",
+          }) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+        expect(res.status).toBe(400);
+      }),
+    );
+  });
+
+  it("treats a missing header as paired: refused with the limit on", async () => {
+    const { projectsDir, projectId, resource, sidecar } =
+      await trashedFixture();
+    await withSharingDir(limitsFile(true), () =>
+      withProjectsDirEnv(projectsDir, async () => {
+        const { POST } =
+          await import("../../app/api/project/[project-id]/trash/purge/route");
+        const res = await POST(
+          jsonRequest(`http://localhost/api/project/${projectId}/trash/purge`, {
+            ids: [resource.id],
+          }) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+        expect(res.status).toBe(403);
+      }),
+    );
+    expect(await exists(sidecar)).toBe(true);
+  });
+
+  it("purges as before for a confirmed device with the limit off", async () => {
+    const { projectsDir, projectId, resource, sidecar } =
+      await trashedFixture();
+    await withSharingDir(limitsFile(false), () =>
+      withProjectsDirEnv(projectsDir, async () => {
+        const { POST } =
+          await import("../../app/api/project/[project-id]/trash/purge/route");
+        const res = await POST(
+          jsonRequest(
+            `http://localhost/api/project/${projectId}/trash/purge`,
+            { ids: [resource.id] },
+            "confirmed:d1",
+          ) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+        expect(res.status).toBe(200);
+      }),
+    );
+    expect(await exists(sidecar)).toBe(false);
+  });
+
+  it.each(["off", "window"])(
+    "never refuses %s and never reads the limits file even when it is unreadable",
+    async (classification) => {
+      const { projectsDir, projectId, resource, sidecar } =
+        await trashedFixture();
+      await withSharingDir(null, async (sharingDir) => {
+        await fs.mkdir(path.join(sharingDir, LIMITS_FILE_NAME));
+        const nodeFs = (await import("node:fs")).default;
+        const readSpy = vi.spyOn(nodeFs, "readFileSync");
+        try {
+          await withProjectsDirEnv(projectsDir, async () => {
+            const { POST } =
+              await import("../../app/api/project/[project-id]/trash/purge/route");
+            const res = await POST(
+              jsonRequest(
+                `http://localhost/api/project/${projectId}/trash/purge`,
+                { ids: [resource.id] },
+                classification,
+              ) as never,
+              { params: Promise.resolve({ "project-id": projectId }) },
+            );
+            expect(res.status).toBe(200);
+          });
+          expect(
+            readSpy.mock.calls.filter((c) =>
+              String(c[0]).endsWith(LIMITS_FILE_NAME),
+            ),
+          ).toHaveLength(0);
+        } finally {
+          readSpy.mockRestore();
+        }
+      });
+      expect(await exists(sidecar)).toBe(false);
+    },
+  );
+
+  it("does not refuse a confirmed device on the Trash list and restore routes with all five limits on (FR-12)", async () => {
+    const { projectsDir, projectId, resource } = await trashedFixture();
+    await withSharingDir(limitsFile(true), () =>
+      withProjectsDirEnv(projectsDir, async () => {
+        const { GET } =
+          await import("../../app/api/project/[project-id]/trash/route");
+        const listRes = await GET(
+          new Request(`http://localhost/api/project/${projectId}/trash`, {
+            headers: { "x-getwrite-classification": "confirmed:d1" },
+          }) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+        expect(listRes.status).toBe(200);
+
+        const { POST } =
+          await import("../../app/api/project/[project-id]/trash/restore/route");
+        const restoreRes = await POST(
+          jsonRequest(
+            `http://localhost/api/project/${projectId}/trash/restore`,
+            { ids: [resource.id] },
+            "confirmed:d1",
+          ) as never,
+          { params: Promise.resolve({ "project-id": projectId }) },
+        );
+        expect(restoreRes.status).toBe(200);
+      }),
+    );
   });
 });
