@@ -49,7 +49,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 2
 **Notes:** Satisfies FR-3 (context half). Runs in the main checkout after Tasks 1 and 2 have finished. If the machine has no LAN address, record that and stop.
 **POS:** task_b276ff3e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Baselines (agent): run every suite on main and record the numbers
 **What:** Run all suites on `main` before any code change and record counts and outcomes, so later tasks and Task 30 compare against measured baselines.

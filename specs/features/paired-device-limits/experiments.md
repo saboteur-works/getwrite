@@ -166,3 +166,58 @@ A traversal value IS accepted: `enable` with `../<sentinel>` (null and non-null 
 ?? specs/features/paired-device-limits/scripts/traversal-experiment.mjs
  M specs/features/paired-device-limits/experiments.md
 ```
+
+## iii: next dev reachability (context only)
+
+Date: 2026-10-10. Machine: darwin, Node v24.15.0 (not the CI Node 22). Main checkout, branch `feat/paired-device-limits`. No source file changed.
+
+This is context only. It was measured from the host to its own addresses; the second-device case (a different physical device on the home network) was not tested. No cause is named here that was not discriminated by an experiment. The matter is tracked separately and is not fixed here.
+
+### Finding (stated first)
+
+A `next dev` server started the way the desktop app starts it in development mode with sharing off (`HOSTNAME=127.0.0.1`, `GETWRITE_BIND=127.0.0.1`, `GETWRITE_SHARING=0` in its environment) showed a listener on `TCP *:<port>` (IPv6 wildcard socket) in `lsof`, and a request from the host to its own LAN address returned 200 with no `x-getwrite-gate` header, the same as the loopback request. Consistent with Feature 76's observation above. Which part of the startup (the `HOSTNAME` variable, the `next dev` default, or something else) determines the bind was not separated by any experiment, so none is named.
+
+### How the desktop app starts the dev server (read, not run)
+
+`electron/src/main.ts` `startServer` (non-packaged branch): `spawn("pnpm", ["dev"], { cwd: <repo>/frontend, env, shell: true })`, where `env` is `process.env` plus `PORT`, `GETWRITE_PROJECTS_DIR`, `GETWRITE_TEMPLATES_DIR`, `GETWRITE_DESKTOP`, `GETWRITE_REPO`, `GETWRITE_APP_VERSION`, `GETWRITE_WINDOW_SECRET`, `GETWRITE_SHARING_DIR` (= userData) and `buildServerBindEnv(mode)`. `buildServerBindEnv` for a non-effective mode returns `HOSTNAME: "127.0.0.1"`, `GETWRITE_BIND: "127.0.0.1"`, `GETWRITE_SHARING: "0"` (`electron/src/sharing/sharing-mode.ts`). `frontend/package.json` `dev` is `next dev`, with no `-H`/`--hostname` argument.
+
+### Environment the script passed (names only)
+
+Inherited `process.env`, plus: `PORT` (a free port the script chose), `GETWRITE_PROJECTS_DIR` (empty throwaway dir), `GETWRITE_DESKTOP`, `GETWRITE_REPO`, `GETWRITE_APP_VERSION`, `GETWRITE_WINDOW_SECRET` (random, not printed), `GETWRITE_SHARING_DIR` (empty throwaway dir), `HOSTNAME=127.0.0.1`, `GETWRITE_BIND=127.0.0.1`, `GETWRITE_SHARING=0`. Not passed: `GETWRITE_TEMPLATES_DIR` (the script has no packaged templates dir). `DATABASE_URL` and `BETTER_AUTH_SECRET` were not set in the inherited environment (hosted auth inactive). Spawned with `shell: true` as in the app, as its own process group (`detached`).
+
+### Commands and output
+
+Port 3000 checked first: `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing; the script repeats the check and refuses to run if there is a listener. Command: `node specs/features/paired-device-limits/scripts/dev-reachability.mjs`. LAN address found: `10.0.0.226` (first non-internal IPv4). Probe path `/api/projects` (the route Feature 76 used; throwaway empty projects directory, so the body is an empty list, not read).
+
+Output of the run outside the command sandbox (port 61841, group leader pid 61235):
+
+```
+{"request":"loopback","status":200,"x-getwrite-gate":"(absent)"}
+{"request":"own LAN address","status":200,"x-getwrite-gate":"(absent)"}
+process-group members: 61235,61239,61258,61264
+pid 61235: no TCP listener
+pid 61239: no TCP listener
+pid 61258: no TCP listener
+lsof -nP -iTCP -sTCP:LISTEN pid 61264:
+COMMAND   PID          USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node    61264 jedaisaboteur   13u  IPv6 0xb20a68bfa0e0a0b6      0t0  TCP *:61841 (LISTEN)
+```
+
+`lsof` was run only for pids in the script's process group (listed with `ps -A -o pid=,pgid=` filtered to the recorded group), not by port.
+
+### What did not go as first run, and what was not run
+
+- First run, inside the command sandbox: the server answered 200 on loopback and on the LAN address (both without `x-getwrite-gate`), then the script failed at `ps` ("spawnSync ps EPERM"), so no `lsof` listing was produced there. The server was stopped by the script's `finally` (second stop attempt: ESRCH, already gone). The listing above is from the second run, which used `dangerouslyDisableSandbox: true` (same reason as in section i). No EMFILE or 404s occurred in this task.
+- Not run: a request from a second physical device; a run with sharing on; Node 22; a run without `shell: true`; anything that would separate `HOSTNAME`, the `next dev` default and the shell wrapper as explanations.
+- No server left running: after the run, no listener in the 6xxxx range and no `gw-devreach-*` directory in `$TMPDIR`.
+
+### Cleanup and git status
+
+Throwaway directories removed by the script. `git status --short` from the repo root:
+
+```
+ M specs/features/paired-device-limits/experiments.md
+?? specs/features/paired-device-limits/scripts/dev-reachability.mjs
+```
+
+Nothing outside `specs/`.
