@@ -46,4 +46,29 @@ describe("getDesktopBridge", () => {
     expect(typeof found?.generatePairingCode).toBe("function");
     expect(typeof found?.getPairingCode).toBe("function");
   });
+
+  it("carries the three paired-device methods", () => {
+    const bridge = {
+      chooseWorkspaceDir: async () => ({ ok: false }),
+      listPairedDevices: async () => ({
+        kind: "missing" as const,
+        devices: [],
+        storeDirectory: "/x",
+      }),
+      renamePairedDevice: async () => ({ kind: "ok" as const }),
+      revokePairedDevice: async () => ({ kind: "ok" as const }),
+    };
+    (window as unknown as Holder).getwriteDesktop = bridge;
+    const found = getDesktopBridge();
+    expect(found).toBe(bridge);
+    expect(typeof found?.listPairedDevices).toBe("function");
+    expect(typeof found?.renamePairedDevice).toBe("function");
+    expect(typeof found?.revokePairedDevice).toBe("function");
+  });
+
+  it("a bridge without the device methods still reads as present", () => {
+    const bridge = { chooseWorkspaceDir: async () => ({ ok: false }) };
+    (window as unknown as Holder).getwriteDesktop = bridge;
+    expect(getDesktopBridge()).toBe(bridge);
+  });
 });

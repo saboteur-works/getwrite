@@ -85,6 +85,35 @@ export interface PairingCodeInfo {
   expiresAt: number;
 }
 
+/** A paired device as the renderer sees it: no secret, ever (FR-2). */
+export interface PairedDevice {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/** Why a proposed device name was refused. */
+type InvalidNameReason =
+  | "not-a-string"
+  | "empty"
+  | "too-long"
+  | "control-character";
+
+/** The list of paired devices, or why it cannot be shown. */
+export type ListPairedDevicesResult =
+  | { kind: "ok"; devices: PairedDevice[]; storeDirectory: string }
+  | { kind: "missing"; devices: []; storeDirectory: string }
+  | { kind: "corrupt"; storeDirectory: string };
+
+/** The outcome of renaming or revoking a paired device. */
+export type PairedDeviceMutationResult =
+  | { kind: "ok" }
+  | { kind: "not-found" }
+  | { kind: "invalid-name"; reason: InvalidNameReason }
+  | { kind: "corrupt" }
+  | { kind: "lock-not-acquired" }
+  | { kind: "write-failed" };
+
 /** The surface the renderer may call. */
 export interface GetWriteDesktopBridge {
   /** Returns where projects are currently stored. */
@@ -121,6 +150,15 @@ export interface GetWriteDesktopBridge {
   generatePairingCode(): Promise<PairingCodeInfo>;
   /** Returns the code generated in this run, or null when there is none. */
   getPairingCode(): Promise<PairingCodeInfo | null>;
+  /** Lists the paired devices (id, name, paired date only). */
+  listPairedDevices(): Promise<ListPairedDevicesResult>;
+  /** Renames a paired device. */
+  renamePairedDevice(
+    id: string,
+    name: string,
+  ): Promise<PairedDeviceMutationResult>;
+  /** Revokes a paired device; it is refused from then on. */
+  revokePairedDevice(id: string): Promise<PairedDeviceMutationResult>;
 }
 
 const bridge: GetWriteDesktopBridge = {
@@ -150,6 +188,11 @@ const bridge: GetWriteDesktopBridge = {
   generatePairingCode: () =>
     ipcRenderer.invoke("getwrite:sharing-generate-code"),
   getPairingCode: () => ipcRenderer.invoke("getwrite:sharing-get-code"),
+  listPairedDevices: () => ipcRenderer.invoke("getwrite:sharing-list-devices"),
+  renamePairedDevice: (id: string, name: string) =>
+    ipcRenderer.invoke("getwrite:sharing-rename-device", id, name),
+  revokePairedDevice: (id: string) =>
+    ipcRenderer.invoke("getwrite:sharing-revoke-device", id),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

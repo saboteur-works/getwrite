@@ -72,6 +72,13 @@ function installScrivenerBridge(overrides: {
       expiresAt: 0,
     }),
     getPairingCode: async () => null,
+    listPairedDevices: async () => ({
+      kind: "missing" as const,
+      devices: [],
+      storeDirectory: "",
+    }),
+    renamePairedDevice: async () => ({ kind: "ok" as const }),
+    revokePairedDevice: async () => ({ kind: "ok" as const }),
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }

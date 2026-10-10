@@ -26,6 +26,7 @@ import {
   type SharingStatus,
 } from "./sharing/sharing-status";
 import { readCredentialStoreStatus } from "./sharing/store-status";
+import { createDeviceHandlers } from "./sharing/device-ipc";
 import {
   createPairingSession,
   type PairingCodeInfo,
@@ -293,6 +294,10 @@ function registerSharingHandlers(): void {
   };
   const userData = app.getPath("userData");
   const pairing = createPairingSession(userData, () => Date.now());
+  const devices = createDeviceHandlers({
+    userDataDir: userData,
+    isTrustedSender: (url) => isTrustedSender(url, localOrigin(PORT)),
+  });
 
   ipcMain.handle("getwrite:sharing-get-status", (event): SharingStatus => {
     assertTrustedSender(event);
@@ -327,6 +332,35 @@ function registerSharingHandlers(): void {
     (event): PairingCodeInfo | null => {
       assertTrustedSender(event);
       return pairing.get();
+    },
+  );
+
+  // Paired-device management (Feature 76). Log only counts and outcome kinds.
+  ipcMain.handle("getwrite:sharing-list-devices", async (event) => {
+    const result = await devices.list(event);
+    log(
+      result.kind === "corrupt"
+        ? "Paired devices listed: store unreadable"
+        : `Paired devices listed: ${result.devices.length}`,
+    );
+    return result;
+  });
+
+  ipcMain.handle(
+    "getwrite:sharing-rename-device",
+    async (event, id: unknown, name: unknown) => {
+      const result = await devices.rename(event, id, name);
+      log(`Paired device rename: ${result.kind}`);
+      return result;
+    },
+  );
+
+  ipcMain.handle(
+    "getwrite:sharing-revoke-device",
+    async (event, id: unknown) => {
+      const result = await devices.revoke(event, id);
+      log(`Paired device revoke: ${result.kind}`);
+      return result;
     },
   );
 }

@@ -76,7 +76,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-3, FR-4, FR-5(a) to (c), FR-23 (channels are inert unless called), FR-2 (bridge shape). `assertTrustedSender` in `main.ts` is a local closure inside `registerSharingHandlers`; pass `(url) => isTrustedSender(url, localOrigin(PORT))` into `createDeviceHandlers` so the check logic is the same function and testable. FR-5(d) and FR-5(e)'s browser-side halves are covered in Tasks 7 and 10. Do not touch the older IPC handlers (workspace, import, noise words). `PairedDevice` is `{ id, name, createdAt }` only. The directory shown for a corrupt store is `app.getPath("userData")`, the same directory the existing handlers use as `userData`.
 **POS:** task_41dc4acb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: PairedDevices component: list, rename, empty / corrupt / failed states
 **What:** Add the desktop-only component that lists paired devices with name and paired date, renames a device, and shows empty, unreadable and failed states in text.
