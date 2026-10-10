@@ -126,7 +126,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-9(c), FR-10, FR-11 (browser half), FR-24 (loading the built app in a browser). A sandboxed agent can drive a headless Chromium it launches itself; if the sandbox blocks it (the repo notes say Storybook's Playwright runner fails inside the Bash sandbox), retry outside the sandbox per the rules above and record that. It cannot test a physical Android phone; that is Task 14. Do not edit the app to make a check pass. Run here, in the main checkout, one task at a time.
 **POS:** task_163b3382
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Follow-on from experiment (ii): dialog warning copy, only if Task 11 says YES
 **What:** If Task 11's one-line verdict for OQ-15 is YES, add the sentence "Unsaved edits on that device will be lost." to the revoke dialog description, with its tests; otherwise change nothing and record that.
