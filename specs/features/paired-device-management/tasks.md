@@ -106,7 +106,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (display), FR-19, FR-20, FR-21 (nested focus), FR-23 (web or hosted build: no bridge, nothing shown, covered by the existing "renders nothing" test). A list that has not refreshed must not claim to be current: show nothing like "up to date" text. The poll reads a small file through IPC; keep the interval long enough not to spin. Existing sharing tests must still pass unchanged in meaning (add inert stubs for the new bridge methods where their fakes need them).
 **POS:** task_2286be1d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Built-server verification A (RUNS DIRECTLY IN THE MAIN CHECKOUT): real revoke path, refusal smoke, enumeration, FR-9 and FR-12 without a browser
 **What:** Build the app in the main checkout, start the standalone server on a spare port as a child of a script that stops it, drive the main-side store writer directly (the same functions the IPC handlers call), and record that a revoked credential is refused everywhere and a second device is unaffected.

@@ -9,7 +9,10 @@ import {
 } from "@testing-library/react";
 import { runAxe } from "./helpers/axe";
 import SharingSettings from "../../components/Sharing/SharingSettings";
-import type { SharingStatus } from "../../src/lib/desktop-bridge";
+import type {
+  ListPairedDevicesResult,
+  SharingStatus,
+} from "../../src/lib/desktop-bridge";
 
 const OFF: SharingStatus = {
   enabled: false,
@@ -39,8 +42,28 @@ function install(status: SharingStatus, ttlMs = 5 * 60 * 1000): void {
       expiresAt: Date.now() + ttlMs,
     })),
     restart: vi.fn(async () => undefined),
+    listPairedDevices: vi.fn(async () => devices),
+    renamePairedDevice: vi.fn(async () => ({ kind: "ok" })),
+    revokePairedDevice: vi.fn(async () => ({ kind: "ok" })),
   };
 }
+
+const devices: ListPairedDevicesResult = {
+  kind: "ok",
+  devices: [
+    {
+      id: "dev-1",
+      name: "Safari on iPad",
+      createdAt: "2026-10-01T14:30:00.000Z",
+    },
+    {
+      id: "dev-2",
+      name: "Chrome on Mac",
+      createdAt: "2026-10-02T09:05:00.000Z",
+    },
+  ],
+  storeDirectory: "/store",
+};
 
 afterEach(() => {
   cleanup();
@@ -83,6 +106,13 @@ describe("a11y: SharingSettings", () => {
     install({ ...OFF, enabled: true, blockedByHostedAuth: true });
     const { container } = render(<SharingSettings />);
     await screen.findByText(/hosted sign-in/i);
+    await runAxe(container);
+  });
+
+  it("has no axe violations with paired devices listed", async () => {
+    install(ON);
+    const { container } = render(<SharingSettings />);
+    await screen.findByText("Safari on iPad");
     await runAxe(container);
   });
 });

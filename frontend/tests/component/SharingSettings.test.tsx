@@ -35,8 +35,13 @@ import {
   SHARING_STATUS_ERROR,
   SHARING_STORE_CORRUPT,
 } from "../../components/Sharing/sharing-copy";
+import {
+  PAIRED_DEVICES_HEADING,
+  PAIRED_DEVICES_UNREADABLE,
+} from "../../components/Sharing/sharing-copy";
 import type {
   DesktopBridge,
+  ListPairedDevicesResult,
   PairingCodeInfo,
   SharingStatus,
 } from "../../src/lib/desktop-bridge";
@@ -86,6 +91,15 @@ function installBridge(
       }),
     ),
     getPairingCode: vi.fn(async () => null),
+    listPairedDevices: vi.fn(
+      async (): Promise<ListPairedDevicesResult> => ({
+        kind: "missing",
+        devices: [],
+        storeDirectory: "/store",
+      }),
+    ),
+    renamePairedDevice: vi.fn(async () => ({ kind: "ok" })),
+    revokePairedDevice: vi.fn(async () => ({ kind: "ok" })),
     ...overrides,
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = fake;
@@ -318,5 +332,70 @@ describe("SharingSettings", () => {
     expect(restart).toHaveFocus();
     await user.keyboard("{Enter}");
     await vi.waitFor(() => expect(fake.restart).toHaveBeenCalledTimes(1));
+  });
+
+  describe("paired devices section (Feature 76, Task 9)", () => {
+    const DEVICE = {
+      id: "dev-1",
+      name: "Safari on iPad",
+      createdAt: "2026-10-01T14:30:00.000Z",
+    };
+    const withDevices = (): ListPairedDevicesResult => ({
+      kind: "ok",
+      devices: [DEVICE],
+      storeDirectory: "/store",
+    });
+    const corrupt = (): ListPairedDevicesResult => ({
+      kind: "corrupt",
+      storeDirectory: "/store",
+    });
+
+    it("shows no device list with sharing off and no store", async () => {
+      installBridge(OFF);
+      render(<SharingSettings />);
+      await screen.findByRole("switch");
+      await act(async () => {});
+      expect(screen.queryByText(PAIRED_DEVICES_HEADING)).toBeNull();
+    });
+
+    it("shows the list with sharing off when the store holds a device (FR-20)", async () => {
+      installBridge(OFF, {
+        listPairedDevices: vi.fn(async () => withDevices()),
+      });
+      render(<SharingSettings />);
+      expect(await screen.findByText("Safari on iPad")).toBeInTheDocument();
+      expect(screen.getByText(PAIRED_DEVICES_HEADING)).toBeInTheDocument();
+    });
+
+    it("shows the section when sharing is enabled but not yet in effect", async () => {
+      installBridge({ ...OFF, enabled: true });
+      render(<SharingSettings />);
+      expect(
+        await screen.findByText(PAIRED_DEVICES_HEADING),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the section when sharing is in effect", async () => {
+      installBridge(ON);
+      render(<SharingSettings />);
+      expect(
+        await screen.findByText(PAIRED_DEVICES_HEADING),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the unreadable text with sharing on, and nothing extra with sharing off (FR-18)", async () => {
+      installBridge(ON, { listPairedDevices: vi.fn(async () => corrupt()) });
+      render(<SharingSettings />);
+      expect(
+        await screen.findByText(PAIRED_DEVICES_UNREADABLE),
+      ).toBeInTheDocument();
+      cleanup();
+      installBridge(OFF, { listPairedDevices: vi.fn(async () => corrupt()) });
+      render(<SharingSettings />);
+      await screen.findByRole("switch");
+      await act(async () => {});
+      expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
+      expect(screen.queryByText(PAIRED_DEVICES_HEADING)).toBeNull();
+    });
   });
 });

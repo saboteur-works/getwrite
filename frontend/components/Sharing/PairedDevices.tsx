@@ -75,10 +75,25 @@ function invalidNameText(reason: InvalidNameResult["reason"]): string {
   }
 }
 
+/**
+ * How often the list is re-read from the main process, in milliseconds.
+ * 5000: a code is only worth entering within minutes, so a device paired from
+ * another room should appear within a few seconds without the writer acting,
+ * while each tick reads one small file over IPC, so a longer period costs
+ * nothing noticeable and a shorter one only adds reads. Ticks are skipped
+ * while the document is hidden; becoming visible again triggers one read.
+ */
+export const PAIRED_DEVICES_POLL_INTERVAL_MS = 5000;
+
 /** The device a revoke confirmation is open for (name captured at open). */
 interface RevokeTarget {
   id: string;
   name: string;
+}
+
+export interface PairedDevicesProps {
+  /** Sharing is enabled or in effect; otherwise shown only if devices exist. */
+  isSharingActive: boolean;
 }
 
 /**
@@ -96,8 +111,19 @@ interface RevokeTarget {
  * open and returns focus to the previously focused Revoke button on close.
  * After a revoke the list is re-read and focus goes to the next device's
  * Rename button, else the previous one's, else the list heading.
+ *
+ * Shown when sharing is enabled or in effect, or when the store holds at
+ * least one device (FR-20). With sharing off and a missing, empty or corrupt
+ * store nothing is rendered; the corrupt text and path appear only with
+ * sharing active. Once shown it stays shown for this mount, so revoking the
+ * last device does not remove its own confirmation message. The list is
+ * re-read on mount, after each action and every
+ * `PAIRED_DEVICES_POLL_INTERVAL_MS`; a refresh replaces only the list, never
+ * the rename field's text or an open revoke dialog.
  */
-export default function PairedDevices(): JSX.Element | null {
+export default function PairedDevices({
+  isSharingActive,
+}: PairedDevicesProps): JSX.Element | null {
   const [bridge, setBridge] = React.useState<DesktopBridge | null>(null);
   const [list, setList] = React.useState<ListPairedDevicesResult | null>(null);
   const [hasLoadFailed, setHasLoadFailed] = React.useState(false);
@@ -116,6 +142,7 @@ export default function PairedDevices(): JSX.Element | null {
   const headingRef = React.useRef<HTMLHeadingElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const latestRead = React.useRef(0);
+  const hasBeenShown = React.useRef(false);
   // Where focus goes once the next render has settled: a device id (its
   // Rename button), "revoke:<id>" (its Revoke button), "heading", or "field".
   const pendingFocus = React.useRef<string | null>(null);
@@ -131,9 +158,12 @@ export default function PairedDevices(): JSX.Element | null {
       const token = latestRead.current;
       try {
         const result = await target.listPairedDevices();
-        if (token !== latestRead.current) return null;
-        setList(result);
-        setHasLoadFailed(false);
+        // A superseded read is still a valid read of the store taken after the
+        // action that asked for it; only the newest may update the display.
+        if (token === latestRead.current) {
+          setList(result);
+          setHasLoadFailed(false);
+        }
         return result;
       } catch {
         if (token === latestRead.current) setHasLoadFailed(true);
@@ -145,6 +175,20 @@ export default function PairedDevices(): JSX.Element | null {
 
   React.useEffect(() => {
     if (bridge) void refresh(bridge);
+  }, [bridge, refresh]);
+
+  React.useEffect(() => {
+    if (!bridge) return;
+    const target = bridge;
+    const tick = (): void => {
+      if (!document.hidden) void refresh(target);
+    };
+    const timer = setInterval(tick, PAIRED_DEVICES_POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [bridge, refresh]);
 
   const devices: PairedDevice[] =
@@ -304,6 +348,14 @@ export default function PairedDevices(): JSX.Element | null {
       setIsSaving(false);
     }
   }
+
+  const isShown =
+    isSharingActive ||
+    devices.length > 0 ||
+    (hasLoadFailed && list === null) ||
+    (hasBeenShown.current && list?.kind !== "corrupt");
+  if (!isShown) return null;
+  hasBeenShown.current = true;
 
   const nameCounts = new Map<string, number>();
   for (const d of devices) {

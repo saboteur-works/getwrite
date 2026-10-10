@@ -53,7 +53,7 @@ const meta: Meta<typeof PairedDevices> = {
   title: "Sharing/PairedDevices",
   component: PairedDevices,
   parameters: { a11y: { test: "error" } },
-  args: {},
+  args: { isSharingActive: true },
 };
 
 export default meta;

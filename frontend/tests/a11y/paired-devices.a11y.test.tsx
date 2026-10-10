@@ -52,7 +52,7 @@ afterEach(() => {
 describe("a11y: PairedDevices", () => {
   it("has no axe violations when empty", async () => {
     install({ kind: "missing", devices: [], storeDirectory: "/x" });
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     await screen.findByText("No devices are paired.");
     await runAxe(container);
   });
@@ -63,21 +63,21 @@ describe("a11y: PairedDevices", () => {
       devices: [IPAD, { ...IPAD, id: "d3", name: "Chrome on Mac" }],
       storeDirectory: "/x",
     });
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     await screen.findByText("Chrome on Mac");
     await runAxe(container);
   });
 
   it("has no axe violations with same-name devices", async () => {
     install({ kind: "ok", devices: [IPAD, SAME], storeDirectory: "/x" });
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     await screen.findAllByText("Safari on iPad");
     await runAxe(container);
   });
 
   it("has no axe violations when the store is unreadable", async () => {
     install({ kind: "corrupt", storeDirectory: "/x" });
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     await screen.findByText(PAIRED_DEVICES_UNREADABLE);
     await runAxe(container);
   });
@@ -88,7 +88,7 @@ describe("a11y: PairedDevices", () => {
       { kind: "write-failed" },
     );
     const user = userEvent.setup();
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     await user.click(
       await screen.findByRole("button", { name: "Rename Safari on iPad" }),
     );
@@ -100,7 +100,7 @@ describe("a11y: PairedDevices", () => {
   it("has no axe violations with the rename form open", async () => {
     install({ kind: "ok", devices: [IPAD, SAME], storeDirectory: "/x" });
     const user = userEvent.setup();
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     await user.click(
       (await screen.findAllByRole("button", { name: /^Rename Safari/ }))[0],
     );
@@ -128,14 +128,14 @@ describe("a11y: PairedDevices", () => {
 
     it("has no axe violations with the revoke dialog open", async () => {
       install(two);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openDialog();
       await runAxe(dialog);
     });
 
     it("keeps focus inside the list region after cancel", async () => {
       install(two);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openDialog();
       await userEvent
         .setup()
@@ -149,7 +149,7 @@ describe("a11y: PairedDevices", () => {
 
     it("keeps focus inside the list region after Escape", async () => {
       install(two);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       await openDialog();
       await userEvent.setup().keyboard("{Escape}");
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -161,7 +161,7 @@ describe("a11y: PairedDevices", () => {
 
     it("keeps focus inside the list region after confirm", async () => {
       install(two);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openDialog();
       await userEvent
         .setup()
@@ -175,7 +175,7 @@ describe("a11y: PairedDevices", () => {
 
     it("has no axe violations showing a revoke error", async () => {
       install(two, { kind: "ok" }, { kind: "write-failed" });
-      const { container } = render(<PairedDevices />);
+      const { container } = render(<PairedDevices isSharingActive />);
       const dialog = await openDialog();
       await userEvent
         .setup()

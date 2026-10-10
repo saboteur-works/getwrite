@@ -2,6 +2,7 @@
 
 import React from "react";
 import Button from "../common/UI/Button/Button";
+import PairedDevices from "./PairedDevices";
 import {
   getDesktopBridge,
   type DesktopBridge,
@@ -313,6 +314,10 @@ export default function SharingSettings(): JSX.Element | null {
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
+
+      {status ? (
+        <PairedDevices isSharingActive={isEnabled || isEffective} />
+      ) : null}
     </section>
   );
 }

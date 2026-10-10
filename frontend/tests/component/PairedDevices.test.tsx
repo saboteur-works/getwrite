@@ -8,6 +8,7 @@ import React from "react";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { act, fireEvent } from "@testing-library/react";
 import {
   cleanup,
   render,
@@ -16,7 +17,9 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PairedDevices from "../../components/Sharing/PairedDevices";
+import PairedDevices, {
+  PAIRED_DEVICES_POLL_INTERVAL_MS,
+} from "../../components/Sharing/PairedDevices";
 import Button from "../../components/common/UI/Button/Button";
 import {
   PAIRED_DEVICES_EMPTY,
@@ -27,6 +30,7 @@ import {
   PAIRED_DEVICE_RENAME_ERROR,
   PAIRED_DEVICE_REVOKE_ERROR,
   pairedDeviceLocation,
+  pairedDeviceRenamed,
 } from "../../components/Sharing/sharing-copy";
 import type {
   ListPairedDevicesResult,
@@ -125,13 +129,13 @@ async function openRename(name: string): Promise<HTMLInputElement> {
 
 describe("PairedDevices", () => {
   it("renders nothing without a bridge (FR-5(e))", () => {
-    const { container } = render(<PairedDevices />);
+    const { container } = render(<PairedDevices isSharingActive />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it("shows the empty text, not the unreadable text, for a missing store", async () => {
     install([]);
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     expect(await screen.findByText(PAIRED_DEVICES_EMPTY)).toBeInTheDocument();
     expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
   });
@@ -140,7 +144,7 @@ describe("PairedDevices", () => {
     install([], {
       listResult: async () => ({ kind: "corrupt", storeDirectory: DIR }),
     });
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     expect(
       await screen.findByText(PAIRED_DEVICES_UNREADABLE),
     ).toBeInTheDocument();
@@ -165,7 +169,7 @@ describe("PairedDevices", () => {
         throw new Error("ipc down");
       },
     });
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     expect(
       await screen.findByText(PAIRED_DEVICES_LOAD_ERROR),
     ).toBeInTheDocument();
@@ -174,7 +178,7 @@ describe("PairedDevices", () => {
 
   it("lists devices in a semantic list under the heading, with a formatted date", async () => {
     install([IPAD, MAC]);
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     const heading = await screen.findByRole("heading", {
       name: PAIRED_DEVICES_HEADING,
     });
@@ -190,7 +194,7 @@ describe("PairedDevices", () => {
 
   it("shows an unparseable date as the raw stored string", async () => {
     install([{ ...IPAD, createdAt: "not-a-date" }]);
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     const item = await screen.findByRole("listitem");
     expect(item).toHaveTextContent("not-a-date");
     expect(item).not.toHaveTextContent("Invalid Date");
@@ -200,7 +204,7 @@ describe("PairedDevices", () => {
     const evil = "<img src=x onerror=alert(1)>";
     const { container } = (() => {
       install([{ ...IPAD, name: evil }]);
-      return render(<PairedDevices />);
+      return render(<PairedDevices isSharingActive />);
     })();
     expect(await screen.findByText(evil)).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
@@ -212,7 +216,7 @@ describe("PairedDevices", () => {
       MAC,
       { ...IPAD, id: "dev-3", createdAt: "2026-10-03T10:00:00.000Z" },
     ]);
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     expect(
       await screen.findByRole("button", { name: /^Rename Chrome on Mac$/ }),
     ).toBeInTheDocument();
@@ -233,7 +237,7 @@ describe("PairedDevices", () => {
       },
     });
     const user = userEvent.setup();
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     const field = await openRename("Rename Safari on iPad");
     expect(field).toHaveValue("Safari on iPad");
     expect(screen.getByLabelText(/device name/i)).toBe(field);
@@ -259,7 +263,7 @@ describe("PairedDevices", () => {
       renameResult: () => ({ kind: "invalid-name", reason: "too-long" }),
     });
     const user = userEvent.setup();
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     const field = await openRename("Rename Safari on iPad");
     await user.click(screen.getByRole("button", { name: "Save" }));
     const alert = await screen.findByRole("alert");
@@ -277,7 +281,7 @@ describe("PairedDevices", () => {
   ] as const)("explains the %s reason in words", async (reason, pattern) => {
     install([IPAD], { renameResult: () => ({ kind: "invalid-name", reason }) });
     const user = userEvent.setup();
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     await openRename("Rename Safari on iPad");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(pattern);
@@ -291,7 +295,7 @@ describe("PairedDevices", () => {
       },
     });
     const user = userEvent.setup();
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     await openRename("Rename Safari on iPad");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(
@@ -313,7 +317,7 @@ describe("PairedDevices", () => {
     async (kind) => {
       const fake = install([IPAD], { renameResult: () => ({ kind }) });
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       await openRename("Rename Safari on iPad");
       await user.click(screen.getByRole("button", { name: "Save" }));
       const message = await screen.findByText(PAIRED_DEVICE_RENAME_ERROR);
@@ -329,7 +333,7 @@ describe("PairedDevices", () => {
     const fake = install([IPAD]);
     fake.rename.mockRejectedValueOnce(new Error("ipc"));
     const user = userEvent.setup();
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     await openRename("Rename Safari on iPad");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(
@@ -340,7 +344,7 @@ describe("PairedDevices", () => {
   it("closes without calling the bridge on Cancel and returns focus to the Rename button", async () => {
     const fake = install([IPAD]);
     const user = userEvent.setup();
-    render(<PairedDevices />);
+    render(<PairedDevices isSharingActive />);
     await openRename("Rename Safari on iPad");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(fake.rename).not.toHaveBeenCalled();
@@ -367,7 +371,7 @@ describe("PairedDevices", () => {
 
     it("opens a dialog with the spec copy naming the device, and cancel is the default focus", async () => {
       install([IPAD, MAC]);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Safari on iPad");
       expect(
         within(dialog).getByText("Revoke this device?"),
@@ -390,7 +394,7 @@ describe("PairedDevices", () => {
 
     it("uses no red class and the unchanged destructive variant", async () => {
       install([IPAD]);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Safari on iPad");
       for (const el of [dialog, ...Array.from(dialog.querySelectorAll("*"))]) {
         expect(el.getAttribute("class") ?? "").not.toMatch(/red/i);
@@ -405,7 +409,7 @@ describe("PairedDevices", () => {
 
     it("builds the copy safely for a name containing braces", async () => {
       install([{ ...IPAD, name: "{name} $& {0}" }]);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke {name} $& {0}");
       expect(
         within(dialog).getByText(
@@ -417,7 +421,7 @@ describe("PairedDevices", () => {
     it("cancel closes, calls nothing, and returns focus to that device's Revoke button", async () => {
       const fake = install([IPAD, MAC]);
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Chrome on Mac");
       await user.click(
         within(dialog).getByRole("button", { name: "Keep Chrome on Mac" }),
@@ -434,7 +438,7 @@ describe("PairedDevices", () => {
     it("Escape closes without revoking and focus is not on the body", async () => {
       const fake = install([IPAD, MAC]);
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       await openRevoke("Revoke Safari on iPad");
       await user.keyboard("{Escape}");
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -449,7 +453,7 @@ describe("PairedDevices", () => {
     it("confirm revokes once, re-reads, announces, and focuses the next device's control", async () => {
       const fake = install([IPAD, MAC, THIRD]);
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Chrome on Mac");
       const readsBefore = fake.list.mock.calls.length;
       await user.click(
@@ -473,7 +477,7 @@ describe("PairedDevices", () => {
     it("moves focus to the previous device when the last one was revoked", async () => {
       install([IPAD, MAC]);
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Chrome on Mac");
       await user.click(
         within(dialog).getByRole("button", { name: "Revoke Chrome on Mac" }),
@@ -488,7 +492,7 @@ describe("PairedDevices", () => {
     it("moves focus to the heading when no device remains", async () => {
       install([IPAD]);
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Safari on iPad");
       await user.click(
         within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
@@ -513,7 +517,7 @@ describe("PairedDevices", () => {
           }),
       });
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Safari on iPad");
       const confirm = within(dialog).getByRole("button", {
         name: "Revoke Safari on iPad",
@@ -534,7 +538,7 @@ describe("PairedDevices", () => {
         },
       });
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Safari on iPad");
       await user.click(
         within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
@@ -558,7 +562,7 @@ describe("PairedDevices", () => {
       async (kind) => {
         const fake = install([IPAD], { revokeResult: () => ({ kind }) });
         const user = userEvent.setup();
-        render(<PairedDevices />);
+        render(<PairedDevices isSharingActive />);
         const dialog = await openRevoke("Revoke Safari on iPad");
         const readsBefore = fake.list.mock.calls.length;
         await user.click(
@@ -587,7 +591,7 @@ describe("PairedDevices", () => {
       const fake = install([IPAD]);
       fake.revoke.mockRejectedValueOnce(new Error("ipc"));
       const user = userEvent.setup();
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       const dialog = await openRevoke("Revoke Safari on iPad");
       await user.click(
         within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
@@ -601,9 +605,273 @@ describe("PairedDevices", () => {
 
     it("has no Revoke all control", async () => {
       install([IPAD, MAC]);
-      render(<PairedDevices />);
+      render(<PairedDevices isSharingActive />);
       await screen.findByText("Chrome on Mac");
       expect(screen.queryByRole("button", { name: /revoke all/i })).toBeNull();
     });
+  });
+});
+
+describe("PairedDevices visibility, refresh and poll (Task 9)", () => {
+  const TICK = PAIRED_DEVICES_POLL_INTERVAL_MS;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Lets resolved promises and zero-delay timers run under fake timers. */
+  async function settle(ms = 0): Promise<void> {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  }
+
+  function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  const listOf = (devices: PairedDevice[]): ListPairedDevicesResult =>
+    devices.length === 0
+      ? { kind: "missing", devices: [], storeDirectory: DIR }
+      : { kind: "ok", devices, storeDirectory: DIR };
+
+  it("shows nothing with sharing off and no store", async () => {
+    install([]);
+    const { container } = render(<PairedDevices isSharingActive={false} />);
+    await act(async () => {});
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows nothing with sharing off and a corrupt store (owner's Gate 4 decision)", async () => {
+    install([], {
+      listResult: async () => ({
+        kind: "corrupt",
+        devices: [],
+        storeDirectory: DIR,
+      }),
+    });
+    const { container } = render(<PairedDevices isSharingActive={false} />);
+    await act(async () => {});
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
+  });
+
+  it("shows the list and revoke works with sharing off when the store holds a device (FR-20)", async () => {
+    const fake = install([IPAD]);
+    const user = userEvent.setup();
+    render(<PairedDevices isSharingActive={false} />);
+    await user.click(
+      await screen.findByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    await waitFor(() => expect(fake.revoke).toHaveBeenCalledWith("dev-1"));
+  });
+
+  it("with sharing active and an empty store shows the empty text; corrupt shows text and path", async () => {
+    install([]);
+    render(<PairedDevices isSharingActive />);
+    expect(await screen.findByText(PAIRED_DEVICES_EMPTY)).toBeInTheDocument();
+    cleanup();
+    install([], {
+      listResult: async () => ({
+        kind: "corrupt",
+        devices: [],
+        storeDirectory: DIR,
+      }),
+    });
+    render(<PairedDevices isSharingActive />);
+    expect(
+      await screen.findByText(PAIRED_DEVICES_UNREADABLE),
+    ).toBeInTheDocument();
+    expect(screen.getByText(pairedDeviceLocation(DIR))).toBeInTheDocument();
+  });
+
+  it("reads on mount and polls on the named interval, and stops on unmount", async () => {
+    vi.useFakeTimers();
+    const fake = install([IPAD]);
+    const view = render(<PairedDevices isSharingActive />);
+    await settle();
+    expect(fake.list).toHaveBeenCalledTimes(1);
+    await settle(TICK);
+    expect(fake.list).toHaveBeenCalledTimes(2);
+    await settle(TICK);
+    expect(fake.list).toHaveBeenCalledTimes(3);
+    view.unmount();
+    await settle(TICK * 3);
+    expect(fake.list).toHaveBeenCalledTimes(3);
+  });
+
+  it("shows a device that appears in the store between polls, without user action", async () => {
+    vi.useFakeTimers();
+    const fake = install([IPAD]);
+    render(<PairedDevices isSharingActive />);
+    await settle();
+    expect(screen.queryByText("Chrome on Mac")).toBeNull();
+    fake.store.devices.push({ ...MAC });
+    await settle(TICK);
+    expect(screen.getByText("Chrome on Mac")).toBeInTheDocument();
+  });
+
+  it("does not poll while the document is hidden, and reads again when it is shown", async () => {
+    vi.useFakeTimers();
+    const fake = install([IPAD]);
+    let isHidden = true;
+    const spy = vi
+      .spyOn(document, "hidden", "get")
+      .mockImplementation(() => isHidden);
+    try {
+      render(<PairedDevices isSharingActive />);
+      await settle();
+      expect(fake.list).toHaveBeenCalledTimes(1);
+      await settle(TICK * 3);
+      expect(fake.list).toHaveBeenCalledTimes(1);
+      isHidden = false;
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await settle();
+      expect(fake.list).toHaveBeenCalledTimes(2);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("keeps a good list when a tick fails, shows the failure, and clears it on the next good tick", async () => {
+    vi.useFakeTimers();
+    let isFailing = false;
+    const fake = install([IPAD], {
+      listResult: async () => {
+        if (isFailing) throw new Error("ipc");
+        return listOf([IPAD]);
+      },
+    });
+    render(<PairedDevices isSharingActive />);
+    await settle();
+    isFailing = true;
+    await settle(TICK);
+    expect(screen.getByText(PAIRED_DEVICES_LOAD_ERROR)).toBeInTheDocument();
+    expect(screen.getByText("Safari on iPad")).toBeInTheDocument();
+    expect(screen.queryByText(PAIRED_DEVICES_EMPTY)).toBeNull();
+    isFailing = false;
+    await settle(TICK);
+    expect(screen.queryByText(PAIRED_DEVICES_LOAD_ERROR)).toBeNull();
+    expect(screen.getByText("Safari on iPad")).toBeInTheDocument();
+    expect(fake.list).toHaveBeenCalledTimes(3);
+  });
+
+  it("the later request wins when reads resolve out of order", async () => {
+    vi.useFakeTimers();
+    const first = deferred<ListPairedDevicesResult>();
+    const second = deferred<ListPairedDevicesResult>();
+    const queue = [first, second];
+    let calls = 0;
+    install([], {
+      listResult: async () => {
+        calls += 1;
+        if (calls === 1) return listOf([IPAD]);
+        const next = queue.shift();
+        if (!next) return listOf([IPAD, MAC]);
+        return next.promise;
+      },
+    });
+    render(<PairedDevices isSharingActive />);
+    await settle();
+    await settle(TICK); // call 2, held
+    await settle(TICK); // call 3, held
+    second.resolve(listOf([IPAD, MAC])); // later request resolves first
+    await settle();
+    expect(screen.getByText("Chrome on Mac")).toBeInTheDocument();
+    first.resolve(listOf([IPAD])); // earlier request resolves last
+    await settle();
+    expect(screen.getByText("Chrome on Mac")).toBeInTheDocument();
+  });
+
+  it("a poll that overtakes a rename's re-read does not turn a good rename into 'already removed'", async () => {
+    vi.useFakeTimers();
+    const held = deferred<ListPairedDevicesResult>();
+    const stored = { ...IPAD };
+    let calls = 0;
+    install([IPAD], {
+      listResult: async () => {
+        calls += 1;
+        if (calls === 1 || calls === 3) return listOf([{ ...stored }]);
+        return held.promise;
+      },
+      renameResult: (_store, _id, name) => {
+        stored.name = name;
+        return { kind: "ok" };
+      },
+    });
+    render(<PairedDevices isSharingActive />);
+    await settle();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rename Safari on iPad" }),
+    );
+    await settle();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Den iPad" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await settle(); // rename done, its re-read (call 2) is held
+    await settle(TICK); // poll (call 3) resolves at once and wins
+    held.resolve(listOf([{ ...stored }]));
+    await settle();
+    expect(
+      screen.getByText(pairedDeviceRenamed("Den iPad")),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(PAIRED_DEVICE_ALREADY_GONE)).toBeNull();
+  });
+
+  it("a refresh does not discard text typed in an open rename form", async () => {
+    vi.useFakeTimers();
+    const fake = install([IPAD]);
+    render(<PairedDevices isSharingActive />);
+    await settle();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Rename Safari on iPad" }),
+    );
+    await settle();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Half typed" },
+    });
+    await settle(TICK * 2);
+    expect(fake.list.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe(
+      "Half typed",
+    );
+  });
+
+  it("a refresh does not close an open revoke dialog", async () => {
+    vi.useFakeTimers();
+    install([IPAD, MAC]);
+    render(<PairedDevices isSharingActive />);
+    await settle();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    await settle();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await settle(TICK * 2);
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("button", { name: "Keep Safari on iPad" }),
+    ).toBeInTheDocument();
+  });
+
+  it("never shows 'up to date'-style text", async () => {
+    vi.useFakeTimers();
+    install([IPAD]);
+    const { container } = render(<PairedDevices isSharingActive />);
+    await settle(TICK);
+    expect(container.textContent ?? "").not.toMatch(
+      /up to date|up-to-date|current|last updated/i,
+    );
   });
 });
