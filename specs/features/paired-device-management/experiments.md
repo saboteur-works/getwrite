@@ -411,3 +411,67 @@ Not run: nothing from the task list was skipped. Not tested here: the Electron w
 warning sentence needed: YES, because with a real revoke performed while A's editor was open, the text typed after the revoke ("Bravo after revoke.") was not on disk afterwards (content and latest revision both held only the pre-revoke text), A never showed it as saved, and the pairing screen A ended on did not mention it.
 
 Task 12 decision taken = YES: the sentence "Unsaved edits on that device will be lost." was added to the revoke dialog description (`sharing-copy.ts`). Failing first: `PairedDevices > revoke (Task 8) > opens a dialog with the spec copy naming the device, and cancel is the default focus` (and `builds the copy safely for a name containing braces`) failed with "TestingLibraryElementError: Unable to find an element with the text: Safari on iPad will be refused from now on. ... Unsaved edits on that device will be lost.."; both pass after the change.
+
+## Final suites
+
+Task 13. Date 2026-10-09 (runs 21:04 to 21:19 MDT), main checkout `/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/paired-device-management`, HEAD `2509dd19` (tree clean before starting; nothing listening on port 3000 before or after: `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing, exit 1). `node --version` for every row: v24.15.0. Baseline rows are the "Baselines at 05376fe3" table above (measured in a detached worktree). Every command printed the sandbox `WARN ... ~/.npmrc EPERM` line, as at baseline. No token, cookie, code or credentialHash is recorded here.
+
+| Command (directory) | Exit | Tip (HEAD 2509dd19) | Baseline (05376fe3) |
+|---|---|---|---|
+| `pnpm test:ci` (frontend) | 0 | 595 files passed; 6035 tests passed, 0 failed, 1 skipped (6036) | 591 files; 5956 passed, 0 failed, 2 skipped (5958) |
+| `pnpm typecheck` (frontend) | 0 | no diagnostics | no diagnostics |
+| `pnpm lint` (frontend) | 0 | 395 problems (0 errors, 395 warnings); 7 fixable | 395 problems (0 errors, 395 warnings); 7 fixable |
+| `pnpm test` (electron) | 0 | 23 files passed; 322 tests passed, 0 failed, 0 skipped | 20 files; 250 passed, 0 failed, 0 skipped |
+| `pnpm typecheck` (electron) | 0 | no diagnostics | no diagnostics |
+| `pnpm knip` (root) | 1 | see below; 50 files, 167 exports, 170 types, 14 duplicates | same four counts |
+| `pnpm --filter getwrite-cli test` (root) | 0 | 22 files passed; 144 tests passed, 0 failed, 0 skipped | 22 files (20 passed, 2 failed); 142 passed, 2 failed |
+| `pnpm test:sharing-smoke` (frontend, after fresh build) | 0 | 90 enumerated entries; 28 checks; 0 failures; "all checks passed" | reference: 90 entries, 24 checks, 0 failures |
+
+All of the above ran inside the command sandbox with no retry outside it (the frontend suite did not hit EMFILE; `grep -c EMFILE` on its log: 0). Exceptions, both outside the sandbox: `git worktree add` / `git worktree remove` for the CLI comparison (inside the sandbox `git worktree add` failed with `fatal: could not create leading directories of '.git/worktrees/wt-base': Operation not permitted`; retried outside).
+
+### Differences from baseline, and what accounts for them
+
+- Frontend test files 591 -> 595 (+4): the four new files are `tests/component/PairedDevices.test.tsx`, `tests/a11y/paired-devices.a11y.test.tsx`, `tests/integration/sharing-device-concurrency.test.ts`, `tests/unit/sharing-no-device-routes.test.ts` (from `git diff 05376fe3 HEAD --stat`). Tests: total 5958 -> 6036 = **78 new frontend tests** (this count includes the added cases in already-existing files `SharingSettings.test.tsx`, `AppSettingsDialog.test.tsx`, `desktop-bridge.test.ts`, `sharing-settings.a11y.test.tsx`). Passed rose by 79, not 78, and skipped fell from 2 to 1: the one extra pass is `tests/unit/sharing-gate-enumeration.test.ts`, whose static-files test is declared `it.skipIf(!existsSync(STATIC_DIR))` (line 382, unchanged since baseline); at baseline there was no build in the worktree so it was skipped, now `frontend/.next/standalone` exists so it ran. The other skip is `it.skip` in `tests/controls.test.tsx` (unchanged). That the static dir presence is the reason follows from the skip condition and from Task 10's record that the file ran 32 tests with a build present; not otherwise discriminated.
+- Electron test files 20 -> 23 (+3: `device-ipc.test.ts`, `device-management.test.ts`, `device-store-writer.test.ts`); tests 250 -> 322 = **72 new electron tests** (includes added cases in the modified `sharing-ipc-surface.test.ts`).
+- CLI package: **0 new tests** (22 files and 144 tests at the tip; the baseline also had 22 files and 144 tests); `git diff 05376fe3 HEAD --stat -- cli` is empty.
+- Lint warning count (395) and fixable count (7) are identical to baseline.
+- knip: see next section.
+
+### knip (`pnpm knip`, exit 1, same as baseline)
+
+Section counts at the tip: Unused files 50; Unused dependencies 1; Unused devDependencies 4; Unlisted dependencies 6; Unlisted binaries 4; Unused exports 167; Unused exported types 170; Duplicate exports 14; Configuration hints 6. Baseline: 50 / 1 / 6 / 6 / 5 / 167 / 170 / 14 / 6.
+
+- Unused files: the 50 names are identical to the baseline list (compared by set diff).
+- Unused exports (103 files) and unused exported types (80 files): the file sets are identical to the baseline lists (compared by the last 31 characters of each path, because the baseline records truncated paths), and the totals 167 and 170 are equal. The baseline recorded file lists, not per-symbol names, so a same-count swap of one symbol for another inside a file already on the list cannot be excluded by this comparison; no entry names a file the feature added (no `sharing`/`device`/`Paired` path appears except the pre-existing `native-device-harness.ts` entries).
+- Duplicate exports: the 14 entries equal the baseline list.
+- Unlisted dependencies (6, same names) unchanged. Unused dependency `typedoc` unchanged.
+- Two categories differ and both are lower, not higher: Unused devDependencies 6 -> 4 (baseline named `@capacitor/android`, `@capacitor/core`, `@capacitor/filesystem`, `@better-auth/cli`, `@eslint/eslintrc`, `next-devtools-mcp`; the tip names `@capacitor/filesystem`, `@better-auth/cli`, `@eslint/eslintrc`, `next-devtools-mcp`) and Unlisted binaries 5 -> 4 (the baseline's `cap` in `android/package.json` is absent). The feature changed no configuration or manifest: `git diff 05376fe3 HEAD --stat` over `knip.json`, `android/`, every `package.json`, `pnpm-lock.yaml` and `pnpm-workspace.yaml` is empty. So the difference is not caused by an edit to those files. The baseline was run in a detached worktree with `node_modules` symlinked; whether the `@capacitor/android`/`@capacitor/core`/`cap` entries differ because of that setup was not tested by an experiment. No new entry appears in any category.
+
+### CLI suite (`pnpm --filter getwrite-cli test`, main checkout, Node 24.15.0, exit 0)
+
+22 files passed, 144 tests passed, 0 failed, 0 skipped. Both baseline failures pass here:
+
+- `tests/qa/server.test.ts` (starts `next dev`): passed inside the sandbox in the main checkout.
+- `tests/qa/workspace.test.ts`: passed in the main checkout.
+
+Comparison with main at `05376fe3` in a worktree: `git worktree add --detach $TMPDIR/wt-base 05376fe3` (outside the sandbox), `node_modules` and `frontend/getwrite-config` symlinked in as at baseline, then `pnpm --filter getwrite-cli exec vitest run tests/qa/server.test.ts tests/qa/workspace.test.ts` there: exit 1, 2 failed, 36 passed (38). The failures are the same two tests, with the same errors as the Task 2 record (`QA dev server exited before becoming ready (code=1, signal=null)`, and `expected false to be true` at the repo-root assertion). The same two files, run in the main checkout at the tip, give 38 passed, 0 failed. Result as observed: the two failures occur at `05376fe3` in a worktree and do not occur at the tip in the main checkout. This is a comparison across two variables (commit and checkout kind): the main checkout at `05376fe3` itself was not run (switching the branch is blocked here), so the observation does not by itself separate "worktree" from "commit". The feature changed nothing under `cli/` and nothing under `frontend/` that those tests reference was examined, so the worktree explanation (the `.git`-is-a-file layout for `workspace.test.ts`, which the Task 2 record already measured) stays the likely one but the `server.test.ts` cause was not established. Not a regression: the tip passes. The worktree was removed (`git worktree remove --force`, then `git worktree prune`); `git worktree list` afterwards shows only the main checkout.
+
+### Build and sharing smoke
+
+Because Task 12 changed `frontend/components/Sharing/sharing-copy.ts` after the last build: `cd frontend && pnpm build` (21:06 MDT), exit 0, inside the sandbox (no EMFILE or "Operation not permitted" in its log). Then `.next/static` was copied into `frontend/.next/standalone/frontend/.next/static`, and `cd electron && pnpm build` (`tsc`) exit 0, as in Task 10. `cd frontend && pnpm test:sharing-smoke; echo "exit=$?"` (21:18 MDT): exit=0, `pairing page static URLs checked: 15`, `static files checked: 122`, `enumerated entries: 90; checks: 28; failures: 0`, `sharing refusal smoke: all checks passed`. Against the reference (90 entries, 24 checks, 0 failures): entries and failures match; checks are 28, the same as Task 10's record (the 4-check difference from the old reference is not investigated, as noted there). After the run no `node` process listened on any TCP port (`lsof -iTCP -sTCP:LISTEN` filtered on node: none).
+
+### Node 20 and config-time loading
+
+Not run on Node 20. `volta list node` shows runtimes 22.23.2 and 24.15.0 only; `~/.nvm` does not exist. No Node 20 coverage is claimed for the CLI suite or any other suite. Partial check: `git diff main --stat` (main is `05376fe3`) over `frontend/next.config.mjs`, `frontend/package.json`, `electron/package.json`, `cli/package.json`, `pnpm-lock.yaml` and root `package.json` is empty, and `git diff 05376fe3 --stat` additionally over `knip.json`, `frontend/vitest.config.*`, `frontend/eslint.config.*`, `frontend/tsconfig.json`, `electron/tsconfig.json`, `cli/vitest.config.*`, `cli/tsconfig.json` is empty. So the feature added no dependency and changed no file loaded at config time by vitest, eslint, knip, tsconfig or Next in those packages. This does not exercise Node 20; it only shows no config-time file was edited.
+
+### Verdict on regressions
+
+No regression found. Every difference from baseline is either added tests/files from this feature (4 frontend files, 3 electron files, +78 frontend and +72 electron tests), the one skip that ran because a build now exists, or a lower knip count in two categories with no manifest change. Pre-existing CLI failures: they reproduce at `05376fe3` in a worktree and do not occur in the main checkout.
+
+### git status
+
+`git status --short` after appending this section:
+
+```
+ M specs/features/paired-device-management/experiments.md
+```

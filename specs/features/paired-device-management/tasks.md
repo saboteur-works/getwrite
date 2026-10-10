@@ -146,7 +146,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 3
 **Notes:** Satisfies FR-24 (existing checks pass unchanged in meaning), FR-23 (nothing changes with sharing off, shown by the unchanged existing suites). The frontend suite is long and may need to run outside the sandbox. If a suite fails for a reason that also fails at baseline, record both. Do not weaken or delete an existing test to get green.
 **POS:** task_4c2432de
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: MANUAL (owner): unpacked desktop build and the owner's Android phone
 **What:** The owner builds an unpacked desktop app, pairs the Android phone and a second browser profile, and checks list, rename, revoke, re-pair, revoke with sharing off, and the copy.
