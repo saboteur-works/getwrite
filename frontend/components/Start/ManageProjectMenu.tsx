@@ -14,6 +14,11 @@ import { projectActionsController } from "../../src/store/project-actions-contro
 import { toastService } from "../../src/lib/toast-service";
 import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 import Button from "../common/UI/Button";
+import { useSharingLimits } from "../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../Sharing/limit-gate";
+import LimitReason from "../Sharing/LimitReason";
+import { PROJECT_DELETION_LIMITED_REASON } from "../Sharing/sharing-copy";
+import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 
 export interface ManageProjectMenuProps {
   projectId: string;
@@ -38,6 +43,9 @@ export default function ManageProjectMenu({
   onRequestCompile,
 }: ManageProjectMenuProps): JSX.Element {
   const dispatch = useAppDispatch();
+  const { state: limitsState, refresh: refreshLimits } = useSharingLimits();
+  const isDeleteLimited = isLimitOn(limitsState, "projectDeletion");
+  const deleteReasonId = `project-delete-limit-${projectId}`;
   const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
   // ManageProjectMenu renders one row per project in a list (see StartPage),
   // not necessarily the active project — so the tenant-scoped `projectId`
@@ -71,6 +79,7 @@ export default function ManageProjectMenu({
       })
       .catch((err) => {
         console.error("Failed to delete project:", err);
+        if (isLimitRefusalError(err)) void refreshLimits();
         toastService.error("Failed to delete project", "Please try again");
       });
 
@@ -122,8 +131,15 @@ export default function ManageProjectMenu({
               icon={<Trash2 size={14} aria-hidden="true" />}
               label="Delete"
               danger
+              disabled={isDeleteLimited}
+              aria-describedby={isDeleteLimited ? deleteReasonId : undefined}
               onClick={() => setIsConfirmDeleteOpen(true)}
             />
+            {isDeleteLimited ? (
+              <LimitReason id={deleteReasonId}>
+                {PROJECT_DELETION_LIMITED_REASON}
+              </LimitReason>
+            ) : null}
           </div>
         </div>
       ) : null}

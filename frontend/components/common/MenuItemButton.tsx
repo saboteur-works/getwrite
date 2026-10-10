@@ -12,6 +12,7 @@ export interface MenuItemButtonProps {
   role?: string;
   "aria-checked"?: boolean;
   "aria-pressed"?: boolean;
+  "aria-describedby"?: string;
 }
 
 const DEFAULT_CLASS =
@@ -42,6 +43,7 @@ export default function MenuItemButton({
   role = "menuitem",
   "aria-checked": ariaChecked,
   "aria-pressed": ariaPressed,
+  "aria-describedby": ariaDescribedBy,
 }: MenuItemButtonProps): JSX.Element {
   const resolvedClassName =
     className ?? (danger ? DANGER_VARIANT_CLASS : DEFAULT_VARIANT_CLASS);
@@ -55,6 +57,7 @@ export default function MenuItemButton({
       disabled={disabled}
       aria-checked={ariaChecked}
       aria-pressed={ariaPressed}
+      aria-describedby={ariaDescribedBy}
     >
       {icon}
       {label}

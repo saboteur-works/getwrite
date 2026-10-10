@@ -32,8 +32,14 @@ import {
 import { selectResource } from "../../../src/store/resourcesSlice";
 import Button from "../../common/UI/Button";
 import Input from "../../common/UI/Input";
+import { useSharingLimits } from "../../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../../Sharing/limit-gate";
+import LimitReason from "../../Sharing/LimitReason";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../Sharing/sharing-copy";
 export default function RevisionControl() {
   const dispatch = useAppDispatch();
+  const { state: limitsState } = useSharingLimits();
+  const isDeleteLimited = isLimitOn(limitsState, "permanentDeletion");
   const project = useAppSelector(
     (state) => state.projects.projects[state.projects.selectedProjectId || ""],
     shallowEqual,
@@ -388,7 +394,15 @@ export default function RevisionControl() {
                                   onClick={() =>
                                     handleDeleteRevision(revision.id)
                                   }
-                                  disabled={deletingRevisionId === revision.id}
+                                  disabled={
+                                    deletingRevisionId === revision.id ||
+                                    isDeleteLimited
+                                  }
+                                  aria-describedby={
+                                    isDeleteLimited
+                                      ? `revision-delete-limit-${revision.id}`
+                                      : undefined
+                                  }
                                   className="revision-control-action-button revision-control-action-button--danger"
                                 >
                                   <Trash2 className="h-3 w-3 mr-2 text-gw-red" />
@@ -409,6 +423,14 @@ export default function RevisionControl() {
                               </>
                             )}
                           </div>
+
+                          {isDeleteLimited && !revision.isCanonical ? (
+                            <LimitReason
+                              id={`revision-delete-limit-${revision.id}`}
+                            >
+                              {PERMANENT_DELETION_LIMITED_REASON}
+                            </LimitReason>
+                          ) : null}
 
                           {fetchingRevisionId === revision.id && (
                             <p className="mt-2 text-gw-small font-mono text-gw-secondary">

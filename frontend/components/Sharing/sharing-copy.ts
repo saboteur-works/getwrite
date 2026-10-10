@@ -222,3 +222,16 @@ export const UNLOCK_AT_DESKTOP_MESSAGE =
 /** Working copy: replaces the locked project card's "Unlock this workspace…" text. */
 export const LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP =
   "Unlock this workspace on the computer where GetWrite is installed to see this project's name and open it.";
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 18). Both strings are Working copy:
+// the spec (FR-24) requires a visible reason, not these words. Neither is
+// styled as an alert.
+// ---------------------------------------------------------------------------
+
+/** Working copy: visible reason beside a disabled project Delete. */
+export const PROJECT_DELETION_LIMITED_REASON =
+  "Deleting a project has to be done on the computer where GetWrite is installed.";
+/** Working copy: visible reason beside disabled permanent-delete controls (Trash purge, Empty trash, revision delete). */
+export const PERMANENT_DELETION_LIMITED_REASON =
+  "Deleting permanently has to be done on the computer where GetWrite is installed.";

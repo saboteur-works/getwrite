@@ -22,6 +22,8 @@ import TrashView from "../../components/WorkArea/Views/TrashView/TrashView";
 import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import { buttonVariants } from "../../components/common/UI/Button";
 import { makeStore } from "../../src/store/store";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
+import { LIMITS_CASES } from "../helpers/sharingLimitsMock";
 import {
   setProject,
   setSelectedProjectId,
@@ -34,6 +36,22 @@ import {
 } from "../../src/store/resourcesSlice";
 import type { TrashListing } from "../../src/lib/api/trash";
 import type { ProjectApiEntry } from "../../src/lib/api/projects";
+
+// Feature 77 Task 18: the controls under test now read the shared limits
+// state; the hook is fixed per test through this holder (default: exempt).
+const limitsMock = vi.hoisted(() => ({
+  state: { state: "exempt" } as { state: string },
+  refresh: vi.fn(),
+}));
+vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: limitsMock.state,
+    hasDesktopBridge: false,
+    refresh: limitsMock.refresh,
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 
 vi.mock("../../src/lib/api/trash", () => ({
   listTrash: vi.fn(),
@@ -1118,4 +1136,47 @@ describe("TrashView — Task 22 (Finding 1): resourcesSlice refresh after restor
       expect(folderIds).toEqual(["folder-restored"]);
     });
   });
+});
+
+describe("TrashView — Feature 77 Task 18 (FR-24): permanent deletion under paired-device limits", () => {
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+  });
+
+  it.each(LIMITS_CASES)(
+    "purge controls and Restore in state $name",
+    async ({ state, limited }) => {
+      limitsMock.state = state;
+      render(
+        <Provider store={setupStore()}>
+          <TrashRefreshProvider>
+            <TrashView />
+          </TrashRefreshProvider>
+        </Provider>,
+      );
+      await screen.findAllByTestId("trash-row");
+      selectTrashRow("res-1");
+      const del = screen.getByTestId("trash-delete-selected");
+      const empty = screen.getByTestId("trash-empty-trash");
+      const restore = screen.getByTestId("trash-restore-selected");
+      expect(restore).toBeEnabled();
+      if (limited("permanentDeletion")) {
+        expect(del).toBeDisabled();
+        expect(empty).toBeDisabled();
+        const reason = screen.getByText(PERMANENT_DELETION_LIMITED_REASON);
+        expect(del.getAttribute("aria-describedby")).toBe(reason.id);
+        expect(empty.getAttribute("aria-describedby")).toBe(reason.id);
+        expect(restore.getAttribute("aria-describedby")).toBeNull();
+        expect(reason.className).not.toMatch(/red/);
+        expect(reason.getAttribute("role")).not.toBe("alert");
+      } else {
+        expect(del).toBeEnabled();
+        expect(empty).toBeEnabled();
+        expect(
+          screen.queryByText(PERMANENT_DELETION_LIMITED_REASON),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
 });

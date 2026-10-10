@@ -199,7 +199,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (non-encryption controls), FR-12 (restore enabled). A paired device may be a touch tablet, hence visible text. Do not hide a control. Keep the existing confirmation dialogs and labels.
 **POS:** task_8116666a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Disabled-with-reason controls in the Project Encryption tab, and passphrase creation never offered to a paired device
 **What:** In the Project Encryption tab show Lock, Export an unencrypted copy and Encrypt this project disabled with their own reasons where they would otherwise be offered, and never mount the workspace-passphrase creation fields for a paired device.

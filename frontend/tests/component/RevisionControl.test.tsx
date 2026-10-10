@@ -21,6 +21,24 @@ import {
 } from "../../src/store/resourcesSlice";
 import type { Revision } from "../../src/lib/models/types";
 import { runAxe } from "../a11y/helpers/axe";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
+import { LIMITS_CASES } from "../helpers/sharingLimitsMock";
+
+// Feature 77 Task 18: the controls under test now read the shared limits
+// state; the hook is fixed per test through this holder (default: exempt).
+const limitsMock = vi.hoisted(() => ({
+  state: { state: "exempt" } as { state: string },
+  refresh: vi.fn(),
+}));
+vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: limitsMock.state,
+    hasDesktopBridge: false,
+    refresh: limitsMock.refresh,
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 
 vi.mock("react-hot-toast", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -263,4 +281,44 @@ describe("RevisionControl accessibility", () => {
     const { view } = await renderControl();
     await runAxe(view.container);
   });
+});
+
+describe("RevisionControl delete under paired-device limits (Feature 77 Task 18, FR-24)", () => {
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+  });
+
+  it.each(LIMITS_CASES)(
+    "Delete Revision in state $name",
+    async ({ state, limited }) => {
+      limitsMock.state = state;
+      await renderControl();
+      const protect = within(card("Name 1")).getByRole("button", {
+        name: "Protect revision v1",
+      });
+      const del = within(card("Name 1")).getByRole("button", {
+        name: /delete revision/i,
+      });
+      expect(protect).toBeEnabled();
+      if (limited("permanentDeletion")) {
+        expect(del).toBeDisabled();
+        const reasons = screen.getAllByText(PERMANENT_DELETION_LIMITED_REASON);
+        const own = within(card("Name 1")).getByText(
+          PERMANENT_DELETION_LIMITED_REASON,
+        );
+        expect(del.getAttribute("aria-describedby")).toBe(own.id);
+        expect(reasons.length).toBeGreaterThan(0);
+        expect(new Set(reasons.map((r: HTMLElement) => r.id)).size).toBe(
+          reasons.length,
+        );
+        expect(own.className).not.toMatch(/red/);
+        expect(own.getAttribute("role")).not.toBe("alert");
+      } else {
+        expect(del).toBeEnabled();
+        expect(
+          screen.queryByText(PERMANENT_DELETION_LIMITED_REASON),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
 });
