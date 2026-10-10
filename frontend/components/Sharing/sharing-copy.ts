@@ -254,3 +254,14 @@ export const ENCRYPT_LIMITED_REASON =
 /** Working copy: reason beside a disabled "Encrypt this project…" when it would create the workspace passphrase; distinct from the limit reasons. */
 export const CREATION_AT_DESKTOP_REASON =
   "The passphrase for this workspace has to be created on the computer where GetWrite is installed.";
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 20, FR-25). Working copy: the spec
+// requires the writer be told the deletion did not happen and why, not these
+// words. Plain text, not alert styling.
+// ---------------------------------------------------------------------------
+
+/** Working copy: leads the failure line in the delete dialog; the server's own message follows it. */
+export const PROJECT_NOT_DELETED = "The project was not deleted.";
+/** Working copy: the confirm button's label while the delete request is pending. */
+export const PROJECT_DELETING_LABEL = "Deleting…";

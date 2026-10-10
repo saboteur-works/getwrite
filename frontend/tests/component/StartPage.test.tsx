@@ -21,6 +21,7 @@ import StartPage, {
   type StartPageProjectEntry,
 } from "../../components/Start/StartPage";
 import { makeStore } from "../../src/store/store";
+import { setProjects } from "../../src/store/projectsSlice";
 import type { SharingLimitsAnswer } from "../../src/store/sharing-limits-transport-service";
 
 const fetchSharingLimits = vi.fn<() => Promise<SharingLimitsAnswer>>();
@@ -492,5 +493,71 @@ describe("StartPage — passphrase prompt gate (Feature 77, FR-21, FR-23)", () =
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("StartPage — project deletion waits for the server (Feature 77, FR-25)", () => {
+  const DIR_ID = "33333333-cccc-4ccc-8ccc-cccccccccccc";
+
+  function entry(): StartPageProjectEntry {
+    return {
+      project: {
+        id: "p-del",
+        name: "Doomed Novel",
+        rootPath: `/tmp/projects/${DIR_ID}`,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      resources: [],
+      folders: [],
+    } as unknown as StartPageProjectEntry;
+  }
+
+  async function confirmDelete(
+    fetchResponse: Response,
+  ): Promise<ReturnType<typeof userEvent.setup>> {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(fetchResponse);
+    const store = makeStore();
+    store.dispatch(
+      setProjects([{ project: entry().project, folders: [], resources: [] }]),
+    );
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entry()]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Doomed Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    return user;
+  }
+
+  it("keeps the project in the list when the server refuses", async () => {
+    await confirmDelete(
+      new Response(
+        JSON.stringify({ error: "Server says no.", limit: "projectDeletion" }),
+        { status: 403 },
+      ),
+    );
+
+    await screen.findByText(/Server says no\./);
+    // The open modal dialog hides the page behind it from the a11y tree.
+    expect(
+      screen.getByRole("button", { name: "Manage Doomed Novel", hidden: true }),
+    ).toBeInTheDocument();
+  });
+
+  it("removes the project from the list once the server has deleted it", async () => {
+    await confirmDelete(new Response(null, { status: 200 }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Manage Doomed Novel" }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

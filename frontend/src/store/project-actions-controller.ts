@@ -176,9 +176,12 @@ export const projectActionsController = {
       "Project ID is required to delete project.",
     );
 
-    onDelete?.(storeProjectId);
-
+    // Feature 77 FR-25: the server answers first. `onDelete` (the caller's
+    // local-state removal) runs only once the delete has succeeded, for every
+    // caller including the desktop window.
     const transport = await resolveProjectActionsTransport();
     await transport.delete(resolvedProjectId);
+
+    onDelete?.(storeProjectId);
   },
 };

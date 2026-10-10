@@ -219,7 +219,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-25. Three sites change as listed; the native path goes through the same controller and must still work (its transport resolves in-process). Resolved as OQ-8 (a): a behaviour change for the desktop window.
 **POS:** task_237018a4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Failure-visibility fix 2: a refused lock or resume is visible and changes nothing
 **What:** Make a refused lock, resume (and a failed lock-state check) visible to the writer with the refusal's reason, without changing the displayed lock state.
