@@ -59,7 +59,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 2
 **Notes:** Satisfies FR-35 (baseline half). Runs in the main checkout. The frontend suite is long. Do not take the knip baseline from the previous feature's record (167 unused exports etc.); measure it.
 **POS:** task_39fe7578
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: STOP (owner, not executable by an implementor): report experiments (i) to (iii) and the baselines before any dependent work
 **What:** The orchestrator reports the results of Tasks 1 to 4 to the owner and waits; if the header does not reach a POST handler in either build, or a forged copy survives, the task list is re-planned before anything else starts.
