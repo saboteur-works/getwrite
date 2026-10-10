@@ -514,3 +514,13 @@ The first re-run was started while the owner's own desktop app was open and list
 - One console error, the same 404 as before (not investigated).
 
 Not exercised: the corrupt-store message with sharing on or pending in the real app (covered by component tests only); a packaged or unpacked build; a real phone.
+
+## Exercise in the unpacked desktop build (pipeline lead, 2026-10-10)
+
+Built by the lead inside the command sandbox on `10562cb4` (source as of `7210775b`), with port 3000 free: `pnpm --filter getwrite-frontend build` exit 0; in `electron/`, `pnpm build` exit 0, `pnpm build:worker` exit 0, `pnpm exec electron-builder --config electron-builder.yml --dir` exit 0 (unsigned; "skipped macOS application code signing"). Output `dist-electron/mac-arm64/GetWrite.app`.
+
+Then the same scripted exercise as the two sections above, against `dist-electron/mac-arm64/GetWrite.app/Contents/MacOS/GetWrite` with `--user-data-dir` set to a temp folder (checked equal to `app.getPath("userData")` before anything else; `isPackaged` true), outside the sandbox, sharing off, two seeded devices. With a temp `userData` the app used its default projects folder, so the window showed the owner's real projects; nothing in them was opened or changed. An unlock dialog was present and was dismissed with "Continue without unlocking".
+
+Observed, all as in the development-mode run: the two devices listed with their paired dates; a blank rename refused with "Enter a name for this device." and the file unchanged; rename to "Kitchen iPad" shown and written (mode 600); the revoke dialog text including "Unsaved edits on that device will be lost.", with "Keep Chrome on Android" focused; revoke removing the row and the record; a device appended to the file by hand appearing 0.79 s later; and, with the file replaced by `not json`, the unreadable-store message for sharing off followed by "The file is in <the temp folder>." One console error (a 404, not investigated). After the app closed nothing was listening on port 3000.
+
+Not exercised here: sharing switched on in the packaged app, the restart, a real paired phone, a revoke of a device that is really connected.
