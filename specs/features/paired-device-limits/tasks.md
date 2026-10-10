@@ -309,7 +309,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 8
 **Notes:** Satisfies FR-15 (real Electron write), FR-29, FR-30 (desktop half), FR-34 (desktop half), FR-38. Runs in the main checkout. Packaging may take long; if the unpacked build cannot be produced here, record the error and the step that failed and report it as a blocker rather than substituting.
 **POS:** task_636db04f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Final suites against the baselines (main checkout)
 **What:** Re-run every suite and knip in the main checkout and compare with the Task 4 baselines.
