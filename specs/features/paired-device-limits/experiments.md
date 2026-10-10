@@ -747,3 +747,10 @@ Recorded by the pipeline lead, 2026-10-10, after the owner was shown the results
 3. Experiment (iii) and the LAN-address observation in experiment (i) are context only; tracked separately; no fix in this feature.
 4. Tasks 6 onward proceed as planned, and are held until the fix's pull request is merged to `main` and merged into this branch.
 5. Lead's addition, accepted with the plan at Gate 4: the main-side writer of Task 6 reuses the lock helpers of Feature 76's `electron/src/sharing/device-store-writer.ts` rather than reimplementing the lock protocol a third time.
+
+## Owner decisions at the halt after Tasks 6 to 11
+
+Recorded by the pipeline lead, 2026-10-10. The run halted because the existing Feature 75 test `frontend/tests/unit/sharing-gate-proxy.test.ts` ("imports src/lib/sharing from app/ only in the pairing route") fails once the limited routes import the shared check, as Tasks 10 and 11 require. Owner's words: "resolve, take your rec for the ambiguity".
+
+1. Resolve: that test's allow-list is updated to the four limited route files (`app/api/encryption/route.ts`, `app/api/project/[project-id]/trash/purge/route.ts`, `app/api/project/delete/route.ts`, `app/api/resource/revision/[resource-id]/route.ts`) plus the read route `app/api/sharing/limits/route.ts`. Task 12's walk test owns the tighter rule: those routes may import only the limits check and the limits reader from `lib/sharing`, and no other route may import them.
+2. A missing or unparseable classification header is refused for every limited action unconditionally, whatever the limits file says (the fail-closed reading, and what the read route already answers: `paired` with all five true). This supersedes the weaker wording of Task 9 as first built, under which such a request was subject to the limits file. The feature spec's FR-10 wording is to be aligned with this at the documentation stage.
