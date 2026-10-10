@@ -66,7 +66,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-14, FR-15, FR-16. No random sleeps to "make a race happen": start operations with `Promise.all` and let the lock serialise them; if a test needs a deterministic order, use the lock file itself as the gate. No timing assertion tighter than a generous bound. The test must not leave lock files or temp files in the temp directory (assert the directory listing at the end). If the YES case's cross-package import breaks the frontend build config (it worked in Task 1's spike only), stop and report instead of changing config.
 **POS:** task_f162725f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: IPC handlers, preload channels, bridge types and the IPC surface tests
 **What:** Register `list`, `rename` and `revoke` channels in the Electron main process behind the same sender check as the four sharing channels, expose them on the preload bridge and the frontend bridge type, and extend the surface tests, including a walk proving no HTTP route touches the store.
