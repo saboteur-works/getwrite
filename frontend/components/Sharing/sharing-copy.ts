@@ -235,3 +235,22 @@ export const PROJECT_DELETION_LIMITED_REASON =
 /** Working copy: visible reason beside disabled permanent-delete controls (Trash purge, Empty trash, revision delete). */
 export const PERMANENT_DELETION_LIMITED_REASON =
   "Deleting permanently has to be done on the computer where GetWrite is installed.";
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 19). All Working copy: the spec
+// (FR-22, FR-24) requires a visible reason per control, not these words.
+// None names "devices" and none is styled as an alert.
+// ---------------------------------------------------------------------------
+
+/** Working copy: visible reason beside a disabled "Lock workspace". */
+export const LOCK_LIMITED_REASON =
+  "Locking the workspace has to be done on the computer where GetWrite is installed.";
+/** Working copy: visible reason beside a disabled "Export an unencrypted copy". */
+export const EXPORT_LIMITED_REASON =
+  "Exporting an unencrypted copy has to be done on the computer where GetWrite is installed.";
+/** Working copy: visible reason beside a disabled "Encrypt this project…" (existing workspace passphrase). */
+export const ENCRYPT_LIMITED_REASON =
+  "Encrypting a project has to be done on the computer where GetWrite is installed.";
+/** Working copy: reason beside a disabled "Encrypt this project…" when it would create the workspace passphrase; distinct from the limit reasons. */
+export const CREATION_AT_DESKTOP_REASON =
+  "The passphrase for this workspace has to be created on the computer where GetWrite is installed.";

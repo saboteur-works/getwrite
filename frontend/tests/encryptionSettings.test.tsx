@@ -1,11 +1,36 @@
 // Last Updated: 2026-08-03
 
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EncryptionSettings from "../components/preferences/EncryptionSettings";
 import EncryptionSetupModal from "../components/common/EncryptionSetupModal";
+import {
+  CREATION_AT_DESKTOP_REASON,
+  ENCRYPT_LIMITED_REASON,
+  EXPORT_LIMITED_REASON,
+  LOCK_LIMITED_REASON,
+} from "../components/Sharing/sharing-copy";
+
+// Feature 77 Task 19: EncryptionSettings reads the shared limits state; the
+// hook is fixed per test through this holder (default: exempt, no bridge).
+const limitsMock = vi.hoisted(() => ({
+  state: { state: "exempt" } as {
+    state: string;
+    limits?: Record<string, boolean>;
+  },
+  hasDesktopBridge: false,
+}));
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: limitsMock.state,
+    hasDesktopBridge: limitsMock.hasDesktopBridge,
+    refresh: vi.fn(),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 
 const PROJECT = "The Whistleblower";
 const PASS = "correct horse battery staple";
@@ -416,5 +441,225 @@ describe("EncryptionSettings — the modal closes on the outcome", () => {
     expect(
       screen.getAllByText(/could not encrypt this project/i).length,
     ).toBeGreaterThan(0);
+  });
+});
+
+type LimitKeyName =
+  | "locking"
+  | "unlocking"
+  | "encryptionChanges"
+  | "projectDeletion"
+  | "permanentDeletion";
+
+function pairedWith(on: ReadonlyArray<LimitKeyName>): void {
+  limitsMock.state = {
+    state: "paired",
+    limits: {
+      locking: on.includes("locking"),
+      unlocking: on.includes("unlocking"),
+      encryptionChanges: on.includes("encryptionChanges"),
+      projectDeletion: on.includes("projectDeletion"),
+      permanentDeletion: on.includes("permanentDeletion"),
+    },
+  };
+}
+
+const ALL_ON: ReadonlyArray<LimitKeyName> = [
+  "locking",
+  "unlocking",
+  "encryptionChanges",
+  "projectDeletion",
+  "permanentDeletion",
+];
+
+function expectDescribedBy(button: HTMLElement, text: string): void {
+  const id = button.getAttribute("aria-describedby");
+  expect(id).toBeTruthy();
+  const target = document.getElementById(id as string);
+  expect(target).toHaveTextContent(text);
+  expect(target?.className ?? "").not.toMatch(/red|alert/i);
+}
+
+describe("EncryptionSettings — paired-device limits (Feature 77)", () => {
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    limitsMock.hasDesktopBridge = false;
+  });
+
+  describe("Lock workspace (locking)", () => {
+    const lock = () => screen.getByRole("button", { name: /lock workspace/i });
+    const renderCase = () =>
+      renderPanel({
+        needsPassphrase: false,
+        isEncrypted: true,
+        onLockWorkspace: vi.fn(),
+      });
+
+    it("exempt: enabled, no reason", () => {
+      renderCase();
+      expect(lock()).toBeEnabled();
+      expect(screen.queryByText(LOCK_LIMITED_REASON)).not.toBeInTheDocument();
+    });
+    it("paired, locking on: disabled with its own reason", () => {
+      pairedWith(["locking"]);
+      renderCase();
+      expect(lock()).toBeDisabled();
+      expectDescribedBy(lock(), LOCK_LIMITED_REASON);
+    });
+    it("paired, locking off (others on): enabled", () => {
+      pairedWith(ALL_ON.filter((k) => k !== "locking"));
+      renderCase();
+      expect(lock()).toBeEnabled();
+      expect(lock()).not.toHaveAttribute("aria-describedby");
+    });
+    it("unknown: enabled", () => {
+      limitsMock.state = { state: "unknown" };
+      renderCase();
+      expect(lock()).toBeEnabled();
+    });
+  });
+
+  describe("Export an unencrypted copy (encryptionChanges)", () => {
+    const exp = () =>
+      screen.getByRole("button", { name: /export an unencrypted copy/i });
+    const renderCase = () =>
+      renderPanel({
+        needsPassphrase: false,
+        isEncrypted: true,
+        onExportPlaintextCopy: vi.fn(),
+      });
+
+    it("exempt: enabled", () => {
+      renderCase();
+      expect(exp()).toBeEnabled();
+    });
+    it("paired, encryptionChanges on: disabled with its own reason", () => {
+      pairedWith(["encryptionChanges"]);
+      renderCase();
+      expect(exp()).toBeDisabled();
+      expectDescribedBy(exp(), EXPORT_LIMITED_REASON);
+    });
+    it("paired, encryptionChanges off: enabled", () => {
+      pairedWith(ALL_ON.filter((k) => k !== "encryptionChanges"));
+      renderCase();
+      expect(exp()).toBeEnabled();
+    });
+    it("unknown: enabled", () => {
+      limitsMock.state = { state: "unknown" };
+      renderCase();
+      expect(exp()).toBeEnabled();
+    });
+    it("is still absent (not disabled) where it was absent before", () => {
+      pairedWith(["encryptionChanges"]);
+      renderPanel({ needsPassphrase: false, isEncrypted: true });
+      expect(
+        screen.queryByRole("button", { name: /export an unencrypted copy/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Encrypt this project… with an existing keyring (no passphrase form)", () => {
+    const enc = () =>
+      screen.getByRole("button", { name: /encrypt this project/i });
+    const renderCase = () => renderPanel({ needsPassphrase: false });
+
+    it("exempt: enabled", () => {
+      renderCase();
+      expect(enc()).toBeEnabled();
+    });
+    it("paired, encryptionChanges on: disabled with its own reason", () => {
+      pairedWith(["encryptionChanges"]);
+      renderCase();
+      expect(enc()).toBeDisabled();
+      expectDescribedBy(enc(), ENCRYPT_LIMITED_REASON);
+    });
+    it("paired, encryptionChanges off: enabled and the no-passphrase dialog opens", async () => {
+      pairedWith(ALL_ON.filter((k) => k !== "encryptionChanges"));
+      const { user } = renderCase();
+      expect(enc()).toBeEnabled();
+      await user.click(enc());
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(document.querySelector('input[type="password"]')).toBeNull();
+    });
+    it("unknown: enabled", () => {
+      limitsMock.state = { state: "unknown" };
+      renderCase();
+      expect(enc()).toBeEnabled();
+    });
+  });
+
+  describe("workspace-passphrase creation (needsPassphrase) is never mounted for a paired device", () => {
+    const enc = () =>
+      screen.getByRole("button", { name: /encrypt this project/i });
+
+    it("exempt: offered unchanged (fields mount)", async () => {
+      const { user } = renderPanel();
+      expect(enc()).toBeEnabled();
+      await user.click(enc());
+      await screen.findByRole("dialog");
+      expect(document.querySelectorAll('input[type="password"]')).toHaveLength(
+        2,
+      );
+    });
+    it.each([
+      ["all five limits on", ALL_ON],
+      ["all five limits off", [] as ReadonlyArray<LimitKeyName>],
+    ])(
+      "paired, %s: disabled with the at-the-desktop reason, no fields",
+      async (_n, on) => {
+        pairedWith(on);
+        const { user } = renderPanel();
+        expect(enc()).toBeDisabled();
+        expectDescribedBy(enc(), CREATION_AT_DESKTOP_REASON);
+        expect(
+          screen.queryByText(ENCRYPT_LIMITED_REASON),
+        ).not.toBeInTheDocument();
+        await user.click(enc());
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(document.querySelector('input[type="password"]')).toBeNull();
+      },
+    );
+    it("unknown with no bridge: creation treated as not offered", async () => {
+      limitsMock.state = { state: "unknown" };
+      const { user } = renderPanel();
+      expect(enc()).toBeDisabled();
+      expectDescribedBy(enc(), CREATION_AT_DESKTOP_REASON);
+      await user.click(enc());
+      expect(document.querySelector('input[type="password"]')).toBeNull();
+    });
+    it("unknown with the desktop bridge present: offered unchanged", async () => {
+      limitsMock.state = { state: "unknown" };
+      limitsMock.hasDesktopBridge = true;
+      const { user } = renderPanel();
+      expect(enc()).toBeEnabled();
+      await user.click(enc());
+      await screen.findByRole("dialog");
+      expect(document.querySelectorAll('input[type="password"]')).toHaveLength(
+        2,
+      );
+    });
+    it("state turning paired while the dialog is open unmounts the fields", async () => {
+      const user = userEvent.setup();
+      const onEnableEncryption = vi.fn();
+      const makeElement = (): JSX.Element => (
+        <EncryptionSettings
+          projectName={PROJECT}
+          isEncrypted={false}
+          needsPassphrase
+          onEnableEncryption={onEnableEncryption}
+        />
+      );
+      const { rerender } = render(makeElement());
+      await user.click(enc());
+      await screen.findByRole("dialog");
+      expect(document.querySelectorAll('input[type="password"]')).toHaveLength(
+        2,
+      );
+      pairedWith([]);
+      rerender(makeElement());
+      await waitFor(() =>
+        expect(document.querySelector('input[type="password"]')).toBeNull(),
+      );
+    });
   });
 });

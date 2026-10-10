@@ -19,6 +19,18 @@ vi.mock("../src/store/hooks", () => ({
   useAppDispatch: () => mockDispatch,
 }));
 
+// Feature 77 Task 19: EncryptionSettings reads the shared limits state; this
+// test only needs the exempt (no limit) answer. No assertion changed.
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: vi.fn(),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
+
 import ProjectEncryptionPanel from "../components/preferences/ProjectEncryptionPanel";
 
 const PROJECT_ID = "proj1";

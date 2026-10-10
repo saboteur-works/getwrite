@@ -3,6 +3,15 @@
 import React from "react";
 import Button from "../common/UI/Button/Button";
 import EncryptionSetupModal from "../common/EncryptionSetupModal";
+import { useSharingLimits } from "../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../Sharing/limit-gate";
+import LimitReason from "../Sharing/LimitReason";
+import {
+  CREATION_AT_DESKTOP_REASON,
+  ENCRYPT_LIMITED_REASON,
+  EXPORT_LIMITED_REASON,
+  LOCK_LIMITED_REASON,
+} from "../Sharing/sharing-copy";
 
 export interface EncryptionSettingsProps {
   /** Name of the project these settings belong to. */
@@ -61,6 +70,20 @@ export default function EncryptionSettings({
   onLockWorkspace,
 }: EncryptionSettingsProps): JSX.Element {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const { state: limitsState, hasDesktopBridge } = useSharingLimits();
+
+  // Creating the workspace passphrase is never offered to a paired device in
+  // any limit state (FR-22), and not while the state is unknown with no
+  // desktop bridge (a possible paired device). Exempt, or the bridge being
+  // present, keeps the dialog.
+  const isCreationBlocked =
+    needsPassphrase &&
+    (limitsState.state === "paired" ||
+      (limitsState.state === "unknown" && !hasDesktopBridge));
+  const isEncryptLimited =
+    !needsPassphrase && isLimitOn(limitsState, "encryptionChanges");
+  const isExportLimited = isLimitOn(limitsState, "encryptionChanges");
+  const isLockLimited = isLimitOn(limitsState, "locking");
 
   // Closed by the outcome, not by the click. The modal owns the
   // non-dismissible progress state while the sweep runs — closing on confirm
@@ -102,10 +125,24 @@ export default function EncryptionSettings({
           <Button
             variant="outline"
             onClick={() => setIsModalOpen(true)}
-            disabled={isBusy}
+            disabled={isBusy || isCreationBlocked || isEncryptLimited}
+            aria-describedby={
+              isCreationBlocked || isEncryptLimited
+                ? "encrypt-limit-reason"
+                : undefined
+            }
           >
             Encrypt this project…
           </Button>
+          {isCreationBlocked ? (
+            <LimitReason id="encrypt-limit-reason">
+              {CREATION_AT_DESKTOP_REASON}
+            </LimitReason>
+          ) : isEncryptLimited ? (
+            <LimitReason id="encrypt-limit-reason">
+              {ENCRYPT_LIMITED_REASON}
+            </LimitReason>
+          ) : null}
           <p className="text-[11px] leading-relaxed text-gw-dim">
             Encryption cannot be undone from here. To return to an unencrypted
             copy, export the project.
@@ -118,10 +155,18 @@ export default function EncryptionSettings({
           <Button
             variant="secondary"
             onClick={onExportPlaintextCopy}
-            disabled={isExporting}
+            disabled={isExporting || isExportLimited}
+            aria-describedby={
+              isExportLimited ? "export-limit-reason" : undefined
+            }
           >
             {isExporting ? "Exporting…" : "Export an unencrypted copy"}
           </Button>
+          {isExportLimited ? (
+            <LimitReason id="export-limit-reason">
+              {EXPORT_LIMITED_REASON}
+            </LimitReason>
+          ) : null}
           <p className="text-[11px] leading-relaxed text-gw-dim">
             Adds a second, unencrypted project alongside this one. The original
             stays encrypted.
@@ -131,9 +176,19 @@ export default function EncryptionSettings({
 
       {onLockWorkspace ? (
         <div className="flex flex-col items-start gap-2">
-          <Button variant="secondary" onClick={onLockWorkspace}>
+          <Button
+            variant="secondary"
+            onClick={onLockWorkspace}
+            disabled={isLockLimited}
+            aria-describedby={isLockLimited ? "lock-limit-reason" : undefined}
+          >
             Lock workspace
           </Button>
+          {isLockLimited ? (
+            <LimitReason id="lock-limit-reason">
+              {LOCK_LIMITED_REASON}
+            </LimitReason>
+          ) : null}
           <p className="text-[11px] leading-relaxed text-gw-dim">
             Discards your keys until you enter the passphrase again.
           </p>
@@ -147,7 +202,7 @@ export default function EncryptionSettings({
       ) : null}
 
       <EncryptionSetupModal
-        isOpen={isModalOpen}
+        isOpen={isModalOpen && !isCreationBlocked}
         projectName={projectName}
         needsPassphrase={needsPassphrase}
         isBusy={isBusy}

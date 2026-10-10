@@ -209,7 +209,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-22, FR-24 (encryption controls), FR-14 (client half). Today some of these controls are absent, not disabled, in some states; keep the present conditions for when a control is offered and only change them to disabled where a limit applies. Resolved as OQ-12 (a) and OQ-6 (a).
 **POS:** task_540b9e19
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Failure-visibility fix 1: project deletion waits for the server
 **What:** Make project deletion wait for the server for every caller, remove the project from client state and show "Project deleted" only on success, show the server's reason on failure, and add a busy state to the dialog.
