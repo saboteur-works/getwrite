@@ -707,6 +707,32 @@ describe("permanentDeletion limit on the Trash routes (Feature 77)", () => {
     expect(await exists(sidecar)).toBe(true);
   });
 
+  it.each([undefined, "", "garbage", "confirmed:"])(
+    "refuses header %s with the limit off in the file: 403 permanentDeletion, Trash untouched",
+    async (header) => {
+      const { projectsDir, projectId, resource, sidecar } =
+        await trashedFixture();
+      await withSharingDir(limitsFile(false, false), () =>
+        withProjectsDirEnv(projectsDir, async () => {
+          const { POST } =
+            await import("../../app/api/project/[project-id]/trash/purge/route");
+          const res = await POST(
+            jsonRequest(
+              `http://localhost/api/project/${projectId}/trash/purge`,
+              { ids: [resource.id] },
+              header,
+            ) as never,
+            { params: Promise.resolve({ "project-id": projectId }) },
+          );
+          expect(res.status).toBe(403);
+          const json = (await res.json()) as { limit: string };
+          expect(json.limit).toBe("permanentDeletion");
+        }),
+      );
+      expect(await exists(sidecar)).toBe(true);
+    },
+  );
+
   it("purges as before for a confirmed device with the limit off", async () => {
     const { projectsDir, projectId, resource, sidecar } =
       await trashedFixture();

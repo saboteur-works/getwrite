@@ -204,6 +204,15 @@ describe("POST /api/encryption limits (Feature 77)", () => {
       expectNoModelCalls();
     });
 
+    it.each([null, "", "garbage", "confirmed:"])(
+      `${name}: header %s is refused with ${limit} even when the file sets it false`,
+      async (header) => {
+        seedLimits(limitsOnly([]));
+        await expectRefusal(await post(body, header), limit);
+        expectNoModelCalls();
+      },
+    );
+
     it(`${name}: refused before the projectId validation and the availability check`, async () => {
       seedLimits(limitsOnly([limit]));
       process.env.DATABASE_URL = "postgres://localhost/getwrite";

@@ -190,6 +190,26 @@ describe("POST /api/project/delete", () => {
       await expect(fs.stat(projectPath)).resolves.toBeTruthy();
     });
 
+    it.each([null, "", "garbage", "confirmed:"])(
+      "refuses header %s with the limit off in the file: 403 projectDeletion, project untouched",
+      async (header) => {
+        const projectsDir = await makeProjectsDir();
+        const projectId = generateUUID();
+        const projectPath = await writeProject(projectsDir, projectId);
+        await withSharingDir(limitsFile(false), () =>
+          withProjectsDir(projectsDir, async () => {
+            const res = await POST(
+              deleteRequest({ projectId }, header) as never,
+            );
+            expect(res.status).toBe(403);
+            const json = (await res.json()) as { limit: string };
+            expect(json.limit).toBe("projectDeletion");
+          }),
+        );
+        await expect(fs.stat(projectPath)).resolves.toBeTruthy();
+      },
+    );
+
     it("deletes as before for a confirmed device with the limit off", async () => {
       const projectsDir = await makeProjectsDir();
       const projectId = generateUUID();

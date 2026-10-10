@@ -876,6 +876,28 @@ describe("revision DELETE — permanentDeletion limit (Feature 77)", () => {
     expect(deleteRevision).not.toHaveBeenCalled();
   });
 
+  it.each([null, "", "garbage", "confirmed:"])(
+    "refuses header %s with the limit off in the file: 403 permanentDeletion, core not called",
+    async (header) => {
+      const fx = await seedRevisions();
+      await useSharingDir(limitsFile(false, false));
+      await withProjectsDirEnv(fx.projectsDir, async () => {
+        const res = await DELETE(
+          makeRequest(
+            "DELETE",
+            { projectId: fx.projectId, revisionId: fx.spareId },
+            header,
+          ),
+          { params: Promise.resolve({ "resource-id": fx.resourceId }) },
+        );
+        expect(res.status).toBe(403);
+        const json = (await res.json()) as { limit: string };
+        expect(json.limit).toBe("permanentDeletion");
+      });
+      expect(deleteRevision).not.toHaveBeenCalled();
+    },
+  );
+
   it("deletes as before for a confirmed device with the limit off", async () => {
     const fx = await seedRevisions();
     await useSharingDir(limitsFile(false));

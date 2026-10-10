@@ -55,11 +55,21 @@ describe("decideLimit", () => {
       expect(decideLimit("confirmed:d1", limits(false), k)).toBe("allowed");
     }
   });
-  it.each(["not-confirmed:no-credential", null, "garbage", "confirmed:", ""])(
-    "treats %s as a paired device",
+  it("not-confirmed:no-credential is treated as a paired device subject to the file", () => {
+    expect(
+      decideLimit("not-confirmed:no-credential", limits(true), "locking"),
+    ).toBe("refused");
+    expect(
+      decideLimit("not-confirmed:no-credential", limits(false), "locking"),
+    ).toBe("allowed");
+  });
+  it.each([null, "garbage", "confirmed:", ""])(
+    "refuses a missing, empty or unparseable header (%s) for every key, whatever the limits say",
     (h) => {
-      expect(decideLimit(h, limits(true), "locking")).toBe("refused");
-      expect(decideLimit(h, limits(false), "locking")).toBe("allowed");
+      for (const k of KEYS) {
+        expect(decideLimit(h, limits(true), k)).toBe("refused");
+        expect(decideLimit(h, limits(false), k)).toBe("refused");
+      }
     },
   );
 });
@@ -105,6 +115,22 @@ describe("checkLimit", () => {
     expect(new Set(messages).size).toBe(5);
     for (const k of KEYS) expect(refusalFor(k).status).toBe(403);
   });
+
+  it.each([null, "", "garbage", "confirmed:"])(
+    "refuses header %s for every key with that key's 403 and does not read the limits",
+    async (h) => {
+      for (const k of KEYS) {
+        const reader = vi.fn(() => limits(false));
+        const res = checkLimit(req(h), k, reader);
+        expect(res?.status).toBe(403);
+        expect(await res!.json()).toEqual({
+          error: LIMIT_REFUSAL_MESSAGES[k],
+          limit: k,
+        });
+        expect(reader).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   describe("with the real file reader", () => {
     let dir: string;
