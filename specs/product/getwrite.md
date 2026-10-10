@@ -1233,7 +1233,10 @@ lost work.
   check and Origin/Referer check are both skipped
   (`frontend/app/api/_tenant/with-storage-context.ts`), so nothing in the
   current account-free path would stop an unconfirmed device once the server
-  were reachable. Status: Not started; not scheduled. Owner decisions,
+  were reachable. Status: First slice merged, not released (Feature 75, PR #263,
+  2026-10-09): the on/off setting, off by default, the bind, the address and
+  sharing-on display are built; not met yet: the last-save-wins measurement and
+  statement (Features 78 and 79); not fully met. Owner decisions,
   2026-10-09 (audience; delivery; relationship to FR-30, availability,
   conflict promise, client: OQ-67, OQ-71, OQ-68, OQ-74). [US-27]
 - FR-67: A device other than the desktop app's own window MUST be confirmed
@@ -1269,8 +1272,11 @@ lost work.
   paired device deletes resources and folders within a project as normal (a
   soft delete to the project's Trash), as ordinary editing, not governed by
   that setting (Owner decision, 2026-10-09). A per-device
-  pairing credential is not an account (resolved: OQ-69). Status: Not
-  started; not scheduled. Owner decisions, 2026-10-09 (device confirmation;
+  pairing credential is not an account (resolved: OQ-69). Status: First slice
+  merged, not released (Feature 75, PR #263, 2026-10-09): pairing and the gate
+  are built; not met yet: the device list, rename and revoke (Feature 76) and
+  the capability limits and the project-deletion setting (Feature 77); not
+  fully met. Owner decisions, 2026-10-09 (device confirmation;
   OQ-69 to OQ-73, OQ-75). [US-27]
 - FR-68: When sharing is turned on, the desktop app MUST tell the writer in
   plain words that the connection is unencrypted HTTP and is meant for
@@ -1279,7 +1285,10 @@ lost work.
   them. Unlock and lock are performed at the desktop only: the writer cannot
   unlock an encrypted workspace from a paired device (accepted consequence;
   resolved: OQ-73). The desktop build MUST remain fully functional with sharing off, no
-  network and no account. Status: Not started; not scheduled. Owner
+  network and no account. Status: First slice merged, not released (Feature 75,
+  PR #263, 2026-10-09): the unencrypted-HTTP statement is built; NOT yet met:
+  unlock and lock restricted to the desktop is not enforced for a paired
+  device, which can currently reach them (Feature 77); not fully met. Owner
   decisions, 2026-10-09 (transport; encryption). Fact read from the code,
   not run: the unlocked key set is held in a single module-level variable
   in the server process (`keyring-session.ts`), which is consistent with
