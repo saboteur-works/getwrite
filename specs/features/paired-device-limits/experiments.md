@@ -77,3 +77,92 @@ Throwaway route deleted. Build output is under gitignored `frontend/.next/`. `gi
 ?? specs/features/paired-device-limits/experiments.md
 ?? specs/features/paired-device-limits/scripts/
 ```
+
+## ii: traversal projectId
+
+Date: 2026-10-10. Machine: darwin, Node v24.15.0 (the Node on PATH, not the CI Node 22). Main checkout, branch `feat/paired-device-limits`. No source file changed; the real `POST /api/encryption` route was measured (no throwaway route).
+
+### Finding (stated first)
+
+`POST /api/encryption` with `action: "enable"` and `projectId: "../<sentinel>"` returned 200 and acted OUTSIDE the workspace root: the sentinel directory beside the workspace received a `.encrypted.json` marker and its `marker.txt` was rewritten (16 B before, 49 B after, different digest; the file's contents were not read back). It reproduced for both a null passphrase (session unlocked by a prior valid enable) and a non-null passphrase, in both runs. `export` with the same value did not act (it stopped at a key lookup, see table). The empty string made `enable` act on the workspace root itself. Recorded as measured; not fixed here.
+
+### Build, server, commands
+
+- Port 3000 checked first: `lsof -iTCP:3000 -sTCP:LISTEN` returned no listener. The script repeats the check and refuses to run if there is one.
+- Standalone build already in `frontend/.next/standalone/frontend/server.js` (written 14:17 today by Task 1's `pnpm build`; `frontend/app/api/encryption/route.ts` last modified 2026-09-22 and `git status` clean, so the build reflects the current route). Chosen over `next dev` because it was already built and starts fast enough to give every case its own fresh server; `next dev` was not run, so nothing is claimed for it. Ran in the command sandbox; no EMFILE or other sandbox error, no retry outside the sandbox.
+- Command: `node specs/features/paired-device-limits/scripts/traversal-experiment.mjs standalone`. Run twice. The first run's classifier labelled the empty-string cases "failed later"; the rule for "workspace root itself" was then added to the script and it was run again; the table is from the second run, and the first run's statuses and listings had the same outcomes.
+- Script behaviour: per (action, value) it builds a fresh throwaway layout and starts a fresh standalone server on a free port chosen by the script (127.0.0.1, sharing off, `HOSTNAME=127.0.0.1`, hosted-auth variables unset), records the pid, stops only that process group, then deletes the layout. After the runs: `Process groups still recorded: 0`, no listener from the script remained, no `gw-trav-*` directory left in `$TMPDIR`.
+- Env passed to the server: `PORT`, `GETWRITE_PROJECTS_DIR=<workspace>`, `HOME=<userdata>`. The server reads no other path variable for encryption.
+
+### Throwaway layout (per case)
+
+```
+$TMPDIR/gw-trav-XXXXXX/        throwaway parent (every path asserted under os.tmpdir())
+  workspace/                   GETWRITE_PROJECTS_DIR; one seeded valid-UUID project (project.json, resources/r1/content.txt)
+  sentinel-<8 hex>/            sibling sentinel; marker.txt "sentinel marker\n" (16 B)
+  userdata/                    throwaway HOME for the server; empty
+```
+
+Passphrase: random per case, never printed or recorded. Setup for `enable` with a null passphrase and for `export`: one valid `enable` of the seeded project with the passphrase (status 200 in every case), which creates the keyring and leaves the server session unlocked; that setup is before the "before" listing. For `enable` with a non-null passphrase: no setup, no keyring beforehand.
+
+### Request shapes
+
+All `POST http://127.0.0.1:<port>/api/encryption`, `content-type: application/json`, `origin` set to the server base, sharing off.
+
+- enable, null passphrase: `{"action":"enable","projectId":V,"projectName":"Throwaway","passphrase":null}`
+- enable, non-null: same with `"passphrase":"<throwaway>"`
+- export: `{"action":"export","projectId":V}`
+
+Values V (JSON as sent; `<sentinel>` is `sentinel-<8 hex>`, `<abs>` the throwaway parent's absolute path):
+
+1. relative: `"../<sentinel>"`
+2. absolute: `"<abs>/<sentinel>"`
+3. percent-encoded: `"..%2F<sentinel>"` (the literal text `..%2F`, not decoded by the client)
+4. empty string: `""`
+5. JSON null: `null`
+6. NUL byte: `"../<sentinel>\u0000"` (JSON escape for a NUL byte at the end)
+
+### Results (second run)
+
+Listings are names and counts only (digests of file bytes were compared, contents never printed). `ws` = workspace file/dir entries before -> after, `sentinel` likewise. "keyring rewritten" means `.getwrite-keyring.json` and `.getwrite-names` in the workspace changed size/digest (or were created) during the case.
+
+| Action | Value | Status | `error` | Listings | Classification |
+| --- | --- | --- | --- | --- | --- |
+| enable, null passphrase | relative | 200 | none | sentinel 1 -> 2: `.encrypted.json` added, `marker.txt` 16 B -> 49 B; ws 8 -> 8, keyring rewritten | path was built outside the root |
+| enable, null | absolute | 400 | `ENOENT ... open '<workspace>/<abs>/<sentinel>/.converting.json.tmp'` | sentinel 1 -> 1 unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason (the path was joined under the workspace; the directory does not exist there; no file effect except the keyring) |
+| enable, null | percent-encoded | 400 | `ENOENT ... open '<workspace>/..%2F<sentinel>/.converting.json.tmp'` | sentinel unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason (same) |
+| enable, null | empty | 400 | `Keyring at <workspace>/.getwrite-keyring.json is not valid JSON. Refusing to treat a corrupt keyring as an absent one.` | sentinel unchanged; ws 8 -> 9: `.encrypted.json` added at the workspace root, the seeded project's `.encrypted.json` rewritten, keyring and names rewritten | path was built at the workspace root itself (effect inside the workspace, none outside it) |
+| enable, null | null | 400 | `The "path" argument must be of type string. Received null` | sentinel unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason |
+| enable, null | NUL byte | 400 | `The argument 'path' must be a string, Uint8Array, or URL without null bytes. Received '<parent>/<sentinel>\x00/.converting.json.tmp'` | sentinel unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason (the joined path reached `fs`, which refused it) |
+| enable, non-null | relative | 200 | none | sentinel 1 -> 2: `.encrypted.json` added, `marker.txt` 16 B -> 49 B; ws 5 -> 7 (keyring and names created) | path was built outside the root |
+| enable, non-null | absolute | 400 | `ENOENT ... open '<workspace>/<abs>/<sentinel>/.converting.json.tmp'` | sentinel unchanged; ws 5 -> 7 (keyring, names created) | failed later for another reason |
+| enable, non-null | percent-encoded | 400 | `ENOENT ... open '<workspace>/..%2F<sentinel>/.converting.json.tmp'` | sentinel unchanged; ws 5 -> 7 | failed later for another reason |
+| enable, non-null | empty | 400 | `Keyring at <workspace>/.getwrite-keyring.json is not valid JSON. Refusing ...` | sentinel unchanged; ws 5 -> 8: `.encrypted.json` at workspace root, keyring and names created, the seeded project's `project.json` and `content.txt` rewritten (15 B -> 48 B, 64 B -> 97 B) | path was built at the workspace root itself |
+| enable, non-null | null | 400 | `The "path" argument must be of type string. Received null` | sentinel unchanged; ws 5 -> 7 | failed later for another reason |
+| enable, non-null | NUL byte | 400 | `The argument 'path' must be a string, Uint8Array, or URL without null bytes. ...` | sentinel unchanged; ws 5 -> 7 | failed later for another reason |
+| export | relative | 400 | `No data key registered for project "../<sentinel>".` | all listings unchanged (ws 8 -> 8, sentinel 1 -> 1) | failed later for another reason (key lookup; see limits below) |
+| export | absolute | 400 | `No data key registered for project "<abs>/<sentinel>".` | unchanged | failed later for another reason |
+| export | percent-encoded | 400 | `No data key registered for project "..%2F<sentinel>".` | unchanged | failed later for another reason |
+| export | empty | 400 | `No data key registered for project "".` | unchanged | failed later for another reason |
+| export | null | 400 | `The "path" argument must be of type string. Received null` | unchanged | failed later for another reason |
+| export | NUL byte | 400 | `No data key registered for project "../<sentinel>\u0000".` | unchanged | failed later for another reason |
+
+Across all eighteen cases no `error` string was a project-id validation message, `userdata` stayed empty, and the throwaway parent gained no entries. In the `enable` cases that reached key registration (every one except relative, where the keyring is also rewritten but the call succeeded), the keyring was rewritten before the later error, i.e. the supplied string was written into the workspace keyring.
+
+### Limits of this measurement
+
+- "Failed later" for `export` rests on the key lookup (`requireSessionKeyring().projectKey(projectId)`) throwing before any read. In the route the joined `path.join(workspaceRoot, projectId)` is evaluated as an argument first; whether it was acted on is not shown, only that no filesystem change occurred. An `export` of the relative value after a prior `enable` with the same value has registered a key for it was NOT run; that sequence is plausible from the enable result above and is unmeasured.
+- Contents of `marker.txt` after the relative `enable` were not read back; the change is shown by size (16 B -> 49 B), digest and the new `.encrypted.json`. This is a measurement of an effect, not a statement of what the file now contains.
+- The percent-encoded value was a literal string inside JSON; URL-level decoding by a proxy or the route was not exercised (the route takes `projectId` from the body, not the URL).
+- Standalone build only; `next dev` not run.
+
+### Verdict for FR-4 / FR-32
+
+A traversal value IS accepted: `enable` with `../<sentinel>` (null and non-null passphrase) built a path outside the workspace and converted a directory there; `enable` with an empty string acted on the workspace root. The route has no `validateProjectId` guard in front of `enable` or `export`. **Task 25 is needed** (guard the encryption route's `projectId`). This is a defect in the shipped route independent of sharing; not fixed in this task. Cause of why the values pass is not named beyond the observation that no validation message was returned; the code read (`route.ts` ~140-220, `enable-encryption.ts` `path.join(workspaceRoot, projectId)`) shows no check before the join, but that is reading, and the measurement above is what is claimed.
+
+### `git status --short` (repo root, after the task)
+
+```
+?? specs/features/paired-device-limits/scripts/traversal-experiment.mjs
+ M specs/features/paired-device-limits/experiments.md
+```

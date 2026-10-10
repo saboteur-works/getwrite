@@ -39,7 +39,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-2. Runs in the main checkout one at a time, after Task 1 has finished (both need a server). Use the standalone build or `next dev`, whichever Task 1 already started cleanly; say which. Never point this at the owner's projects or `userData`: assert in the script that every path it uses is under `$TMPDIR`. A failure alone does not show validation; that is why the sentinel exists.
 **POS:** task_aa879ac8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Experiment (iii) (agent): is the `next dev` server under the desktop app's conditions reachable beyond loopback (context only)
 **What:** Record, as context only, whether a `next dev` server started the way the desktop app starts it in development mode listens beyond loopback with sharing off, so the owner has the fact beside the Task 1 result; no fix.
