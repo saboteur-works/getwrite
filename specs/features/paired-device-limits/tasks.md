@@ -289,7 +289,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 8
 **Notes:** Satisfies FR-21 (browser half), FR-22, FR-36, FR-25/FR-26 (browser half). Feature 75's one defect was found only in a browser, so this is not optional. Runs in the main checkout, one build task at a time. If a step fails, record it; do not fix code in this task.
 **POS:** task_8e973ac3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Two-paired-client check across an unlock and a lock
 **What:** With two paired clients against the built server, record what each sees across an unlock and a lock, with the limits off and on.

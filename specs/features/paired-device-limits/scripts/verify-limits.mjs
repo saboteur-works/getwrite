@@ -47,7 +47,7 @@ const FRONTEND = path.join(REPO, "frontend");
 const STANDALONE = path.join(FRONTEND, ".next/standalone/frontend/server.js");
 const WRITER = path.join(REPO, "electron/dist/sharing/limits-store.js");
 const LIMITS_FILE = "sharing-limits.json";
-const KEYS = [
+export const KEYS = [
   "projectDeletion",
   "unlocking",
   "locking",
@@ -55,6 +55,10 @@ const KEYS = [
   "permanentDeletion",
 ];
 
+const isEntry =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+// When imported (Task 27), the importer sets process.argv[2] before importing.
 const mode = process.argv[2];
 if (mode !== "standalone" && mode !== "dev") {
   console.error("usage: verify-limits.mjs <standalone|dev>");
@@ -63,16 +67,16 @@ if (mode !== "standalone" && mode !== "dev") {
 
 // ---------------------------------------------------------------- bookkeeping
 
-const counts = { measured: 0, setup: 0 };
-const checks = [];
-const started = []; // process-group leaders this script started
+export const counts = { measured: 0, setup: 0 };
+export const checks = [];
+export const started = []; // process-group leaders this script started
 
-function check(item, name, ok, detail = "") {
+export function check(item, name, ok, detail = "") {
   checks.push({ item, name, ok });
   console.log(`CHECK [${item}] ${ok ? "PASS" : "FAIL"} ${name}${detail ? ` (${detail})` : ""}`);
 }
 
-function port3000Busy() {
+export function port3000Busy() {
   try {
     return (
       execFileSync("lsof", ["-iTCP:3000", "-sTCP:LISTEN", "-t"], {
@@ -84,7 +88,7 @@ function port3000Busy() {
   }
 }
 
-function freePort() {
+export function freePort() {
   return new Promise((resolve, reject) => {
     const srv = createServer();
     srv.once("error", reject);
@@ -95,7 +99,7 @@ function freePort() {
   });
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // -------------------------------------------------------- enumeration (count)
 
@@ -150,7 +154,7 @@ async function enumerationCount() {
 
 // ----------------------------------------------------------------- processes
 
-function startServer(port, env) {
+export function startServer(port, env) {
   const full = { ...process.env, PORT: String(port), ...env };
   for (const k of [
     "DATABASE_URL",
@@ -185,7 +189,7 @@ function startServer(port, env) {
   return child;
 }
 
-function stopServer(child) {
+export function stopServer(child) {
   try {
     process.kill(-child.pid, "SIGTERM");
   } catch (e) {
@@ -193,7 +197,7 @@ function stopServer(child) {
   }
 }
 
-function groupMembers() {
+export function groupMembers() {
   try {
     return execFileSync("ps", ["-A", "-o", "pid=,pgid="], { encoding: "utf8" })
       .split("\n")
@@ -211,11 +215,11 @@ function groupMembers() {
  * One running server plus the callers and helpers bound to it.
  * `window` is {} for a sharing-off server (there is no gate to present to).
  */
-function makeCtx({ base, window }) {
+export function makeCtx({ base, window }) {
   return { base, window, cookie: null, passphrase: null };
 }
 
-async function request(ctx, method, urlPath, headers, body, setup) {
+export async function request(ctx, method, urlPath, headers, body, setup) {
   counts[setup ? "setup" : "measured"] += 1;
   const init = {
     method,
@@ -255,7 +259,7 @@ const callerHeaders = (ctx, who) =>
         : {};
 
 /** Measured request as `who`; prints one row. */
-async function as(ctx, who, item, label, method, urlPath, body, extraHeaders = {}) {
+export async function as(ctx, who, item, label, method, urlPath, body, extraHeaders = {}) {
   const r = await request(
     ctx,
     method,
@@ -279,10 +283,10 @@ async function as(ctx, who, item, label, method, urlPath, body, extraHeaders = {
 }
 
 /** Setup request through the window (never limited). */
-const setupCall = (ctx, method, urlPath, body) =>
+export const setupCall = (ctx, method, urlPath, body) =>
   request(ctx, method, urlPath, ctx.window, body, true);
 
-async function waitReady(ctx, child) {
+export async function waitReady(ctx, child) {
   for (let i = 0; i < 400; i += 1) {
     if (child.exitCode !== null) throw new Error("server exited before ready");
     try {
@@ -299,7 +303,7 @@ async function waitReady(ctx, child) {
   throw new Error("server did not become ready");
 }
 
-async function pairDevice(ctx, sharingDir) {
+export async function pairDevice(ctx, sharingDir) {
   const code = String(randomInt(0, 1000000)).padStart(6, "0");
   const salt = randomBytes(16);
   const now = Date.now();
@@ -333,7 +337,7 @@ async function pairDevice(ctx, sharingDir) {
 
 let seq = 0;
 
-async function newProject(ctx, type = "blank") {
+export async function newProject(ctx, type = "blank") {
   seq += 1;
   const before = new Set(readdirSync(ctx.projectsDir));
   const r = await setupCall(ctx, "POST", "/api/projects", {
@@ -348,7 +352,7 @@ async function newProject(ctx, type = "blank") {
   return { id: added[0], folders: r.json.folders ?? [] };
 }
 
-async function newResource(ctx, pid, folderId) {
+export async function newResource(ctx, pid, folderId) {
   seq += 1;
   const r = await setupCall(ctx, "POST", "/api/resource", {
     projectId: pid,
@@ -366,7 +370,7 @@ async function newResource(ctx, pid, folderId) {
   return id;
 }
 
-async function newRevision(ctx, pid, rid) {
+export async function newRevision(ctx, pid, rid) {
   const r = await setupCall(ctx, "POST", `/api/resource/revision/${rid}`, {
     projectId: pid,
     content: "revision text",
@@ -379,7 +383,7 @@ async function newRevision(ctx, pid, rid) {
   return r.json.id;
 }
 
-async function trashedResource(ctx, pid) {
+export async function trashedResource(ctx, pid) {
   const rid = await newResource(ctx, pid);
   const r = await setupCall(ctx, "POST", `/api/resource/${rid}/delete`, {
     projectId: pid,
@@ -388,20 +392,20 @@ async function trashedResource(ctx, pid) {
   return rid;
 }
 
-async function trashIds(ctx, pid) {
+export async function trashIds(ctx, pid) {
   const r = await setupCall(ctx, "GET", `/api/project/${pid}/trash`);
   if (r.status !== 200) throw new Error(`trash list failed (${r.status})`);
   return [...(r.json.resources ?? []), ...(r.json.folders ?? [])].map((x) => x.id);
 }
 
-async function sessionUnlocked(ctx) {
+export async function sessionUnlocked(ctx) {
   const r = await setupCall(ctx, "GET", "/api/encryption");
   if (r.status !== 200) throw new Error(`encryption status failed (${r.status})`);
   return r.json.isUnlocked === true;
 }
 
 /** Puts the workspace session in the wanted state through the window. */
-async function setSession(ctx, wantUnlocked) {
+export async function setSession(ctx, wantUnlocked) {
   if ((await sessionUnlocked(ctx)) === wantUnlocked) return;
   const r = await setupCall(
     ctx,
@@ -416,11 +420,11 @@ async function setSession(ctx, wantUnlocked) {
 
 // ------------------------------------------------------------ limits file I/O
 
-function limitsPath(ctx) {
+export function limitsPath(ctx) {
   return path.join(ctx.sharingDir, LIMITS_FILE);
 }
 
-function clearLimitsFile(ctx) {
+export function clearLimitsFile(ctx) {
   try {
     chmodSync(limitsPath(ctx), 0o600);
   } catch {
@@ -430,17 +434,17 @@ function clearLimitsFile(ctx) {
 }
 
 /** Writes the file only through the main-side writer. */
-async function setLimits(ctx, wanted) {
+export async function setLimits(ctx, wanted) {
   for (const key of KEYS) {
     const outcome = await ctx.writer.setLimit(ctx.sharingDir, key, wanted[key]);
     if (outcome.kind !== "ok") throw new Error(`setLimit ${key}: ${outcome.kind}`);
   }
 }
 
-const all = (value) => Object.fromEntries(KEYS.map((k) => [k, value]));
-const onlyOff = (...off) => Object.fromEntries(KEYS.map((k) => [k, !off.includes(k)]));
+export const all = (value) => Object.fromEntries(KEYS.map((k) => [k, value]));
+export const onlyOff = (...off) => Object.fromEntries(KEYS.map((k) => [k, !off.includes(k)]));
 
-async function makeUnreadable(ctx, variant) {
+export async function makeUnreadable(ctx, variant) {
   clearLimitsFile(ctx);
   if (variant === "chmod-0") {
     // contents say every limit is off, so a fall-back to contents would show
@@ -852,7 +856,7 @@ async function sectionE(ctx, actions) {
 
 // --------------------------------------------------------------------- main
 
-function assertThrowaway(root) {
+export function assertThrowaway(root) {
   const real = realpathSync(root);
   const tmp = realpathSync(tmpdir());
   const owner = path.join(homedir(), "Library", "Application Support", "getwrite-electron");
@@ -958,7 +962,7 @@ async function main() {
   process.exit(failed.length === 0 ? 0 : 1);
 }
 
-main().catch((e) => {
+if (isEntry) main().catch((e) => {
   console.error(`script error: ${e instanceof Error ? e.message : "unknown"}`);
   for (const pid of started) {
     try {
