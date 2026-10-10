@@ -42,6 +42,10 @@ import {
 import { exportProjectAsPlaintext } from "../../../src/lib/models/crypto/export-plaintext";
 import { requireSessionKeyring } from "../../../src/lib/models/crypto/keyring-session";
 import { resolveProjectsDir } from "../../../src/lib/models/projects-dir";
+import {
+  resolveProjectPath,
+  respondInvalidProjectId,
+} from "../../../src/lib/models/project-path";
 import { generateUUID } from "../../../src/lib/models/uuid";
 import { readFile, writeFile } from "../../../src/lib/models/io";
 import path from "node:path";
@@ -139,7 +143,7 @@ async function getEncryptionStatus(): Promise<NextResponse> {
  * @param request - The incoming request carrying an {@link EncryptionAction}.
  * @returns The resulting {@link EncryptionStatus}, or an error.
  */
-async function postEncryptionAction(request: Request): Promise<NextResponse> {
+async function postEncryptionAction(request: Request): Promise<Response> {
   try {
     // Fail closed for every action, not just the one that writes ciphertext
     // (FR23). `enable` guards itself deeper down, but `unlock` derives a
@@ -158,17 +162,27 @@ async function postEncryptionAction(request: Request): Promise<NextResponse> {
       case "lock":
         lockSession();
         break;
-      case "enable":
+      case "enable": {
+        // Validate before the keyring is read, created or rewritten and before
+        // any path is built from the id: `projectId` is client-supplied and is
+        // joined into a filesystem path further down.
+        if (resolveProjectPath(body.projectId) instanceof Response) {
+          return respondInvalidProjectId();
+        }
         await enableProjectEncryption({
           projectId: body.projectId,
           projectName: body.projectName,
           passphrase: body.passphrase,
         });
         break;
+      }
       case "resume":
         await resumeInterruptedConversions();
         break;
       case "export": {
+        if (resolveProjectPath(body.projectId) instanceof Response) {
+          return respondInvalidProjectId();
+        }
         const exportedId = await exportPlaintextCopy(body.projectId);
         return NextResponse.json({ ...(await readStatus()), exportedId });
       }
