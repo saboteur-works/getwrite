@@ -29,7 +29,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-1 and FR-3 (header half). Runs in the main checkout. Read, not run (from the spec): the gate removes any client copy and sets its own with `NextResponse.next({ request: { headers } })`; only a GET in a standalone build with a throwaway proxy was measured before. Record facts without a named cause; if a build fails, say which error and whether sandbox or not. If a result means route-level enforcement cannot be built as written, say so in the section and let Task 5 carry it to the owner; do not try to work around it.
 **POS:** task_64dc929c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Experiment (ii) (agent): does `POST /api/encryption` accept a traversal `projectId` for `enable` and `export`
 **What:** Measure, against a throwaway workspace with a sentinel directory, whether the encryption route builds a path from a path-traversal `projectId` for `enable` and `export`, separating "rejected before a path was built" from "failed later", and record it.
