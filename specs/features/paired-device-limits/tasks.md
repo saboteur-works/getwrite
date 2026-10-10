@@ -169,7 +169,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-20. A client re-check narrows but cannot close the window in which a stale "allowed" shows the prompt; do not claim otherwise in comments or copy. Redux is not required; a hook or context is fine, but follow whichever the sibling `auth-status` consumer uses.
 **POS:** task_61814f6f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Make the server's refusal reason reach the client (encryption, Trash purge, project delete, revision delete transports)
 **What:** Extend the client error paths so a 403 `{ error, limit }` is read and its message is carried to the caller, without being replaced by a generic one.

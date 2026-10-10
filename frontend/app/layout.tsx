@@ -7,6 +7,7 @@ import AppToaster from "../components/notifications/Toaster";
 import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
 import NativeBootstrap from "../components/native/NativeBootstrap";
 import DeviceNotPairedGuard from "../components/Sharing/DeviceNotPairedGuard";
+import SharingLimitsProvider from "../components/Sharing/SharingLimitsContext";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
@@ -55,12 +56,14 @@ export default function RootLayout({
           {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native" ? null : (
             <DeviceNotPairedGuard />
           )}
-          <TrashRefreshProvider>
-            <div className="min-h-screen bg-gw-chrome text-gw-primary">
-              {children}
-              <AppToaster />
-            </div>
-          </TrashRefreshProvider>
+          <SharingLimitsProvider>
+            <TrashRefreshProvider>
+              <div className="min-h-screen bg-gw-chrome text-gw-primary">
+                {children}
+                <AppToaster />
+              </div>
+            </TrashRefreshProvider>
+          </SharingLimitsProvider>
         </ClientProvider>
       </body>
     </html>
