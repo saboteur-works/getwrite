@@ -86,7 +86,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-1, FR-2, FR-6, FR-7 (UI half), FR-16, FR-17, FR-18, FR-21, FR-22, FR-5(e). Open `frontend/components/common/UI/Button/Button.tsx` and `frontend/components/common/UI/Input` (or the project's input component) and their stories before use; do not guess props. No red; a statement of failure is conveyed by words. Revoke is Task 8, so the row has no Revoke button yet; leave the row structure so Task 8 adds it without restructuring. The 64-character limit is enforced in main (Task 4); the field MAY set `maxLength` only if that does not conflict with main's counting rule (state which), and the main-side message is always shown on refusal.
 **POS:** task_df260d2e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Revoke with confirmation, outcomes, focus return and the full a11y matrix
 **What:** Add the Revoke action to each row with a `ConfirmDialog` that names the device, handle every revoke outcome in text, return focus sensibly, and complete the accessibility test matrix.

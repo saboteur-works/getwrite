@@ -102,3 +102,65 @@ export const PAIRING_CODE_EXPIRED =
 /** Working copy: live-region announcements. */
 export const PAIRING_CODE_ANNOUNCE_GENERATED = "Pairing code generated.";
 export const PAIRING_CODE_ANNOUNCE_EXPIRED = "Pairing code expired.";
+
+// ---------------------------------------------------------------------------
+// Paired devices (Feature 76, Task 7). "Spec" strings are from
+// `specs/features/paired-device-management.md` FR-22, verbatim. Everything
+// marked "Working copy" is wording this task added, not in the spec, and is
+// awaiting owner confirmation at the exercise stage.
+// ---------------------------------------------------------------------------
+
+/** Spec. */
+export const PAIRED_DEVICES_HEADING = "Paired devices";
+/** Spec. */
+export const PAIRED_DEVICES_EMPTY = "No devices are paired.";
+/** Spec. */
+export const PAIRED_DEVICES_UNREADABLE =
+  "The list of paired devices cannot be read, so every other device is refused until it is repaired.";
+/** Spec: the location sentence; the path comes from the app at runtime. */
+export function pairedDeviceLocation(path: string): string {
+  return `The file is in ${path}.`;
+}
+/** Spec: the row action. */
+export const PAIRED_DEVICE_RENAME = "Rename";
+/** Spec. */
+export const PAIRED_DEVICE_RENAME_ERROR = "Could not rename this device.";
+/** Spec. */
+export const PAIRED_DEVICE_ALREADY_GONE = "This device was already removed.";
+
+/** Working copy: the list read failed (neither empty nor unreadable). */
+export const PAIRED_DEVICES_LOAD_ERROR =
+  "Could not read the list of paired devices.";
+/** Working copy: shown while the first read is in flight. */
+export const PAIRED_DEVICES_LOADING = "Reading paired devices…";
+/** Working copy: rename form buttons. */
+export const PAIRED_DEVICE_SAVE = "Save";
+export const PAIRED_DEVICE_CANCEL = "Cancel";
+/** Working copy: visible label of the rename field. */
+export const PAIRED_DEVICE_NAME_LABEL = "Device name";
+/** Working copy: the paired date, as the row shows it. */
+export function pairedDevicePairedOn(formattedDate: string): string {
+  return `Paired ${formattedDate}`;
+}
+/** Working copy: accessible name of a row's rename button. */
+export function pairedDeviceRenameLabel(name: string): string {
+  return `${PAIRED_DEVICE_RENAME} ${name}`;
+}
+/** Working copy: the same, when another device has the same name. */
+export function pairedDeviceRenameLabelWithDate(
+  name: string,
+  formattedDate: string,
+): string {
+  return `${PAIRED_DEVICE_RENAME} ${name}, paired ${formattedDate}`;
+}
+/** Working copy: validation reasons from the main process. */
+export const PAIRED_DEVICE_NAME_NOT_TEXT = "That name is not valid text.";
+export const PAIRED_DEVICE_NAME_EMPTY = "Enter a name for this device.";
+export const PAIRED_DEVICE_NAME_TOO_LONG =
+  "Use 64 characters or fewer for the name.";
+export const PAIRED_DEVICE_NAME_CONTROL =
+  "Remove control characters from the name.";
+/** Working copy: live-region announcement after a successful rename. */
+export function pairedDeviceRenamed(storedName: string): string {
+  return `Device renamed to ${storedName}.`;
+}
