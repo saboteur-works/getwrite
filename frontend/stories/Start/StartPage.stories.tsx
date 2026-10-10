@@ -694,6 +694,18 @@ function installScrivenerBridge(): void {
     }),
     renamePairedDevice: async () => ({ kind: "ok" as const }),
     revokePairedDevice: async () => ({ kind: "ok" as const }),
+    getSharingLimits: async () => ({
+      kind: "missing" as const,
+      limits: {
+        projectDeletion: true,
+        unlocking: true,
+        locking: true,
+        encryptionChanges: true,
+        permanentDeletion: true,
+      },
+      storeDirectory: "/tmp",
+    }),
+    setSharingLimit: async () => ({ kind: "ok" as const }),
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }

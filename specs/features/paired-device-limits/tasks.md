@@ -89,7 +89,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-8 and the bridge half of FR-29. The bridge is the only way to change a limit; no HTTP route is added. Follow `device-ipc.ts` exactly for the sender check; do not weaken it.
 **POS:** task_ae5fe75e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Server-side limits reader (fresh read, fail closed) with the same fixtures
 **What:** Add the frontend module that reads and parses `sharing-limits.json` from `GETWRITE_SHARING_DIR` on every call with no cache and yields all five limits on whenever the file cannot be positively read.

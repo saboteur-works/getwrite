@@ -32,6 +32,11 @@ const DEVICE = [
   "getwrite:sharing-rename-device",
   "getwrite:sharing-revoke-device",
 ];
+const LIMITS = ["getwrite:sharing-get-limits", "getwrite:sharing-set-limit"];
+const limitsIpc = fs.readFileSync(
+  path.resolve(__dirname, "../src/sharing/limits-ipc.ts"),
+  "utf8",
+);
 const deviceIpc = fs.readFileSync(
   path.resolve(__dirname, "../src/sharing/device-ipc.ts"),
   "utf8",
@@ -44,9 +49,9 @@ function invokedChannels(source: string): string[] {
 }
 
 describe("preload sharing surface", () => {
-  it("invokes exactly the existing channels plus the four sharing ones and the three device ones", () => {
+  it("invokes exactly the existing channels plus the four sharing ones, the three device ones and the two limits ones", () => {
     expect(invokedChannels(preload).sort()).toEqual(
-      [...EXISTING, ...NEW, ...DEVICE].sort(),
+      [...EXISTING, ...NEW, ...DEVICE, ...LIMITS].sort(),
     );
   });
 
@@ -84,6 +89,28 @@ describe("preload sharing surface", () => {
     for (const name of ["list", "rename", "revoke"]) {
       const m = new RegExp(`async ${name}\\([^)]*\\)[^{]*\\{\\s*([^;]*;)`).exec(
         deviceIpc,
+      );
+      expect(m, name).not.toBeNull();
+      expect(m![1].trim()).toMatch(/^assertTrusted\(event\);$/);
+    }
+  });
+
+  it("main registers each limits channel through createLimitsHandlers", () => {
+    for (const channel of LIMITS) {
+      const at = main.indexOf(`ipcMain.handle(\n    "${channel}"`);
+      const inline = main.indexOf(`ipcMain.handle("${channel}"`);
+      const start = at >= 0 ? at : inline;
+      expect(start, channel).toBeGreaterThan(-1);
+      const call = main.slice(start, main.indexOf(");", start) + 2);
+      expect(call, channel).toMatch(/limits\.(getLimits|setLimit)/);
+    }
+    expect(main).toContain("createLimitsHandlers(");
+  });
+
+  it("limits-ipc handlers each start with the sender check", () => {
+    for (const name of ["getLimits", "setLimit"]) {
+      const m = new RegExp(`async ${name}\\([^)]*\\)[^{]*\\{\\s*([^;]*;)`).exec(
+        limitsIpc,
       );
       expect(m, name).not.toBeNull();
       expect(m![1].trim()).toMatch(/^assertTrusted\(event\);$/);
