@@ -86,3 +86,56 @@ export const AddWord: Story = {
     );
   },
 };
+
+/**
+ * Sharing in effect with paired devices: the sharing section lists them
+ * inside the dialog, and Revoke opens its confirmation over the dialog.
+ */
+export const WithPairedDevices: Story = {
+  beforeEach: () => {
+    const restoreFetch = mockGlobalNoiseWordsFetch([]);
+    const target = window as unknown as Record<string, unknown>;
+    const original = target.getwriteDesktop;
+    target.getwriteDesktop = {
+      chooseWorkspaceDir: async () => ({ ok: false, cancelled: true }),
+      getSharingStatus: async () => ({
+        enabled: true,
+        effective: true,
+        blockedByHostedAuth: false,
+        addresses: ["http://192.168.1.20:4100"],
+        credentialStore: "ok",
+        port: 4100,
+      }),
+      setSharingEnabled: async () => undefined,
+      getPairingCode: async () => null,
+      generatePairingCode: async () => ({
+        code: "123456",
+        generatedAt: Date.now(),
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      }),
+      restart: async () => undefined,
+      listPairedDevices: async () => ({
+        kind: "ok",
+        devices: [
+          {
+            id: "device-1",
+            name: "Safari on iPad",
+            createdAt: "2026-10-01T14:30:00.000Z",
+          },
+        ],
+        storeDirectory: "/Users/you/store",
+      }),
+      renamePairedDevice: async () => ({ kind: "ok" }),
+      revokePairedDevice: async () => ({ kind: "ok" }),
+    };
+    return () => {
+      target.getwriteDesktop = original;
+      restoreFetch();
+    };
+  },
+  args: { isOpen: true, onClose: () => undefined },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Safari on iPad")).toBeInTheDocument();
+  },
+};

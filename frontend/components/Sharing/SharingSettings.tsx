@@ -2,6 +2,7 @@
 
 import React from "react";
 import Button from "../common/UI/Button/Button";
+import PairedDevices from "./PairedDevices";
 import {
   getDesktopBridge,
   type DesktopBridge,
@@ -32,7 +33,6 @@ import {
   SHARING_STATEMENT_AVAILABILITY,
   SHARING_STATEMENT_UNENCRYPTED,
   SHARING_STATUS_ERROR,
-  SHARING_STORE_CORRUPT,
   SHARING_SWITCH_LABEL,
   SHARING_WRONG_STATE,
 } from "./sharing-copy";
@@ -229,11 +229,6 @@ export default function SharingSettings(): JSX.Element | null {
             </div>
           ) : null}
 
-          {(isEnabled || isEffective) &&
-          status.credentialStore === "corrupt" ? (
-            <p className="text-sm text-gw-secondary">{SHARING_STORE_CORRUPT}</p>
-          ) : null}
-
           {isEffective ? (
             <div>
               <h4 className="text-sm font-semibold text-gw-primary">
@@ -313,6 +308,10 @@ export default function SharingSettings(): JSX.Element | null {
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
+
+      {status ? (
+        <PairedDevices isSharingActive={isEnabled || isEffective} />
+      ) : null}
     </section>
   );
 }

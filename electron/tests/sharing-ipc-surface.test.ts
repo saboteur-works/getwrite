@@ -27,6 +27,15 @@ const NEW = [
   "getwrite:sharing-generate-code",
   "getwrite:sharing-get-code",
 ];
+const DEVICE = [
+  "getwrite:sharing-list-devices",
+  "getwrite:sharing-rename-device",
+  "getwrite:sharing-revoke-device",
+];
+const deviceIpc = fs.readFileSync(
+  path.resolve(__dirname, "../src/sharing/device-ipc.ts"),
+  "utf8",
+);
 
 function invokedChannels(source: string): string[] {
   return [...source.matchAll(/ipcRenderer\.invoke\(\s*"([^"]+)"/g)].map(
@@ -35,9 +44,9 @@ function invokedChannels(source: string): string[] {
 }
 
 describe("preload sharing surface", () => {
-  it("invokes exactly the existing channels plus the four sharing ones", () => {
+  it("invokes exactly the existing channels plus the four sharing ones and the three device ones", () => {
     expect(invokedChannels(preload).sort()).toEqual(
-      [...EXISTING, ...NEW].sort(),
+      [...EXISTING, ...NEW, ...DEVICE].sort(),
     );
   });
 
@@ -57,5 +66,40 @@ describe("preload sharing surface", () => {
     expect(start).toBeGreaterThan(-1);
     const body = main.slice(start, main.indexOf("\n}\n", start));
     expect(body).not.toMatch(/log\([^)]*(code|secret)/i);
+  });
+
+  it("main registers each device channel in an ipcMain.handle call routed through createDeviceHandlers", () => {
+    for (const channel of DEVICE) {
+      const at = main.indexOf(`ipcMain.handle(\n    "${channel}"`);
+      const inline = main.indexOf(`ipcMain.handle("${channel}"`);
+      const start = at >= 0 ? at : inline;
+      expect(start, channel).toBeGreaterThan(-1);
+      const call = main.slice(start, main.indexOf(");", start) + 2);
+      expect(call, channel).toMatch(/devices\.(list|rename|revoke)/);
+    }
+    expect(main).toContain("createDeviceHandlers(");
+  });
+
+  it("device-ipc handlers each start with the sender check", () => {
+    for (const name of ["list", "rename", "revoke"]) {
+      const m = new RegExp(`async ${name}\\([^)]*\\)[^{]*\\{\\s*([^;]*;)`).exec(
+        deviceIpc,
+      );
+      expect(m, name).not.toBeNull();
+      expect(m![1].trim()).toMatch(/^assertTrusted\(event\);$/);
+    }
+  });
+
+  it("the sharing handlers log only counts and outcome kinds through interpolation", () => {
+    const start = main.indexOf("function registerSharingHandlers");
+    const body = main.slice(start, main.indexOf("\n}\n", start));
+    for (const call of body.match(/log\([^;]*\);/g) ?? []) {
+      for (const m of call.matchAll(/\$\{([^}]*)\}/g)) {
+        expect(m[1]).toMatch(
+          /^(enabled \? "on" : "off"|result\.kind|result\.devices\.length)$/,
+        );
+      }
+      expect(call).not.toMatch(/\b(token|hash|secret)\b/i);
+    }
   });
 });

@@ -9,7 +9,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AppSettingsDialog from "../../components/AppSettings/AppSettingsDialog";
 import {
@@ -31,6 +31,7 @@ const mockSetGlobalNoiseWords = setGlobalNoiseWords as unknown as ReturnType<
 
 afterEach(() => {
   vi.clearAllMocks();
+  delete (window as unknown as Record<string, unknown>).getwriteDesktop;
 });
 
 describe("AppSettingsDialog", () => {
@@ -103,5 +104,59 @@ describe("AppSettingsDialog", () => {
     await waitFor(() =>
       expect(screen.queryByText("red herring")).not.toBeInTheDocument(),
     );
+  });
+
+  it("opens the revoke confirmation inside the dialog and returns focus to Revoke after cancel (FR-21)", async () => {
+    mockGetGlobalNoiseWords.mockResolvedValue([]);
+    (window as unknown as Record<string, unknown>).getwriteDesktop = {
+      chooseWorkspaceDir: async () => ({ ok: false, cancelled: true }),
+      getSharingStatus: async () => ({
+        enabled: true,
+        effective: true,
+        blockedByHostedAuth: false,
+        addresses: [],
+        credentialStore: "ok",
+        port: 4100,
+      }),
+      getPairingCode: async () => null,
+      listPairedDevices: async () => ({
+        kind: "ok",
+        devices: [
+          {
+            id: "dev-1",
+            name: "Safari on iPad",
+            createdAt: "2026-10-01T14:30:00.000Z",
+          },
+        ],
+        storeDirectory: "/store",
+      }),
+      renamePairedDevice: async () => ({ kind: "ok" }),
+      revokePairedDevice: async () => ({ kind: "ok" }),
+    };
+    const user = userEvent.setup();
+    render(<AppSettingsDialog isOpen onClose={() => undefined} />);
+    const revoke = await screen.findByRole("button", {
+      name: "Revoke Safari on iPad",
+    });
+    await user.click(revoke);
+    const dialogs = await screen.findAllByRole("dialog");
+    const confirm = dialogs.find((d: HTMLElement) =>
+      within(d).queryByText("Revoke this device?"),
+    );
+    expect(confirm).toBeDefined();
+    const keep = within(confirm as HTMLElement).getByRole("button", {
+      name: "Keep Safari on iPad",
+    });
+    await waitFor(() => expect(keep).toHaveFocus());
+    await user.click(keep);
+    await waitFor(() =>
+      expect(screen.queryByText("Revoke this device?")).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Revoke Safari on iPad" }),
+      ).toHaveFocus(),
+    );
+    expect(screen.getByText("App Settings")).toBeInTheDocument();
   });
 });

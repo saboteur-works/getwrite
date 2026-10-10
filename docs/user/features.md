@@ -36,7 +36,7 @@ When you open a text document, GetWrite gives you a focused rich-text editor des
 
 ### Home-network sharing (not yet released)
 
-In the desktop app, App Settings has an off-by-default setting to open your projects from another device's browser on your home network. Each device is paired once with a short-lived code shown on your computer, and an unpaired device is refused. It uses unencrypted HTTP, so it is meant for networks you trust. This is implemented but not yet merged or released. See [Home-network sharing](../features/home-network-sharing.md).
+In the desktop app, App Settings has an off-by-default setting to open your projects from another device's browser on your home network. Each device is paired once with a short-lived code shown on your computer, and an unpaired device is refused. App Settings lists your paired devices, lets you rename one and revoke one (not yet merged; a revoked device is refused from its next request on, and unsaved edits on it are lost). It uses unencrypted HTTP, so it is meant for networks you trust. This is implemented but not yet merged or released. See [Home-network sharing](../features/home-network-sharing.md).
 
 ### Daily writing log and goal
 

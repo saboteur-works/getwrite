@@ -19,7 +19,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isDeviceRecord(value: unknown): boolean {
+/** Whether `value` satisfies the server's device-record rules (shape only). */
+export function isDeviceRecord(value: unknown): boolean {
   if (!isRecord(value)) return false;
   return (
     typeof value.id === "string" &&
