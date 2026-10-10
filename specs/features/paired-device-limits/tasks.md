@@ -249,7 +249,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-27, FR-29, FR-30, FR-31 (no switch for sharing, pairing or devices is added). Copy is working copy for the owner's single deferred copy pass except the warning's content. Use a switch control the codebase already uses in `SharingSettings.tsx`; do not invent a component.
 **POS:** task_f36b0821
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Replace `INTERIM_EXPOSURE_NOTE` at both render sites
 **What:** Remove the interim note and replace it with a summary generated from the actual limit state in App Settings and a fixed pointer at the sharing indicator.

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Button from "../common/UI/Button/Button";
+import LimitSwitches from "./LimitSwitches";
 import PairedDevices from "./PairedDevices";
 import {
   getDesktopBridge,
@@ -310,7 +311,10 @@ export default function SharingSettings(): JSX.Element | null {
       </p>
 
       {status ? (
-        <PairedDevices isSharingActive={isEnabled || isEffective} />
+        <>
+          <PairedDevices isSharingActive={isEnabled || isEffective} />
+          <LimitSwitches isSharingActive={isEnabled || isEffective} />
+        </>
       ) : null}
     </section>
   );

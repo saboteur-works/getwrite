@@ -207,17 +207,17 @@ interface SharingLimits {
 }
 
 /** The name of one limit. */
-type SharingLimitKey = keyof SharingLimits;
+export type SharingLimitKey = keyof SharingLimits;
 
 /** The limits file's status with the five effective limits. */
-interface GetSharingLimitsResult {
+export interface GetSharingLimitsResult {
   kind: "ok" | "missing" | "invalid" | "unreadable";
   limits: SharingLimits;
   storeDirectory: string;
 }
 
 /** The outcome of changing one limit. */
-type SetSharingLimitResult =
+export type SetSharingLimitResult =
   | { kind: "ok" }
   | { kind: "unreadable"; reason: string }
   | { kind: "lock-not-acquired" }

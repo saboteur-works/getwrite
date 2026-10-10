@@ -48,6 +48,24 @@ function install(status: SharingStatus, ttlMs = 5 * 60 * 1000): void {
   };
 }
 
+function installLimits(kind: "ok" | "unreadable"): void {
+  const target = (
+    window as unknown as { getwriteDesktop: Record<string, unknown> }
+  ).getwriteDesktop;
+  target.getSharingLimits = vi.fn(async () => ({
+    kind,
+    limits: {
+      projectDeletion: true,
+      unlocking: true,
+      locking: true,
+      encryptionChanges: true,
+      permanentDeletion: true,
+    },
+    storeDirectory: "/userdata",
+  }));
+  target.setSharingLimit = vi.fn(async () => ({ kind: "ok" }));
+}
+
 const devices: ListPairedDevicesResult = {
   kind: "ok",
   devices: [
@@ -113,6 +131,24 @@ describe("a11y: SharingSettings", () => {
     install(ON);
     const { container } = render(<SharingSettings />);
     await screen.findByText("Safari on iPad");
+    await runAxe(container);
+  });
+
+  it("has no axe violations with the limit switches and the unlock warning", async () => {
+    install(ON);
+    installLimits("ok");
+    const { container } = render(<SharingSettings />);
+    await screen.findByRole("switch", { name: "Limit unlocking" });
+    await runAxe(container);
+  });
+
+  it("has no axe violations when the limits file is unreadable", async () => {
+    install(ON);
+    installLimits("unreadable");
+    const { container } = render(<SharingSettings />);
+    await screen.findByText(
+      /limits cannot be read|cannot be read, so every limit/i,
+    );
     await runAxe(container);
   });
 });

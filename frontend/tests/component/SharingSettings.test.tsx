@@ -35,6 +35,7 @@ import {
   SHARING_STATUS_ERROR,
 } from "../../components/Sharing/sharing-copy";
 import {
+  LIMITS_UNREADABLE,
   PAIRED_DEVICES_HEADING,
   PAIRED_DEVICES_UNREADABLE,
   PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
@@ -450,5 +451,51 @@ describe("SharingSettings", () => {
         screen.queryAllByText(/paired devices (cannot be read|is damaged)/),
       ).toHaveLength(0);
     });
+  });
+});
+
+describe("SharingSettings limit switches (Feature 77, Task 23)", () => {
+  const limits = {
+    kind: "ok" as const,
+    limits: {
+      projectDeletion: true,
+      unlocking: true,
+      locking: true,
+      encryptionChanges: true,
+      permanentDeletion: true,
+    },
+    storeDirectory: "/userdata",
+  };
+
+  it("shows the five limit switches beside the sharing switch when sharing is in effect", async () => {
+    installBridge(ON, {
+      getSharingLimits: vi.fn(async () => limits),
+      setSharingLimit: vi.fn(async () => ({ kind: "ok" })),
+    });
+    render(<SharingSettings />);
+    expect(
+      await screen.findByRole("switch", { name: "Limit unlocking" }),
+    ).toBeChecked();
+    expect(screen.getAllByRole("switch")).toHaveLength(6);
+  });
+
+  it("shows no limit switches with sharing off, no devices and a readable store", async () => {
+    const fake = installBridge(OFF, {
+      getSharingLimits: vi.fn(async () => limits),
+      setSharingLimit: vi.fn(async () => ({ kind: "ok" })),
+    });
+    render(<SharingSettings />);
+    await screen.findByRole("switch", { name: /share my projects/i });
+    await vi.waitFor(() => expect(fake.getSharingLimits).toHaveBeenCalled());
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
+  });
+
+  it("shows the limits-file message when the limits file is unreadable", async () => {
+    installBridge(OFF, {
+      getSharingLimits: vi.fn(async () => ({ ...limits, kind: "unreadable" })),
+      setSharingLimit: vi.fn(async () => ({ kind: "ok" })),
+    });
+    render(<SharingSettings />);
+    expect(await screen.findByText(LIMITS_UNREADABLE)).toBeInTheDocument();
   });
 });

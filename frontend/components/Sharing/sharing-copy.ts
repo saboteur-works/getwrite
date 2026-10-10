@@ -265,3 +265,50 @@ export const CREATION_AT_DESKTOP_REASON =
 export const PROJECT_NOT_DELETED = "The project was not deleted.";
 /** Working copy: the confirm button's label while the delete request is pending. */
 export const PROJECT_DELETING_LABEL = "Deleting…";
+
+/** Working copy: heading of the limit switches. */
+export const LIMITS_HEADING = "What paired devices may do";
+/** Working copy: how to read the switches. */
+export const LIMITS_EXPLAINER =
+  "A switch that is on stops paired devices from doing that. A change applies at once.";
+/** Working copy: the limit names, used as the switches' accessible names. */
+export const LIMIT_LABEL_PROJECT_DELETION = "Limit project deletion";
+export const LIMIT_LABEL_UNLOCKING = "Limit unlocking";
+export const LIMIT_LABEL_LOCKING = "Limit locking";
+export const LIMIT_LABEL_ENCRYPTION_CHANGES = "Limit encryption changes";
+export const LIMIT_LABEL_PERMANENT_DELETION = "Limit permanent deletion";
+
+/**
+ * FR-27: the three statements of the unlock warning are a requirement; the
+ * wording is working copy.
+ */
+export const LIMITS_UNLOCK_WARNING_TYPED =
+  "The passphrase is typed on the paired device.";
+export const LIMITS_UNLOCK_WARNING_UNENCRYPTED =
+  "It is sent over the unencrypted connection, where others on the network could record it.";
+export const LIMITS_UNLOCK_WARNING_RECORDED =
+  "A recorded passphrase also unlocks the files at rest, such as a stolen disk or backup.";
+
+/** Working copy: confirmation shown when Limit unlocking is switched off. */
+export const LIMITS_UNLOCK_CONFIRM_TITLE = "Turn off Limit unlocking?";
+export const LIMITS_UNLOCK_CONFIRM = "Turn off Limit unlocking";
+export const LIMITS_UNLOCK_KEEP = "Keep Limit unlocking on";
+
+/** Working copy: the limits file cannot be read. */
+export const LIMITS_UNREADABLE =
+  "The file that holds these limits cannot be read, so every limit is on until it is repaired. A change here is refused while it cannot be read.";
+/** Working copy: the read itself failed. */
+export const LIMITS_LOAD_ERROR =
+  "The limits could not be read. Close and reopen this window to try again.";
+/** Working copy: a change was refused because the file cannot be read. */
+export const LIMITS_CHANGE_REFUSED_UNREADABLE =
+  "The change was not made: the limits file cannot be read, and it was left as it is.";
+/** Working copy. */
+export const LIMITS_CHANGE_LOCK_BUSY =
+  "The change was not made because the limits file was in use. Try again.";
+/** Working copy. */
+export const LIMITS_CHANGE_FAILED = "The change could not be made.";
+/** Working copy: announced after a re-read, from the stored state. */
+export function limitNowState(label: string, isOn: boolean): string {
+  return `${label} is now ${isOn ? "on" : "off"}.`;
+}

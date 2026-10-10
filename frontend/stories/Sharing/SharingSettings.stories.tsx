@@ -45,6 +45,18 @@ function stubBridge(
     listPairedDevices: async () => devices,
     renamePairedDevice: async () => ({ kind: "ok" }),
     revokePairedDevice: async () => ({ kind: "ok" }),
+    getSharingLimits: async () => ({
+      kind: "missing",
+      limits: {
+        projectDeletion: true,
+        unlocking: true,
+        locking: true,
+        encryptionChanges: true,
+        permanentDeletion: true,
+      },
+      storeDirectory: "/Users/you/store",
+    }),
+    setSharingLimit: async () => ({ kind: "ok" }),
   };
   return () => {
     target.getwriteDesktop = original;
