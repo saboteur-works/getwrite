@@ -74,9 +74,6 @@ export const SHARING_RESTART_BUTTON = "Restart now";
 /** Working copy: FR-24, shown when hosted auth blocks sharing. */
 export const SHARING_BLOCKED_BY_HOSTED_AUTH =
   "Sharing stays off because this install uses hosted sign-in. Sharing and hosted sign-in never run together.";
-/** Working copy: FR-27, shown when the paired-device store is damaged. */
-export const SHARING_STORE_CORRUPT =
-  "The list of paired devices is damaged, so every other device is refused until it is repaired.";
 /** Working copy: a code cannot be made while sharing is not in effect. */
 export const SHARING_WRONG_STATE =
   "A pairing code can be made only while sharing is on. Restart to apply your change first.";
@@ -117,6 +114,12 @@ export const PAIRED_DEVICES_EMPTY = "No devices are paired.";
 /** Spec. */
 export const PAIRED_DEVICES_UNREADABLE =
   "The list of paired devices cannot be read, so every other device is refused until it is repaired.";
+/**
+ * Working copy, for the owner to confirm: the unreadable text shown while
+ * sharing is off, when nothing is being refused (OQ-17, FR-22).
+ */
+export const PAIRED_DEVICES_UNREADABLE_SHARING_OFF =
+  "The list of paired devices cannot be read. When sharing is turned on, every other device will be refused until it is repaired.";
 /** Spec: the location sentence; the path comes from the app at runtime. */
 export function pairedDeviceLocation(path: string): string {
   return `The file is in ${path}.`;

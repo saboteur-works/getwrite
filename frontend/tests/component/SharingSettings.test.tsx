@@ -33,11 +33,12 @@ import {
   SHARING_STATEMENT_AVAILABILITY,
   SHARING_STATEMENT_UNENCRYPTED,
   SHARING_STATUS_ERROR,
-  SHARING_STORE_CORRUPT,
 } from "../../components/Sharing/sharing-copy";
 import {
   PAIRED_DEVICES_HEADING,
   PAIRED_DEVICES_UNREADABLE,
+  PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
+  pairedDeviceLocation,
 } from "../../components/Sharing/sharing-copy";
 import type {
   DesktopBridge,
@@ -261,10 +262,25 @@ describe("SharingSettings", () => {
     expect(screen.queryByText(SHARING_STATEMENT_UNENCRYPTED)).toBeNull();
   });
 
-  it("says in text when the paired-device store is corrupt", async () => {
-    installBridge({ ...ON, credentialStore: "corrupt" });
+  it("says in text, once, when the paired-device store is corrupt", async () => {
+    installBridge(
+      { ...ON, credentialStore: "corrupt" },
+      {
+        listPairedDevices: vi.fn(
+          async (): Promise<ListPairedDevicesResult> => ({
+            kind: "corrupt",
+            storeDirectory: "/store",
+          }),
+        ),
+      },
+    );
     render(<SharingSettings />);
-    expect(await screen.findByText(SHARING_STORE_CORRUPT)).toBeInTheDocument();
+    expect(
+      await screen.findByText(PAIRED_DEVICES_UNREADABLE),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(pairedDeviceLocation("/store")),
+    ).toBeInTheDocument();
   });
 
   it("shows an explicit error when the status cannot be read", async () => {
@@ -383,19 +399,56 @@ describe("SharingSettings", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows the unreadable text with sharing on, and nothing extra with sharing off (FR-18)", async () => {
+    it("shows the unreadable text in both sharing states with the state-appropriate wording (FR-18, OQ-17)", async () => {
       installBridge(ON, { listPairedDevices: vi.fn(async () => corrupt()) });
       render(<SharingSettings />);
       expect(
         await screen.findByText(PAIRED_DEVICES_UNREADABLE),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(pairedDeviceLocation("/store")),
+      ).toBeInTheDocument();
       cleanup();
       installBridge(OFF, { listPairedDevices: vi.fn(async () => corrupt()) });
       render(<SharingSettings />);
+      expect(
+        await screen.findByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(pairedDeviceLocation("/store")),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
+      expect(screen.getByText(PAIRED_DEVICES_HEADING)).toBeInTheDocument();
+    });
+
+    it.each([
+      ["in effect", ON],
+      ["enabled and pending restart", { ...OFF, enabled: true }],
+      ["off", OFF],
+    ] as const)(
+      "shows exactly one unreadable-store message with sharing %s when status and list both report corrupt",
+      async (_label, base) => {
+        installBridge(
+          { ...base, credentialStore: "corrupt" },
+          { listPairedDevices: vi.fn(async () => corrupt()) },
+        );
+        render(<SharingSettings />);
+        await screen.findByText(pairedDeviceLocation("/store"));
+        expect(
+          screen.queryAllByText(/paired devices (cannot be read|is damaged)/),
+        ).toHaveLength(1);
+      },
+    );
+
+    it("shows nothing extra with sharing off and a missing store", async () => {
+      installBridge(OFF);
+      render(<SharingSettings />);
       await screen.findByRole("switch");
       await act(async () => {});
-      expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
       expect(screen.queryByText(PAIRED_DEVICES_HEADING)).toBeNull();
+      expect(
+        screen.queryAllByText(/paired devices (cannot be read|is damaged)/),
+      ).toHaveLength(0);
     });
   });
 });

@@ -17,6 +17,7 @@ import {
   PAIRED_DEVICES_LOAD_ERROR,
   PAIRED_DEVICES_LOADING,
   PAIRED_DEVICES_UNREADABLE,
+  PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
   PAIRED_DEVICE_ALREADY_GONE,
   PAIRED_DEVICE_CANCEL,
   PAIRED_DEVICE_NAME_CONTROL,
@@ -112,11 +113,14 @@ export interface PairedDevicesProps {
  * After a revoke the list is re-read and focus goes to the next device's
  * Rename button, else the previous one's, else the list heading.
  *
- * Shown when sharing is enabled or in effect, or when the store holds at
- * least one device (FR-20). With sharing off and a missing, empty or corrupt
- * store nothing is rendered; the corrupt text and path appear only with
- * sharing active. Once shown it stays shown for this mount, so revoking the
- * last device does not remove its own confirmation message. The list is
+ * Shown when sharing is enabled or in effect, when the store holds at least
+ * one device, or when the store is unreadable in any sharing state (FR-20,
+ * OQ-17). With sharing off and a missing or empty store nothing is rendered.
+ * The one unreadable-store message and the file's folder are in the polite
+ * live region, with wording that depends on `isSharingActive` (nothing is
+ * refused while sharing is off). Once shown it stays shown for this mount, so
+ * revoking the last device does not remove its own confirmation message and a
+ * list that becomes unreadable is replaced by the message, not by nothing. The list is
  * re-read on mount, after each action and every
  * `PAIRED_DEVICES_POLL_INTERVAL_MS`; a refresh replaces only the list, never
  * the rename field's text or an open revoke dialog.
@@ -352,8 +356,9 @@ export default function PairedDevices({
   const isShown =
     isSharingActive ||
     devices.length > 0 ||
+    list?.kind === "corrupt" ||
     (hasLoadFailed && list === null) ||
-    (hasBeenShown.current && list?.kind !== "corrupt");
+    hasBeenShown.current;
   if (!isShown) return null;
   hasBeenShown.current = true;
 
@@ -383,17 +388,6 @@ export default function PairedDevices({
 
       {list === null && !hasLoadFailed ? (
         <p className="text-sm text-gw-secondary">{PAIRED_DEVICES_LOADING}</p>
-      ) : null}
-
-      {list?.kind === "corrupt" ? (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-gw-secondary">
-            {PAIRED_DEVICES_UNREADABLE}
-          </p>
-          <p className="break-all text-sm text-gw-secondary">
-            {pairedDeviceLocation(list.storeDirectory)}
-          </p>
-        </div>
       ) : null}
 
       {list && list.kind !== "corrupt" && devices.length === 0 ? (
@@ -502,9 +496,21 @@ export default function PairedDevices({
         </ul>
       ) : null}
 
-      <p role="status" aria-live="polite" className="text-sm text-gw-secondary">
-        {message}
-      </p>
+      <div role="status" aria-live="polite" className="flex flex-col gap-1">
+        <p className="text-sm text-gw-secondary">{message}</p>
+        {list?.kind === "corrupt" ? (
+          <>
+            <p className="text-sm text-gw-secondary">
+              {isSharingActive
+                ? PAIRED_DEVICES_UNREADABLE
+                : PAIRED_DEVICES_UNREADABLE_SHARING_OFF}
+            </p>
+            <p className="break-all text-sm text-gw-secondary">
+              {pairedDeviceLocation(list.storeDirectory)}
+            </p>
+          </>
+        ) : null}
+      </div>
 
       <ConfirmDialog
         isOpen={revokeTarget !== null}

@@ -167,7 +167,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 3
 **Notes:** Satisfies FR-18, FR-20, FR-22 as amended by OQ-17 (Owner decision, 2026-10-10, superseding the Gate 4 answer), and FR-21 (live region, axe). A missing file stays "no devices" and, with sharing off and no devices, shows nothing extra. Repair from the UI stays out of scope (OQ-9). Do not change `PAIRED_DEVICES_LOAD_ERROR` or conflate a rejected bridge call with a corrupt store (failure-visibility). Do not touch `SharingStatus` (the status indicator) or `status.credentialStore` handling elsewhere; only the `SHARING_STORE_CORRUPT` line in `SharingSettings.tsx` is removed. This task is done AFTER Task 13 and BEFORE the owner's Task 14; because it changes frontend code after Task 13's final suites, it re-runs the frontend suite itself as above, and the orchestrator re-runs the exercise in the real Electron app (corrupt file, sharing off) after merging it, recording the result in `experiments.md` under "Exercise in the desktop app".
 **POS:** task_256d0b55
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 15

@@ -33,7 +33,6 @@ import {
   SHARING_STATEMENT_AVAILABILITY,
   SHARING_STATEMENT_UNENCRYPTED,
   SHARING_STATUS_ERROR,
-  SHARING_STORE_CORRUPT,
   SHARING_SWITCH_LABEL,
   SHARING_WRONG_STATE,
 } from "./sharing-copy";
@@ -228,11 +227,6 @@ export default function SharingSettings(): JSX.Element | null {
                 {INTERIM_EXPOSURE_NOTE}
               </p>
             </div>
-          ) : null}
-
-          {(isEnabled || isEffective) &&
-          status.credentialStore === "corrupt" ? (
-            <p className="text-sm text-gw-secondary">{SHARING_STORE_CORRUPT}</p>
           ) : null}
 
           {isEffective ? (

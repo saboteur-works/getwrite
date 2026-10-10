@@ -26,6 +26,7 @@ import {
   PAIRED_DEVICES_HEADING,
   PAIRED_DEVICES_LOAD_ERROR,
   PAIRED_DEVICES_UNREADABLE,
+  PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
   PAIRED_DEVICE_ALREADY_GONE,
   PAIRED_DEVICE_RENAME_ERROR,
   PAIRED_DEVICE_REVOKE_ERROR,
@@ -648,7 +649,7 @@ describe("PairedDevices visibility, refresh and poll (Task 9)", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows nothing with sharing off and a corrupt store (owner's Gate 4 decision)", async () => {
+  it("with sharing off and a corrupt store from the first read, says so with the path and offers no actions (OQ-17)", async () => {
     install([], {
       listResult: async () => ({
         kind: "corrupt",
@@ -657,9 +658,104 @@ describe("PairedDevices visibility, refresh and poll (Task 9)", () => {
       }),
     });
     const { container } = render(<PairedDevices isSharingActive={false} />);
-    await act(async () => {});
-    expect(container).toBeEmptyDOMElement();
+    expect(
+      await screen.findByRole("heading", { name: PAIRED_DEVICES_HEADING }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+    ).toBeInTheDocument();
+    expect(screen.getByText(pairedDeviceLocation(DIR))).toBeInTheDocument();
     expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(container).not.toBeEmptyDOMElement();
+  });
+
+  it("with sharing off, replaces a shown list by the message when a later poll reads the store as unreadable, in the same live region, and restores the list when it reads again", async () => {
+    vi.useFakeTimers();
+    let current: ListPairedDevicesResult = listOf([IPAD]);
+    install([IPAD], { listResult: async () => current });
+    const { container } = render(<PairedDevices isSharingActive={false} />);
+    await settle();
+    expect(screen.getByText("Safari on iPad")).toBeInTheDocument();
+    const region = screen.getByRole("status");
+    current = { kind: "corrupt", storeDirectory: DIR };
+    await settle(TICK);
+    expect(screen.queryByText("Safari on iPad")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(container).not.toBeEmptyDOMElement();
+    expect(
+      screen.getByRole("heading", { name: PAIRED_DEVICES_HEADING }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region.isConnected).toBe(true);
+    expect(
+      within(region).getByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+    ).toBeInTheDocument();
+    expect(
+      within(region).getByText(pairedDeviceLocation(DIR)),
+    ).toBeInTheDocument();
+    current = listOf([IPAD]);
+    await settle(TICK);
+    expect(
+      screen.queryByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+    ).toBeNull();
+    expect(screen.queryByText(pairedDeviceLocation(DIR))).toBeNull();
+    expect(screen.getByText("Safari on iPad")).toBeInTheDocument();
+  });
+
+  it("with sharing off and a missing store after devices were shown, shows the empty text and not the unreadable text", async () => {
+    vi.useFakeTimers();
+    let current: ListPairedDevicesResult = listOf([IPAD]);
+    install([IPAD], { listResult: async () => current });
+    render(<PairedDevices isSharingActive={false} />);
+    await settle();
+    current = listOf([]);
+    await settle(TICK);
+    expect(screen.getByText(PAIRED_DEVICES_EMPTY)).toBeInTheDocument();
+    expect(
+      screen.queryByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+    ).toBeNull();
+  });
+
+  it("with sharing off and the list read rejecting before any good read, shows the load error and neither unreadable text", async () => {
+    install([], {
+      listResult: async () => {
+        throw new Error("ipc");
+      },
+    });
+    render(<PairedDevices isSharingActive={false} />);
+    expect(
+      await screen.findByText(PAIRED_DEVICES_LOAD_ERROR),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(PAIRED_DEVICES_UNREADABLE)).toBeNull();
+    expect(
+      screen.queryByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+    ).toBeNull();
+  });
+
+  it("with sharing active and a corrupt store shows the sharing-on text and not the sharing-off text", async () => {
+    install([], {
+      listResult: async () => ({ kind: "corrupt", storeDirectory: DIR }),
+    });
+    render(<PairedDevices isSharingActive />);
+    expect(
+      await screen.findByText(PAIRED_DEVICES_UNREADABLE),
+    ).toBeInTheDocument();
+    expect(screen.getByText(pairedDeviceLocation(DIR))).toBeInTheDocument();
+    expect(
+      screen.queryByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
+    ).toBeNull();
+  });
+
+  it("the unreadable block uses no red class or token", async () => {
+    install([], {
+      listResult: async () => ({ kind: "corrupt", storeDirectory: DIR }),
+    });
+    const { container } = render(<PairedDevices isSharingActive={false} />);
+    await screen.findByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF);
+    expect(container.innerHTML).not.toMatch(/(^|[\s"'-])red(-|\s|"|')/);
+    expect(container.innerHTML).not.toMatch(/role="alert"/);
   });
 
   it("shows the list and revoke works with sharing off when the store holds a device (FR-20)", async () => {

@@ -4,6 +4,7 @@ import PairedDevices from "../../components/Sharing/PairedDevices";
 import {
   PAIRED_DEVICES_EMPTY,
   PAIRED_DEVICES_UNREADABLE,
+  PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
   PAIRED_DEVICE_ALREADY_GONE,
   PAIRED_DEVICE_RENAME_ERROR,
   PAIRED_DEVICE_REVOKE_ERROR,
@@ -113,6 +114,19 @@ export const Corrupt: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText(PAIRED_DEVICES_UNREADABLE),
+    ).toBeInTheDocument();
+    await expect(canvas.queryAllByRole("button")).toHaveLength(0);
+  },
+};
+
+export const CorruptSharingOff: Story = {
+  args: { isSharingActive: false },
+  beforeEach: () =>
+    stubBridge({ kind: "corrupt", storeDirectory: "/Users/you/store" }),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF),
     ).toBeInTheDocument();
     await expect(canvas.queryAllByRole("button")).toHaveLength(0);
   },

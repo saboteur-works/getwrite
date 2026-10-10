@@ -1,6 +1,7 @@
 import React from "react";
 import { afterEach, describe, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   render,
   screen,
@@ -9,9 +10,12 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { runAxe } from "./helpers/axe";
-import PairedDevices from "../../components/Sharing/PairedDevices";
+import PairedDevices, {
+  PAIRED_DEVICES_POLL_INTERVAL_MS,
+} from "../../components/Sharing/PairedDevices";
 import {
   PAIRED_DEVICES_UNREADABLE,
+  PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
   PAIRED_DEVICE_RENAME_ERROR,
 } from "../../components/Sharing/sharing-copy";
 import type {
@@ -45,6 +49,7 @@ function install(
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   delete (window as unknown as Record<string, unknown>).getwriteDesktop;
 });
@@ -79,6 +84,39 @@ describe("a11y: PairedDevices", () => {
     install({ kind: "corrupt", storeDirectory: "/x" });
     const { container } = render(<PairedDevices isSharingActive />);
     await screen.findByText(PAIRED_DEVICES_UNREADABLE);
+    await runAxe(container);
+  });
+
+  it("has no axe violations when the store is unreadable with sharing off", async () => {
+    install({ kind: "corrupt", storeDirectory: "/x" });
+    const { container } = render(<PairedDevices isSharingActive={false} />);
+    await screen.findByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF);
+    await runAxe(container);
+  });
+
+  it("has no axe violations when devices were listed and a later poll reads the store as unreadable, sharing off", async () => {
+    vi.useFakeTimers();
+    let current: ListPairedDevicesResult = {
+      kind: "ok",
+      devices: [IPAD],
+      storeDirectory: "/x",
+    };
+    (window as unknown as Record<string, unknown>).getwriteDesktop = {
+      chooseWorkspaceDir: vi.fn(),
+      listPairedDevices: vi.fn(async () => current),
+      renamePairedDevice: vi.fn(),
+      revokePairedDevice: vi.fn(),
+    };
+    const { container } = render(<PairedDevices isSharingActive={false} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    current = { kind: "corrupt", storeDirectory: "/x" };
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PAIRED_DEVICES_POLL_INTERVAL_MS);
+    });
+    screen.getByText(PAIRED_DEVICES_UNREADABLE_SHARING_OFF);
+    vi.useRealTimers();
     await runAxe(container);
   });
 
