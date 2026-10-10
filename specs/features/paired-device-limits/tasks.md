@@ -79,7 +79,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-5, FR-6, FR-7. Do not edit `file-lock.ts`, `credential-store.ts` or `device-store-writer.ts`; reuse the lock protocol by faithful reimplementation or, if `device-store-writer.ts` can be reused without changing its behaviour or schema checks, by importing its lock helpers only if already exported (do not add exports to it). The file name is a working name; keep it as a single constant exported only if a test imports it. Do not put limits in `device-credentials.json`.
 **POS:** task_19f32cf1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Desktop bridge: IPC handlers, preload and typed bridge for reading and changing the limits
 **What:** Add the two desktop-only channels (read effective limits plus file status, change one limit) behind the sender check, expose them on the preload bridge and type them in the renderer.
