@@ -26,6 +26,7 @@ import path from "node:path";
 import type { StorageAdapter } from "../io";
 import { getPlainStorageAdapter, readdir } from "../io";
 import { resolveProjectsDir } from "../projects-dir";
+import { validateProjectId } from "../project-path";
 import {
   convertProject,
   readConversionMarker,
@@ -87,6 +88,9 @@ export async function enableProjectEncryption(
   // Fail closed before any key or file is touched (FR23). Checked here rather
   // than in the UI, because a client-side gate leaves the path reachable.
   assertEncryptionAvailable();
+  // Defence in depth behind the route's own check: the id is joined into a
+  // path below, so a non-UUID must never reach the keyring or the filesystem.
+  validateProjectId(projectId);
 
   const adapter = options.adapter ?? getPlainStorageAdapter();
   const workspaceRoot = options.workspaceRoot ?? resolveProjectsDir();
