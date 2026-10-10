@@ -109,7 +109,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-10, FR-13, FR-16 (unit level), FR-19 (all-on on failure). The check reads only the header the gate forwards. Hosted-auth mode never reaches it (sharing and hosted sign-in never run together); cover it only at the unit level by the `off` case, as the spec says.
 **POS:** task_d9a486d2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Enforce the limits on project delete, Trash purge and revision delete, and update the existing route tests
 **What:** Call the shared check, before any model, session, storage or conversion call, in the three non-encryption limited routes and make their existing tests send the `off` classification.

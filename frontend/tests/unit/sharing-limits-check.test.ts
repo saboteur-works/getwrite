@@ -1,0 +1,148 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  decideLimit,
+  checkLimit,
+  refusalFor,
+} from "../../src/lib/sharing/limits-check";
+import { LIMIT_REFUSAL_MESSAGES } from "../../src/lib/sharing/limits-copy";
+import { CLASSIFICATION_HEADER } from "../../src/lib/sharing/classify-request";
+import {
+  LIMITS_FILE_NAME,
+  type LimitKey,
+  type Limits,
+} from "../../src/lib/sharing/limits-store";
+
+const KEYS: LimitKey[] = [
+  "projectDeletion",
+  "unlocking",
+  "locking",
+  "encryptionChanges",
+  "permanentDeletion",
+];
+
+function limits(value: boolean): Limits {
+  return {
+    projectDeletion: value,
+    unlocking: value,
+    locking: value,
+    encryptionChanges: value,
+    permanentDeletion: value,
+  };
+}
+
+function req(header: string | null): Request {
+  const headers = new Headers();
+  if (header !== null) headers.set(CLASSIFICATION_HEADER, header);
+  return new Request("http://localhost/api/x", {
+    method: "POST",
+    headers,
+    body: '{"secret":"s3"}',
+  });
+}
+
+describe("decideLimit", () => {
+  it.each(["off", "window"])("allows %s even when the limit is on", (h) => {
+    for (const k of KEYS)
+      expect(decideLimit(h, limits(true), k)).toBe("allowed");
+  });
+  it("confirmed: refused when on, allowed when off", () => {
+    for (const k of KEYS) {
+      expect(decideLimit("confirmed:d1", limits(true), k)).toBe("refused");
+      expect(decideLimit("confirmed:d1", limits(false), k)).toBe("allowed");
+    }
+  });
+  it.each(["not-confirmed:no-credential", null, "garbage", "confirmed:", ""])(
+    "treats %s as a paired device",
+    (h) => {
+      expect(decideLimit(h, limits(true), "locking")).toBe("refused");
+      expect(decideLimit(h, limits(false), "locking")).toBe("allowed");
+    },
+  );
+});
+
+describe("checkLimit", () => {
+  it.each(["off", "window"])("does not read the limits for %s", (h) => {
+    const reader = vi.fn(() => limits(true));
+    expect(checkLimit(req(h), "unlocking", reader)).toBeNull();
+    expect(reader).not.toHaveBeenCalled();
+  });
+
+  it("reads for a paired device and returns null when the limit is off", () => {
+    const reader = vi.fn(() => limits(false));
+    expect(checkLimit(req("confirmed:d1"), "unlocking", reader)).toBeNull();
+    expect(reader).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses with 403 and the exact body, no gate header, no echo", async () => {
+    const reader = (): Limits => ({ ...limits(false), locking: true });
+    for (const h of [
+      "confirmed:d1",
+      null,
+      "junk",
+      "not-confirmed:store-corrupt",
+    ]) {
+      const res = checkLimit(req(h), "locking", reader);
+      expect(res).not.toBeNull();
+      expect(res!.status).toBe(403);
+      expect(res!.headers.get("x-getwrite-gate")).toBeNull();
+      expect(res!.headers.get("location")).toBeNull();
+      const body: unknown = await res!.json();
+      expect(body).toEqual({
+        error: LIMIT_REFUSAL_MESSAGES.locking,
+        limit: "locking",
+      });
+      expect(Object.keys(body as object).sort()).toEqual(["error", "limit"]);
+    }
+  });
+
+  it("has a distinct non-empty message per limit", () => {
+    const messages = KEYS.map((k) => LIMIT_REFUSAL_MESSAGES[k]);
+    for (const m of messages) expect(m.length).toBeGreaterThan(10);
+    expect(new Set(messages).size).toBe(5);
+    for (const k of KEYS) expect(refusalFor(k).status).toBe(403);
+  });
+
+  describe("with the real file reader", () => {
+    let dir: string;
+    const saved = process.env.GETWRITE_SHARING_DIR;
+    beforeEach(() => {
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), "limits-check-"));
+      process.env.GETWRITE_SHARING_DIR = dir;
+    });
+    afterEach(() => {
+      if (saved === undefined) delete process.env.GETWRITE_SHARING_DIR;
+      else process.env.GETWRITE_SHARING_DIR = saved;
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+    const write = (l: Limits): void =>
+      fs.writeFileSync(
+        path.join(dir, LIMITS_FILE_NAME),
+        JSON.stringify({ version: 1, limits: l }),
+      );
+
+    it("unreadable file refuses every key", () => {
+      fs.mkdirSync(path.join(dir, LIMITS_FILE_NAME)); // a directory: read fails
+      for (const k of KEYS)
+        expect(checkLimit(req("confirmed:d1"), k)?.status).toBe(403);
+    });
+
+    it("a change applies on the next call in both directions", () => {
+      write(limits(false));
+      expect(checkLimit(req("confirmed:d1"), "unlocking")).toBeNull();
+      write(limits(true));
+      expect(checkLimit(req("confirmed:d1"), "unlocking")?.status).toBe(403);
+      write(limits(false));
+      expect(checkLimit(req("confirmed:d1"), "unlocking")).toBeNull();
+    });
+
+    it("exempt classification is allowed even with an unreadable file", () => {
+      fs.mkdirSync(path.join(dir, LIMITS_FILE_NAME));
+      expect(checkLimit(req("window"), "unlocking")).toBeNull();
+      expect(checkLimit(req("off"), "unlocking")).toBeNull();
+    });
+  });
+});
