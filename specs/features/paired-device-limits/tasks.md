@@ -259,7 +259,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-28. The note renders only when sharing is enabled or in effect today; keep that condition. Wording is working copy.
 **POS:** task_31eb0f64
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Conditional: validate `projectId` on `enable` and `export` in the encryption route (only if experiment (ii) shows the flaw)
 **What:** If Task 2 recorded a traversal `projectId` accepted, validate it with the project-scoped routes' UUID guard for every caller; otherwise close the task "not needed" with the measured result and no code change.

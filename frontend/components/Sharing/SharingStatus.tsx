@@ -6,10 +6,10 @@ import {
   type SharingStatus as SharingStatusInfo,
 } from "../../src/lib/desktop-bridge";
 import {
-  INTERIM_EXPOSURE_NOTE,
   NO_NETWORK_ADDRESS,
   SHARING_BLOCKED_BY_HOSTED_AUTH,
   SHARING_IS_ON,
+  SHARING_LIMITS_POINTER,
   SHARING_STATEMENT_AVAILABILITY,
   SHARING_STATEMENT_UNENCRYPTED,
   SHARING_STATUS_ERROR,
@@ -17,7 +17,7 @@ import {
 
 /**
  * Read-only "Sharing is on" indicator for the desktop window's main views
- * (Feature 75, FR-6, FR-7, FR-24, FR-30).
+ * (Feature 75, FR-6, FR-7, FR-24, FR-28).
  *
  * Renders nothing without the desktop bridge or while sharing is not in
  * effect. When hosted auth blocks sharing it shows the hosted-auth message
@@ -102,7 +102,7 @@ export default function SharingStatus(): JSX.Element | null {
       <p className="text-sm text-gw-secondary">
         {SHARING_STATEMENT_AVAILABILITY}
       </p>
-      <p className="text-sm text-gw-secondary">{INTERIM_EXPOSURE_NOTE}</p>
+      <p className="text-sm text-gw-secondary">{SHARING_LIMITS_POINTER}</p>
     </section>
   );
 }

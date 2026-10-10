@@ -11,7 +11,6 @@ import {
   type SharingStatus,
 } from "../../src/lib/desktop-bridge";
 import {
-  INTERIM_EXPOSURE_NOTE,
   NO_NETWORK_ADDRESS,
   PAIRING_CODE_ANNOUNCE_EXPIRED,
   PAIRING_CODE_ANNOUNCE_GENERATED,
@@ -36,6 +35,8 @@ import {
   SHARING_STATUS_ERROR,
   SHARING_SWITCH_LABEL,
   SHARING_WRONG_STATE,
+  summarizeLimits,
+  type LimitsReadState,
 } from "./sharing-copy";
 
 /** Formats a non-negative millisecond span as m:ss. */
@@ -59,7 +60,7 @@ function afterPaint(): Promise<void> {
 
 /**
  * Desktop-only sharing controls for App Settings (Feature 75, FR-2, FR-4,
- * FR-6, FR-7, FR-13, FR-14, FR-22, FR-24, FR-27, FR-30).
+ * FR-6, FR-7, FR-13, FR-14, FR-22, FR-24, FR-27, FR-28).
  *
  * Renders nothing without the desktop bridge. A sharing change is recorded
  * immediately and takes effect on restart; the restart is user-triggered and
@@ -78,6 +79,9 @@ export default function SharingSettings(): JSX.Element | null {
   const [code, setCode] = React.useState<PairingCodeInfo | null>(null);
   const [now, setNow] = React.useState<number>(() => Date.now());
   const [announcement, setAnnouncement] = React.useState("");
+  const [limitsRead, setLimitsRead] = React.useState<LimitsReadState>({
+    status: "loading",
+  });
   const switchId = React.useId();
 
   React.useEffect(() => {
@@ -170,6 +174,7 @@ export default function SharingSettings(): JSX.Element | null {
   const isRestartDue =
     status !== null && !isBlocked && isEnabled !== isEffective;
   const shouldShowStatements = !isBlocked && (isEnabled || isEffective);
+  const summary = summarizeLimits(limitsRead);
   const remaining = code ? code.expiresAt - now : 0;
 
   return (
@@ -224,9 +229,9 @@ export default function SharingSettings(): JSX.Element | null {
               <p className="text-sm text-gw-secondary">
                 {SHARING_STATEMENT_AVAILABILITY}
               </p>
-              <p className="text-sm text-gw-secondary">
-                {INTERIM_EXPOSURE_NOTE}
-              </p>
+              {summary ? (
+                <p className="text-sm text-gw-secondary">{summary}</p>
+              ) : null}
             </div>
           ) : null}
 
@@ -313,7 +318,10 @@ export default function SharingSettings(): JSX.Element | null {
       {status ? (
         <>
           <PairedDevices isSharingActive={isEnabled || isEffective} />
-          <LimitSwitches isSharingActive={isEnabled || isEffective} />
+          <LimitSwitches
+            isSharingActive={isEnabled || isEffective}
+            onLimitsRead={setLimitsRead}
+          />
         </>
       ) : null}
     </section>

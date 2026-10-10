@@ -31,6 +31,7 @@ import {
   LIMIT_LABEL_UNLOCKING,
   limitNowState,
   pairedDeviceLocation,
+  type LimitsReadState,
 } from "./sharing-copy";
 
 const LIMIT_ROWS: ReadonlyArray<{ key: SharingLimitKey; label: string }> = [
@@ -58,6 +59,11 @@ function changeFailureText(result: SetSharingLimitResult): string {
 export interface LimitSwitchesProps {
   /** Sharing is enabled or in effect; otherwise shown only if devices exist. */
   isSharingActive: boolean;
+  /**
+   * Called with the latest read of the limits each time it changes, so a
+   * summary elsewhere is built from the same state the switches show.
+   */
+  onLimitsRead?: (state: LimitsReadState) => void;
 }
 
 /**
@@ -75,6 +81,7 @@ export interface LimitSwitchesProps {
  */
 export default function LimitSwitches({
   isSharingActive,
+  onLimitsRead,
 }: LimitSwitchesProps): JSX.Element | null {
   const [bridge, setBridge] = React.useState<DesktopBridge | null>(null);
   const [limits, setLimits] = React.useState<GetSharingLimitsResult | null>(
@@ -131,6 +138,13 @@ export default function LimitSwitches({
       }
     })();
   }, [bridge, refresh]);
+
+  React.useEffect(() => {
+    if (!onLimitsRead) return;
+    if (hasLoadFailed) onLimitsRead({ status: "failed" });
+    else if (limits) onLimitsRead({ status: "read", result: limits });
+    else onLimitsRead({ status: "loading" });
+  }, [limits, hasLoadFailed, onLimitsRead]);
 
   if (!bridge) return null;
 

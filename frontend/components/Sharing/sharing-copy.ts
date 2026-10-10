@@ -1,3 +1,8 @@
+import type {
+  GetSharingLimitsResult,
+  SharingLimitKey,
+} from "../../src/lib/desktop-bridge";
+
 /**
  * All user-visible sharing strings (Feature 75), used verbatim from
  * `specs/features/home-network-sharing.md`. The owner reviewed this copy on
@@ -40,13 +45,6 @@ export const SHARING_STATEMENT_UNENCRYPTED =
 /** FR-7(b), spec. */
 export const SHARING_STATEMENT_AVAILABILITY =
   "Your other devices can reach your projects only while GetWrite is open and awake on this computer, and the device is on the same network.";
-
-/**
- * FR-30, spec. A separable piece of copy: Feature 77 removes it (delete this
- * constant and its render sites when that feature ships).
- */
-export const INTERIM_EXPOSURE_NOTE =
-  "A paired device can also lock, unlock and delete your projects.";
 
 /** FR-6, spec: shown instead of a blank address list. */
 export const NO_NETWORK_ADDRESS = "No network address found.";
@@ -311,4 +309,63 @@ export const LIMITS_CHANGE_FAILED = "The change could not be made.";
 /** Working copy: announced after a re-read, from the stored state. */
 export function limitNowState(label: string, isOn: boolean): string {
   return `${label} is now ${isOn ? "on" : "off"}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 24, FR-28). Working copy: the spec
+// requires text that reflects the actual limit state (App Settings) and the
+// pointer wording given in OQ-10, not the summary's words. No alert styling.
+// ---------------------------------------------------------------------------
+
+/** Working copy (wording from FR-28/OQ-10): the fixed pointer at the sharing indicator. */
+export const SHARING_LIMITS_POINTER =
+  "What paired devices can do is set in App Settings.";
+/** Working copy: the limits read failed, so nothing is claimed either way. */
+const LIMITS_SUMMARY_UNKNOWN =
+  "What paired devices can do could not be read, so it is not known here.";
+
+/** What the limits summary is generated from: the latest read of the limits. */
+export type LimitsReadState =
+  | { status: "loading" }
+  | { status: "failed" }
+  | { status: "read"; result: GetSharingLimitsResult };
+
+/** Working copy: each limit as the action it stops, in switch order. */
+const LIMIT_ACTIONS: ReadonlyArray<{ key: SharingLimitKey; action: string }> = [
+  { key: "projectDeletion", action: "delete projects" },
+  { key: "unlocking", action: "unlock" },
+  { key: "locking", action: "lock" },
+  { key: "encryptionChanges", action: "change encryption" },
+  { key: "permanentDeletion", action: "permanently delete" },
+];
+
+function joinActions(actions: string[], conjunction: "and" | "or"): string {
+  if (actions.length <= 1) return actions.join("");
+  return `${actions.slice(0, -1).join(", ")} ${conjunction} ${actions[actions.length - 1]}`;
+}
+
+/**
+ * Working copy. The App Settings summary of what a paired device may do,
+ * generated from the effective limits (FR-28). An unreadable limits file reads
+ * as every limit on, as the server treats it; a failed read says it could not
+ * be read and claims nothing; `null` while the first read is in flight.
+ */
+export function summarizeLimits(state: LimitsReadState): string | null {
+  if (state.status === "loading") return null;
+  if (state.status === "failed") return LIMITS_SUMMARY_UNKNOWN;
+  const { result } = state;
+  const isStopped = (key: SharingLimitKey): boolean =>
+    result.kind === "unreadable" || result.limits[key];
+  const stopped = LIMIT_ACTIONS.filter((l) => isStopped(l.key)).map(
+    (l) => l.action,
+  );
+  const allowed = LIMIT_ACTIONS.filter((l) => !isStopped(l.key)).map(
+    (l) => l.action,
+  );
+  const canText = `Paired devices can ${joinActions(allowed, "and")}.`;
+  if (stopped.length === 0) return canText;
+  if (allowed.length === 0) {
+    return `Paired devices cannot ${joinActions(stopped, "or")}.`;
+  }
+  return `${canText} They cannot ${joinActions(stopped, "or")}.`;
 }
