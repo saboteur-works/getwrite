@@ -17,3 +17,11 @@ export const LIMIT_REFUSAL_MESSAGES: Record<LimitKey, string> = {
   permanentDeletion:
     "Permanently deleting from the trash is turned off here. Do it at the desktop.",
 };
+
+/**
+ * Working copy (Feature 77, FR-11): creating the workspace passphrase is never
+ * allowed from a paired device, whatever the five switches say. Reported with
+ * the `encryptionChanges` limit value.
+ */
+export const PASSPHRASE_CREATION_REFUSAL_MESSAGE =
+  "Creating the encryption passphrase has to be done at the desktop.";

@@ -111,6 +111,7 @@ describe("POST /api/encryption fails closed on hosted", () => {
         headers: {
           "content-type": "application/json",
           origin: "http://localhost",
+          "x-getwrite-classification": "off",
         },
       }),
     );
@@ -154,6 +155,7 @@ describe("POST /api/encryption — locked-access rethrow (Feature 54, Task 14, F
         headers: {
           "content-type": "application/json",
           origin: "http://localhost",
+          "x-getwrite-classification": "off",
         },
       }),
     );

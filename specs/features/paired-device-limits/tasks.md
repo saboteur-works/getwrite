@@ -129,7 +129,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (encryption route), FR-12, FR-14, FR-16. Decide the action first (parse the body minimally), then call the check, then proceed. Do not add `projectId` validation here; that is Task 25 and only if Task 2 shows the flaw.
 **POS:** task_17f692d8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Walk-the-route-files tests (limited routes call the check; only the read route and enforcers import the reader; no writer imported)
 **What:** Add the tests that walk every `route.ts` under `frontend/app/api` to prove each limited route calls the shared check and that no route imports the limits writer or accepts a change.
