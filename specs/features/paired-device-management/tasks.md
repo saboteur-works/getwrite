@@ -56,7 +56,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-1 (data half), FR-2, FR-6, FR-7, FR-8 (store half), FR-16, FR-17 (outcomes), FR-18 (`corrupt` plus the directory), FR-20 (the operations work whatever the sharing state is; they read nothing about it). Revoke deletes the record and does not mark it (OQ-1a). Neither operation touches `pairing-state.json` (OQ-11). FR-12's "a revoked cookie never returns to confirmed" is proved against the server's reader in Task 10 and, if Task 1 said YES, also in Task 5.
 **POS:** task_41355416
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Concurrency tests for FR-14/FR-15 (pairing during revoke, rename + revoke, two renames, held lock)
 **What:** Prove with the real lock files and the real file that the main-side writer and the server's writer do not lose or resurrect devices, and that a lock that cannot be taken is reported as a failure, written for whichever outcome Task 1 recorded.
