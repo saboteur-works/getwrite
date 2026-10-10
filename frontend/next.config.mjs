@@ -1,10 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, isAbsolute, join, relative } from "node:path";
-// Node (pinned 24.15.0 via Volta) strips the types of this .ts file natively;
-// the explicit extension is required for that. Importing the constant keeps
-// the body limit derived from the media cap rather than a second copy of 100 MB.
-import { MAX_MEDIA_FILE_BYTES } from "./src/lib/models/media-validation.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const { version } = JSON.parse(
@@ -46,7 +42,13 @@ const resolvedQaDistDir =
 // frontend/node_modules/next/dist/docs/01-app/03-api-reference/05-config/
 // 01-next-config-js/proxyClientMaxBodySize.md. The media cap plus 1 MiB leaves
 // room for multipart framing.
-const PROXY_CLIENT_MAX_BODY_SIZE_BYTES = MAX_MEDIA_FILE_BYTES + 1024 * 1024;
+// This file must load on every Node version that runs it, including the
+// Node 20 used by the CLI test job, which cannot import a .ts file (measured:
+// ERR_UNKNOWN_FILE_EXTENSION on v20.20.2). So the media cap is repeated here
+// rather than imported from src/lib/models/media-validation.ts;
+// tests/unit/next-config-body-limit.test.ts fails if the two drift apart.
+const MEDIA_CAP_BYTES = 100 * 1024 * 1024;
+const PROXY_CLIENT_MAX_BODY_SIZE_BYTES = MEDIA_CAP_BYTES + 1024 * 1024;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
