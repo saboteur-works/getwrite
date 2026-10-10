@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, within, userEvent } from "storybook/test";
 import PairedDevices from "../../components/Sharing/PairedDevices";
 import {
   PAIRED_DEVICES_EMPTY,
   PAIRED_DEVICES_UNREADABLE,
+  PAIRED_DEVICE_ALREADY_GONE,
   PAIRED_DEVICE_RENAME_ERROR,
+  PAIRED_DEVICE_REVOKE_ERROR,
 } from "../../components/Sharing/sharing-copy";
 import type {
   ListPairedDevicesResult,
@@ -32,6 +34,7 @@ const SECOND_IPAD: PairedDevice = {
 function stubBridge(
   list: ListPairedDevicesResult,
   rename: PairedDeviceMutationResult = { kind: "ok" },
+  revoke: PairedDeviceMutationResult = { kind: "ok" },
 ): () => void {
   const target = window as unknown as Record<string, unknown>;
   const original = target.getwriteDesktop;
@@ -39,7 +42,7 @@ function stubBridge(
     chooseWorkspaceDir: async () => ({ ok: false, cancelled: true }),
     listPairedDevices: async () => list,
     renamePairedDevice: async () => rename,
-    revokePairedDevice: async () => ({ kind: "ok" }),
+    revokePairedDevice: async () => revoke,
   };
   return () => {
     target.getwriteDesktop = original;
@@ -129,6 +132,70 @@ export const RenameError: Story = {
     (await canvas.findByRole("button", { name: "Save" })).click();
     await expect(
       await canvas.findByText(PAIRED_DEVICE_RENAME_ERROR),
+    ).toBeInTheDocument();
+  },
+};
+
+export const RevokeDialogOpen: Story = {
+  beforeEach: () =>
+    stubBridge({
+      kind: "ok",
+      devices: [IPAD, MAC],
+      storeDirectory: "/Users/you/store",
+    }),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await expect(dialog.getByText("Revoke this device?")).toBeInTheDocument();
+    await expect(
+      dialog.getByRole("button", { name: "Keep Safari on iPad" }),
+    ).toHaveFocus();
+  },
+};
+
+export const RevokeError: Story = {
+  beforeEach: () =>
+    stubBridge(
+      { kind: "ok", devices: [IPAD], storeDirectory: "/Users/you/store" },
+      { kind: "ok" },
+      { kind: "write-failed" },
+    ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await userEvent.click(
+      dialog.getByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    await expect(
+      await canvas.findByText(PAIRED_DEVICE_REVOKE_ERROR),
+    ).toBeInTheDocument();
+  },
+};
+
+export const RevokeAlreadyRemoved: Story = {
+  beforeEach: () =>
+    stubBridge(
+      { kind: "ok", devices: [IPAD], storeDirectory: "/Users/you/store" },
+      { kind: "ok" },
+      { kind: "not-found" },
+    ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await userEvent.click(
+      dialog.getByRole("button", { name: "Revoke Safari on iPad" }),
+    );
+    await expect(
+      await canvas.findByText(PAIRED_DEVICE_ALREADY_GONE),
     ).toBeInTheDocument();
   },
 };

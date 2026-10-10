@@ -17,6 +17,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PairedDevices from "../../components/Sharing/PairedDevices";
+import Button from "../../components/common/UI/Button/Button";
 import {
   PAIRED_DEVICES_EMPTY,
   PAIRED_DEVICES_HEADING,
@@ -24,6 +25,7 @@ import {
   PAIRED_DEVICES_UNREADABLE,
   PAIRED_DEVICE_ALREADY_GONE,
   PAIRED_DEVICE_RENAME_ERROR,
+  PAIRED_DEVICE_REVOKE_ERROR,
   pairedDeviceLocation,
 } from "../../components/Sharing/sharing-copy";
 import type {
@@ -51,6 +53,9 @@ interface Fake {
       (id: string, name: string) => Promise<PairedDeviceMutationResult>
     >
   >;
+  revoke: ReturnType<
+    typeof vi.fn<(id: string) => Promise<PairedDeviceMutationResult>>
+  >;
   store: { devices: PairedDevice[] };
 }
 
@@ -63,6 +68,10 @@ function install(
       id: string,
       name: string,
     ) => PairedDeviceMutationResult;
+    revokeResult?: (
+      store: { devices: PairedDevice[] },
+      id: string,
+    ) => Promise<PairedDeviceMutationResult> | PairedDeviceMutationResult;
   } = {},
 ): Fake {
   const store = { devices: devices.map((d) => ({ ...d })) };
@@ -84,13 +93,23 @@ function install(
             return { kind: "ok" };
           })(),
   );
+  const revoke = vi.fn(
+    async (id: string): Promise<PairedDeviceMutationResult> => {
+      if (options.revokeResult) return options.revokeResult(store, id);
+      const before = store.devices.length;
+      store.devices = store.devices.filter((d) => d.id !== id);
+      return store.devices.length === before
+        ? { kind: "not-found" }
+        : { kind: "ok" };
+    },
+  );
   (window as unknown as Record<string, unknown>).getwriteDesktop = {
     chooseWorkspaceDir: vi.fn(),
     listPairedDevices: list,
     renamePairedDevice: rename,
-    revokePairedDevice: vi.fn(),
+    revokePairedDevice: revoke,
   };
-  return { list, rename, store };
+  return { list, rename, revoke, store };
 }
 
 afterEach(() => {
@@ -331,5 +350,260 @@ describe("PairedDevices", () => {
         screen.getByRole("button", { name: "Rename Safari on iPad" }),
       ).toHaveFocus(),
     );
+  });
+
+  describe("revoke (Task 8)", () => {
+    const THIRD: PairedDevice = {
+      id: "dev-3",
+      name: "Firefox on Linux",
+      createdAt: "2026-10-03T10:00:00.000Z",
+    };
+
+    async function openRevoke(name: string): Promise<HTMLElement> {
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name }));
+      return screen.findByRole("dialog");
+    }
+
+    it("opens a dialog with the spec copy naming the device, and cancel is the default focus", async () => {
+      install([IPAD, MAC]);
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Safari on iPad");
+      expect(
+        within(dialog).getByText("Revoke this device?"),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          "Safari on iPad will be refused from now on. It can pair again with a new code. Your other devices are not affected.",
+        ),
+      ).toBeInTheDocument();
+      expect(dialog.textContent).not.toContain("Unsaved edits");
+      expect(
+        within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
+      ).toBeInTheDocument();
+      const keep = within(dialog).getByRole("button", {
+        name: "Keep Safari on iPad",
+      });
+      await waitFor(() => expect(keep).toHaveFocus());
+      expect(document.activeElement).toBe(keep);
+    });
+
+    it("uses no red class and the unchanged destructive variant", async () => {
+      install([IPAD]);
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Safari on iPad");
+      for (const el of [dialog, ...Array.from(dialog.querySelectorAll("*"))]) {
+        expect(el.getAttribute("class") ?? "").not.toMatch(/red/i);
+      }
+      const { container } = render(<Button variant="destructive">x</Button>);
+      const reference = container.querySelector("button")?.className;
+      expect(
+        within(dialog).getByRole("button", { name: "Revoke Safari on iPad" })
+          .className,
+      ).toBe(reference);
+    });
+
+    it("builds the copy safely for a name containing braces", async () => {
+      install([{ ...IPAD, name: "{name} $& {0}" }]);
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke {name} $& {0}");
+      expect(
+        within(dialog).getByText(
+          "{name} $& {0} will be refused from now on. It can pair again with a new code. Your other devices are not affected.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("cancel closes, calls nothing, and returns focus to that device's Revoke button", async () => {
+      const fake = install([IPAD, MAC]);
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Chrome on Mac");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Keep Chrome on Mac" }),
+      );
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(fake.revoke).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Revoke Chrome on Mac" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("Escape closes without revoking and focus is not on the body", async () => {
+      const fake = install([IPAD, MAC]);
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      await openRevoke("Revoke Safari on iPad");
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(fake.revoke).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Revoke Safari on iPad" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("confirm revokes once, re-reads, announces, and focuses the next device's control", async () => {
+      const fake = install([IPAD, MAC, THIRD]);
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Chrome on Mac");
+      const readsBefore = fake.list.mock.calls.length;
+      await user.click(
+        within(dialog).getByRole("button", { name: "Revoke Chrome on Mac" }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(fake.revoke).toHaveBeenCalledTimes(1);
+      expect(fake.revoke).toHaveBeenCalledWith("dev-2");
+      expect(fake.list.mock.calls.length).toBeGreaterThan(readsBefore);
+      expect(screen.queryByText("Chrome on Mac")).toBeNull();
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Chrome on Mac was revoked.",
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Rename Firefox on Linux" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("moves focus to the previous device when the last one was revoked", async () => {
+      install([IPAD, MAC]);
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Chrome on Mac");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Revoke Chrome on Mac" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Rename Safari on iPad" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("moves focus to the heading when no device remains", async () => {
+      install([IPAD]);
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Safari on iPad");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("heading", { name: PAIRED_DEVICES_HEADING }),
+        ).toHaveFocus(),
+      );
+      expect(screen.getByText(PAIRED_DEVICES_EMPTY)).toBeInTheDocument();
+    });
+
+    it("calls revoke once on a double-click and disables confirm while pending", async () => {
+      let release: (r: PairedDeviceMutationResult) => void = () => {};
+      const fake = install([IPAD], {
+        revokeResult: (store, id) =>
+          new Promise<PairedDeviceMutationResult>((resolve) => {
+            release = (r) => {
+              store.devices = store.devices.filter((d) => d.id !== id);
+              resolve(r);
+            };
+          }),
+      });
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Safari on iPad");
+      const confirm = within(dialog).getByRole("button", {
+        name: "Revoke Safari on iPad",
+      });
+      await user.dblClick(confirm);
+      expect(fake.revoke).toHaveBeenCalledTimes(1);
+      expect(confirm).toBeDisabled();
+      release({ kind: "ok" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(fake.revoke).toHaveBeenCalledTimes(1);
+    });
+
+    it("says the device was already removed on not-found, refreshes, and keeps focus out of the body", async () => {
+      const fake = install([IPAD, MAC], {
+        revokeResult: (store, id) => {
+          store.devices = store.devices.filter((d) => d.id !== id);
+          return { kind: "not-found" };
+        },
+      });
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Safari on iPad");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
+      );
+      expect(
+        await screen.findByText(PAIRED_DEVICE_ALREADY_GONE),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByText("Safari on iPad")).toBeNull(),
+      );
+      expect(fake.list.mock.calls.length).toBeGreaterThanOrEqual(2);
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Rename Chrome on Mac" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it.each(["corrupt", "lock-not-acquired", "write-failed"] as const)(
+      "shows the revoke error on %s and the list still shows the stored device",
+      async (kind) => {
+        const fake = install([IPAD], { revokeResult: () => ({ kind }) });
+        const user = userEvent.setup();
+        render(<PairedDevices />);
+        const dialog = await openRevoke("Revoke Safari on iPad");
+        const readsBefore = fake.list.mock.calls.length;
+        await user.click(
+          within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
+        );
+        const message = await screen.findByText(PAIRED_DEVICE_REVOKE_ERROR);
+        expect(message.closest("[role='status']")).not.toBeNull();
+        expect(message.className).not.toMatch(/red|danger/i);
+        expect(PAIRED_DEVICE_REVOKE_ERROR).toBe(
+          "Could not revoke this device. It is still paired.",
+        );
+        await waitFor(() =>
+          expect(fake.list.mock.calls.length).toBeGreaterThan(readsBefore),
+        );
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.getByText("Safari on iPad")).toBeInTheDocument();
+        await waitFor(() =>
+          expect(
+            screen.getByRole("button", { name: "Revoke Safari on iPad" }),
+          ).toHaveFocus(),
+        );
+      },
+    );
+
+    it("shows the revoke error and the list when the revoke call rejects", async () => {
+      const fake = install([IPAD]);
+      fake.revoke.mockRejectedValueOnce(new Error("ipc"));
+      const user = userEvent.setup();
+      render(<PairedDevices />);
+      const dialog = await openRevoke("Revoke Safari on iPad");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
+      );
+      expect(
+        await screen.findByText(PAIRED_DEVICE_REVOKE_ERROR),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.getByText("Safari on iPad")).toBeInTheDocument();
+    });
+
+    it("has no Revoke all control", async () => {
+      install([IPAD, MAC]);
+      render(<PairedDevices />);
+      await screen.findByText("Chrome on Mac");
+      expect(screen.queryByRole("button", { name: /revoke all/i })).toBeNull();
+    });
   });
 });

@@ -96,7 +96,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-13, FR-17, FR-21, FR-22, FR-3 (UI half). The dialog is nested inside the App Settings dialog once Task 9 wires it, so Task 9 re-runs the focus tests inside `AppSettingsDialog`. Names containing `{` or `}` must not break the copy templates (build the strings with functions, not `replace`). Do not add a "Revoke all". Rename needs no confirmation (OQ-4).
 **POS:** task_1a83f989
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Wire into the sharing section: visibility rule, refresh on open and after actions, poll
 **What:** Mount `PairedDevices` inside `SharingSettings` under the rule "sharing enabled or in effect, or the store holds at least one device", with refresh on open, after every action and by a short poll while visible.

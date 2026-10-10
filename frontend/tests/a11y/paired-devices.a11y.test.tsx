@@ -1,6 +1,12 @@
 import React from "react";
 import { afterEach, describe, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { runAxe } from "./helpers/axe";
 import PairedDevices from "../../components/Sharing/PairedDevices";
@@ -28,12 +34,13 @@ const SAME: PairedDevice = {
 function install(
   list: ListPairedDevicesResult,
   rename: PairedDeviceMutationResult = { kind: "ok" },
+  revoke: PairedDeviceMutationResult = { kind: "ok" },
 ): void {
   (window as unknown as Record<string, unknown>).getwriteDesktop = {
     chooseWorkspaceDir: vi.fn(),
     listPairedDevices: vi.fn(async () => list),
     renamePairedDevice: vi.fn(async () => rename),
-    revokePairedDevice: vi.fn(),
+    revokePairedDevice: vi.fn(async () => revoke),
   };
 }
 
@@ -99,5 +106,84 @@ describe("a11y: PairedDevices", () => {
     );
     await screen.findByRole("textbox");
     await runAxe(container);
+  });
+
+  describe("revoke dialog", () => {
+    async function openDialog(): Promise<HTMLElement> {
+      const user = userEvent.setup();
+      await user.click(
+        await screen.findByRole("button", { name: "Revoke Chrome on Mac" }),
+      );
+      return screen.findByRole("dialog");
+    }
+    const two: ListPairedDevicesResult = {
+      kind: "ok",
+      devices: [IPAD, { ...IPAD, id: "d3", name: "Chrome on Mac" }],
+      storeDirectory: "/x",
+    };
+    function inList(): HTMLElement {
+      return screen.getByRole("heading", { name: "Paired devices" })
+        .parentElement as HTMLElement;
+    }
+
+    it("has no axe violations with the revoke dialog open", async () => {
+      install(two);
+      render(<PairedDevices />);
+      const dialog = await openDialog();
+      await runAxe(dialog);
+    });
+
+    it("keeps focus inside the list region after cancel", async () => {
+      install(two);
+      render(<PairedDevices />);
+      const dialog = await openDialog();
+      await userEvent
+        .setup()
+        .click(within(dialog).getByRole("button", { name: /^Keep / }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() =>
+        expect(inList().contains(document.activeElement)).toBe(true),
+      );
+      expect(document.activeElement).not.toBe(document.body);
+    });
+
+    it("keeps focus inside the list region after Escape", async () => {
+      install(two);
+      render(<PairedDevices />);
+      await openDialog();
+      await userEvent.setup().keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() =>
+        expect(inList().contains(document.activeElement)).toBe(true),
+      );
+      expect(document.activeElement).not.toBe(document.body);
+    });
+
+    it("keeps focus inside the list region after confirm", async () => {
+      install(two);
+      render(<PairedDevices />);
+      const dialog = await openDialog();
+      await userEvent
+        .setup()
+        .click(within(dialog).getByRole("button", { name: /^Revoke Chrome/ }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() =>
+        expect(inList().contains(document.activeElement)).toBe(true),
+      );
+      expect(document.activeElement).not.toBe(document.body);
+    });
+
+    it("has no axe violations showing a revoke error", async () => {
+      install(two, { kind: "ok" }, { kind: "write-failed" });
+      const { container } = render(<PairedDevices />);
+      const dialog = await openDialog();
+      await userEvent
+        .setup()
+        .click(within(dialog).getByRole("button", { name: /^Revoke Chrome/ }));
+      await screen.findByText(
+        "Could not revoke this device. It is still paired.",
+      );
+      await runAxe(container);
+    });
   });
 });

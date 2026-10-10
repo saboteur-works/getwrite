@@ -2,6 +2,7 @@
 
 import React from "react";
 import Button from "../common/UI/Button/Button";
+import ConfirmDialog from "../common/ConfirmDialog";
 import Input from "../common/UI/Input/Input";
 import {
   getDesktopBridge,
@@ -25,12 +26,21 @@ import {
   PAIRED_DEVICE_NAME_TOO_LONG,
   PAIRED_DEVICE_RENAME,
   PAIRED_DEVICE_RENAME_ERROR,
+  PAIRED_DEVICE_REVOKE,
+  PAIRED_DEVICE_REVOKE_ERROR,
+  PAIRED_DEVICE_REVOKE_TITLE,
   PAIRED_DEVICE_SAVE,
   pairedDeviceLocation,
   pairedDevicePairedOn,
   pairedDeviceRenameLabel,
   pairedDeviceRenameLabelWithDate,
   pairedDeviceRenamed,
+  pairedDeviceRevokeConfirm,
+  pairedDeviceRevokeDescription,
+  pairedDeviceRevokeKeep,
+  pairedDeviceRevokeLabel,
+  pairedDeviceRevokeLabelWithDate,
+  pairedDeviceRevoked,
 } from "./sharing-copy";
 
 type InvalidNameResult = Extract<
@@ -65,9 +75,15 @@ function invalidNameText(reason: InvalidNameResult["reason"]): string {
   }
 }
 
+/** The device a revoke confirmation is open for (name captured at open). */
+interface RevokeTarget {
+  id: string;
+  name: string;
+}
+
 /**
- * Desktop-only list of paired devices with rename (Feature 76, FR-1, FR-2,
- * FR-6, FR-7, FR-16 to FR-18, FR-21, FR-22). Renders nothing without the
+ * Desktop-only list of paired devices with rename and revoke (Feature 76,
+ * FR-1, FR-2, FR-3, FR-6, FR-7, FR-13, FR-16 to FR-18, FR-21, FR-22). Renders nothing without the
  * desktop bridge. Only `id`, `name` and `createdAt` are ever read or shown.
  *
  * After every rename attempt the list is re-read from the bridge and shown as
@@ -75,6 +91,11 @@ function invalidNameText(reason: InvalidNameResult["reason"]): string {
  * no `maxLength`: the 64-character rule is enforced in the main process and
  * counts code points, while `maxLength` counts UTF-16 units and would refuse
  * names main accepts. Main's refusal reason is always shown.
+ *
+ * Revoke opens a `ConfirmDialog`; Radix focuses its first button (Keep) on
+ * open and returns focus to the previously focused Revoke button on close.
+ * After a revoke the list is re-read and focus goes to the next device's
+ * Rename button, else the previous one's, else the list heading.
  */
 export default function PairedDevices(): JSX.Element | null {
   const [bridge, setBridge] = React.useState<DesktopBridge | null>(null);
@@ -85,6 +106,10 @@ export default function PairedDevices(): JSX.Element | null {
   const [invalidReason, setInvalidReason] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [message, setMessage] = React.useState("");
+  const [revokeTarget, setRevokeTarget] = React.useState<RevokeTarget | null>(
+    null,
+  );
+  const [isRevoking, setIsRevoking] = React.useState(false);
   const headingId = React.useId();
   const fieldId = React.useId();
   const sectionRef = React.useRef<HTMLElement | null>(null);
@@ -92,7 +117,7 @@ export default function PairedDevices(): JSX.Element | null {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const latestRead = React.useRef(0);
   // Where focus goes once the next render has settled: a device id (its
-  // Rename button), "heading", or "field".
+  // Rename button), "revoke:<id>" (its Revoke button), "heading", or "field".
   const pendingFocus = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -135,11 +160,13 @@ export default function PairedDevices(): JSX.Element | null {
     } else if (target === "heading") {
       headingRef.current?.focus();
     } else {
+      const isRevoke = target.startsWith("revoke:");
+      const id = isRevoke ? target.slice("revoke:".length) : target;
       const buttons = sectionRef.current?.querySelectorAll<HTMLButtonElement>(
-        "button[data-rename-for]",
+        isRevoke ? "button[data-revoke-for]" : "button[data-rename-for]",
       );
       const button = Array.from(buttons ?? []).find(
-        (b) => b.dataset.renameFor === target,
+        (b) => (isRevoke ? b.dataset.revokeFor : b.dataset.renameFor) === id,
       );
       if (!button) return;
       button.focus();
@@ -193,6 +220,70 @@ export default function PairedDevices(): JSX.Element | null {
     } else {
       setMessage(PAIRED_DEVICE_RENAME_ERROR);
     }
+  }
+
+  function openRevoke(device: PairedDevice): void {
+    setMessage("");
+    setRevokeTarget({ id: device.id, name: device.name });
+  }
+
+  function cancelRevoke(): void {
+    // A revoke already in flight cannot be cancelled from here.
+    if (isRevoking) return;
+    // Radix returns focus only to a Trigger, and this dialog has none, so
+    // focus is sent back to the device's Revoke button here.
+    if (revokeTarget) pendingFocus.current = `revoke:${revokeTarget.id}`;
+    setRevokeTarget(null);
+  }
+
+  /**
+   * Where focus goes once `target` is gone: the next remaining device in the
+   * order the writer saw, else the previous one, else the heading.
+   */
+  function focusAfterRemoval(
+    seen: PairedDevice[],
+    targetId: string,
+    fresh: ListPairedDevicesResult | null,
+  ): string {
+    const remaining = new Set(
+      fresh && fresh.kind !== "corrupt" ? fresh.devices.map((d) => d.id) : [],
+    );
+    if (remaining.has(targetId)) return `revoke:${targetId}`;
+    const index = seen.findIndex((d) => d.id === targetId);
+    const after = seen.slice(index + 1).find((d) => remaining.has(d.id));
+    if (after) return after.id;
+    const before = seen
+      .slice(0, Math.max(index, 0))
+      .reverse()
+      .find((d) => remaining.has(d.id));
+    return before ? before.id : "heading";
+  }
+
+  async function confirmRevoke(): Promise<void> {
+    if (!bridge || !revokeTarget || isRevoking) return;
+    const target = revokeTarget;
+    const seen = devices;
+    setIsRevoking(true);
+    setMessage("");
+    let outcome: "ok" | "not-found" | "failed" = "failed";
+    try {
+      const result = await bridge.revokePairedDevice(target.id);
+      if (result.kind === "ok") outcome = "ok";
+      else if (result.kind === "not-found") outcome = "not-found";
+    } catch {
+      outcome = "failed";
+    }
+    const fresh = await refresh(bridge);
+    setMessage(
+      outcome === "ok"
+        ? pairedDeviceRevoked(target.name)
+        : outcome === "not-found"
+          ? PAIRED_DEVICE_ALREADY_GONE
+          : PAIRED_DEVICE_REVOKE_ERROR,
+    );
+    pendingFocus.current = focusAfterRemoval(seen, target.id, fresh);
+    setRevokeTarget(null);
+    setIsRevoking(false);
   }
 
   async function submitRename(
@@ -265,6 +356,9 @@ export default function PairedDevices(): JSX.Element | null {
             const renameLabel = isDuplicate
               ? pairedDeviceRenameLabelWithDate(device.name, date)
               : pairedDeviceRenameLabel(device.name);
+            const revokeLabel = isDuplicate
+              ? pairedDeviceRevokeLabelWithDate(device.name, date)
+              : pairedDeviceRevokeLabel(device.name);
             const isEditing = editing?.id === device.id;
             return (
               <li
@@ -338,6 +432,15 @@ export default function PairedDevices(): JSX.Element | null {
                       >
                         {PAIRED_DEVICE_RENAME}
                       </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        data-revoke-for={device.id}
+                        aria-label={revokeLabel}
+                        onClick={() => openRevoke(device)}
+                      >
+                        {PAIRED_DEVICE_REVOKE}
+                      </Button>
                     </div>
                   </>
                 )}
@@ -350,6 +453,23 @@ export default function PairedDevices(): JSX.Element | null {
       <p role="status" aria-live="polite" className="text-sm text-gw-secondary">
         {message}
       </p>
+
+      <ConfirmDialog
+        isOpen={revokeTarget !== null}
+        title={PAIRED_DEVICE_REVOKE_TITLE}
+        description={
+          revokeTarget ? pairedDeviceRevokeDescription(revokeTarget.name) : ""
+        }
+        confirmLabel={
+          revokeTarget ? pairedDeviceRevokeConfirm(revokeTarget.name) : ""
+        }
+        cancelLabel={
+          revokeTarget ? pairedDeviceRevokeKeep(revokeTarget.name) : ""
+        }
+        onConfirm={() => void confirmRevoke()}
+        onCancel={cancelRevoke}
+        isConfirmDisabled={isRevoking}
+      />
     </section>
   );
 }

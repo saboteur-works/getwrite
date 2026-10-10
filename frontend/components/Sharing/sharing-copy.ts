@@ -164,3 +164,45 @@ export const PAIRED_DEVICE_NAME_CONTROL =
 export function pairedDeviceRenamed(storedName: string): string {
   return `Device renamed to ${storedName}.`;
 }
+
+// ---------------------------------------------------------------------------
+// Revoke (Feature 76, Task 8). "Spec" strings are the working copy in
+// `specs/features/paired-device-management.md`, verbatim. The name is
+// interpolated by functions, never by `String.replace`, so a name containing
+// `{`, `}` or `$` is shown as typed.
+// ---------------------------------------------------------------------------
+
+/** Spec. */
+export const PAIRED_DEVICE_REVOKE = "Revoke";
+/** Spec: dialog title. */
+export const PAIRED_DEVICE_REVOKE_TITLE = "Revoke this device?";
+/** Spec: dialog description. */
+export function pairedDeviceRevokeDescription(name: string): string {
+  return `${name} will be refused from now on. It can pair again with a new code. Your other devices are not affected.`;
+}
+/** Spec: dialog confirm button. */
+export function pairedDeviceRevokeConfirm(name: string): string {
+  return `Revoke ${name}`;
+}
+/** Spec: dialog cancel button. */
+export function pairedDeviceRevokeKeep(name: string): string {
+  return `Keep ${name}`;
+}
+/** Spec: announcement after a successful revoke. */
+export function pairedDeviceRevoked(name: string): string {
+  return `${name} was revoked.`;
+}
+/** Spec: corrupt, lock-not-acquired and write-failed. */
+export const PAIRED_DEVICE_REVOKE_ERROR =
+  "Could not revoke this device. It is still paired.";
+/** Working copy: accessible name of a row's Revoke button. */
+export function pairedDeviceRevokeLabel(name: string): string {
+  return `${PAIRED_DEVICE_REVOKE} ${name}`;
+}
+/** Working copy: the same, when another device has the same name. */
+export function pairedDeviceRevokeLabelWithDate(
+  name: string,
+  formattedDate: string,
+): string {
+  return `${PAIRED_DEVICE_REVOKE} ${name}, paired ${formattedDate}`;
+}
