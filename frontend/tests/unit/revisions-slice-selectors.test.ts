@@ -1,6 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+vi.mock("../../src/store/revision-transport-service", async (importActual) => ({
+  ...(await importActual<
+    typeof import("../../src/store/revision-transport-service")
+  >()),
+  removeRevision: vi.fn(),
+}));
+
+import { makeStore } from "../../src/store/store";
 import {
+  setProject,
+  setSelectedProjectId,
+} from "../../src/store/projectsSlice";
+import { setSelectedResourceId } from "../../src/store/resourcesSlice";
+import { removeRevision } from "../../src/store/revision-transport-service";
+import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
+import {
+  deleteRevisionForSelectedResource,
   selectCurrentRevisionContent,
   selectCurrentRevisionId,
   selectDeletingRevisionId,
@@ -133,5 +149,56 @@ describe("store/revisionsSlice selectors (T008)", () => {
     expect(selectFetchingRevisionId(state)).toBe("revision-2");
     expect(selectDeletingRevisionId(state)).toBe("revision-1");
     expect(selectRevisionsErrorMessage(state)).toBe("warning");
+  });
+});
+
+describe("deleteRevisionForSelectedResource rejection (Feature 77 Task 22)", () => {
+  function storeWithProject() {
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: "project-1",
+        name: "P",
+        rootPath: "/tmp/project-1",
+        folders: [],
+        resources: [],
+      } as never),
+    );
+    store.dispatch(setSelectedProjectId("project-1"));
+    store.dispatch(setSelectedResourceId("resource-1"));
+    return store;
+  }
+
+  it("flags a limit refusal in the rejected action's meta, keeps the server text as payload, and leaves errorMessage empty", async () => {
+    vi.mocked(removeRevision).mockRejectedValue(
+      new LimitRefusalError("Not from here.", "permanentDeletion"),
+    );
+    const store = storeWithProject();
+    const result = await store.dispatch(
+      deleteRevisionForSelectedResource({
+        resourceId: "resource-1",
+        revisionId: "revision-1",
+      }),
+    );
+    expect(deleteRevisionForSelectedResource.rejected.match(result)).toBe(true);
+    if (!deleteRevisionForSelectedResource.rejected.match(result)) return;
+    expect(result.payload).toBe("Not from here.");
+    expect(result.meta.limitRefusal).toBe(true);
+    expect(selectRevisionsErrorMessage(store.getState())).toBe("");
+  });
+
+  it("does not flag an ordinary failure, and records it in errorMessage", async () => {
+    vi.mocked(removeRevision).mockRejectedValue(new Error("disk full"));
+    const store = storeWithProject();
+    const result = await store.dispatch(
+      deleteRevisionForSelectedResource({
+        resourceId: "resource-1",
+        revisionId: "revision-1",
+      }),
+    );
+    if (!deleteRevisionForSelectedResource.rejected.match(result))
+      throw new Error("expected rejection");
+    expect(result.meta.limitRefusal).toBeUndefined();
+    expect(selectRevisionsErrorMessage(store.getState())).toBe("disk full");
   });
 });

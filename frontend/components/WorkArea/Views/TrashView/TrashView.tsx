@@ -242,6 +242,9 @@ export default function TrashView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Feature 77 Task 22: the server's message for a refused action, shown as
+  // plain text (not role="alert").
+  const [actionRefusal, setActionRefusal] = useState<string | null>(null);
   const [restoreNotices, setRestoreNotices] = useState<RestoreNotice[]>([]);
 
   const refetch = useCallback(() => {
@@ -299,6 +302,7 @@ export default function TrashView({
     if (selectedIds.size === 0) return;
     setReport(null);
     setActionError(null);
+    setActionRefusal(null);
     setRestoreNotices([]);
     setPendingAction({ kind: "restore", ids: Array.from(selectedIds) });
   }, [selectedIds]);
@@ -307,6 +311,7 @@ export default function TrashView({
     if (selectedIds.size === 0) return;
     setReport(null);
     setActionError(null);
+    setActionRefusal(null);
     setRestoreNotices([]);
     setPendingAction({
       kind: "purge",
@@ -319,6 +324,7 @@ export default function TrashView({
     if (allTopLevelIds.length === 0) return;
     setReport(null);
     setActionError(null);
+    setActionRefusal(null);
     setRestoreNotices([]);
     setPendingAction({
       kind: "purge",
@@ -425,12 +431,19 @@ export default function TrashView({
         }
       })
       .catch((err: unknown) => {
-        if (isLimitRefusalError(err)) void refreshLimits();
-        setActionError(
-          action.kind === "restore"
-            ? "Could not restore the selected items. Try again later."
-            : "Could not permanently delete the selected items. Try again later.",
-        );
+        if (isLimitRefusalError(err)) {
+          void refreshLimits();
+          // The server's own reason, as plain text: a retry cannot succeed.
+          setActionRefusal(err.message);
+          setActionError(null);
+        } else {
+          setActionRefusal(null);
+          setActionError(
+            action.kind === "restore"
+              ? "Could not restore the selected items. Try again later."
+              : "Could not permanently delete the selected items. Try again later.",
+          );
+        }
         setPendingAction(null);
       })
       .finally(() => setIsSubmitting(false));
@@ -492,6 +505,11 @@ export default function TrashView({
       {report && (
         <p role="status" data-testid="trash-batch-report">
           {report}
+        </p>
+      )}
+      {actionRefusal && (
+        <p role="status" data-testid="trash-batch-refusal">
+          {actionRefusal}
         </p>
       )}
       {actionError && (

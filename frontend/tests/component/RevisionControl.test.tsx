@@ -22,6 +22,7 @@ import {
 import type { Revision } from "../../src/lib/models/types";
 import { runAxe } from "../a11y/helpers/axe";
 import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
+import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
 import { LIMITS_CASES } from "../helpers/sharingLimitsMock";
 
 // Feature 77 Task 18: the controls under test now read the shared limits
@@ -321,4 +322,47 @@ describe("RevisionControl delete under paired-device limits (Feature 77 Task 18,
       }
     },
   );
+});
+
+describe("RevisionControl refused revision delete (Feature 77 Task 22, FR-26)", () => {
+  const REFUSAL_TEXT = "Deleting permanently has to be done on the computer.";
+
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    limitsMock.refresh.mockClear();
+    mockedToast.error.mockClear();
+    mockedToast.success.mockClear();
+  });
+
+  it("shows the server's message as plain text, keeps the revision, reports no deletion, and refreshes limits", async () => {
+    const { user, store } = await renderControl();
+    mockedRemove.mockRejectedValue(
+      new LimitRefusalError(REFUSAL_TEXT, "permanentDeletion"),
+    );
+    await user.click(
+      within(card("Name 1")).getByRole("button", { name: /delete revision/i }),
+    );
+    const message = await screen.findByText(REFUSAL_TEXT);
+    expect(message.className).not.toMatch(/red/);
+    expect(message.getAttribute("role")).not.toBe("alert");
+    expect(mockedToast.success).not.toHaveBeenCalled();
+    expect(mockedToast.error).toHaveBeenCalledWith(REFUSAL_TEXT);
+    expect(
+      store.getState().revisions.revisions.some((r) => r.id === "rev-1"),
+    ).toBe(true);
+    expect(screen.getByText("Name 1")).toBeInTheDocument();
+    expect(limitsMock.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("a non-refusal failure does not refresh limits", async () => {
+    const { user } = await renderControl();
+    mockedRemove.mockRejectedValue(new Error("disk full"));
+    await user.click(
+      within(card("Name 1")).getByRole("button", { name: /delete revision/i }),
+    );
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith("disk full"),
+    );
+    expect(limitsMock.refresh).not.toHaveBeenCalled();
+  });
 });

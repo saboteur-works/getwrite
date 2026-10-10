@@ -239,7 +239,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-26 (purge and revision half). Restore and list behaviour unchanged.
 **POS:** task_555d32d6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Desktop switches: five limit switches in `SharingSettings`, unlock warning, confirm-on-off, unreadable-store message
 **What:** Add the five switches to `SharingSettings`, shown under the paired-devices-list rule, with the always-visible unlock warning, the confirmation when Limit unlocking is switched off, and a message when the limits file is unreadable.

@@ -88,6 +88,7 @@ import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
 import { setupAppShellFetchStub } from "../helpers/appShellFetchStub";
 import { flushPendingEffects } from "../helpers/flushEffects";
+import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
@@ -1179,4 +1180,66 @@ describe("TrashView — Feature 77 Task 18 (FR-24): permanent deletion under pai
       }
     },
   );
+});
+
+describe("TrashView — Feature 77 Task 22 (FR-26): a refused purge is visible", () => {
+  const REFUSAL_TEXT = "Deleting permanently has to be done on the computer.";
+  const GENERIC =
+    "Could not permanently delete the selected items. Try again later.";
+
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    limitsMock.refresh.mockClear();
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+  });
+
+  async function purgeSelected(trigger: "delete" | "empty") {
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await screen.findAllByTestId("trash-row");
+    if (trigger === "delete") {
+      selectTrashRow("res-1");
+      fireEvent.click(screen.getByTestId("trash-delete-selected"));
+    } else {
+      fireEvent.click(screen.getByTestId("trash-empty-trash"));
+    }
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog)
+      .getAllByRole("button")
+      .find((b: HTMLElement) => /delete|empty/i.test(b.textContent ?? ""));
+    if (!confirm) throw new Error("no confirm button");
+    fireEvent.click(confirm);
+  }
+
+  it.each(["delete", "empty"] as const)(
+    "%s: a LimitRefusalError shows the server's message as plain text, keeps every row, and refreshes limits",
+    async (trigger) => {
+      mockedPurgeTrashItems.mockRejectedValue(
+        new LimitRefusalError(REFUSAL_TEXT, "permanentDeletion"),
+      );
+      await purgeSelected(trigger);
+      const message = await screen.findByText(REFUSAL_TEXT);
+      expect(screen.queryByText(GENERIC)).not.toBeInTheDocument();
+      expect(message.className).not.toMatch(/red/);
+      expect(message.getAttribute("role")).not.toBe("alert");
+      expect(screen.getAllByTestId("trash-row")).toHaveLength(3);
+      expect(
+        screen.queryByTestId("trash-batch-report"),
+      ).not.toBeInTheDocument();
+      expect(limitsMock.refresh).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("a purge failing for another reason keeps the generic text and does not refresh limits", async () => {
+    mockedPurgeTrashItems.mockRejectedValue(new Error("boom"));
+    await purgeSelected("delete");
+    expect(await screen.findByText(GENERIC)).toBeInTheDocument();
+    expect(screen.getAllByTestId("trash-row")).toHaveLength(3);
+    expect(limitsMock.refresh).not.toHaveBeenCalled();
+  });
 });
