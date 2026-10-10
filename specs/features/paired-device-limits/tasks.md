@@ -189,7 +189,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-21, FR-23, FR-20 (prompt-side triggers). This is the safety requirement: "not offered" means not mounted, not hidden and not disabled with the field present. The submit-time re-check narrows, and cannot close, the window; say so in the report. Never log the passphrase.
 **POS:** task_dfdc95bf
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Disabled-with-reason controls: project delete, Trash purge and empty, revision delete
 **What:** Show "Delete" (project), "Delete selected permanently", "Empty trash" and the revision delete control disabled with a visible reason when the paired device's limit is on; leave Restore enabled and leave them enabled while the state is unknown.

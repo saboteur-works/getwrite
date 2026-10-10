@@ -209,3 +209,16 @@ export function pairedDeviceRevokeLabelWithDate(
 ): string {
   return `${PAIRED_DEVICE_REVOKE} ${name}, paired ${formattedDate}`;
 }
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 17). Both strings are Working copy:
+// the spec (FR-23) requires the meaning, not these words. Neither names
+// "devices", and neither is styled as an alert.
+// ---------------------------------------------------------------------------
+
+/** Working copy: shown on the Start page, in place of the unlock prompt. */
+export const UNLOCK_AT_DESKTOP_MESSAGE =
+  "This workspace is locked. It has to be unlocked on the computer where GetWrite is installed.";
+/** Working copy: replaces the locked project card's "Unlock this workspace…" text. */
+export const LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP =
+  "Unlock this workspace on the computer where GetWrite is installed to see this project's name and open it.";

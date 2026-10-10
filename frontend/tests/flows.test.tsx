@@ -11,6 +11,18 @@ import EditView from "../components/WorkArea/EditView";
 import ExportPreviewModal from "../components/common/ExportPreviewModal";
 import CompilePreviewModal from "../components/common/CompilePreviewModal";
 import type { TextResource } from "../src/lib/models/types";
+
+// Feature 77 Task 17: StartPage now reads the shared limits state. This test
+// file is not about limits, so the hook is fixed at "exempt" (prompt allowed).
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 // Use a small, canonical test-local fixture instead of legacy `sampleProjects` placeholder.
 
 // Integration-style flow test: Start -> Open Project -> Open Resource -> Edit
