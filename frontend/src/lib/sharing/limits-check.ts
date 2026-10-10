@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 
 import { CLASSIFICATION_HEADER, parseClassification } from "./classify-request";
 import { LIMIT_REFUSAL_MESSAGES } from "./limits-copy";
-import { readLimits, type LimitKey, type Limits } from "./limits-store";
+import { allOn, readLimits, type LimitKey, type Limits } from "./limits-store";
 
 type LimitDecision = "allowed" | "refused";
 
@@ -57,4 +57,25 @@ export function checkLimit(
   return decideLimit(headerValue, read(), key) === "refused"
     ? refusalFor(key)
     : null;
+}
+
+/** What `GET /api/sharing/limits` tells a caller about its own limits. */
+export type LimitsRole =
+  | { role: "exempt" }
+  | { role: "paired"; limits: Limits };
+
+/**
+ * The caller's role from the forwarded header. Window and off are exempt and
+ * the file is not read; a missing or unparseable header is a paired caller
+ * with every limit on, again without a read (fail closed); only a classified
+ * paired device reads the file, fresh.
+ */
+export function limitsRoleFor(
+  request: Request,
+  read: () => Limits = () => readLimits(process.env),
+): LimitsRole {
+  const headerValue = request.headers.get(CLASSIFICATION_HEADER);
+  if (isExempt(headerValue)) return { role: "exempt" };
+  if (isUnclassified(headerValue)) return { role: "paired", limits: allOn() };
+  return { role: "paired", limits: read() };
 }

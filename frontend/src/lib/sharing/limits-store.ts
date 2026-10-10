@@ -32,7 +32,8 @@ export type LimitsRead =
   | { kind: "unreadable"; reason: string }
   | { kind: "unconfigured" };
 
-function allOn(): Limits {
+/** Every limit on: the fail-closed value. */
+export function allOn(): Limits {
   return {
     projectDeletion: true,
     unlocking: true,

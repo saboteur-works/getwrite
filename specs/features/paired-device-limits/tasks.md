@@ -149,7 +149,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-17, FR-18, FR-19, FR-16. The unpaired not-paired answer is produced by the gate, not the route; do not add gate logic. Keep the path free of the word `devices`.
 **POS:** task_ec99d09d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Client limits transport service (`createTransport`, native returns `exempt`)
 **What:** Add the client service that fetches `GET /api/sharing/limits` and validates the answer, with the native implementation returning `exempt`.
