@@ -159,7 +159,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-19, FR-20 (transport half). Unlike `auth-status`, which degrades to a safe default, this one must tell "failed" apart from "exempt" (failure-visibility); the caller treats failure as unknown. Do not cache.
 **POS:** task_6252b118
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Client limits state with the re-read triggers
 **What:** Add the client state `unknown | exempt | paired(limits)`, starting `unknown`, read after mount and re-read on the triggers of OQ-13.
