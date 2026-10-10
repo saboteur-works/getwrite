@@ -475,3 +475,25 @@ No regression found. Every difference from baseline is either added tests/files 
 ```
  M specs/features/paired-device-management/experiments.md
 ```
+
+## Exercise in the desktop app (pipeline lead, 2026-10-09)
+
+The real Electron app in development mode (`electron/dist/main.js`, built at `1058643c`'s tree; `isPackaged` false, so it spawned `next dev` on port 3000), launched and driven by Playwright's Electron driver from a throwaway script outside the tree, outside the command sandbox. `--user-data-dir` pointed at a temp folder; the script checked `app.getPath("userData")` equalled it before doing anything, so the owner's real settings and pairings were not touched. Sharing was off. `device-credentials.json` in that folder was seeded by hand with two devices ("Chrome on Android", "Safari on iPad") in the stored format with random hashes. The projects shown were the repo's own `projects/` folder.
+
+Observed:
+
+- The window loaded `http://localhost:3000/`. An unlock dialog was present (that projects folder holds an encrypted project) and covered the "App Settings" button until dismissed with "Continue without unlocking" (the accepted finding from Feature 75).
+- App Settings, sharing off: under "Home network sharing" ("Sharing is off") a "Paired devices" heading listed both devices with "Paired Oct 8, 2026, 9:00 AM" and "Paired Oct 9, 2026, 3:30 AM" (local time for the seeded UTC values) and buttons whose accessible names were "Rename <name>" and "Revoke <name>".
+- Rename with a blank name: the row showed a "Device name" field and "Enter a name for this device."; the file was unchanged.
+- Rename to "Kitchen iPad": the list showed the new name and "Device renamed to Kitchen iPad."; the file held the new name, the same `createdAt`, a hash still present, mode 600.
+- Revoke: the dialog read "Revoke this device? Chrome on Android will be refused from now on. It can pair again with a new code. Your other devices are not affected. Unsaved edits on that device will be lost." with "Keep Chrome on Android" focused and "Revoke Chrome on Android". Cancel left the file unchanged and returned focus to that row's Revoke button. Confirming removed the row, showed "Chrome on Android was revoked.", and the file then held one device.
+- A device appended to the file by hand while the list was open appeared 0.79 s later (the list polls every 5 s; where in the interval the write fell was not controlled).
+- With the file replaced by `not json` and sharing off, after 7 s the "Paired devices" heading and list were gone from App Settings and no message was shown. This is the behaviour the owner chose at Gate 4 (the corrupt-store message shows only when sharing is on or pending). It differs from the Task 9 report's statement that the section "stays shown" once shown; that statement was not re-examined.
+- One console error: "Failed to load resource: the server responded with a status of 404 (Not Found)" (not investigated).
+
+This exercised the real IPC path (preload, the three channels, the sender check passing for the app's own window, the main-side writer) in a running Electron, which the built-server sections did not. It did not exercise: a packaged or unpacked build, sharing switched on in the desktop app, a real paired phone, or a refused sender.
+
+### Found while running it, outside this feature
+
+- In development mode the app's server child (`next dev`) was listening on all interfaces: `lsof` showed `TCP *:3000`, and from the host a request to its own LAN address `http://10.0.0.226:3000/api/projects` returned 200 with no `x-getwrite-gate` header, with sharing off. The request came from the host, not a second device. The app passes `HOSTNAME=127.0.0.1` to that child; whether `next dev` ignores it was not separated from other explanations, and whether this predates Feature 75 was not checked. The packaged path uses the standalone server, for which a loopback bind with sharing off was reported by the owner's phone test (Feature 75, section J item 1).
+- After the Electron app closed, its `next dev` child was still running and had to be stopped by hand (twice observed). Not investigated.
