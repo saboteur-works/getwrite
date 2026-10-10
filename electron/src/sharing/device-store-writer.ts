@@ -104,7 +104,8 @@ function readStore(filePath: string): ReadResult {
   return { kind: "ok", records: devices as RawDeviceRecord[], root };
 }
 
-function writeAtomically(filePath: string, body: string): void {
+/** Replace `filePath` through a synced 0600 temp file; shared with `limits-store`. */
+export function writeAtomically(filePath: string, body: string): void {
   const tempPath = `${filePath}.${randomBytes(6).toString("hex")}.tmp`;
   try {
     const fd = fs.openSync(tempPath, "wx", 0o600);
@@ -119,6 +120,34 @@ function writeAtomically(filePath: string, body: string): void {
   } catch (error) {
     fs.rmSync(tempPath, { force: true });
     throw error;
+  }
+}
+
+export type LockedResult<T> =
+  | { acquired: true; value: T }
+  | { acquired: false };
+
+/**
+ * Run `fn` while holding `<filePath>.lock` (the protocol above); the lock is
+ * released in a `finally`. Shared with `limits-store`. Errors other than
+ * `EEXIST` on the lock open, and errors thrown by `fn`, propagate.
+ */
+export async function withFileLock<T>(
+  filePath: string,
+  options: DeviceStoreOptions,
+  fn: () => T,
+): Promise<LockedResult<T>> {
+  const lockPath = `${filePath}${LOCK_SUFFIX}`;
+  const acquired = await acquireLock(
+    lockPath,
+    options.retryLimit ?? DEFAULT_RETRY_LIMIT,
+    options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
+  );
+  if (!acquired) return { acquired: false };
+  try {
+    return { acquired: true, value: fn() };
+  } finally {
+    fs.rmSync(lockPath, { force: true });
   }
 }
 
@@ -140,22 +169,14 @@ export async function updateDeviceStore(
 ): Promise<DeviceStoreOutcome> {
   fs.mkdirSync(dir, { recursive: true });
   const filePath = path.join(dir, CREDENTIALS_FILE_NAME);
-  const lockPath = `${filePath}${LOCK_SUFFIX}`;
-  const acquired = await acquireLock(
-    lockPath,
-    options.retryLimit ?? DEFAULT_RETRY_LIMIT,
-    options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
-  );
-  if (!acquired) return { kind: "lock-not-acquired" };
-  try {
+  const locked = await withFileLock(filePath, options, () => {
     const current = readStore(filePath);
-    if (current.kind === "corrupt") return { kind: "corrupt" };
+    if (current.kind === "corrupt") return { kind: "corrupt" } as const;
     const next = mutate(current.records);
-    if (next === null) return { kind: "unchanged" };
+    if (next === null) return { kind: "unchanged" } as const;
     const body = `${JSON.stringify({ ...current.root, version: 1, devices: next }, null, 2)}\n`;
     writeAtomically(filePath, body);
-    return { kind: "written" };
-  } finally {
-    fs.rmSync(lockPath, { force: true });
-  }
+    return { kind: "written" } as const;
+  });
+  return locked.acquired ? locked.value : { kind: "lock-not-acquired" };
 }

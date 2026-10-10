@@ -1,0 +1,120 @@
+[
+  {
+    "name": "all five restricted",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": true, \"unlocking\": true, \"locking\": true, \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": {
+      "kind": "ok",
+      "limits": {
+        "projectDeletion": true,
+        "unlocking": true,
+        "locking": true,
+        "encryptionChanges": true,
+        "permanentDeletion": true
+      }
+    }
+  },
+  {
+    "name": "all five off",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": false, \"unlocking\": false, \"locking\": false, \"encryptionChanges\": false, \"permanentDeletion\": false}}",
+    "expected": {
+      "kind": "ok",
+      "limits": {
+        "projectDeletion": false,
+        "unlocking": false,
+        "locking": false,
+        "encryptionChanges": false,
+        "permanentDeletion": false
+      }
+    }
+  },
+  {
+    "name": "mixed",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": true, \"unlocking\": false, \"locking\": true, \"encryptionChanges\": false, \"permanentDeletion\": true}}",
+    "expected": {
+      "kind": "ok",
+      "limits": {
+        "projectDeletion": true,
+        "unlocking": false,
+        "locking": true,
+        "encryptionChanges": false,
+        "permanentDeletion": true
+      }
+    }
+  },
+  {
+    "name": "unknown keys tolerated",
+    "text": "{\"version\": 1, \"extra\": 1, \"limits\": {\"projectDeletion\": true, \"unlocking\": true, \"locking\": false, \"encryptionChanges\": true, \"permanentDeletion\": true, \"extra2\": \"x\"}}",
+    "expected": {
+      "kind": "ok",
+      "limits": {
+        "projectDeletion": true,
+        "unlocking": true,
+        "locking": false,
+        "encryptionChanges": true,
+        "permanentDeletion": true
+      }
+    }
+  },
+  { "name": "file absent", "text": null, "expected": { "kind": "missing" } },
+  { "name": "empty file", "text": "", "expected": { "kind": "invalid" } },
+  {
+    "name": "unparseable",
+    "text": "{not json",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "top level array",
+    "text": "[]",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "top level null",
+    "text": "null",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "version 2",
+    "text": "{\"version\": 2, \"limits\": {\"projectDeletion\": true, \"unlocking\": true, \"locking\": false, \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "version missing",
+    "text": "{\"limits\": {\"projectDeletion\": true, \"unlocking\": true, \"locking\": false, \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "version as string",
+    "text": "{\"version\": \"1\", \"limits\": {\"projectDeletion\": true, \"unlocking\": true, \"locking\": true, \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "limits missing",
+    "text": "{\"version\": 1}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "limits not an object",
+    "text": "{\"version\": 1, \"limits\": [true, true, true, true, true]}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "one limit missing",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": false, \"unlocking\": false, \"encryptionChanges\": false, \"permanentDeletion\": false}}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "one limit a string",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": true, \"unlocking\": true, \"locking\": \"false\", \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "one limit a number",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": true, \"unlocking\": 0, \"locking\": true, \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": { "kind": "invalid" }
+  },
+  {
+    "name": "one limit null",
+    "text": "{\"version\": 1, \"limits\": {\"projectDeletion\": true, \"unlocking\": null, \"locking\": true, \"encryptionChanges\": true, \"permanentDeletion\": true}}",
+    "expected": { "kind": "invalid" }
+  }
+]
