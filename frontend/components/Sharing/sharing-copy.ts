@@ -178,7 +178,7 @@ export const PAIRED_DEVICE_REVOKE = "Revoke";
 export const PAIRED_DEVICE_REVOKE_TITLE = "Revoke this device?";
 /** Spec: dialog description. */
 export function pairedDeviceRevokeDescription(name: string): string {
-  return `${name} will be refused from now on. It can pair again with a new code. Your other devices are not affected.`;
+  return `${name} will be refused from now on. It can pair again with a new code. Your other devices are not affected. Unsaved edits on that device will be lost.`;
 }
 /** Spec: dialog confirm button. */
 export function pairedDeviceRevokeConfirm(name: string): string {

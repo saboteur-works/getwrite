@@ -378,10 +378,12 @@ describe("PairedDevices", () => {
       ).toBeInTheDocument();
       expect(
         within(dialog).getByText(
-          "Safari on iPad will be refused from now on. It can pair again with a new code. Your other devices are not affected.",
+          "Safari on iPad will be refused from now on. It can pair again with a new code. Your other devices are not affected. Unsaved edits on that device will be lost.",
         ),
       ).toBeInTheDocument();
-      expect(dialog.textContent).not.toContain("Unsaved edits");
+      expect(dialog.textContent).toContain(
+        "Unsaved edits on that device will be lost.",
+      );
       expect(
         within(dialog).getByRole("button", { name: "Revoke Safari on iPad" }),
       ).toBeInTheDocument();
@@ -413,7 +415,7 @@ describe("PairedDevices", () => {
       const dialog = await openRevoke("Revoke {name} $& {0}");
       expect(
         within(dialog).getByText(
-          "{name} $& {0} will be refused from now on. It can pair again with a new code. Your other devices are not affected.",
+          "{name} $& {0} will be refused from now on. It can pair again with a new code. Your other devices are not affected. Unsaved edits on that device will be lost.",
         ),
       ).toBeInTheDocument();
     });

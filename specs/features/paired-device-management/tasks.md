@@ -136,7 +136,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 1
 **Notes:** Satisfies FR-13 (the OQ-4 condition). The sentence is the owner's approved wording from the triage default; do not paraphrase it. If a YES finding also shows a defect outside this feature (for example that unsaved text is not reported as lost), record it for the owner and do not fix it here.
 **POS:** task_b5be7e1b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Final suites compared with the baselines (RUNS DIRECTLY IN THE MAIN CHECKOUT)
 **What:** Run every suite again on the finished branch and compare each against the Task 2 baseline, including the CLI suite and knip.

@@ -409,3 +409,5 @@ Inside the command sandbox, `chromium.launch` failed: `browserType.launch: Targe
 Not run: nothing from the task list was skipped. Not tested here: the Electron window and IPC (Task 6 tests and Task 14), a physical phone (Task 14), a revoke while the sharing flag is off.
 
 warning sentence needed: YES, because with a real revoke performed while A's editor was open, the text typed after the revoke ("Bravo after revoke.") was not on disk afterwards (content and latest revision both held only the pre-revoke text), A never showed it as saved, and the pairing screen A ended on did not mention it.
+
+Task 12 decision taken = YES: the sentence "Unsaved edits on that device will be lost." was added to the revoke dialog description (`sharing-copy.ts`). Failing first: `PairedDevices > revoke (Task 8) > opens a dialog with the spec copy naming the device, and cancel is the default focus` (and `builds the copy safely for a name containing braces`) failed with "TestingLibraryElementError: Unable to find an element with the text: Safari on iPad will be refused from now on. ... Unsaved edits on that device will be lost.."; both pass after the change.
