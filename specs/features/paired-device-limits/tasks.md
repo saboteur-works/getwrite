@@ -279,7 +279,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 8
 **Notes:** Satisfies FR-15, FR-16, FR-17, FR-34, FR-35 (smoke half), FR-38. Runs in the main checkout, one build task at a time. Retry outside the sandbox on a sandbox-looking error and record which was used. Record facts without a named cause. If any item fails, record it and report it; do not fix code in this task.
 **POS:** task_62b00fb3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Real-browser checks (main checkout): a paired browser never shows a passphrase field while unlocking is limited
 **What:** With Playwright Chromium against the built server, verify on a locked encrypted workspace that a paired browser has no `input[type=password]` while unlocking is limited, including with the limits read delayed and blocked, that the prompt appears with the limit off, and that refusals are visible.

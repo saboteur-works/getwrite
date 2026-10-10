@@ -754,3 +754,63 @@ Recorded by the pipeline lead, 2026-10-10. The run halted because the existing F
 
 1. Resolve: that test's allow-list is updated to the four limited route files (`app/api/encryption/route.ts`, `app/api/project/[project-id]/trash/purge/route.ts`, `app/api/project/delete/route.ts`, `app/api/resource/revision/[resource-id]/route.ts`) plus the read route `app/api/sharing/limits/route.ts`. Task 12's walk test owns the tighter rule: those routes may import only the limits check and the limits reader from `lib/sharing`, and no other route may import them.
 2. A missing or unparseable classification header is refused for every limited action unconditionally, whatever the limits file says (the fail-closed reading, and what the read route already answers: `paired` with all five true). This supersedes the weaker wording of Task 9 as first built, under which such a request was subject to the limits file. The feature spec's FR-10 wording is to be aligned with this at the documentation stage.
+
+## Built-server verification
+
+Task 26. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `7268dcad`, tree clean at the start. `node --version` = v24.15.0. Recorded by the implementor of Task 26. Hosted-auth variables (`DATABASE_URL`, `BETTER_AUTH_SECRET`): not run (no database); the script unsets them for the servers it starts, and the only coverage of hosted mode is the unit-level `off` case. A missing or unparseable classification header cannot be produced over HTTP through the proxy (it always sets the header), so it is not asserted here; it is unit-covered only (`sharing-limits-check.test.ts`).
+
+### What ran, and where
+
+Everything below ran outside the command sandbox (`dangerouslyDisableSandbox: true`): the builds, both servers, the script and the tests. No run was attempted inside the sandbox first, so this section does not show whether any of these would have worked inside it.
+
+Commands, in order:
+
+1. `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before each server start in this task.
+2. `cd frontend && pnpm build` (exit 0), then `rm -rf frontend/.next/standalone/frontend/.next/static; cp -R frontend/.next/static frontend/.next/standalone/frontend/.next/static`.
+3. `cd electron && pnpm build` (`tsc`, exit 0). `electron/dist/sharing/limits-store.js` did not exist before this and exists after. `electron/dist` and `frontend/.next` are gitignored.
+4. `node specs/features/paired-device-limits/scripts/verify-limits.mjs standalone`, final run exit 0.
+5. `cd frontend && pnpm test:sharing-smoke` against that build, exit 0.
+6. `cd frontend && pnpm exec vitest run tests/unit/sharing-gate-enumeration.test.ts tests/unit/sharing-no-device-routes.test.ts`, exit 0, 2 files, 36 tests passed.
+7. `node specs/features/paired-device-limits/scripts/verify-limits.mjs dev`, exit 0. It ran after steps 5 and 6 because `next dev` writes into `frontend/.next`.
+
+### What the script does
+
+`scripts/verify-limits.mjs <standalone|dev>` refuses to run if anything listens on port 3000 (the refusal branch itself was not exercised: nothing listened, and no listener was created to test it; read, not run). It creates a throwaway root under `os.tmpdir()` (its real path is asserted to be inside the real temp directory and outside `~/Library/Application Support/getwrite-electron`, which the script never reads or writes), with its own `GETWRITE_PROJECTS_DIR` and `GETWRITE_SHARING_DIR`, a random per-run passphrase held in memory only, and a throwaway encrypted project created through the window. It starts server A (sharing on, window secret) in its own process group on a free loopback port (`next dev` is given `-H 127.0.0.1`; the Task 1 script did not pass that flag), pairs one device by writing `pairing-state.json` and POSTing the code (cookie held in memory), runs items (a) to (d), (f), (g), (h) on it, stops it, then starts server B (sharing off, same throwaway folders, the limits file all five on in its sharing directory) and runs (e). Every change to the limits file goes through the main-side writer `setLimit` from `electron/dist/sharing/limits-store.js` (no deviation). The only other file states are two deliberately unreadable ones that no writer produces: a mode-0 file whose contents say all five are off, and a directory at the file path. Fixtures (projects, resources, revisions, trashed items) are created by the window caller, which is never limited. The script prints request labels, status codes, the gate header value and `limit` keys; it prints no cookie, secret, passphrase or response text. After the run it checked the process groups it recorded (`ps -A -o pid=,pgid=`) and removed the root.
+
+Each limited action has an "applied" probe read through the window or the throwaway filesystem: project directory gone (delete); `isUnlocked` from `GET /api/encryption` (unlock, lock); `.encrypted.json` marker present (enable with a null passphrase); project directory count plus one (export); item gone from the Trash list (purge ids; purge all); the revision no longer readable (revision delete). `resume` has no observable effect on this workspace, so only its status is checked.
+
+### Results (identical in both builds)
+
+Both runs: 195 checks, 195 passed, 0 failed; 119 measured requests (each printed as a `ROW`), 201 setup requests (fixtures, state changes and probes through the window). Per item, passed/total:
+
+| Item | Standalone | `next dev` | What it covers |
+| --- | --- | --- | --- |
+| setup | 2/2 | 2/2 | throwaway encrypted project created through the window; fixture project has folders |
+| (a) | 21/21 | 21/21 | paired device, all five on, 9 actions: 403, body keys exactly `error,limit`, `error` a non-empty string, `limit` equal to the action's key, no `x-getwrite-gate`, no `location`, and the action not applied (8 probes); plus a forged `x-getwrite-classification: window` and `off` on project delete: still 403 `projectDeletion`, project still on disk |
+| (b) | 26/26 | 26/26 | for each key, only that key off: its actions return 200 and are applied; one key off does not allow another key's action (`unlocking` off: `lock` still 403; `permanentDeletion` off: project delete still 403); `enable` with a non-null passphrase with all five off: 403 `encryptionChanges`, project not encrypted, with the session unlocked and with it locked; afterwards the original passphrase still unlocks |
+| (c) | 51/51 | 51/51 | window caller, 9 actions, three file states (all five on; mode-0 unreadable file; directory at the path): 200 each, applied, no refusal |
+| (d) | 41/41 | 41/41 | no cookie, 9 actions with all five on and again with all five off: 401 with `x-getwrite-gate: not-paired`, no `limit` field, not applied; `GET /api/sharing/limits` the same; a made-up cookie on project delete, purge all and `GET /api/sharing/limits`: the same |
+| (e) | 22/22 | 22/22 | server B, sharing off, no credentials, file all five on: `GET /api/sharing/limits` is `{role:"exempt"}` (200); 9 actions return 200 and are applied; with the file unreadable, `lock` and project delete still 200 |
+| (f) | 10/10 | 10/10 | writer flips: `resume` with `unlocking` on, off, on, off gave 403, 200, 403, 200, each on the very next request, with `GET /api/sharing/limits` reporting the same value on the very next request each time; project delete 403 (project still present) then, after the writer set `projectDeletion` off, 200 (project gone), no restart |
+| (g) | 14/14 | 14/14 | `GET /api/sharing/limits`: window `{role:"exempt"}` with no `limits` field and `Cache-Control` containing `no-store`, also with the file unreadable; paired, all on: `{role:"paired"}` and five `true`, `no-store`; paired, mixed file (projectDeletion false, unlocking true, locking false, encryptionChanges true, permanentDeletion false): the five booleans equal the file; file missing: five `true`; file unreadable (mode 0 whose contents say all off; directory): five `true` and `resume` and `lock` still 403; unpaired: 401 not-paired |
+| (h) | 8/8 | 8/8 | paired, all five on, not refused (200, no `limit`): `GET /api/encryption`, `GET /api/projects`, Trash list, Trash restore (item restored), resource soft delete (item in Trash), soft delete of a leaf folder (folder in Trash), `GET` revision, `PATCH` revision `{preserve:true}` |
+
+(a) covered `project delete`, `unlock`, `resume`, `lock`, `enable` with a null passphrase, `export`, Trash purge with `{ids}`, Trash purge with `{all:true}` and `DELETE` revision, which is every limited action of FR-11 the spec lists.
+
+### Counts
+
+- Enumeration entries, measured by the walk in `frontend/scripts/sharing-refusal-smoke.mjs` (`enumerated entries: 91` in its output, and 91 from the identical walk copied into `verify-limits.mjs`, whose output includes `GET /api/sharing/limits: true`). The reference was 90, so the new route adds one. The count the Vitest test `sharing-gate-enumeration.test.ts` walks was not printed (it asserts at least 80 and that `GET /api/sharing/limits` appears exactly once and is not an exception); the "before" value is the earlier reference, not re-measured here.
+- Smoke checks: `checks: 28; failures: 0` (reference 28). The same 28 hold with the new route enumerated, so the check count did not change; the route is counted in the entries each "every enumerated URL refused" check walks, which `pnpm test:sharing-smoke` reports as 91.
+- Exceptions: `ENUMERATED_EXCEPTIONS` is `GET /pair` and `POST /api/sharing/pair`, plus the `/_next/static/` prefix; the test asserts `ENUMERATED_EXCEPTIONS.length + 1` equals `EXCEPTION_COUNT` = 3 and passed.
+- `sharing-gate-enumeration.test.ts` and `sharing-no-device-routes.test.ts`: 36 tests passed.
+
+### Defects and surprises, recorded as they happened
+
+1. The first standalone run failed 30 of 195 checks and the second failed 1. The first failures were a bug in this script, not in the product: it used the `project.id` inside `project.json` as the project's directory name, but the API's `projectId` is the directory name and the two differ. The script now takes the directory name from the projects folder listing. The second run's one failure is item 2 below. The two final runs are the ones tabulated above.
+2. Soft-deleting a folder that has child folders returned HTTP 404 `Folder not found` in every case tried, on both builds: `ENOENT: no such file or directory, rename '<projects>/<id>/folders/workspace/chapters/chapter-1' -> '<projects>/<id>/.trash/folders/chapter-1'`. Observations (OBS lines, not pass/fail checks), standalone and `next dev` alike: a paired device with all five on, first attempt: 404; the window on a fresh project, first attempt: 404; a paired device on a fresh project whose `.trash/folders` directory was created beforehand, first attempt: 404. So the 404 did not depend on the caller or on that directory's absence, and it carries no `limit` key and no gate header. A leaf folder soft-deletes with 200 for the paired device. This is a response of the existing folder soft-delete route on the `novel` project type's folder tree; the cause was not established (the experiment that would settle it is to repeat the call on the `main` branch's build and read `softDeleteFolder` against the `folders/` layout `createProjectFromType` writes). No product source was changed.
+3. The final item (h) therefore checks a leaf folder; that is a narrower check than "folder soft delete" for a folder with children.
+4. Not asserted or not run: hosted-auth (no database); the missing or unparseable classification header (unit-covered); the port-3000 refusal branch; the `.local` and non-loopback `Host` paths (every request used `127.0.0.1`); a second device or a real phone; the client UI (Task 27).
+
+### Cleanup
+
+After each run the script reported `process-group members still alive after stop: none` and `throwaway root removed: true`. After the last run: `lsof -iTCP -sTCP:LISTEN` showed no node or next listener, `ps` showed no `next dev` or `standalone/frontend/server.js` process, no `gw-limits-*` folder remained under the temp directory, and `git status --short` showed only `?? specs/features/paired-device-limits/scripts/verify-limits.mjs` (plus this file and `tasks.md` once edited).
