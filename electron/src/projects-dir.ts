@@ -221,6 +221,11 @@ interface WorkspaceConfigFile {
    * here applies to every project this installation opens.
    */
   globalNoiseWords?: string[];
+  /**
+   * Whether the user has turned on sharing projects on the home network.
+   * Absent means off. Independent of the workspace folder (FR-5).
+   */
+  sharingEnabled?: boolean;
 }
 
 /**
@@ -359,6 +364,37 @@ export function writeGlobalNoiseWords(
 ): void {
   const config = readWorkspaceConfig(userDataDir);
   writeWorkspaceConfig(userDataDir, { ...config, globalNoiseWords: words });
+}
+
+/**
+ * Reads whether home-network sharing is turned on (FR-2).
+ *
+ * Only a literal `true` reads as on. A missing file or field, a corrupt file,
+ * or a non-boolean value all read as off, which is the safe direction.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @returns `true` only when sharing was explicitly recorded as on.
+ */
+export function readSharingEnabled(userDataDir: string): boolean {
+  return readWorkspaceConfig(userDataDir).sharingEnabled === true;
+}
+
+/**
+ * Records whether home-network sharing is turned on.
+ *
+ * Read-modify-write: any other field already recorded in `workspace.json`
+ * is preserved, and the setting is not touched by changing the workspace
+ * folder (FR-5).
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @param enabled - Whether sharing should be on from now on.
+ */
+export function writeSharingEnabled(
+  userDataDir: string,
+  enabled: boolean,
+): void {
+  const config = readWorkspaceConfig(userDataDir);
+  writeWorkspaceConfig(userDataDir, { ...config, sharingEnabled: enabled });
 }
 
 /**

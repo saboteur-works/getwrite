@@ -1,0 +1,89 @@
+{
+  "cases": [
+    {
+      "name": "Mac with Wi-Fi, Ethernet, a public and a link-local address",
+      "port": 3000,
+      "hostname": "Mac-Mini.local",
+      "interfaces": {
+        "lo0": [
+          { "address": "127.0.0.1", "family": "IPv4", "internal": true },
+          { "address": "::1", "family": "IPv6", "internal": true }
+        ],
+        "en0": [
+          { "address": "fe80::1", "family": "IPv6", "internal": false },
+          { "address": "192.168.1.20", "family": "IPv4", "internal": false },
+          { "address": "10.0.0.5", "family": "IPv4", "internal": false }
+        ],
+        "en1": [
+          { "address": "8.8.8.8", "family": "IPv4", "internal": false },
+          { "address": "169.254.1.1", "family": "IPv4", "internal": false }
+        ]
+      },
+      "displayed": ["http://192.168.1.20:3000", "http://10.0.0.5:3000"],
+      "accepted": [
+        "localhost:3000",
+        "LOCALHOST:3000",
+        "127.0.0.1:3000",
+        "192.168.1.20:3000",
+        "10.0.0.5:3000",
+        "8.8.8.8:3000",
+        "169.254.1.1:3000",
+        "mac-mini.local:3000",
+        "Mac-Mini.LOCAL:3000"
+      ],
+      "refused": [
+        "evil.example:3000",
+        "localhost",
+        "192.168.1.20",
+        "localhost:3001",
+        "192.168.1.20:3001",
+        "[::1]:3000",
+        "[fe80::1]:3000",
+        "localhost.:3000",
+        "localhost:3000@evil.example",
+        "user@192.168.1.20:3000",
+        "localhost:3000/x",
+        "10.0.0.6:3000",
+        "mac-mini.local.:3000",
+        "mac-mini:3000",
+        "mac-mini.local.local:3000",
+        ""
+      ]
+    },
+    {
+      "name": "Linux box, hostname without .local, other port, one private address",
+      "port": 4321,
+      "hostname": "plainhost",
+      "interfaces": {
+        "lo": [{ "address": "127.0.0.1", "family": "IPv4", "internal": true }],
+        "eth0": [
+          { "address": "172.16.4.9", "family": "IPv4", "internal": false }
+        ]
+      },
+      "displayed": ["http://172.16.4.9:4321"],
+      "accepted": [
+        "localhost:4321",
+        "127.0.0.1:4321",
+        "172.16.4.9:4321",
+        "plainhost.local:4321"
+      ],
+      "refused": [
+        "localhost:3000",
+        "plainhost:4321",
+        "172.16.4.9:3000",
+        "172.16.4.10:4321"
+      ]
+    },
+    {
+      "name": "No network: loopback only",
+      "port": 3000,
+      "hostname": "offline.local",
+      "interfaces": {
+        "lo0": [{ "address": "127.0.0.1", "family": "IPv4", "internal": true }]
+      },
+      "displayed": [],
+      "accepted": ["localhost:3000", "127.0.0.1:3000", "offline.local:3000"],
+      "refused": ["192.168.1.20:3000", "evil.example:3000"]
+    }
+  ]
+}

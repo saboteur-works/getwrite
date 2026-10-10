@@ -34,6 +34,7 @@ import {
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import ResourceTree from "../ResourceTree/ResourceTree";
 import SmartFolders from "../ResourceTree/SmartFolders";
+import SharingStatus from "../Sharing/SharingStatus";
 import QueryBuilder from "../QueryBuilder/QueryBuilder";
 import SaveQueryDialog from "../QueryBuilder/SaveQueryDialog";
 import { buildFieldPickerFields } from "../QueryBuilder/FieldPicker";
@@ -1240,6 +1241,11 @@ export default function AppShell({
               {/* Main Work Area */}
               <main className="appshell-work-area">
                 <div className="appshell-work-area-content">
+                  {/* Persistent desktop sharing indicator: first child of the
+                      main work area, so it shows in every view of the shell. */}
+                  <div className="shrink-0 w-full">
+                    <SharingStatus />
+                  </div>
                   {resources ? (
                     <div className="shrink-0 w-full">
                       <div className="workarea-header border-b-hairline border-b-gw-border">

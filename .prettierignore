@@ -31,3 +31,5 @@ frontend/playwright-report/
 demo/out/
 android/www/*.js
 android/android/app/src/main/assets/
+# deliberately unparseable fixture (Task 10)
+frontend/tests/fixtures/sharing/device-credentials.corrupt.json

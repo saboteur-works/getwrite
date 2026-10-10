@@ -672,6 +672,21 @@ function installScrivenerBridge(): void {
     startDocxImport: () => new Promise<DocxImportOutcome>(() => {}),
     getGlobalNoiseWords: async () => [],
     setGlobalNoiseWords: async () => ({ ok: true }),
+    getSharingStatus: async () => ({
+      enabled: false,
+      effective: false,
+      blockedByHostedAuth: false,
+      addresses: [],
+      credentialStore: "missing",
+      port: 0,
+    }),
+    setSharingEnabled: async () => {},
+    generatePairingCode: async () => ({
+      code: "",
+      generatedAt: 0,
+      expiresAt: 0,
+    }),
+    getPairingCode: async () => null,
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }

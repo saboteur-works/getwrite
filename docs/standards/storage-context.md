@@ -58,7 +58,10 @@ that expects an ambient context — must export its handler wrapped in
 
 - Do not duplicate an inline `runInStorageContext(...)` call inside the handler body.
 - Do not rely on a `middleware.ts` to establish context — this repo has none, and
-  this feature does not add one.
+  this feature does not add one. (A root `frontend/proxy.ts` does exist as of
+  Feature 75, the home-network sharing request gate; it only refuses requests when
+  sharing is on and establishes no storage context, so routes still need
+  `withStorageContext`.)
 
 Matches the pattern used in `frontend/app/api/projects/route.ts`:
 

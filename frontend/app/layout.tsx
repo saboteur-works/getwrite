@@ -6,6 +6,7 @@ import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
 import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
 import NativeBootstrap from "../components/native/NativeBootstrap";
+import DeviceNotPairedGuard from "../components/Sharing/DeviceNotPairedGuard";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
@@ -50,6 +51,10 @@ export default function RootLayout({
             <NativeBootstrap />
           ) : null}
           <AppearanceRuntime />
+          {/* Feature 75 FR-20: inert on native (no gate there) and with sharing off. */}
+          {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native" ? null : (
+            <DeviceNotPairedGuard />
+          )}
           <TrashRefreshProvider>
             <div className="min-h-screen bg-gw-chrome text-gw-primary">
               {children}

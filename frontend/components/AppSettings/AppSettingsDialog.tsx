@@ -9,6 +9,7 @@ import {
   getGlobalNoiseWords,
   setGlobalNoiseWords,
 } from "../../src/lib/api/global-noise-words";
+import SharingSettings from "../Sharing/SharingSettings";
 import { toastService } from "../../src/lib/toast-service";
 
 export interface AppSettingsDialogProps {
@@ -174,6 +175,8 @@ export default function AppSettingsDialog({
             </Button>
           </form>
         </section>
+
+        <SharingSettings />
 
         <div className="project-modal-actions mt-6">
           <Button variant="secondary" onClick={onClose}>

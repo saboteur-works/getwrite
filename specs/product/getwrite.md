@@ -89,6 +89,13 @@ version.
   GetWrite is sync for one writer across devices, never collaboration
   between two people on one project (see FR-32 for the multi-device sync
   conflict model this implies).
+- **Home-network serving (FR-66 to FR-68) is for one writer on their own
+  devices.** It is not a household feature for separate people, not
+  collaboration, and not a hosted service: it needs no account, Postgres or
+  SMTP. Its first version has no headless, Docker or NAS delivery and no TLS
+  (see Out of Scope (Deferred)). It precedes hosted multi-device sync
+  (FR-30) as the first shipped multi-device path; FR-30 stays planned and is
+  not replaced (resolved: OQ-67). Owner decisions, 2026-10-09.
 
 ## Users
 
@@ -207,6 +214,11 @@ lost work.
   not clutter resources that exist for outlining or character profiles,
   while every field I have already defined keeps working as it does today.
   [Shipped]
+- US-27: As a writer on deadline who writes on the GetWrite desktop app, I
+  want to open my projects from my own other devices on my home network,
+  without creating an account or using a hosted service, so that I can read
+  and write from the couch or a tablet while my files stay on my own
+  machine. [Later]
 
 ## Functional Requirements
 
@@ -1191,6 +1203,87 @@ lost work.
   metadata-source folders — joining the two currently-separate filter
   surfaces. Full-text search has no predicate over those fields today, and
   the saved-query builder has no full-text-over-content predicate. [US-7]
+- FR-66: A writer MUST be able to choose, from the desktop (Electron) app,
+  to share their projects on their home network, so that their own other
+  devices can open them in a browser. The choice MUST be a single on/off
+  setting in the desktop app, MUST be off by default, and MUST be off again
+  after a fresh install; while it is off, the desktop app MUST NOT be
+  reachable from any other device. The desktop app MUST show, while sharing
+  is on, that it is on and the address other devices use. This is for one
+  writer on their own devices: it MUST NOT add accounts, per-person
+  permissions or any shared-project editing by two people. It MUST NOT
+  require hosted authentication, Postgres or SMTP. Headless, Docker and NAS
+  delivery are not part of this requirement (Out of Scope (Deferred)). The
+  first version's client is a browser; the native Android app as a client is
+  deferred (resolved: OQ-74). The desktop app MUST state in plain words that
+  other devices can reach the writer's projects only while the desktop app is
+  open, awake and on the same network; the product makes no stronger
+  availability promise (resolved: OQ-71). When two of the writer's devices
+  save the same resource, the product's promise is that the last save wins,
+  and the product MUST say so plainly to the writer (resolved: OQ-68). That
+  behaviour has not been measured: a keyword search of the revision save path
+  found no conflict check, and nobody has run two clients against one
+  resource. A two-client save test that demonstrates last-save-wins is a
+  prerequisite and MUST pass before the promise is treated as met; this
+  requirement does not assert that the current code already behaves this way.
+  FR-32's conflict model for hosted sync is separate and unaffected. Facts read from the code on 2026-10-09 (read, not run): the desktop app
+  starts its bundled server bound to `127.0.0.1` (`electron/src/main.ts`),
+  fixed when the server is started, so it is not reachable from the network
+  today; and with hosted authentication inactive, the API routes' session
+  check and Origin/Referer check are both skipped
+  (`frontend/app/api/_tenant/with-storage-context.ts`), so nothing in the
+  current account-free path would stop an unconfirmed device once the server
+  were reachable. Status: Not started; not scheduled. Owner decisions,
+  2026-10-09 (audience; delivery; relationship to FR-30, availability,
+  conflict promise, client: OQ-67, OQ-71, OQ-68, OQ-74). [US-27]
+- FR-67: A device other than the desktop app's own window MUST be confirmed
+  by the writer before it can read or change any project data. Confirmation
+  MUST use a short-lived, one-time pairing code that the desktop app
+  displays in its window; once a device has been confirmed it MUST hold its
+  own long-lived credential, and the writer MUST be able to see their paired
+  devices in the desktop app and revoke any one of them, after which that
+  device MUST be refused until it is paired again. A request from an
+  unconfirmed device, or with a revoked or unknown credential, MUST be
+  refused for every API route and page, not only some. An expired or
+  already-used pairing code MUST NOT confirm a device. The workspace
+  encryption passphrase is deliberately not used as the per-device key (the
+  owner considered it and chose the pairing code). The pairing code MUST
+  live about 2 to 5 minutes and MUST allow about 3 to 5 wrong attempts before
+  it stops working; the exact values within those ranges are left to the
+  feature spec (resolved: OQ-72). Each paired device MUST be named
+  automatically from its browser/device, and the writer MUST be able to
+  rename it. The desktop app's own window is always exempt from pairing
+  (resolved: OQ-70). The requirement is the exemption, not a mechanism: no
+  mechanism distinguishes the window from another client today, and whether
+  the server exposes the peer address to routes is unverified (read, not
+  run). A paired device is a full editor only: it MUST NOT be able to change
+  sharing, pair or revoke devices, or change lock state (neither lock nor
+  unlock); those happen in the desktop app (resolved: OQ-73). A paired
+  device MAY delete a project only while the writer has turned on a setting
+  in the desktop app that allows it (the owner's example label: "Allow
+  deletion from paired devices"); that setting MUST be off by default and
+  MUST be changeable only in the desktop app, never from a paired device,
+  and while it is off a project-deletion request from a paired device MUST
+  be refused. The desktop window's own ability to delete projects is
+  unchanged (resolved: OQ-75). That setting governs project deletion only: a
+  paired device deletes resources and folders within a project as normal (a
+  soft delete to the project's Trash), as ordinary editing, not governed by
+  that setting (Owner decision, 2026-10-09). A per-device
+  pairing credential is not an account (resolved: OQ-69). Status: Not
+  started; not scheduled. Owner decisions, 2026-10-09 (device confirmation;
+  OQ-69 to OQ-73, OQ-75). [US-27]
+- FR-68: When sharing is turned on, the desktop app MUST tell the writer in
+  plain words that the connection is unencrypted HTTP and is meant for
+  networks they trust. Encryption at rest (FR-25) is unchanged by sharing:
+  a workspace unlock applies to every paired device, and a lock locks all of
+  them. Unlock and lock are performed at the desktop only: the writer cannot
+  unlock an encrypted workspace from a paired device (accepted consequence;
+  resolved: OQ-73). The desktop build MUST remain fully functional with sharing off, no
+  network and no account. Status: Not started; not scheduled. Owner
+  decisions, 2026-10-09 (transport; encryption). Fact read from the code,
+  not run: the unlocked key set is held in a single module-level variable
+  in the server process (`keyring-session.ts`), which is consistent with
+  this requirement but was not exercised with two devices. [US-27]
 ## Constraints
 
 - Folder names carry no application semantics: any folder layout is valid,
@@ -1210,7 +1303,23 @@ lost work.
   measured gap and the crash it caused are recorded in
   `specs/features/trash-ui/follow-up-work.md` FU-10.
 - The desktop build must remain fully functional with no network access and
-  no account.
+  no account. Home-network serving (FR-66 to FR-68) is optional and off by
+  default, so it adds no requirement to this build's default behaviour;
+  its pairing gate is consistent with this wording: a per-device pairing
+  credential is not an account (resolved: OQ-69).
+- Home-network serving (FR-66 to FR-68) must not depend on hosted
+  authentication, Postgres or SMTP, and must not change how encryption
+  (FR-25) works. A device is unreachable-by-default and gets access only
+  through the pairing in FR-67; the first version offers plain HTTP only,
+  and its network-trust warning is part of the requirement (FR-68). The
+  promise when two of the writer's devices save the same resource is "last
+  save wins, and the product says so" (resolved: OQ-68); what the code does
+  in that case has not been measured, and a two-client save test must
+  demonstrate it before the promise is treated as met. The desktop app's own
+  window is exempt from pairing (resolved: OQ-70); a paired device cannot
+  change sharing, pairing or lock state (resolved: OQ-73). The product
+  promises no availability beyond the desktop app being open, awake and on
+  the same network (resolved: OQ-71).
 - A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
   2026-09-12), and a writer-facing UI import path for the Electron desktop
   build has since shipped alongside it (FR-43, shipped 2026-09-13); a CLI
@@ -2613,6 +2722,52 @@ were built around.
 **Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: the Timeline reads only built-in keys and no custom fields; Organizer's `cardBody.ts` and `organizerFilters.ts` read `resource.userMetadata[field.key]` directly, without reference to sidebar visibility.
 **Impact:** FR-58; Organizer and Timeline requirements.
 
+**OQ-67 (resolved): Does home-network serving (FR-66 to FR-68) replace, precede, or sit beside hosted multi-device sync (FR-30)?**
+**Resolution:** It precedes hosted multi-device sync as the first shipped multi-device path. FR-30 stays planned and is not replaced or dropped.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1).
+**Impact:** FR-30, FR-66; the Non-goals bullet on home-network serving.
+
+**OQ-68 (resolved): What does the product promise when two of the writer's devices have the same resource open (the conflict model), and how does that relate to FR-32?**
+**Resolution:** Last save wins, stated plainly to the writer. The requirement is the promise: the product says so. FR-32's conflict model for hosted sync is separate and unaffected. What the code does today when two devices save one resource has not been measured (a keyword search of the revision save path found no conflict check; nobody ran it), so this decision does not assert that the current code already behaves this way. A two-client save test that demonstrates last-save-wins is a prerequisite and must pass before the promise is treated as met.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 2).
+**Impact:** FR-66 (what "open on my other devices" may be relied on for); FR-32 (unaffected).
+
+**OQ-69 (resolved): Is a pairing gate (FR-67) compatible with the constraint that GetWrite is "no-account, local-first" as currently worded, or does the wording need to change?**
+**Resolution:** The Constraints wording stands, with a clarifying sentence that a per-device pairing credential is not an account.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1).
+**Impact:** Constraints (the no-network/no-account bullet), FR-67.
+
+**OQ-70 (resolved): Is the desktop app's own window exempt from pairing?**
+**Resolution:** Yes. The desktop app's own window is always exempt from pairing. The requirement is the exemption, not a mechanism. Unknown, stated as such: no mechanism distinguishes the app's own window from another client today, and whether the server exposes the peer address to routes is unverified (read, not run).
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1).
+**Impact:** FR-67; the guarantee in the Constraints that desktop works with no account.
+
+**OQ-71 (resolved): What does the product promise about availability, given the writer's projects are served from a desktop app that can be closed, asleep, or on another network?**
+**Resolution:** No availability promise. The app states that other devices can reach projects only while the desktop app is open, awake and on the same network.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1).
+**Impact:** FR-66; Out of Scope (Deferred) headless delivery.
+
+**OQ-72 (resolved): What are the pairing code's lifetime, the number of wrong attempts allowed, and how is a paired device named and shown in the device list?**
+**Resolution:** The pairing code lives about 2 to 5 minutes and allows 3 to 5 wrong attempts. The exact values within those ranges are left to the feature spec. A paired device is named automatically from its browser/device, and the writer can rename it.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (short option).
+**Impact:** FR-67 testability: the feature spec fixes the exact values.
+
+**OQ-73 (resolved; project deletion resolved separately in OQ-75): May a paired device unlock or lock the workspace, and may it change sharing, pair or revoke other devices, or delete projects?**
+**Resolution:** A paired device gets the full editor only. It may not change sharing, pair or revoke devices, or change lock state (neither lock nor unlock). Accepted consequence: the writer cannot unlock an encrypted workspace from a paired device; unlock and lock happen at the desktop and apply to all paired devices. The owner's answer did not address deleting projects; that point was split out and is resolved in OQ-75.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 2). An unlock applying to every paired device and a lock locking all of them was decided earlier the same day.
+**Impact:** FR-67, FR-68.
+
+**OQ-74 (resolved): Is a paired device a browser only, or may the native Android app also be a client of the desktop's shared projects?**
+**Resolution:** Browser only in the first version. The Android app as a client is deferred, and the owner wants it followed up as soon as possible after this ships (recorded in Out of Scope (Deferred); a stated priority, not a schedule).
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1).
+**Impact:** FR-66, US-27; Out of Scope (Deferred).
+
+**OQ-75 (resolved): May a paired device delete a project?**
+**Resolution:** Yes, but only while the writer has turned on a setting in the desktop app that allows it (the owner's example label: "Allow deletion from paired devices"). The setting is an opt-in, so it is off by default. It can be changed only in the desktop app, never from a paired device (consistent with OQ-73: a paired device cannot change sharing settings). While it is off, a project-deletion request from a paired device MUST be refused. The desktop window's own ability to delete projects is unchanged.
+Scope confirmation (owner decision, 2026-10-09): asked whether the setting should also govern deleting a resource or folder from a paired device (today a soft delete to the project's Trash), the owner answered: "Project deletion only is correct, users should be able to delete resources as normal within a project." The setting governs project deletion only; a paired device deletes resources and folders within a project as ordinary editing, not governed by that setting. FR-67 states this as decided.
+**Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1, with an opt-in from the desktop side: "Allow deletion from paired devices" checkbox); scope confirmed by the owner, 2026-10-09.
+**Impact:** FR-67.
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -2715,3 +2870,17 @@ were built around.
   content. A read-only scan of the owner's `~/Documents/GetWrite` workspace
   found the same 11 in that project's copy there and none in its other three
   projects (132 text resources scanned).
+- Home-network serving, deferred parts (FR-66 to FR-68; Owner decisions,
+  2026-10-09). Headless, Docker and NAS delivery of the same capability
+  (there is no Dockerfile or self-host guide in the repo today, read, not
+  run). TLS for the home-network connection: the first version is HTTP-only
+  with a plain statement to the writer that it is for trusted networks. A
+  household of separate people sharing one install, and any collaboration
+  between people, stay out of scope as permanent non-goals. These are
+  deferred, not decided against, except collaboration, which is a permanent
+  non-goal. The native Android app as a client of the desktop's shared
+  projects (resolved: OQ-74; Owner decision, 2026-10-09): the first version
+  is browser-only. The owner wants Android-as-client followed up as soon as
+  possible after home-network serving ships; this is a stated priority, not a
+  schedule or a commitment to a date. Android runs its data layer in-process,
+  so pointing it at a desktop server would be a different mode.

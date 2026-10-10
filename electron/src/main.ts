@@ -3,19 +3,41 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  session,
   shell,
   utilityProcess,
 } from "electron";
-import type { UtilityProcess } from "electron";
+import type { IpcMainInvokeEvent, UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
+import { randomBytes } from "crypto";
+import { PORT, localOrigin } from "./server-config";
+import { isLocalOriginUrl, isTrustedSender } from "./navigation-guard";
+import {
+  createWindowSecret,
+  installWindowSecret,
+} from "./sharing/window-secret";
+import { waitForServer, type ReadinessGet } from "./sharing/server-readiness";
+import { buildServerBindEnv, resolveSharingMode } from "./sharing/sharing-mode";
+import os from "os";
+import {
+  buildSharingStatus,
+  type SharingStatus,
+} from "./sharing/sharing-status";
+import { readCredentialStoreStatus } from "./sharing/store-status";
+import {
+  createPairingSession,
+  type PairingCodeInfo,
+} from "./sharing/pairing-session";
 import fs from "fs";
 import {
   ensureProjectsDir,
   legacyProjectsDirs,
   migrateLegacyProjectsDir,
   readGlobalNoiseWords,
+  readSharingEnabled,
+  writeSharingEnabled,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
@@ -42,7 +64,6 @@ import type {
   ImportRequest as DocxImportRequest,
 } from "./docx-import/handle-import-request";
 
-const PORT = 3000;
 let serverProcess: ChildProcess | UtilityProcess | null = null;
 let logStream: fs.WriteStream | null = null;
 
@@ -116,38 +137,38 @@ function resolveDirectories() {
   };
 }
 
-function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeoutMs;
-    const check = () => {
-      http
-        .get(url, (res) => {
-          if (res.statusCode && res.statusCode < 500) {
-            resolve();
-          } else {
-            retry();
-          }
-        })
-        .on("error", retry);
-    };
-    const retry = () => {
-      if (Date.now() > deadline) {
-        reject(new Error("Server did not start in time"));
-        return;
-      }
-      setTimeout(check, 500);
-    };
-    check();
+/** Node `http` sender for the readiness check (see `server-readiness.ts`). */
+const httpReadinessGet: ReadinessGet = (url, headers, onResponse) => {
+  const request = http.get(url, { headers }, (res) => {
+    res.resume();
+    onResponse(res.statusCode);
   });
-}
+  return { onError: (callback) => void request.on("error", callback) };
+};
+
+/**
+ * Created once per launch. Held here and in the server's env only; never
+ * logged and never sent over IPC or exposed through the preload bridge.
+ */
+const windowSecret = createWindowSecret(randomBytes);
 
 function startServer(
   dirs: ReturnType<typeof resolveDirectories>,
 ): ChildProcess | UtilityProcess {
+  // The mode is computed once; the bind and the gate-on signal both come from
+  // it through buildServerBindEnv (FR-34).
+  const mode = resolveSharingMode({
+    enabled: readSharingEnabled(app.getPath("userData")),
+    env: process.env,
+  });
+  if (mode.blockedByHostedAuth) {
+    log(
+      "sharing is not started: hosted auth is configured; listening on loopback only",
+    );
+  }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PORT: String(PORT),
-    HOSTNAME: "127.0.0.1",
     GETWRITE_PROJECTS_DIR: dirs.projectsDir,
     GETWRITE_TEMPLATES_DIR: dirs.templatesDir,
     // Marks this server as the Electron desktop build so the frontend can gate
@@ -156,6 +177,12 @@ function startServer(
     GETWRITE_DESKTOP: "1",
     GETWRITE_REPO: "saboteur-works/getwrite",
     GETWRITE_APP_VERSION: resolveAppVersion(),
+    // Sharing gate inputs (FR-12, FR-24). The secret stays in this process and
+    // the server's env. HOSTNAME, GETWRITE_BIND and GETWRITE_SHARING come only
+    // from buildServerBindEnv.
+    GETWRITE_WINDOW_SECRET: windowSecret,
+    GETWRITE_SHARING_DIR: app.getPath("userData"),
+    ...buildServerBindEnv(mode),
   };
 
   log(`standaloneDir: ${dirs.standaloneDir}`);
@@ -243,10 +270,65 @@ function registerWorkspaceHandlers(): void {
   });
 
   ipcMain.handle("getwrite:restart", () => {
-    log("Restarting to apply a new workspace location");
+    log("Restarting to apply a workspace location or sharing change");
     app.relaunch();
     app.quit();
   });
+}
+
+/**
+ * Wires the four sharing channels the preload bridge calls (Feature 75).
+ *
+ * Reachable only from the desktop window's preload bridge; no HTTP route
+ * exposes any of this. `set-enabled` only records the flag (it takes effect
+ * on restart). The plain pairing code is held in memory by the session and is
+ * returned to the window only; nothing here logs it.
+ */
+function registerSharingHandlers(): void {
+  /** Refuses a call whose sender frame is not the local origin (FR-35). */
+  const assertTrustedSender = (event: IpcMainInvokeEvent): void => {
+    if (!isTrustedSender(event.senderFrame?.url, localOrigin(PORT))) {
+      throw new Error("Refused: untrusted sender");
+    }
+  };
+  const userData = app.getPath("userData");
+  const pairing = createPairingSession(userData, () => Date.now());
+
+  ipcMain.handle("getwrite:sharing-get-status", (event): SharingStatus => {
+    assertTrustedSender(event);
+    return buildSharingStatus({
+      enabled: readSharingEnabled(userData),
+      env: process.env,
+      interfaces: os.networkInterfaces(),
+      port: PORT,
+      credentialStore: readCredentialStoreStatus(userData),
+    });
+  });
+
+  ipcMain.handle(
+    "getwrite:sharing-set-enabled",
+    (event, enabled: unknown): void => {
+      assertTrustedSender(event);
+      if (typeof enabled !== "boolean") {
+        throw new Error("Sharing setting must be true or false");
+      }
+      writeSharingEnabled(userData, enabled);
+      log(`Sharing setting recorded: ${enabled ? "on" : "off"}`);
+    },
+  );
+
+  ipcMain.handle("getwrite:sharing-generate-code", (event): PairingCodeInfo => {
+    assertTrustedSender(event);
+    return pairing.generate();
+  });
+
+  ipcMain.handle(
+    "getwrite:sharing-get-code",
+    (event): PairingCodeInfo | null => {
+      assertTrustedSender(event);
+      return pairing.get();
+    },
+  );
 }
 
 /** What persisting a new global noise-word list can result in. */
@@ -543,7 +625,7 @@ function createWindow(): BrowserWindow {
   // external sites are handed to the default browser instead of navigating the
   // window away from localhost (setWindowOpenHandler only covers window.open).
   win.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(`http://localhost:${PORT}`)) {
+    if (!isLocalOriginUrl(url, localOrigin(PORT))) {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) {
         void shell.openExternal(url);
@@ -592,16 +674,20 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
     log(`did-fail-load ${code} ${desc} — retrying in 1s`);
     retryTimer = setTimeout(() => {
       if (!stopped && !win.isDestroyed()) {
-        win.loadURL(`http://localhost:${PORT}`).catch(() => {});
+        win.loadURL(localOrigin(PORT)).catch(() => {});
       }
     }, 1000);
   });
 
-  waitForServer(`http://localhost:${PORT}`)
+  waitForServer({
+    url: localOrigin(PORT),
+    secret: windowSecret,
+    get: httpReadinessGet,
+  })
     .then(() => {
       log("server ready");
       if (!stopped && !win.isDestroyed()) {
-        win.loadURL(`http://localhost:${PORT}`).catch(() => {});
+        win.loadURL(localOrigin(PORT)).catch(() => {});
       }
     })
     .catch((err) => abort(`Server failed to start: ${err}`));
@@ -635,8 +721,15 @@ if (!app.requestSingleInstanceLock()) {
     initLog();
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
+    // Before any window loads: tags the window's requests to the local server.
+    installWindowSecret(
+      session.defaultSession,
+      localOrigin(PORT),
+      windowSecret,
+    );
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
+    registerSharingHandlers();
     registerScrivenerImportHandlers();
     registerDocxImportHandlers();
 

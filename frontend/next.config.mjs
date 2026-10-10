@@ -33,9 +33,27 @@ const resolvedQaDistDir =
       ? relative(__dirname, qaDistDir)
       : qaDistDir;
 
+// FR-32: adding `proxy.ts` brings in Next's default `proxyClientMaxBodySize`
+// of 10485760 bytes, which cut uploads below the media cap (measured by the
+// security review: a 9 MB upload returned 200, a 12 MB upload returned 500
+// "Failed to parse body as FormData"). The docs mark the key experimental, say
+// it applies only when a proxy is present, that the body is buffered in memory
+// up to the limit, and that past it only the partial body reaches the route:
+// frontend/node_modules/next/dist/docs/01-app/03-api-reference/05-config/
+// 01-next-config-js/proxyClientMaxBodySize.md. The media cap plus 1 MiB leaves
+// room for multipart framing.
+// This file must load on every Node version that runs it, including the
+// Node 20 used by the CLI test job, which cannot import a .ts file (measured:
+// ERR_UNKNOWN_FILE_EXTENSION on v20.20.2). So the media cap is repeated here
+// rather than imported from src/lib/models/media-validation.ts;
+// tests/unit/next-config-body-limit.test.ts fails if the two drift apart.
+const MEDIA_CAP_BYTES = 100 * 1024 * 1024;
+const PROXY_CLIENT_MAX_BODY_SIZE_BYTES = MEDIA_CAP_BYTES + 1024 * 1024;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: { proxyClientMaxBodySize: PROXY_CLIENT_MAX_BODY_SIZE_BYTES },
   output: isNativeTarget ? "export" : "standalone",
   // ADR-021 Phase 2: when `output: "export"` is paired with a non-default
   // `distDir`, Next treats that custom `distDir` as the export output

@@ -29,8 +29,11 @@ import { getAuthServer } from "./auth-server";
  * this repo's Edge runtime cannot open a Postgres connection the way a
  * server component running in the Node runtime can — this is FR20's own
  * stated rationale for using a Node-runtime layout instead of a new
- * `middleware.ts` (which this repo does not have and this slice does not
- * add).
+ * `middleware.ts` (which this slice does not add). The repo has since gained
+ * a root `proxy.ts`, the Next 16 name for that file, for home-network
+ * sharing; it runs in the Node runtime, only refuses requests while sharing
+ * is on, and reads no session, so this layout is still what gates pages for
+ * hosted auth.
  */
 
 /**
