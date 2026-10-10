@@ -267,9 +267,9 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Done when:** Either (A) "not needed": this task's Done box is ticked with a line quoting the Task 2 verdict ("rejected before a path was built") and `git status --short` shows no source change from this task; or (B) built: tests first, seen failing, then green: each traversal value recorded in Task 2 (relative, absolute, encoded, empty, null, NUL) sent as `projectId` for `enable` and `export` is refused with the same fixed 400 the other project-scoped routes return, for every caller including `window` and `off`, and no filesystem effect results (assert); a well-formed UUID still works; the refusal does not echo the value. The order with the limits check is stated in the report. From `frontend/`: touched tests, `pnpm typecheck`, `pnpm lint`; `pnpm knip` nothing new.
 **Depends on:** 5, 2, 11
 **Estimate:** 2
-**Notes:** Satisfies FR-32 and the owner's FR-4 branch. A defect independent of sharing and of the limits, inside the release hold. Do not widen the fix beyond `projectId` for these two actions.
+**Notes:** Satisfies FR-32 and the owner's FR-4 branch. A defect independent of sharing and of the limits, inside the release hold. Do not widen the fix beyond `projectId` for these two actions. Closed 2026-10-10 as satisfied by PR #265 (`df62b9fa`, in this branch through merge `9f2a5e28`): Task 2 recorded a traversal `projectId` accepted by `enable`, the fix was made on `main` instead, and `frontend/tests/integration/encryption-route-project-id.test.ts` passes on this tip (1 file, 30 tests). No code written by this task.
 **POS:** task_0460faa0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Built-server verification (main checkout): every limited action, both builds, with the main-side writer and the smoke script
 **What:** Build in the main checkout and verify with a script, against a throwaway workspace and user-data folder, that each limit refuses a paired device with 403 and its limit key, allows it when off, never refuses the window, still gives an unpaired device the not-paired response, and changes with the file on the very next request.
