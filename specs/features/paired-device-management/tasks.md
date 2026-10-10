@@ -26,7 +26,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 2
 **Notes:** Settles spec OQ-14. Does not need a build. Do not edit any config to make the import work; if it only works after a config change, the verdict is NO and the change needed is recorded as an observation.
 **POS:** task_3a5b6d67
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Baselines (agent): run every suite on main at 05376fe3 and record the numbers
 **What:** Run the full set of suites on `main` at `05376fe3` before any code change and record counts and outcomes, so later tasks compare against measured baselines and not against memory.
