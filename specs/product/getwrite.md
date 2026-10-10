@@ -1274,9 +1274,10 @@ lost work.
   that setting (Owner decision, 2026-10-09). A per-device
   pairing credential is not an account (resolved: OQ-69). Status: First slice
   merged, not released (Feature 75, PR #263, 2026-10-09): pairing and the gate
-  are built; not met yet: the device list, rename and revoke (Feature 76) and
-  the capability limits and the project-deletion setting (Feature 77); not
-  fully met. Owner decisions, 2026-10-09 (device confirmation;
+  are built; the device list, rename and revoke are also delivered (Feature
+  76, PR #264, 2026-10-10, merged and not released); not met yet: the
+  capability limits and the project-deletion setting (Feature 77); not fully
+  met. Owner decisions, 2026-10-09 (device confirmation;
   OQ-69 to OQ-73, OQ-75). [US-27]
 - FR-68: When sharing is turned on, the desktop app MUST tell the writer in
   plain words that the connection is unencrypted HTTP and is meant for
