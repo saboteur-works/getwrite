@@ -299,7 +299,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-37. Runs in the main checkout; Playwright Chromium outside the sandbox. Do not name a cause for the 404 unless the run discriminates it.
 **POS:** task_7d2f6b9a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Desktop verification: the real Electron app (development mode and the unpacked build) toggling each switch
 **What:** Drive the real Electron app, in development mode and the unpacked build, with a throwaway `--user-data-dir`, toggling each switch and checking the file and the server's next response.

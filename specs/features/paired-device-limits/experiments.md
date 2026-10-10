@@ -891,3 +891,67 @@ Counts by group (checks passed/total): setup 3/3, Phase A 31/31 (A0 2, A1 to A4 
 ### Cleanup
 
 The script printed `process-group members still alive after stop: none` and `throwaway root removed: true`. After the last run, outside the sandbox: `ps -A` filtered for `ms-playwright`, `standalone/frontend/server` and `gw-browser` listed 0 processes, `lsof -iTCP -sTCP:LISTEN` showed no node or Chromium listener, no `gw-browser-*`, `gw-limits-*` or `gw-bl-*` folder remained in the temp directory, and `git status --short` showed `M specs/features/paired-device-limits/scripts/verify-limits.mjs` and `?? specs/features/paired-device-limits/scripts/browser-limits.mjs` (plus this file and `tasks.md` once edited). The exploratory runs removed their own throwaway roots the same way.
+
+## Two paired clients
+
+Task 28. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `4593d624`, tree clean at the start. `node --version` = v24.15.0. Playwright Chromium 148.0.7778.96. Recorded by the implementor of Task 28. Hosted auth: not run (no database). No product source was changed; the only new file is `scripts/two-clients.mjs`.
+
+### What ran, and where
+
+- The standalone build was reused, not rebuilt: `frontend/.next/BUILD_ID` is dated 16:50 on 2026-10-10 and the last commit touching `frontend/` or `electron/src` (`f4bd765c`) is dated 16:45; `git diff --stat 4593d624 HEAD -- frontend electron/src` is empty. As in Task 27 that is an inference from timestamps and a clean tree, not a comparison of build output.
+- The script, the server it starts and Playwright's Chromium ran outside the command sandbox (`dangerouslyDisableSandbox: true`). No run was attempted inside the sandbox first, so this section does not show whether any of it would work inside it.
+- `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before each run. The script's refusal branch itself was not exercised (read, not run).
+- Runs: run 1 failed on a script defect before any measurement of interest (the script waited for an "Open alpha" button on a Start page that, with Limit unlocking OFF and the workspace locked, shows the unlock dialog instead; the wait is now "project list, dialog, or the locked-workspace text"); run 2 was complete (31 checks, 0 failed) but its request logs were attributed to the wrong step (they were drained late); run 3, after the script was changed to clear both clients' request logs right after each state change, is the run tabulated below (exit 0). Run 2 and run 3 gave the same statuses, screens and the same single 404.
+- The script imports the helpers of `verify-limits.mjs` (server start/stop, pairing, fixtures, `setLimits`/`setSession`, `check`; no change to that file was needed this time). It does not import `browser-limits.mjs`, which runs its `main()` on import; the few page helpers it needs were written again in `two-clients.mjs`. It creates a throwaway root under `os.tmpdir()` (real paths asserted outside `~/Library/Application Support/getwrite-electron`, which is never read or written), starts one sharing-on server on a free loopback port in its own process group, pairs two devices (two different cookies, held in memory, never printed), opens client A and client B as separate browser contexts each holding one cookie, and changes limits only through the main-side writer `setLimit`. The workspace passphrase is random and held in memory only. Fixtures (project `alpha`, an encrypted project with one text resource) are made through the window caller.
+- "A unlocks"/"A locks" in Phase 1 are `POST /api/encryption` `{action:"unlock"|"lock"}` sent by client A's own page (same-origin `fetch`, A's cookie). "The window unlocks/locks" in Phase 2 are the same requests sent from the script with the `x-getwrite-window` header (no cookie). "B's next request" is a `GET /api/encryption` sent by B's page; the page's own requests while waiting are logged separately. "B's screen" is read from B's DOM twice: with no reload after 7000 ms, and after a reload.
+
+### Results
+
+31 checks, 31 passed, 0 failed; 20 setup requests through the window.
+
+| Group | Passed/total | What it covers |
+| --- | --- | --- |
+| setup | 4/4 | two different device cookies; encrypted project created; A and B each read `GET /api/sharing/limits` as `role: "paired"` |
+| P1 | 1/1 | workspace locked before Phase 1 |
+| P1-unlock | 6/6 | A's unlock 200; server unlocked; B's and A's next request `isUnlocked: true`; B's and A's screen after a reload shows the encrypted project's Open button |
+| P1-lock | 6/6 | A's lock 200; server locked; B's and A's next request `isUnlocked: false`; B's and A's screen after a reload has no Open button for it |
+| P1-editor | 1/1 | A's lock 200 and the server locked (editor recorded below, not asserted) |
+| P2 | 3/3 | workspace locked before Phase 2; A's and B's own unlock refused 403 `unlocking` |
+| P2-unlock | 5/5 | server unlocked by the window; A's and B's next request `isUnlocked: true`; both screens after reload show the Open button |
+| P2-lock | 5/5 | server locked by the window; A's and B's next request `isUnlocked: false`; both screens after reload show no Open button |
+
+### Phase 1: Limit unlocking and Limit locking OFF (all five off); A acts, B is observed
+
+- Locked start: both A and B showed one open dialog headed "Unlock your encrypted projects" with 1 password input, and no Open button for the encrypted project.
+- A unlocked (200). B, with no reload and 7000 ms later: the same dialog was still open (1 dialog, 1 password input), no Open button for the encrypted project, and the only request B's page made on its own in that time was one `GET /api/sharing/limits` (200). B's next request (`GET /api/encryption`, 200) returned `isUnlocked: true`. After a reload B showed the Open button for the encrypted project and no dialog. A, no reload after 7000 ms: also still showing the dialog (3 own `GET /api/sharing/limits` reads, no `GET /api/encryption`), after A's own next request `isUnlocked: true`, and after a reload the Open button and no dialog.
+- A locked (200). B, no reload, 7000 ms later: the Open button was still shown, no dialog, and B's page made 0 requests on its own. B's next request returned `isUnlocked: false`. After a reload B showed the unlock dialog and no Open button. A: the same (no reload: Open button still shown, 0 own requests; next request `isUnlocked: false`; after a reload the dialog).
+- So, as measured: with the limits off, B's next request and B's screen after a reload show each change made by A; B's screen without a reload did not change within 7000 ms in either direction. Whether it would change after a longer wait, or on a focus/visibility event, was not run.
+
+### B's open editor across A's lock (Limit unlocking and Limit locking OFF)
+
+Sequence: workspace unlocked through the window; a third context holding B's cookie (named `B-editor` in the output) opened the encrypted project and its one text resource; A locked (200); `B-editor` was left untouched for 20 s; then it clicked into the editor, typed `" typed after the lock"` and waited 15 s.
+
+- Before the lock, footer text: `Words: 4|Node: Body|Today's writingToday: 0All changes saved · not saved yet` (verbatim, as the element's text content), 0 toasts/alerts, 0 dialogs, 0 password inputs. Opening the resource made 20 requests, all 200, the last being `GET /api/resource/revision/<id>` (200).
+- 20 s after A's lock, no typing: the same footer text, 0 toasts/alerts, 0 dialogs, 0 password inputs, and `B-editor` made 0 requests in that time.
+- 15 s after typing: footer `Words: 8|Node: Body|Today's writingToday: 0Autosave failedRetry now`; text matching "autosave": `Autosave failed`; 0 toasts/alerts, 0 dialogs, 0 password inputs (no unlock prompt). The editor kept the typed text (text length 18 before, 39 after).
+- In this run exactly one request returned 404: `PATCH /api/resource/revision/<id>` (the id replaced here; a revision id), status 404, response body `{"error":"Revision <id> not found."}` (the id in the body replaced here). It was the only request `B-editor` made after A's lock. So in this run the 404 request was a save (PATCH), not a read; no read after the lock was made by the page, so whether a `GET` of the same revision also returns 404 after a lock was not measured.
+- No cause is named for the 404. What would settle it: send the same `PATCH` from the same client with the workspace unlocked as a control (does it return 200), then `GET /api/resource/revision/<id>` with the workspace locked, and read what the route and the model layer return for a revision of a project whose key is not in the session. Not run in this task. The editor behaviour is recorded here and not changed; it is filed as work separate from this feature's release hold (per Task 28).
+- The same single 404 appeared in run 2.
+
+### Phase 2: all five limits ON; the desktop window unlocks and locks
+
+- Locked start: A and B each showed 0 dialogs, 0 password inputs, no Open button, the text "This workspace is locked. It has to be unlocked on the computer where GetWrite is installed." and the locked-project card text. A's and B's own unlock request: 403, `limit` `unlocking` (2 of 2).
+- The window unlocked. A and B, no reload, 7000 ms later: still the locked text, no Open button, 0 requests made by their pages on their own. Each one's next request returned `isUnlocked: true`. After a reload each showed the Open button and neither locked text. 
+- The window locked. A and B, no reload, 7000 ms later: the Open button still shown, 0 own requests. Each one's next request returned `isUnlocked: false`. After a reload each showed the locked text and no Open button.
+- So, as measured: both clients see the window's unlock and lock on their next request and after a reload; neither changed its screen on its own within 7000 ms.
+
+### Surprises and what was not run
+
+1. With the limits OFF the already-open unlock dialog did not close, and with the workspace unlocked the Start page did not re-lock, within 7000 ms without a reload, on either client. The mechanism was not looked at; an experiment that would separate "the page does not re-read" from "the page re-reads and ignores it" is to log the page's requests over a longer wait with the dialog open (the 7000 ms runs show 1 to 3 `GET /api/sharing/limits` and no `GET /api/encryption`).
+2. B's open editor is the only place a 404 occurred, and only after typing. Not run: a client reading (not saving) after the lock; the editor with Limit unlocking ON when the window locks (the Phase 2 clients were on the Start page, not in an editor); a lock made by the window while an editor is open; a different resource type; hosted auth; a real phone; non-loopback `Host` values.
+3. `GET /api/auth/get-session` returned 404 on every page load (as in Task 27; hosted auth is not configured); filtered out of the tables above, still present in the script's output.
+4. The soft-delete-a-folder-with-child-folders 404 recorded in Task 26 was not exercised.
+
+### Cleanup
+
+The script printed `process-group members still alive after stop: none` and `throwaway root removed: true` after each run. After the last run, outside the sandbox: `ps -A` filtered for `standalone/frontend/server`, `ms-playwright` and `gw-two` listed nothing of ours (the other `chrome` matches were the owner's Claude, VS Code, Chrome and 1Password helpers, none started here); `lsof -iTCP -sTCP:LISTEN` showed no node listener; no `gw-two-*` folder remained under the temp directory (a `gw-repair-revisions-*` folder there was not created by this task and was left alone); `git status --short` shows only `?? specs/features/paired-device-limits/scripts/two-clients.mjs` (plus this file and `tasks.md` once edited).
