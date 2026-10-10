@@ -36,7 +36,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 2
 **Notes:** Satisfies the verification baseline for FR-24. Runs in the main checkout (the CLI and knip runs do not need a build, but the checkout must be clean apart from `specs/`). The frontend suite is long; allow for it. If a suite cannot run in the sandbox (`EMFILE`), retry outside it and say so. If the CLI suite cannot run on Node 20 here, record that and the Node version it did run on; do not claim Node 20 coverage.
 **POS:** task_5cdda277
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Main-side store writer (lock protocol, read inside the lock, raw records, refuse on corrupt)
 **What:** Add the electron module that reads and writes `device-credentials.json` under the same lock-file protocol as the server, keeping every record as parsed JSON and never overwriting a corrupt or unreadable file.
