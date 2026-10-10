@@ -139,7 +139,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 2
 **Notes:** Satisfies FR-9 and FR-31 (route half), FR-12, and the walking test required by OQ-11 (no proxy enforcement). Keep the test a text match like the existing one; do not parse TypeScript.
 **POS:** task_ee79c16c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: The read route `GET /api/sharing/limits`, enumeration tests and smoke script
 **What:** Add the one new read route and make both route-enumeration checks count it without adding it to their exception lists.
