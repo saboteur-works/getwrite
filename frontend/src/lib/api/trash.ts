@@ -35,6 +35,7 @@
  *   So both reject on transport failure instead.
  */
 import { createTransport } from "../../store/transport/create-transport";
+import { limitRefusalFromResponse } from "./limit-refusal";
 import type {
   RestoredReferenceInfo,
   TrashedFolderEntry,
@@ -198,6 +199,11 @@ export const httpTrashTransport: TrashTransport = {
       },
     );
     if (!response.ok) {
+      const refusal = limitRefusalFromResponse(
+        response.status,
+        await response.json().catch(() => null),
+      );
+      if (refusal) throw refusal;
       throw new Error(
         `Failed to purge trash items (status ${response.status}).`,
       );

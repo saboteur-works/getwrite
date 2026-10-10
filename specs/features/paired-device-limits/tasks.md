@@ -179,7 +179,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 5
 **Notes:** Satisfies FR-13 (client half), FR-26 (reason reaches the view). `trash.ts` `purge` today reads the status only and drops the body; the Trash UI then shows a fixed text, fixed in Task 22. Open each transport and its schema before editing; do not invent props or fields.
 **POS:** task_92638c8b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Passphrase-prompt gating (the exact state table) and the "unlock at the desktop" messaging
 **What:** Mount the unlock prompt only in the three permitted states, and in place of it, when the workspace is locked and unlocking is limited, say the workspace has to be unlocked at the desktop.

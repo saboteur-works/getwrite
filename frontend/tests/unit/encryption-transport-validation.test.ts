@@ -21,6 +21,11 @@ import {
   fetchEncryptionStatus,
 } from "../../src/lib/api/encryption";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
+import {
+  LimitRefusalError,
+  isLimitRefusalError,
+} from "../../src/lib/api/limit-refusal";
+import { EncryptionErrorResponseSchema } from "../../src/lib/api/schemas";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
@@ -163,5 +168,86 @@ describe("encryption request() error path (non-2xx response)", () => {
     }
 
     consoleWarnSpy.mockRestore();
+  });
+});
+
+describe("encryption request() limit refusal (Feature 77, Task 16)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function status403(body: unknown): Response {
+    return { ok: false, status: 403, json: async () => body } as Response;
+  }
+
+  it("rejects a 403 { error, limit } with the server message and the limit", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          status403({ error: "Do it at the desktop.", limit: "locking" }),
+        ),
+    );
+    const error: unknown = await fetchEncryptionStatus().catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(LimitRefusalError);
+    expect((error as LimitRefusalError).message).toBe("Do it at the desktop.");
+    expect((error as LimitRefusalError).limit).toBe("locking");
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 409, 500])(
+    "a %s with { error } alone keeps the server message and is not a limit refusal",
+    async (status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue({
+            ok: false,
+            status,
+            json: async () => ({ error: "plain" }),
+          } as Response),
+      );
+      const error: unknown = await fetchEncryptionStatus().catch(
+        (e: unknown) => e,
+      );
+      expect(isLimitRefusalError(error)).toBe(false);
+      expect((error as Error).message).toBe("plain");
+    },
+  );
+
+  it("keeps the generic message and reports on a malformed error body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue({
+          ok: false,
+          status: 403,
+          json: async () => ({ error: 7, limit: 9 }),
+        } as Response),
+    );
+    await expect(fetchEncryptionStatus()).rejects.toThrow(
+      "Encryption request failed.",
+    );
+    expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it("EncryptionErrorResponseSchema validates { error } alone and { error, limit }", () => {
+    expect(
+      EncryptionErrorResponseSchema.safeParse({ error: "e" }).success,
+    ).toBe(true);
+    const both = EncryptionErrorResponseSchema.safeParse({
+      error: "e",
+      limit: "locking",
+    });
+    expect(both.success && both.data.limit).toBe("locking");
   });
 });

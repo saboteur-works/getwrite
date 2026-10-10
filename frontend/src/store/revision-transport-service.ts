@@ -3,6 +3,7 @@ import { selectActiveProjectDirectoryId } from "./projectsSlice";
 import type { RootState } from "./store";
 import { createTransport } from "./transport/create-transport";
 import { fetchResourceContent } from "../lib/api/resources";
+import { limitRefusalFromResponse } from "../lib/api/limit-refusal";
 
 /**
  * Response shape for `/api/project-resources` used by revision list loading.
@@ -277,8 +278,14 @@ export const httpRevisionTransport: RevisionTransport = {
       },
     );
 
-    if (!response.ok)
-      await throwApiError(response, "Failed to delete revision.");
+    if (!response.ok) {
+      const errorBody: unknown = await response.json().catch(() => ({}));
+      const refusal = limitRefusalFromResponse(response.status, errorBody);
+      if (refusal) throw refusal;
+      throw new Error(
+        getApiErrorMessage(errorBody, "Failed to delete revision."),
+      );
+    }
   },
 };
 

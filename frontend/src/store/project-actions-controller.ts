@@ -19,6 +19,7 @@
  * identify the project for local UI callbacks (`onRename`/`onDelete`) and
  * dispatch. It is never sent over the wire — only `projectId` is.
  */
+import { limitRefusalFromResponse } from "../lib/api/limit-refusal";
 import { createTransport } from "./transport/create-transport";
 
 interface BaseProjectAction {
@@ -122,6 +123,8 @@ export const httpProjectActionsTransport: ProjectActionsTransport = {
 
     if (!response.ok) {
       const errorBody = await parseErrorBody(response);
+      const refusal = limitRefusalFromResponse(response.status, errorBody);
+      if (refusal) throw refusal;
       throw new Error(
         getApiErrorMessage(errorBody, "Failed to delete project."),
       );

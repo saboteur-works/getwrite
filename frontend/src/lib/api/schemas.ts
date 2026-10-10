@@ -646,6 +646,8 @@ export const EncryptionStatusSchema = z.object({
 
 export const EncryptionErrorResponseSchema = z.object({
   error: z.string().optional(),
+  // Feature 77: present on a paired-device limit refusal (403).
+  limit: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
