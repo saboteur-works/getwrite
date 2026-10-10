@@ -497,3 +497,20 @@ This exercised the real IPC path (preload, the three channels, the sender check 
 
 - In development mode the app's server child (`next dev`) was listening on all interfaces: `lsof` showed `TCP *:3000`, and from the host a request to its own LAN address `http://10.0.0.226:3000/api/projects` returned 200 with no `x-getwrite-gate` header, with sharing off. The request came from the host, not a second device. The app passes `HOSTNAME=127.0.0.1` to that child; whether `next dev` ignores it was not separated from other explanations, and whether this predates Feature 75 was not checked. The packaged path uses the standalone server, for which a loopback bind with sharing off was reported by the owner's phone test (Feature 75, section J item 1).
 - After the Electron app closed, its `next dev` child was still running and had to be stopped by hand (twice observed). Not investigated.
+
+## Exercise in the desktop app, after Task 15 (pipeline lead, 2026-10-10)
+
+Same method as the previous section (the Electron app in development mode, driven by Playwright's Electron driver, temp `userData`, sharing off, two seeded devices), on `7210775b`.
+
+### A run that does not count, and a mistake
+
+The first re-run was started while the owner's own desktop app was open and listening on `localhost:3000` (`lsof` showed it; the lead saw the line and ran the script in the same command anyway). In that run the script's window loaded `http://localhost:3000/`, which was the owner's app's server, so the frontend it exercised was whatever build the owner's app was running, not this tip; it reported the corrupt-store case showing nothing, which says nothing about Task 15. The script's cleanup step then stopped every listener on port 3000 and each listener's parent process, which included the owner's app: `stopping leftover listener pid 19853 (parent 19784)`. Afterwards neither process existed. The owner's desktop app was therefore killed by the lead's script. Whether any unsaved edit in it was lost was not observed. The script was changed to refuse to start when port 3000 already has a listener and to stop only listeners that appeared during its own run.
+
+### The valid run (port 3000 free beforehand)
+
+- List, blank-name refusal, rename, revoke dialog, cancel, revoke: as in the previous section.
+- A device appended to the file by hand appeared 1.29 s later.
+- With the file replaced by `not json` and sharing off, after 7 s App Settings showed, under "Paired devices": "The list of paired devices cannot be read. When sharing is turned on, every other device will be refused until it is repaired." and "The file is in <the temp userData folder>." The device rows and their buttons were gone. The earlier status line "Chrome on Android was revoked." was still displayed above the message.
+- One console error, the same 404 as before (not investigated).
+
+Not exercised: the corrupt-store message with sharing on or pending in the real app (covered by component tests only); a packaged or unpacked build; a real phone.
