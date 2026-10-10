@@ -99,7 +99,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-5, FR-6, FR-10 (reader half), FR-15 (reader half). Unset directory (plain `pnpm dev`, hosted) must not throw: it yields all true for a paired caller, but the shared check never calls this for `off` or `window`.
 **POS:** task_27f99c13
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: The shared fail-closed check (pure decision plus separate file read)
 **What:** Add the one shared check every enforcing route calls: a pure decision over the classification header and the parsed limits, with the file read kept in a separate function.
