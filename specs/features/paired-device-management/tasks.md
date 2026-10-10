@@ -46,7 +46,7 @@ Shape of the work, fixed by the owner's Gate 3 answers: the Electron main proces
 **Estimate:** 5
 **Notes:** Satisfies FR-14, FR-15 (contract half), FR-16, OQ-12. Do not edit `file-lock.ts` or `credential-store.ts`. The server's `file-lock.ts` removes the lock with `rm(..., { force: true })` in a `finally` and removes a stale lock inside the retry loop after each `EEXIST`; mirror that behaviour, then confirm it by reading again. The only way main and the server serialise is the lock file's name and the `wx` open, so the lock path must be exactly `${storeFilePath}.lock`. The writer must work with a `mutate` that returns the new records array and may return "no change"; a rename or revoke of an unknown id is decided in Task 4, not here. If Task 1 said YES, no change to this task; if NO, the fixture and contract tests here are the only drift protection between the two writers, so keep the fixtures realistic.
 **POS:** task_3dec53e8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: List, rename and revoke operations (pure functions over the store writer)
 **What:** Add the main-side operations that list devices without secrets, rename one with validation, and revoke one by deleting its record, each returning an explicit outcome the UI can show.
