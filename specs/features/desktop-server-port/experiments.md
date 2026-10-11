@@ -2220,3 +2220,83 @@ Correction by the lead: before Task 5 the lead told the owner that a paired devi
 Date 2026-10-10. Recorded by the pipeline lead. Task 9 added `GET /api/sharing/ready` as an exception to the request gate (exact path, GET only, after the Host allowlist), so the exception count pinned by `sharing-gate-enumeration.test.ts` went from 3 to 4. The lead put the design to the owner: what the route returns (an HMAC of the caller's own challenge under a per-launch key separate from the window secret; it reads no header, cookie, store or project; 404 where no key is set), what an unpaired device on the network gets with sharing on (that hash or a fixed error), and what is not closed (a process on the same computer that relays the challenge to the real server; anything that can read the server's environment). The owner's answer: "Approved".
 
 Also recorded: on the tip after Tasks 8 to 12 the lead's own run of the desktop suite gave 486 passed, 1 failed (a source-text guard from Task 8 rejected the port-check wiring line from Task 10). The orchestrator had reported 487 passing in its working tree before committing; why the committed tree differed was not established. The guard was rewritten to be independent of formatting (`fde5ef69`); 488 passed, re-run after the commit.
+
+## Built server on the new port
+
+Task 15. Date 2026-10-10. Main checkout, branch `feat/desktop-server-port`, `git rev-parse --short HEAD` = `f4e72d53`, `node --version` v24.15.0. Script: `scripts/built-server-check.mjs`. Fresh frontend build `BUILD_ID` = `AiPwFqEOMOtFfGilBzM2s`. Recorded by the implementor of Task 15.
+
+### Builds and sandbox use
+
+Outside the command sandbox (`dangerouslyDisableSandbox: true`), logs under the scratchpad directory (not `$TMPDIR`): `pnpm --filter getwrite-frontend build` (exit 0); `frontend/.next/standalone/frontend/.next/static` removed and replaced with a copy of `frontend/.next/static`; in `electron/`: `pnpm build` (exit 0) and `pnpm build:worker` (exit 0). Also outside: `node scripts/built-server-check.mjs` and `pnpm test:sharing-smoke` (from `frontend/`). Inside: reads only. Nothing in `frontend/app`, `frontend/src`, `frontend/components`, `electron/src` or tests was edited.
+
+### Pre-check
+
+`lsof -nP -iTCP:<port> -sTCP:LISTEN` printed nothing for 3000, 7340 and 6006 before the builds; the script repeats the check for 7340 and 3000 and refuses to start when either has a listener (it did not refuse). Nothing is bound on 3000 by the script.
+
+### What the script does
+
+Starts the built `server.js` four times in turn on `PORT=7340`, each with a fresh throwaway folder (sharing dir and projects dir under `mkdtemp`), a random window secret, and, in two of the four, a random `GETWRITE_READINESS_KEY`. Env mirrors `buildServerBindEnv`: sharing ON = `HOSTNAME=0.0.0.0`, `GETWRITE_BIND=0.0.0.0`, `GETWRITE_SHARING=1`; sharing OFF = `127.0.0.1`, `127.0.0.1`, `0`. The four servers: ON+key, ON+no key, OFF+key, OFF+no key. Requests are sent with `node:http` so the `Host` header can be set; Host-allowlist requests naming the LAN address (10.0.0.226) are connected to that LAN address. Secrets, the key, challenges and proofs are never printed; proof correctness and response equality are computed in the script and reported as equal / not equal.
+
+### Discarded first run
+
+The first run of the script failed 5 checks and is discarded. Its pid-stop step compared the process command name with the one recorded at spawn; the server retitles itself (`next-server (v16.2.6)`), so the script printed "NOT signalled" and left the first and third servers running (pids 62629 and 62799, both started by the script, parent pid 1 afterwards). The second and fourth servers failed to bind 7340 and exited, and the requests of those phases were answered by the leftover servers, so those phases measured the wrong server. I stopped pids 62629 and 62799 by pid (`kill -TERM` on exactly those two; `lsof` then showed 7340 free). The script was then changed: it waits until the spawned pid is the listener on 7340 before probing, and accepts the retitled name when stopping while still requiring that the pid is the 7340 listener. The results below are from the second run only.
+
+### Results (second run, exit 0, 68 checks ok, 0 failed)
+
+Pids (each recorded, each stopped by pid with SIGTERM; 7340 confirmed free after each; final `lsof`: 7340 listeners 0, 3000 listeners 0): 63833 (ON+key), 64064 (ON+no key), 64265 (OFF+key), 64502 (OFF+no key). For each, exactly one listener on 7340, being the started pid.
+
+Requests from this host to its own LAN address are NOT a second-device result; no second device was used.
+
+Host allowlist, sharing ON (server 63833), unpaired, no window header:
+
+| Host header | `GET /pair` | `GET /api/projects` |
+| --- | --- | --- |
+| `10.0.0.226:7340` | 200, no `x-getwrite-gate` header | 401, `x-getwrite-gate: not-paired` |
+| `localhost:7340` | 200, no gate header | 401, `not-paired` |
+| `127.0.0.1:7340` | 200, no gate header | 401, `not-paired` |
+
+Refused with 403, `x-getwrite-gate: host-not-allowed`, `text/plain`, a 121-byte body, no redirect (`GET /pair`): `10.0.0.226:3000`, `localhost:3000`, `127.0.0.1:3000`, `10.0.0.226:7341`, `localhost:7341`, `localhost:8080`, `10.0.0.226:80`, `10.0.0.226` (no port), `localhost` (no port), `evil.example:7340`. That is 10 of 10 refused.
+
+Unpaired client, sharing ON, allowed Host, everything that is not an exception: `GET` and `POST /api/projects`, `GET /api/sharing/pair`, `GET /api/sharing/limits`, `POST /api/sharing/ready`, `GET /api/sharing/ready/extra`, `GET /api/sharing/ready.json` each 401 with `x-getwrite-gate: not-paired`; `GET /` 307 to `/pair` with `not-paired`; `GET /_next/static/../../package.json` 307 to `/pair` (the client normalised nothing; the path reached the gate as written).
+
+`GET /api/sharing/ready` (all with `Host: 127.0.0.1:7340`, no window header unless stated):
+
+| Server | no / empty / malformed challenge (7 variants: none, empty, 3 chars, 63 hex, 65 hex, uppercase hex, 64 non-hex) | valid 64-hex challenge | foreign Host (`evil.example:7340`) and `127.0.0.1:3000` | `POST` |
+| --- | --- | --- | --- | --- |
+| ON + key | 400 (`{error}`), no gate header | 200, body exactly one field (`{proof}`), value equal to the in-script HMAC | 403 `host-not-allowed`, plain text | 401 `not-paired` |
+| ON + no key | 404 (`{error}`) for all 7 | 404 | 403 `host-not-allowed` | 401 `not-paired` |
+| OFF + key | 400 for all 7 | 200 `{proof}`, equal to the in-script HMAC | 200 `{proof}` for both (no Host check applies with sharing off; bound to 127.0.0.1) | 405, empty body |
+| OFF + no key | 404 for all 7 | 404 | 404 | 405, empty body |
+
+For the valid challenge on each of the four servers the response (status, gate header, body) was equal with: the correct window-secret header, a wrong window-secret header, a forged `x-getwrite-classification: window`, `off`, and `confirmed:forged`, each compared with the plain response (20 comparisons, all equal).
+
+### Sharing smoke
+
+`pnpm test:sharing-smoke` (frontend/, outside the sandbox), run twice; both runs identical:
+
+```
+pairing page static URLs checked: 15
+static files checked: 122
+enumerated entries: 92; checks: 28; failures: 1
+FAIL corrupt store with paired cookie: every enumerated URL refused (GET /api/sharing/ready -> 404)
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+Exit 1. The smoke picks its own port (`freePort()` in `frontend/scripts/sharing-refusal-smoke.mjs`, listen on port 0 on 127.0.0.1) and starts its server with `HOSTNAME=127.0.0.1` and its own `PORT`; it does not use 7340 or 3000 (neither had a listener before or after either run), and it sets no `GETWRITE_READINESS_KEY`.
+
+Compared with the Task 1 baseline (91 entries, 28 checks, 0 failures):
+- Enumerated entries 92 versus 91 (one more). The extra entry is, as measured, `GET /api/sharing/ready` (named in the failure line); I did not diff the full entry lists.
+- Checks 28 versus 28 (same).
+- Failures 1 versus 0. The failing check is the one that writes an unparseable `device-credentials.json` and presents a paired cookie with exceptions included. Measured: `GET /api/sharing/ready` answered 404, and `isRefusal` in the smoke accepts only 401, 403 or a 307/302/303 to `/pair`. Read in `frontend/src/lib/sharing/gate.ts`: the readiness exception is consulted before the `store-corrupt` condition that the pairing exception checks, so under a corrupt store the readiness request is forwarded to the route, which returns 404 because the smoke's server has no readiness key. Whether this is a product defect (the gate should refuse the readiness path under a corrupt store) or a smoke script that was not updated for the corrupt-store case (the exception list was extended in Task 9 but the corrupt-store check still expects a refusal of every exception) was not discriminated. An experiment that would settle it is the spec's intent for FR-11 under a corrupt store (decision, not measurement), and, for behaviour, a run of the real app with a corrupt store checking that readiness still passes.
+- Enumerated exceptions: the smoke's `ENUMERATED_EXCEPTIONS` array has 3 entries (`GET /pair`, `POST /api/sharing/pair`, `GET /api/sharing/ready`), not 4. The gate in `gate.ts` has four exception kinds (static assets, the pairing page and POST endpoint, readiness). Whether "4" in the plan referred to the gate or to the array was not established; the array count is 3 as measured.
+
+### Not verified / not run
+
+- No second device and no real LAN client; all LAN-address requests came from this host.
+- The real Electron app was not run (Tasks 16-19).
+- Windows/Linux, Node 20 and CI Node 22 were not used.
+- The OFF servers were bound to 127.0.0.1; a sharing-off server bound to 0.0.0.0 was not run.
+- The 20 header-comparison equalities cover only the valid-challenge request, not every malformed variant.
+- The cause of the smoke failure is not established (see above).
+
+Task 15 is NOT ticked: the smoke reports 1 failure.
