@@ -177,7 +177,7 @@ export default function ManageProjectMenu({
         description="This will permanently remove the project and its resources. Are you sure?"
         details={
           deleteFailure ? (
-            <p>
+            <p className="text-sm text-gw-secondary">
               {PROJECT_NOT_DELETED} {deleteFailure}
             </p>
           ) : undefined

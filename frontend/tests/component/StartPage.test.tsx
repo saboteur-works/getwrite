@@ -33,6 +33,8 @@ import SharingLimitsProvider from "../../components/Sharing/SharingLimitsContext
 import {
   UNLOCK_AT_DESKTOP_MESSAGE,
   LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP,
+  UNLOCK_CHECK_FAILED_MESSAGE,
+  UNLOCK_CHECK_RETRY_LABEL,
 } from "../../components/Sharing/sharing-copy";
 import type {
   DocxImportOutcome,
@@ -408,6 +410,77 @@ describe("StartPage — passphrase prompt gate (Feature 77, FR-21, FR-23)", () =
     await settle();
     expect(passwordInput()).toBeNull();
     expect(screen.queryByText(UNLOCK_AT_DESKTOP_MESSAGE)).toBeNull();
+  });
+
+  it("unknown, no bridge, read failed: a plain message and a retry button show, still no password field", async () => {
+    fetchSharingLimits.mockRejectedValue(new Error("down"));
+    renderLocked();
+    await settle();
+    const message = await screen.findByText(UNLOCK_CHECK_FAILED_MESSAGE);
+    expect(message.className).toMatch(/text-gw-/);
+    expect(message.className).not.toMatch(/red/);
+    expect(
+      screen.getByRole("button", { name: UNLOCK_CHECK_RETRY_LABEL }),
+    ).toBeInTheDocument();
+    expect(passwordInput()).toBeNull();
+  });
+
+  it("read pending: the could-not-check message is not shown", async () => {
+    fetchSharingLimits.mockReturnValue(new Promise(() => undefined));
+    renderLocked();
+    await settle();
+    expect(screen.queryByText(UNLOCK_CHECK_FAILED_MESSAGE)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: UNLOCK_CHECK_RETRY_LABEL }),
+    ).toBeNull();
+  });
+
+  it("the retry button re-reads, and a successful read removes the message and mounts the prompt", async () => {
+    const user = userEvent.setup();
+    fetchSharingLimits.mockRejectedValueOnce(new Error("down"));
+    fetchSharingLimits.mockResolvedValue({ state: "exempt" });
+    renderLocked();
+    await screen.findByText(UNLOCK_CHECK_FAILED_MESSAGE);
+    fetchSharingLimits.mockClear();
+    await user.click(
+      screen.getByRole("button", { name: UNLOCK_CHECK_RETRY_LABEL }),
+    );
+    expect(fetchSharingLimits).toHaveBeenCalled();
+    await waitFor(() => expect(passwordInput()).not.toBeNull());
+    expect(screen.queryByText(UNLOCK_CHECK_FAILED_MESSAGE)).toBeNull();
+  });
+
+  it("a later successful read that limits unlocking replaces the message with the desktop message", async () => {
+    const user = userEvent.setup();
+    fetchSharingLimits.mockRejectedValueOnce(new Error("down"));
+    fetchSharingLimits.mockResolvedValue({
+      state: "paired",
+      limits: LIMITS_ON,
+    });
+    renderLocked();
+    await screen.findByText(UNLOCK_CHECK_FAILED_MESSAGE);
+    await user.click(
+      screen.getByRole("button", { name: UNLOCK_CHECK_RETRY_LABEL }),
+    );
+    await screen.findByText(UNLOCK_AT_DESKTOP_MESSAGE);
+    expect(screen.queryByText(UNLOCK_CHECK_FAILED_MESSAGE)).toBeNull();
+    expect(passwordInput()).toBeNull();
+  });
+
+  it("a failed read with a desktop bridge or an unlocked workspace shows no could-not-check message", async () => {
+    installBridge({});
+    fetchSharingLimits.mockRejectedValue(new Error("down"));
+    renderLocked();
+    await waitFor(() => expect(passwordInput()).not.toBeNull());
+    await settle();
+    expect(screen.queryByText(UNLOCK_CHECK_FAILED_MESSAGE)).toBeNull();
+  });
+
+  it("exempt and paired answers never show the could-not-check message", async () => {
+    fetchSharingLimits.mockResolvedValue({ state: "exempt" });
+    renderLocked();
+    await waitFor(() => expect(passwordInput()).not.toBeNull());
+    expect(screen.queryByText(UNLOCK_CHECK_FAILED_MESSAGE)).toBeNull();
   });
 
   it("unknown with a desktop bridge, read pending: the password field is present without waiting", async () => {

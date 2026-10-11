@@ -275,7 +275,7 @@ export default function LimitSwitches({
         isOpen={isConfirmOpen}
         title={LIMITS_UNLOCK_CONFIRM_TITLE}
         details={
-          <div className="flex flex-col gap-2 text-sm">
+          <div className="flex flex-col gap-2 text-sm text-gw-secondary">
             <p>{LIMITS_UNLOCK_WARNING_TYPED}</p>
             <p>{LIMITS_UNLOCK_WARNING_UNENCRYPTED}</p>
             <p>{LIMITS_UNLOCK_WARNING_RECORDED}</p>

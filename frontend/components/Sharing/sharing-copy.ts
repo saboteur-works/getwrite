@@ -221,6 +221,15 @@ export const UNLOCK_AT_DESKTOP_MESSAGE =
 export const LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP =
   "Unlock this workspace on the computer where GetWrite is installed to see this project's name and open it.";
 
+/**
+ * Working copy: shown on the Start page of a locked workspace when the limits
+ * read failed, in place of the unlock prompt. Not styled as an alert.
+ */
+export const UNLOCK_CHECK_FAILED_MESSAGE =
+  "This workspace is locked. This page could not check whether unlocking is allowed here.";
+/** Working copy: the button beside {@link UNLOCK_CHECK_FAILED_MESSAGE}. */
+export const UNLOCK_CHECK_RETRY_LABEL = "Try again";
+
 // ---------------------------------------------------------------------------
 // Paired device limits (Feature 77, Task 18). Both strings are Working copy:
 // the spec (FR-24) requires a visible reason, not these words. Neither is

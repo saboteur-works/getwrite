@@ -29,6 +29,7 @@ import {
 import { removeDirRetry } from "../unit/helpers/fs-utils";
 import * as trashCore from "../../src/lib/models/trash-core";
 import { LIMITS_FILE_NAME } from "../../src/lib/sharing/limits-store";
+import { LIMIT_REFUSAL_MESSAGES } from "../../src/lib/sharing/limits-copy";
 
 const tmpDirs: string[] = [];
 
@@ -639,7 +640,7 @@ describe("permanentDeletion limit on the Trash routes (Feature 77)", () => {
             expect(res.status).toBe(403);
             const json = (await res.json()) as { error: string; limit: string };
             expect(json.limit).toBe("permanentDeletion");
-            expect(typeof json.error).toBe("string");
+            expect(json.error).toBe(LIMIT_REFUSAL_MESSAGES.permanentDeletion);
           }),
         );
         expect(spy).not.toHaveBeenCalled();

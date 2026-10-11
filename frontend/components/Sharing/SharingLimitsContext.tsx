@@ -28,6 +28,7 @@ import {
  *
  * State is `unknown` (not yet read, pending, or the read failed), `exempt`,
  * or `paired` with the limits. A failed read never becomes `exempt`.
+ * `didLastReadFail` tells a failed `unknown` apart from a pending one.
  *
  * Re-reads: on mount, on `visibilitychange` to visible, on window `focus`,
  * on `refresh()` (callers invoke it after a refusal carrying a `limit`, when
@@ -47,6 +48,8 @@ interface SharingLimitsContextValue {
   state: SharingLimitsState;
   /** True when the Electron preload bridge is present; known without the read. */
   hasDesktopBridge: boolean;
+  /** True when the most recent finished read failed; false while still pending and after a success. */
+  didLastReadFail: boolean;
   /** Re-reads now and resolves to the resulting state. Never rejects. */
   refresh: () => Promise<SharingLimitsState>;
   /** Registers an open unlock prompt (and reads once); returns the unregister function. */
@@ -90,6 +93,7 @@ export default function SharingLimitsProvider({
 }): JSX.Element {
   const [state, setState] = useState<SharingLimitsState>(UNKNOWN);
   const [hasDesktopBridge, setHasDesktopBridge] = useState(false);
+  const [didLastReadFail, setDidLastReadFail] = useState(false);
   const [promptCount, setPromptCount] = useState(0);
   const latestRequest = useRef(0);
   const current = useRef<SharingLimitsState>(UNKNOWN);
@@ -98,15 +102,18 @@ export default function SharingLimitsProvider({
     if (isPairingPage()) return current.current;
     const requestId = ++latestRequest.current;
     let next: SharingLimitsState;
+    let didFail = false;
     try {
       next = await fetchSharingLimits();
     } catch {
       next = UNKNOWN;
+      didFail = true;
     }
     // A newer request was issued meanwhile: this answer is stale.
     if (requestId !== latestRequest.current) return current.current;
     current.current = next;
     setState(next);
+    setDidLastReadFail(didFail);
     return next;
   }, []);
 
@@ -147,8 +154,14 @@ export default function SharingLimitsProvider({
   }, [promptCount, refresh]);
 
   const value = useMemo<SharingLimitsContextValue>(
-    () => ({ state, hasDesktopBridge, refresh, registerUnlockPrompt }),
-    [state, hasDesktopBridge, refresh, registerUnlockPrompt],
+    () => ({
+      state,
+      hasDesktopBridge,
+      didLastReadFail,
+      refresh,
+      registerUnlockPrompt,
+    }),
+    [state, hasDesktopBridge, didLastReadFail, refresh, registerUnlockPrompt],
   );
 
   return (

@@ -19,6 +19,14 @@ export const LIMIT_REFUSAL_MESSAGES: Record<LimitKey, string> = {
 };
 
 /**
+ * Working copy: the refusal for deleting a revision. A revision is not in the
+ * Trash, so it does not use the `permanentDeletion` message above, though it is
+ * governed by the same limit and reports the same `limit` key.
+ */
+export const REVISION_DELETE_REFUSAL_MESSAGE =
+  "Deleting a revision is turned off here. Do it at the desktop.";
+
+/**
  * Working copy (Feature 77, FR-11): creating the workspace passphrase is never
  * allowed from a paired device, whatever the five switches say. Reported with
  * the `encryptionChanges` limit value.

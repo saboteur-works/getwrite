@@ -49,6 +49,8 @@ import {
 import {
   LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP,
   UNLOCK_AT_DESKTOP_MESSAGE,
+  UNLOCK_CHECK_FAILED_MESSAGE,
+  UNLOCK_CHECK_RETRY_LABEL,
 } from "../Sharing/sharing-copy";
 import {
   getDesktopBridge,
@@ -419,7 +421,12 @@ export default function StartPage({
 
   // FR-21: the passphrase prompt is mounted only in the permitted states of the
   // limits table; otherwise it is not in the document at all.
-  const { state: limitsState, hasDesktopBridge, refresh } = useSharingLimits();
+  const {
+    state: limitsState,
+    hasDesktopBridge,
+    didLastReadFail,
+    refresh,
+  } = useSharingLimits();
   const isLockedWorkspace = lockStatus === "locked";
   const canOfferUnlock =
     Boolean(onUnlock) && isUnlockPromptAllowed(limitsState, hasDesktopBridge);
@@ -428,6 +435,14 @@ export default function StartPage({
   const shouldUnlockAtDesktop =
     isLockedWorkspace && isUnlockingLimited(limitsState);
   useDeclareUnlockPromptMounted(isUnlockPromptOpen);
+  // A locked workspace whose limits read failed shows neither the prompt nor
+  // the desktop message; say so, and offer a re-read. Never while still pending.
+  const shouldShowUnlockCheckFailed =
+    isLockedWorkspace &&
+    Boolean(onUnlock) &&
+    limitsState.state === "unknown" &&
+    !hasDesktopBridge &&
+    didLastReadFail;
 
   // The state may have changed since the prompt opened: re-read at submit and
   // send the passphrase only if the fresh answer still permits the prompt. This
@@ -458,6 +473,17 @@ export default function StartPage({
         <p className="mb-4 text-gw-body text-gw-secondary">
           {UNLOCK_AT_DESKTOP_MESSAGE}
         </p>
+      ) : null}
+
+      {shouldShowUnlockCheckFailed ? (
+        <div role="status" className="mb-4 flex flex-wrap items-center gap-3">
+          <p className="text-gw-body text-gw-secondary">
+            {UNLOCK_CHECK_FAILED_MESSAGE}
+          </p>
+          <Button variant="secondary" onClick={() => void refresh()}>
+            {UNLOCK_CHECK_RETRY_LABEL}
+          </Button>
+        </div>
       ) : null}
 
       <CreateProjectModal

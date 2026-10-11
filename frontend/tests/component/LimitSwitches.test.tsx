@@ -357,6 +357,14 @@ describe("LimitSwitches", () => {
       expect(dialog.textContent).toContain(LIMITS_UNLOCK_WARNING_TYPED);
       expect(dialog.textContent).toContain(LIMITS_UNLOCK_WARNING_UNENCRYPTED);
       expect(dialog.textContent).toContain(LIMITS_UNLOCK_WARNING_RECORDED);
+      // The dialog is portaled outside the layout's text-gw-primary wrapper, so
+      // its details must carry a theme text colour themselves.
+      const warning = within(dialog).getByText(LIMITS_UNLOCK_WARNING_TYPED);
+      expect(
+        warning.closest('[class*="text-gw-"]'),
+        "warning text is inside an element with a text-gw-* class",
+      ).not.toBeNull();
+      expect(warning.closest('[class*="text-gw-"]')).not.toBe(dialog);
       const buttons = within(dialog).getAllByRole("button");
       expect(document.activeElement).toBe(buttons[0]);
       expect(buttons[0]).toHaveTextContent(/keep/i);

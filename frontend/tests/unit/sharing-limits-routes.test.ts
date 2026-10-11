@@ -29,7 +29,7 @@ const LIMITED_ROUTES: Record<string, RegExp> = {
     /checkLimit\(req, "permanentDeletion"\) \?\? /,
   "project/delete/route.ts": /checkLimit\(req, "projectDeletion"\) \?\? /,
   "resource/revision/[resource-id]/route.ts":
-    /checkLimit\(req, "permanentDeletion"\) \?\? /,
+    /checkLimit\(\s*req,\s*"permanentDeletion",[^)]*\)\s*\?\? /,
 };
 /** The read route (Task 13); allowed to exist or not. */
 const LIMITS_READ_ROUTE = "sharing/limits/route.ts";

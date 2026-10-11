@@ -19,6 +19,10 @@ import type { TipTapDocument } from "../../src/lib/models";
 import { removeDirRetry } from "./helpers/fs-utils";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { LIMITS_FILE_NAME } from "../../src/lib/sharing/limits-store";
+import {
+  LIMIT_REFUSAL_MESSAGES,
+  REVISION_DELETE_REFUSAL_MESSAGE,
+} from "../../src/lib/sharing/limits-copy";
 
 // Feature 54, Task 16: a partial mock of revision-core so a single test per
 // handler can force its underlying core function to reject with a
@@ -839,7 +843,9 @@ describe("revision DELETE — permanentDeletion limit (Feature 77)", () => {
       expect(res.status).toBe(403);
       const json = (await res.json()) as { error: string; limit: string };
       expect(json.limit).toBe("permanentDeletion");
-      expect(typeof json.error).toBe("string");
+      expect(json.error).toBe(REVISION_DELETE_REFUSAL_MESSAGE);
+      expect(json.error).not.toBe(LIMIT_REFUSAL_MESSAGES.permanentDeletion);
+      expect(json.error).not.toMatch(/trash/i);
     });
     expect(deleteRevision).not.toHaveBeenCalled();
     const remaining = await listRevisions(fx.projectPath, fx.resourceId);
@@ -891,8 +897,9 @@ describe("revision DELETE — permanentDeletion limit (Feature 77)", () => {
           { params: Promise.resolve({ "resource-id": fx.resourceId }) },
         );
         expect(res.status).toBe(403);
-        const json = (await res.json()) as { limit: string };
+        const json = (await res.json()) as { error: string; limit: string };
         expect(json.limit).toBe("permanentDeletion");
+        expect(json.error).toBe(REVISION_DELETE_REFUSAL_MESSAGE);
       });
       expect(deleteRevision).not.toHaveBeenCalled();
     },

@@ -84,6 +84,36 @@ describe("useSharingLimits", () => {
     expect(result.current.state).toEqual({ state: "unknown" });
   });
 
+  it("didLastReadFail is false while the first read is pending, true after a failure, false after a later success", async () => {
+    let rejectFirst: (e: Error) => void = () => {};
+    fetchSharingLimits.mockReturnValueOnce(
+      new Promise<SharingLimitsAnswer>((_resolve, reject) => {
+        rejectFirst = reject;
+      }),
+    );
+    const { result } = renderHook(() => useSharingLimits(), { wrapper });
+    await flush();
+    expect(result.current.didLastReadFail).toBe(false);
+    await act(async () => {
+      rejectFirst(new Error("down"));
+      await Promise.resolve();
+    });
+    expect(result.current.state).toEqual({ state: "unknown" });
+    expect(result.current.didLastReadFail).toBe(true);
+    fetchSharingLimits.mockResolvedValueOnce(PAIRED);
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.didLastReadFail).toBe(false);
+  });
+
+  it("didLastReadFail stays false after a successful read", async () => {
+    fetchSharingLimits.mockResolvedValue({ state: "exempt" });
+    const { result } = renderHook(() => useSharingLimits(), { wrapper });
+    await flush();
+    expect(result.current.didLastReadFail).toBe(false);
+  });
+
   it("re-reads on visibilitychange to visible, not when hidden, and on focus", async () => {
     fetchSharingLimits.mockResolvedValue({ state: "exempt" });
     renderHook(() => useSharingLimits(), { wrapper });
@@ -179,6 +209,7 @@ describe("useSharingLimits on the pairing page", () => {
       });
       expect(fetchSharingLimits).not.toHaveBeenCalled();
       expect(view.result.current.state).toEqual({ state: "unknown" });
+      expect(view.result.current.didLastReadFail).toBe(false);
     },
   );
 });

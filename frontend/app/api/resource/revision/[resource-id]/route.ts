@@ -42,6 +42,7 @@ import type { Revision } from "../../../../../src/lib/models/types";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { checkLimit } from "../../../../../src/lib/sharing/limits-check";
+import { REVISION_DELETE_REFUSAL_MESSAGE } from "../../../../../src/lib/sharing/limits-copy";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface GetRevisionResponse {
@@ -331,6 +332,13 @@ export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
-  return checkLimit(req, "permanentDeletion") ?? wrappedDelete(req, context);
+  return (
+    checkLimit(
+      req,
+      "permanentDeletion",
+      undefined,
+      REVISION_DELETE_REFUSAL_MESSAGE,
+    ) ?? wrappedDelete(req, context)
+  );
 }
 export const PATCH = withStorageContext(handlePatch);

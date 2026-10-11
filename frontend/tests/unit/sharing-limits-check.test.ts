@@ -116,6 +116,34 @@ describe("checkLimit", () => {
     for (const k of KEYS) expect(refusalFor(k).status).toBe(403);
   });
 
+  it("refusalFor and checkLimit use a supplied message in place of the key's, keeping the key and 403", async () => {
+    const direct = refusalFor("permanentDeletion", "Custom sentence.");
+    expect(direct.status).toBe(403);
+    expect(await direct.json()).toEqual({
+      error: "Custom sentence.",
+      limit: "permanentDeletion",
+    });
+    const checked = checkLimit(
+      req("confirmed:d1"),
+      "permanentDeletion",
+      () => limits(true),
+      "Custom sentence.",
+    );
+    expect(checked?.status).toBe(403);
+    expect(await checked!.json()).toEqual({
+      error: "Custom sentence.",
+      limit: "permanentDeletion",
+    });
+    expect(
+      checkLimit(
+        req("window"),
+        "permanentDeletion",
+        () => limits(true),
+        "Custom sentence.",
+      ),
+    ).toBeNull();
+  });
+
   it.each([null, "", "garbage", "confirmed:"])(
     "refuses header %s for every key with that key's 403 and does not read the limits",
     async (h) => {

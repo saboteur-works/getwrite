@@ -483,7 +483,7 @@ export default function RevisionControl() {
 
               {deleteRefusal && (
                 <p
-                  className="mt-2 text-gw-micro font-mono tracking-label"
+                  className="mt-2 text-gw-micro font-mono tracking-label text-gw-secondary"
                   data-testid="revision-delete-refusal"
                 >
                   {deleteRefusal}

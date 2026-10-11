@@ -37,10 +37,13 @@ export function decideLimit(
   return limits[key] ? "refused" : "allowed";
 }
 
-/** HTTP 403 `{ error, limit }`; never the gate's 401, no gate header. */
-export function refusalFor(key: LimitKey): NextResponse {
+/**
+ * HTTP 403 `{ error, limit }`; never the gate's 401, no gate header. `message`
+ * replaces the key's own sentence for a route whose action it misdescribes.
+ */
+export function refusalFor(key: LimitKey, message?: string): NextResponse {
   return NextResponse.json(
-    { error: LIMIT_REFUSAL_MESSAGES[key], limit: key },
+    { error: message ?? LIMIT_REFUSAL_MESSAGES[key], limit: key },
     { status: 403 },
   );
 }
@@ -50,12 +53,13 @@ export function checkLimit(
   request: Request,
   key: LimitKey,
   read: () => Limits = () => readLimits(process.env),
+  message?: string,
 ): NextResponse | null {
   const headerValue = request.headers.get(CLASSIFICATION_HEADER);
   if (isExempt(headerValue)) return null;
-  if (isUnclassified(headerValue)) return refusalFor(key);
+  if (isUnclassified(headerValue)) return refusalFor(key, message);
   return decideLimit(headerValue, read(), key) === "refused"
-    ? refusalFor(key)
+    ? refusalFor(key, message)
     : null;
 }
 

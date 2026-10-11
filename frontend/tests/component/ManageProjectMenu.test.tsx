@@ -145,6 +145,7 @@ describe("ManageProjectMenu delete waits for the server", () => {
     const failure = await screen.findByText(/Server says no\./);
     expect(failure.textContent).toContain(PROJECT_NOT_DELETED);
     expect(failure.className).not.toMatch(/red/);
+    expect(failure.className).toMatch(/text-gw-(primary|secondary)/);
     expect(failure.getAttribute("role")).not.toBe("alert");
     expect(
       screen.getByRole("heading", { name: "Delete project" }),

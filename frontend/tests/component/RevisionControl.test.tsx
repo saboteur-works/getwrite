@@ -344,6 +344,7 @@ describe("RevisionControl refused revision delete (Feature 77 Task 22, FR-26)", 
     );
     const message = await screen.findByText(REFUSAL_TEXT);
     expect(message.className).not.toMatch(/red/);
+    expect(message.className).toMatch(/text-gw-(primary|secondary)/);
     expect(message.getAttribute("role")).not.toBe("alert");
     expect(mockedToast.success).not.toHaveBeenCalled();
     expect(mockedToast.error).toHaveBeenCalledWith(REFUSAL_TEXT);
