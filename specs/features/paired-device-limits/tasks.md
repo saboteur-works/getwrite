@@ -329,7 +329,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** NOT executable by an implementor. The orchestrator leaves it unticked until the owner has done it and does not treat that as a failure. Do not run it against the owner's real projects without the owner's say; a throwaway workspace is preferred.
 **POS:** task_5071466e
-**Done:** [ ]
+**Done:** [x]
 
 ## FR to task coverage
 
