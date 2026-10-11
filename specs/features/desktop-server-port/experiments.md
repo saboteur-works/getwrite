@@ -2523,3 +2523,67 @@ Pids recorded and started per launch: off 54841; on 55208; unreadable 55635; blo
 - Contents of the app's `getwrite.log` (the owner's folder, not read); so no `server ready`, `not starting the server` or readiness log line was seen for the packaged app. The identity check succeeding is inferred from the window loading, not seen in a log.
 - Why the Start Page shows two address items; what opened the two `127.0.0.1` ports on the Electron main process; the cause of the 401 on `GET /pair` with an unreadable store (the gate refusing is expected by design per the spec, not re-verified here).
 - Unsigned/ad-hoc build behaviour on another machine, x64, Node 20/22, other platforms, run-to-run variation (one run per shape).
+
+## Final suites
+
+Task 20. Date 2026-10-11. Main checkout, branch `feat/desktop-server-port`, `git rev-parse --short HEAD` = `ac34ea8f`, tree clean at the start. `node --version` = v24.15.0 for every command (no Node 20 or 22 was used; no CI result was seen). Same commands and method as the "Baselines" section (baseline commit `5c9b49f0`). Recorded by the implementor of Task 20; every figure below was observed in this run.
+
+### Pre-checks and process safety
+
+Before any suite: `lsof -nP -iTCP:<port> -sTCP:LISTEN` for 3000, 6006 and 7340 printed nothing. 3000, 7340 re-checked before the build, 3000 before and after the smoke, 6006 before the e2e run. After all runs, 3000, 6006 and 7340 had no listener and `ps` found no storybook, serve-storybook, smoke or standalone-server process. The owner's `~/Library/Application Support/getwrite-electron/` and `~/Documents/GetWrite` were not read, listed or written (no Electron app was started). Outside-sandbox logs went under the scratchpad directory `.../scratchpad/t20/` (not removed; it holds only suite logs, no secrets).
+
+### Sandbox use
+
+Inside the command sandbox: frontend `pnpm test:ci`, `pnpm typecheck`, `pnpm lint`; electron `pnpm test`, `pnpm typecheck`; root `pnpm knip` (`COLUMNS=400 NO_COLOR=1`), `pnpm --filter getwrite-cli test`; git reads. Outside the sandbox (`dangerouslyDisableSandbox: true`): `pnpm build` and the `.next/static` copy, `pnpm test:sharing-smoke`, `pnpm test:e2e`, the port and process checks around them. (`ps` is denied inside the sandbox, so the process checks were run outside it.)
+
+### Results (baseline beside now)
+
+| Command (directory) | Exit | Baseline (5c9b49f0) | Now (ac34ea8f) | Difference |
+| --- | --- | --- | --- | --- |
+| `pnpm test:ci` (frontend/) | 0 | 607 files; 6434 passed, 1 skipped (6435) | 608 files; 6468 passed, 1 skipped (6469) | +1 file, +34 passed, skipped unchanged |
+| `pnpm typecheck` (frontend/) | 0 | no errors | no errors | none |
+| `pnpm lint` (frontend/) | 0 | 0 errors, 395 warnings (7 fixable) | 0 errors, 395 warnings (7 fixable) | none |
+| `pnpm test` (electron/) | 0 | 25 files; 384 passed | 30 files; 488 passed, 0 failed | +5 files, +104 passed |
+| `pnpm typecheck` (electron/) | 0 | no errors | no errors | none |
+| `pnpm --filter getwrite-cli test` (root) | 0 | 22 files; 144 passed | 22 files; 144 passed | none |
+| `pnpm build` (frontend/) | 0 | built | built; `.next/static` copied over `.next/standalone/frontend/.next/static` (old copy removed first) | none |
+| `pnpm test:sharing-smoke` (frontend/) | 0 | `enumerated entries: 91; checks: 28; failures: 0` | `enumerated entries: 92; exceptions: 4 (3 enumerated + /_next/static/; 1 store-independent); checks: 34; failures: 0`; 15 pairing-page static URLs, 122 static files; "all checks passed" | +1 entry, +6 checks, 0 failures |
+| `pnpm test:e2e` (frontend/) | 0 | 214 passed, 1 skipped (47.3s) | 214 passed, 1 skipped (45.0s) | none |
+| `pnpm knip` (root) | 1 | see below | see below | by set: baseline + 9 scripts |
+
+Dates: all 2026-10-11. The skipped frontend test and the skipped e2e test were not identified (as at baseline).
+
+### Differences and their measured cause
+
+- Smoke: +1 enumerated entry matches the new `GET /api/sharing/ready` route (`frontend/app/api/sharing/ready/route.ts`) and the exception count of 4 matches the fourth enumerated gate exception; the smoke script `frontend/scripts/sharing-refusal-smoke.mjs` is itself changed on this branch (98 lines in `git diff --stat main..HEAD`, including commit 11ce54eb per the lead), so the +6 checks follow from that script change. I did not diff the individual checks; a per-check listing would settle which six are new.
+- Test counts: files added/changed on the branch by `git diff --name-only main..HEAD` under `tests/`: frontend new file `tests/unit/readiness-route.test.ts` (accounts for +1 file), edited `sharing-gate-enumeration`, `sharing-gate-proxy`, `sharing-host-allowlist`; electron new files `port-in-use`, `readiness-http`, `readiness-identity`, `server-launch`, `server-readiness` tests (+5 files), edited `addresses`, `device-ipc`, `limits-ipc`, `server-config`, `sharing-status`, `window-secret`. A count of added `it(`/`test(` lines in the diff gives frontend +24 (11 + 1 + 10 + 2) and electron +82 (net, `window-secret` +1/-3), against measured +34 and +104. The gap (frontend 10, electron 22) is not explained by this count; a likely contributor is parameterised tests (`it.each`/loops) expanding into more cases than lines, but that was not discriminated. The measured increase from the suites is the figure: **new tests vs baseline: frontend +34, electron +104, CLI 0**. The split of those between Tasks 8, 9 and 10 was not measured. Any removed/changed pre-existing test is not enumerated here beyond the `-3` `it(` lines in `window-secret.test.ts`.
+- No other difference was observed. Lint warning count, typecheck, e2e and CLI are identical to baseline.
+
+### knip (compared by set)
+
+Exit 1 (as at baseline). Per-section counts now: Unused files 66 (baseline 57); Unused dependencies 1 (1); Unused devDependencies 4 (4); Unlisted dependencies 6 (6); Unlisted binaries 4 (4); Unused exports 166 (166); Unused exported types 170 (170); Duplicate exports 14 (14); Configuration hints 6 (6). The baseline output block (every line of the "Unused files" through "Configuration hints" listings) was compared with this run's output as sorted line sets: the only lines in this run and not in the baseline are the section header `Unused files (66)` and these nine files, all under `specs/features/desktop-server-port/scripts/`: `built-server-check.mjs`, `cookie-scope.mjs`, `dev-ports.mjs`, `electron-dev-7340.mjs`, `electron-unpacked-7340.mjs`, `old-port-and-7340.mjs`, `pair-on-7340-unpacked.mjs`, `pair-on-7340.mjs`, `port-in-use-today.mjs` (the same kind of entry knip already reports for the `paired-device-limits` scripts). The only baseline line absent now is the header `Unused files (57)`. Every other name is present in both.
+
+### Code changed (`git diff --stat main..HEAD`, 44 files, 8700 insertions, 120 deletions; non-`specs/` part)
+
+`.github/workflows/linux-appimage-smoke.yml` +6 (comment lines only, verified from the diff); `CLAUDE.md` +1; `docs/architecture/ADRs/README.md` +4; `docs/architecture/ADRs/adr-023-saboteur-port-blocks-of-ten.md` +66; `electron/src/main.ts` 120; `electron/src/port-in-use.ts` +201; `electron/src/server-config.ts` 11; `electron/src/sharing/readiness-http.ts` +43, `readiness-identity.ts` +54, `server-launch.ts` +74, `server-readiness.ts` 152; electron tests as listed above; `frontend/app/api/sharing/ready/route.ts` +45; `frontend/scripts/sharing-refusal-smoke.mjs` 98; `frontend/src/lib/readiness/readiness-proof.ts` +38; `frontend/src/lib/sharing/gate.ts` +16; frontend tests as listed above; plus the nine task scripts under `specs/features/desktop-server-port/scripts/` (3,260 lines of added script).
+
+### Unchanged files (empty `git diff main..HEAD` for each)
+
+`frontend/src/lib/auth/auth-server.ts`, `frontend/better-auth.config.ts`, `frontend/app/api/_tenant/with-storage-context.ts`, their tests `frontend/tests/unit/auth-server.test.ts` and `frontend/tests/unit/with-storage-context.test.ts` (none appears in the branch's file list), and `specs/features/paired-device-limits/scripts/` (empty diff).
+
+Config files loaded at config time: `git diff --name-only main..HEAD` contains no `package.json`, `next.config.mjs`, vitest config, eslint config, tsconfig, knip config or playwright config. The one workflow file that changed is `.github/workflows/linux-appimage-smoke.yml`, and its diff is 6 added comment lines (no key or command changed).
+
+### e2e and the Storybook process
+
+6006 had no listener before the run. As at baseline, Playwright's `webServer` started the static Storybook server; a 3-second `lsof` poll saw one pid on 6006: 20698. I did not start it separately and sent no signal. After the run, 6006 had no listener, `ps -p 20698` showed it gone, and no storybook or serve-storybook process remained.
+
+### git status
+
+`git status --short` before this section was written printed nothing (build output is ignored). After writing, only `specs/features/desktop-server-port/experiments.md` and `tasks.md` differ.
+
+### Not verified / not run
+
+- Node 20 and Node 22; CI results for this branch.
+- Identification of the skipped frontend and e2e tests.
+- Which six smoke checks are new (the total moved 28 to 34), and the split of the +34 and +104 new tests across Tasks 8, 9 and 10; the `it(`-line count does not reproduce the measured increases (see above).
+- `pnpm build:native`; `pnpm storybook` (dev).

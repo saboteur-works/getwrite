@@ -220,7 +220,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Satisfies FR-29, FR-9 (comparison). Main checkout, one task at a time, outside the command sandbox. Records and does not fix.
 **POS:** task_8a461b95
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Owner manual check (owner, not executable by an implementor): unpacked build, Android phone, the new address
 **What:** The owner runs the unpacked build with sharing on, opens the new address on the Android phone and reports what happens.
