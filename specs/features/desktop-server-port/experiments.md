@@ -2598,3 +2598,7 @@ Date 2026-10-11. Reported by the owner, not observed by the pipeline. The pipeli
 - Seen in the app's output at this launch, outside this feature: the server logged `Skipping unreadable project "78e8c5e8-…" while listing projects: ENOENT … project.json` for one folder in the owner's projects directory. The folder was not opened by the lead. Cause not established.
 
 Addition, 2026-10-11, reported by the owner after the lead asked: "the old address failed". So on the owner's Android phone the old `:3000` address did not connect (what the phone's browser displayed was not described). With this, every step of Task 21 the owner was asked to do is reported; the addresses shown in App Settings were not separately reported.
+
+## Owner decision: the readiness route stays store-independent
+
+Date 2026-10-11. Recorded by the pipeline lead. The lead explained to the owner that the readiness route answering under an unreadable device store narrows Feature 75's rule ("an unreadable store refuses everything"), why (the start-up poll no longer carries the window secret, so without the carve-out the app could not start to show the unreadable-store message), what it exposes (a keyed hash of the caller's own challenge, or a fixed error; nothing read from the store, cookies, headers or projects), and the alternative. The owner's answer: "Leave as built".
