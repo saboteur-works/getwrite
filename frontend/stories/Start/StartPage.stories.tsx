@@ -787,3 +787,50 @@ export const ImportDocxButtonAbsent: Story = {
     ).not.toBeInTheDocument();
   },
 };
+
+/**
+ * Locked workspace on a paired device with unlocking limited (Feature 77,
+ * FR-21): the desktop message is shown and no passphrase field is mounted.
+ */
+export const LockedPairedUnlockingLimited: Story = {
+  args: { projects: [], lockStatus: "locked", onUnlock: () => undefined },
+  parameters: {
+    sharingLimits: {
+      state: {
+        state: "paired",
+        limits: {
+          projectDeletion: false,
+          unlocking: true,
+          locking: false,
+          encryptionChanges: false,
+          permanentDeletion: false,
+        },
+      },
+    },
+  },
+  render: (args: StartPageProps) => <StartPage {...args} />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(
+      /has to be unlocked on the computer where GetWrite/i,
+    );
+    expect(canvas.queryByLabelText(/passphrase/i)).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * Locked workspace whose limits read failed (state `unknown`, last read
+ * failed): neither the prompt nor the desktop message, but a "Try again" button.
+ */
+export const LockedLimitsCheckFailed: Story = {
+  args: { projects: [], lockStatus: "locked", onUnlock: () => undefined },
+  parameters: {
+    sharingLimits: { state: { state: "unknown" }, didLastReadFail: true },
+  },
+  render: (args: StartPageProps) => <StartPage {...args} />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: "Try again" });
+    expect(canvas.queryByLabelText(/passphrase/i)).not.toBeInTheDocument();
+  },
+};

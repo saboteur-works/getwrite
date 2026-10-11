@@ -9,6 +9,7 @@ vi.mock("../../src/store/sharing-limits-transport-service", () => ({
 }));
 
 import SharingLimitsProvider, {
+  StaticSharingLimitsProvider,
   useDeclareUnlockPromptMounted,
   useSharingLimits,
 } from "../../components/Sharing/SharingLimitsContext";
@@ -275,5 +276,61 @@ describe("useDeclareUnlockPromptMounted", () => {
       await vi.advanceTimersByTimeAsync(5000);
     });
     expect(view.result.current.state).toEqual(PAIRED);
+  });
+});
+
+describe("StaticSharingLimitsProvider", () => {
+  function staticWrapper(
+    value?: React.ComponentProps<typeof StaticSharingLimitsProvider>["value"],
+  ) {
+    return function Wrapper({
+      children,
+    }: {
+      children: React.ReactNode;
+    }): JSX.Element {
+      return (
+        <StaticSharingLimitsProvider value={value}>
+          {children}
+        </StaticSharingLimitsProvider>
+      );
+    };
+  }
+
+  it("defaults to exempt with no bridge, no failed read and inert callbacks", async () => {
+    const { result } = renderHook(() => useSharingLimits(), {
+      wrapper: staticWrapper(),
+    });
+    expect(result.current.state).toEqual({ state: "exempt" });
+    expect(result.current.hasDesktopBridge).toBe(false);
+    expect(result.current.didLastReadFail).toBe(false);
+    await expect(result.current.refresh()).resolves.toEqual({
+      state: "exempt",
+    });
+    const unregister = result.current.registerUnlockPrompt();
+    expect(() => unregister()).not.toThrow();
+  });
+
+  it("applies the override and refresh resolves the overridden state", async () => {
+    const { result } = renderHook(() => useSharingLimits(), {
+      wrapper: staticWrapper({
+        state: PAIRED,
+        hasDesktopBridge: true,
+        didLastReadFail: true,
+      }),
+    });
+    expect(result.current.state).toEqual(PAIRED);
+    expect(result.current.hasDesktopBridge).toBe(true);
+    expect(result.current.didLastReadFail).toBe(true);
+    await expect(result.current.refresh()).resolves.toEqual(PAIRED);
+  });
+
+  it("makes no read through fetchSharingLimits", async () => {
+    const { result } = renderHook(() => useSharingLimits(), {
+      wrapper: staticWrapper({ state: { state: "unknown" } }),
+    });
+    await flush();
+    await result.current.refresh();
+    result.current.registerUnlockPrompt()();
+    expect(fetchSharingLimits).not.toHaveBeenCalled();
   });
 });

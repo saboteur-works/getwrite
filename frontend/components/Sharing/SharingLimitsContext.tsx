@@ -44,7 +44,7 @@ import {
 
 type SharingLimitsState = { state: "unknown" } | SharingLimitsAnswer;
 
-interface SharingLimitsContextValue {
+export interface SharingLimitsContextValue {
   state: SharingLimitsState;
   /** True when the Electron preload bridge is present; known without the read. */
   hasDesktopBridge: boolean;
@@ -58,6 +58,7 @@ interface SharingLimitsContextValue {
 
 const POLL_INTERVAL_MS = 5000;
 const UNKNOWN: SharingLimitsState = { state: "unknown" };
+const EXEMPT: SharingLimitsState = { state: "exempt" };
 
 const SharingLimitsContext = createContext<SharingLimitsContextValue | null>(
   null,
@@ -84,6 +85,53 @@ export function useDeclareUnlockPromptMounted(active: boolean): void {
     if (!active) return undefined;
     return registerUnlockPrompt();
   }, [active, registerUnlockPrompt]);
+}
+
+/**
+ * The part of the context a fixed (non-reading) provider lets a caller choose.
+ * `refresh` and `registerUnlockPrompt` are always inert in the static provider.
+ */
+export type StaticSharingLimitsValue = Partial<
+  Pick<
+    SharingLimitsContextValue,
+    "state" | "hasDesktopBridge" | "didLastReadFail"
+  >
+>;
+
+/**
+ * Supplies a FIXED limits value with no network read, timers or listeners, for
+ * Storybook and tests. Omitted fields take inert defaults: state `exempt` (what
+ * the desktop window and a local browser with sharing off see), no desktop
+ * bridge, no failed read. `refresh` resolves the same state and
+ * `registerUnlockPrompt` returns a no-op. The real {@link SharingLimitsProvider}
+ * and the throw outside any provider are unchanged, so production gets no
+ * fail-open default.
+ */
+export function StaticSharingLimitsProvider({
+  value,
+  children,
+}: {
+  value?: StaticSharingLimitsValue;
+  children: ReactNode;
+}): JSX.Element {
+  const state = value?.state ?? EXEMPT;
+  const hasDesktopBridge = value?.hasDesktopBridge ?? false;
+  const didLastReadFail = value?.didLastReadFail ?? false;
+  const resolved = useMemo<SharingLimitsContextValue>(
+    () => ({
+      state,
+      hasDesktopBridge,
+      didLastReadFail,
+      refresh: () => Promise.resolve(state),
+      registerUnlockPrompt: () => () => undefined,
+    }),
+    [state, hasDesktopBridge, didLastReadFail],
+  );
+  return (
+    <SharingLimitsContext.Provider value={resolved}>
+      {children}
+    </SharingLimitsContext.Provider>
+  );
 }
 
 export default function SharingLimitsProvider({
