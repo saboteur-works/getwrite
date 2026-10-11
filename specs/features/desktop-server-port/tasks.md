@@ -40,7 +40,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Satisfies FR-5, FR-6, FR-8, FR-24. No process is started. Classification (c) for `next dev` and `next start` is a Hypothesis from Next's documented behaviour until Task 4 shows the listening port.
 **POS:** task_b45e8d90
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Experiment (agent): port in use TODAY, measured on 3000 with a throwaway listener
 **What:** Measure what the unchanged app does when something already listens on its port, on 3000 (the only port the unchanged code uses), so the owner has the mechanism before Tasks 9 and 10 are sized.
