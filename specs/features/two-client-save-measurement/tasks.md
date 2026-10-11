@@ -39,7 +39,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 8
 **Notes:** Satisfies FR-2, FR-3, FR-4, FR-6, FR-7, FR-8, FR-9, FR-21 to FR-25. Main checkout, OUTSIDE the sandbox for the dry run (self-check may run inside). Process-safety rules apply in full; the dry run's server is the only listener started. The footer status text ("saved", the failed-save wording) and the toast surfaces are read from the DOM exactly as rendered; do not invent selectors, open the components. If the reader cannot be made to tell A from B from a mix, the task is not done and the blocker is reported. Requests from the host to its own address are labelled so in every record. This task measures nothing about the product; it must not print a result as a finding.
 **POS:** task_a530a53e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Scenario S1, in turn
 **What:** Run S1 three times: A types and saves, B (no reload) types and saves, A (no reload) types and saves, recording the six outcomes after each step.
