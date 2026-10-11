@@ -24,6 +24,7 @@ import {
   createReadinessKey,
 } from "./sharing/readiness-identity";
 import { createExitSignal, runLaunchSequence } from "./sharing/server-launch";
+import { createPortGuard } from "./port-in-use";
 import { buildServerBindEnv, resolveSharingMode } from "./sharing/sharing-mode";
 import os from "os";
 import {
@@ -166,6 +167,19 @@ function ensureWindowSecretInstalled(): void {
   if (windowSecretInstalled) return;
   installWindowSecret(session.defaultSession, localOrigin(PORT), windowSecret);
   windowSecretInstalled = true;
+}
+
+// Pre-fork port check and bind-failure recognition (Feature 80, FR-11 a).
+const portGuard = createPortGuard({ port: PORT });
+// The refusal message when the pre-fork check found the port taken; no server
+// is forked then, and no readiness request or window load follows.
+let portRefusal: string | undefined;
+// Lets a child's last output line arrive after its exit event before the stop
+// message is chosen from it (the order of the two was not measured).
+const OUTPUT_SETTLE_MS = 250;
+
+function showServerStop(fallback: string, show: (msg: string) => void): void {
+  setTimeout(() => show(portGuard.stopMessage(fallback)), OUTPUT_SETTLE_MS);
 }
 
 function startServer(
@@ -767,7 +781,9 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
         win.loadURL(localOrigin(PORT)).catch(() => {});
       }
     },
-    showFailure: abort,
+    portBlocked: () => portRefusal,
+    showFailure: (msg) =>
+      portRefusal ? abort(msg) : showServerStop(msg, abort),
   });
 
   return { abort };
@@ -795,7 +811,7 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     initLog();
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
@@ -807,11 +823,22 @@ if (!app.requestSingleInstanceLock()) {
 
     const dirs = resolveDirectories();
 
+    // Nothing may hold the port before the server is forked (FR-11 a). The
+    // check runs before the window's launch sequence starts, so a refused
+    // launch makes no request to whatever holds the port.
+    portRefusal = await portGuard.preflight();
+
     // Open the window first, so anything that fails below has somewhere to say
     // so. Previously `startServer` ran before the window existed, and a throw
     // took the whole callback down with it — leaving a launched app with no
     // window, no dialog, and no indication of what went wrong.
     openMainWindow();
+
+    if (portRefusal) {
+      log("not starting the server: the port check refused the launch");
+      serverExit.fire(null);
+      return;
+    }
 
     try {
       serverProcess = startServer(dirs);
@@ -823,10 +850,14 @@ if (!app.requestSingleInstanceLock()) {
       return;
     }
 
-    serverProcess.stdout?.on("data", (d) => log(d.toString().trim()));
-    serverProcess.stderr?.on("data", (d) =>
-      log(`[stderr] ${d.toString().trim()}`),
-    );
+    serverProcess.stdout?.on("data", (d) => {
+      portGuard.observeOutput(d.toString());
+      log(d.toString().trim());
+    });
+    serverProcess.stderr?.on("data", (d) => {
+      portGuard.observeOutput(d.toString());
+      log(`[stderr] ${d.toString().trim()}`);
+    });
 
     // ChildProcess and UtilityProcess both extend EventEmitter and emit "exit"
     // with the code first; subscribe via the common base so the union typechecks.
@@ -834,7 +865,9 @@ if (!app.requestSingleInstanceLock()) {
       log(`server exited with code ${code}`);
       serverExit.fire(code);
       if (code !== 0) {
-        currentAbort?.(`Server exited unexpectedly (code ${code})`);
+        showServerStop(`Server exited unexpectedly (code ${code})`, (msg) =>
+          currentAbort?.(msg),
+        );
       }
     });
   });

@@ -11,6 +11,12 @@ import { ServerExitedError } from "./server-readiness";
 
 /** What `main.ts` supplies for one window. */
 export interface LaunchSteps {
+  /**
+   * A refusal message when the pre-fork port check failed (Feature 80, FR-11
+   * a). When present nothing else runs: no readiness request, no window
+   * secret, no load.
+   */
+  portBlocked?: () => string | undefined;
   confirmServer: () => Promise<void>;
   installWindowSecret: () => void;
   loadLocalOrigin: () => void;
@@ -29,6 +35,11 @@ export function describeLaunchFailure(error: unknown): string {
 
 /** Confirms the server, then installs the window secret, then loads. */
 export async function runLaunchSequence(steps: LaunchSteps): Promise<void> {
+  const blocked = steps.portBlocked?.();
+  if (blocked !== undefined) {
+    steps.showFailure(blocked);
+    return;
+  }
   try {
     await steps.confirmServer();
     steps.installWindowSecret();

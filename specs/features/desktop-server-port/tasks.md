@@ -120,7 +120,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (a), FR-10, US-4. Measured motivation (Task 3): a listener on `127.0.0.1` and the dev server on the wildcard address coexisted with nothing failing (cause not established), and a failed bind was reported only as `Server exited unexpectedly (code 1)` with no port named. Real-app behaviour is verified in Tasks 17 and 19, not here. The message text is working copy (reviewed in the later copy pass).
 **POS:** task_41c8f551
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Comment in the AppImage smoke workflow (comment only)
 **What:** Add a comment near the workflow's "nothing may answer on :3000" check saying a future matrix entry for a 7340 build needs its own probe port.
