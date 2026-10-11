@@ -12,7 +12,7 @@ import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import http from "http";
 import { randomBytes } from "crypto";
-import { PORT, localOrigin } from "./server-config";
+import { PORT, localOrigin, serverPortEnv } from "./server-config";
 import { isLocalOriginUrl, isTrustedSender } from "./navigation-guard";
 import {
   createWindowSecret,
@@ -170,7 +170,7 @@ function startServer(
   }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    PORT: String(PORT),
+    PORT: serverPortEnv(PORT),
     GETWRITE_PROJECTS_DIR: dirs.projectsDir,
     GETWRITE_TEMPLATES_DIR: dirs.templatesDir,
     // Marks this server as the Electron desktop build so the frontend can gate

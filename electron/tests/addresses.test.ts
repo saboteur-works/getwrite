@@ -54,6 +54,21 @@ describe("candidateAddresses", () => {
     ]);
   });
 
+  it("builds every URL from the port passed in, with no 3000 or 7340", () => {
+    const interfaces: Interfaces = {
+      en0: [v4("192.168.1.20")],
+      en1: [v4("10.0.0.5")],
+    };
+    const urls = candidateAddresses(interfaces, 41234);
+    expect(urls).toEqual([
+      "http://192.168.1.20:41234",
+      "http://10.0.0.5:41234",
+    ]);
+    for (const url of urls) {
+      expect(url).not.toMatch(/:(3000|7340)\b/);
+    }
+  });
+
   it("ignores loopback, IPv6, link-local and public addresses", () => {
     const interfaces: Interfaces = {
       lo0: [v4("127.0.0.1", true), v6("::1", true)],

@@ -100,7 +100,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Satisfies FR-1, FR-2, FR-3, FR-4, FR-24 (changed hits), FR-28. Fixed constant (OQ-7 resolved). Tests that use 3000 only as an input fixture must pass unchanged; if one fails because of the new value, record why before touching it.
 **POS:** task_7bfc2419
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Readiness accepts only the forked server, the window secret goes to nothing until that is confirmed, and the window loads the local origin only afterwards (tests first)
 **What:** Change the readiness check so it succeeds only for the server the app itself started, identified by a per-launch value the forked server echoes; so the per-launch window secret is attached to nothing before that confirmation; so the window loads the local origin only after it; and so polling stops when the forked server exits and each poll times out. Confirmed scope (b), (c), (d) of FR-11, Owner decision at the Task 7 stop, 2026-10-10.

@@ -92,6 +92,20 @@ describe("installWindowSecret", () => {
     expect(out.response?.requestHeaders?.[WINDOW_HEADER]).toBe(SECRET);
   });
 
+  it("follows the origin passed in: header on 41234, none on 3000 or 7340", () => {
+    const origin = "http://localhost:41234";
+    const { session, fire } = fakeSession();
+    installWindowSecret(session, origin, SECRET);
+    expect(
+      fire(`${origin}/api/x`, {}).response?.requestHeaders?.[WINDOW_HEADER],
+    ).toBe(SECRET);
+    for (const other of ["http://localhost:3000", "http://localhost:7340"]) {
+      expect(
+        fire(`${other}/api/x`, {}).response?.requestHeaders?.[WINDOW_HEADER],
+      ).toBeUndefined();
+    }
+  });
+
   it("preserves existing headers", () => {
     const { session, fire } = fakeSession();
     installWindowSecret(session, ORIGIN, SECRET);
@@ -149,6 +163,18 @@ describe("waitForServer (readiness check)", () => {
     expect(seen).toHaveLength(1);
     expect(seen[0].url).toBe(ORIGIN);
     expect(seen[0].headers[WINDOW_HEADER]).toBe(SECRET);
+  });
+
+  it("polls the URL it is given: the 41234 origin, nothing on 3000 or 7340", async () => {
+    const origin = "http://localhost:41234";
+    const seen: string[] = [];
+    const get: ReadinessGet = (url, _headers, onResponse) => {
+      seen.push(url);
+      onResponse(200);
+      return { onError: () => undefined };
+    };
+    await waitForServer({ url: origin, secret: SECRET, get });
+    expect(seen).toEqual([origin]);
   });
 
   it("sends the header on every retry", async () => {

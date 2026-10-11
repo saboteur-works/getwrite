@@ -638,6 +638,31 @@ describe("Host allowlist (FR-31)", () => {
     }
   });
 
+  describe.each(["7340", "41234"])("with PORT=%s", (value) => {
+    beforeEach(() => {
+      vi.stubEnv("PORT", value);
+    });
+
+    it.each(["10.0.0.5", "localhost", "127.0.0.1", "test-machine.local"])(
+      "accepts %s on the server port and refuses it on 3000 and on another port",
+      async (name) => {
+        const reaches = async (host: string): Promise<boolean> =>
+          isPassThrough(await proxy(req("/pair", { headers: { host } })));
+        expect(await reaches(`${name}:${value}`)).toBe(true);
+        expect(await reaches(`${name}:3000`)).toBe(value === "3000");
+        expect(await reaches(`${name}:${Number(value) + 1}`)).toBe(false);
+        expect(await reaches(name)).toBe(false);
+      },
+    );
+
+    it("a refused Host carries the refused-host classification", async () => {
+      const res = await proxy(
+        req("/pair", { headers: { host: "10.0.0.5:3000" } }),
+      );
+      expect(res.headers.get("x-getwrite-gate")).toBe(REFUSED_HOST);
+    });
+  });
+
   it("refuses everything for a non-window request when PORT is missing or not numeric", async () => {
     for (const value of ["", "abc", "3000x", "0"]) {
       vi.stubEnv("PORT", value);
