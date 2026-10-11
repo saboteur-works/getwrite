@@ -99,7 +99,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-20, FR-25, FR-29, FR-31, FR-32, FR-33. No process is started; this task only reads and writes documents. If a verdict cannot be supported by the recorded data, it says "not determined" and names the missing run. Do not decide or recommend what the owner does about the result (Feature 79, a save-path change, a changed promise, shipping without the statement).
 **POS:** task_64a36af9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Final suites: re-run every suite against the baselines, check nothing outside specs changed
 **What:** Re-run the full suites after all scripted work, compare each to Task 1's baseline, and check the diff touches nothing outside `specs/`.
