@@ -2203,3 +2203,14 @@ Firefox, desktop Chrome and Safari: **not checked**. The statement in the spec's
 ### Cleanup
 
 Pids started and stopped by pid: 89341, 89361, 89398, 89404 (next dev tree), 89822 (7340 listener); none left alive. After the run: no listener on 3000 or 7340 (`lsof` printed nothing for each, also checked by the script). The throwaway folder under `os.tmpdir()` was removed. The repo's `projects/` name-hash was `796ca22ebbca` (17 names) before and after. `~/Library/Application Support/getwrite-electron/` and `~/Library/Logs/getwrite-electron` were not read, listed or written. No cookie, secret or code value was read or printed.
+
+## Owner decisions at the Task 7 stop
+
+Date 2026-10-10. Recorded by the pipeline lead. The lead put the measurements of Tasks 1 to 6 to the owner with a recommendation on each point; the owner's answer was "your recs". The decisions:
+
+1. **Dev mode (OQ-2).** The dev desktop app follows the constant to 7340 (it already passes `PORT` to its dev server). Plain `pnpm dev` and `pnpm start` stay on 3000. No separate dev port: Task 13 is closed as not needed. Known cost, accepted: a dev desktop app and a packaged app both want 7340; whether the two can otherwise run together was not measured.
+2. **Already-paired devices (OQ-4).** `device-credentials.json` is left alone; no migration code. One documentation line: a paired device normally stays paired on the new port (measured in Chromium only, Task 5), and if it does not, it is paired again. The owner's phone check covers Android Chrome.
+3. **Old address (OQ-5).** One documentation line only. No listener or redirector on 3000. Task 14 (a sharing-panel sentence) is closed as not needed.
+4. **Scope of Tasks 9 and 10, confirmed from the Task 3 measurement.** (a) Before forking the server the app checks that nothing is listening on the port on any address, and if something is, refuses to start with the message naming the port (this covers the measured case where a listener on `127.0.0.1` and the app's server on the wildcard address coexisted and nothing failed). (b) Readiness accepts only the server the app forked, by a per-launch value the server echoes; the window secret is sent to nothing until that is confirmed. (c) The window loads the local origin only after that confirmation, so a foreign page is never loaded into a window that has the desktop bridge. (d) Readiness polling stops when the forked server exits, and each poll has a timeout. Task 9's estimate goes from 5 to 8; Task 10 stays at 5.
+
+Correction by the lead: before Task 5 the lead told the owner that a paired device would have to pair again after a port change because the cookie "belongs to the host and port". Task 5 measured the opposite in Chromium (one host-only cookie, accepted on a second port against the same store).
