@@ -71,12 +71,25 @@ describe("main.ts reads the port from server-config only", () => {
       .filter((line) => /\bPORT\b/.test(line))
       .filter((line) => !/^\s*(\/\/|\*)/.test(line))
       .filter((line) => !line.includes('from "./server-config"'));
-    for (const line of uses) {
-      expect(line).toMatch(
-        /localOrigin\(PORT\)|serverPortEnv\(PORT\)|port: PORT,/,
-      );
-    }
     expect(uses.length).toBeGreaterThan(0);
+    for (const line of uses) {
+      // Remove the permitted shapes; any PORT left over is a misuse.
+      // `port: PORT` may end the line, or be followed by `,` or `}`, so the
+      // guard does not depend on how the formatter lays out the object.
+      const remainder = line
+        .replace(/PORT: serverPortEnv\(PORT\)/g, "")
+        .replace(/\blocalOrigin\(PORT\)/g, "")
+        .replace(/\bport: PORT(?=\s*(,|\}|$))/g, "");
+      expect(remainder, line).not.toMatch(/\bPORT\b/);
+    }
+  });
+
+  it("never uses PORT in arithmetic, a template string, or a comparison", () => {
+    expect(source).not.toMatch(/\bPORT\s*[-+*/%]/);
+    expect(source).not.toMatch(/[-+*/%]\s*PORT\b/);
+    expect(source).not.toContain("${PORT}");
+    expect(source).not.toMatch(/\bPORT\s*(===?|!==?|[<>]=?)/);
+    expect(source).not.toMatch(/(===?|!==?|[<>]=?)\s*PORT\b/);
   });
 
   it("contains no 3000 or 7340 literal", () => {
