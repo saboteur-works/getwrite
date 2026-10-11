@@ -1101,3 +1101,13 @@ Date 2026-10-10. Run by the pipeline lead. Playwright Chromium (from `frontend/n
 - After the fix, standalone server from a fresh build of `76c1821e`, sharing on, throwaway sharing and projects folders, port 3987 on loopback: `GET /api/sharing/limits` with no cookie → 401 `not-paired` (so the gate was on); `/pair` → 200; the same page measurement gave 2 main-frame navigations in 8 s, final URL `/pair`, and 0 `/api/` responses. What the 2 navigations are was not separated (a run with sharing off against the rebuilt app also gave 2).
 - Not run: typing a code and pairing in that browser after the fix; the phone. Tasks 27 to 29 never loaded `/pair` unpaired (their devices were paired by a helper or by a POST from Node), which is why they did not show this.
 - Process note: the throwaway server's recorded pid was not the listener; the listener (pid seen by `lsof` on 3987, command `next-server`) was stopped by that pid after checking its command. The owner's app on port 3000 was not signalled.
+
+## Owner manual check (Task 31)
+
+Date 2026-10-10. Reported by the owner, not observed by the pipeline: unpacked build of `76c1821e` on the owner's Mac with the owner's own settings and projects, and an Android phone as the paired browser.
+
+- First attempt, on the build of `4ad52b55`: the pairing screen on the phone reloaded too fast to type in (section above). Fixed in `76c1821e`; the phone was then paired on the rebuilt app.
+- Step 5 (confirmation when turning Limit unlocking off): the owner saw the dialog for Limit unlocking and none for the other switches, and confirmed that is acceptable.
+- Steps 1 to 6, 8 and 9: owner's words, "The other steps seem to work." No per-step detail was given.
+- Step 7 (creating the workspace passphrase from the phone is refused): NOT done. The owner's workspace already has a passphrase, so creation could not be attempted. The only coverage of step 7 is scripted: Task 26 (built server) and Task 27 steps A1 to A4 (Playwright Chromium, throwaway workspace with no passphrase).
+- No observation was reported about the phone's open editor when the desktop locks the workspace.
