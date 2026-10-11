@@ -79,7 +79,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 3
 **Notes:** Satisfies FR-14, FR-9, FR-20. Main checkout, outside the sandbox. Two editors in one server on one project; one client per resource. Records and does not fix.
 **POS:** task_573b9533
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Scenario S2, near-simultaneous saves with measured gaps
 **What:** Run S2 with gap variants including the smallest the harness can produce, with equal and different document lengths, 20 repetitions per variant, recording the measured gap and the order evidence for each repetition.
