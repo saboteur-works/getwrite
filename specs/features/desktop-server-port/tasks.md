@@ -230,7 +230,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** NOT executable by an implementor. The orchestrator leaves it unticked until the owner has done it and does not treat that as a failure. The owner's step of copying the convention to a shared cross-repo location (OQ-6) is separate and is not part of this task.
 **POS:** task_7ac7c01c
-**Done:** [ ]
+**Done:** [x]
 
 ## FR to task coverage
 

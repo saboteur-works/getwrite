@@ -2596,3 +2596,5 @@ Date 2026-10-11. Reported by the owner, not observed by the pipeline. The pipeli
 - Not reported by the owner: whether the addresses shown in App Settings end in `:7340` (the phone reached the app on the new port, so it used an address with 7340), and what the phone shows for the old `:3000` address.
 - Not done on the phone: pairing from scratch on 7340 (the device was already paired); the port-in-use message; the unreadable-store message.
 - Seen in the app's output at this launch, outside this feature: the server logged `Skipping unreadable project "78e8c5e8-…" while listing projects: ENOENT … project.json` for one folder in the owner's projects directory. The folder was not opened by the lead. Cause not established.
+
+Addition, 2026-10-11, reported by the owner after the lead asked: "the old address failed". So on the owner's Android phone the old `:3000` address did not connect (what the phone's browser displayed was not described). With this, every step of Task 21 the owner was asked to do is reported; the addresses shown in App Settings were not separately reported.
