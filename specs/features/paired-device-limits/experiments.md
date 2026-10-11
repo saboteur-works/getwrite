@@ -1089,3 +1089,15 @@ No Node 20 run was made and no CI result for this branch was seen. `ls ~/.volta/
 ### Cleanup
 
 The smoke script started and stopped its own server: after it, `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing, and `ps` filtered for `standalone`, `server.js` and `sharing-refusal` showed only VS Code helper processes that were already running. I started no other process. The owner's `~/Library/Application Support/getwrite-electron` was not touched. `pnpm build:native` was not run. `git status --short` after all runs: empty (the rebuilt `frontend/.next` is gitignored); it will list only this file and `tasks.md` once they are edited.
+
+## Pairing page reload for an unpaired device (found at the owner's manual check)
+
+Date 2026-10-10. Run by the pipeline lead. Playwright Chromium (from `frontend/node_modules/@playwright/test`), launched outside the command sandbox, one fresh page with no device cookie, `goto /pair`, wait 8000 ms, count main-frame `framenavigated` events and `/api/` responses. No credential, cookie, code or secret was read or printed.
+
+- Owner report: on the Android phone, with the unpacked build of `4ad52b55` and sharing on, the pairing screen reloaded too fast to type in.
+- Before the fix, against the owner's running unpacked build (sharing on, `http://127.0.0.1:3000`): 792 main-frame navigations in 8 s, final URL `/pair?reason=unpaired`; the only `/api/` responses were 395 × `GET /api/sharing/limits` → 401 with `x-getwrite-gate: not-paired`.
+- Read, not run in isolation: the root layout mounts the limits provider on every page including `/pair`, and it reads the limits on mount; the not-paired guard navigates to `/pair?reason=unpaired` on any such response, including when the page is already the pairing page.
+- Fix `76c1821e`: the guard does not navigate when the pathname is `/pair`; the provider makes no limits read there. 4 new tests failed before the code and pass after (implementor's report); full frontend suite 6422 passed, 1 skipped (implementor's report).
+- After the fix, standalone server from a fresh build of `76c1821e`, sharing on, throwaway sharing and projects folders, port 3987 on loopback: `GET /api/sharing/limits` with no cookie → 401 `not-paired` (so the gate was on); `/pair` → 200; the same page measurement gave 2 main-frame navigations in 8 s, final URL `/pair`, and 0 `/api/` responses. What the 2 navigations are was not separated (a run with sharing off against the rebuilt app also gave 2).
+- Not run: typing a code and pairing in that browser after the fix; the phone. Tasks 27 to 29 never loaded `/pair` unpaired (their devices were paired by a helper or by a POST from Node), which is why they did not show this.
+- Process note: the throwaway server's recorded pid was not the listener; the listener (pid seen by `lsof` on 3987, command `next-server`) was stopped by that pid after checking its command. The owner's app on port 3000 was not signalled.
