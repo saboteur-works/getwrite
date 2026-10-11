@@ -1,0 +1,131 @@
+[
+  {
+    "runId": "s1r1-mv46r43j-10e1dd",
+    "port": 63287,
+    "pid": 42541,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#2, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#2",
+    "held": [
+      "A#2"
+    ],
+    "stepHeld": [
+      [
+        "A#1"
+      ],
+      [
+        "B#1"
+      ],
+      [
+        "A#2"
+      ]
+    ],
+    "stepGaps": [
+      null,
+      5007,
+      5014
+    ],
+    "finalClassification": [
+      "content.bin (canonical): = A#2",
+      "content.tiptap.json: = A#2",
+      "content.txt: = A#2",
+      "sidecar wordCount=6 matches A#2; updatedAt=2026-10-11T18:58:14.267Z",
+      "stores agree on A#2"
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s1/s1r1-mv46r43j-10e1dd-rep01.json",
+    "harnessError": null
+  },
+  {
+    "runId": "s1r2-mv46senm-157411",
+    "port": 63371,
+    "pid": 44766,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#2, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#2",
+    "held": [
+      "A#2"
+    ],
+    "stepHeld": [
+      [
+        "A#1"
+      ],
+      [
+        "B#1"
+      ],
+      [
+        "A#2"
+      ]
+    ],
+    "stepGaps": [
+      null,
+      5014,
+      5014
+    ],
+    "finalClassification": [
+      "content.bin (canonical): = A#2",
+      "content.tiptap.json: = A#2",
+      "content.txt: = A#2",
+      "sidecar wordCount=6 matches A#2; updatedAt=2026-10-11T18:59:14.276Z",
+      "stores agree on A#2"
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s1/s1r2-mv46senm-157411-rep02.json",
+    "harnessError": null
+  },
+  {
+    "runId": "s1r3-mv46toyp-f90e33",
+    "port": 63453,
+    "pid": 46871,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#2, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#2",
+    "held": [
+      "A#2"
+    ],
+    "stepHeld": [
+      [
+        "A#1"
+      ],
+      [
+        "B#1"
+      ],
+      [
+        "A#2"
+      ]
+    ],
+    "stepGaps": [
+      null,
+      5015,
+      5008
+    ],
+    "finalClassification": [
+      "content.bin (canonical): = A#2",
+      "content.tiptap.json: = A#2",
+      "content.txt: = A#2",
+      "sidecar wordCount=6 matches A#2; updatedAt=2026-10-11T19:00:14.167Z",
+      "stores agree on A#2"
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s1/s1r3-mv46toyp-f90e33-rep03.json",
+    "harnessError": null
+  }
+]

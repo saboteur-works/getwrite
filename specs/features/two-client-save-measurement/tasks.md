@@ -49,7 +49,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 3
 **Notes:** Satisfies FR-10, FR-2 to FR-9, FR-20 (3 repetitions). Main checkout, outside the sandbox, one task at a time. Records and does not fix. A pass in 3 repetitions bounds a failure rate only loosely; say so.
 **POS:** task_af1f1fb3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Scenario S3, stale client saves after the other
 **What:** Run S3 in both role orders and with a short and a long addition by the first saver: a stale client that never reloads saves after the other client's save.
