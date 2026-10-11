@@ -89,7 +89,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 8
 **Notes:** Satisfies FR-11, FR-9, FR-20, FR-2 to FR-7. Main checkout, outside the sandbox, one task at a time; long (budget tens of minutes; confirm the machine does not sleep). S2 runs after the sequential scenarios so the harness is proven first; if S3 or S5 showed a harness fault, it is fixed and its repetitions discarded before this task starts. Records and does not fix.
 **POS:** task_565f3167
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Result against the definition: assemble the verdicts, the findings and the not-run list
 **What:** From the recorded runs only, write the per-scenario verdicts, the findings list, the not-run list with what each leaves unmeasured, and FR-66's prerequisite statement, and update the Feature 78 entry with the scripted result and its limits.

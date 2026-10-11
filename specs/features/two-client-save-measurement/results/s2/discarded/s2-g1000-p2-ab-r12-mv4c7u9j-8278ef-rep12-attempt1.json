@@ -1,0 +1,117 @@
+{
+  "variant": "G1000-P2-AB",
+  "n": 12,
+  "attempt": 1,
+  "why": "setup failure before the release: locator.waitFor: Timeout 30000ms exceeded.",
+  "record": {
+    "scenario": "s2",
+    "repetition": 12,
+    "runId": "s2-g1000-p2-ab-r12-mv4c7u9j-8278ef",
+    "commit": "cb0b23a1",
+    "startedAt": "2026-10-11T21:30:50.036Z",
+    "node": "v24.15.0",
+    "note": "S2 near-simultaneous, variant G1000-P2-AB (gap asked 1000 ms, pairing P2, first released A), repetition 12 of 20, attempt 1. Both clients edit the SAME resource, both opened from the base, no reload between. Measurement of the unchanged product. Fresh server, Chromium, project and resource for this repetition.",
+    "server": {
+      "kind": "built standalone server (frontend/.next/standalone/frontend/server.js), sharing on",
+      "port": 61368,
+      "pid": 7389,
+      "address": "private LAN IPv4 of this host (host to itself, not a second-device result)"
+    },
+    "labelEvery": "host to itself, not a second-device result",
+    "timesAre": "Playwright event times on the host clock, not wire times",
+    "steps": [
+      {
+        "at": "2026-10-11T21:30:50.063Z",
+        "tMs": 27,
+        "name": "fixture created (project + resource through the app's API); initial stores read",
+        "initial": [
+          "content.bin (canonical): = base",
+          "content.tiptap.json: = base",
+          "content.txt: = base",
+          "sidecar wordCount=4 matches base; updatedAt=null",
+          "stores agree on base"
+        ]
+      }
+    ],
+    "outcomes": {},
+    "verdictInputs": null,
+    "verdict": null,
+    "findings": {},
+    "extra": {
+      "preChecks": {
+        "listeners7340": "none",
+        "listeners3000": "none",
+        "chosenPort": 61368,
+        "chosenPortListenersBeforeStart": "none (checked immediately before start)",
+        "serverPidsRecorded": [
+          {
+            "pid": 7389,
+            "comm": "next-server (v16.2.6)"
+          }
+        ],
+        "browserPidsRecorded": [
+          {
+            "pid": 7406,
+            "comm": "chrome-headless-shell"
+          },
+          {
+            "pid": 7407,
+            "comm": "chrome-headless-shell"
+          },
+          {
+            "pid": 7408,
+            "comm": "chrome-headless-shell"
+          },
+          {
+            "pid": 7410,
+            "comm": "chrome-headless-shell"
+          },
+          {
+            "pid": 7412,
+            "comm": "chrome-headless-shell"
+          }
+        ],
+        "throwawayRootAsserted": "/private/tmp/getwrite-two-client/s2-g1000-p2-ab-r12-mv4c7u9j-8278ef",
+        "clientsPaired": {
+          "A": {
+            "paired": true,
+            "deviceCookiePresent": true
+          },
+          "B": {
+            "paired": true,
+            "deviceCookiePresent": true
+          }
+        }
+      },
+      "ERROR": {
+        "phase": "setup",
+        "message": "locator.waitFor: Timeout 30000ms exceeded."
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "server": {
+          "recorded": [
+            {
+              "pid": 7389,
+              "comm": "next-server (v16.2.6)"
+            }
+          ],
+          "stillAliveAfterTerm": [],
+          "stillAliveAfterKill": [],
+          "portListenersAfter": [],
+          "listeners7340After": [],
+          "listeners3000After": []
+        },
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "cleanup": {
+          "removed": true,
+          "path": "/private/tmp/getwrite-two-client/s2-g1000-p2-ab-r12-mv4c7u9j-8278ef"
+        }
+      }
+    }
+  }
+}
