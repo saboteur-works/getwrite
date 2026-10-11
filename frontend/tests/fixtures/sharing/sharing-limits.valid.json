@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "limits": {
+    "projectDeletion": true,
+    "unlocking": false,
+    "locking": true,
+    "encryptionChanges": false,
+    "permanentDeletion": true
+  }
+}

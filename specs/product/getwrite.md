@@ -95,7 +95,10 @@ version.
   SMTP. Its first version has no headless, Docker or NAS delivery and no TLS
   (see Out of Scope (Deferred)). It precedes hosted multi-device sync
   (FR-30) as the first shipped multi-device path; FR-30 stays planned and is
-  not replaced (resolved: OQ-67). Owner decisions, 2026-10-09.
+  not replaced (resolved: OQ-67). Owner decisions, 2026-10-09. What a
+  paired device may do beyond editing is five writer-controlled limitations
+  in the desktop app, all on by default, not a fixed rule (resolved: OQ-76
+  to OQ-85; Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs')).
 
 ## Users
 
@@ -1259,37 +1262,112 @@ lost work.
   (resolved: OQ-70). The requirement is the exemption, not a mechanism: no
   mechanism distinguishes the window from another client today, and whether
   the server exposes the peer address to routes is unverified (read, not
-  run). A paired device is a full editor only: it MUST NOT be able to change
-  sharing, pair or revoke devices, or change lock state (neither lock nor
-  unlock); those happen in the desktop app (resolved: OQ-73). A paired
-  device MAY delete a project only while the writer has turned on a setting
-  in the desktop app that allows it (the owner's example label: "Allow
-  deletion from paired devices"); that setting MUST be off by default and
-  MUST be changeable only in the desktop app, never from a paired device,
-  and while it is off a project-deletion request from a paired device MUST
-  be refused. The desktop window's own ability to delete projects is
-  unchanged (resolved: OQ-75). That setting governs project deletion only: a
-  paired device deletes resources and folders within a project as normal (a
-  soft delete to the project's Trash), as ordinary editing, not governed by
-  that setting (Owner decision, 2026-10-09). A per-device
-  pairing credential is not an account (resolved: OQ-69). Status: First slice
+  run). Limits on a paired device (Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'); resolved: OQ-76 to OQ-85; superseding in part the fixed limits of
+  2026-10-09, OQ-73 and OQ-75): there are five limitations, each its own
+  setting that the writer switches on or off in the desktop app, covering
+  only the actions a paired device can reach over the network. Working
+  labels (final names are for the copy pass, OQ-83): (1) Limit project
+  deletion; (2) Limit unlocking, which also governs resuming an interrupted
+  conversion, since the client dispatches a resume automatically after an
+  unlock (read, not run: `frontend/app/(app)/page.tsx` ~207-217); (3) Limit
+  locking; (4) Limit encryption changes, which covers turning encryption on
+  for a project with the existing workspace key, and exporting a plaintext
+  copy; (5) Limit permanent deletion, which covers purging an item from a
+  project's Trash and emptying the Trash. Every setting names the limit, and
+  on means restricted. While a limitation is on, a request for that action
+  from a paired device MUST be refused by the server with a plain message,
+  never with the "not paired" response (which would send the device to the
+  pairing screen); while it is off, the action is allowed. Every limitation
+  MUST be ON by default, on a fresh install and after an upgrade, and a
+  missing or unreadable settings store MUST read as every limitation on.
+  Consequence, stated plainly: after upgrading, an already-paired device can
+  no longer delete projects, lock, unlock, change encryption or purge until
+  the writer switches that limit off at the desktop; Features 75 and 76 are
+  merged and unreleased, so the only affected installs are the owner's own
+  builds. The settings are one set for all paired devices; per-device limits
+  are deferred, and if added later they MUST NOT be stored in
+  `device-credentials.json`, because its schema would make an older build
+  read a newer file as corrupt (read, not run). The settings MUST be changed
+  only in the desktop app, never from a paired device and not in Project
+  Settings (which a paired browser can reach: the Project Encryption tab
+  worked in a plain browser, `specs/features/home-network-sharing/experiments.md`
+  section D); they are workspace-wide and MUST take effect on the paired
+  device's next request, with no restart. Enforcement is at the route,
+  through one shared check that fails closed: any classification other than
+  sharing-off or desktop-window is treated as a paired device subject to the
+  limits, and a missing or unparseable classification is treated the same.
+  The desktop window's own abilities are unchanged by the limits. Never
+  switchable, always refused to a paired device: creating the workspace
+  passphrase (the encryption `enable` action with a non-null passphrase,
+  which creates the workspace keyring when none exists; read, not run:
+  `frontend/src/lib/models/crypto/enable-encryption.ts` ~94-99,
+  `keyring-session.ts` ~128-146), because it has no recovery path (ADR-022)
+  and the passphrase would be chosen on the paired device and sent over the
+  unencrypted connection. Changing sharing, generating pairing codes, and
+  listing, renaming and revoking devices stay desktop-only, with no network
+  route (read, not run), and get no switch; remote management is deferred,
+  not decided against. In the paired browser a limited control MUST be shown
+  disabled with the reason, not hidden. As a safety requirement, while
+  unlocking is limited a paired device MUST NOT be offered the workspace
+  passphrase prompt: a server refusal alone does not keep the passphrase off
+  the network (read, not run: the Start page opens the unlock dialog
+  automatically for a locked workspace; measured for a plain browser in
+  `experiments.md` section D). A refusal MUST be visible to the writer. As
+  read, not run, the current client has three behaviours that MUST NOT
+  survive: a refused lock does nothing visible; a refused resume does
+  nothing visible; and project deletion removes the project from the list
+  and shows "Project deleted" before a generic failure
+  (`frontend/components/Start/ManageProjectMenu.tsx` ~65-81; `cryptoSlice.ts`
+  has no rejected case for lock or resume). The unlock setting MUST carry a
+  plain warning beside it that switching the limit off means the workspace
+  passphrase is typed on the paired device and sent over the unencrypted
+  connection, where others on the network could record it, and that a
+  recorded passphrase also unlocks the files at rest (a stolen disk or
+  backup). Two prerequisites are NOT decided by this and are to be settled by
+  experiment (plan task): (i) that the gate's classification reaches a route
+  handler on a POST with a JSON body, in the standalone build and in
+  `next dev`, including that a forged client copy is replaced (measured so
+  far only for a GET, experiments section E); (ii) whether the encryption
+  route validates the `projectId` it joins into a path for `enable` and
+  `export` (triage found no validation by reading,
+  `frontend/app/api/encryption/route.ts` ~195-204, `enable-encryption.ts`
+  ~118); if a traversal value is accepted, that is a defect to fix
+  regardless of this feature. The 2026-10-09 decisions that a paired device
+  is "a full editor only" (OQ-73) and that it may delete a project only
+  while a desktop-side opt-in is on (OQ-75) remain recorded as the earlier
+  position. A paired device deletes resources and folders within a project as
+  normal (a soft delete to the project's Trash), as ordinary editing, not
+  governed by a project-deletion limitation (Owner decision, 2026-10-09);
+  purging from the Trash is separate and is governed by limitation (5). A
+  per-device pairing credential is not an account (resolved: OQ-69). Status: First slice
   merged, not released (Feature 75, PR #263, 2026-10-09): pairing and the gate
   are built; the device list, rename and revoke are also delivered (Feature
   76, PR #264, 2026-10-10, merged and not released); not met yet: the
-  capability limits and the project-deletion setting (Feature 77); not fully
+  capability limits and their toggles (Feature 77); not fully
   met. Owner decisions, 2026-10-09 (device confirmation;
-  OQ-69 to OQ-73, OQ-75). [US-27]
+  OQ-69 to OQ-73, OQ-75); Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs') (limits are settings;
+  OQ-76 to OQ-85). [US-27]
 - FR-68: When sharing is turned on, the desktop app MUST tell the writer in
   plain words that the connection is unencrypted HTTP and is meant for
   networks they trust. Encryption at rest (FR-25) is unchanged by sharing:
   a workspace unlock applies to every paired device, and a lock locks all of
-  them. Unlock and lock are performed at the desktop only: the writer cannot
-  unlock an encrypted workspace from a paired device (accepted consequence;
-  resolved: OQ-73). The desktop build MUST remain fully functional with sharing off, no
+  them. Whether unlock and lock can be done from a paired device is a
+  writer-controlled limitation in the desktop app (Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'); resolved: OQ-77, OQ-78, OQ-80; superseding in part the 2026-10-09
+  rule that unlock and lock are performed at the desktop only, accepted
+  consequence of OQ-73): "Limit unlocking" and "Limit locking" are two
+  separate settings, both on by default. While a limitation is on, the
+  writer cannot unlock (or lock) an encrypted workspace from a paired
+  device; while it is off they can, which means the workspace passphrase is
+  typed on that device and sent over the unencrypted connection stated
+  above, where others on the network could record it, and a recorded
+  passphrase also unlocks the files at rest (a stolen disk or backup). The
+  unlock setting MUST say so beside it (resolved: OQ-80), and while
+  unlocking is limited a paired device MUST NOT be offered the passphrase
+  prompt (FR-67). The desktop build MUST remain fully functional with sharing off, no
   network and no account. Status: First slice merged, not released (Feature 75,
   PR #263, 2026-10-09): the unencrypted-HTTP statement is built; NOT yet met:
-  unlock and lock restricted to the desktop is not enforced for a paired
-  device, which can currently reach them (Feature 77); not fully met. Owner
+  no limitation on unlock or lock is enforced for a paired device, which
+  can currently reach both (Feature 77); not fully met. Owner
   decisions, 2026-10-09 (transport; encryption). Fact read from the code,
   not run: the unlocked key set is held in a single module-level variable
   in the server process (`keyring-session.ts`), which is consistent with
@@ -1326,8 +1404,11 @@ lost work.
   save wins, and the product says so" (resolved: OQ-68); what the code does
   in that case has not been measured, and a two-client save test must
   demonstrate it before the promise is treated as met. The desktop app's own
-  window is exempt from pairing (resolved: OQ-70); a paired device cannot
-  change sharing, pairing or lock state (resolved: OQ-73). The product
+  window is exempt from pairing (resolved: OQ-70); each limitation on a
+  paired device (project deletion, unlocking, locking, encryption changes
+  and permanent deletion from the Trash) is a desktop-side setting the
+  writer switches on or off, all on by default (Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'); resolved: OQ-76 to OQ-85), superseding in part the
+  fixed limits of 2026-10-09 (OQ-73, OQ-75). The product
   promises no availability beyond the desktop app being open, awake and on
   the same network (resolved: OQ-71).
 - A CLI import path from Scrivener (`.scriv`) now exists (FR-42, shipped
@@ -2762,9 +2843,10 @@ were built around.
 **Evidence:** Owner decision, Gate 1, 2026-10-09 (short option).
 **Impact:** FR-67 testability: the feature spec fixes the exact values.
 
-**OQ-73 (resolved; project deletion resolved separately in OQ-75): May a paired device unlock or lock the workspace, and may it change sharing, pair or revoke other devices, or delete projects?**
+**OQ-73 (resolved; project deletion resolved separately in OQ-75; fixed-limit part superseded in part 2026-10-10 by OQ-76 to OQ-85): May a paired device unlock or lock the workspace, and may it change sharing, pair or revoke other devices, or delete projects?**
 **Resolution:** A paired device gets the full editor only. It may not change sharing, pair or revoke devices, or change lock state (neither lock nor unlock). Accepted consequence: the writer cannot unlock an encrypted workspace from a paired device; unlock and lock happen at the desktop and apply to all paired devices. The owner's answer did not address deleting projects; that point was split out and is resolved in OQ-75.
 **Evidence:** Owner decision, Gate 1, 2026-10-09 (option 2). An unlock applying to every paired device and a lock locking all of them was decided earlier the same day.
+Superseded in part (Owner decision, 2026-10-10): the owner started the Feature 77 run with "77. Each of these should be optional via toggle" and, asked which limits were meant, answered: "i mean the limitations (ie, toggling 'Limit Project Deletion' or similar worded section prevents paired devices from deleting projects, etc)". Each limitation on a paired device is now a setting the writer switches on or off in the desktop app; when on, the paired device is prevented from the action, when off it is allowed. The resolution above stays visible as the 2026-10-09 position: it is no longer a fixed rule that lock and unlock are desktop-only. The remaining questions were resolved at Gate 1 on 2026-10-10 (OQ-76 to OQ-85).
 **Impact:** FR-67, FR-68.
 
 **OQ-74 (resolved): Is a paired device a browser only, or may the native Android app also be a client of the desktop's shared projects?**
@@ -2772,11 +2854,62 @@ were built around.
 **Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1).
 **Impact:** FR-66, US-27; Out of Scope (Deferred).
 
-**OQ-75 (resolved): May a paired device delete a project?**
+**OQ-75 (resolved; superseded in part 2026-10-10 by OQ-76 to OQ-85): May a paired device delete a project?**
 **Resolution:** Yes, but only while the writer has turned on a setting in the desktop app that allows it (the owner's example label: "Allow deletion from paired devices"). The setting is an opt-in, so it is off by default. It can be changed only in the desktop app, never from a paired device (consistent with OQ-73: a paired device cannot change sharing settings). While it is off, a project-deletion request from a paired device MUST be refused. The desktop window's own ability to delete projects is unchanged.
 Scope confirmation (owner decision, 2026-10-09): asked whether the setting should also govern deleting a resource or folder from a paired device (today a soft delete to the project's Trash), the owner answered: "Project deletion only is correct, users should be able to delete resources as normal within a project." The setting governs project deletion only; a paired device deletes resources and folders within a project as ordinary editing, not governed by that setting. FR-67 states this as decided.
 **Evidence:** Owner decision, Gate 1, 2026-10-09 (option 1, with an opt-in from the desktop side: "Allow deletion from paired devices" checkbox); scope confirmed by the owner, 2026-10-09.
+Superseded in part (Owner decision, 2026-10-10): project deletion becomes one of the limitations that are each a toggle (see OQ-73's note). The owner's newer example label, "Limit Project Deletion", names the limit, so on means restricted; the label recorded above, "Allow deletion from paired devices", named the permission, so on meant allowed. The polarity differs; settings now name the limit and on means restricted (OQ-83), and every limitation is on by default (OQ-78). The scope confirmation above (project deletion only, resources and folders unaffected) is not changed by the new decision. Evidence for the new decision: owner's words quoted under OQ-73.
 **Impact:** FR-67.
+
+**OQ-76 (resolved): Which limitations get a toggle: only the actions a paired device can reach over the network today, or also the actions it cannot reach at all?**
+**Resolution:** Switches cover only the actions a paired device can reach over the network. Changing the sharing setting, generating pairing codes, and listing, renaming and revoking devices stay desktop-only with no network route and get no switch. Remote management is deferred, not decided against.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Read, not run: those actions are Electron IPC bridge calls with a sender check (`electron/src/main.ts`, `electron/src/preload.ts`) and have no HTTP route; a test in Feature 76 walks every `route.ts` to keep it so.
+**Impact:** FR-67; Feature 77 scope; Out of Scope (Deferred).
+
+**OQ-77 (resolved): What is the exact set of toggles among the reachable actions, and how are they grouped?**
+**Resolution:** Five limitations, each its own desktop-side setting (working labels; final names are for the copy pass, OQ-83): (1) Limit project deletion; (2) Limit unlocking, which includes resuming an interrupted conversion, because the client dispatches a resume automatically after an unlock (read, not run: `frontend/app/(app)/page.tsx` ~207-217); (3) Limit locking; (4) Limit encryption changes, which covers turning encryption on for a project with the existing workspace key and exporting a plaintext copy; (5) Limit permanent deletion, which covers purging an item from the Trash and emptying the Trash. Not switchable, always refused to a paired device: creating the workspace passphrase (the encryption `enable` action with a non-null passphrase, which creates the workspace keyring when none exists). Reason: it has no recovery path (ADR-022) and the passphrase would be chosen on the paired device and sent over the unencrypted connection. The 2026-10-09 decision that deleting resources and folders is ordinary editing concerned the soft delete to Trash and is unchanged.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Read, not run, the network actions a paired device can reach today: project deletion (`POST /api/project/delete`, `frontend/app/api/project/delete/route.ts:9-24`); through the one route `POST /api/encryption` (`frontend/app/api/encryption/route.ts:154-176`, wrapper at line 221, no per-action check in the route): `unlock`, `lock`, `enable`, `resume` and `export`; and the Trash purge and empty-Trash routes. Workspace-passphrase creation: `frontend/src/lib/models/crypto/enable-encryption.ts` ~94-99, `keyring-session.ts` ~128-146 (read, not run). Measured in Feature 75's experiments section D (`specs/features/home-network-sharing/experiments.md`): a plain browser with no desktop bridge enabled encryption on a project and unlocked the workspace, and a second client locked it by direct request; project deletion from a paired device was not exercised.
+**Impact:** FR-67, FR-68.
+
+**OQ-78 (resolved): What is each limitation's default, and what do a fresh install and an upgrade from a build without the settings get?**
+**Resolution:** Every limitation is ON (restricted) by default, on a fresh install and after an upgrade; a missing or unreadable settings store reads as every limitation on. Consequence, stated in FR-67: after upgrading, an already-paired device can no longer delete projects, lock, unlock, change encryption or purge until the writer switches that limit off at the desktop. Features 75 and 76 are merged and unreleased, so the only affected installs are the owner's own builds.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs').
+**Impact:** FR-67.
+
+**OQ-79 (resolved): Is a toggle global for all paired devices, or set per device?**
+**Resolution:** One set of settings for all paired devices (global). Per-device limits are deferred; if added later they must not go into `device-credentials.json`, because its schema would make an older build read a newer file as corrupt (read, not run).
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs').
+**Impact:** FR-67; Feature 76's device list.
+
+**OQ-80 (resolved): If unlock from a paired device can be allowed, is it acceptable that the workspace passphrase is typed on that device and sent over unencrypted HTTP, and must the setting say so?**
+**Resolution:** Unlocking from a paired device is switchable ("Limit unlocking", on by default). The setting MUST carry a plain warning beside it that switching the limit off means the workspace passphrase is typed on the paired device and sent over the unencrypted connection, where others on the network could record it, and that a recorded passphrase also unlocks the files at rest (a stolen disk or backup). Requirement: while unlocking is limited, a paired device MUST NOT be offered the passphrase prompt, because a server refusal alone does not keep the passphrase off the network.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Read, not run: the Start page opens the unlock dialog automatically for a locked workspace; measured for a plain browser in `specs/features/home-network-sharing/experiments.md` section D.
+**Impact:** FR-68, FR-67.
+
+**OQ-81 (resolved): Where do the settings live, who can change them, and does a change need a restart?**
+**Resolution:** The settings are changed only in the desktop app, not in Project Settings (which a paired browser can reach), are workspace-wide, and take effect on the paired device's next request with no restart.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Section D measured the Project Encryption tab working in a plain browser.
+**Impact:** FR-67.
+
+**OQ-82 (resolved): What does a paired device see when an action is limited, and does it learn which limits are on?**
+**Resolution:** A limited action is refused by the server with a plain message, and never with the "not paired" response (which would send the device to the pairing screen). In the paired browser a limited control is shown disabled with the reason, not hidden; the automatic unlock prompt is not shown while unlocking is limited. A refusal must be visible: three behaviours read in the current client must not survive: a refused lock doing nothing visible; a refused resume doing nothing visible; and project deletion removing the project from the list and showing "Project deleted" before a generic failure. How the paired browser learns it is a paired device and which limits are on is not decided here; no such signal exists today (a feature-list question).
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Stated as read, not run: `frontend/components/Start/ManageProjectMenu.tsx` ~65-81; `cryptoSlice.ts` has no rejected case for lock or resume.
+**Impact:** FR-67.
+
+**OQ-83 (resolved): What are the settings called, and which polarity?**
+**Resolution:** Every setting names the limit, and on means restricted. Final wording is for the single copy pass the owner has deferred across the sharing features; the labels in OQ-77 are working labels.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs').
+**Impact:** FR-67; sharing panel copy.
+
+**OQ-84 (resolved): How does the interim exposure note shipped in Feature 75's sharing copy, and the release hold, relate to the toggles?**
+**Resolution:** The fixed interim note ("A paired device can also lock, unlock and delete your projects.", `INTERIM_EXPOSURE_NOTE`, `frontend/components/Sharing/sharing-copy.ts:46-49`) is replaced by text that reflects the actual state of the limits. The release hold on home-network sharing is on Features 77 and 80 being merged; shipping with every limit on by default does not add a condition and does not remove one.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs').
+**Impact:** FR-67, FR-68; the release hold.
+
+**OQ-85 (resolved; two prerequisite experiments open): How does a route tell a paired device's request from the desktop window's, so a limit applies to one and not the other?**
+**Resolution:** Enforcement is at the route, through one shared check that fails closed: anything other than the sharing-off or desktop-window classification is treated as a paired device subject to the limits, and a missing or unparseable classification is treated the same. Two experiments are prerequisites and this decision does not settle them. To be settled by experiment (plan task), result reported to the owner before dependent work: (i) that the gate's classification (the `x-getwrite-classification` header the gate sets) reaches a route handler on a POST with a JSON body, in the standalone build and in `next dev`, including that a forged client copy is replaced (measured so far only for a GET, Feature 75's experiments section E). To be settled by experiment (plan task), result reported to the owner before dependent work: (ii) whether the encryption route validates the `projectId` it joins into a path for `enable` and `export`; triage found no validation by reading (`frontend/app/api/encryption/route.ts` ~195-204, `enable-encryption.ts` ~118); if a traversal value is accepted, that is a defect to fix regardless of this feature.
+**Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Read, not run, except as stated for the GET measurement.
+**Impact:** FR-67, FR-68; Feature 77 design.
 
 ## Out of Scope (Deferred)
 

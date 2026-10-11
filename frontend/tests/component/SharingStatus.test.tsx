@@ -7,7 +7,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import SharingStatusView from "../../components/Sharing/SharingStatus";
 import {
-  INTERIM_EXPOSURE_NOTE,
+  SHARING_LIMITS_POINTER,
   NO_NETWORK_ADDRESS,
   SHARING_BLOCKED_BY_HOSTED_AUTH,
   SHARING_IS_ON,
@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe("SharingStatus", () => {
-  it("shows state, every address, both statements and the note when effective", async () => {
+  it("shows state, every address, both statements and the pointer when effective", async () => {
     install(async () => ON);
     render(<SharingStatusView />);
     expect(await screen.findByText(SHARING_IS_ON)).toBeInTheDocument();
@@ -56,8 +56,24 @@ describe("SharingStatus", () => {
     expect(
       screen.getByText(SHARING_STATEMENT_AVAILABILITY),
     ).toBeInTheDocument();
-    expect(screen.getByText(INTERIM_EXPOSURE_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(SHARING_LIMITS_POINTER)).toBeInTheDocument();
+    expect(screen.getByText(SHARING_LIMITS_POINTER)).toHaveTextContent(
+      "What paired devices can do is set in App Settings.",
+    );
     expect(screen.queryByText(NO_NETWORK_ADDRESS)).toBeNull();
+  });
+
+  it("never shows the retired interim sentence and does not read the limits", async () => {
+    const getSharingLimits = vi.fn();
+    (window as unknown as Record<string, unknown>).getwriteDesktop = {
+      chooseWorkspaceDir: vi.fn(),
+      getSharingStatus: async () => ON,
+      getSharingLimits,
+    };
+    render(<SharingStatusView />);
+    await screen.findByText(SHARING_IS_ON);
+    expect(screen.queryByText(/can also lock, unlock and delete/)).toBeNull();
+    expect(getSharingLimits).not.toHaveBeenCalled();
   });
 
   it("shows the no-address line when effective with no addresses", async () => {

@@ -18,7 +18,7 @@ Horizons reflect priority and readiness, not committed dates. This document cove
 
 ### Sharing
 
-- **Home-network sharing, gated by device pairing** — Open desktop projects from a paired device's browser over the home network. _Status: implemented on `feat/home-network-sharing`, not merged, not released. Paired-device list/rename/revoke (Feature 76) is implemented on `feat/paired-device-management`, not merged. Release is held until capability limits for paired devices (Feature 77) and the default-port change (Feature 80) are merged too; manual verification from a second device has not been done. TLS, headless delivery and the Android app as a client are not part of it._ → [home-network-sharing.md](features/home-network-sharing.md)
+- **Home-network sharing, gated by device pairing** — Open desktop projects from a paired device's browser over the home network. _Status: merged to `main` (Feature 75, and paired-device list/rename/revoke, Feature 76), not released. Limits on what a paired device may do (Feature 77) are implemented on `feat/paired-device-limits`, not merged; the owner's manual check on an Android phone was done and reported by the owner (no per-step detail; creating the workspace passphrase from the phone was not done, scripted coverage only). Release is held until Feature 77 and the default-port change (Feature 80) are merged; manual verification from a second device has not been done for Feature 75. TLS, headless delivery and the Android app as a client are not part of it._ → [home-network-sharing.md](features/home-network-sharing.md)
 
 ### Search & Discovery
 

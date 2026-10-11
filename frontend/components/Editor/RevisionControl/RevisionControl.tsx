@@ -32,8 +32,15 @@ import {
 import { selectResource } from "../../../src/store/resourcesSlice";
 import Button from "../../common/UI/Button";
 import Input from "../../common/UI/Input";
+import { useSharingLimits } from "../../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../../Sharing/limit-gate";
+import LimitReason from "../../Sharing/LimitReason";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../Sharing/sharing-copy";
 export default function RevisionControl() {
   const dispatch = useAppDispatch();
+  const { state: limitsState, refresh: refreshLimits } = useSharingLimits();
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  const isDeleteLimited = isLimitOn(limitsState, "permanentDeletion");
   const project = useAppSelector(
     (state) => state.projects.projects[state.projects.selectedProjectId || ""],
     shallowEqual,
@@ -155,21 +162,26 @@ export default function RevisionControl() {
   const handleDeleteRevision = async (revisionId: string) => {
     if (!project?.rootPath || !selectedResource?.id) return;
 
-    try {
-      await dispatch(
-        deleteRevisionForSelectedResource({
-          resourceId: selectedResource.id,
-          revisionId,
-        }),
-      ).unwrap();
+    setDeleteRefusal(null);
+    const result = await dispatch(
+      deleteRevisionForSelectedResource({
+        resourceId: selectedResource.id,
+        revisionId,
+      }),
+    );
+    if (deleteRevisionForSelectedResource.fulfilled.match(result)) {
       toast.success(`Deleted: ${resolveRevisionName(revisionId)}`);
-    } catch (error) {
-      toast.error(
-        typeof error === "string" && error.trim().length > 0
-          ? error
-          : "Failed to delete revision.",
-      );
+      return;
     }
+    const message =
+      typeof result.payload === "string" && result.payload.trim().length > 0
+        ? result.payload
+        : "Failed to delete revision.";
+    if (result.meta.limitRefusal) {
+      void refreshLimits();
+      setDeleteRefusal(message);
+    }
+    toast.error(message);
   };
 
   const handleTogglePreserve = async (
@@ -388,7 +400,15 @@ export default function RevisionControl() {
                                   onClick={() =>
                                     handleDeleteRevision(revision.id)
                                   }
-                                  disabled={deletingRevisionId === revision.id}
+                                  disabled={
+                                    deletingRevisionId === revision.id ||
+                                    isDeleteLimited
+                                  }
+                                  aria-describedby={
+                                    isDeleteLimited
+                                      ? `revision-delete-limit-${revision.id}`
+                                      : undefined
+                                  }
                                   className="revision-control-action-button revision-control-action-button--danger"
                                 >
                                   <Trash2 className="h-3 w-3 mr-2 text-gw-red" />
@@ -409,6 +429,14 @@ export default function RevisionControl() {
                               </>
                             )}
                           </div>
+
+                          {isDeleteLimited && !revision.isCanonical ? (
+                            <LimitReason
+                              id={`revision-delete-limit-${revision.id}`}
+                            >
+                              {PERMANENT_DELETION_LIMITED_REASON}
+                            </LimitReason>
+                          ) : null}
 
                           {fetchingRevisionId === revision.id && (
                             <p className="mt-2 text-gw-small font-mono text-gw-secondary">
@@ -453,6 +481,14 @@ export default function RevisionControl() {
                 )}
               </div>
 
+              {deleteRefusal && (
+                <p
+                  className="mt-2 text-gw-micro font-mono tracking-label text-gw-secondary"
+                  data-testid="revision-delete-refusal"
+                >
+                  {deleteRefusal}
+                </p>
+              )}
               {errorMessage && (
                 <p className="mt-2 text-gw-red text-gw-micro font-mono tracking-label">
                   {errorMessage}

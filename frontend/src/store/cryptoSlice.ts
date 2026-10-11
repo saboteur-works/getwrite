@@ -154,14 +154,46 @@ const cryptoSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      .addCase(checkWorkspaceLock.pending, (state) => {
+        state.errorMessage = "";
+      })
       .addCase(checkWorkspaceLock.fulfilled, (state, action) => {
         applyStatus(state, action.payload);
+      })
+      // A failed check changes no lock state: claiming `locked` or `unlocked`
+      // would be a guess, and resetting to `unknown` would discard a state
+      // already known. Only the reason is recorded.
+      .addCase(checkWorkspaceLock.rejected, (state, action) => {
+        state.errorMessage = getErrorMessage(
+          action.error,
+          "Could not check whether this workspace is locked.",
+        );
+      })
+      .addCase(lockWorkspace.pending, (state) => {
+        state.errorMessage = "";
       })
       .addCase(lockWorkspace.fulfilled, (state, action) => {
         applyStatus(state, action.payload);
       })
+      // A refused or failed lock changed nothing on the server, so the
+      // displayed status is left as it was; only the reason is recorded.
+      .addCase(lockWorkspace.rejected, (state, action) => {
+        state.errorMessage = getErrorMessage(
+          action.error,
+          "Could not lock this workspace.",
+        );
+      })
+      .addCase(resumeConversions.pending, (state) => {
+        state.errorMessage = "";
+      })
       .addCase(resumeConversions.fulfilled, (state, action) => {
         applyStatus(state, action.payload);
+      })
+      .addCase(resumeConversions.rejected, (state, action) => {
+        state.errorMessage = getErrorMessage(
+          action.error,
+          "Could not finish the interrupted conversion.",
+        );
       })
       .addCase(exportPlaintextCopy.pending, (state) => {
         state.isExporting = true;
@@ -213,3 +245,20 @@ const cryptoSlice = createSlice({
 });
 
 export default cryptoSlice.reducer;
+
+/**
+ * Whether a serialised thunk error came from a `LimitRefusalError`.
+ *
+ * Redux Toolkit serialises a rejection to `{ name, message, ... }`, so an
+ * `instanceof` check cannot work here; the `name` is what survives.
+ *
+ * @param error - The value `unwrap()` rejected with.
+ * @returns True when the server refused the action under a paired-device limit.
+ */
+export function isSerializedLimitRefusal(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "LimitRefusalError"
+  );
+}

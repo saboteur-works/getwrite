@@ -52,7 +52,10 @@ async function post(body: unknown): Promise<Response> {
     new Request("http://localhost/api/encryption", {
       method: "POST",
       body: JSON.stringify(body),
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-getwrite-classification": "off",
+      },
     }),
   );
 }

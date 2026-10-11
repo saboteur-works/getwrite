@@ -6,6 +6,18 @@ import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
 import { createTextResource } from "../src/lib/models/resource";
 import { test, vi } from "vitest";
+
+// Feature 77 Task 17: StartPage now reads the shared limits state. This test
+// file is not about limits, so the hook is fixed at "exempt" (prompt allowed).
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 test("StartPage renders projects and opens CreateProjectModal", async () => {
   const user = userEvent.setup();
   const now = new Date().toISOString();

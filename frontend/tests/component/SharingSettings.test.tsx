@@ -17,7 +17,6 @@ import userEvent from "@testing-library/user-event";
 import SharingSettings from "../../components/Sharing/SharingSettings";
 import WorkspaceLocationSettings from "../../components/preferences/WorkspaceLocationSettings";
 import {
-  INTERIM_EXPOSURE_NOTE,
   NO_NETWORK_ADDRESS,
   PAIRING_CODE_ANNOUNCE_EXPIRED,
   PAIRING_CODE_ANNOUNCE_GENERATED,
@@ -35,6 +34,7 @@ import {
   SHARING_STATUS_ERROR,
 } from "../../components/Sharing/sharing-copy";
 import {
+  LIMITS_UNREADABLE,
   PAIRED_DEVICES_HEADING,
   PAIRED_DEVICES_UNREADABLE,
   PAIRED_DEVICES_UNREADABLE_SHARING_OFF,
@@ -46,6 +46,20 @@ import type {
   PairingCodeInfo,
   SharingStatus,
 } from "../../src/lib/desktop-bridge";
+
+const ALL_ON_SUMMARY =
+  "Paired devices cannot delete projects, unlock, lock, change encryption or permanently delete.";
+const ALL_LIMITS_ON = {
+  kind: "ok" as const,
+  limits: {
+    projectDeletion: true,
+    unlocking: true,
+    locking: true,
+    encryptionChanges: true,
+    permanentDeletion: true,
+  },
+  storeDirectory: "/userdata",
+};
 
 const OFF: SharingStatus = {
   enabled: false,
@@ -134,11 +148,13 @@ describe("SharingSettings", () => {
     expect(sw).not.toBeChecked();
     expect(screen.queryByText(SHARING_IS_ON)).toBeNull();
     expect(screen.queryByText(SHARING_STATEMENT_UNENCRYPTED)).toBeNull();
-    expect(screen.queryByText(INTERIM_EXPOSURE_NOTE)).toBeNull();
+    expect(screen.queryByText(/^Paired devices (can|cannot) /)).toBeNull();
   });
 
   it("turning on records the flag and shows statements, note and restart to apply", async () => {
-    const fake = installBridge(OFF);
+    const fake = installBridge(OFF, {
+      getSharingLimits: vi.fn(async () => ALL_LIMITS_ON),
+    });
     render(<SharingSettings />);
     await userEvent.click(await screen.findByRole("switch"));
     expect(fake.setSharingEnabled).toHaveBeenCalledWith(true);
@@ -148,13 +164,15 @@ describe("SharingSettings", () => {
     expect(
       screen.getByText(SHARING_STATEMENT_AVAILABILITY),
     ).toBeInTheDocument();
-    expect(screen.getByText(INTERIM_EXPOSURE_NOTE)).toBeInTheDocument();
+    expect(await screen.findByText(ALL_ON_SUMMARY)).toBeInTheDocument();
     expect(screen.getByText(SHARING_RESTART_TO_APPLY)).toBeInTheDocument();
     expect(screen.getByText(SHARING_RESTART_TO_APPLY)).toHaveTextContent(
       /restart to apply/i,
     );
     expect(fake.restart).not.toHaveBeenCalled();
-    expect(screen.getByRole("switch")).toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: /share my projects/i }),
+    ).toBeChecked();
   });
 
   it("commits the restarting message to the DOM before restart() is called", async () => {
@@ -198,15 +216,17 @@ describe("SharingSettings", () => {
   });
 
   it("when effective shows 'Sharing is on', both statements, the note and every address", async () => {
-    installBridge(ON);
+    installBridge(ON, { getSharingLimits: vi.fn(async () => ALL_LIMITS_ON) });
     render(<SharingSettings />);
     expect(await screen.findByText(SHARING_IS_ON)).toBeInTheDocument();
     expect(screen.getByText(SHARING_STATEMENT_UNENCRYPTED)).toBeInTheDocument();
     expect(
       screen.getByText(SHARING_STATEMENT_AVAILABILITY),
     ).toBeInTheDocument();
-    expect(screen.getByText(INTERIM_EXPOSURE_NOTE)).toBeInTheDocument();
-    const items = screen.getAllByRole("listitem");
+    expect(await screen.findByText(ALL_ON_SUMMARY)).toBeInTheDocument();
+    const items = within(
+      screen.getAllByRole("list")[0] as HTMLElement,
+    ).getAllByRole("listitem");
     expect(items.map((i: HTMLElement) => i.textContent)).toEqual(ON.addresses);
   });
 
@@ -450,5 +470,124 @@ describe("SharingSettings", () => {
         screen.queryAllByText(/paired devices (cannot be read|is damaged)/),
       ).toHaveLength(0);
     });
+  });
+});
+
+describe("SharingSettings limit switches (Feature 77, Task 23)", () => {
+  const limits = {
+    kind: "ok" as const,
+    limits: {
+      projectDeletion: true,
+      unlocking: true,
+      locking: true,
+      encryptionChanges: true,
+      permanentDeletion: true,
+    },
+    storeDirectory: "/userdata",
+  };
+
+  it("shows the five limit switches beside the sharing switch when sharing is in effect", async () => {
+    installBridge(ON, {
+      getSharingLimits: vi.fn(async () => limits),
+      setSharingLimit: vi.fn(async () => ({ kind: "ok" })),
+    });
+    render(<SharingSettings />);
+    expect(
+      await screen.findByRole("switch", { name: "Limit unlocking" }),
+    ).toBeChecked();
+    expect(screen.getAllByRole("switch")).toHaveLength(6);
+  });
+
+  it("shows no limit switches with sharing off, no devices and a readable store", async () => {
+    const fake = installBridge(OFF, {
+      getSharingLimits: vi.fn(async () => limits),
+      setSharingLimit: vi.fn(async () => ({ kind: "ok" })),
+    });
+    render(<SharingSettings />);
+    await screen.findByRole("switch", { name: /share my projects/i });
+    await vi.waitFor(() => expect(fake.getSharingLimits).toHaveBeenCalled());
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
+  });
+
+  it("shows the limits-file message when the limits file is unreadable", async () => {
+    installBridge(OFF, {
+      getSharingLimits: vi.fn(async () => ({ ...limits, kind: "unreadable" })),
+      setSharingLimit: vi.fn(async () => ({ kind: "ok" })),
+    });
+    render(<SharingSettings />);
+    expect(await screen.findByText(LIMITS_UNREADABLE)).toBeInTheDocument();
+  });
+});
+
+describe("SharingSettings limits summary (Feature 77, Task 24)", () => {
+  const SOME_OFF = {
+    ...ALL_LIMITS_ON,
+    limits: { ...ALL_LIMITS_ON.limits, unlocking: false, locking: false },
+  };
+
+  it("never shows the retired interim sentence", async () => {
+    installBridge(ON, { getSharingLimits: vi.fn(async () => ALL_LIMITS_ON) });
+    render(<SharingSettings />);
+    await screen.findByText(ALL_ON_SUMMARY);
+    expect(screen.queryByText(/can also lock, unlock and delete/)).toBeNull();
+  });
+
+  it("lists what paired devices can do when some limits are off", async () => {
+    installBridge(ON, { getSharingLimits: vi.fn(async () => SOME_OFF) });
+    render(<SharingSettings />);
+    expect(
+      await screen.findByText(
+        "Paired devices can unlock and lock. They cannot delete projects, change encryption or permanently delete.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("reads an unreadable limits file as all on", async () => {
+    installBridge(ON, {
+      getSharingLimits: vi.fn(async () => ({
+        ...SOME_OFF,
+        kind: "unreadable",
+      })),
+    });
+    render(<SharingSettings />);
+    expect(await screen.findByText(ALL_ON_SUMMARY)).toBeInTheDocument();
+  });
+
+  it("says it could not read the limits when the read fails, never 'no limits'", async () => {
+    installBridge(ON, {
+      getSharingLimits: vi.fn(async () => {
+        throw new Error("boom");
+      }),
+    });
+    render(<SharingSettings />);
+    expect(
+      await screen.findByText(
+        "What paired devices can do could not be read, so it is not known here.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Paired devices (can|cannot) /)).toBeNull();
+  });
+
+  it("follows a switch change so the summary and the switches agree", async () => {
+    let current = ALL_LIMITS_ON;
+    installBridge(ON, {
+      getSharingLimits: vi.fn(async () => current),
+      setSharingLimit: vi.fn(async () => {
+        current = { ...current, limits: { ...current.limits, locking: false } };
+        return { kind: "ok" };
+      }),
+    });
+    render(<SharingSettings />);
+    await userEvent.click(
+      await screen.findByRole("switch", { name: "Limit locking" }),
+    );
+    expect(
+      await screen.findByText(
+        "Paired devices can lock. They cannot delete projects, unlock, change encryption or permanently delete.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Limit locking" }),
+    ).not.toBeChecked();
   });
 });

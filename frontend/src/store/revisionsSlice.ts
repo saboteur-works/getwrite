@@ -1,5 +1,6 @@
 // Last Updated: 2026-03-11
 
+import { isLimitRefusalError } from "../lib/api/limit-refusal";
 import {
   createAsyncThunk,
   createSelector,
@@ -128,6 +129,12 @@ const initialState: RevisionsState = {
 // Thunk factory
 // ---------------------------------------------------------------------------
 
+/** Meta carried on a rejected revision thunk action. */
+interface RevisionRejectedMeta {
+  /** True when the server refused the action under a paired-device limit. */
+  limitRefusal?: boolean;
+}
+
 /**
  * Factory for the five revision thunks that share identical boilerplate:
  * resolve context → guard → call transport → return result.
@@ -140,13 +147,17 @@ function makeRevisionThunk<Args extends ResourceScopedPayload, Result>(
   return createAsyncThunk<
     Result,
     Args,
-    { state: RootState; rejectValue: string }
+    {
+      state: RootState;
+      rejectValue: string;
+      rejectedMeta: RevisionRejectedMeta;
+    }
   >(typePrefix, async (args, thunkApi) => {
     const context = resolveRevisionRequestContext(
       thunkApi.getState(),
       args.resourceId,
     );
-    if ("error" in context) return thunkApi.rejectWithValue(context.error);
+    if ("error" in context) return thunkApi.rejectWithValue(context.error, {});
     try {
       return await transportFn(context, args);
     } catch (error) {
@@ -154,7 +165,12 @@ function makeRevisionThunk<Args extends ResourceScopedPayload, Result>(
         error instanceof Error && error.message.trim().length > 0
           ? error.message
           : errorFallback;
-      return thunkApi.rejectWithValue(message);
+      // A paired-device limit refusal keeps the server's own text as the
+      // payload; the flag lets the caller refresh the limits state.
+      return thunkApi.rejectWithValue(
+        message,
+        isLimitRefusalError(error) ? { limitRefusal: true } : {},
+      );
     }
   });
 }
@@ -479,7 +495,11 @@ const revisionsSlice = createSlice({
         }
 
         state.deletingRevisionId = null;
-        state.errorMessage = action.payload ?? "Failed to delete revision.";
+        // A limit refusal is shown by the caller as plain text; the shared
+        // errorMessage line is styled red, which a refusal must not be.
+        state.errorMessage = action.meta.limitRefusal
+          ? ""
+          : (action.payload ?? "Failed to delete revision.");
         return state;
       },
     );

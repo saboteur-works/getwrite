@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { PAIR_PAGE_PATH, isPairingPage } from "./pairing-page";
 
 /**
  * @module Sharing/DeviceNotPairedGuard
@@ -13,12 +14,16 @@ import { useEffect } from "react";
  * screen; every other response, and every rejection, passes through untouched.
  * The original `fetch` is restored on unmount.
  *
+ * On the pairing page itself the person is already where the redirect would
+ * send them, and navigating would reload the page (and re-issue whatever
+ * request was refused), so there the response is returned without navigating.
+ *
  * With sharing off the gate header is never sent, so the guard has no
  * observable effect. A 401 without the header (e.g. a locked workspace) is not
  * intercepted. Renders nothing.
  */
 
-const PAIR_REDIRECT_PATH = "/pair?reason=unpaired";
+const PAIR_REDIRECT_PATH = `${PAIR_PAGE_PATH}?reason=unpaired`;
 
 const GATE_HEADER = "x-getwrite-gate";
 const NOT_PAIRED = "not-paired";
@@ -49,7 +54,7 @@ export default function DeviceNotPairedGuard({
     let isNavigating = false;
     const guarded: typeof fetch = async (...args) => {
       const response = await originalFetch.apply(window, args);
-      if (isNotPaired(response) && !isNavigating) {
+      if (isNotPaired(response) && !isNavigating && !isPairingPage()) {
         isNavigating = true;
         navigate(PAIR_REDIRECT_PATH);
       }

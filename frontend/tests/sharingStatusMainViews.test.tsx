@@ -18,6 +18,18 @@ import { createTextResource } from "../src/lib/models/resource";
 import { SHARING_IS_ON } from "../components/Sharing/sharing-copy";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 
+// Feature 77 Task 17: StartPage now reads the shared limits state. This test
+// file is not about limits, so the hook is fixed at "exempt" (prompt allowed).
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
+
 function installEffectiveBridge(): void {
   (window as unknown as Record<string, unknown>).getwriteDesktop = {
     chooseWorkspaceDir: vi.fn(),

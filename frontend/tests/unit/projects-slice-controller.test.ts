@@ -220,6 +220,65 @@ describe("store/project-actions-controller guardrails (T017 / T9f)", () => {
     expect(body).not.toHaveProperty("projectRoot");
   });
 
+  // Feature 77 Task 20 (FR-25): deletion waits for the server.
+  it("does not call onDelete before the delete request has resolved, then calls it once", async () => {
+    const onDelete = vi.fn();
+    let release: (r: Response) => void = () => undefined;
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      new Promise<Response>((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const pending = projectActionsController.deleteProject({
+      storeProjectId,
+      projectId: directoryProjectId,
+      onDelete,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onDelete).not.toHaveBeenCalled();
+
+    release(new Response(null, { status: 200 }));
+    await pending;
+    expect(onDelete).toHaveBeenCalledExactlyOnceWith(storeProjectId);
+  });
+
+  it("rejects with the server's message and never calls onDelete on a 403 limit refusal", async () => {
+    const onDelete = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: "Server says no.", limit: "projectDeletion" }),
+        { status: 403 },
+      ),
+    );
+
+    await expect(
+      projectActionsController.deleteProject({
+        storeProjectId,
+        projectId: directoryProjectId,
+        onDelete,
+      }),
+    ).rejects.toThrow("Server says no.");
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("rejects and never calls onDelete on a generic 500", async () => {
+    const onDelete = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 500 }),
+    );
+
+    await expect(
+      projectActionsController.deleteProject({
+        storeProjectId,
+        projectId: directoryProjectId,
+        onDelete,
+      }),
+    ).rejects.toThrow("Failed to delete project.");
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
   it("throws before invoking callback or fetch when the directory-basename projectId is missing", async () => {
     const onDelete = vi.fn();
     const fetchSpy = vi.spyOn(globalThis, "fetch");

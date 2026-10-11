@@ -1,7 +1,7 @@
 // Last Updated: 2026-08-03
 
 import React from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -9,6 +9,18 @@ import { makeStore } from "../src/store/store";
 import StartPage, {
   type StartPageProjectEntry,
 } from "../components/Start/StartPage";
+
+// Feature 77 Task 17: StartPage now reads the shared limits state. This test
+// file is not about limits, so the hook is fixed at "exempt" (prompt allowed).
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 
 const PLAIN_ID = "11111111-1111-4111-8111-111111111111";
 const SEALED_ID = "22222222-2222-4222-8222-222222222222";

@@ -519,7 +519,14 @@ describe("shared module state and import hygiene", () => {
         offenders.push(path.relative(FRONTEND, file));
       }
     }
-    const allowed = new Set(["app/api/sharing/pair/route.ts"]);
+    const allowed = new Set([
+      "app/api/sharing/pair/route.ts",
+      "app/api/encryption/route.ts",
+      "app/api/project/[project-id]/trash/purge/route.ts",
+      "app/api/project/delete/route.ts",
+      "app/api/resource/revision/[resource-id]/route.ts",
+      "app/api/sharing/limits/route.ts",
+    ]);
     expect(offenders.filter((f) => !allowed.has(f))).toEqual([]);
   });
 

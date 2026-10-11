@@ -15,6 +15,10 @@ import {
   type RestoreItemResult,
   type TrashListing,
 } from "../../src/lib/api/trash";
+import {
+  type LimitRefusalError,
+  isLimitRefusalError,
+} from "../../src/lib/api/limit-refusal";
 
 const RUNTIME_ENV = "NEXT_PUBLIC_GETWRITE_RUNTIME";
 const originalRuntime = process.env[RUNTIME_ENV];
@@ -248,6 +252,56 @@ describe("trash transport — web runtime — purgeTrashItems", () => {
     await expect(
       purgeTrashItems("project-1", ["resource-1"]),
     ).rejects.toThrow();
+  });
+});
+
+describe("trash purge — limit refusal (Feature 77, Task 16)", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("rejects a 403 { error, limit } with the server message and the limit", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "Not here.", limit: "permanentDeletion" }),
+    } as Response);
+    const error: unknown = await purgeTrashItems("project-1", ["r"]).catch(
+      (e: unknown) => e,
+    );
+    expect(isLimitRefusalError(error)).toBe(true);
+    expect((error as LimitRefusalError).message).toBe("Not here.");
+    expect((error as LimitRefusalError).limit).toBe("permanentDeletion");
+  });
+
+  it.each([401, 409, 500])(
+    "keeps the status message for %s",
+    async (status) => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status,
+        json: async () => ({ error: "ignored" }),
+      } as Response);
+      await expect(purgeTrashItems("project-1", ["r"])).rejects.toThrow(
+        `Failed to purge trash items (status ${status}).`,
+      );
+    },
+  );
+
+  it("keeps the status message when the 403 body is malformed", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => {
+        throw new Error("bad json");
+      },
+    } as unknown as Response);
+    await expect(purgeTrashItems("project-1", ["r"])).rejects.toThrow(
+      "Failed to purge trash items (status 403).",
+    );
   });
 });
 

@@ -371,3 +371,36 @@ export const RestoreNoticeReferencesNotRestored: Story = {
     await waitFor(() => canvas.getByTestId("trash-restore-notices"));
   },
 };
+
+/** Paired device with permanent deletion limited (Feature 77): purge controls are disabled with a visible reason. */
+export const PermanentDeletionLimited: Story = {
+  beforeEach: () => mockTrashFetch({ listing: MIXED_LISTING }),
+  parameters: {
+    sharingLimits: {
+      state: {
+        state: "paired",
+        limits: {
+          projectDeletion: false,
+          unlocking: false,
+          locking: false,
+          encryptionChanges: false,
+          permanentDeletion: true,
+        },
+      },
+    },
+  },
+  render: () => renderView(),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(
+      /Deleting permanently has to be done on the computer/i,
+    );
+    await waitFor(() => {
+      if (
+        !(canvas.getByTestId("trash-empty-trash") as HTMLButtonElement).disabled
+      ) {
+        throw new Error("Empty trash should be disabled");
+      }
+    });
+  },
+};

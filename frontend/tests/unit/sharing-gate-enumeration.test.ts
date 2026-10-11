@@ -283,6 +283,15 @@ describe("route and page enumeration", () => {
     for (const name of ENUMERATED_EXCEPTIONS) expect(labels).toContain(name);
   });
 
+  it("enumerates the limits read route by walking, not as an exception", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const limits = entries.filter(
+      (e) => label(e) === "GET /api/sharing/limits",
+    );
+    expect(limits).toHaveLength(1);
+    expect(isException(limits[0])).toBe(false);
+  });
+
   it("counts the documented exceptions", () => {
     expect(ENUMERATED_EXCEPTIONS.length + 1).toBe(EXCEPTION_COUNT);
     expect(STATIC_EXCEPTION).toBe("/_next/static/");

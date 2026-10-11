@@ -39,6 +39,20 @@ import Button from "../common/UI/Button";
 import SharingStatus from "../Sharing/SharingStatus";
 import UnlockModal from "../common/UnlockModal";
 import {
+  useDeclareUnlockPromptMounted,
+  useSharingLimits,
+} from "../Sharing/SharingLimitsContext";
+import {
+  isUnlockingLimited,
+  isUnlockPromptAllowed,
+} from "../Sharing/unlock-prompt-gate";
+import {
+  LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP,
+  UNLOCK_AT_DESKTOP_MESSAGE,
+  UNLOCK_CHECK_FAILED_MESSAGE,
+  UNLOCK_CHECK_RETRY_LABEL,
+} from "../Sharing/sharing-copy";
+import {
   getDesktopBridge,
   type DesktopBridge,
 } from "../../src/lib/desktop-bridge";
@@ -405,21 +419,72 @@ export default function StartPage({
     };
   }, []);
 
+  // FR-21: the passphrase prompt is mounted only in the permitted states of the
+  // limits table; otherwise it is not in the document at all.
+  const {
+    state: limitsState,
+    hasDesktopBridge,
+    didLastReadFail,
+    refresh,
+  } = useSharingLimits();
+  const isLockedWorkspace = lockStatus === "locked";
+  const canOfferUnlock =
+    Boolean(onUnlock) && isUnlockPromptAllowed(limitsState, hasDesktopBridge);
+  const isUnlockPromptOpen =
+    isLockedWorkspace && canOfferUnlock && !hasDeclinedUnlock;
+  const shouldUnlockAtDesktop =
+    isLockedWorkspace && isUnlockingLimited(limitsState);
+  useDeclareUnlockPromptMounted(isUnlockPromptOpen);
+  // A locked workspace whose limits read failed shows neither the prompt nor
+  // the desktop message; say so, and offer a re-read. Never while still pending.
+  const shouldShowUnlockCheckFailed =
+    isLockedWorkspace &&
+    Boolean(onUnlock) &&
+    limitsState.state === "unknown" &&
+    !hasDesktopBridge &&
+    didLastReadFail;
+
+  // The state may have changed since the prompt opened: re-read at submit and
+  // send the passphrase only if the fresh answer still permits the prompt. This
+  // narrows, and cannot close, the window in which a stale allow is on screen.
+  async function submitUnlock(passphrase: string): Promise<void> {
+    const fresh = await refresh();
+    if (!isUnlockPromptAllowed(fresh, hasDesktopBridge)) return;
+    onUnlock?.(passphrase);
+  }
+
   return (
     <section
       aria-labelledby="start-projects"
       className="min-h-full text-gw-primary bg-gw-chrome px-6 py-8"
     >
-      <UnlockModal
-        isOpen={
-          Boolean(onUnlock) && lockStatus === "locked" && !hasDeclinedUnlock
-        }
-        encryptedProjectCount={encryptedProjectCount}
-        isBusy={isUnlocking}
-        errorMessage={unlockErrorMessage}
-        onUnlock={(passphrase) => onUnlock?.(passphrase)}
-        onDecline={() => setHasDeclinedUnlock(true)}
-      />
+      {isUnlockPromptOpen ? (
+        <UnlockModal
+          isOpen
+          encryptedProjectCount={encryptedProjectCount}
+          isBusy={isUnlocking}
+          errorMessage={unlockErrorMessage}
+          onUnlock={(passphrase) => void submitUnlock(passphrase)}
+          onDecline={() => setHasDeclinedUnlock(true)}
+        />
+      ) : null}
+
+      {shouldUnlockAtDesktop ? (
+        <p className="mb-4 text-gw-body text-gw-secondary">
+          {UNLOCK_AT_DESKTOP_MESSAGE}
+        </p>
+      ) : null}
+
+      {shouldShowUnlockCheckFailed ? (
+        <div role="status" className="mb-4 flex flex-wrap items-center gap-3">
+          <p className="text-gw-body text-gw-secondary">
+            {UNLOCK_CHECK_FAILED_MESSAGE}
+          </p>
+          <Button variant="secondary" onClick={() => void refresh()}>
+            {UNLOCK_CHECK_RETRY_LABEL}
+          </Button>
+        </div>
+      ) : null}
 
       <CreateProjectModal
         isOpen={isModalOpen}
@@ -765,8 +830,9 @@ export default function StartPage({
                       Encrypted project
                     </h3>
                     <p className="mt-3 text-gw-body text-gw-secondary">
-                      Unlock this workspace to see this project&rsquo;s name and
-                      open it.
+                      {shouldUnlockAtDesktop
+                        ? LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP
+                        : "Unlock this workspace to see this project\u2019s name and open it."}
                     </p>
                   </div>
                 </article>

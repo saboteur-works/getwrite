@@ -2,6 +2,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 
+// Feature 77 Task 18: the components under test now read the shared limits
+// state; this file is not about limits, so the hook is fixed at "exempt".
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
+
 vi.mock("../components/TipTapEditor", () => ({
   __esModule: true,
   default: () => <textarea data-testid="tiptap-mock" />,

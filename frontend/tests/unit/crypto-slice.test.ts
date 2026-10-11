@@ -6,6 +6,7 @@ import cryptoReducer, {
   checkWorkspaceLock,
   encryptProject,
   lockWorkspace,
+  resumeConversions,
   unlockWorkspace,
 } from "../../src/store/cryptoSlice";
 
@@ -172,5 +173,88 @@ describe("cryptoSlice — no key material reaches the store", () => {
     const serialised = JSON.stringify(state);
     expect(serialised).not.toContain(PASS);
     expect(JSON.parse(serialised)).toEqual(state);
+  });
+});
+
+describe("cryptoSlice — a refused or failed lock, resume or status check (Feature 77)", () => {
+  const REFUSAL = {
+    error: "Locking is turned off here. Do it at the desktop.",
+    limit: "locking",
+  };
+
+  async function unlockedStore() {
+    stubFetch(status({ isUnlocked: true }));
+    const store = makeStore();
+    await store.dispatch(checkWorkspaceLock()).unwrap();
+    return store;
+  }
+
+  it("keeps the server's message and the unlocked state when a lock is refused", async () => {
+    const store = await unlockedStore();
+    stubFetch(REFUSAL, false, 403);
+    await store
+      .dispatch(lockWorkspace())
+      .unwrap()
+      .catch(() => undefined);
+
+    expect(store.getState().crypto.errorMessage).toBe(REFUSAL.error);
+    expect(store.getState().crypto.status).toBe("unlocked");
+    expect(store.getState().crypto.encryptedProjectIds).toEqual([PROJECT_A]);
+  });
+
+  it("keeps the server's message and the state when a resume is refused", async () => {
+    const store = await unlockedStore();
+    stubFetch(
+      { error: "Changing encryption is off here.", limit: "encryptionChanges" },
+      false,
+      403,
+    );
+    await store
+      .dispatch(resumeConversions())
+      .unwrap()
+      .catch(() => undefined);
+
+    expect(store.getState().crypto.errorMessage).toBe(
+      "Changing encryption is off here.",
+    );
+    expect(store.getState().crypto.status).toBe("unlocked");
+  });
+
+  it("clears the message when the next lock succeeds", async () => {
+    const store = await unlockedStore();
+    stubFetch(REFUSAL, false, 403);
+    await store
+      .dispatch(lockWorkspace())
+      .unwrap()
+      .catch(() => undefined);
+    stubFetch(status({ isUnlocked: false }));
+    await store.dispatch(lockWorkspace()).unwrap();
+
+    expect(store.getState().crypto.errorMessage).toBe("");
+    expect(store.getState().crypto.status).toBe("locked");
+  });
+
+  it("reports a failed status check without claiming locked or unlocked", async () => {
+    stubFetch({ error: "Server unavailable." }, false, 500);
+    const store = makeStore();
+    await store
+      .dispatch(checkWorkspaceLock())
+      .unwrap()
+      .catch(() => undefined);
+
+    expect(store.getState().crypto.status).toBe("unknown");
+    expect(store.getState().crypto.errorMessage).toBe("Server unavailable.");
+  });
+
+  it("does not change an already-known state when a re-check fails", async () => {
+    const store = await unlockedStore();
+    stubFetch({ error: "Server unavailable." }, false, 500);
+    await store
+      .dispatch(checkWorkspaceLock())
+      .unwrap()
+      .catch(() => undefined);
+
+    expect(store.getState().crypto.status).toBe("unlocked");
+    expect(store.getState().crypto.errorMessage).toBe("Server unavailable.");
   });
 });

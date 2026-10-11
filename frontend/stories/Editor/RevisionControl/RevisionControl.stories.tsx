@@ -221,3 +221,31 @@ export const ProtectedCanonical: Story = {
     ).toBeEnabled();
   },
 };
+
+/** Paired device with permanent deletion limited (Feature 77): Delete Revision is disabled with a visible reason. */
+export const PermanentDeletionLimited: Story = {
+  parameters: {
+    sharingLimits: {
+      state: {
+        state: "paired",
+        limits: {
+          projectDeletion: false,
+          unlocking: false,
+          locking: false,
+          encryptionChanges: false,
+          permanentDeletion: true,
+        },
+      },
+    },
+  },
+  render: () => renderWith({ canonical: false, earlier: false }),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = await expandPanel(canvasElement);
+    await expect(
+      await canvas.findByRole("button", { name: /Delete Revision/ }),
+    ).toBeDisabled();
+    await canvas.findByText(
+      /Deleting permanently has to be done on the computer/i,
+    );
+  },
+};

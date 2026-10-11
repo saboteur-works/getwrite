@@ -23,6 +23,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   window.fetch = originalFetch;
+  window.history.pushState({}, "", "/");
 });
 
 describe("DeviceNotPairedGuard", () => {
@@ -37,6 +38,28 @@ describe("DeviceNotPairedGuard", () => {
     expect(first).toBe(response);
     expect(navigate).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith(TARGET);
+  });
+
+  it.each(["/pair", "/pair?reason=unpaired"])(
+    "does not navigate when the page is already the pairing page (%s) and returns the response",
+    async (url) => {
+      window.history.pushState({}, "", url);
+      const navigate = vi.fn();
+      const response = gated();
+      baseFetch.mockResolvedValue(response);
+      render(<DeviceNotPairedGuard navigate={navigate} />);
+      expect(await window.fetch("/api/sharing/limits")).toBe(response);
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still navigates once from a page that is not the pairing page", async () => {
+    window.history.pushState({}, "", "/pairing-notes");
+    const navigate = vi.fn();
+    baseFetch.mockResolvedValue(gated());
+    render(<DeviceNotPairedGuard navigate={navigate} />);
+    await window.fetch("/api/x");
+    expect(navigate).toHaveBeenCalledTimes(1);
   });
 
   it("does not intercept a 401 without the gate header", async () => {

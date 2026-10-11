@@ -19,6 +19,7 @@
  * identify the project for local UI callbacks (`onRename`/`onDelete`) and
  * dispatch. It is never sent over the wire — only `projectId` is.
  */
+import { limitRefusalFromResponse } from "../lib/api/limit-refusal";
 import { createTransport } from "./transport/create-transport";
 
 interface BaseProjectAction {
@@ -122,6 +123,8 @@ export const httpProjectActionsTransport: ProjectActionsTransport = {
 
     if (!response.ok) {
       const errorBody = await parseErrorBody(response);
+      const refusal = limitRefusalFromResponse(response.status, errorBody);
+      if (refusal) throw refusal;
       throw new Error(
         getApiErrorMessage(errorBody, "Failed to delete project."),
       );
@@ -173,9 +176,12 @@ export const projectActionsController = {
       "Project ID is required to delete project.",
     );
 
-    onDelete?.(storeProjectId);
-
+    // Feature 77 FR-25: the server answers first. `onDelete` (the caller's
+    // local-state removal) runs only once the delete has succeeded, for every
+    // caller including the desktop window.
     const transport = await resolveProjectActionsTransport();
     await transport.delete(resolvedProjectId);
+
+    onDelete?.(storeProjectId);
   },
 };

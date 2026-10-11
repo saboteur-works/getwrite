@@ -22,6 +22,11 @@ import type {
 import ConfirmDialog from "../../../common/ConfirmDialog";
 import Button from "../../../common/UI/Button/Button";
 import Checkbox from "../../../common/UI/Checkbox/Checkbox";
+import { useSharingLimits } from "../../../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../../../Sharing/limit-gate";
+import LimitReason from "../../../Sharing/LimitReason";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../../Sharing/sharing-copy";
+import { isLimitRefusalError } from "../../../../src/lib/api/limit-refusal";
 
 export interface TrashViewProps {
   /** Optional className for the outer container. */
@@ -209,6 +214,9 @@ export default function TrashView({
   // already soft-deleted (and therefore already absent from `page.tsx`'s
   // local state, per the FR-21/OQ-11 note above) before it could be purged.
   const { notifyTrashRestored } = useTrashRefresh();
+  const { state: limitsState, refresh: refreshLimits } = useSharingLimits();
+  const isPurgeLimited = isLimitOn(limitsState, "permanentDeletion");
+  const purgeReasonId = "trash-purge-limit-reason";
 
   // FR-10/OQ-2: a delete made elsewhere (e.g. the resource tree, via
   // `page.tsx`'s `handleResourceAction` dispatching `removeResource`) doesn't
@@ -234,6 +242,9 @@ export default function TrashView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Feature 77 Task 22: the server's message for a refused action, shown as
+  // plain text (not role="alert").
+  const [actionRefusal, setActionRefusal] = useState<string | null>(null);
   const [restoreNotices, setRestoreNotices] = useState<RestoreNotice[]>([]);
 
   const refetch = useCallback(() => {
@@ -291,6 +302,7 @@ export default function TrashView({
     if (selectedIds.size === 0) return;
     setReport(null);
     setActionError(null);
+    setActionRefusal(null);
     setRestoreNotices([]);
     setPendingAction({ kind: "restore", ids: Array.from(selectedIds) });
   }, [selectedIds]);
@@ -299,6 +311,7 @@ export default function TrashView({
     if (selectedIds.size === 0) return;
     setReport(null);
     setActionError(null);
+    setActionRefusal(null);
     setRestoreNotices([]);
     setPendingAction({
       kind: "purge",
@@ -311,6 +324,7 @@ export default function TrashView({
     if (allTopLevelIds.length === 0) return;
     setReport(null);
     setActionError(null);
+    setActionRefusal(null);
     setRestoreNotices([]);
     setPendingAction({
       kind: "purge",
@@ -416,16 +430,25 @@ export default function TrashView({
           }
         }
       })
-      .catch(() => {
-        setActionError(
-          action.kind === "restore"
-            ? "Could not restore the selected items. Try again later."
-            : "Could not permanently delete the selected items. Try again later.",
-        );
+      .catch((err: unknown) => {
+        if (isLimitRefusalError(err)) {
+          void refreshLimits();
+          // The server's own reason, as plain text: a retry cannot succeed.
+          setActionRefusal(err.message);
+          setActionError(null);
+        } else {
+          setActionRefusal(null);
+          setActionError(
+            action.kind === "restore"
+              ? "Could not restore the selected items. Try again later."
+              : "Could not permanently delete the selected items. Try again later.",
+          );
+        }
         setPendingAction(null);
       })
       .finally(() => setIsSubmitting(false));
   }, [
+    refreshLimits,
     pendingAction,
     projectId,
     isSubmitting,
@@ -482,6 +505,11 @@ export default function TrashView({
       {report && (
         <p role="status" data-testid="trash-batch-report">
           {report}
+        </p>
+      )}
+      {actionRefusal && (
+        <p role="status" data-testid="trash-batch-refusal">
+          {actionRefusal}
         </p>
       )}
       {actionError && (
@@ -546,7 +574,10 @@ export default function TrashView({
               size="sm"
               data-testid="trash-delete-selected"
               onClick={openDeleteSelectedDialog}
-              disabled={selectedIds.size === 0 || isSubmitting}
+              disabled={
+                selectedIds.size === 0 || isSubmitting || isPurgeLimited
+              }
+              aria-describedby={isPurgeLimited ? purgeReasonId : undefined}
             >
               Delete selected permanently
             </Button>
@@ -555,11 +586,17 @@ export default function TrashView({
               size="sm"
               data-testid="trash-empty-trash"
               onClick={openEmptyTrashDialog}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isPurgeLimited}
+              aria-describedby={isPurgeLimited ? purgeReasonId : undefined}
             >
               Empty trash
             </Button>
           </div>
+          {isPurgeLimited ? (
+            <LimitReason id={purgeReasonId}>
+              {PERMANENT_DELETION_LIMITED_REASON}
+            </LimitReason>
+          ) : null}
 
           {/* Task 19 Part B: this list previously carried `role="listbox"`/
               `aria-multiselectable` on the `<ul>` and `role="option"`/

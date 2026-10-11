@@ -14,6 +14,15 @@ import { projectActionsController } from "../../src/store/project-actions-contro
 import { toastService } from "../../src/lib/toast-service";
 import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 import Button from "../common/UI/Button";
+import { useSharingLimits } from "../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../Sharing/limit-gate";
+import LimitReason from "../Sharing/LimitReason";
+import {
+  PROJECT_DELETING_LABEL,
+  PROJECT_DELETION_LIMITED_REASON,
+  PROJECT_NOT_DELETED,
+} from "../Sharing/sharing-copy";
+import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 
 export interface ManageProjectMenuProps {
   projectId: string;
@@ -38,6 +47,9 @@ export default function ManageProjectMenu({
   onRequestCompile,
 }: ManageProjectMenuProps): JSX.Element {
   const dispatch = useAppDispatch();
+  const { state: limitsState, refresh: refreshLimits } = useSharingLimits();
+  const isDeleteLimited = isLimitOn(limitsState, "projectDeletion");
+  const deleteReasonId = `project-delete-limit-${projectId}`;
   const projectFromStore = useAppSelector((s) => selectProject(s, projectId));
   // ManageProjectMenu renders one row per project in a list (see StartPage),
   // not necessarily the active project — so the tenant-scoped `projectId`
@@ -53,6 +65,8 @@ export default function ManageProjectMenu({
   const [isRenameOpen, setIsRenameOpen] = useState<boolean>(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] =
     useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
   const { containerRef: menuRef } = useDismissableMenu({
     isOpen,
     onClose: () => setIsOpen(false),
@@ -62,22 +76,41 @@ export default function ManageProjectMenu({
     setName(projectName);
   }, [projectName]);
 
-  const handleDeleteConfirm = (): void => {
-    void projectActionsController
-      .deleteProject({
+  // Feature 77 FR-25: the server answers before anything is removed from the
+  // list, the store or the dialog, for every caller. A second confirm while
+  // the request is pending is ignored.
+  const handleDeleteConfirm = async (): Promise<void> => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    setDeleteFailure(null);
+    try {
+      await projectActionsController.deleteProject({
         storeProjectId: projectId,
         projectId: directoryProjectId,
         onDelete,
-      })
-      .catch((err) => {
-        console.error("Failed to delete project:", err);
-        toastService.error("Failed to delete project", "Please try again");
       });
-
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+      if (isLimitRefusalError(err)) void refreshLimits();
+      setDeleteFailure(
+        err instanceof Error && err.message.trim().length > 0
+          ? err.message
+          : "Failed to delete project.",
+      );
+      setIsDeleting(false);
+      return;
+    }
     dispatch(deleteProjectInStore({ projectId }));
+    setIsDeleting(false);
     setIsConfirmDeleteOpen(false);
     setIsOpen(false);
     toastService.success("Project deleted", projectName);
+  };
+
+  const closeDeleteDialog = (): void => {
+    if (isDeleting) return;
+    setDeleteFailure(null);
+    setIsConfirmDeleteOpen(false);
   };
 
   return (
@@ -122,8 +155,18 @@ export default function ManageProjectMenu({
               icon={<Trash2 size={14} aria-hidden="true" />}
               label="Delete"
               danger
-              onClick={() => setIsConfirmDeleteOpen(true)}
+              disabled={isDeleteLimited}
+              aria-describedby={isDeleteLimited ? deleteReasonId : undefined}
+              onClick={() => {
+                setDeleteFailure(null);
+                setIsConfirmDeleteOpen(true);
+              }}
             />
+            {isDeleteLimited ? (
+              <LimitReason id={deleteReasonId}>
+                {PROJECT_DELETION_LIMITED_REASON}
+              </LimitReason>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -132,10 +175,18 @@ export default function ManageProjectMenu({
         isOpen={isConfirmDeleteOpen}
         title="Delete project"
         description="This will permanently remove the project and its resources. Are you sure?"
-        confirmLabel="Delete"
+        details={
+          deleteFailure ? (
+            <p className="text-sm text-gw-secondary">
+              {PROJECT_NOT_DELETED} {deleteFailure}
+            </p>
+          ) : undefined
+        }
+        confirmLabel={isDeleting ? PROJECT_DELETING_LABEL : "Delete"}
         cancelLabel="Cancel"
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setIsConfirmDeleteOpen(false)}
+        isConfirmDisabled={isDeleting}
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={closeDeleteDialog}
       />
 
       <RenameProjectModal

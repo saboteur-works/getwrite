@@ -1,0 +1,1127 @@
+# Experiments: Feature 77 (paired device limits)
+
+Records are measurements. A cause is named only where an experiment separated it from the alternatives; otherwise it is left unnamed.
+
+## i: classification header on POST
+
+Date: 2026-10-10. Machine: darwin, Node v24.15.0 (the Node on PATH; not the CI Node 22). Run in the main checkout, branch `feat/paired-device-limits`.
+
+### Method
+
+- Port 3000 checked first with `lsof -iTCP:3000 -sTCP:LISTEN`: no listener. The script repeats this check and refuses to run if anything listens.
+- Throwaway route `frontend/app/api/zz-echo-classification/route.ts`: GET and POST handlers returning `{ header: request.headers.get("x-getwrite-classification") }` and nothing else (POST reads and discards the body). Deleted at the end of the task.
+- Standalone build: `pnpm build` from `frontend/` (exit 0, in the command sandbox), then `.next/standalone/frontend/server.js` started by the script with `HOSTNAME=127.0.0.1`.
+- `next dev`: `pnpm exec next dev -p <port>` from `frontend/`, no `HOSTNAME` set.
+- Script: `specs/features/paired-device-limits/scripts/header-experiment.mjs`, run as `node header-experiment.mjs standalone` and `node header-experiment.mjs dev`. It picks free ports itself, starts each server in its own process group, records the pids and stops only those groups. Ports used were in the 61000 range, chosen by the script.
+- Env passed to every server: `PORT=<port>`, `GETWRITE_PROJECTS_DIR=<throwaway dir under os.tmpdir()>`. Sharing-on server also `GETWRITE_SHARING=1`, `GETWRITE_WINDOW_SECRET=<window-secret>` (random per run, never printed), `GETWRITE_SHARING_DIR=<throwaway dir>`. Sharing-off server: neither sharing variable. Empty throwaway directories; not `~/Documents/GetWrite`, the repo's `projects/`, or `~/Library/Application Support/getwrite-electron`.
+- Callers: window = request with header `x-getwrite-window: <window-secret>`; paired device = cookie `getwrite_device=<cookie>` obtained by writing a fixture `pairing-state.json` (same shape as `frontend/scripts/sharing-refusal-smoke.mjs`) and POSTing a code to `/api/sharing/pair` (status 200); unpaired = no cookie, no window header; sharing off = separate server with sharing unset. POSTs carry `content-type: application/json`, `origin: <server base>` and body `{"probe":true}`. All requests from the same host to `127.0.0.1:<port>`.
+- Forged case: the same POST with an added client header `x-getwrite-classification: window`.
+- Tokens, cookie values, pairing codes and the window secret are not in this record; the device id in a `confirmed:` value is shown as `<device-id>`.
+
+### Observed values (status, header value the handler echoed)
+
+`-` in the gate column means no `x-getwrite-gate` response header. "not reached" means the response was the gate's own refusal and the echo handler did not run (the JSON had no `header` field).
+
+| Caller | Request | Standalone status / echoed | `next dev` status / echoed |
+| --- | --- | --- | --- |
+| window | GET | 200 / `window` | 200 / `window` |
+| window | POST json | 200 / `window` | 200 / `window` |
+| window | POST json + forged `window` | 200 / `window` | 200 / `window` |
+| paired device | GET | 200 / `confirmed:<device-id>` | 200 / `confirmed:<device-id>` |
+| paired device | POST json | 200 / `confirmed:<device-id>` | 200 / `confirmed:<device-id>` |
+| paired device | POST json + forged `window` | 200 / `confirmed:<device-id>` | 200 / `confirmed:<device-id>` |
+| unpaired device | GET | 401, gate `not-paired` / not reached | 401, gate `not-paired` / not reached |
+| unpaired device | POST json | 401, gate `not-paired` / not reached | 401, gate `not-paired` / not reached |
+| unpaired device | POST json + forged `window` | 401, gate `not-paired` / not reached | 401, gate `not-paired` / not reached |
+| sharing off | GET | 200 / `off` | 200 / `off` |
+| sharing off | POST json | 200 / `off` | 200 / `off` |
+| sharing off | POST json + forged `window` | 200 / `off` | 200 / `off` |
+
+Note on the window row: a real window request already carries `window`, so the forged row for the window caller cannot show a forged value surviving or not; the forged rows that discriminate are paired, unpaired and sharing off.
+
+### FR-4 verdict
+
+- Standalone build: the header reaches a POST handler: **yes** (window, paired and sharing-off callers). A forged client copy survives: **no** (paired saw `confirmed:<device-id>`, sharing off saw `off`; the unpaired forged request was refused by the gate with 401 before any handler ran, so the handler saw nothing).
+- `next dev`: the header reaches a POST handler: **yes**. A forged client copy survives: **no** (same observations).
+- Route-level enforcement as written (Tasks 9 to 13) is not contradicted by this measurement. Not tested: other request bodies or content types, other methods than GET and POST, other routes than the echo route, a proxy matcher exclusion.
+
+### `next dev` request from the host's LAN address, sharing off
+
+Server B (sharing off, `next dev -p <port>`), request sent from the host to its own LAN address (`10.0.0.226`, a second device was not used), GET and POST json to the echo route: both **200**, no `x-getwrite-gate` header, handler echoed `off`. Server kept up for these requests and a listener check only, then stopped by recorded pid group.
+
+Listener check (`lsof -nP -a -iTCP -sTCP:LISTEN -p <pid>` for each member of the process group the script started; the `pnpm` parent and three of its children showed no TCP listener, one child showed):
+
+```
+COMMAND   PID          USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node    48717 jedaisaboteur   13u  IPv6 0x20b2c5741829d23b      0t0  TCP *:61373 (LISTEN)
+```
+
+So under this launch the `next dev` listener was on `*:<port>` and the sharing-off request via the LAN address was classified `off` and served. No cause is named for why it listens on `*`. The standalone server in this experiment was started with `HOSTNAME=127.0.0.1`, so a LAN request to it was not tried.
+
+### FR-3 context (restated, not re-measured as such)
+
+Feature 76 observed: a development-mode server child showed `TCP *:3000`; a request from the host to its own LAN address returned 200 with project data and no `x-getwrite-gate` header with sharing off. It was sent from the host, not from a second device; it was not separated from other explanations; it was not checked whether it predates Feature 75. The measurement above is consistent with that observation on a different port and route but does not settle those points. This matter is tracked separately and is not fixed here.
+
+### What did not go as first run, and what was not run
+
+- `next dev` inside the command sandbox: the first run's sharing-on server answered, but its sharing-off server returned 404 for the echo route (including from the LAN address); a rerun in the sandbox with a stricter readiness check never got a non-404 response from the echo route on the sharing-on server (script error "server did not become ready"). The final `next dev` run, whose values are in the table, was run with `dangerouslyDisableSandbox: true` (the script also uses `ps` and `lsof`, which the sandbox denied for `ps`: "operation not permitted: ps"). The 404s in the sandbox were not investigated and no cause is named.
+- The standalone build and its server ran inside the sandbox without problems. The `pnpm build` ran inside the sandbox (exit 0).
+- Not run: a second physical device; Node 22; the unpaired caller reaching a handler (the gate refuses every non-exempt path first); a window request carrying a forged copy different from `window`.
+- No server left running: the final `lsof` for ports in the 61000 range showed no listener.
+
+### Cleanup
+
+Throwaway route deleted. Build output is under gitignored `frontend/.next/`. `git status --short` from the repo root after cleanup after cleanup:
+
+```
+?? specs/features/paired-device-limits/experiments.md
+?? specs/features/paired-device-limits/scripts/
+```
+
+## ii: traversal projectId
+
+Date: 2026-10-10. Machine: darwin, Node v24.15.0 (the Node on PATH, not the CI Node 22). Main checkout, branch `feat/paired-device-limits`. No source file changed; the real `POST /api/encryption` route was measured (no throwaway route).
+
+### Finding (stated first)
+
+`POST /api/encryption` with `action: "enable"` and `projectId: "../<sentinel>"` returned 200 and acted OUTSIDE the workspace root: the sentinel directory beside the workspace received a `.encrypted.json` marker and its `marker.txt` was rewritten (16 B before, 49 B after, different digest; the file's contents were not read back). It reproduced for both a null passphrase (session unlocked by a prior valid enable) and a non-null passphrase, in both runs. `export` with the same value did not act (it stopped at a key lookup, see table). The empty string made `enable` act on the workspace root itself. Recorded as measured; not fixed here.
+
+### Build, server, commands
+
+- Port 3000 checked first: `lsof -iTCP:3000 -sTCP:LISTEN` returned no listener. The script repeats the check and refuses to run if there is one.
+- Standalone build already in `frontend/.next/standalone/frontend/server.js` (written 14:17 today by Task 1's `pnpm build`; `frontend/app/api/encryption/route.ts` last modified 2026-09-22 and `git status` clean, so the build reflects the current route). Chosen over `next dev` because it was already built and starts fast enough to give every case its own fresh server; `next dev` was not run, so nothing is claimed for it. Ran in the command sandbox; no EMFILE or other sandbox error, no retry outside the sandbox.
+- Command: `node specs/features/paired-device-limits/scripts/traversal-experiment.mjs standalone`. Run twice. The first run's classifier labelled the empty-string cases "failed later"; the rule for "workspace root itself" was then added to the script and it was run again; the table is from the second run, and the first run's statuses and listings had the same outcomes.
+- Script behaviour: per (action, value) it builds a fresh throwaway layout and starts a fresh standalone server on a free port chosen by the script (127.0.0.1, sharing off, `HOSTNAME=127.0.0.1`, hosted-auth variables unset), records the pid, stops only that process group, then deletes the layout. After the runs: `Process groups still recorded: 0`, no listener from the script remained, no `gw-trav-*` directory left in `$TMPDIR`.
+- Env passed to the server: `PORT`, `GETWRITE_PROJECTS_DIR=<workspace>`, `HOME=<userdata>`. The server reads no other path variable for encryption.
+
+### Throwaway layout (per case)
+
+```
+$TMPDIR/gw-trav-XXXXXX/        throwaway parent (every path asserted under os.tmpdir())
+  workspace/                   GETWRITE_PROJECTS_DIR; one seeded valid-UUID project (project.json, resources/r1/content.txt)
+  sentinel-<8 hex>/            sibling sentinel; marker.txt "sentinel marker\n" (16 B)
+  userdata/                    throwaway HOME for the server; empty
+```
+
+Passphrase: random per case, never printed or recorded. Setup for `enable` with a null passphrase and for `export`: one valid `enable` of the seeded project with the passphrase (status 200 in every case), which creates the keyring and leaves the server session unlocked; that setup is before the "before" listing. For `enable` with a non-null passphrase: no setup, no keyring beforehand.
+
+### Request shapes
+
+All `POST http://127.0.0.1:<port>/api/encryption`, `content-type: application/json`, `origin` set to the server base, sharing off.
+
+- enable, null passphrase: `{"action":"enable","projectId":V,"projectName":"Throwaway","passphrase":null}`
+- enable, non-null: same with `"passphrase":"<throwaway>"`
+- export: `{"action":"export","projectId":V}`
+
+Values V (JSON as sent; `<sentinel>` is `sentinel-<8 hex>`, `<abs>` the throwaway parent's absolute path):
+
+1. relative: `"../<sentinel>"`
+2. absolute: `"<abs>/<sentinel>"`
+3. percent-encoded: `"..%2F<sentinel>"` (the literal text `..%2F`, not decoded by the client)
+4. empty string: `""`
+5. JSON null: `null`
+6. NUL byte: `"../<sentinel>\u0000"` (JSON escape for a NUL byte at the end)
+
+### Results (second run)
+
+Listings are names and counts only (digests of file bytes were compared, contents never printed). `ws` = workspace file/dir entries before -> after, `sentinel` likewise. "keyring rewritten" means `.getwrite-keyring.json` and `.getwrite-names` in the workspace changed size/digest (or were created) during the case.
+
+| Action | Value | Status | `error` | Listings | Classification |
+| --- | --- | --- | --- | --- | --- |
+| enable, null passphrase | relative | 200 | none | sentinel 1 -> 2: `.encrypted.json` added, `marker.txt` 16 B -> 49 B; ws 8 -> 8, keyring rewritten | path was built outside the root |
+| enable, null | absolute | 400 | `ENOENT ... open '<workspace>/<abs>/<sentinel>/.converting.json.tmp'` | sentinel 1 -> 1 unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason (the path was joined under the workspace; the directory does not exist there; no file effect except the keyring) |
+| enable, null | percent-encoded | 400 | `ENOENT ... open '<workspace>/..%2F<sentinel>/.converting.json.tmp'` | sentinel unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason (same) |
+| enable, null | empty | 400 | `Keyring at <workspace>/.getwrite-keyring.json is not valid JSON. Refusing to treat a corrupt keyring as an absent one.` | sentinel unchanged; ws 8 -> 9: `.encrypted.json` added at the workspace root, the seeded project's `.encrypted.json` rewritten, keyring and names rewritten | path was built at the workspace root itself (effect inside the workspace, none outside it) |
+| enable, null | null | 400 | `The "path" argument must be of type string. Received null` | sentinel unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason |
+| enable, null | NUL byte | 400 | `The argument 'path' must be a string, Uint8Array, or URL without null bytes. Received '<parent>/<sentinel>\x00/.converting.json.tmp'` | sentinel unchanged; ws 8 -> 8, keyring rewritten | failed later for another reason (the joined path reached `fs`, which refused it) |
+| enable, non-null | relative | 200 | none | sentinel 1 -> 2: `.encrypted.json` added, `marker.txt` 16 B -> 49 B; ws 5 -> 7 (keyring and names created) | path was built outside the root |
+| enable, non-null | absolute | 400 | `ENOENT ... open '<workspace>/<abs>/<sentinel>/.converting.json.tmp'` | sentinel unchanged; ws 5 -> 7 (keyring, names created) | failed later for another reason |
+| enable, non-null | percent-encoded | 400 | `ENOENT ... open '<workspace>/..%2F<sentinel>/.converting.json.tmp'` | sentinel unchanged; ws 5 -> 7 | failed later for another reason |
+| enable, non-null | empty | 400 | `Keyring at <workspace>/.getwrite-keyring.json is not valid JSON. Refusing ...` | sentinel unchanged; ws 5 -> 8: `.encrypted.json` at workspace root, keyring and names created, the seeded project's `project.json` and `content.txt` rewritten (15 B -> 48 B, 64 B -> 97 B) | path was built at the workspace root itself |
+| enable, non-null | null | 400 | `The "path" argument must be of type string. Received null` | sentinel unchanged; ws 5 -> 7 | failed later for another reason |
+| enable, non-null | NUL byte | 400 | `The argument 'path' must be a string, Uint8Array, or URL without null bytes. ...` | sentinel unchanged; ws 5 -> 7 | failed later for another reason |
+| export | relative | 400 | `No data key registered for project "../<sentinel>".` | all listings unchanged (ws 8 -> 8, sentinel 1 -> 1) | failed later for another reason (key lookup; see limits below) |
+| export | absolute | 400 | `No data key registered for project "<abs>/<sentinel>".` | unchanged | failed later for another reason |
+| export | percent-encoded | 400 | `No data key registered for project "..%2F<sentinel>".` | unchanged | failed later for another reason |
+| export | empty | 400 | `No data key registered for project "".` | unchanged | failed later for another reason |
+| export | null | 400 | `The "path" argument must be of type string. Received null` | unchanged | failed later for another reason |
+| export | NUL byte | 400 | `No data key registered for project "../<sentinel>\u0000".` | unchanged | failed later for another reason |
+
+Across all eighteen cases no `error` string was a project-id validation message, `userdata` stayed empty, and the throwaway parent gained no entries. In the `enable` cases that reached key registration (every one except relative, where the keyring is also rewritten but the call succeeded), the keyring was rewritten before the later error, i.e. the supplied string was written into the workspace keyring.
+
+### Limits of this measurement
+
+- "Failed later" for `export` rests on the key lookup (`requireSessionKeyring().projectKey(projectId)`) throwing before any read. In the route the joined `path.join(workspaceRoot, projectId)` is evaluated as an argument first; whether it was acted on is not shown, only that no filesystem change occurred. An `export` of the relative value after a prior `enable` with the same value has registered a key for it was NOT run; that sequence is plausible from the enable result above and is unmeasured.
+- Contents of `marker.txt` after the relative `enable` were not read back; the change is shown by size (16 B -> 49 B), digest and the new `.encrypted.json`. This is a measurement of an effect, not a statement of what the file now contains.
+- The percent-encoded value was a literal string inside JSON; URL-level decoding by a proxy or the route was not exercised (the route takes `projectId` from the body, not the URL).
+- Standalone build only; `next dev` not run.
+
+### Verdict for FR-4 / FR-32
+
+A traversal value IS accepted: `enable` with `../<sentinel>` (null and non-null passphrase) built a path outside the workspace and converted a directory there; `enable` with an empty string acted on the workspace root. The route has no `validateProjectId` guard in front of `enable` or `export`. **Task 25 is needed** (guard the encryption route's `projectId`). This is a defect in the shipped route independent of sharing; not fixed in this task. Cause of why the values pass is not named beyond the observation that no validation message was returned; the code read (`route.ts` ~140-220, `enable-encryption.ts` `path.join(workspaceRoot, projectId)`) shows no check before the join, but that is reading, and the measurement above is what is claimed.
+
+### `git status --short` (repo root, after the task)
+
+```
+?? specs/features/paired-device-limits/scripts/traversal-experiment.mjs
+ M specs/features/paired-device-limits/experiments.md
+```
+
+## iii: next dev reachability (context only)
+
+Date: 2026-10-10. Machine: darwin, Node v24.15.0 (not the CI Node 22). Main checkout, branch `feat/paired-device-limits`. No source file changed.
+
+This is context only. It was measured from the host to its own addresses; the second-device case (a different physical device on the home network) was not tested. No cause is named here that was not discriminated by an experiment. The matter is tracked separately and is not fixed here.
+
+### Finding (stated first)
+
+A `next dev` server started the way the desktop app starts it in development mode with sharing off (`HOSTNAME=127.0.0.1`, `GETWRITE_BIND=127.0.0.1`, `GETWRITE_SHARING=0` in its environment) showed a listener on `TCP *:<port>` (IPv6 wildcard socket) in `lsof`, and a request from the host to its own LAN address returned 200 with no `x-getwrite-gate` header, the same as the loopback request. Consistent with Feature 76's observation above. Which part of the startup (the `HOSTNAME` variable, the `next dev` default, or something else) determines the bind was not separated by any experiment, so none is named.
+
+### How the desktop app starts the dev server (read, not run)
+
+`electron/src/main.ts` `startServer` (non-packaged branch): `spawn("pnpm", ["dev"], { cwd: <repo>/frontend, env, shell: true })`, where `env` is `process.env` plus `PORT`, `GETWRITE_PROJECTS_DIR`, `GETWRITE_TEMPLATES_DIR`, `GETWRITE_DESKTOP`, `GETWRITE_REPO`, `GETWRITE_APP_VERSION`, `GETWRITE_WINDOW_SECRET`, `GETWRITE_SHARING_DIR` (= userData) and `buildServerBindEnv(mode)`. `buildServerBindEnv` for a non-effective mode returns `HOSTNAME: "127.0.0.1"`, `GETWRITE_BIND: "127.0.0.1"`, `GETWRITE_SHARING: "0"` (`electron/src/sharing/sharing-mode.ts`). `frontend/package.json` `dev` is `next dev`, with no `-H`/`--hostname` argument.
+
+### Environment the script passed (names only)
+
+Inherited `process.env`, plus: `PORT` (a free port the script chose), `GETWRITE_PROJECTS_DIR` (empty throwaway dir), `GETWRITE_DESKTOP`, `GETWRITE_REPO`, `GETWRITE_APP_VERSION`, `GETWRITE_WINDOW_SECRET` (random, not printed), `GETWRITE_SHARING_DIR` (empty throwaway dir), `HOSTNAME=127.0.0.1`, `GETWRITE_BIND=127.0.0.1`, `GETWRITE_SHARING=0`. Not passed: `GETWRITE_TEMPLATES_DIR` (the script has no packaged templates dir). `DATABASE_URL` and `BETTER_AUTH_SECRET` were not set in the inherited environment (hosted auth inactive). Spawned with `shell: true` as in the app, as its own process group (`detached`).
+
+### Commands and output
+
+Port 3000 checked first: `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing; the script repeats the check and refuses to run if there is a listener. Command: `node specs/features/paired-device-limits/scripts/dev-reachability.mjs`. LAN address found: `10.0.0.226` (first non-internal IPv4). Probe path `/api/projects` (the route Feature 76 used; throwaway empty projects directory, so the body is an empty list, not read).
+
+Output of the run outside the command sandbox (port 61841, group leader pid 61235):
+
+```
+{"request":"loopback","status":200,"x-getwrite-gate":"(absent)"}
+{"request":"own LAN address","status":200,"x-getwrite-gate":"(absent)"}
+process-group members: 61235,61239,61258,61264
+pid 61235: no TCP listener
+pid 61239: no TCP listener
+pid 61258: no TCP listener
+lsof -nP -iTCP -sTCP:LISTEN pid 61264:
+COMMAND   PID          USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node    61264 jedaisaboteur   13u  IPv6 0xb20a68bfa0e0a0b6      0t0  TCP *:61841 (LISTEN)
+```
+
+`lsof` was run only for pids in the script's process group (listed with `ps -A -o pid=,pgid=` filtered to the recorded group), not by port.
+
+### What did not go as first run, and what was not run
+
+- First run, inside the command sandbox: the server answered 200 on loopback and on the LAN address (both without `x-getwrite-gate`), then the script failed at `ps` ("spawnSync ps EPERM"), so no `lsof` listing was produced there. The server was stopped by the script's `finally` (second stop attempt: ESRCH, already gone). The listing above is from the second run, which used `dangerouslyDisableSandbox: true` (same reason as in section i). No EMFILE or 404s occurred in this task.
+- Not run: a request from a second physical device; a run with sharing on; Node 22; a run without `shell: true`; anything that would separate `HOSTNAME`, the `next dev` default and the shell wrapper as explanations.
+- No server left running: after the run, no listener in the 6xxxx range and no `gw-devreach-*` directory in `$TMPDIR`.
+
+### Cleanup and git status
+
+Throwaway directories removed by the script. `git status --short` from the repo root:
+
+```
+ M specs/features/paired-device-limits/experiments.md
+?? specs/features/paired-device-limits/scripts/dev-reachability.mjs
+```
+
+Nothing outside `specs/`.
+
+## Baselines
+
+Date: 2026-10-10. Machine: darwin. Run directly in the main checkout `/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/paired-device-limits`. No server started; `lsof -iTCP:3000 -sTCP:LISTEN` first: no output (exit 1, no listener).
+
+- `git rev-parse --short HEAD`: `b24cc0b5`. `node --version`: `v24.15.0` (volta, the repo pin; CI uses Node 22 for the frontend/Electron jobs and Node 20 for the CLI job).
+- Fair-baseline check: `git diff --stat a20b814a HEAD -- . ':!specs'` printed nothing (exit 0). HEAD differs from main's `a20b814a` only under `specs/`, so the main checkout at HEAD is a fair baseline for source.
+- Sandbox: every command below ran inside the command sandbox; no retry outside it was needed. The only stderr noise was `WARN Issue while reading "~/.npmrc". EPERM` from pnpm, which did not affect exit status.
+
+### Results
+
+| Command (directory) | Exit | Counts |
+| --- | --- | --- |
+| `pnpm test:ci` (frontend/) | 0 | 595 files passed, 0 failed; 6046 tests passed, 0 failed, 1 skipped (6047 total) |
+| `pnpm typecheck` (frontend/) | 0 | no errors |
+| `pnpm lint` (frontend/) | 0 | 0 errors, 395 warnings (7 potentially fixable with `--fix`) |
+| `pnpm test` (electron/) | 0 | 23 files passed; 322 tests passed, 0 failed, 0 skipped |
+| `pnpm typecheck` (electron/) | 0 | no errors (both `tsc --noEmit` projects) |
+| `pnpm knip` (repo root) | 1 | issues below (knip exits 1 when it reports any) |
+| `pnpm --filter getwrite-cli test` (repo root) | 0 | 22 files passed; 144 tests passed, 0 failed, 0 skipped; duration 491.70s |
+
+No failing test names: nothing failed. The skipped frontend test was not identified. The CLI run prints `error: missing required argument 'scrivPath'` / `'source'` to stderr from tests that assert on that; the suite passed.
+
+### Node 20
+
+`volta list`: runtime `node@24.15.0` (current, from the repo `package.json`), `pnpm@10.28.0`; default toolchain packages on node 24.15.0. `ls ~/.volta/tools/image/node`: `22.23.2`, `24.15.0`. No Node 20 binary is available, so no run on Node 20 was made and the CLI job on Node 20 is not covered by this record. Frontend/Electron were run on Node 24.15.0, not the CI Node 22 either (22.23.2 is installed but was not used).
+
+### knip (`pnpm knip`, root)
+
+| Section | Count |
+| --- | --- |
+| Unused files | 53 |
+| Unused dependencies | 1 |
+| Unused devDependencies | 4 |
+| Unlisted dependencies | 6 |
+| Unlisted binaries | 4 |
+| Unused exports | 167 |
+| Unused exported types | 170 |
+| Duplicate exports | 14 |
+| Configuration hints (not an issue section) | 6 |
+
+Observation: 3 of the 53 unused files are this feature's own experiment scripts under `specs/features/paired-device-limits/scripts/` (`dev-reachability.mjs`, `header-experiment.mjs`, `traversal-experiment.mjs`), so knip does see files under `specs/` here, contrary to the premise in the task list's rules. Excluding them the count at the start of the feature's source work is 50. Compare later runs by set, treating those three as present or absent consistently.
+
+Knip prints long paths shortened with a leading `…` at the terminal width it was run under; the names and line numbers are as printed. Compare by the first column (name) plus the file tail.
+
+The full lists as printed (whitespace squeezed) follow.
+
+```
+Unused files (53)
+android/harness/harness-entry.ts
+android/harness/shims/async_hooks.mjs
+android/harness/shims/buffer-inject.mjs
+android/harness/shims/fs-promises.mjs
+android/harness/shims/fs.mjs
+android/harness/shims/path.mjs
+demo/demo.spec.ts
+demo/playwright.demo.config.ts
+demo/screens.spec.ts
+demo/seed.mjs
+electron/src/preload.ts
+frontend/.storybook/fs-shim.mjs
+frontend/components/common/UI/Card/index.ts
+frontend/components/common/UI/Textarea/index.ts
+frontend/scripts/serve-storybook-static.mjs
+frontend/src/hooks/use-toast.ts
+frontend/src/lib/adapters/placeholderAdapter.ts
+frontend/src/lib/api/index.ts
+frontend/src/lib/models/native-bootstrap.web-stub.ts
+frontend/src/native-shims/async-hooks.mjs
+frontend/src/native-shims/fs-promises.mjs
+frontend/src/native-shims/fs.mjs
+frontend/src/native-shims/path.mjs
+frontend/src/store/queries-guards.ts
+frontend/src/store/transport/native-compile-backend.web-stub.ts
+frontend/src/store/transport/native-editor-config-backend.web-stub.ts
+frontend/src/store/transport/native-entity-alias-table-backend.web-stub.ts
+frontend/src/store/transport/native-entity-graph-positions-backend.web-stub.ts
+frontend/src/store/transport/native-entity-graph-settings-backend.web-stub.ts
+frontend/src/store/transport/native-entity-mention-counts-backend.web-stub.ts
+frontend/src/store/transport/native-export-backend.web-stub.ts
+frontend/src/store/transport/native-feature-config-backend.web-stub.ts
+frontend/src/store/transport/native-global-noise-words-backend.web-stub.ts
+frontend/src/store/transport/native-mentions-backend.web-stub.ts
+frontend/src/store/transport/native-metadata-schema-backend.web-stub.ts
+frontend/src/store/transport/native-preferences-backend.web-stub.ts
+frontend/src/store/transport/native-project-actions-backend.web-stub.ts
+frontend/src/store/transport/native-project-backend.web-stub.ts
+frontend/src/store/transport/native-project-types-backend.web-stub.ts
+frontend/src/store/transport/native-prose-diagnostics-backend.web-stub.ts
+frontend/src/store/transport/native-query-backend.web-stub.ts
+frontend/src/store/transport/native-resource-backend.web-stub.ts
+frontend/src/store/transport/native-resource-excerpts-backend.web-stub.ts
+frontend/src/store/transport/native-revision-backend.web-stub.ts
+frontend/src/store/transport/native-search-backend.web-stub.ts
+frontend/src/store/transport/native-tags-backend.web-stub.ts
+frontend/src/store/transport/native-word-count-goal-backend.web-stub.ts
+frontend/tests/integration/refactorParity.ts
+frontend/tests/unit/refactor-guardrails/fixtureBuilders.ts
+specs/001-ui-getwrite-skeleton/scripts/capture-storybook-screenshots.js
+specs/features/paired-device-limits/scripts/dev-reachability.mjs
+specs/features/paired-device-limits/scripts/header-experiment.mjs
+specs/features/paired-device-limits/scripts/traversal-experiment.mjs
+```
+
+```
+Unused dependencies (1)
+typedoc frontend/package.json:89:6
+```
+
+```
+Unused devDependencies (4)
+@capacitor/filesystem android/package.json:19:6
+@better-auth/cli frontend/package.json:93:6
+@eslint/eslintrc frontend/package.json:96:6
+next-devtools-mcp frontend/package.json:118:6
+```
+
+```
+Unlisted dependencies (6)
+@storybook/react frontend/stories/Common/Listbox.stories.tsx:2:37
+@storybook/react frontend/stories/Common/Tabs.stories.tsx:2:37
+@storybook/react frontend/stories/Sidebar/controls/Controls.stories.tsx:2:32
+@storybook/react frontend/stories/WorkArea/DiffView.stories.tsx:3:32
+@storybook/react frontend/stories/WorkArea/ViewSwitcher.stories.tsx:3:37
+offbeat-fm-theme.css frontend/styles/saboteur-base.css:2:17
+```
+
+```
+Unlisted binaries (4)
+electron-builder .github/workflows/build-electron.yml
+typecheck .github/workflows/frontend-checks.yml
+lint .github/workflows/frontend-checks.yml
+build .github/workflows/frontend-checks.yml
+```
+
+```
+Unused exports (167)
+registerDoctor function cli/src/commands/doctor.ts:114:17
+registerPrune function cli/src/commands/prune.ts:69:17
+stopServerByPid function cli/src/commands/qa.ts:468:23
+registerQa function cli/src/commands/qa.ts:627:17
+registerReindex function cli/src/commands/reindex.ts:42:17
+runRepairRevisions function cli/src/commands/repair-revisions.ts:30:23
+registerRepairRevisions function cli/src/commands/repair-revisions.ts:68:17
+registerScreenshots function cli/src/commands/screenshots.ts:84:17
+registerTemplates function cli/src/commands/templates.ts:76:17
+defaultRepoRoot function cli/src/qa/report.ts:73:17
+QA_SERVER_LOG_FILENAME cli/src/qa/server.ts:47:14
+DEFAULT_READY_PROBE_PATHS cli/src/qa/server.ts:184:14
+WORKSPACE_FOLDER_NAME electron/src/projects-dir.ts:30:14
+WORKSPACE_CONFIG_FILENAME electron/src/projects-dir.ts:184:14
+cardVariants frontend/components/common/UI/Card/Card.tsx:39:10
+EditContextMenu frontend/components/common/UI/ContextMenu/index.ts:9:21
+DialogTrigger frontend/components/common/UI/Dialog/Dialog.tsx:126:3
+DialogPortal frontend/components/common/UI/Dialog/Dialog.tsx:127:3
+DialogOverlay frontend/components/common/UI/Dialog/Dialog.tsx:128:3
+DialogClose frontend/components/common/UI/Dialog/Dialog.tsx:129:3
+DialogTrigger frontend/components/common/UI/Dialog/index.ts:3:3
+DialogPortal frontend/components/common/UI/Dialog/index.ts:4:3
+DialogOverlay frontend/components/common/UI/Dialog/index.ts:5:3
+DialogClose frontend/components/common/UI/Dialog/index.ts:6:3
+DialogHeader frontend/components/common/UI/Dialog/index.ts:8:3
+PopoverClose frontend/components/common/UI/Popover/index.ts:4:3
+PopoverClose frontend/components/common/UI/Popover/Popover.tsx:45:35
+default variable …ents/Editor/Extensions/StripExternalPasteColor.ts:30:16
+toItemKey function …mponents/project-types/ProjectTypeDraftService.ts:77:17
+normalizeDefinition function …mponents/project-types/ProjectTypeDraftService.ts:98:17
+FileIcon function …end/components/ResourceTree/ResourceTreeIcons.tsx:87:17
+TimelineTooltip frontend/components/Timeline/index.ts:2:21
+getAdaptiveFormat function frontend/components/Timeline/utils.ts:250:17
+resolveOffsetToPosition frontend/components/TipTapEditor.tsx:40:10
+TOOLTIP_POINTER_GAP …tityRelationshipGraphView/edgeTooltipPlacement.ts:42:14
+TimelineView …nd/components/WorkArea/Views/TimelineView/index.ts:2:21
+default function …ents/WorkArea/Views/TimelineView/TimelineView.tsx:44:25
+resolveCompileTransport frontend/src/lib/api/compile.ts:155:14
+resolveEditorConfigTransport frontend/src/lib/api/editor-config.ts:112:14
+resolveEntityAliasTableTransport frontend/src/lib/api/entity-alias-table.ts:105:14
+resolveEntityCooccurrenceTransport frontend/src/lib/api/entity-cooccurrence.ts:114:14
+httpEntityGraphPositionsTransport frontend/src/lib/api/entity-graph-positions.ts:55:14
+resolveEntityMentionCountsTransport frontend/src/lib/api/entity-mention-counts.ts:104:14
+resolveEntityRelationshipsTransport frontend/src/lib/api/entity-relationships.ts:281:14
+resolveExportTransport frontend/src/lib/api/export.ts:117:14
+resolveMentionsTransport frontend/src/lib/api/mentions.ts:142:14
+resolvePreferencesTransport frontend/src/lib/api/preferences.ts:93:14
+resolveProjectTypesTransport frontend/src/lib/api/project-types.ts:70:14
+httpProjectsTransport frontend/src/lib/api/projects.ts:90:14
+resolveProjectsTransport frontend/src/lib/api/projects.ts:160:14
+resolveProseDiagnosticsTransport frontend/src/lib/api/prose-diagnostics.ts:220:14
+resolveResourceExcerptsTransport frontend/src/lib/api/resource-excerpts.ts:85:14
+resolveResourcesTransport frontend/src/lib/api/resources.ts:419:14
+ApiEditorConfigSchema frontend/src/lib/api/schemas.ts:88:14
+ProjectSchema frontend/src/lib/api/schemas.ts:196:14
+FolderSchema frontend/src/lib/api/schemas.ts:213:14
+LockedProjectListEntrySchema frontend/src/lib/api/schemas.ts:265:14
+resolveTagsTransport frontend/src/lib/api/tags.ts:155:14
+resolveTrashTransport frontend/src/lib/api/trash.ts:225:14
+renameFolderById creator frontend/src/lib/core.ts:28:26
+writeTrashRefRecord creator frontend/src/lib/core.ts:41:3
+readTrashRefRecord creator frontend/src/lib/core.ts:42:3
+purgeResource creator frontend/src/lib/core.ts:48:3
+purgeFolder creator frontend/src/lib/core.ts:49:3
+PurgeSweepError creator frontend/src/lib/core.ts:50:3
+loadMentionIndex creator frontend/src/lib/core.ts:80:3
+isDesktopApp desktopBridge function frontend/src/lib/desktop-bridge.ts:265:17
+HEADING_FIELD_DEFINITIONS frontend/src/lib/editor-heading-settings.ts:38:14
+sanitizeEditorHeading function frontend/src/lib/editor-heading-settings.ts:59:17
+default variable frontend/src/lib/models/backlinks-watcher.ts:109:16
+default variable frontend/src/lib/models/backlinks.ts:373:16
+DESTRUCTIVE_SURVIVING_RATIO frontend/src/lib/models/content-loss.ts:33:14
+MIN_WORDS_LOST frontend/src/lib/models/content-loss.ts:42:14
+default variable frontend/src/lib/models/diagnostics-index.ts:147:16
+resolveEditorConfigProjectRootOrThrow function frontend/src/lib/models/editor-config-core.ts:60:17
+default variable frontend/src/lib/models/entity-alias-table.ts:115:16
+EntityGraphPositionRecordSchema frontend/src/lib/models/entity-graph-positions.ts:37:14
+default variable frontend/src/lib/models/entity-graph-positions.ts:182:16
+EntityRelationshipEdgeSchema frontend/src/lib/models/entity-relationships.ts:34:14
+default variable frontend/src/lib/models/entity-relationships.ts:254:16
+default variable frontend/src/lib/models/entity-shared-metadata.ts:272:16
+scanFieldValues function frontend/src/lib/models/field-values.ts:111:23
+default variable frontend/src/lib/models/inverted-index.ts:263:16
+default variable frontend/src/lib/models/locks.ts:35:16
+default frontend/src/lib/models/memoryAdapter.ts:320:16
+default variable frontend/src/lib/models/mention-index.ts:116:16
+default variable frontend/src/lib/models/mentions-core.ts:624:16
+default variable frontend/src/lib/models/meta-locks.ts:42:16
+default variable frontend/src/lib/models/metadata-schema.ts:1096:16
+rebuildIndexes function …lib/models/plaintext/import-plaintext-project.ts:483:23
+previewPath function frontend/src/lib/models/previews.ts:29:17
+savePreview function frontend/src/lib/models/previews.ts:37:23
+default variable frontend/src/lib/models/previews.ts:109:16
+default frontend/src/lib/models/project-config.ts:95:16
+default variable frontend/src/lib/models/project-creator.ts:359:16
+default frontend/src/lib/models/project-features.ts:143:16
+default frontend/src/lib/models/project-view.ts:18:16
+default creator frontend/src/lib/models/project.ts:78:16
+listResourceIds function frontend/src/lib/models/pruneExecutor.ts:9:23
+default function frontend/src/lib/models/pruneExecutor.ts:57:16
+ComparisonOpSchema frontend/src/lib/models/query-ast.ts:33:14
+TextOpSchema frontend/src/lib/models/query-ast.ts:41:14
+default variable frontend/src/lib/models/query-cache.ts:132:16
+inspectTemplate creator frontend/src/lib/models/resource.ts:29:3
+validateTemplate creator frontend/src/lib/models/resource.ts:30:3
+default creator frontend/src/lib/models/resource.ts:38:16
+default variable frontend/src/lib/models/revision-manager.ts:82:16
+default variable frontend/src/lib/models/revision.ts:390:16
+SavedQueryViewSchema frontend/src/lib/models/saved-queries.ts:9:14
+default variable frontend/src/lib/models/saved-queries.ts:136:16
+QueryASTSchema frontend/src/lib/models/schemas.ts:35:3
+ComparisonNodeSchema frontend/src/lib/models/schemas.ts:36:3
+InNodeSchema frontend/src/lib/models/schemas.ts:37:3
+ExistsNodeSchema frontend/src/lib/models/schemas.ts:38:3
+TextNodeSchema frontend/src/lib/models/schemas.ts:39:3
+LinksToNodeSchema frontend/src/lib/models/schemas.ts:40:3
+LinkedFromNodeSchema frontend/src/lib/models/schemas.ts:41:3
+RefNodeSchema frontend/src/lib/models/schemas.ts:42:3
+ParamNodeSchema frontend/src/lib/models/schemas.ts:43:3
+ComparisonOpSchema frontend/src/lib/models/schemas.ts:44:3
+TextOpSchema frontend/src/lib/models/schemas.ts:45:3
+MetadataValue frontend/src/lib/models/schemas.ts:84:14
+EditorConfigSchema frontend/src/lib/models/schemas.ts:114:14
+MetadataFieldTypeSchema frontend/src/lib/models/schemas.ts:131:14
+OrganizerCardBodySourceSchema frontend/src/lib/models/schemas.ts:221:14
+ResourceTypeSchema frontend/src/lib/models/schemas.ts:368:14
+TipTapMarkSchema frontend/src/lib/models/schemas.ts:376:14
+TipTapNodeSchema frontend/src/lib/models/schemas.ts:392:14
+RevisionSchema frontend/src/lib/models/schemas.ts:505:14
+Schemas frontend/src/lib/models/schemas.ts:609:14
+ProjectTypeResourceSchema frontend/src/lib/models/schemas.ts:640:14
+ProjectTypeFolderSchema frontend/src/lib/models/schemas.ts:651:14
+ProjectTypeDefaultFolderSchema frontend/src/lib/models/schemas.ts:662:14
+default …/lib/models/scrivener/apply-document-metadata.ts:173:16
+default variable …lib/models/scrivener/import-scrivener-project.ts:822:16
+default frontend/src/lib/models/sidecar.ts:202:16
+default variable frontend/src/lib/models/tags.ts:264:16
+default variable frontend/src/lib/models/uuid.ts:52:16
+NODE_TYPE_LABELS frontend/src/lib/node-display.ts:26:14
+default frontend/src/lib/projectTypes.ts:182:16
+default frontend/src/lib/tiptap-utils.ts:71:16
+default variable frontend/src/lib/toast-service.ts:122:16
+GLOBAL_COLOR_MODE_STORAGE_KEY frontend/src/lib/user-preferences.ts:38:14
+getStoredGlobalColorMode function frontend/src/lib/user-preferences.ts:161:17
+httpFeatureConfigTransport …end/src/store/feature-config-transport-service.ts:70:14
+httpMetadataSchemaTransport …d/src/store/metadata-schema-transport-service.ts:226:14
+resolveMetadataSchemaTransport …d/src/store/metadata-schema-transport-service.ts:428:14
+httpProjectActionsTransport frontend/src/store/project-actions-controller.ts:100:14
+resolveProjectActionsTransport frontend/src/store/project-actions-controller.ts:140:14
+changeMetadataFieldType frontend/src/store/projectsSlice.ts:399:14
+selectActiveProjectRootPath frontend/src/store/projectsSlice.ts:981:14
+httpQueryTransport frontend/src/store/query-transport-service.ts:131:14
+resolveQueryTransport frontend/src/store/query-transport-service.ts:173:14
+selectQueryState frontend/src/store/querySlice.ts:321:14
+resolveRevisionDisplayName function frontend/src/store/revision-normalization.ts:24:17
+isRevision function frontend/src/store/revision-normalization.ts:52:17
+sortRevisionsDescending function frontend/src/store/revision-normalization.ts:68:17
+resolveRevisionTransport frontend/src/store/revision-transport-service.ts:293:14
+selectRevisionsState frontend/src/store/revisionsSlice.ts:569:14
+selectSearchIsLoading frontend/src/store/searchSlice.ts:123:14
+selectSearchErrorMessage frontend/src/store/searchSlice.ts:126:14
+store frontend/src/store/store.ts:13:14
+default variable frontend/src/store/store.ts:44:16
+httpSearchTransport frontend/src/store/transport/search-transport.ts:61:14
+stubAppShellFetch function frontend/tests/helpers/appShellFetchStub.ts:66:17
+default frontend/tests/unit/helpers/fs-utils.ts:34:16
+default frontend/tests/unit/helpers/project-creator.ts:132:16
+```
+
+```
+Unused exported types (170)
+QaSessionRecord interface cli/src/commands/qa.ts:82:18
+VerifyStatus type cli/src/qa/verify.ts:34:13
+VerifyArtifactKind type cli/src/qa/verify.ts:37:13
+WorkspaceRejection type electron/src/projects-dir.ts:187:13
+ImportSuccessOutcome interface …rivener-import/handle-import-request.ts:38:18
+ImportRefusalUnsupportedOutcome interface …rivener-import/handle-import-request.ts:43:18
+ImportRefusalDestinationNotEmptyOutcome interface …rivener-import/handle-import-request.ts:49:18
+ImportFatalOutcome interface …rivener-import/handle-import-request.ts:55:18
+SelectionHandleTarget interface …c/scrivener-import/selection-handles.ts:23:18
+CompileFormat type …mponents/common/CompilePreviewModal.tsx:36:13
+ButtonProps interface …/components/common/UI/Button/Button.tsx:39:18
+ButtonProps type …end/components/common/UI/Button/index.ts:2:15
+CardProps interface …tend/components/common/UI/Card/Card.tsx:15:18
+CheckboxProps type …mponents/common/UI/Checkbox/Checkbox.tsx:6:13
+CheckboxProps type …d/components/common/UI/Checkbox/index.ts:2:15
+ChipProps type …ntend/components/common/UI/Chip/index.ts:2:15
+DialogContentProps interface …/components/common/UI/Dialog/Dialog.tsx:29:18
+DialogContentProps type …nd/components/common/UI/Dialog/index.ts:13:15
+InputProps type …tend/components/common/UI/Input/index.ts:2:15
+SelectProps type …end/components/common/UI/Select/index.ts:2:15
+SelectProps type …d/components/common/UI/Select/Select.tsx:6:13
+TextareaProps type …mponents/common/UI/Textarea/Textarea.tsx:7:13
+EntityMatchState type …Extensions/entityHighlightDecoration.ts:82:13
+GetWriteImageOptions interface …ents/Editor/Extensions/GetWriteImage.ts:11:18
+MediaDropOptions interface …/Editor/Extensions/MediaDropExtension.ts:9:18
+EditorMenuColorIconName type …itor/MenuBar/EditorMenuColorSubmenu.tsx:10:15
+EditorMenuIconName type …onents/Editor/MenuBar/EditorMenuIcon.tsx:8:15
+EditorMenuInputIconName type …ents/Editor/MenuBar/EditorMenuInput.tsx:19:15
+ToolbarInputCommand interface …ditor/MenuBar/toolbar-command-schema.ts:48:18
+ToolbarColorCommand interface …ditor/MenuBar/toolbar-command-schema.ts:57:18
+ToolbarCommandItem type …ditor/MenuBar/toolbar-command-schema.ts:71:13
+ResolvedToolbarIconCommand interface …nts/Editor/MenuBar/useToolbarCommand.ts:26:18
+ResolvedToolbarInputCommand interface …nts/Editor/MenuBar/useToolbarCommand.ts:35:18
+ResolvedToolbarColorCommand interface …nts/Editor/MenuBar/useToolbarCommand.ts:45:18
+HelpParagraphBlock interface frontend/components/help/help-content.ts:15:18
+HelpHeadingBlock interface frontend/components/help/help-content.ts:20:18
+HelpTipCardBlock interface frontend/components/help/help-content.ts:25:18
+AppShellResourceActionOptions interface frontend/components/Layout/AppShell.tsx:154:18
+ShellProjectTypeLoaderState interface …nents/Layout/ShellProjectTypeLoader.tsx:10:18
+RelativeDateValue interface …/components/QueryBuilder/FilterChip.tsx:25:18
+RangeValue interface …/components/QueryBuilder/FilterChip.tsx:30:18
+ResetOptions interface …ts/QueryBuilder/useQueryBuilderState.ts:34:18
+ValuePickerRange type …components/QueryBuilder/ValuePicker.tsx:17:13
+ValuePickerRelativeDate type …components/QueryBuilder/ValuePicker.tsx:18:13
+ResourceRef type …components/QueryBuilder/ValuePicker.tsx:33:15
+RemoveFieldChoice type …chemaManager/DeprecateOrClearDialog.tsx:13:13
+ResourceOption type …ebar/controls/MultiResourceRefInput.tsx:13:15
+TimelineConfig type frontend/components/Timeline/index.ts:6:3
+TimelineProps type frontend/components/Timeline/index.ts:7:3
+TimelineTooltipProps type frontend/components/Timeline/index.ts:9:15
+RevisionEntry type frontend/components/WorkArea/DiffView.tsx:3:15
+SaveStatus type …onents/WorkArea/useCanonicalAutosave.ts:11:13
+RevisionContentLoadState type …mponents/WorkArea/useRevisionContent.ts:51:13
+ClientRect interface …onshipGraphView/edgeTooltipPlacement.ts:14:18
+PositionedNode interface …tionshipGraphView/EntityGraphCanvas.tsx:96:18
+PositionedEdge interface …ionshipGraphView/EntityGraphCanvas.tsx:102:18
+EntityGraphData interface …phView/EntityRelationshipGraphView.tsx:160:18
+FlaggedNoiseTerm interface …s/EntityRosterView/EntityRosterView.tsx:58:18
+OrganizerFilterKey type …Views/OrganizerView/organizerFilters.ts:43:13
+TimelineViewProps type …nts/WorkArea/Views/TimelineView/index.ts:3:15
+TimelineViewProps interface …rea/Views/TimelineView/TimelineView.tsx:11:18
+ExportBody interface frontend/src/lib/api/export.ts:10:18
+LockedProjectApiEntry interface frontend/src/lib/api/projects.ts:25:18
+FileDownloader type …ontend/src/lib/compile/download-file.ts:24:32
+CompileFormat type …lib/compile/run-compile-and-download.ts:30:13
+TrashRefRecord creator type frontend/src/lib/core.ts:43:8
+PurgeStepName creator type frontend/src/lib/core.ts:51:8
+ImportScrivenerProjectOptions creator type frontend/src/lib/core.ts:91:8
+ImportPlainTextProjectOptions creator type frontend/src/lib/core.ts:108:8
+ImportPlainTextProjectResult creator type frontend/src/lib/core.ts:109:8
+ImportSuccessOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:35:18
+ImportRefusalUnsupportedOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:46:18
+ImportRefusalDestinationNotEmptyOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:52:18
+ImportFatalOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:58:18
+StartDocxImportOptions desktopBridge interface frontend/src/lib/desktop-bridge.ts:81:18
+GlobalNoiseWordsSetResult desktopBridge interface frontend/src/lib/desktop-bridge.ts:93:18
+DocxImportSuccessOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:99:18
+DocxImportRefusalNoDocxFoundOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:109:18
+DocxImportRefusalDestinationNotEmptyOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:115:18
+DocxImportRefusalUnknownProjectTypeOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:121:18
+DocxImportFatalOutcome desktopBridge interface frontend/src/lib/desktop-bridge.ts:127:18
+EditorHeadingFieldDefinition interface …ntend/src/lib/editor-heading-settings.ts:6:18
+FileType type …/src/lib/models/capacitor-filesystem.ts:34:13
+MediaResourceType creator type …tend/src/lib/models/media-validation.ts:33:13
+MediaValidationOk creator interface …tend/src/lib/models/media-validation.ts:46:18
+MediaRejectionReason creator type …tend/src/lib/models/media-validation.ts:57:13
+MediaValidationError creator interface …tend/src/lib/models/media-validation.ts:60:18
+SearchCheckReport interface …rc/lib/models/native-device-harness.ts:174:18
+ThroughputCheckReport interface …rc/lib/models/native-device-harness.ts:182:18
+MediaSizeThroughputReport interface …rc/lib/models/native-device-harness.ts:197:18
+ImageThroughputCheckReport interface …rc/lib/models/native-device-harness.ts:208:18
+AudioThroughputCheckReport interface …rc/lib/models/native-device-harness.ts:213:18
+RenameCollisionCheckReport interface …rc/lib/models/native-device-harness.ts:218:18
+PlainTextTipTapHardBreakNode interface …c/lib/models/plaintext/txt-to-tiptap.ts:46:18
+PlainTextTipTapParagraphContentNode type …c/lib/models/plaintext/txt-to-tiptap.ts:52:13
+PlainTextTipTapParagraphNode interface …c/lib/models/plaintext/txt-to-tiptap.ts:57:18
+ProjectTypeSpecFolder interface …ntend/src/lib/models/project-creator.ts:68:18
+ProjectTypeSpecResource interface …ntend/src/lib/models/project-creator.ts:91:18
+ProjectTypeSpecDefaultFolder interface …tend/src/lib/models/project-creator.ts:111:18
+LoadedResource interface …ontend/src/lib/models/project-loader.ts:23:18
+UIResource type frontend/src/lib/models/project-view.ts:6:15
+FolderWithResources type frontend/src/lib/models/project-view.ts:6:27
+ComparisonOp type frontend/src/lib/models/query-ast.ts:117:13
+TextOp type frontend/src/lib/models/query-ast.ts:118:13
+ComparisonNode type frontend/src/lib/models/query-ast.ts:120:13
+InNode type frontend/src/lib/models/query-ast.ts:125:13
+ExistsNode type frontend/src/lib/models/query-ast.ts:126:13
+TextNode type frontend/src/lib/models/query-ast.ts:127:13
+LinksToNode type frontend/src/lib/models/query-ast.ts:128:13
+LinkedFromNode type frontend/src/lib/models/query-ast.ts:129:13
+ParamNode type frontend/src/lib/models/query-ast.ts:136:13
+CombinatorNode type frontend/src/lib/models/query-ast.ts:146:13
+SpliceNode type frontend/src/lib/models/query-ast.ts:147:13
+IntrinsicFieldSource type …tend/src/lib/models/query-intrinsics.ts:12:13
+ReorderFolderEntry resourceCrudCore interface …d/src/lib/models/resource-crud-core.ts:734:18
+ReorderResourceEntry resourceCrudCore interface …d/src/lib/models/resource-crud-core.ts:741:18
+TemplateInspection creator type frontend/src/lib/models/resource.ts:31:8
+TemplateValidationResult creator type frontend/src/lib/models/resource.ts:32:8
+RevisionRepairEntry interface …ntend/src/lib/models/revision-repair.ts:19:18
+RevisionRepairSkip interface …ntend/src/lib/models/revision-repair.ts:24:18
+SavedQueryView type frontend/src/lib/models/saved-queries.ts:13:13
+QueryAST type frontend/src/lib/models/schemas.ts:16:3
+LeafNode type frontend/src/lib/models/schemas.ts:17:3
+CombinatorNode type frontend/src/lib/models/schemas.ts:18:3
+SpliceNode type frontend/src/lib/models/schemas.ts:19:3
+ComparisonNode type frontend/src/lib/models/schemas.ts:20:3
+ComparisonOp type frontend/src/lib/models/schemas.ts:21:3
+InNode type frontend/src/lib/models/schemas.ts:22:3
+ExistsNode type frontend/src/lib/models/schemas.ts:23:3
+TextNode type frontend/src/lib/models/schemas.ts:24:3
+TextOp type frontend/src/lib/models/schemas.ts:25:3
+LinksToNode type frontend/src/lib/models/schemas.ts:26:3
+LinkedFromNode type frontend/src/lib/models/schemas.ts:27:3
+AndNode type frontend/src/lib/models/schemas.ts:28:3
+OrNode type frontend/src/lib/models/schemas.ts:29:3
+NotNode type frontend/src/lib/models/schemas.ts:30:3
+RefNode type frontend/src/lib/models/schemas.ts:31:3
+ParamNode type frontend/src/lib/models/schemas.ts:32:3
+ProjectTypeDefaultFolder type frontend/src/lib/models/schemas.ts:669:13
+ImportPlanFolder interface …c/lib/models/scrivener/binder-mapper.ts:66:18
+ImportPlanExclusionReason type …/lib/models/scrivener/binder-mapper.ts:108:13
+ImportPlanExcludedItem interface …/lib/models/scrivener/binder-mapper.ts:115:18
+ImportPlanNonTextResearchItem interface …/lib/models/scrivener/binder-mapper.ts:132:18
+ImportPlanNote interface …/lib/models/scrivener/binder-mapper.ts:144:18
+ImportPlanUntitledFallback interface …/lib/models/scrivener/binder-mapper.ts:156:18
+ImportReportFieldKeyRename interface …c/lib/models/scrivener/import-report.ts:62:18
+ImportReportKeywordMerge interface …c/lib/models/scrivener/import-report.ts:75:18
+ImportReportResearchItem interface …c/lib/models/scrivener/import-report.ts:87:18
+ImportReportExcludedOtherItem interface …c/lib/models/scrivener/import-report.ts:98:18
+ImportReportTrashItem interface …/lib/models/scrivener/import-report.ts:108:18
+ImportReportUntitledFallback interface …/lib/models/scrivener/import-report.ts:130:18
+UnsupportedCustomMetaDataField interface …lib/models/scrivener/metadata-mapper.ts:40:18
+MetadataValueSkip interface …lib/models/scrivener/metadata-mapper.ts:64:18
+FieldKeyRename interface …lib/models/scrivener/metadata-mapper.ts:82:18
+PlannedKeywordTag interface …lib/models/scrivener/metadata-mapper.ts:95:18
+KeywordMerge interface …ib/models/scrivener/metadata-mapper.ts:108:18
+KeywordTagPlan interface …ib/models/scrivener/metadata-mapper.ts:118:18
+RtfTipTapMark interface …c/lib/models/scrivener/rtf-to-tiptap.ts:82:18
+RtfTipTapHardBreakNode interface …c/lib/models/scrivener/rtf-to-tiptap.ts:99:18
+RtfTipTapParagraphContentNode type …/lib/models/scrivener/rtf-to-tiptap.ts:104:13
+RtfTipTapParagraphNode interface …/lib/models/scrivener/rtf-to-tiptap.ts:109:18
+RtfTipTapDocument interface …/lib/models/scrivener/rtf-to-tiptap.ts:126:18
+RtfDroppedFeature interface …/lib/models/scrivener/rtf-to-tiptap.ts:132:18
+OrganizerCardBodySource creator type frontend/src/lib/models/types.ts:75:13
+MetadataInputType creator type frontend/src/lib/models/types.ts:232:13
+TipTapMark creator interface frontend/src/lib/models/types.ts:334:18
+FetchLike type frontend/src/lib/models/update-check.ts:38:13
+SearchFilters type frontend/src/store/searchSlice.ts:10:15
+SearchState interface frontend/src/store/searchSlice.ts:12:18
+ProjectTypeFolderMetadataSource interface frontend/src/types/project-types.ts:44:18
+```
+
+```
+Duplicate exports (14)
+registerDoctor|default cli/src/commands/doctor.ts
+registerPrune|default cli/src/commands/prune.ts
+registerQa|default cli/src/commands/qa.ts
+registerReindex|default cli/src/commands/reindex.ts
+registerRepairRevisions|default cli/src/commands/repair-revisions.ts
+registerScreenshots|default cli/src/commands/screenshots.ts
+registerTemplates|default cli/src/commands/templates.ts
+flushIndexer|waitForDrain frontend/src/lib/models/indexer-queue.ts
+bootstrapNativeStorageContext|ensureNativeStorageContext frontend/src/lib/models/native-bootstrap.ts
+pruneAllResources|default frontend/src/lib/models/pruneExecutor.ts
+Schemas|default frontend/src/lib/models/schemas.ts
+toastService|default frontend/src/lib/toast-service.ts
+useAppSelector|default frontend/src/store/hooks.ts
+store|default frontend/src/store/store.ts
+```
+
+```
+Configuration hints (6)
+frontend knip.json Add entry and/or refine project files in workspaces["fr…
+. (root) knip.json Add entry and/or refine project files in workspaces["."…
+android knip.json Add entry and/or refine project files in workspaces["an…
+…transport/native-trash-backend.web-stub.ts knip.json Remove from ignore
+src/getwrite-cli.ts cli knip.json Remove redundant entry pattern
+index.js package.json Package entry file not found
+ ELIFECYCLE Command failed with exit code 1.
+```
+
+### git status
+
+After all runs, `git status --short` from the repo root (before this section was appended it printed nothing; tests left only gitignored output, if any):
+
+```
+ M specs/features/paired-device-limits/experiments.md
+```
+
+## Owner confirmation at the Task 5 stop
+
+Recorded by the pipeline lead, 2026-10-10, after the owner was shown the results of experiments (i) to (iii) and the baselines. Owner's words: "Fix the defect as suggested, no need for a note if it's fixed now, otherwise, proceed as planned (maybe hold for the merge though)".
+
+1. Experiment (i): the classification reaches a POST route handler in the standalone build and in `next dev`, and a forged client copy did not survive. Route-level enforcement stands; no re-plan.
+2. Experiment (ii): a traversal `projectId` is accepted by the encryption route's `enable` action. The owner chose to fix it at once as a separate branch and pull request to `main`, ahead of the rest of this feature, because it is independent of sharing and the route is in released builds. Branch `fix/encryption-project-id-validation`, commit `df62b9fa`, made in a separate worktree from `main`. Task 25 (the conditional fix inside this feature) is therefore satisfied by that pull request once it is merged and brought into this branch; Task 25 then only records that and re-checks the result on this branch.
+3. Experiment (iii) and the LAN-address observation in experiment (i) are context only; tracked separately; no fix in this feature.
+4. Tasks 6 onward proceed as planned, and are held until the fix's pull request is merged to `main` and merged into this branch.
+5. Lead's addition, accepted with the plan at Gate 4: the main-side writer of Task 6 reuses the lock helpers of Feature 76's `electron/src/sharing/device-store-writer.ts` rather than reimplementing the lock protocol a third time.
+
+## Owner decisions at the halt after Tasks 6 to 11
+
+Recorded by the pipeline lead, 2026-10-10. The run halted because the existing Feature 75 test `frontend/tests/unit/sharing-gate-proxy.test.ts` ("imports src/lib/sharing from app/ only in the pairing route") fails once the limited routes import the shared check, as Tasks 10 and 11 require. Owner's words: "resolve, take your rec for the ambiguity".
+
+1. Resolve: that test's allow-list is updated to the four limited route files (`app/api/encryption/route.ts`, `app/api/project/[project-id]/trash/purge/route.ts`, `app/api/project/delete/route.ts`, `app/api/resource/revision/[resource-id]/route.ts`) plus the read route `app/api/sharing/limits/route.ts`. Task 12's walk test owns the tighter rule: those routes may import only the limits check and the limits reader from `lib/sharing`, and no other route may import them.
+2. A missing or unparseable classification header is refused for every limited action unconditionally, whatever the limits file says (the fail-closed reading, and what the read route already answers: `paired` with all five true). This supersedes the weaker wording of Task 9 as first built, under which such a request was subject to the limits file. The feature spec's FR-10 wording is to be aligned with this at the documentation stage.
+
+## Built-server verification
+
+Task 26. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `7268dcad`, tree clean at the start. `node --version` = v24.15.0. Recorded by the implementor of Task 26. Hosted-auth variables (`DATABASE_URL`, `BETTER_AUTH_SECRET`): not run (no database); the script unsets them for the servers it starts, and the only coverage of hosted mode is the unit-level `off` case. A missing or unparseable classification header cannot be produced over HTTP through the proxy (it always sets the header), so it is not asserted here; it is unit-covered only (`sharing-limits-check.test.ts`).
+
+### What ran, and where
+
+Everything below ran outside the command sandbox (`dangerouslyDisableSandbox: true`): the builds, both servers, the script and the tests. No run was attempted inside the sandbox first, so this section does not show whether any of these would have worked inside it.
+
+Commands, in order:
+
+1. `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before each server start in this task.
+2. `cd frontend && pnpm build` (exit 0), then `rm -rf frontend/.next/standalone/frontend/.next/static; cp -R frontend/.next/static frontend/.next/standalone/frontend/.next/static`.
+3. `cd electron && pnpm build` (`tsc`, exit 0). `electron/dist/sharing/limits-store.js` did not exist before this and exists after. `electron/dist` and `frontend/.next` are gitignored.
+4. `node specs/features/paired-device-limits/scripts/verify-limits.mjs standalone`, final run exit 0.
+5. `cd frontend && pnpm test:sharing-smoke` against that build, exit 0.
+6. `cd frontend && pnpm exec vitest run tests/unit/sharing-gate-enumeration.test.ts tests/unit/sharing-no-device-routes.test.ts`, exit 0, 2 files, 36 tests passed.
+7. `node specs/features/paired-device-limits/scripts/verify-limits.mjs dev`, exit 0. It ran after steps 5 and 6 because `next dev` writes into `frontend/.next`.
+
+### What the script does
+
+`scripts/verify-limits.mjs <standalone|dev>` refuses to run if anything listens on port 3000 (the refusal branch itself was not exercised: nothing listened, and no listener was created to test it; read, not run). It creates a throwaway root under `os.tmpdir()` (its real path is asserted to be inside the real temp directory and outside `~/Library/Application Support/getwrite-electron`, which the script never reads or writes), with its own `GETWRITE_PROJECTS_DIR` and `GETWRITE_SHARING_DIR`, a random per-run passphrase held in memory only, and a throwaway encrypted project created through the window. It starts server A (sharing on, window secret) in its own process group on a free loopback port (`next dev` is given `-H 127.0.0.1`; the Task 1 script did not pass that flag), pairs one device by writing `pairing-state.json` and POSTing the code (cookie held in memory), runs items (a) to (d), (f), (g), (h) on it, stops it, then starts server B (sharing off, same throwaway folders, the limits file all five on in its sharing directory) and runs (e). Every change to the limits file goes through the main-side writer `setLimit` from `electron/dist/sharing/limits-store.js` (no deviation). The only other file states are two deliberately unreadable ones that no writer produces: a mode-0 file whose contents say all five are off, and a directory at the file path. Fixtures (projects, resources, revisions, trashed items) are created by the window caller, which is never limited. The script prints request labels, status codes, the gate header value and `limit` keys; it prints no cookie, secret, passphrase or response text. After the run it checked the process groups it recorded (`ps -A -o pid=,pgid=`) and removed the root.
+
+Each limited action has an "applied" probe read through the window or the throwaway filesystem: project directory gone (delete); `isUnlocked` from `GET /api/encryption` (unlock, lock); `.encrypted.json` marker present (enable with a null passphrase); project directory count plus one (export); item gone from the Trash list (purge ids; purge all); the revision no longer readable (revision delete). `resume` has no observable effect on this workspace, so only its status is checked.
+
+### Results (identical in both builds)
+
+Both runs: 195 checks, 195 passed, 0 failed; 119 measured requests (each printed as a `ROW`), 201 setup requests (fixtures, state changes and probes through the window). Per item, passed/total:
+
+| Item | Standalone | `next dev` | What it covers |
+| --- | --- | --- | --- |
+| setup | 2/2 | 2/2 | throwaway encrypted project created through the window; fixture project has folders |
+| (a) | 21/21 | 21/21 | paired device, all five on, 9 actions: 403, body keys exactly `error,limit`, `error` a non-empty string, `limit` equal to the action's key, no `x-getwrite-gate`, no `location`, and the action not applied (8 probes); plus a forged `x-getwrite-classification: window` and `off` on project delete: still 403 `projectDeletion`, project still on disk |
+| (b) | 26/26 | 26/26 | for each key, only that key off: its actions return 200 and are applied; one key off does not allow another key's action (`unlocking` off: `lock` still 403; `permanentDeletion` off: project delete still 403); `enable` with a non-null passphrase with all five off: 403 `encryptionChanges`, project not encrypted, with the session unlocked and with it locked; afterwards the original passphrase still unlocks |
+| (c) | 51/51 | 51/51 | window caller, 9 actions, three file states (all five on; mode-0 unreadable file; directory at the path): 200 each, applied, no refusal |
+| (d) | 41/41 | 41/41 | no cookie, 9 actions with all five on and again with all five off: 401 with `x-getwrite-gate: not-paired`, no `limit` field, not applied; `GET /api/sharing/limits` the same; a made-up cookie on project delete, purge all and `GET /api/sharing/limits`: the same |
+| (e) | 22/22 | 22/22 | server B, sharing off, no credentials, file all five on: `GET /api/sharing/limits` is `{role:"exempt"}` (200); 9 actions return 200 and are applied; with the file unreadable, `lock` and project delete still 200 |
+| (f) | 10/10 | 10/10 | writer flips: `resume` with `unlocking` on, off, on, off gave 403, 200, 403, 200, each on the very next request, with `GET /api/sharing/limits` reporting the same value on the very next request each time; project delete 403 (project still present) then, after the writer set `projectDeletion` off, 200 (project gone), no restart |
+| (g) | 14/14 | 14/14 | `GET /api/sharing/limits`: window `{role:"exempt"}` with no `limits` field and `Cache-Control` containing `no-store`, also with the file unreadable; paired, all on: `{role:"paired"}` and five `true`, `no-store`; paired, mixed file (projectDeletion false, unlocking true, locking false, encryptionChanges true, permanentDeletion false): the five booleans equal the file; file missing: five `true`; file unreadable (mode 0 whose contents say all off; directory): five `true` and `resume` and `lock` still 403; unpaired: 401 not-paired |
+| (h) | 8/8 | 8/8 | paired, all five on, not refused (200, no `limit`): `GET /api/encryption`, `GET /api/projects`, Trash list, Trash restore (item restored), resource soft delete (item in Trash), soft delete of a leaf folder (folder in Trash), `GET` revision, `PATCH` revision `{preserve:true}` |
+
+(a) covered `project delete`, `unlock`, `resume`, `lock`, `enable` with a null passphrase, `export`, Trash purge with `{ids}`, Trash purge with `{all:true}` and `DELETE` revision, which is every limited action of FR-11 the spec lists.
+
+### Counts
+
+- Enumeration entries, measured by the walk in `frontend/scripts/sharing-refusal-smoke.mjs` (`enumerated entries: 91` in its output, and 91 from the identical walk copied into `verify-limits.mjs`, whose output includes `GET /api/sharing/limits: true`). The reference was 90, so the new route adds one. The count the Vitest test `sharing-gate-enumeration.test.ts` walks was not printed (it asserts at least 80 and that `GET /api/sharing/limits` appears exactly once and is not an exception); the "before" value is the earlier reference, not re-measured here.
+- Smoke checks: `checks: 28; failures: 0` (reference 28). The same 28 hold with the new route enumerated, so the check count did not change; the route is counted in the entries each "every enumerated URL refused" check walks, which `pnpm test:sharing-smoke` reports as 91.
+- Exceptions: `ENUMERATED_EXCEPTIONS` is `GET /pair` and `POST /api/sharing/pair`, plus the `/_next/static/` prefix; the test asserts `ENUMERATED_EXCEPTIONS.length + 1` equals `EXCEPTION_COUNT` = 3 and passed.
+- `sharing-gate-enumeration.test.ts` and `sharing-no-device-routes.test.ts`: 36 tests passed.
+
+### Defects and surprises, recorded as they happened
+
+1. The first standalone run failed 30 of 195 checks and the second failed 1. The first failures were a bug in this script, not in the product: it used the `project.id` inside `project.json` as the project's directory name, but the API's `projectId` is the directory name and the two differ. The script now takes the directory name from the projects folder listing. The second run's one failure is item 2 below. The two final runs are the ones tabulated above.
+2. Soft-deleting a folder that has child folders returned HTTP 404 `Folder not found` in every case tried, on both builds: `ENOENT: no such file or directory, rename '<projects>/<id>/folders/workspace/chapters/chapter-1' -> '<projects>/<id>/.trash/folders/chapter-1'`. Observations (OBS lines, not pass/fail checks), standalone and `next dev` alike: a paired device with all five on, first attempt: 404; the window on a fresh project, first attempt: 404; a paired device on a fresh project whose `.trash/folders` directory was created beforehand, first attempt: 404. So the 404 did not depend on the caller or on that directory's absence, and it carries no `limit` key and no gate header. A leaf folder soft-deletes with 200 for the paired device. This is a response of the existing folder soft-delete route on the `novel` project type's folder tree; the cause was not established (the experiment that would settle it is to repeat the call on the `main` branch's build and read `softDeleteFolder` against the `folders/` layout `createProjectFromType` writes). No product source was changed.
+3. The final item (h) therefore checks a leaf folder; that is a narrower check than "folder soft delete" for a folder with children.
+4. Not asserted or not run: hosted-auth (no database); the missing or unparseable classification header (unit-covered); the port-3000 refusal branch; the `.local` and non-loopback `Host` paths (every request used `127.0.0.1`); a second device or a real phone; the client UI (Task 27).
+
+### Cleanup
+
+After each run the script reported `process-group members still alive after stop: none` and `throwaway root removed: true`. After the last run: `lsof -iTCP -sTCP:LISTEN` showed no node or next listener, `ps` showed no `next dev` or `standalone/frontend/server.js` process, no `gw-limits-*` folder remained under the temp directory, and `git status --short` showed only `?? specs/features/paired-device-limits/scripts/verify-limits.mjs` (plus this file and `tasks.md` once edited).
+
+## Real-browser checks
+
+Task 27. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `d93be9dd`, tree clean at the start. `node --version` = v24.15.0. Playwright Chromium 148.0.7778.96 (`@playwright/test` 1.60.0, resolved from `frontend/package.json`). Recorded by the implementor of Task 27. Hosted auth: not run (no database).
+
+### What ran, and where
+
+- The standalone build was reused, not rebuilt. `frontend/.next/BUILD_ID` is dated 16:50 on 2026-10-10; the last commit touching `frontend/` or `electron/src` (`f4bd765c`) is dated 16:45; `git diff --stat 7268dcad HEAD` lists only `specs/` files. That is the basis for "not stale"; it is an inference from timestamps and the clean tree, not a comparison of build output. `electron/dist/sharing/limits-store.js` was present.
+- Everything ran outside the command sandbox (`dangerouslyDisableSandbox: true`): the script, the server it starts and Playwright's Chromium. No run was attempted inside the sandbox first, so this section does not show whether any of it would work inside it. Reading files and editing the script and this file were done normally.
+- `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before each of the three runs below. The script's own refusal branch (port 3000 busy) was not exercised; read, not run.
+- Runs: an exploratory run (not recorded here) to learn selectors; run 1 of the script (102 checks, 4 failed, all four were script defects, below); run 2 (107 checks, 0 failed). The tables below are run 2.
+- `scripts/browser-limits.mjs` imports the helpers of `scripts/verify-limits.mjs` (server start/stop, pairing, fixtures, the limits writer, `check`). To make that possible `verify-limits.mjs` was changed in two ways only: `export` was added to those helpers, and its closing `main().catch(...)` now runs only when the file is the entry point (`isEntry`). No behaviour of its own run changed; its checks were not re-run in this task.
+
+### What the script does
+
+One server (sharing on, window secret, throwaway `GETWRITE_PROJECTS_DIR` and `GETWRITE_SHARING_DIR` under `os.tmpdir()`, real paths asserted; the owner's `~/Library/Application Support/getwrite-electron` is never read or written), started in its own process group on a free loopback port. One device paired by the Task 26 helper; the device cookie is added to each browser context in memory. Every step opens a fresh context. A MutationObserver (observing `document`, subtree, added nodes and `type` attribute changes) and a `requestAnimationFrame` loop are installed before any page script; they record every `input[type=password]` ever inserted (`insertedEver`) and the highest concurrent count (`maxConcurrent`). Each DOM line also gives the count now, open `[role=dialog]` elements and iframes. Limits are changed only through the main-side writer `setLimit`. Fixtures (projects `alpha` with one resource, one non-canonical revision and one trashed item; `beta` as the delete target; an encrypted project) are made through the window caller.
+
+"Delayed" means a Playwright route handler holds the page's `GET /api/sharing/limits` for 6000 ms, then passes it on to the server. "Blocked" means the route handler aborts it (the page's fetch fails). "Stale" (steps D2, D3b, D4b, D5b only) means the route handler answers that read from the browser with `{role:"paired", limits: all five false}` without contacting the server, while the server's own limits are all on; this simulates a page holding an out-of-date "allowed" answer, it is not a real flip in time. The script prints step labels, counts, booleans, fixed copy strings, status codes and limit keys; it printed no cookie, window secret, pairing code or passphrase.
+
+### Results, run 2
+
+25 steps run, 0 threw; 107 checks, 107 passed, 0 failed; 21 setup requests through the window (fixtures, state changes, probes); 8 non-2xx responses to the page's own requests other than the limits read, all `403` (listed below); every page also got `GET /api/auth/get-session` -> `404` (25 occurrences, once per page load).
+
+Password-input inspection (`passwordInputsNow` / `insertedEver` / `maxConcurrent`, taken at the points named) for every step where Limit unlocking was ON or the passphrase was not creatable:
+
+| Step | State | Limits read | Where inspected | Result |
+| --- | --- | --- | --- | --- |
+| A0 (control) | no passphrase yet, the window as caller (header, no cookie) | normal | setup dialog open | 2 / 1 / 2: the inspection does detect password inputs when they exist |
+| A1 | no passphrase yet, all five on | normal | tab open, after forced click on opener, end | 0 / 0 / 0 at each |
+| A2 | same | delayed 6 s | page opened while held, tab open, after the hold, after forced click, end | 0 / 0 / 0 at each |
+| A3 | same | blocked | tab open, after 7 s, after forced click, end | 0 / 0 / 0 at each |
+| A4 | no passphrase yet, all five OFF | normal | tab open, after forced click, end | 0 / 0 / 0 at each |
+| B1 | locked workspace, Limit unlocking ON (all five on), Start page | normal | 1.5 s, 3 s, and after at least two 5 s periods | 0 / 0 / 0, no dialog open |
+| B2 | same | delayed 6 s | same points | 0 / 0 / 0, no dialog open |
+| B3 | same | blocked | same points | 0 / 0 / 0, no dialog open |
+| B4, B5, B6 | locked workspace, Limit unlocking ON, Project Settings > Project Encryption tab (unencrypted project) | normal, delayed, blocked | tab open (after the hold or 7 s where applicable) | 0 / 0 / 0; the tab says "Unlock the workspace to encrypt this project" and has no "Encrypt this project…" button in the document |
+| C1 | unlocked workspace, all five on | normal | tab open, after forced click on the disabled opener | 0 / 0 / 0; opener disabled |
+| C2 | same | delayed 6 s | while held, after the hold, after forced click | 0 / 0 / 0; opener enabled while held (measured: `disabled: false`), disabled after the read landed |
+| C3 | same | blocked | tab open, setup dialog open, after cancel | 0 / 0 / 0 at each; opener enabled, dialog is the "existing workspace passphrase" variant, no field |
+| C4 | unlocked, Limit unlocking ON, Limit encryption changes OFF | normal | tab open, setup dialog open, after cancel | 0 / 0 / 0 at each; opener enabled, same dialog variant |
+
+What the steps above show, as measurements:
+
+- Limit unlocking ON, locked workspace, paired browser: no password input was ever in the document on the Start page or in Project Settings in any of normal, delayed and blocked read. With the read normal or delayed the Start page showed the message "This workspace is locked. It has to be unlocked on the computer where GetWrite is installed." and the locked project card showed "Unlock this workspace on the computer where GetWrite is installed to see this project's name and open it." With the read blocked neither text was in the document (B3: both `false`); the page showed no prompt and no message.
+- Only one limits read was made per page in B1 to B3 (STAT lines: 1 attempted); the 5 s poll runs only while the unlock prompt is mounted, and in these steps it never was. So the "two 5 s periods" were waited out but no poll fired in those steps; whether a poll with the prompt mounted behaves differently when the read is delayed or blocked is not covered here.
+- In C2 and C3 the opener of the encryption setup dialog was enabled while the limits state was unknown (held or blocked); the dialog it opens has no password input because the workspace already has a passphrase. That is what was measured; it was not checked what happens to that dialog if the read later lands as limited while it is open.
+- A1 to A4: creating the workspace passphrase. In all four, including all five limits OFF, the paired browser showed no password input, the "Encrypt this project…" opener was disabled with the text "The passphrase for this workspace has to be created on the computer where GetWrite is installed." as its `aria-describedby` target and visible, a forced click opened no dialog, the text "Choose a passphrase for this workspace" was not in the document, and a `POST /api/encryption` `{action:"enable", passphrase:<string>}` sent by the page itself returned `403` with `limit` `encryptionChanges` (4 of 4). After Phase A the workspace still had no keyring and `alpha` had no `.encrypted.json` marker.
+- A0 shows the detector is not blind: the window caller on the same state had the opener enabled and the setup dialog had 2 password inputs.
+
+Limit unlocking OFF (step B7: locked workspace, the other four limits on, normal read): the Start page showed the dialog "Unlock your encrypted projects" with exactly 1 password input and 1 open dialog, did not show the "unlocked on the computer" message, typing the throwaway passphrase and pressing "Unlock" unlocked the workspace (`GET /api/encryption` through the window: `isUnlocked` true), the dialog closed, and the "Encrypted project" locked card was gone. 5 of 5 checks passed. The page made 3 limits reads in that step (STAT line), consistent with the prompt being mounted and its re-reads. Limit unlocking OFF with a delayed or blocked read was not run.
+
+Refusals are visible (workspace unlocked, all five limits on; the 403 lines below are the server's answers):
+
+| Step | What was measured |
+| --- | --- |
+| D1 | project delete, Limit project deletion ON, normal read: the "Delete" menu item is disabled, its description is "Deleting a project has to be done on the computer where GetWrite is installed." and that text is visible, a forced click opened no confirmation dialog, "Project deleted" is not in the document, `beta` is still listed. |
+| D2 | stale "allowed" answer: "Delete" enabled; after confirming, `POST /api/project/delete` -> 403; the dialog stayed open and showed the line "The project was not deleted. Deleting a project is turned off here. Do it at the desktop."; "Project deleted" is not in the document; after Cancel `beta` is still listed and `project.json` is still on disk. |
+| D3a, D3b | lock: with the real answer "Lock workspace" is disabled with "Locking the workspace has to be done on the computer where GetWrite is installed." visible and the session stays unlocked. With the stale answer the button is enabled; after the click `POST /api/encryption` -> 403, the session is still unlocked on the server, and the Encryption section shows the line "Locking encrypted projects is turned off here. Do it at the desktop."; after the page was given the real answer (route removed, a `focus` event dispatched on `window`) the button was disabled with its reason. |
+| D4a, D4b | Trash purge: with the real answer "Delete selected permanently" and "Empty trash" are disabled and both point at the visible "Deleting permanently has to be done on the computer where GetWrite is installed."; a forced click opened no dialog; the item is still in the list and in the server's Trash list. With the stale answer "Empty trash" is enabled; after confirming "Delete permanently", `POST /api/project/<id>/trash/purge` -> 403 and the Trash view showed (`trash-batch-refusal`) "Permanently deleting from the trash is turned off here. Do it at the desktop."; the item is still listed and on the server; after a real re-read "Empty trash" was disabled with its reason. |
+| D5a, D5b | revision delete: with the real answer "Delete Revision" is disabled with the same permanent-deletion reason visible and the revision stays readable on the server. With the stale answer the button is enabled; after the click `DELETE /api/resource/revision/<id>` -> 403 and the line (`revision-delete-refusal`) "Permanently deleting from the trash is turned off here. Do it at the desktop." was shown; the revision is still readable (200); after a real re-read the button is disabled with its reason. |
+| D6 | keyboard, once, on the Trash view with one row selected and Limit permanent deletion ON: focus started on the "Trash" tab and five Tab presses landed on `["Trash","resource-search","Toggle search filters","Restore selected","Select res-2","Close metadata sidebar"]` (first entry is the starting point). "Delete selected permanently" and "Empty trash" are disabled and were not in the sequence; "Restore selected" and the row checkbox were. The `aria-describedby` target of each disabled control resolves to the visible text "Deleting permanently has to be done on the computer where GetWrite is installed." This is the DOM-level focus order and the description text read from `aria-describedby`; it was not read with a screen reader. |
+
+Non-2xx responses to the page's own requests (excluding the limits read and the 25 `get-session` 404s): `POST /api/encryption` -> 403 in A1, A2, A3, A4 (the enable attempts) and D3b (the lock); `POST /api/project/delete` -> 403 in D2; `POST /api/project/<id>/trash/purge` -> 403 in D4b; `DELETE /api/resource/revision/<id>` -> 403 in D5b. That is 8.
+
+Counts by group (checks passed/total): setup 3/3, Phase A 31/31 (A0 2, A1 to A4 7 each, plus 1 for "no keyring after Phase A"), Phase B 21/21 (B1 4, B2 4, B3 2, B4 to B6 2 each, B7 5), Phase C 16/16 (C1 3, C2 3, C3 5, C4 5), Phase D 36/36 (D1 5, D2 6, D3a 3, D3b 4, D4a 4, D4b 4, D5a 3, D5b 4, D6 3).
+
+### Observations and surprises, as measured
+
+1. Run 1 failed 4 of 102 checks. All four were defects in this script, not product behaviour: the Trash refusal line was searched for by a regular expression that did not match the shipped text (it now reads the `trash-batch-refusal` test id); the revision step threw twice because "Delete Revision" never appeared within 20 s after a resource click and an Expand click (the script then used an exact resource name and an exact "Expand" button name, and the step passed; which of the two changes fixed it was not separated by an experiment, and the exploratory run did not look at that panel); and the keyboard check started from the row checkbox, whose forward Tab order does not pass through the toolbar above it (it now starts from the Trash tab). Nothing in the product source was changed.
+2. The refusal wording for a revision delete is "Permanently deleting from the trash is turned off here. Do it at the desktop." That is the text the server returned for the `permanentDeletion` limit; for a revision the phrase "from the trash" does not describe the action. Measured text only; where the wording is chosen was not read in this task.
+3. The "stale answer" cases in D2, D3b, D4b, D5b are simulated with a route handler as described above. A real flip of a limit while a page is open, with the page's own re-read timing (window focus, visibility change, the 5 s poll), was not run in a browser here.
+4. The soft-delete-a-folder-with-child-folders 404 recorded in Task 26 was not exercised: no step here deletes a folder.
+5. Not run in this task: Limit unlocking OFF with a delayed or blocked read; the Project Encryption tab of a locked workspace with Limit unlocking OFF; hosted auth; a real phone or a second device; non-loopback `Host` values (every request used `127.0.0.1`); the desktop switches in App Settings (they need the Electron bridge; Task 29). The `GET /api/auth/get-session` 404 on every page load was not investigated (hosted auth is not configured here).
+
+### Cleanup
+
+The script printed `process-group members still alive after stop: none` and `throwaway root removed: true`. After the last run, outside the sandbox: `ps -A` filtered for `ms-playwright`, `standalone/frontend/server` and `gw-browser` listed 0 processes, `lsof -iTCP -sTCP:LISTEN` showed no node or Chromium listener, no `gw-browser-*`, `gw-limits-*` or `gw-bl-*` folder remained in the temp directory, and `git status --short` showed `M specs/features/paired-device-limits/scripts/verify-limits.mjs` and `?? specs/features/paired-device-limits/scripts/browser-limits.mjs` (plus this file and `tasks.md` once edited). The exploratory runs removed their own throwaway roots the same way.
+
+## Two paired clients
+
+Task 28. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `4593d624`, tree clean at the start. `node --version` = v24.15.0. Playwright Chromium 148.0.7778.96. Recorded by the implementor of Task 28. Hosted auth: not run (no database). No product source was changed; the only new file is `scripts/two-clients.mjs`.
+
+### What ran, and where
+
+- The standalone build was reused, not rebuilt: `frontend/.next/BUILD_ID` is dated 16:50 on 2026-10-10 and the last commit touching `frontend/` or `electron/src` (`f4bd765c`) is dated 16:45; `git diff --stat 4593d624 HEAD -- frontend electron/src` is empty. As in Task 27 that is an inference from timestamps and a clean tree, not a comparison of build output.
+- The script, the server it starts and Playwright's Chromium ran outside the command sandbox (`dangerouslyDisableSandbox: true`). No run was attempted inside the sandbox first, so this section does not show whether any of it would work inside it.
+- `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before each run. The script's refusal branch itself was not exercised (read, not run).
+- Runs: run 1 failed on a script defect before any measurement of interest (the script waited for an "Open alpha" button on a Start page that, with Limit unlocking OFF and the workspace locked, shows the unlock dialog instead; the wait is now "project list, dialog, or the locked-workspace text"); run 2 was complete (31 checks, 0 failed) but its request logs were attributed to the wrong step (they were drained late); run 3, after the script was changed to clear both clients' request logs right after each state change, is the run tabulated below (exit 0). Run 2 and run 3 gave the same statuses, screens and the same single 404.
+- The script imports the helpers of `verify-limits.mjs` (server start/stop, pairing, fixtures, `setLimits`/`setSession`, `check`; no change to that file was needed this time). It does not import `browser-limits.mjs`, which runs its `main()` on import; the few page helpers it needs were written again in `two-clients.mjs`. It creates a throwaway root under `os.tmpdir()` (real paths asserted outside `~/Library/Application Support/getwrite-electron`, which is never read or written), starts one sharing-on server on a free loopback port in its own process group, pairs two devices (two different cookies, held in memory, never printed), opens client A and client B as separate browser contexts each holding one cookie, and changes limits only through the main-side writer `setLimit`. The workspace passphrase is random and held in memory only. Fixtures (project `alpha`, an encrypted project with one text resource) are made through the window caller.
+- "A unlocks"/"A locks" in Phase 1 are `POST /api/encryption` `{action:"unlock"|"lock"}` sent by client A's own page (same-origin `fetch`, A's cookie). "The window unlocks/locks" in Phase 2 are the same requests sent from the script with the `x-getwrite-window` header (no cookie). "B's next request" is a `GET /api/encryption` sent by B's page; the page's own requests while waiting are logged separately. "B's screen" is read from B's DOM twice: with no reload after 7000 ms, and after a reload.
+
+### Results
+
+31 checks, 31 passed, 0 failed; 20 setup requests through the window.
+
+| Group | Passed/total | What it covers |
+| --- | --- | --- |
+| setup | 4/4 | two different device cookies; encrypted project created; A and B each read `GET /api/sharing/limits` as `role: "paired"` |
+| P1 | 1/1 | workspace locked before Phase 1 |
+| P1-unlock | 6/6 | A's unlock 200; server unlocked; B's and A's next request `isUnlocked: true`; B's and A's screen after a reload shows the encrypted project's Open button |
+| P1-lock | 6/6 | A's lock 200; server locked; B's and A's next request `isUnlocked: false`; B's and A's screen after a reload has no Open button for it |
+| P1-editor | 1/1 | A's lock 200 and the server locked (editor recorded below, not asserted) |
+| P2 | 3/3 | workspace locked before Phase 2; A's and B's own unlock refused 403 `unlocking` |
+| P2-unlock | 5/5 | server unlocked by the window; A's and B's next request `isUnlocked: true`; both screens after reload show the Open button |
+| P2-lock | 5/5 | server locked by the window; A's and B's next request `isUnlocked: false`; both screens after reload show no Open button |
+
+### Phase 1: Limit unlocking and Limit locking OFF (all five off); A acts, B is observed
+
+- Locked start: both A and B showed one open dialog headed "Unlock your encrypted projects" with 1 password input, and no Open button for the encrypted project.
+- A unlocked (200). B, with no reload and 7000 ms later: the same dialog was still open (1 dialog, 1 password input), no Open button for the encrypted project, and the only request B's page made on its own in that time was one `GET /api/sharing/limits` (200). B's next request (`GET /api/encryption`, 200) returned `isUnlocked: true`. After a reload B showed the Open button for the encrypted project and no dialog. A, no reload after 7000 ms: also still showing the dialog (3 own `GET /api/sharing/limits` reads, no `GET /api/encryption`), after A's own next request `isUnlocked: true`, and after a reload the Open button and no dialog.
+- A locked (200). B, no reload, 7000 ms later: the Open button was still shown, no dialog, and B's page made 0 requests on its own. B's next request returned `isUnlocked: false`. After a reload B showed the unlock dialog and no Open button. A: the same (no reload: Open button still shown, 0 own requests; next request `isUnlocked: false`; after a reload the dialog).
+- So, as measured: with the limits off, B's next request and B's screen after a reload show each change made by A; B's screen without a reload did not change within 7000 ms in either direction. Whether it would change after a longer wait, or on a focus/visibility event, was not run.
+
+### B's open editor across A's lock (Limit unlocking and Limit locking OFF)
+
+Sequence: workspace unlocked through the window; a third context holding B's cookie (named `B-editor` in the output) opened the encrypted project and its one text resource; A locked (200); `B-editor` was left untouched for 20 s; then it clicked into the editor, typed `" typed after the lock"` and waited 15 s.
+
+- Before the lock, footer text: `Words: 4|Node: Body|Today's writingToday: 0All changes saved · not saved yet` (verbatim, as the element's text content), 0 toasts/alerts, 0 dialogs, 0 password inputs. Opening the resource made 20 requests, all 200, the last being `GET /api/resource/revision/<id>` (200).
+- 20 s after A's lock, no typing: the same footer text, 0 toasts/alerts, 0 dialogs, 0 password inputs, and `B-editor` made 0 requests in that time.
+- 15 s after typing: footer `Words: 8|Node: Body|Today's writingToday: 0Autosave failedRetry now`; text matching "autosave": `Autosave failed`; 0 toasts/alerts, 0 dialogs, 0 password inputs (no unlock prompt). The editor kept the typed text (text length 18 before, 39 after).
+- In this run exactly one request returned 404: `PATCH /api/resource/revision/<id>` (the id replaced here; a revision id), status 404, response body `{"error":"Revision <id> not found."}` (the id in the body replaced here). It was the only request `B-editor` made after A's lock. So in this run the 404 request was a save (PATCH), not a read; no read after the lock was made by the page, so whether a `GET` of the same revision also returns 404 after a lock was not measured.
+- No cause is named for the 404. What would settle it: send the same `PATCH` from the same client with the workspace unlocked as a control (does it return 200), then `GET /api/resource/revision/<id>` with the workspace locked, and read what the route and the model layer return for a revision of a project whose key is not in the session. Not run in this task. The editor behaviour is recorded here and not changed; it is filed as work separate from this feature's release hold (per Task 28).
+- The same single 404 appeared in run 2.
+
+### Phase 2: all five limits ON; the desktop window unlocks and locks
+
+- Locked start: A and B each showed 0 dialogs, 0 password inputs, no Open button, the text "This workspace is locked. It has to be unlocked on the computer where GetWrite is installed." and the locked-project card text. A's and B's own unlock request: 403, `limit` `unlocking` (2 of 2).
+- The window unlocked. A and B, no reload, 7000 ms later: still the locked text, no Open button, 0 requests made by their pages on their own. Each one's next request returned `isUnlocked: true`. After a reload each showed the Open button and neither locked text. 
+- The window locked. A and B, no reload, 7000 ms later: the Open button still shown, 0 own requests. Each one's next request returned `isUnlocked: false`. After a reload each showed the locked text and no Open button.
+- So, as measured: both clients see the window's unlock and lock on their next request and after a reload; neither changed its screen on its own within 7000 ms.
+
+### Surprises and what was not run
+
+1. With the limits OFF the already-open unlock dialog did not close, and with the workspace unlocked the Start page did not re-lock, within 7000 ms without a reload, on either client. The mechanism was not looked at; an experiment that would separate "the page does not re-read" from "the page re-reads and ignores it" is to log the page's requests over a longer wait with the dialog open (the 7000 ms runs show 1 to 3 `GET /api/sharing/limits` and no `GET /api/encryption`).
+2. B's open editor is the only place a 404 occurred, and only after typing. Not run: a client reading (not saving) after the lock; the editor with Limit unlocking ON when the window locks (the Phase 2 clients were on the Start page, not in an editor); a lock made by the window while an editor is open; a different resource type; hosted auth; a real phone; non-loopback `Host` values.
+3. `GET /api/auth/get-session` returned 404 on every page load (as in Task 27; hosted auth is not configured); filtered out of the tables above, still present in the script's output.
+4. The soft-delete-a-folder-with-child-folders 404 recorded in Task 26 was not exercised.
+
+### Cleanup
+
+The script printed `process-group members still alive after stop: none` and `throwaway root removed: true` after each run. After the last run, outside the sandbox: `ps -A` filtered for `standalone/frontend/server`, `ms-playwright` and `gw-two` listed nothing of ours (the other `chrome` matches were the owner's Claude, VS Code, Chrome and 1Password helpers, none started here); `lsof -iTCP -sTCP:LISTEN` showed no node listener; no `gw-two-*` folder remained under the temp directory (a `gw-repair-revisions-*` folder there was not created by this task and was left alone); `git status --short` shows only `?? specs/features/paired-device-limits/scripts/two-clients.mjs` (plus this file and `tasks.md` once edited).
+
+## Desktop verification
+
+Task 29. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `4d93944f`, tree clean at the start (the only addition is `scripts/electron-limits.mjs`). `node --version` = v24.15.0. Electron 34.5.8 (the `electron/node_modules` one for development mode; the one electron-builder bundled for the unpacked build). Recorded by the implementor of Task 29. Hosted auth: not run (no database). No product source was changed.
+
+### What ran, and where
+
+- Builds, Electron, the app's servers and the script all ran outside the command sandbox (`dangerouslyDisableSandbox: true`). No run was attempted inside the sandbox first, so this section does not show whether any of it would work inside it. Reading files and writing this file were done normally.
+- Frontend standalone build: reused, not rebuilt. `frontend/.next/BUILD_ID` is dated 16:50 on 2026-10-10; the last commit touching `frontend/` or `electron/src` is `f4bd765c` (16:45); `git diff --stat f4bd765c HEAD -- frontend electron/src electron/worker electron/electron-builder.yml getwrite-config` printed nothing. That is an inference from timestamps and an empty diff, not a comparison of build output.
+- In `electron/`: `pnpm build` (exit 0, `tsc`) and `pnpm build:worker` (exit 0) were re-run. Then `pnpm exec electron-builder --config electron-builder.yml --dir`, which printed "skipped macOS application code signing" (no valid Developer ID identity; the one identity found has an expired certificate) and finished; I did not capture its exit status (my `PIPESTATUS` expression printed an empty value in this shell), but `dist-electron/mac-arm64/GetWrite.app` has a new modification time (17:41:51; the one it replaced was from 12:41 the same day, built before Feature 77 existed), `Contents/MacOS/GetWrite` is present, and `Contents/Resources/frontend/.next/standalone/frontend/server.js` is present with a `BUILD_ID` identical to `frontend/.next/BUILD_ID`. The packaging took about two seconds of wall time in that command's output. This overwrote the previous `dist-electron/mac-arm64` (gitignored build output).
+- `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before each of the runs below. The script's own refusal branch (a listener on 3000) was not exercised: no listener was created to test it; read, not run.
+- Runs: packaged run 1 stopped at the script's first `Sharing is on` wait (script defect: three elements carry that text, the wait was not scoped to the Home network sharing section; fixed). Packaged run 2 and dev run 1 are the ones recorded below.
+
+### How the app was driven (and why dev mode uses a fake repo root)
+
+`scripts/electron-limits.mjs <dev|packaged>` launches the real app with Playwright's `_electron.launch` (`@playwright/test` resolved from `frontend/package.json`), with `--user-data-dir=<throwaway>/userdata`, and asserts `app.getPath("userData")` equals that folder (real paths) and does not start with `~/Library/Application Support/getwrite-electron` before doing anything else; it also asserts `app.isPackaged`. Both assertions passed in both modes. The owner's folder was never read, listed or written by the script; I did not even `stat` it. One thing outside the throwaway root is written: `main.ts` appends to `app.getPath("logs")/getwrite.log`, which is under `~/Library/Logs/<app name>`, not under Application Support (this is the same as the Feature 76 exercises); the script does not read it.
+
+- Development mode: `main.ts` takes `isPackaged === false` to mean "projects live in `<repo root>/projects`", with no override, and passes that to the server as `GETWRITE_PROJECTS_DIR` after spreading `process.env` (so the environment cannot override it). Running the real `electron/dist/main.js` in place would therefore have written an encrypted project and a keyring into the repository's own `projects/`. So the script builds a throwaway fake repo root: a copy of `electron/dist` and `electron/package.json`, symlinks `frontend` and `getwrite-config` to the real ones, and an empty `projects/`; Electron is started on `<throwaway>/repo/electron`. `__dirname` is then the fake root's `electron/dist`, `isPackaged` is false, and the server is `pnpm dev` (`next dev`) run in the real `frontend/` through the symlink. That means dev mode here is "the development code path in a copied tree", not `electron dist/main.js` in the repo tree itself; the difference was not measured.
+- Unpacked build: `dist-electron/mac-arm64/GetWrite.app/Contents/MacOS/GetWrite`, `isPackaged` true. With a throwaway `userData` the app would otherwise use `~/Documents/GetWrite`, so the script seeded `workspace.json` in the throwaway user-data folder with `projectsDir` pointing at a throwaway folder (the mechanism in `electron/src/projects-dir.ts`). It first checked that `Contents/Resources/projects` (a legacy migration source) does not exist.
+- Sharing on: seeded (`sharingEnabled: true` in the throwaway `workspace.json`), not switched through the app's own switch, because that switch needs a restart and a driven app cannot survive one. The window then showed "Sharing is on" under Home network sharing, and an unauthenticated request got 401 with `x-getwrite-gate: not-paired`, in both modes.
+- Device paired through the app's own flow: the script clicked "Show a pairing code" in App Settings, read the 6-digit code from the window (never printed) and sent it to `POST /api/sharing/pair` from Node (exempt endpoint, `Origin` set to the server's origin), which returned 200 and the `getwrite_device` cookie (held in memory, never printed). App Settings then listed the paired device (one "Revoke …" button).
+- Requests "from the paired device" are Node `fetch` calls to `http://127.0.0.1:3000` with that cookie. Requests "from the window" are `fetch` calls made inside the window's page (`page.evaluate`), so they carry the window secret the app's own session adds; the script never knows the secret. Fixtures (an encrypted project, a plain project, a trashed resource, a project to delete) were created through the window. The port the app used was 3000 in both modes.
+- The toggles were clicked in the real App Settings dialog (`getByRole("switch", { name: "Limit …" })`). After each limit change the limits file was read from the throwaway user-data folder and printed as keys and booleans only.
+
+### Results (identical counts in both modes)
+
+Each mode: 167 checks, 167 passed, 0 failed; 42 measured requests from the Node client (each printed as a `ROW`), plus requests made through the window. Per item, passed/total:
+
+| Item | Packaged | Dev | What it covers |
+| --- | --- | --- | --- |
+| setup | 10/10 | 10/10 | `userData` asserted; `isPackaged` asserted; the listener on 3000 descends from the pid the script started; encrypted fixture created through the window; window reads `{role:"exempt"}` from `GET /api/sharing/limits`; no cookie: 401 `not-paired`; "Sharing is on" shown; device paired through the pairing-code flow; paired `GET /api/sharing/limits` is `paired` with all five true (no file yet); the device is listed |
+| window-all-on | 10/10 | 10/10 | no limits file (all five on): the window's own project delete, unlock, lock, enable (null passphrase) and Trash purge each 200 and applied |
+| switch:projectDeletion | 16/16 | 16/16 | see below |
+| switch:unlocking | 23/23 | 23/23 | see below; includes the confirmation, cancel and warning checks |
+| switch:locking | 16/16 | 16/16 | see below |
+| switch:encryptionChanges | 16/16 | 16/16 | see below |
+| switch:permanentDeletion | 16/16 | 16/16 | see below |
+| unreadable:chmod-0 | 16/16 | 16/16 | file made mode 0 by the script, contents saying every limit is off |
+| unreadable:directory | 16/16 | 16/16 | a directory at the file's path |
+| missing-file | 9/9 | 9/9 | file absent, then a change |
+| invalid-text | 9/9 | 9/9 | file holds `not json`, then a change |
+| invalid-types | 9/9 | 9/9 | `{version:1, limits:{projectDeletion:"no", unlocking:0}}`, then a change |
+| window | 1/1 | 1/1 | the window was never sent to the pairing screen |
+
+Per switch (the same sequence for each of the five, in this order: Limit project deletion, Limit unlocking, Limit locking, Limit encryption changes, Limit permanent deletion; "paired action" is the one the limit covers: `POST /api/project/delete`, `POST /api/encryption` `{action:"unlock"}`, `{action:"lock"}`, `{action:"enable", passphrase:null}` on a new project, `POST …/trash/purge` `{ids}`):
+
+1. Before: paired action 403, body keys exactly `error,limit`, `limit` equal to the switch's key, no `x-getwrite-gate`, and the action not applied (probe: project directory still there; session still locked/unlocked; no `.encrypted.json` marker; item still in Trash). Paired `GET /api/sharing/limits` reported the key `true`.
+2. Toggled OFF in the UI (a click on the switch). The page said "<label> is now off." The file after the change, in both modes and for every switch: top-level keys `[limits, version]`, `version=1`, `limits` with the five keys, the toggled one `false` and the other four `true`. The UI switch showed off. Paired `GET /api/sharing/limits` reported the key `false`. The paired action returned 200 with no `limit` key and was applied. No restart: the listener pid on 3000 was the same before and after, and the app pid was alive.
+3. Toggled ON in the UI: "<label> is now on."; the file held all five `true`; the paired action returned 403 with the same `limit` key and was not applied.
+
+When there was no file at the start (the first change in the run, Limit project deletion), the first change created it with the five keys, so the first write of a missing file produced all five, not one.
+
+- Confirmation dialog: it appeared only for Limit unlocking OFF. For the other four switches OFF there was no "Turn off Limit unlocking?" text on screen and the change went through at once; switching any switch ON, including Limit unlocking, showed no dialog. For Limit unlocking OFF the dialog opened with the element holding focus having the text "Keep Limit unlocking on" and the three warning statements repeated in it (each of the three strings was on screen twice while it was open, once inline and once in the dialog).
+- Cancel: clicking "Keep Limit unlocking on" closed the dialog, the switch stayed on, the SHA-256 of the file's bytes was identical before and after, and the paired unlock was still 403 `unlocking`.
+- Unlock warning: the three statements (copy of `LIMITS_UNLOCK_WARNING_TYPED`, `_UNENCRYPTED`, `_RECORDED`) were each on screen exactly once beside the switch with Limit unlocking on, and again with it off.
+- Unreadable file (mode 0, and a directory): the unreadable message ("The file that holds these limits cannot be read, so every limit is on until it is repaired. A change here is refused while it cannot be read.") was on screen once; the location sentence was exactly `The file is in <the throwaway user-data folder>.`; all five switches showed on; the paired device's `GET /api/sharing/limits` returned all five `true`; paired lock and project delete were 403 (`locking`, `projectDeletion`) although the mode-0 file's contents said every limit was off. Clicking Limit locking produced the visible message "The change was not made: the limits file cannot be read, and it was left as it is."; the switch stayed on; the file's inode, mtime, size and kind were unchanged (still mode 0, still a directory). The window's lock and project delete were 200 with the file unreadable, and the window's `GET /api/sharing/limits` was `{role:"exempt"}`.
+- Missing, invalid-text and invalid-types files: no unreadable message; all five switches showed on; paired `GET /api/sharing/limits` all `true`; the paired lock was 403 before the change; clicking Limit locking wrote a valid file (locking `false`, the other four `true`; the invalid-types file's `"no"` and `0` were replaced); the paired lock was then 200 and applied; switching back on left all five `true`.
+- The window itself was never refused: in every state above the window's own actions (all five with no file; lock and project delete with the file unreadable in both ways) returned 200 and were applied, and the window page never left `/`.
+
+### Surprises and what was not run
+
+1. Dev mode left processes behind. After `app.close()` and 5 s, four of the nine pids the script had recorded as descendants of the pid it started were still alive: two `node`, one `next-server (v16.2.6)` and one more `node`. The script sent SIGTERM to exactly those recorded pids; after 3 s none was alive, and the listener on 3000 was gone. In the packaged run all five recorded pids were gone 5 s after the close with no signal sent. The cause is not established. A hypothesis is that `main.ts` starts the dev server with `spawn("pnpm", ["dev"], { shell: true })` and `before-quit` calls `serverProcess.kill()`, which signals the shell; the experiment that would settle it is to repeat the dev run and compare the pid tree and signal handling of the `pnpm`/`next` processes with and without that kill, which was not run. This is the behaviour of the development path only. Not investigated further and not changed.
+2. The sharing switch itself (off to on, with the restart) was not driven: sharing was seeded on. A restart under the driver, a rename or revoke, the Android phone and the owner's manual check (Task 31) were not run.
+3. The Start page showed no unlock dialog at any point in these runs (the throwaway workspace had no encrypted project when the window loaded), so the "Continue without unlocking" step the script can take was not used. `GET /api/auth/get-session` 404s were not looked at.
+4. Dev mode ran from a copy in a fake repo root (above), so it is not `electron dist/main.js` run in the repository's own tree; and its server is `next dev`, whose first compile times (not measured) are covered by the script's long waits.
+5. The soft-delete-a-folder-with-child-folders 404 recorded in Task 26 was not exercised.
+6. The first lines of the packaged run's output (the `userData` assertion lines) were cut by a `tail` in my first look; the same lines were seen in packaged run 1 (the run that stopped on the script defect) and in dev run 1, and the 167/167 tally for the packaged run includes them.
+
+### Cleanup
+
+Both runs printed `throwaway root removed: true`, covering the throwaway `userdata/`, `projects/` and fake repo folders. In the packaged run: `pids recorded under the started pid: 5; still alive 5 s after close: none`, `listener on 3000 after stop: none`. In the dev run: 9 recorded, 4 alive after 5 s, SIGTERM to those four, none alive afterwards, listener on 3000 none. After the last run, outside the sandbox: `ps -A -o pid=,ppid=,comm=` filtered for `node|next|Electron|GetWrite` listed only processes that were already running and are not ours (the owner's Claude, UA Connect and VS Code crashpad handlers, a `next-devtools-mcp` process tree and two node processes under another parent); none of the pids recorded in either run remained; `lsof -iTCP -sTCP:LISTEN` filtered for node/next/electron/getwrite showed nothing; no `gw-electron-*` folder remained under the temp directory. `frontend/.next/standalone/frontend/server.js` still exists and `frontend/.next/BUILD_ID` is unchanged after the dev run. `git status --short` shows only `?? specs/features/paired-device-limits/scripts/electron-limits.mjs` (plus this file and `tasks.md` once edited).
+
+## Final suites
+
+Task 30. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `e36643c1`, tree clean at the start. `node --version` = v24.15.0 (the Task 4 baseline used the same). Compared with the section "Baselines" (Task 4, HEAD `b24cc0b5`). Recorded by the implementor of Task 30. No source change.
+
+### Sandbox use
+
+Run inside the command sandbox, no retry needed: `pnpm test:ci`, `pnpm typecheck`, `pnpm lint` (frontend/), `pnpm test` and `pnpm typecheck` (electron/), `pnpm knip` (repo root, `COLUMNS=400` so paths are not shortened), `pnpm --filter getwrite-cli test`, the `git` reads. Run outside the sandbox (`dangerouslyDisableSandbox: true`): `pnpm --filter getwrite-frontend build` and `pnpm test:sharing-smoke` (builds and servers). `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before the build, before the smoke run and after it. The only stderr noise was the pnpm `~/.npmrc` EPERM warning, as in the baseline.
+
+### Results against the baselines
+
+| Command (directory) | Exit | Final | Task 4 baseline | Delta |
+| --- | --- | --- | --- | --- |
+| `pnpm test:ci` (frontend/) | 0 | 607 files passed; 6417 tests passed, 0 failed, 1 skipped (6418) | 595 files; 6046 passed, 0 failed, 1 skipped (6047) | +12 files, +371 passed, 0 failed, skipped unchanged at 1 |
+| `pnpm typecheck` (frontend/) | 0 | no errors | no errors | none |
+| `pnpm lint` (frontend/) | 0 | 0 errors, 395 warnings (7 potentially fixable) | 0 errors, 395 warnings (7) | none |
+| `pnpm test` (electron/) | 0 | 25 files; 384 passed, 0 failed, 0 skipped | 23 files; 322 passed | +2 files, +62 passed |
+| `pnpm typecheck` (electron/) | 0 | no errors (both `tsc --noEmit` projects) | no errors | none |
+| `pnpm --filter getwrite-cli test` (repo root) | 0 | 22 files; 144 passed, 0 failed; duration 492.54s | 22 files; 144 passed; 491.70s | none |
+| `pnpm --filter getwrite-frontend build` | 0 | built; `frontend/.next/static` copied to `frontend/.next/standalone/frontend/.next/static` | n/a | n/a |
+| `pnpm test:sharing-smoke` (frontend/) | 0 | `enumerated entries: 91; checks: 28; failures: 0`, "sharing refusal smoke: all checks passed" | 90 enumerated (reference), 28 checks | +1 enumerated entry (`GET /api/sharing/limits`, recorded in Task 26), checks 28 as expected |
+| `pnpm knip` (root) | 1 | sections below | 53 / 1 / 4 / 6 / 4 / 167 / 170 / 14 | see below |
+
+No failing test names: nothing failed. The skipped frontend test was not identified (as in the baseline). The sharing-smoke exceptions count of 3 (`GET /pair`, `POST /api/sharing/pair`, `/_next/static/`) is asserted by the Vitest test `sharing-gate-enumeration.test.ts`, which passed inside the 607 files; this run did not print the exception count separately. The smoke run also reported `pairing page static URLs checked: 15` and `static files checked: 122`.
+
+### knip
+
+Exit 1 (knip exits 1 when it reports any issue, as in the baseline).
+
+| Section | Final | Baseline | Delta |
+| --- | --- | --- | --- |
+| Unused files | 57 | 53 | +4 |
+| Unused dependencies | 1 | 1 | 0 |
+| Unused devDependencies | 4 | 4 | 0 |
+| Unlisted dependencies | 6 | 6 | 0 |
+| Unlisted binaries | 4 | 4 | 0 |
+| Unused exports | 166 | 167 | -1 |
+| Unused exported types | 170 | 170 | 0 |
+| Duplicate exports | 14 | 14 | 0 |
+| Configuration hints | 6 | 6 | 0 |
+
+Compared by set (name plus file tail for every entry in every section, against the baseline's printed lists; the baseline's shortened `…` paths were matched on the final path component):
+
+- New entries (all in Unused files, all this feature's own verification scripts, the expected growth):
+  - `specs/features/paired-device-limits/scripts/browser-limits.mjs`
+  - `specs/features/paired-device-limits/scripts/electron-limits.mjs`
+  - `specs/features/paired-device-limits/scripts/two-clients.mjs`
+  - `specs/features/paired-device-limits/scripts/verify-limits.mjs`
+  The baseline's three (`dev-reachability.mjs`, `header-experiment.mjs`, `traversal-experiment.mjs`) are still present. Excluding all seven scripts the count is 50, equal to the baseline's 50.
+- Gone entry (Unused exports): `httpProjectActionsTransport` `frontend/src/store/project-actions-controller.ts:100:14`. It is no longer reported; `frontend/tests/unit/limit-refusal-transports.test.ts` now imports it. That is what was seen; knip's reason was not otherwise inspected.
+- No other entry added or removed in any section. The strict reading of "no section grown" is not met for Unused files (+4); the growth is entirely the four spec scripts above and nothing else is a regression.
+
+### Config check
+
+`git diff --stat main..HEAD -- frontend/next.config.mjs frontend/package.json electron/package.json cli/package.json package.json knip.json frontend/tsconfig.json frontend/vitest.config.* frontend/eslint.config.* .github` printed nothing. `git diff --name-only main..HEAD -- . ':!specs'` filtered to exclude `frontend/{tests,src,components,app,stories}` and `electron/{src,tests}` printed nothing, so no config or workflow file differs from `main`; there is nothing to test against the Node 20 rule and no guard test was added for one. (The branch also carries the fix merged from `main` for the encryption `projectId` validation; the comparison is against `main` as it is now.)
+
+### Node 20
+
+No Node 20 run was made and no CI result for this branch was seen. `ls ~/.volta/tools/image/node` was not re-run here; the Task 4 record found only 22.23.2 and 24.15.0. All runs above used Node 24.15.0 (not the CI Node 22 for frontend/Electron either). The CLI job on Node 20 is therefore not claimed as covered.
+
+### Cleanup
+
+The smoke script started and stopped its own server: after it, `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing, and `ps` filtered for `standalone`, `server.js` and `sharing-refusal` showed only VS Code helper processes that were already running. I started no other process. The owner's `~/Library/Application Support/getwrite-electron` was not touched. `pnpm build:native` was not run. `git status --short` after all runs: empty (the rebuilt `frontend/.next` is gitignored); it will list only this file and `tasks.md` once they are edited.
+
+## Pairing page reload for an unpaired device (found at the owner's manual check)
+
+Date 2026-10-10. Run by the pipeline lead. Playwright Chromium (from `frontend/node_modules/@playwright/test`), launched outside the command sandbox, one fresh page with no device cookie, `goto /pair`, wait 8000 ms, count main-frame `framenavigated` events and `/api/` responses. No credential, cookie, code or secret was read or printed.
+
+- Owner report: on the Android phone, with the unpacked build of `4ad52b55` and sharing on, the pairing screen reloaded too fast to type in.
+- Before the fix, against the owner's running unpacked build (sharing on, `http://127.0.0.1:3000`): 792 main-frame navigations in 8 s, final URL `/pair?reason=unpaired`; the only `/api/` responses were 395 × `GET /api/sharing/limits` → 401 with `x-getwrite-gate: not-paired`.
+- Read, not run in isolation: the root layout mounts the limits provider on every page including `/pair`, and it reads the limits on mount; the not-paired guard navigates to `/pair?reason=unpaired` on any such response, including when the page is already the pairing page.
+- Fix `76c1821e`: the guard does not navigate when the pathname is `/pair`; the provider makes no limits read there. 4 new tests failed before the code and pass after (implementor's report); full frontend suite 6422 passed, 1 skipped (implementor's report).
+- After the fix, standalone server from a fresh build of `76c1821e`, sharing on, throwaway sharing and projects folders, port 3987 on loopback: `GET /api/sharing/limits` with no cookie → 401 `not-paired` (so the gate was on); `/pair` → 200; the same page measurement gave 2 main-frame navigations in 8 s, final URL `/pair`, and 0 `/api/` responses. What the 2 navigations are was not separated (a run with sharing off against the rebuilt app also gave 2).
+- Not run: typing a code and pairing in that browser after the fix; the phone. Tasks 27 to 29 never loaded `/pair` unpaired (their devices were paired by a helper or by a POST from Node), which is why they did not show this.
+- Process note: the throwaway server's recorded pid was not the listener; the listener (pid seen by `lsof` on 3987, command `next-server`) was stopped by that pid after checking its command. The owner's app on port 3000 was not signalled.
+
+## Owner manual check (Task 31)
+
+Date 2026-10-10. Reported by the owner, not observed by the pipeline: unpacked build of `76c1821e` on the owner's Mac with the owner's own settings and projects, and an Android phone as the paired browser.
+
+- First attempt, on the build of `4ad52b55`: the pairing screen on the phone reloaded too fast to type in (section above). Fixed in `76c1821e`; the phone was then paired on the rebuilt app.
+- Step 5 (confirmation when turning Limit unlocking off): the owner saw the dialog for Limit unlocking and none for the other switches, and confirmed that is acceptable.
+- Steps 1 to 6, 8 and 9: owner's words, "The other steps seem to work." No per-step detail was given.
+- Step 7 (creating the workspace passphrase from the phone is refused): NOT done. The owner's workspace already has a passphrase, so creation could not be attempted. The only coverage of step 7 is scripted: Task 26 (built server) and Task 27 steps A1 to A4 (Playwright Chromium, throwaway workspace with no passphrase).
+- No observation was reported about the phone's open editor when the desktop locks the workspace.
+
+## Dark-mode text colour in dialogs
+
+Date 2026-10-10. Run by the pipeline lead. Owner report during the manual check: "there was some black text in dark mode" (the screen was not named). Standalone server from a build of `ad25f1bd`, sharing off, throwaway projects folder, loopback port 3988; Playwright Chromium outside the sandbox; the theme class on `<html>` was set by the script (`gw-theme-light`, then `gw-theme-dark`), and a `<p>` appended directly to `<body>` (where Radix dialogs are portaled) was read with `getComputedStyle`.
+
+| Theme | `<p>` with no class, in `<body>` | `text-gw-secondary` | `text-gw-primary` | `bg-gw-chrome` background |
+| --- | --- | --- | --- | --- |
+| light | rgb(0, 0, 0) | rgb(99, 97, 96) | rgb(10, 10, 10) | rgb(245, 244, 240) |
+| dark | rgb(0, 0, 0) | rgb(136, 134, 128) | rgb(245, 244, 240) | rgb(17, 17, 16) |
+
+- Measured: text with no colour class placed directly under `<body>` is black in both themes; on the dark chrome background that is black on near-black.
+- Read, not measured in the rendered dialogs: before `ad25f1bd` the three warning lines in the "Turn off Limit unlocking?" dialog and the "The project was not deleted. …" line had no colour class and sit inside `ConfirmDialog` details, which is portaled to `<body>`; `ad25f1bd` gives them `text-gw-secondary`. The actual dialogs were not opened in a dark window in this measurement, and which element the owner saw was not established.
+- Not changed: `ConfirmDialog`'s details wrapper and `DialogContent` set no text colour themselves, so details text of other callers that carries no colour class would get the same black (callers not audited). The limit switches are native checkboxes with `role="switch"`; how they look in dark mode was not checked.
+- The throwaway server was stopped by the pid `lsof` showed on port 3988 after checking its command; the owner's app on port 3000 was not signalled.

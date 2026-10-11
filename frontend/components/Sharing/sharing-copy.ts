@@ -1,3 +1,8 @@
+import type {
+  GetSharingLimitsResult,
+  SharingLimitKey,
+} from "../../src/lib/desktop-bridge";
+
 /**
  * All user-visible sharing strings (Feature 75), used verbatim from
  * `specs/features/home-network-sharing.md`. The owner reviewed this copy on
@@ -40,13 +45,6 @@ export const SHARING_STATEMENT_UNENCRYPTED =
 /** FR-7(b), spec. */
 export const SHARING_STATEMENT_AVAILABILITY =
   "Your other devices can reach your projects only while GetWrite is open and awake on this computer, and the device is on the same network.";
-
-/**
- * FR-30, spec. A separable piece of copy: Feature 77 removes it (delete this
- * constant and its render sites when that feature ships).
- */
-export const INTERIM_EXPOSURE_NOTE =
-  "A paired device can also lock, unlock and delete your projects.";
 
 /** FR-6, spec: shown instead of a blank address list. */
 export const NO_NETWORK_ADDRESS = "No network address found.";
@@ -208,4 +206,175 @@ export function pairedDeviceRevokeLabelWithDate(
   formattedDate: string,
 ): string {
   return `${PAIRED_DEVICE_REVOKE} ${name}, paired ${formattedDate}`;
+}
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 17). Both strings are Working copy:
+// the spec (FR-23) requires the meaning, not these words. Neither names
+// "devices", and neither is styled as an alert.
+// ---------------------------------------------------------------------------
+
+/** Working copy: shown on the Start page, in place of the unlock prompt. */
+export const UNLOCK_AT_DESKTOP_MESSAGE =
+  "This workspace is locked. It has to be unlocked on the computer where GetWrite is installed.";
+/** Working copy: replaces the locked project card's "Unlock this workspace…" text. */
+export const LOCKED_PROJECT_CARD_UNLOCK_AT_DESKTOP =
+  "Unlock this workspace on the computer where GetWrite is installed to see this project's name and open it.";
+
+/**
+ * Working copy: shown on the Start page of a locked workspace when the limits
+ * read failed, in place of the unlock prompt. Not styled as an alert.
+ */
+export const UNLOCK_CHECK_FAILED_MESSAGE =
+  "This workspace is locked. This page could not check whether unlocking is allowed here.";
+/** Working copy: the button beside {@link UNLOCK_CHECK_FAILED_MESSAGE}. */
+export const UNLOCK_CHECK_RETRY_LABEL = "Try again";
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 18). Both strings are Working copy:
+// the spec (FR-24) requires a visible reason, not these words. Neither is
+// styled as an alert.
+// ---------------------------------------------------------------------------
+
+/** Working copy: visible reason beside a disabled project Delete. */
+export const PROJECT_DELETION_LIMITED_REASON =
+  "Deleting a project has to be done on the computer where GetWrite is installed.";
+/** Working copy: visible reason beside disabled permanent-delete controls (Trash purge, Empty trash, revision delete). */
+export const PERMANENT_DELETION_LIMITED_REASON =
+  "Deleting permanently has to be done on the computer where GetWrite is installed.";
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 19). All Working copy: the spec
+// (FR-22, FR-24) requires a visible reason per control, not these words.
+// None names "devices" and none is styled as an alert.
+// ---------------------------------------------------------------------------
+
+/** Working copy: visible reason beside a disabled "Lock workspace". */
+export const LOCK_LIMITED_REASON =
+  "Locking the workspace has to be done on the computer where GetWrite is installed.";
+/** Working copy: visible reason beside a disabled "Export an unencrypted copy". */
+export const EXPORT_LIMITED_REASON =
+  "Exporting an unencrypted copy has to be done on the computer where GetWrite is installed.";
+/** Working copy: visible reason beside a disabled "Encrypt this project…" (existing workspace passphrase). */
+export const ENCRYPT_LIMITED_REASON =
+  "Encrypting a project has to be done on the computer where GetWrite is installed.";
+/** Working copy: reason beside a disabled "Encrypt this project…" when it would create the workspace passphrase; distinct from the limit reasons. */
+export const CREATION_AT_DESKTOP_REASON =
+  "The passphrase for this workspace has to be created on the computer where GetWrite is installed.";
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 20, FR-25). Working copy: the spec
+// requires the writer be told the deletion did not happen and why, not these
+// words. Plain text, not alert styling.
+// ---------------------------------------------------------------------------
+
+/** Working copy: leads the failure line in the delete dialog; the server's own message follows it. */
+export const PROJECT_NOT_DELETED = "The project was not deleted.";
+/** Working copy: the confirm button's label while the delete request is pending. */
+export const PROJECT_DELETING_LABEL = "Deleting…";
+
+/** Working copy: heading of the limit switches. */
+export const LIMITS_HEADING = "What paired devices may do";
+/** Working copy: how to read the switches. */
+export const LIMITS_EXPLAINER =
+  "A switch that is on stops paired devices from doing that. A change applies at once.";
+/** Working copy: the limit names, used as the switches' accessible names. */
+export const LIMIT_LABEL_PROJECT_DELETION = "Limit project deletion";
+export const LIMIT_LABEL_UNLOCKING = "Limit unlocking";
+export const LIMIT_LABEL_LOCKING = "Limit locking";
+export const LIMIT_LABEL_ENCRYPTION_CHANGES = "Limit encryption changes";
+export const LIMIT_LABEL_PERMANENT_DELETION = "Limit permanent deletion";
+
+/**
+ * FR-27: the three statements of the unlock warning are a requirement; the
+ * wording is working copy.
+ */
+export const LIMITS_UNLOCK_WARNING_TYPED =
+  "The passphrase is typed on the paired device.";
+export const LIMITS_UNLOCK_WARNING_UNENCRYPTED =
+  "It is sent over the unencrypted connection, where others on the network could record it.";
+export const LIMITS_UNLOCK_WARNING_RECORDED =
+  "A recorded passphrase also unlocks the files at rest, such as a stolen disk or backup.";
+
+/** Working copy: confirmation shown when Limit unlocking is switched off. */
+export const LIMITS_UNLOCK_CONFIRM_TITLE = "Turn off Limit unlocking?";
+export const LIMITS_UNLOCK_CONFIRM = "Turn off Limit unlocking";
+export const LIMITS_UNLOCK_KEEP = "Keep Limit unlocking on";
+
+/** Working copy: the limits file cannot be read. */
+export const LIMITS_UNREADABLE =
+  "The file that holds these limits cannot be read, so every limit is on until it is repaired. A change here is refused while it cannot be read.";
+/** Working copy: the read itself failed. */
+export const LIMITS_LOAD_ERROR =
+  "The limits could not be read. Close and reopen this window to try again.";
+/** Working copy: a change was refused because the file cannot be read. */
+export const LIMITS_CHANGE_REFUSED_UNREADABLE =
+  "The change was not made: the limits file cannot be read, and it was left as it is.";
+/** Working copy. */
+export const LIMITS_CHANGE_LOCK_BUSY =
+  "The change was not made because the limits file was in use. Try again.";
+/** Working copy. */
+export const LIMITS_CHANGE_FAILED = "The change could not be made.";
+/** Working copy: announced after a re-read, from the stored state. */
+export function limitNowState(label: string, isOn: boolean): string {
+  return `${label} is now ${isOn ? "on" : "off"}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Paired device limits (Feature 77, Task 24, FR-28). Working copy: the spec
+// requires text that reflects the actual limit state (App Settings) and the
+// pointer wording given in OQ-10, not the summary's words. No alert styling.
+// ---------------------------------------------------------------------------
+
+/** Working copy (wording from FR-28/OQ-10): the fixed pointer at the sharing indicator. */
+export const SHARING_LIMITS_POINTER =
+  "What paired devices can do is set in App Settings.";
+/** Working copy: the limits read failed, so nothing is claimed either way. */
+const LIMITS_SUMMARY_UNKNOWN =
+  "What paired devices can do could not be read, so it is not known here.";
+
+/** What the limits summary is generated from: the latest read of the limits. */
+export type LimitsReadState =
+  | { status: "loading" }
+  | { status: "failed" }
+  | { status: "read"; result: GetSharingLimitsResult };
+
+/** Working copy: each limit as the action it stops, in switch order. */
+const LIMIT_ACTIONS: ReadonlyArray<{ key: SharingLimitKey; action: string }> = [
+  { key: "projectDeletion", action: "delete projects" },
+  { key: "unlocking", action: "unlock" },
+  { key: "locking", action: "lock" },
+  { key: "encryptionChanges", action: "change encryption" },
+  { key: "permanentDeletion", action: "permanently delete" },
+];
+
+function joinActions(actions: string[], conjunction: "and" | "or"): string {
+  if (actions.length <= 1) return actions.join("");
+  return `${actions.slice(0, -1).join(", ")} ${conjunction} ${actions[actions.length - 1]}`;
+}
+
+/**
+ * Working copy. The App Settings summary of what a paired device may do,
+ * generated from the effective limits (FR-28). An unreadable limits file reads
+ * as every limit on, as the server treats it; a failed read says it could not
+ * be read and claims nothing; `null` while the first read is in flight.
+ */
+export function summarizeLimits(state: LimitsReadState): string | null {
+  if (state.status === "loading") return null;
+  if (state.status === "failed") return LIMITS_SUMMARY_UNKNOWN;
+  const { result } = state;
+  const isStopped = (key: SharingLimitKey): boolean =>
+    result.kind === "unreadable" || result.limits[key];
+  const stopped = LIMIT_ACTIONS.filter((l) => isStopped(l.key)).map(
+    (l) => l.action,
+  );
+  const allowed = LIMIT_ACTIONS.filter((l) => !isStopped(l.key)).map(
+    (l) => l.action,
+  );
+  const canText = `Paired devices can ${joinActions(allowed, "and")}.`;
+  if (stopped.length === 0) return canText;
+  if (allowed.length === 0) {
+    return `Paired devices cannot ${joinActions(stopped, "or")}.`;
+  }
+  return `${canText} They cannot ${joinActions(stopped, "or")}.`;
 }

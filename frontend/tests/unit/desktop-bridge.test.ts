@@ -66,6 +66,29 @@ describe("getDesktopBridge", () => {
     expect(typeof found?.revokePairedDevice).toBe("function");
   });
 
+  it("carries the two sharing-limit methods", () => {
+    const bridge = {
+      chooseWorkspaceDir: async () => ({ ok: false }),
+      getSharingLimits: async () => ({
+        kind: "missing" as const,
+        limits: {
+          projectDeletion: true,
+          unlocking: true,
+          locking: true,
+          encryptionChanges: true,
+          permanentDeletion: true,
+        },
+        storeDirectory: "/x",
+      }),
+      setSharingLimit: async () => ({ kind: "ok" as const }),
+    };
+    (window as unknown as Holder).getwriteDesktop = bridge;
+    const found = getDesktopBridge();
+    expect(found).toBe(bridge);
+    expect(typeof found?.getSharingLimits).toBe("function");
+    expect(typeof found?.setSharingLimit).toBe("function");
+  });
+
   it("a bridge without the device methods still reads as present", () => {
     const bridge = { chooseWorkspaceDir: async () => ({ ok: false }) };
     (window as unknown as Holder).getwriteDesktop = bridge;

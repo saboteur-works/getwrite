@@ -646,6 +646,8 @@ export const EncryptionStatusSchema = z.object({
 
 export const EncryptionErrorResponseSchema = z.object({
   error: z.string().optional(),
+  // Feature 77: present on a paired-device limit refusal (403).
+  limit: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -805,3 +807,24 @@ export const NoiseWordListsResponseSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const GlobalNoiseWordsResponseSchema = z.array(z.string());
+
+// ---------------------------------------------------------------------------
+// SharingLimitsResponseSchema — Feature 77, Task 14 (FR-19, FR-20). Matches
+// `GET /api/sharing/limits`'s `LimitsRole`: `{ role: "exempt" }` or
+// `{ role: "paired", limits }` with the five limit booleans. Strict about the
+// five keys so a partial answer is a validation failure, never a guess.
+// ---------------------------------------------------------------------------
+
+export const SharingLimitsResponseSchema = z.discriminatedUnion("role", [
+  z.object({ role: z.literal("exempt") }),
+  z.object({
+    role: z.literal("paired"),
+    limits: z.object({
+      projectDeletion: z.boolean(),
+      unlocking: z.boolean(),
+      locking: z.boolean(),
+      encryptionChanges: z.boolean(),
+      permanentDeletion: z.boolean(),
+    }),
+  }),
+]);

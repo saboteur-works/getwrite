@@ -9,10 +9,46 @@ import {
 import {
   encryptProject,
   exportPlaintextCopy,
+  isSerializedLimitRefusal,
   lockWorkspace,
 } from "../../src/store/cryptoSlice";
+import { useSharingLimits } from "../Sharing/SharingLimitsContext";
 import { resolveRuntime } from "../../src/store/transport/runtime";
-import EncryptionSettings from "./EncryptionSettings";
+import EncryptionSettings, {
+  type EncryptionSettingsProps,
+} from "./EncryptionSettings";
+
+type RefusalAwareProps = Omit<EncryptionSettingsProps, "onLockWorkspace"> & {
+  /** Runs the lock; the returned promise rejects with the serialised thunk error. */
+  onLockWorkspace?: () => Promise<unknown>;
+};
+
+/**
+ * {@link EncryptionSettings} with a lock handler that re-reads the paired-device
+ * limits when the server refuses the lock. The slice already holds the
+ * refusal's message; a refusal also means the limits on screen may be stale.
+ * Split out so the limits hook is called only when the settings are rendered.
+ */
+function RefusalAwareEncryptionSettings({
+  onLockWorkspace,
+  ...rest
+}: RefusalAwareProps): JSX.Element {
+  const { refresh: refreshLimits } = useSharingLimits();
+  return (
+    <EncryptionSettings
+      {...rest}
+      onLockWorkspace={
+        onLockWorkspace
+          ? () => {
+              onLockWorkspace().catch((error: unknown) => {
+                if (isSerializedLimitRefusal(error)) void refreshLimits();
+              });
+            }
+          : undefined
+      }
+    />
+  );
+}
 
 /**
  * Connects {@link EncryptionSettings} to the store and the encryption API.
@@ -68,8 +104,17 @@ export default function ProjectEncryptionPanel(): JSX.Element | null {
   // Deliberately does not fetch: the page bootstraps lock state once on mount.
   // A second fetch here would fire on every settings render, and would make this
   // panel a network dependency of every screen that hosts it.
+  if (resolveRuntime() === "native") return null;
+
+  // A failed status check leaves the state unknown. Say so rather than render
+  // nothing, which would be indistinguishable from "no encryption here".
+  if (lockStatus === "unknown" && errorMessage) {
+    return (
+      <p className="font-mono text-[10px] text-gw-secondary">{errorMessage}</p>
+    );
+  }
+
   if (
-    resolveRuntime() === "native" ||
     lockStatus === "unknown" ||
     lockStatus === "unavailable" ||
     !directoryId
@@ -78,7 +123,7 @@ export default function ProjectEncryptionPanel(): JSX.Element | null {
   }
 
   return (
-    <EncryptionSettings
+    <RefusalAwareEncryptionSettings
       projectName={projectName || "this project"}
       isEncrypted={(encryptedProjectIds ?? []).includes(directoryId)}
       // A passphrase is created only for the first encrypted project; after
@@ -94,7 +139,7 @@ export default function ProjectEncryptionPanel(): JSX.Element | null {
       }
       onLockWorkspace={
         lockStatus === "unlocked"
-          ? () => void dispatch(lockWorkspace())
+          ? () => dispatch(lockWorkspace()).unwrap()
           : undefined
       }
       errorMessage={errorMessage}

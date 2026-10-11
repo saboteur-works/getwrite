@@ -27,6 +27,7 @@ import {
 } from "./sharing/sharing-status";
 import { readCredentialStoreStatus } from "./sharing/store-status";
 import { createDeviceHandlers } from "./sharing/device-ipc";
+import { createLimitsHandlers } from "./sharing/limits-ipc";
 import {
   createPairingSession,
   type PairingCodeInfo,
@@ -298,6 +299,10 @@ function registerSharingHandlers(): void {
     userDataDir: userData,
     isTrustedSender: (url) => isTrustedSender(url, localOrigin(PORT)),
   });
+  const limits = createLimitsHandlers({
+    userDataDir: userData,
+    isTrustedSender: (url) => isTrustedSender(url, localOrigin(PORT)),
+  });
 
   ipcMain.handle("getwrite:sharing-get-status", (event): SharingStatus => {
     assertTrustedSender(event);
@@ -360,6 +365,22 @@ function registerSharingHandlers(): void {
     async (event, id: unknown) => {
       const result = await devices.revoke(event, id);
       log(`Paired device revoke: ${result.kind}`);
+      return result;
+    },
+  );
+
+  // Paired-device limits (Feature 77). Log only outcome kinds.
+  ipcMain.handle("getwrite:sharing-get-limits", async (event) => {
+    const result = await limits.getLimits(event);
+    log(`Sharing limits read: ${result.kind}`);
+    return result;
+  });
+
+  ipcMain.handle(
+    "getwrite:sharing-set-limit",
+    async (event, key: unknown, value: unknown) => {
+      const result = await limits.setLimit(event, key, value);
+      log(`Sharing limit change: ${result.kind}`);
       return result;
     },
   );

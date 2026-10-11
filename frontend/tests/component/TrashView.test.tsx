@@ -22,6 +22,8 @@ import TrashView from "../../components/WorkArea/Views/TrashView/TrashView";
 import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import { buttonVariants } from "../../components/common/UI/Button";
 import { makeStore } from "../../src/store/store";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
+import { LIMITS_CASES } from "../helpers/sharingLimitsMock";
 import {
   setProject,
   setSelectedProjectId,
@@ -34,6 +36,22 @@ import {
 } from "../../src/store/resourcesSlice";
 import type { TrashListing } from "../../src/lib/api/trash";
 import type { ProjectApiEntry } from "../../src/lib/api/projects";
+
+// Feature 77 Task 18: the controls under test now read the shared limits
+// state; the hook is fixed per test through this holder (default: exempt).
+const limitsMock = vi.hoisted(() => ({
+  state: { state: "exempt" } as { state: string },
+  refresh: vi.fn(),
+}));
+vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: limitsMock.state,
+    hasDesktopBridge: false,
+    refresh: limitsMock.refresh,
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 
 vi.mock("../../src/lib/api/trash", () => ({
   listTrash: vi.fn(),
@@ -70,6 +88,7 @@ import { openProject } from "../../src/lib/api/projects";
 import AppShell from "../../components/Layout/AppShell";
 import { setupAppShellFetchStub } from "../helpers/appShellFetchStub";
 import { flushPendingEffects } from "../helpers/flushEffects";
+import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
@@ -1117,5 +1136,110 @@ describe("TrashView — Task 22 (Finding 1): resourcesSlice refresh after restor
       const folderIds = store.getState().resources.folders.map((f) => f.id);
       expect(folderIds).toEqual(["folder-restored"]);
     });
+  });
+});
+
+describe("TrashView — Feature 77 Task 18 (FR-24): permanent deletion under paired-device limits", () => {
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+  });
+
+  it.each(LIMITS_CASES)(
+    "purge controls and Restore in state $name",
+    async ({ state, limited }) => {
+      limitsMock.state = state;
+      render(
+        <Provider store={setupStore()}>
+          <TrashRefreshProvider>
+            <TrashView />
+          </TrashRefreshProvider>
+        </Provider>,
+      );
+      await screen.findAllByTestId("trash-row");
+      selectTrashRow("res-1");
+      const del = screen.getByTestId("trash-delete-selected");
+      const empty = screen.getByTestId("trash-empty-trash");
+      const restore = screen.getByTestId("trash-restore-selected");
+      expect(restore).toBeEnabled();
+      if (limited("permanentDeletion")) {
+        expect(del).toBeDisabled();
+        expect(empty).toBeDisabled();
+        const reason = screen.getByText(PERMANENT_DELETION_LIMITED_REASON);
+        expect(del.getAttribute("aria-describedby")).toBe(reason.id);
+        expect(empty.getAttribute("aria-describedby")).toBe(reason.id);
+        expect(restore.getAttribute("aria-describedby")).toBeNull();
+        expect(reason.className).not.toMatch(/red/);
+        expect(reason.getAttribute("role")).not.toBe("alert");
+      } else {
+        expect(del).toBeEnabled();
+        expect(empty).toBeEnabled();
+        expect(
+          screen.queryByText(PERMANENT_DELETION_LIMITED_REASON),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
+});
+
+describe("TrashView — Feature 77 Task 22 (FR-26): a refused purge is visible", () => {
+  const REFUSAL_TEXT = "Deleting permanently has to be done on the computer.";
+  const GENERIC =
+    "Could not permanently delete the selected items. Try again later.";
+
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    limitsMock.refresh.mockClear();
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+  });
+
+  async function purgeSelected(trigger: "delete" | "empty") {
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await screen.findAllByTestId("trash-row");
+    if (trigger === "delete") {
+      selectTrashRow("res-1");
+      fireEvent.click(screen.getByTestId("trash-delete-selected"));
+    } else {
+      fireEvent.click(screen.getByTestId("trash-empty-trash"));
+    }
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog)
+      .getAllByRole("button")
+      .find((b: HTMLElement) => /delete|empty/i.test(b.textContent ?? ""));
+    if (!confirm) throw new Error("no confirm button");
+    fireEvent.click(confirm);
+  }
+
+  it.each(["delete", "empty"] as const)(
+    "%s: a LimitRefusalError shows the server's message as plain text, keeps every row, and refreshes limits",
+    async (trigger) => {
+      mockedPurgeTrashItems.mockRejectedValue(
+        new LimitRefusalError(REFUSAL_TEXT, "permanentDeletion"),
+      );
+      await purgeSelected(trigger);
+      const message = await screen.findByText(REFUSAL_TEXT);
+      expect(screen.queryByText(GENERIC)).not.toBeInTheDocument();
+      expect(message.className).not.toMatch(/red/);
+      expect(message.getAttribute("role")).not.toBe("alert");
+      expect(screen.getAllByTestId("trash-row")).toHaveLength(3);
+      expect(
+        screen.queryByTestId("trash-batch-report"),
+      ).not.toBeInTheDocument();
+      expect(limitsMock.refresh).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("a purge failing for another reason keeps the generic text and does not refresh limits", async () => {
+    mockedPurgeTrashItems.mockRejectedValue(new Error("boom"));
+    await purgeSelected("delete");
+    expect(await screen.findByText(GENERIC)).toBeInTheDocument();
+    expect(screen.getAllByTestId("trash-row")).toHaveLength(3);
+    expect(limitsMock.refresh).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "futureTopLevel": { "a": 1 },
+  "limits": {
+    "projectDeletion": false,
+    "unlocking": false,
+    "locking": false,
+    "encryptionChanges": false,
+    "permanentDeletion": true,
+    "futureLimit": "keep"
+  }
+}

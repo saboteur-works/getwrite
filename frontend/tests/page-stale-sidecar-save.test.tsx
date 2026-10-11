@@ -43,6 +43,18 @@ import type { AnyResource } from "../src/lib/models/types";
 
 const updateSidecarMock = vi.fn();
 
+// Feature 77 Task 18: the components under test now read the shared limits
+// state; this file is not about limits, so the hook is fixed at "exempt".
+vi.mock("../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
+
 vi.mock("../src/lib/api/resources", async () => {
   const actual = await vi.importActual<
     typeof import("../src/lib/api/resources")

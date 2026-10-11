@@ -36,6 +36,18 @@ import {
 import type { RestoreItemResult, TrashListing } from "../../src/lib/api/trash";
 import { runAxe } from "./helpers/axe";
 
+// Feature 77 Task 18: the components under test now read the shared limits
+// state; this file is not about limits, so the hook is fixed at "exempt".
+vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: { state: "exempt" },
+    hasDesktopBridge: false,
+    refresh: async () => ({ state: "exempt" }),
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
+
 vi.mock("../../src/lib/api/trash", () => ({
   listTrash: vi.fn(),
   restoreTrashItems: vi.fn(),

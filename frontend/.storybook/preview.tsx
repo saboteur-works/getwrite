@@ -13,6 +13,10 @@ import {
   GLOBAL_APPEARANCE_STORAGE_KEY,
   type AppearancePreferences,
 } from "../src/lib/user-preferences";
+import {
+  StaticSharingLimitsProvider,
+  type StaticSharingLimitsValue,
+} from "../components/Sharing/SharingLimitsContext";
 // @ts-expect-error Storybook side-effect CSS import is resolved by bundler at runtime.
 import "../app/globals.css";
 import { AnyResource, Folder, Project } from "../src/lib/models";
@@ -179,6 +183,27 @@ const withStore = (
   );
 };
 
+/**
+ * Per-story override of the paired-device limits (Feature 77), read from
+ * `parameters.sharingLimits`. Absent means `exempt`, which is what the desktop
+ * window and a local browser with sharing off see, so a story renders as it did
+ * before the limits existed. Example:
+ * `parameters: { sharingLimits: { state: { state: "paired", limits } } }`.
+ */
+const withSharingLimits = (
+  Story: React.ComponentType,
+  context: { parameters: Record<string, unknown> },
+) => {
+  const override = context.parameters.sharingLimits as
+    | StaticSharingLimitsValue
+    | undefined;
+  return (
+    <StaticSharingLimitsProvider value={override}>
+      <Story />
+    </StaticSharingLimitsProvider>
+  );
+};
+
 const preview: Preview = {
   globalTypes: {
     colorMode: {
@@ -207,7 +232,7 @@ const preview: Preview = {
       test: "todo",
     },
   },
-  decorators: [withStore],
+  decorators: [withSharingLimits, withStore],
 };
 
 export default preview;

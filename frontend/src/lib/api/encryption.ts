@@ -19,6 +19,7 @@ import {
   EncryptionErrorResponseSchema,
   EncryptionStatusSchema,
 } from "./schemas";
+import { limitRefusalFromResponse } from "./limit-refusal";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 /** Workspace lock state, as the UI renders it. */
@@ -56,6 +57,8 @@ async function request(init?: RequestInit): Promise<EncryptionStatus> {
       );
       throw new Error("Encryption request failed.");
     }
+    const refusal = limitRefusalFromResponse(response.status, json);
+    if (refusal) throw refusal;
     throw new Error(parsedError.data.error ?? "Encryption request failed.");
   }
 

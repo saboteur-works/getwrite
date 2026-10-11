@@ -46,6 +46,9 @@ import {
   resolveProjectPath,
   respondInvalidProjectId,
 } from "../../../src/lib/models/project-path";
+import { checkLimit, refusalFor } from "../../../src/lib/sharing/limits-check";
+import { PASSPHRASE_CREATION_REFUSAL_MESSAGE } from "../../../src/lib/sharing/limits-copy";
+import type { LimitKey, Limits } from "../../../src/lib/sharing/limits-store";
 import { generateUUID } from "../../../src/lib/models/uuid";
 import { readFile, writeFile } from "../../../src/lib/models/io";
 import path from "node:path";
@@ -137,6 +140,76 @@ async function getEncryptionStatus(): Promise<NextResponse> {
   }
 }
 
+/** Every limit on: makes `checkLimit` refuse any caller that is not exempt. */
+const EVERY_LIMIT_ON: Limits = {
+  projectDeletion: true,
+  unlocking: true,
+  locking: true,
+  encryptionChanges: true,
+  permanentDeletion: true,
+};
+
+/** The limit an action falls under; `null` for an action no limit names. */
+function limitKeyFor(body: unknown): LimitKey | null {
+  if (typeof body !== "object" || body === null) return null;
+  const { action } = body as { action?: unknown };
+  switch (action) {
+    case "unlock":
+    case "resume":
+      return "unlocking";
+    case "lock":
+      return "locking";
+    case "enable":
+    case "export":
+      return "encryptionChanges";
+    default:
+      return null;
+  }
+}
+
+/** True when `body` is an `enable` action carrying a passphrase. */
+function createsPassphrase(body: unknown): boolean {
+  const { action, passphrase } = body as {
+    action?: unknown;
+    passphrase?: unknown;
+  };
+  return action === "enable" && passphrase !== null;
+}
+
+/**
+ * Applies the paired-device limits before anything else runs. The body is read
+ * from a clone, so the handler can still read the original. An exempt caller
+ * returns at once, without reading the body or the limits file.
+ *
+ * @param request - The incoming request.
+ * @returns A refusal to return, or `null` to carry on.
+ */
+async function enforceEncryptionLimits(
+  request: Request,
+): Promise<Response | null> {
+  if (checkLimit(request, "encryptionChanges", () => EVERY_LIMIT_ON) === null) {
+    return null;
+  }
+  let body: unknown;
+  try {
+    body = await request.clone().json();
+  } catch {
+    return refusalFor("encryptionChanges");
+  }
+  const key = limitKeyFor(body);
+  if (key === null) return refusalFor("encryptionChanges");
+  if (createsPassphrase(body)) {
+    return NextResponse.json(
+      {
+        error: PASSPHRASE_CREATION_REFUSAL_MESSAGE,
+        limit: "encryptionChanges",
+      },
+      { status: 403 },
+    );
+  }
+  return checkLimit(request, key);
+}
+
 /**
  * Performs a lock-state or conversion action.
  *
@@ -144,6 +217,8 @@ async function getEncryptionStatus(): Promise<NextResponse> {
  * @returns The resulting {@link EncryptionStatus}, or an error.
  */
 async function postEncryptionAction(request: Request): Promise<Response> {
+  const refusal = await enforceEncryptionLimits(request);
+  if (refusal) return refusal;
   try {
     // Fail closed for every action, not just the one that writes ciphertext
     // (FR23). `enable` guards itself deeper down, but `unlock` derives a

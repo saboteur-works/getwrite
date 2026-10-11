@@ -114,6 +114,33 @@ export type PairedDeviceMutationResult =
   | { kind: "lock-not-acquired" }
   | { kind: "write-failed" };
 
+/** The five limits a paired device is held to, each on (restricted) or off. */
+export interface SharingLimits {
+  projectDeletion: boolean;
+  unlocking: boolean;
+  locking: boolean;
+  encryptionChanges: boolean;
+  permanentDeletion: boolean;
+}
+
+/** The name of one limit. */
+export type SharingLimitKey = keyof SharingLimits;
+
+/** The limits file's status with the five effective limits. */
+export interface GetSharingLimitsResult {
+  kind: "ok" | "missing" | "invalid" | "unreadable";
+  limits: SharingLimits;
+  storeDirectory: string;
+}
+
+/** The outcome of changing one limit. */
+export type SetSharingLimitResult =
+  | { kind: "ok" }
+  | { kind: "unreadable"; reason: string }
+  | { kind: "lock-not-acquired" }
+  | { kind: "write-failed" }
+  | { kind: "invalid-input" };
+
 /** The surface the renderer may call. */
 export interface GetWriteDesktopBridge {
   /** Returns where projects are currently stored. */
@@ -159,6 +186,13 @@ export interface GetWriteDesktopBridge {
   ): Promise<PairedDeviceMutationResult>;
   /** Revokes a paired device; it is refused from then on. */
   revokePairedDevice(id: string): Promise<PairedDeviceMutationResult>;
+  /** Reads the five effective limits and the limits file's status. */
+  getSharingLimits(): Promise<GetSharingLimitsResult>;
+  /** Changes one limit (`true` restricts a paired device, `false` allows). */
+  setSharingLimit(
+    key: SharingLimitKey,
+    value: boolean,
+  ): Promise<SetSharingLimitResult>;
 }
 
 const bridge: GetWriteDesktopBridge = {
@@ -193,6 +227,9 @@ const bridge: GetWriteDesktopBridge = {
     ipcRenderer.invoke("getwrite:sharing-rename-device", id, name),
   revokePairedDevice: (id: string) =>
     ipcRenderer.invoke("getwrite:sharing-revoke-device", id),
+  getSharingLimits: () => ipcRenderer.invoke("getwrite:sharing-get-limits"),
+  setSharingLimit: (key: SharingLimitKey, value: boolean) =>
+    ipcRenderer.invoke("getwrite:sharing-set-limit", key, value),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

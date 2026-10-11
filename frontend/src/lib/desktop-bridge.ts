@@ -197,6 +197,33 @@ export type PairedDeviceMutationResult =
   | { kind: "lock-not-acquired" }
   | { kind: "write-failed" };
 
+/** The five limits a paired device is held to, each on (restricted) or off. */
+interface SharingLimits {
+  projectDeletion: boolean;
+  unlocking: boolean;
+  locking: boolean;
+  encryptionChanges: boolean;
+  permanentDeletion: boolean;
+}
+
+/** The name of one limit. */
+export type SharingLimitKey = keyof SharingLimits;
+
+/** The limits file's status with the five effective limits. */
+export interface GetSharingLimitsResult {
+  kind: "ok" | "missing" | "invalid" | "unreadable";
+  limits: SharingLimits;
+  storeDirectory: string;
+}
+
+/** The outcome of changing one limit. */
+export type SetSharingLimitResult =
+  | { kind: "ok" }
+  | { kind: "unreadable"; reason: string }
+  | { kind: "lock-not-acquired" }
+  | { kind: "write-failed" }
+  | { kind: "invalid-input" };
+
 /** The surface `preload.ts` exposes. Mirrors its `GetWriteDesktopBridge`. */
 export interface DesktopBridge {
   getWorkspaceDir(): Promise<string>;
@@ -239,6 +266,13 @@ export interface DesktopBridge {
   ): Promise<PairedDeviceMutationResult>;
   /** Revokes a paired device; it is refused from then on. */
   revokePairedDevice(id: string): Promise<PairedDeviceMutationResult>;
+  /** Reads the five effective limits and the limits file's status. */
+  getSharingLimits(): Promise<GetSharingLimitsResult>;
+  /** Changes one limit (`true` restricts a paired device, `false` allows). */
+  setSharingLimit(
+    key: SharingLimitKey,
+    value: boolean,
+  ): Promise<SetSharingLimitResult>;
 }
 
 /**

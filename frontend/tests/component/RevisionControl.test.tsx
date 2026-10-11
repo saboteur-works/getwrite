@@ -21,6 +21,25 @@ import {
 } from "../../src/store/resourcesSlice";
 import type { Revision } from "../../src/lib/models/types";
 import { runAxe } from "../a11y/helpers/axe";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
+import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
+import { LIMITS_CASES } from "../helpers/sharingLimitsMock";
+
+// Feature 77 Task 18: the controls under test now read the shared limits
+// state; the hook is fixed per test through this holder (default: exempt).
+const limitsMock = vi.hoisted(() => ({
+  state: { state: "exempt" } as { state: string },
+  refresh: vi.fn(),
+}));
+vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
+  useSharingLimits: () => ({
+    state: limitsMock.state,
+    hasDesktopBridge: false,
+    refresh: limitsMock.refresh,
+    registerUnlockPrompt: () => () => undefined,
+  }),
+  useDeclareUnlockPromptMounted: () => undefined,
+}));
 
 vi.mock("react-hot-toast", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -262,5 +281,89 @@ describe("RevisionControl accessibility", () => {
   it("has no axe violations with a protected and an unprotected card", async () => {
     const { view } = await renderControl();
     await runAxe(view.container);
+  });
+});
+
+describe("RevisionControl delete under paired-device limits (Feature 77 Task 18, FR-24)", () => {
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+  });
+
+  it.each(LIMITS_CASES)(
+    "Delete Revision in state $name",
+    async ({ state, limited }) => {
+      limitsMock.state = state;
+      await renderControl();
+      const protect = within(card("Name 1")).getByRole("button", {
+        name: "Protect revision v1",
+      });
+      const del = within(card("Name 1")).getByRole("button", {
+        name: /delete revision/i,
+      });
+      expect(protect).toBeEnabled();
+      if (limited("permanentDeletion")) {
+        expect(del).toBeDisabled();
+        const reasons = screen.getAllByText(PERMANENT_DELETION_LIMITED_REASON);
+        const own = within(card("Name 1")).getByText(
+          PERMANENT_DELETION_LIMITED_REASON,
+        );
+        expect(del.getAttribute("aria-describedby")).toBe(own.id);
+        expect(reasons.length).toBeGreaterThan(0);
+        expect(new Set(reasons.map((r: HTMLElement) => r.id)).size).toBe(
+          reasons.length,
+        );
+        expect(own.className).not.toMatch(/red/);
+        expect(own.getAttribute("role")).not.toBe("alert");
+      } else {
+        expect(del).toBeEnabled();
+        expect(
+          screen.queryByText(PERMANENT_DELETION_LIMITED_REASON),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
+});
+
+describe("RevisionControl refused revision delete (Feature 77 Task 22, FR-26)", () => {
+  const REFUSAL_TEXT = "Deleting permanently has to be done on the computer.";
+
+  beforeEach(() => {
+    limitsMock.state = { state: "exempt" };
+    limitsMock.refresh.mockClear();
+    mockedToast.error.mockClear();
+    mockedToast.success.mockClear();
+  });
+
+  it("shows the server's message as plain text, keeps the revision, reports no deletion, and refreshes limits", async () => {
+    const { user, store } = await renderControl();
+    mockedRemove.mockRejectedValue(
+      new LimitRefusalError(REFUSAL_TEXT, "permanentDeletion"),
+    );
+    await user.click(
+      within(card("Name 1")).getByRole("button", { name: /delete revision/i }),
+    );
+    const message = await screen.findByText(REFUSAL_TEXT);
+    expect(message.className).not.toMatch(/red/);
+    expect(message.className).toMatch(/text-gw-(primary|secondary)/);
+    expect(message.getAttribute("role")).not.toBe("alert");
+    expect(mockedToast.success).not.toHaveBeenCalled();
+    expect(mockedToast.error).toHaveBeenCalledWith(REFUSAL_TEXT);
+    expect(
+      store.getState().revisions.revisions.some((r) => r.id === "rev-1"),
+    ).toBe(true);
+    expect(screen.getByText("Name 1")).toBeInTheDocument();
+    expect(limitsMock.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("a non-refusal failure does not refresh limits", async () => {
+    const { user } = await renderControl();
+    mockedRemove.mockRejectedValue(new Error("disk full"));
+    await user.click(
+      within(card("Name 1")).getByRole("button", { name: /delete revision/i }),
+    );
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith("disk full"),
+    );
+    expect(limitsMock.refresh).not.toHaveBeenCalled();
   });
 });
