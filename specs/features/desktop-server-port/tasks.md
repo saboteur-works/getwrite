@@ -130,7 +130,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 1
 **Notes:** Satisfies FR-7 (OQ-9 resolved). No process is started.
 **POS:** task_e6025b18
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Record the block-of-ten convention (ADR and one `CLAUDE.md` line)
 **What:** Write a new ADR for the port-block convention and add one line to `CLAUDE.md` pointing at it.

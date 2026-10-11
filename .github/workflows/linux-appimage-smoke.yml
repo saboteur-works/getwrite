@@ -138,6 +138,12 @@ jobs:
                     # forked, so nothing may answer on :3000. Checking only the
                     # server would not distinguish this from an unrelated CI
                     # failure to start.
+                    #
+                    # This workflow tests the published 1.8.0 and 2.0.0
+                    # releases, which listen on 3000, so the probe above
+                    # looks at :3000. A future matrix entry for a build whose
+                    # server listens on 7340 needs its own probe port; this
+                    # one would not see it.
                     if [ "$PROJECTS_DIR" = "present" ]; then
                       echo "::error::1.8.0 DID create $RESOLVED_DIR, so it could store projects after all. The 2.0.0 release notes are wrong and need correcting."
                       exit 1
