@@ -2587,3 +2587,12 @@ Config files loaded at config time: `git diff --name-only main..HEAD` contains n
 - Identification of the skipped frontend and e2e tests.
 - Which six smoke checks are new (the total moved 28 to 34), and the split of the +34 and +104 new tests across Tasks 8, 9 and 10; the `it(`-line count does not reproduce the measured increases (see above).
 - `pnpm build:native`; `pnpm storybook` (dev).
+
+## Owner manual check (Task 21)
+
+Date 2026-10-11. Reported by the owner, not observed by the pipeline. The pipeline lead started the unpacked build (`dist-electron/mac-arm64/GetWrite.app`, built at Task 18 from the same source as the branch tip; `git diff --stat 624c56e7 HEAD -- frontend electron getwrite-config` was empty) with the owner's own settings and projects. Observed by the lead from `lsof` after launch: the app's process listening on `*:7340` (sharing on from the owner's saved setting) and no listener on 3000.
+
+- Owner's words: "Device was still paired and edits worked". So the owner's Android phone, paired before the port change at the old port, opened the app at the new port without pairing again, and an edit made on the phone worked. This is the first second-device result for the new port; the browser on the phone was not named in this report (Chrome 153 in the Feature 75 check).
+- Not reported by the owner: whether the addresses shown in App Settings end in `:7340` (the phone reached the app on the new port, so it used an address with 7340), and what the phone shows for the old `:3000` address.
+- Not done on the phone: pairing from scratch on 7340 (the device was already paired); the port-in-use message; the unreadable-store message.
+- Seen in the app's output at this launch, outside this feature: the server logged `Skipping unreadable project "78e8c5e8-…" while listing projects: ENOENT … project.json` for one folder in the owner's projects directory. The folder was not opened by the lead. Cause not established.
