@@ -39,6 +39,23 @@ const ENUMERATED_EXCEPTIONS = [
   // Feature 80, Task 9: the desktop readiness identity route.
   "GET /api/sharing/ready",
 ];
+/**
+ * Exceptions that stay reachable with an unreadable credential store (Feature
+ * 80, Task 9): the route reads no store, and the desktop app must still start
+ * to show the unreadable-store message. Mirrors the unit test's
+ * STORE_INDEPENDENT_EXCEPTIONS.
+ */
+const STORE_INDEPENDENT_EXCEPTIONS = ["GET /api/sharing/ready"];
+/**
+ * The fourth documented exception, as in the unit test's EXCEPTION_COUNT (4):
+ * the `/_next/static/` prefix, which is not enumerated from the tree and is
+ * checked by the static-asset checks below instead.
+ */
+const STATIC_EXCEPTION = "/_next/static/";
+const EXCEPTION_COUNT = ENUMERATED_EXCEPTIONS.length + 1;
+/** Domain-separation prefix of the readiness proof; same string as readiness-proof.ts. */
+const PROOF_CONTEXT = "getwrite-ready/1\n";
+const READINESS_URL = "/api/sharing/ready";
 
 const failures = [];
 let checks = 0;
@@ -124,6 +141,8 @@ async function walkFiles(dir) {
 
 const label = (e) => `${e.method} ${e.url}`;
 const isException = (e) => ENUMERATED_EXCEPTIONS.includes(label(e));
+const isStoreIndependent = (e) =>
+  STORE_INDEPENDENT_EXCEPTIONS.includes(label(e));
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -224,6 +243,9 @@ async function main() {
 
   const dir = await mkdtemp(path.join(tmpdir(), "gw-smoke-"));
   const secret = randomBytes(32).toString("hex");
+  // Throwaway per-run key so the readiness route's answer can be checked
+  // against an HMAC computed here. Never printed.
+  const readinessKey = randomBytes(32).toString("hex");
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [serverPath], {
@@ -235,6 +257,7 @@ async function main() {
       GETWRITE_SHARING: "1",
       GETWRITE_WINDOW_SECRET: secret,
       GETWRITE_SHARING_DIR: dir,
+      GETWRITE_READINESS_KEY: readinessKey,
     },
     stdio: "ignore",
   });
@@ -250,12 +273,67 @@ async function main() {
     const wrong = [];
     for (const entry of entries) {
       if (!includeExceptions && isException(entry)) continue;
+      // Store-independent routes get their own positive checks instead.
+      if (isStoreIndependent(entry)) continue;
       const res = await send(entry, headers);
       if (!isRefusal(res)) wrong.push(`${label(entry)} -> ${res.status}`);
     }
     check(
       `${name}: every enumerated URL refused (${wrong.join("; ")})`,
       wrong.length === 0,
+    );
+  }
+
+  /**
+   * The readiness route is not gated and answers identically whoever asks.
+   * Checked for every header variant: no challenge -> 400 invalid-challenge;
+   * a valid challenge -> 200 with the proof this script computes itself; no
+   * gate header and no redirect; and the valid-challenge body is the same
+   * across variants. Key, challenge and proof are never printed.
+   */
+  async function expectReadinessIndependent(name, variants) {
+    const challenge = randomBytes(32).toString("hex");
+    const expected = createHmac("sha256", readinessKey)
+      .update(PROOF_CONTEXT + challenge)
+      .digest("hex");
+    const noChallengeWrong = [];
+    const validWrong = [];
+    const bodies = new Set();
+    for (const [variant, headers] of Object.entries(variants)) {
+      const bare = await send({ url: READINESS_URL, method: "GET" }, headers);
+      const bareBody = await bare.text();
+      if (
+        bare.status !== 400 ||
+        bare.headers.get("x-getwrite-gate") !== null ||
+        bareBody !== JSON.stringify({ error: "invalid-challenge" })
+      ) {
+        noChallengeWrong.push(`${variant} -> ${bare.status}`);
+      }
+      const good = await send(
+        { url: `${READINESS_URL}?challenge=${challenge}`, method: "GET" },
+        headers,
+      );
+      const goodBody = await good.text();
+      bodies.add(goodBody);
+      if (
+        good.status !== 200 ||
+        good.headers.get("x-getwrite-gate") !== null ||
+        goodBody !== JSON.stringify({ proof: expected })
+      ) {
+        validWrong.push(`${variant} -> ${good.status}`);
+      }
+    }
+    check(
+      `${name}: readiness without a challenge is 400 invalid-challenge, not gated (${noChallengeWrong.join("; ")})`,
+      noChallengeWrong.length === 0,
+    );
+    check(
+      `${name}: readiness with a valid challenge is 200 with the expected proof, not gated (${validWrong.join("; ")})`,
+      validWrong.length === 0,
+    );
+    check(
+      `${name}: readiness body identical across ${Object.keys(variants).join(", ")}`,
+      bodies.size === 1,
     );
   }
 
@@ -434,8 +512,17 @@ async function main() {
       crossOrigin.status === 403,
     );
 
-    // A corrupt store refuses everything that is not the window.
+    const readinessVariants = {
+      "no credential": {},
+      "wrong window header": { "x-getwrite-window": "x".repeat(64) },
+      "paired cookie": { cookie },
+    };
+    await expectReadinessIndependent("healthy store", readinessVariants);
+
+    // A corrupt store refuses everything that is not the window, except the
+    // store-independent readiness route.
     await writeFile(path.join(dir, "device-credentials.json"), "{ not json");
+    await expectReadinessIndependent("corrupt store", readinessVariants);
     await expectAllRefused(
       "corrupt store with paired cookie",
       { cookie },
@@ -454,7 +541,7 @@ async function main() {
   }
 
   console.log(
-    `enumerated entries: ${entries.length}; checks: ${checks}; failures: ${failures.length}`,
+    `enumerated entries: ${entries.length}; exceptions: ${EXCEPTION_COUNT} (${ENUMERATED_EXCEPTIONS.length} enumerated + ${STATIC_EXCEPTION}; ${STORE_INDEPENDENT_EXCEPTIONS.length} store-independent); checks: ${checks}; failures: ${failures.length}`,
   );
   for (const f of failures) console.log(`FAIL ${f}`);
   if (failures.length > 0) process.exit(1);

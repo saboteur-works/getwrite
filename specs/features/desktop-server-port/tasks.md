@@ -170,7 +170,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (built-server half), FR-29 (smoke). Main checkout, one task at a time. Records and does not fix.
 **POS:** task_25b80177
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Verification (agent): pairing end to end on 7340 in a real browser, loading `/pair` unpaired
 **What:** Pair a fresh, unpaired Chromium context at `http://<lan-ip>:7340` using a code obtained through the real app's own flow, counting main-frame navigations on the pairing page.

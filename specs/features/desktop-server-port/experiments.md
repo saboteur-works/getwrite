@@ -2300,3 +2300,13 @@ Compared with the Task 1 baseline (91 entries, 28 checks, 0 failures):
 - The cause of the smoke failure is not established (see above).
 
 Task 15 is NOT ticked: the smoke reports 1 failure.
+
+## Smoke script and the store-independent readiness route (after the Task 15 halt)
+
+Date 2026-10-10/11. Recorded by the pipeline lead.
+
+- Task 15 halted on `pnpm test:sharing-smoke`: 92 entries, 28 checks, 1 failure (`corrupt store with paired cookie: every enumerated URL refused (GET /api/sharing/ready -> 404)`).
+- Decision by the lead, reported to the owner as a call the owner may overrule (no owner answer yet when this was written): the gate is as designed and the smoke script's expectation was out of date. Read, not run: Task 9 placed the readiness exception ahead of the `store-corrupt` condition and listed the route in `STORE_INDEPENDENT_EXCEPTIONS` in `sharing-gate-enumeration.test.ts`, because the app's start-up poll carries no window secret and must succeed with sharing on and an unreadable store, or the app could not start to show the unreadable-store message. This narrows Feature 75's rule that an unreadable store refuses everything: one route that reads no header, cookie, store or project is outside it. The lead did not spell this out when asking the owner to approve the exception.
+- The smoke script was changed (script only; gate and unit test untouched): every other enumerated URL must still be refused under a corrupt store; for `GET /api/sharing/ready` it now asserts, in the healthy phase and again under a corrupt store, over three variants (no credential, a wrong window header, the paired cookie): no challenge gives exactly 400 `invalid-challenge` with no gate header; a valid challenge gives exactly 200 with the proof the script computes itself under a throwaway key; and the body is identical across the variants. No key, challenge or proof is printed.
+- Run by the lead after the change, outside the sandbox, against the fresh Task 15 build (BUILD_ID `AiPwFqEOMOtFfGilBzM2s`): `enumerated entries: 92; exceptions: 4 (3 enumerated + /_next/static/; 1 store-independent); checks: 34; failures: 0`, exit 0. Ports 3000 and 7340 had no listener before or after. Baseline on `main`: 91 entries, 28 checks, 0 failures; the differences are the one new route and the six new readiness checks.
+- Not run: the real app starting with sharing on and an unreadable store on this branch (the behaviour the carve-out exists for).
