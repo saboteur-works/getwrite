@@ -140,7 +140,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 2
 **Notes:** Satisfies FR-26 (OQ-6 resolved). This is the only documentation task in the list; the rest of FR-25 is a later pipeline stage. Do not write anywhere outside this repository.
 **POS:** task_59c67a2f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: CLOSED, NOT NEEDED - Give development mode its own port 7341 so a dev app and a packaged app can run at once
 **What:** If the owner turns it on at Task 7, make development mode (`isPackaged === false`) use 7341 while the packaged app keeps 7340.
