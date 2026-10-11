@@ -30,7 +30,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Satisfies FR-9. Main checkout, outside the sandbox; say so. The e2e run needs Storybook on a port the task confirms free; do not stop any Storybook it did not start. Do not take figures from earlier features' records; measure them.
 **POS:** task_2af1f1ce
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Inventory (agent): recorded search for 3000 used as a port, with a disposition for every hit
 **What:** Run and record the grep inventory of every place that holds or assumes 3000 and give each hit a classification and a disposition.
