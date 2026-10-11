@@ -2462,3 +2462,64 @@ A first complete run (same script before two fixes) differed only in two script 
 - Why the Start Page showed two "Sharing is on" sections (above); what opened the two `127.0.0.1` ports on the Electron main process.
 - The race where a port is free at the check and taken before the child binds (the guard's output recogniser), and the unreachable-probe message (`could not check`).
 - Run-to-run variation (one run per shape); Node 20 or 22; platforms other than macOS; whether a window navigation shorter than 400 ms would have been missed (limit of the sampling, stated above).
+
+## Unpacked build on 7340
+
+Date 2026-10-11. Task 19. Recorded by the implementing agent; every number is from ONE complete run of `scripts/electron-unpacked-7340.mjs` (new; Task 17's `electron-dev-7340.mjs` and `pair-on-7340-unpacked.mjs` untouched), `node v24.15.0`, tip `b1aee1d2`, tree clean before. Target `dist-electron/mac-arm64/GetWrite.app` (Task 18 build, BUILD_ID `AiPwFqEOMOtFfGilBzM2s`; not rebuilt). Run OUTSIDE the command sandbox (`dangerouslyDisableSandbox`); `lsof` pre-checks and syntax check were in the same outside-sandbox commands. Output: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t19.out`. Result: 71 of 71 script checks passed. Port 7340.
+
+### Method
+- Pre-checks (script refuses otherwise; I also ran `lsof` before): no listener on 7340, 3000 or 6006.
+- Mechanism that kept the app off `~/Documents/GetWrite`: a seeded `<throwaway userData>/workspace.json` with `projectsDir: <throwaway>/projects` (read in `electron/src/projects-dir.ts`: `resolveProjectsDir` = override ?? default). Asserted after each normal launch through the window's own `getWorkspaceDir` bridge call (equals the throwaway folder) and `isPackaged` true, `app.getPath("userData")` equal to the throwaway folder and not under the owner's folders, before any other step. As in the Task 16 re-run, the assertion can only run after the app has started (its start-up has already run). For the port-in-use launches the window is on a `data:` page and the projects dir was not read through the bridge; the throwaway projects folder had 0 entries after each. `~/Library/Application Support/getwrite-electron` and `~/Documents/GetWrite` were not read, listed or written by me or the script. HOME was not overridden.
+- Log folder: `app.getName()` is `getwrite-electron`; `app.getPath("logs")` is `~/Library/Logs/getwrite-electron` (the owner's folder). The app appended its own lines there on every launch. I and the script did not read, list, truncate or delete it. Consequence: "log lines" below are the process's captured stdout/stderr only (secret-like lines withheld; none were), NOT the contents of `getwrite.log`; stdout/stderr of a normal launch carried 0 to 3 lines, so the lines the app writes to its log file ("app ready", "server ready", "not starting the server …") were not seen for the packaged app.
+- Sharing ON was SEEDED (`sharingEnabled: true`), not turned on through the toggle. Requests "from the host" went from this machine to its own LAN address (masked `<lan-ip>`): NOT a second-device result. No secret, cookie, key, proof or code was printed.
+- Listener: the script itself, started as a separate process (`--listener <host>`), answering 200 with a page whose title and text are `FOREIGN-LISTENER-MARKER-7340`, logging path, query parameter NAMES, presence of `x-getwrite-window`, names of non-standard headers.
+
+### Sharing OFF
+- Window origin `http://localhost:7340`. Recorded tree: Electron main 54841 (`GetWrite`), helpers, and 54856 (`next-server (v16.2.6)`, the packaged server child). The only listener on 7340 was 54856, bound to `127.0.0.1:7340` (`lsof -a -p`). Pid 54841 listened on `127.0.0.1:63323` and `127.0.0.1:63325` (what opened them was not discriminated, as in Task 17).
+- Bridge status: `enabled:false, effective:false, port:7340, 0 addresses, credentialStore:"missing"`.
+- Nothing listened on 3000 (no listener created by the task); TCP connect to 3000 on `127.0.0.1`, `::1`, `<lan-ip>`: all `ECONNREFUSED`; `GET http://localhost:3000/`: no response.
+- Captured stdout/stderr: 0 lines.
+
+### Sharing ON (seeded)
+- Window origin `http://localhost:7340`: the window loaded the app page with sharing ON, where the gate is active. The window is loaded only after the readiness identity check succeeds (per the Task 10 code; read, not re-derived), so the window loading is the evidence that the check succeeded against the app's own server; no readiness log line was seen (see Method).
+- Listener on 7340: pid 55212 (`next-server`), bound `*:7340`, in the recorded tree. Bridge status: `enabled:true, effective:true, port:7340, credentialStore:"missing"`, 1 address.
+- Displayed addresses (shown text): Start Page status surface 2 sections labelled "Sharing is on", 2 address items; App Settings "Home network sharing" 6 list items, 1 address, 5 not addresses. All 3 shown address items `http://<lan-ip>:7340`; ending `:7340`: 3; ending `:3000`: 0; ending neither: 0. (The Start Page again showed 2 address items against 1 address reported; why is not established, as in Task 17.)
+- Host allowlist, `GET /pair` from this host to `<lan-ip>:7340` with an overridden `Host` header (NOT a second-device result): `Host <lan-ip>:7340` 200 (no `x-getwrite-gate` header); `Host <lan-ip>:3000` 403 (gate header present); control `Host evil.example:7340` 403.
+- Nothing on 3000: same as above. Captured stdout/stderr: 3 lines, names only: "Paired devices listed: 0", "Sharing limits read: missing", "Paired devices listed: 0".
+
+### Extra run: sharing ON with an unreadable `device-credentials.json`
+Sharing seeded ON; `<throwaway userData>/device-credentials.json` contained the literal text `not json`.
+- The app started (process did not exit); the window loaded `http://localhost:7340/` (title "GetWrite") and showed the app page; the server child (pid 55638) listened on `*:7340`, in the recorded tree; nothing on 3000. Bridge status: `enabled:true, effective:true, port:7340, credentialStore:"corrupt"`, 1 address. No product defect on starting.
+- App Settings "Home network sharing" showed, as text (throwaway path masked): "The list of paired devices cannot be read, so every other device is refused until it is repaired." and "The file is in <throwaway-root>/userdata-3." The location names the throwaway user-data folder (script check: it equals the app's userData). 
+- `GET /pair` from this host with `Host <lan-ip>:7340` returned 401 with the gate header present (NOT a second-device result); the window itself was served. This 401 is a measurement, not examined further.
+- Captured stdout/stderr: 3 lines, names only: "Paired devices listed: store unreadable", "Sharing limits read: missing", "Paired devices listed: store unreadable".
+
+### Port in use on 7340 (sharing OFF; ON was not combined with a busy port)
+Per shape: 7340 confirmed free; listener started, pid recorded, the only listener on 7340 (`lsof`); app launched with a new throwaway userData; observed 20 s at 400 ms; app and listener stopped by recorded pid; 7340 confirmed free; a fresh normal launch followed.
+
+| Shape | Listener pid, bind | App pid | Window | Listener requests | Window header |
+| --- | --- | --- | --- | --- | --- |
+| 127.0.0.1 only | 56069, `127.0.0.1:7340` | 56088 | `data:` page from t=2 ms to the end | 0 | none received |
+| all interfaces | 57438, `*:7340` | 57457 | `data:` page from t=9 ms | 0 | none received |
+| `::1` only | 58751, `[::1]:7340` | 58770 | `data:` page from t=6 ms | 0 | none received |
+
+For each shape:
+- Window text (full, as shown): "GetWrite did not start. Port 7340 is already in use by another program on this computer, so GetWrite cannot run its local server. Close the other program and open GetWrite again. To find which program holds the port, look for port 7340 in a list of listening programs (a terminal command such as netstat, lsof or ss shows it). Log: ~/Library/Logs/getwrite-electron/getwrite.log". The message names 7340. The window never showed the listener's page (marker absent from every text/title sample; URL a `data:` URL in every sample, never the local origin; limit: 400 ms sampling and one window). The listener received 0 requests, so no `x-getwrite-window` and no readiness poll reached it.
+- The app did not exit in 20 s. The recorded tree was 4 pids (main and three helpers); no `node`, `sh`, `pnpm` or `next-server`: the packaged server child was never forked. The only listener on 7340 at the end was still the throwaway listener. Throwaway projects folder: 0 entries.
+- Sharing status via the bridge: rejected, "Error occurred in handler for 'getwrite:sharing-get-status': Error: Refused: untrusted sender" (the window is on a `data:` page; same as Tasks 3 and 17). Captured stderr: that error and its 4 stack lines (5 lines). No sharing status was obtained another way.
+- Listener stopped by its recorded pid (SIGTERM, not alive afterwards); no recorded app pid alive after `app.close()`; 7340 free afterwards. Fresh normal launch after each (sharing off): origin `http://localhost:7340`, server child pids 57093, 58408, 59706 each bound `127.0.0.1:7340`, nothing on 3000.
+- The packaged server child on a busy port: as a fact, in this state the child is NEVER FORKED (the app refuses first). The child's own behaviour binding a busy port without the app was NOT RUN (running the packaged `server.js` directly was not judged simple and safe enough here); a settling experiment would be to run it directly under `ELECTRON_RUN_AS_NODE` or node with `PORT=7340` against a throwaway listener.
+
+### Second instance (fact only)
+With the unpacked app running (sharing off, pid 60034, server child 60039 on `127.0.0.1:7340`), the dev-mode copied-tree app (Task 17 method, throwaway package name, different throwaway `--user-data-dir`) was launched (pid 60198). It started (single-instance lock keyed by userData, different folders, so not blocked; as in Task 4), its window showed the same port-in-use message naming 7340 on a `data:` page, it forked no server-like child (tree of 4 pids), and the listener on 7340 was unchanged (60039). The unpacked app's window stayed on `http://localhost:7340/` and its process stayed running. Dev app bridge call: the same "untrusted sender" rejection. Both were stopped by recorded pid.
+
+### Processes
+Pids recorded and started per launch: off 54841; on 55208; unreadable 55635; blocked: listener 56069 / app 56088, then normal 57090; listener 57438 / app 57457, then 58405; listener 58751 / app 58770, then 59703; second: unpacked 60034, dev 60198 (descendants recorded each time). After each `app.close()` no recorded pid was alive. After the run: no listener on 7340, 3000 or 6006 (my own `lsof`), no remaining `GetWrite` process found by `ps`, throwaway root and the dev throwaway log folder removed (`true`/`true`). Nothing was stopped by port or name.
+
+### Not verified / not run
+- Sharing turned on through the toggle and a restart; the second-device view of anything.
+- Busy 7340 combined with sharing ON; a listener answering 500 or silent; a `::`-only listener.
+- The packaged server child's own bind on a busy port (not run; see above); its bind address with sharing ON was `*` and OFF `127.0.0.1` (measured).
+- Contents of the app's `getwrite.log` (the owner's folder, not read); so no `server ready`, `not starting the server` or readiness log line was seen for the packaged app. The identity check succeeding is inferred from the window loading, not seen in a log.
+- Why the Start Page shows two address items; what opened the two `127.0.0.1` ports on the Electron main process; the cause of the 401 on `GET /pair` with an unreadable store (the gate refusing is expected by design per the spec, not re-verified here).
+- Unsigned/ad-hoc build behaviour on another machine, x64, Node 20/22, other platforms, run-to-run variation (one run per shape).

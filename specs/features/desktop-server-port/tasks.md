@@ -210,7 +210,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-18, FR-19, FR-22 (second half), FR-17 (real app), FR-11. The packaged server child (`utilityProcess.fork` of the standalone `server.js`) was NOT measured in Task 3, so this is its first port-in-use measurement; record its bind address and its behaviour on a busy port as facts. Main checkout, one task at a time, outside the command sandbox. Never print secrets, codes or cookies.
 **POS:** task_fe063a5e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Final suites (agent): run every suite against the baselines, including e2e, knip and the CLI suite
 **What:** Re-run the full suites after all code tasks and compare each to Task 1's baseline.
