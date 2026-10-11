@@ -69,7 +69,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 5
 **Notes:** Satisfies FR-13, FR-5, FR-20, FR-33 (a), (b). Main checkout, outside the sandbox; the 10-minute run needs the process to stay alive; confirm in the record that the machine did not sleep during it (the clock gap between logged events) or discard and rerun. Records and does not fix.
 **POS:** task_ed49d6a9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Scenario S5, control: different resources in the same project
 **What:** Run S5, three clients' worth of timing variants on two resources in one project, to show each resource holds exactly its own client's document and that nothing else of either resource changed.
