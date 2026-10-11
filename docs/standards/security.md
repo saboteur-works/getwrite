@@ -6,9 +6,9 @@ storage layer, or working on authentication, tenancy, or encryption.
 GetWrite's default deployment is local-first and account-free: on desktop there
 is no server to attack and no account to compromise. (The exception is the opt-in,
 off-by-default home-network sharing setting, Feature 75 — merged, not yet
-released; paired-device limits, Feature 77, merged too — under which the desktop server listens on all interfaces behind a
+released; paired-device limits, Feature 77, and the desktop server port, Feature 80, merged too — under which the desktop server listens on all interfaces behind a
 device-pairing gate; see `docs/features/home-network-sharing.md`. The gate has one
-store-independent exception on the Feature 80 branch, not merged: `GET /api/sharing/ready`,
+store-independent exception, added by Feature 80 (merged): `GET /api/sharing/ready`,
 which reads no header, cookie, store or project and so answers even when the credential store
 is unreadable; every other route still refuses then.) That is a
 security property worth protecting, and most of the rules below exist to keep it true as hosted and
