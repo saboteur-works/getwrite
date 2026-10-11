@@ -2337,6 +2337,8 @@ Not verified / not run: pairing through the page's own fields (blocked, above); 
 
 Task 16 not ticked.
 
+Update: the Task 16 done-condition was met on the unpacked production build; see "Pairing on 7340 (unpacked build re-run)" below. The dev-mode result above is filed separately and was not investigated further.
+
 ## Unpacked build
 
 Date 2026-10-10. Task 18. Recorded by the implementing agent. Tip `72e834c2` (clean tree at start). `node --version` `v24.15.0`. All build commands ran OUTSIDE the command sandbox; the pre-checks and read-only checks ran inside it. Logs of the three commands: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t18-{build,worker,pack}.log`.
@@ -2359,3 +2361,32 @@ Output: `/Users/jedaisaboteur/Repositories/getwrite/dist-electron/mac-arm64/GetW
 `git status --short` after the build: empty (no tracked change, no untracked file).
 
 Not verified / not run: that the packaged app launches; the packaged app's `app.getPath("logs")` location; the override mechanism for `~/Documents/GetWrite` (Task 19 reads `electron/src/projects-dir.ts` for that, not examined here, so no blocker is recorded or ruled out); an x64 build; the frontend build was reused, not rebuilt, in this task.
+
+## Pairing on 7340 (unpacked build re-run)
+
+Date 2026-10-10. Task 16 re-run on the unpacked production build. Recorded by the implementing agent; the numbers below are from the run I observed. This re-run is a lead-approved reorder (Task 18 before Task 17); the dependency lines in `tasks.md` were not edited. Script: `specs/features/desktop-server-port/scripts/pair-on-7340-unpacked.mjs` (new; `pair-on-7340.mjs` and `electron-limits.mjs` untouched). Command: `node specs/features/desktop-server-port/scripts/pair-on-7340-unpacked.mjs`, run OUTSIDE the command sandbox (`dangerouslyDisableSandbox`), `node v24.15.0`; output copied to `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/pair-unpacked.out`. The path/pid reads and the `lsof` pre-checks the script runs are inside that same outside-sandbox process.
+
+Target: `dist-electron/mac-arm64/GetWrite.app` (Task 18, commit `624c56e7`, BUILD_ID `AiPwFqEOMOtFfGilBzM2s`), launched through Playwright `_electron.launch` with `--user-data-dir=<throwaway>/userdata`, and a seeded `<userdata>/workspace.json` of `{ sharingEnabled: true, projectsDir: <throwaway>/projects }` (the packaged build otherwise resolves projects to `~/Documents/GetWrite`, `electron/src/projects-dir.ts`). Sharing was therefore turned on by seeding, not through the settings toggle; the App Settings "Home network sharing" section then showed "Sharing is on".
+
+Pre-checks: no listener on 7340, 3000 or 6006 (script refuses otherwise; `lsof` printed nothing). Asserted before the app did anything else: `isPackaged` true, `app.getPath("userData")` equals the throwaway folder (real paths), and the projects dir the app uses (read through the window's own `getWorkspaceDir` bridge call) equals the throwaway projects folder. After the window loaded: its origin was `http://localhost:7340`; the only listener on 7340 was pid 19606 (`next-server (v16.2.6)`, the packaged server child), inside the recorded tree; nothing listened on 3000.
+
+Log folder: `app.getName()` is `getwrite-electron` and `app.getPath("logs")` resolved to `~/Library/Logs/getwrite-electron`, the owner's log folder; `--user-data-dir` does not move it. A first and second attempt tried pointing `HOME` at a throwaway folder; neither `logs` nor `documents` followed `HOME`, so those two attempts stopped at their path assertion (script then amended; `HOME` is not overridden in the final run). Each of the three launches therefore let the app append its own lines to that real log file (as Feature 77 Task 29 did). The script and I did not read, truncate or delete the file. One slip, mine: while looking for whether the folder existed I ran `ls -la` on `~/Library/Logs/getwrite-electron` once (directory entry listing only: it printed the folder's own metadata with 3 header lines; no file contents or names beyond `.`/`..` were shown and nothing was written). `~/Library/Application Support/getwrite-electron/` and `~/Documents/GetWrite` were not touched. Documents resolves to `~/Documents` but is unused because `projectsDir` is overridden.
+
+Pairing code: obtained from the app window's own flow (App Settings, "Show a pairing code", read from the window), held in a script variable only, never printed or written; the wrong code was that code with each digit changed. Chromium: Playwright Chromium `148.0.7778.96`, a fresh `browser.newContext()` with no cookie, loading `http://<host private IPv4>:7340/pair`. All requests were sent from this host to its own LAN address: NOT a second-device result.
+
+Results (final run, 9/9 script checks passed):
+- `GET /pair` at the LAN address on 7340: HTTP 200; heading "Pair this device" rendered (FR-21, pairing page).
+- (1) Main-frame navigations from `goto` through at least 8 s idle before typing: 2, both with path `/pair`.
+- (2) `/_next/` responses on the page: 14, all status 200; no redirect or refusal; 0 paths containing `%`; 0 failed requests.
+- (3) One wrong code typed into the page's own "Pairing code" field and submitted with the page's own "Pair" button: `POST /api/sharing/pair` requested once, status 400; the page showed an alert reading "That code is not right. Check the code on your computer and try again."; URL path stayed `/pair`; no device cookie; 0 navigations after it.
+- (4) Real code typed into the same field and submitted with the same button: `POST /api/sharing/pair` requested once, status 200; the page landed on path `/` at the LAN address, port 7340, with the "App Settings" button present (an application page accepted by the browser on 7340, FR-21); 2 main-frame navigations after pressing Pair, paths `/` and `/`; `getwrite_device` cookie present (presence only); `GET /api/projects` from the paired context returned 200; the app window's paired-device list (count of "Revoke …" buttons, generic) went from 0 to 1.
+- Total main-frame navigations: 4 (2 on `/pair` before typing, 0 after the wrong code, 2 on `/` after the real code).
+- The Feature 77 pairing-page defect (extra navigation on `/pair`): the count of main-frame navigations on `/pair` over at least 8 s idle was 2 (both `/pair`) on this build. This script does not say whether 2 equals Feature 77's count or what produced the second navigation (one `goto` is one of them); the `Pair`-form non-pairing seen in the dev-mode run did not occur here. No cause is named.
+
+Discarded runs: attempts 1 and 2 stopped at the path assertion (the `HOME`-override idea above) before any browser step; their only effect was the app's own log lines. They produced no pairing numbers.
+
+Processes: app main pid 19589 and recorded descendants 19602 (`GetWrite Helper (GPU)`), 19603 (`GetWrite Helper`), 19606 (`next-server (v16.2.6)`, the packaged server child, the 7340 listener), 19626 (`GetWrite Helper (Renderer)`); recorded by parent-pid recursion while alive. After `app.close()` none was alive (`pids recorded: 5; alive after app.close: none`). The earlier two attempts' pids (16625, 17942, 5 each) were also none alive. After the run: no listener on 7340 or 3000; throwaway root under `os.tmpdir()` removed.
+
+Not verified / not run: pairing from a second physical device; whether the dev-mode non-pairing seen earlier occurs on the unpacked build is answered only for this one run (one run, one wrong then one right attempt; repeatability was not measured); what produced the second `/pair` navigation; Feature 77's own navigation count compared to this build's; the device name shown in the list (generic label only); the packaged app with sharing turned on through the settings toggle and restart (seeded instead); the wrong-code attempt's effect on the code's attempt counter beyond it being one of five; behaviour on Node 20 or another Chromium version; the contents of the app's log file.
+
+Task 16 done-condition met on the production build; ticked.

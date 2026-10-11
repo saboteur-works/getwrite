@@ -180,7 +180,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-20, FR-21 (Chromium half on the changed build). Main checkout, one task at a time, never two. Never record the code, cookie, secret or device name beyond a generic label. A request from the host to its own LAN address is not a second-device result: label it so.
 **POS:** task_1ff65dbc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Verification (agent): the real Electron app in development mode on 7340
 **What:** Run the real Electron app in development mode (copied tree) and record that the window loads from 7340 with sharing off and on, the displayed addresses end in 7340, nothing of the app answers on 3000, and a busy 7340 gives the port-in-use message.
