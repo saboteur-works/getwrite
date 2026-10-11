@@ -319,7 +319,7 @@ Shape of the work: five switches in the desktop app write `sharing-limits.json` 
 **Estimate:** 3
 **Notes:** Satisfies FR-35, FR-39. Runs in the main checkout. Retry outside the sandbox on a sandbox-looking error and say which was used. Record any regressions; do not fix them here.
 **POS:** task_d30263d9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Manual check (owner, not executable by an implementor): unpacked build and an Android phone
 **What:** The owner checks, on the unpacked desktop build and a real Android phone as a paired browser, what each switch does, the unlock warning and confirmation, no passphrase prompt on the phone while unlocking is limited, and a refused project deletion showing its reason.

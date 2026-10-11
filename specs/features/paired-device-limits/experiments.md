@@ -1026,3 +1026,66 @@ When there was no file at the start (the first change in the run, Limit project 
 ### Cleanup
 
 Both runs printed `throwaway root removed: true`, covering the throwaway `userdata/`, `projects/` and fake repo folders. In the packaged run: `pids recorded under the started pid: 5; still alive 5 s after close: none`, `listener on 3000 after stop: none`. In the dev run: 9 recorded, 4 alive after 5 s, SIGTERM to those four, none alive afterwards, listener on 3000 none. After the last run, outside the sandbox: `ps -A -o pid=,ppid=,comm=` filtered for `node|next|Electron|GetWrite` listed only processes that were already running and are not ours (the owner's Claude, UA Connect and VS Code crashpad handlers, a `next-devtools-mcp` process tree and two node processes under another parent); none of the pids recorded in either run remained; `lsof -iTCP -sTCP:LISTEN` filtered for node/next/electron/getwrite showed nothing; no `gw-electron-*` folder remained under the temp directory. `frontend/.next/standalone/frontend/server.js` still exists and `frontend/.next/BUILD_ID` is unchanged after the dev run. `git status --short` shows only `?? specs/features/paired-device-limits/scripts/electron-limits.mjs` (plus this file and `tasks.md` once edited).
+
+## Final suites
+
+Task 30. Date 2026-10-10. Main checkout, branch `feat/paired-device-limits`, `git rev-parse --short HEAD` = `e36643c1`, tree clean at the start. `node --version` = v24.15.0 (the Task 4 baseline used the same). Compared with the section "Baselines" (Task 4, HEAD `b24cc0b5`). Recorded by the implementor of Task 30. No source change.
+
+### Sandbox use
+
+Run inside the command sandbox, no retry needed: `pnpm test:ci`, `pnpm typecheck`, `pnpm lint` (frontend/), `pnpm test` and `pnpm typecheck` (electron/), `pnpm knip` (repo root, `COLUMNS=400` so paths are not shortened), `pnpm --filter getwrite-cli test`, the `git` reads. Run outside the sandbox (`dangerouslyDisableSandbox: true`): `pnpm --filter getwrite-frontend build` and `pnpm test:sharing-smoke` (builds and servers). `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before the build, before the smoke run and after it. The only stderr noise was the pnpm `~/.npmrc` EPERM warning, as in the baseline.
+
+### Results against the baselines
+
+| Command (directory) | Exit | Final | Task 4 baseline | Delta |
+| --- | --- | --- | --- | --- |
+| `pnpm test:ci` (frontend/) | 0 | 607 files passed; 6417 tests passed, 0 failed, 1 skipped (6418) | 595 files; 6046 passed, 0 failed, 1 skipped (6047) | +12 files, +371 passed, 0 failed, skipped unchanged at 1 |
+| `pnpm typecheck` (frontend/) | 0 | no errors | no errors | none |
+| `pnpm lint` (frontend/) | 0 | 0 errors, 395 warnings (7 potentially fixable) | 0 errors, 395 warnings (7) | none |
+| `pnpm test` (electron/) | 0 | 25 files; 384 passed, 0 failed, 0 skipped | 23 files; 322 passed | +2 files, +62 passed |
+| `pnpm typecheck` (electron/) | 0 | no errors (both `tsc --noEmit` projects) | no errors | none |
+| `pnpm --filter getwrite-cli test` (repo root) | 0 | 22 files; 144 passed, 0 failed; duration 492.54s | 22 files; 144 passed; 491.70s | none |
+| `pnpm --filter getwrite-frontend build` | 0 | built; `frontend/.next/static` copied to `frontend/.next/standalone/frontend/.next/static` | n/a | n/a |
+| `pnpm test:sharing-smoke` (frontend/) | 0 | `enumerated entries: 91; checks: 28; failures: 0`, "sharing refusal smoke: all checks passed" | 90 enumerated (reference), 28 checks | +1 enumerated entry (`GET /api/sharing/limits`, recorded in Task 26), checks 28 as expected |
+| `pnpm knip` (root) | 1 | sections below | 53 / 1 / 4 / 6 / 4 / 167 / 170 / 14 | see below |
+
+No failing test names: nothing failed. The skipped frontend test was not identified (as in the baseline). The sharing-smoke exceptions count of 3 (`GET /pair`, `POST /api/sharing/pair`, `/_next/static/`) is asserted by the Vitest test `sharing-gate-enumeration.test.ts`, which passed inside the 607 files; this run did not print the exception count separately. The smoke run also reported `pairing page static URLs checked: 15` and `static files checked: 122`.
+
+### knip
+
+Exit 1 (knip exits 1 when it reports any issue, as in the baseline).
+
+| Section | Final | Baseline | Delta |
+| --- | --- | --- | --- |
+| Unused files | 57 | 53 | +4 |
+| Unused dependencies | 1 | 1 | 0 |
+| Unused devDependencies | 4 | 4 | 0 |
+| Unlisted dependencies | 6 | 6 | 0 |
+| Unlisted binaries | 4 | 4 | 0 |
+| Unused exports | 166 | 167 | -1 |
+| Unused exported types | 170 | 170 | 0 |
+| Duplicate exports | 14 | 14 | 0 |
+| Configuration hints | 6 | 6 | 0 |
+
+Compared by set (name plus file tail for every entry in every section, against the baseline's printed lists; the baseline's shortened `…` paths were matched on the final path component):
+
+- New entries (all in Unused files, all this feature's own verification scripts, the expected growth):
+  - `specs/features/paired-device-limits/scripts/browser-limits.mjs`
+  - `specs/features/paired-device-limits/scripts/electron-limits.mjs`
+  - `specs/features/paired-device-limits/scripts/two-clients.mjs`
+  - `specs/features/paired-device-limits/scripts/verify-limits.mjs`
+  The baseline's three (`dev-reachability.mjs`, `header-experiment.mjs`, `traversal-experiment.mjs`) are still present. Excluding all seven scripts the count is 50, equal to the baseline's 50.
+- Gone entry (Unused exports): `httpProjectActionsTransport` `frontend/src/store/project-actions-controller.ts:100:14`. It is no longer reported; `frontend/tests/unit/limit-refusal-transports.test.ts` now imports it. That is what was seen; knip's reason was not otherwise inspected.
+- No other entry added or removed in any section. The strict reading of "no section grown" is not met for Unused files (+4); the growth is entirely the four spec scripts above and nothing else is a regression.
+
+### Config check
+
+`git diff --stat main..HEAD -- frontend/next.config.mjs frontend/package.json electron/package.json cli/package.json package.json knip.json frontend/tsconfig.json frontend/vitest.config.* frontend/eslint.config.* .github` printed nothing. `git diff --name-only main..HEAD -- . ':!specs'` filtered to exclude `frontend/{tests,src,components,app,stories}` and `electron/{src,tests}` printed nothing, so no config or workflow file differs from `main`; there is nothing to test against the Node 20 rule and no guard test was added for one. (The branch also carries the fix merged from `main` for the encryption `projectId` validation; the comparison is against `main` as it is now.)
+
+### Node 20
+
+No Node 20 run was made and no CI result for this branch was seen. `ls ~/.volta/tools/image/node` was not re-run here; the Task 4 record found only 22.23.2 and 24.15.0. All runs above used Node 24.15.0 (not the CI Node 22 for frontend/Electron either). The CLI job on Node 20 is therefore not claimed as covered.
+
+### Cleanup
+
+The smoke script started and stopped its own server: after it, `lsof -iTCP:3000 -sTCP:LISTEN` printed nothing, and `ps` filtered for `standalone`, `server.js` and `sharing-refusal` showed only VS Code helper processes that were already running. I started no other process. The owner's `~/Library/Application Support/getwrite-electron` was not touched. `pnpm build:native` was not run. `git status --short` after all runs: empty (the rebuilt `frontend/.next` is gitignored); it will list only this file and `tasks.md` once they are edited.
