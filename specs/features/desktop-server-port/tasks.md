@@ -80,7 +80,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-21 (Chromium half), and the evidence for OQ-5. Main checkout, outside the sandbox. This is the one task that deliberately places a throwaway listener on 7340, before the constant changes; it removes it before the task ends and confirms 7340 is free afterwards.
 **POS:** task_ea9caf34
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: STOP (owner, not executable by an implementor): report Tasks 1 to 6 and finalize OQ-2, OQ-4 and OQ-5 before any dependent work
 **What:** The orchestrator reports the measurements to the owner and waits; the owner answers the three provisional questions and confirms the size of the readiness and refusal work.

@@ -2149,3 +2149,57 @@ FR-14 hypothesis (b), "browsers scope cookies by host and not by port, so a devi
 ### Cleanup
 
 Pids started: 84112, 84113 (no descendants found); both stopped by pid; none left alive. The throwaway folder under `os.tmpdir()` was removed. After the run no listener on A, B, 3000 or 7340. `~/Library/Application Support/getwrite-electron/` and `~/Library/Logs/getwrite-electron` were not read, listed or written. No cookie, secret or code value was printed or recorded.
+
+## Old address and browser acceptance of 7340
+
+Task 6. Date 2026-10-10. Main checkout, branch `feat/desktop-server-port`. Script: `specs/features/desktop-server-port/scripts/old-port-and-7340.mjs` (run once; no failed or retried run). Run OUTSIDE the command sandbox (`next dev`, Chromium and listeners). Node v24.15.0 ran the script. Browser: Playwright Chromium 148.0.7778.96, headless, a fresh context per visit. Next.js 16.2.6 (Turbopack) as printed by `next dev`. The constant in `electron/src/server-config.ts` has not changed; 3000 is still the app's port. `<lan-ip>` is the host's one non-internal IPv4 address (the value is withheld and shown this way throughout).
+
+### Pre-check
+
+Before the script started anything, `lsof -nP -iTCP:3000 -sTCP:LISTEN` and `lsof -nP -iTCP:7340 -sTCP:LISTEN` each printed nothing (run by hand, then again by the script, which refuses to run otherwise). Nothing the task did not start was listening on either port. This is the only task in the list that deliberately places a throwaway listener on 7340.
+
+### Measured
+
+**1. Nothing on 3000 (checked in the script: no listener), Chromium 148.0.7778.96:**
+
+- `http://<lan-ip>:3000/`: navigation failed with `page.goto: net::ERR_CONNECTION_REFUSED at http://<lan-ip>:3000/`. The page URL afterwards was `about:blank` and its body text was unreadable.
+- `http://localhost:3000/`: the same, `net::ERR_CONNECTION_REFUSED at http://localhost:3000/`.
+- The text of Chromium's own error page was NOT captured: in this headless run the failed navigation left the page at `about:blank`, so what a headed Chromium or a phone browser prints for the same failure was not read here. What is recorded is the error code Chromium reported to Playwright.
+
+**2. Throwaway `next dev` on 3000, sharing off.** Command: `pnpm dev` with cwd the frontend of a copied fake repo root (a copy of the root `package.json` and `pnpm-workspace.yaml`, symlinks to the real `frontend/` and `getwrite-config/`), with `GETWRITE_SHARING`, `HOSTNAME`, `PORT`, `GETWRITE_BIND`, `GETWRITE_WINDOW_SECRET`, `GETWRITE_SHARING_DIR`, `DATABASE_URL`, `BETTER_AUTH_SECRET` unset (sharing off), `GETWRITE_PROJECTS_DIR` a throwaway empty folder under `os.tmpdir()`. This is a `next dev` of the repo's frontend, not the Electron app.
+
+- Pids recorded: `pnpm` shell chain 89341 (sh), 89361 (node), 89398 (node), 89404 (`next-server (v16.2.6)`). The listener on 3000 was pid 89404, bound `*:3000`, within the recorded set (checked before any request). `next dev` printed `Local: http://localhost:3000` and `Network: http://<lan-ip>:3000`.
+- **Label: both requests below were made from the host machine to its own LAN address (Node `http.get`). They are NOT a second-device result.** Whether this behaviour predates Feature 75 was not checked.
+- `GET http://<lan-ip>:3000/api/projects`: status 200, `x-getwrite-gate` response header absent, content-type `application/json`, body a JSON array of length 0 (the throwaway projects folder was empty). Shape only; no content recorded.
+- `GET http://<lan-ip>:3000/`: status 200, `x-getwrite-gate` absent, content-type `text/html; charset=utf-8`, body length 36646.
+- So the dev server answered a request addressed to the host's LAN address with its normal response, not a refusal. The empty array means the response carried no project data because there was none to carry; a request returning data was not tried.
+- Stopped by pid: SIGTERM to the four recorded pids; none alive afterwards; no listener on 3000.
+
+**3. Throwaway plain HTTP server on 7340.** This file started as its own process (`--listener`), `0.0.0.0:7340`, status 200 with a one-line marker page (`PORT-7340-MARKER-PAGE`). Pid 89822; `lsof` showed it as the only listener on 7340 (`*:7340`).
+
+- Chromium 148.0.7778.96, `http://<lan-ip>:7340/`: loaded, status 200, title and body text the marker. **Accepted: yes.**
+- Chromium 148.0.7778.96, `http://localhost:7340/`: loaded, status 200, same marker. **Accepted: yes.**
+- Stopped by pid (SIGTERM); none alive; no listener on 7340 afterwards.
+
+### What this does and does not show
+
+- Chromium 148 (Playwright build, headless) loaded plain HTTP pages on 7340 from both the LAN address and localhost, from a server that is not the GetWrite server. The page was a marker page, not the pairing page or an application page; the GetWrite pages on 7340 belong to Tasks 17 to 19.
+- The old-address failure for Chromium with nothing on 3000 was a refused connection, reported as `net::ERR_CONNECTION_REFUSED`. Whether that failure is "confusing" for a writer (OQ-5) is a judgment for the Task 7 stop; this record does not decide it.
+- A development server on 3000 answered the host's own LAN address with 200 and no gate header in this run. The Task 4 finding that dev-mode `next dev` listens on `*:3000` is consistent with it; no cause for the answer beyond that is claimed.
+
+### Not checked (browsers)
+
+Firefox, desktop Chrome and Safari: **not checked**. The statement in the spec's scope note that 7340 is absent from Chrome's and Firefox's restricted-port lists remains unchecked memory for them. The Android phone result is not claimed here (Task 21).
+
+### Not run
+
+- Any browser other than Playwright's headless Chromium 148; a headed Chromium (and so the text of its error page); the Android phone or any second device.
+- The real Electron app and the GetWrite server on 7340; the pairing page and an application page on 7340.
+- A request to the dev server on 3000 that returns real project data; a dev server with sharing on; the repo tree's own `pnpm dev` (the copied tree was used).
+- Whether the dev server's LAN answer predates Feature 75.
+- IPv6, a `.local` hostname, HTTPS, a different LAN address.
+- Node 20.
+
+### Cleanup
+
+Pids started and stopped by pid: 89341, 89361, 89398, 89404 (next dev tree), 89822 (7340 listener); none left alive. After the run: no listener on 3000 or 7340 (`lsof` printed nothing for each, also checked by the script). The throwaway folder under `os.tmpdir()` was removed. The repo's `projects/` name-hash was `796ca22ebbca` (17 names) before and after. `~/Library/Application Support/getwrite-electron/` and `~/Library/Logs/getwrite-electron` were not read, listed or written. No cookie, secret or code value was read or printed.
