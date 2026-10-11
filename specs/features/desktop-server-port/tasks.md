@@ -190,7 +190,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-18, FR-19, FR-22 (second half), FR-17 (real-app half), FR-11 (verification). Main checkout, one task at a time. Never print window-secret values, codes or cookies. Dev mode here is "the development code path in a copied tree"; the difference from the repo tree was not measured.
 **POS:** task_ee7bf4f1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Build the unpacked app (agent) and record the build
 **What:** Produce the unpacked desktop build (no installer) from the changed tree so Task 19 can run it.

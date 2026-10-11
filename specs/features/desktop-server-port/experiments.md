@@ -2390,3 +2390,75 @@ Processes: app main pid 19589 and recorded descendants 19602 (`GetWrite Helper (
 Not verified / not run: pairing from a second physical device; whether the dev-mode non-pairing seen earlier occurs on the unpacked build is answered only for this one run (one run, one wrong then one right attempt; repeatability was not measured); what produced the second `/pair` navigation; Feature 77's own navigation count compared to this build's; the device name shown in the list (generic label only); the packaged app with sharing turned on through the settings toggle and restart (seeded instead); the wrong-code attempt's effect on the code's attempt counter beyond it being one of five; behaviour on Node 20 or another Chromium version; the contents of the app's log file.
 
 Task 16 done-condition met on the production build; ticked.
+
+## Electron development mode on 7340
+
+Date 2026-10-11. Task 17. Recorded by the implementing agent; every number is from the second of two complete runs of `scripts/electron-dev-7340.mjs` (`node …/electron-dev-7340.mjs`, `node v24.15.0`, tip `e0f8c1d5`, tree clean before; `electron/dist` and the frontend dev path as left by earlier tasks, not rebuilt). Run OUTSIDE the command sandbox (`dangerouslyDisableSandbox`); output kept at `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t17b.out`. Port 7340 (the constant, `electron/dist/server-config.js`); this repeats on 7340 the mechanism measured on 3000 in "Port in use today (3000)".
+
+Lead directive, stated as such: pairing through the page's own form is NOT part of this task's checks. The dev-mode pairing form was recorded as not working ("Pairing on 7340", Task 16, dev-mode run) and is filed separately; it was not investigated here. No paired device was needed, so no in-page fetch or Node pairing POST was made.
+
+### Method
+
+- The development code path in a copied tree (throwaway fake repo root with a copy of `electron/dist` and `electron/package.json` carrying a throwaway `name` and no `productName`, so `app.getPath("logs")` is a throwaway folder under `~/Library/Logs`, symlinks to the real `frontend/` and `getwrite-config/`, an empty `projects/`). The difference from the repo tree itself was not measured. One throwaway `--user-data-dir` per launch, all under `os.tmpdir()`.
+- Asserted for every launch right after `_electron.launch` and before any other step: `app.getPath("userData")` equals the throwaway folder and is not under the owner's `getwrite-electron` folders, `app.getPath("logs")` equals the throwaway log folder, `isPackaged` is `false`. (The app has already started its own start-up by the time the script can ask; the same limit as Tasks 3, 4 and 16.) The throwaway projects folder was empty after the port-in-use launches. `~/Library/Application Support/getwrite-electron` and `~/Library/Logs/getwrite-electron` were not read, listed or written. No cookie, secret, key, proof, code or response body was printed or recorded; the app log lines that matched a secret-like word were withheld by the script (one such line per normal launch: its content was not looked at).
+- Pre-checks (the script refuses otherwise): no listener on 7340, 3000 or 6006 before anything started, confirmed again by me with `lsof` before the run.
+- Sharing OFF is the default. Sharing ON was SEEDED (`sharingEnabled: true` in the throwaway `workspace.json`), not turned on through the settings toggle: a restart cannot be driven from the script.
+- Pids: the script recorded the Electron main pid, its descendants (parent-pid recursion, repeatedly while alive), and the throwaway listener's pid; it stopped only recorded pids whose command name was unchanged (`app.close()` first, then SIGTERM). The addresses of the host's own LAN interface are masked as `<lan-ip>` below.
+- Requests described as "from the host" were sent from this machine to its own LAN address: NOT a second-device result.
+
+### Sharing OFF (default)
+
+- Window's loaded origin: `http://localhost:7340` (PASS).
+- Listening sockets of the recorded pids (`lsof -nP -a -iTCP -sTCP:LISTEN -p <pids>`): pid 38579 (Electron main) `127.0.0.1:62892` and `127.0.0.1:62894`; pid 38624 (`next-server (v16.2.6)`, the dev server) `*:7340`. The only listener on 7340 was 38624. The two `127.0.0.1` ports on Electron main were also seen in Task 4's Electron run; what opened them was not discriminated there or here. The dev server's wildcard bind with sharing off matches Task 3 (A) and Task 4 and is reported as measured.
+- Sharing status via the window's bridge: `enabled:false, effective:false, blockedByHostedAuth:false, port:7340, addresses 0, credentialStore:"missing"`.
+- Nothing listened on 3000; TCP connects to 3000 on `127.0.0.1`, `::1` and `<lan-ip>`: all `ECONNREFUSED`; `GET http://localhost:3000/` from this host: no response (`ECONNREFUSED`). The task created no listener on 3000.
+- App log lines (names only): `app ready — isPackaged: false`, `resourcesPath`, `standaloneDir`, `projectsDir` (the throwaway fake root's `projects`), `templatesDir`, `Spawning dev server in: <fake>/frontend`, `next dev`, `Local: http://localhost:7340`, `Network: http://<lan-ip>:7340`, `Ready`, `server ready`, then `GET` request lines.
+
+### Sharing ON (seeded)
+
+- Window's loaded origin: `http://localhost:7340` (PASS). Listener on 7340: pid 39116 (`next-server`), `*:7340`, in the recorded tree. Status via the bridge: `enabled:true, effective:true, port:7340, credentialStore:"missing"`, 1 address.
+- Displayed addresses, collected as shown text (list items that are addresses): Start Page status surface (`section[aria-label="Sharing is on"]`): 2 such sections, 2 list items, both `http://<lan-ip>:7340`; App Settings "Home network sharing" section: 6 list items, of which 1 is an address (`http://<lan-ip>:7340`) and 5 are not addresses (the limit toggles' own items). Total shown address items: 3; ending `:7340`: 3; ending `:3000`: 0; ending neither: 0. The bridge reported 1 address while the Start Page showed 2 address items in 2 sections; why the Start Page has two such sections is not established (reading `SharingStatus.tsx` and `AppShell.tsx` for a second mount, or counting the `SharingStatus` elements in the DOM tree, would settle it). It does not change the count of addresses ending `:3000`, which is 0.
+- Host allowlist against the real app, `GET /pair` from this host to `<lan-ip>:7340` with an overridden `Host` header (NOT a second-device result): `Host: <lan-ip>:7340` gave 200 (no `x-getwrite-gate` header); `Host: <lan-ip>:3000` gave 403 (gate header present); control `Host: evil.example:7340` gave 403.
+- Nothing of the app on 3000: same as above (no listener, all connects `ECONNREFUSED`, no response).
+
+### Port in use on 7340
+
+Listener: this script started as a separate process (`--listener <host>`), answering 200 with a page whose title and text are `FOREIGN-LISTENER-MARKER-7340` for any request, logging per request: path (query values stripped), query parameter names, whether `x-getwrite-window` was present (never the value), names of non-standard headers and of readiness-like header names. Sharing was OFF (default) for these launches; ON was not combined with a busy port. Per shape, the same 11-step order: 7340 confirmed free; listener started, pid recorded, only listener on 7340 (confirmed by `lsof`); app launched with a new throwaway userData; observed 20 s with a 400 ms sample of the window's URL, title and `document.body.innerText`; app and listener stopped by recorded pid; 7340 confirmed free; a fresh normal launch (sharing off) followed.
+
+| Shape | Listener pid, bind (`lsof`) | Electron pid | Window | Listener requests | Header |
+| --- | --- | --- | --- | --- | --- |
+| (i) 127.0.0.1 only | 39635, `127.0.0.1:7340` | 39666 | `data:` page from t=7 ms to the end of 20 s; title is the throwaway package name; text starts "GetWrite did not start. Port 7340 is already in use by another program on this computer, so GetWrite cannot run its local server. Close the other program and open GetWrite again. To find which program holds the port, …" | 0 | n/a: none received |
+| (ii) all interfaces (0.0.0.0) | 41047, `*:7340` | 41066 | same | 0 | n/a: none received |
+| (iii) `::1` only (host has `::1` on `lo0`) | 42442, `[::1]:7340` | 42497 | same | 0 | n/a: none received |
+
+For each of the three shapes:
+- The window never showed the listener's page: neither the text nor the title contained the marker in any sample; the URL was a `data:` URL in every sample, never an `http` URL and never the local origin `localhost:7340`. Limit: sampling every 400 ms and one window; a navigation shorter than the sampling interval would not appear in the URL samples. The listener's request log is the other evidence: it received 0 requests in each shape, so nothing, including the window, requested the listener's page. The app's log has no `server ready` line, so the app did not take the readiness-confirmed path that loads the local origin.
+- The message names 7340 and is the port-in-use wording ("GetWrite did not start. Port 7340 is already in use…").
+- The listener never received `x-getwrite-window`: it received 0 requests, so also none with the header, no readiness poll, no challenge query (query parameter names: none, since no request), and no other readiness-like header names.
+- Sharing status via the window's bridge: the call was rejected, `Error invoking remote method 'getwrite:sharing-get-status': Error: Refused: untrusted sender` (the window is on a `data:` page, not the trusted local origin; as in Task 3 for the same state). The app therefore showed no sharing status in this state; the status was not obtained another way.
+- The app did not exit during the 20 s observation (process still running when closed by the script). App log lines for the launch (3): `app ready — isPackaged: false`, `resourcesPath: …`, `not starting the server: the port check refused the launch`. No `Spawning dev server`, no `server ready`, no `server exited` line.
+- No server forked: the Electron main's recorded tree was 4 pids (Electron main, Helper (GPU), Helper, Helper (Renderer)); no `node`, `sh`, `pnpm` or `next-server` among them; the only listener on 7340 at the end of the observation was still the throwaway listener. No `projectsDir` log line, and the throwaway projects folder had 0 entries.
+- The throwaway listener was stopped by its recorded pid (SIGTERM; not alive afterwards); the app had been closed by the script and no recorded app pid was alive after `app.close()`. 7340 was confirmed free (no listener) after each shape.
+- Fresh normal launch after the listener was gone (sharing off): window origin `http://localhost:7340`, 7340 listener a recorded `next-server`, `*:7340`, nothing on 3000, `GET http://localhost:3000/` no response; for (i) Electron 40569, (ii) 41961, (iii) 43391. 7340 was free after each stopped.
+
+Quoted beside it, from "Port in use today (3000)" (Task 3, the unchanged app on 3000, dev mode, sharing off): with a 200 listener bound to `127.0.0.1` the window showed the foreign page for the whole 55 s run, and the listener received the window header on its readiness poll and on the window's own request; with a 200 listener on `::` the window showed the foreign page for under about a second before `Server exited unexpectedly (code 1)`, the header also reached the listener; no port was named. On 7340 with the changed app, in the two shapes Task 3 measured (127.0.0.1 only, wildcard) and a third (`::1`), the window never showed the listener's page, the listener received no request, and the message names the port. One run per shape; run-to-run variation was not measured.
+
+### Processes
+
+Pids started and recorded, per launch (Electron main / dev-server chain): off 38579; on 39072; blocked (i) listener 39635, Electron 39666; after (i) 40569; blocked (ii) listener 41047, Electron 41066; after (ii) 41961; blocked (iii) listener 42442, Electron 42497; after (iii) 43391. After `app.close()` the dev-mode app left its dev-server children alive in each normal launch (off: `node` 38587, `node` 38618, `next-server` 38624, plus a `node` 38731; the other launches likewise, 3 or 4 pids), as the brief warned; each was stopped by recorded pid with SIGTERM (`none alive` afterwards). After the last launch: no listener on 7340, 3000 or 6006; throwaway root and throwaway log folder removed (`true`/`true`). (My own `ps` check afterwards was refused by the command sandbox, so process absence rests on the script's per-pid check and the three `lsof` results.)
+
+### Discarded run
+
+A first complete run (same script before two fixes) differed only in two script faults, both mine: (a) the App Settings address collection took every `li` in the section, including five non-address limit-toggle items, so its "every shown address" check failed on a miscount (8 items; 3 addresses); (b) the port-in-use "projectsDir" check looked for a log line the refused launch never writes. Both were fixed in the script (address items filtered by `http(s)://`; the check replaced by "projects folder empty and no `projectsDir` line"). All other lines of the first run matched the second. It was not used for any number above.
+
+### Not verified / not run
+
+- Sharing turned on through the real settings toggle and a restart (seeded instead); the second-device view of anything (all requests were from this host to its own LAN address).
+- Pairing through the page, by directive (filed separately). No pairing was done by any route.
+- A busy 7340 combined with sharing ON; a listener that answers 500 or stays silent on 7340; a listener bound to `::` only (dual-stack wildcard, as in Task 3 B).
+- The packaged (unpacked) build: Task 19.
+- A second instance alongside (Task 19's note).
+- `pnpm electron:dev` as written (the Electron binary was run directly on the copied `dist`, as in Tasks 3, 4 and 16), and the repo tree itself.
+- Why the Start Page showed two "Sharing is on" sections (above); what opened the two `127.0.0.1` ports on the Electron main process.
+- The race where a port is free at the check and taken before the child binds (the guard's output recogniser), and the unreachable-probe message (`could not check`).
+- Run-to-run variation (one run per shape); Node 20 or 22; platforms other than macOS; whether a window navigation shorter than 400 ms would have been missed (limit of the sampling, stated above).
