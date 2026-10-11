@@ -29,7 +29,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (definition), FR-30 (baselines), FR-21 to FR-24 (rules in the header). Main checkout, build and e2e and smoke OUTSIDE the sandbox, unit suites and knip inside; say which. Do not stop any Storybook or server the task did not start. A stale or missing build is a blocker for Tasks 2 to 7; do not rebuild in later tasks unless the tree changed.
 **POS:** task_c7309aab
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Shared harness: script library, two real-editor clients, request log, store reader and a self-check
 **What:** Build the script library that starts the built standalone server on a free port, pairs two browser contexts, creates a fixture project and resource, drives two Playwright Chromium contexts' real editors with real keystrokes, logs every request, reads the four stores from disk and prints a per-repetition record, and prove with a self-check that the reader tells client A's document from client B's and from a mixed one.
