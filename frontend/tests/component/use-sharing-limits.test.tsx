@@ -48,6 +48,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   delete (window as { getwriteDesktop?: unknown }).getwriteDesktop;
+  window.history.pushState({}, "", "/");
 });
 
 describe("useSharingLimits", () => {
@@ -154,6 +155,32 @@ describe("useSharingLimits", () => {
     );
     spy.mockRestore();
   });
+});
+
+describe("useSharingLimits on the pairing page", () => {
+  it.each(["/pair", "/pair?reason=unpaired"])(
+    "makes no limits read at %s on mount, focus, visibility, refresh() or the prompt poll",
+    async (url) => {
+      window.history.pushState({}, "", url);
+      fetchSharingLimits.mockResolvedValue(PAIRED);
+      const view = renderHook(
+        () => {
+          useDeclareUnlockPromptMounted(true);
+          return useSharingLimits();
+        },
+        { wrapper },
+      );
+      await flush();
+      window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
+      await act(async () => {
+        await view.result.current.refresh();
+        await vi.advanceTimersByTimeAsync(15000);
+      });
+      expect(fetchSharingLimits).not.toHaveBeenCalled();
+      expect(view.result.current.state).toEqual({ state: "unknown" });
+    },
+  );
 });
 
 describe("useDeclareUnlockPromptMounted", () => {

@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { isPairingPage } from "./pairing-page";
 import { getDesktopBridge } from "../../src/lib/desktop-bridge";
 import {
   fetchSharingLimits,
@@ -34,6 +35,10 @@ import {
  * while a consumer has declared the unlock prompt mounted and is skipped
  * while the document is hidden. A re-read narrows, but cannot close, the
  * window in which a stale "allowed" answer is still on screen.
+ *
+ * On the pairing page no read is made by any of these paths: the device is not
+ * paired, every read would be refused, and the refusal there must not loop.
+ * State stays `unknown`.
  */
 
 type SharingLimitsState = { state: "unknown" } | SharingLimitsAnswer;
@@ -90,6 +95,7 @@ export default function SharingLimitsProvider({
   const current = useRef<SharingLimitsState>(UNKNOWN);
 
   const refresh = useCallback(async (): Promise<SharingLimitsState> => {
+    if (isPairingPage()) return current.current;
     const requestId = ++latestRequest.current;
     let next: SharingLimitsState;
     try {
