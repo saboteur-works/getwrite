@@ -50,7 +50,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-10 (measurement), FR-22 (first half, mechanism). Main checkout, outside the sandbox (Electron needs it). Process-safety rules apply in full; the only listener on 3000 is the task's own. Never read the real `userData`. The nonce-versus-child-state choice in Task 9 uses this result.
 **POS:** task_ad487946
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Experiment (agent): which port each dev command listens on, and whether a dev app and a packaged app can run at once
 **What:** Record the port each development command actually listens on and whether two app instances (as a dev app and a packaged app would be) can run at once, so OQ-2 can be finalized.
