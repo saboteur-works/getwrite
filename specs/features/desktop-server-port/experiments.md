@@ -2101,3 +2101,51 @@ An unpacked build exists at `dist-electron/mac-arm64/GetWrite.app` (modified 202
 ### Cleanup
 
 Pids started and recorded: `pnpm dev` run 65330 with 4 descendants; `pnpm start` (fake root) 66191 with 6; `pnpm start` (real root) 67951 with 6; `PORT` run 67145 with 4; Electron run 68885 with its helpers and `next dev` chain; two-instance run 70433 and 70567 with their children; same-folder run 73999 and 74131 with their children. Each run's script signalled only the recorded pids that were still alive with the same command name (SIGTERM; each time "none alive" afterwards). 3000 was free after every run, throwaway folders under `os.tmpdir()` and the throwaway log folders under `~/Library/Logs` were removed (the script prints `throwaway root removed: true; throwaway log folder removed: true` for each). `git status --short` afterwards: see the task report.
+
+## Cookie scope across ports
+
+Date 2026-10-10 (run started 22:07 MDT). Script: `specs/features/desktop-server-port/scripts/cookie-scope.mjs` (run once, no failed or retried run). Run OUTSIDE the command sandbox (servers and Chromium). Node v24.15.0 ran the script. Browser: Playwright Chromium 148.0.7778.96 (headless, one browser, fresh contexts). Host LAN address: `<lan-ip>` (one non-internal IPv4 interface, en0; the value is not recorded here).
+
+**Label: every request below was made from the host machine to its own LAN address. It is not a second-device result.**
+
+### Setup (as run)
+
+- Build: existing `frontend/.next/standalone/frontend/server.js` from Task 1; `.next/BUILD_ID` present in the standalone tree and the `static` directory present under `.next/standalone/frontend/.next/`. No rebuild.
+- Before starting anything: no listener on 3000 or 7340, and none on the chosen ports. Ports chosen by binding port 0: A = 56235, B = 56236 (ephemeral ports; 3000 and 7340 were not used).
+- Two instances of the same build, pids 84112 (A) and 84113 (B), no descendants found. Each with `GETWRITE_SHARING=1`, `HOSTNAME=0.0.0.0`, `GETWRITE_BIND=0.0.0.0`, the SAME throwaway `GETWRITE_SHARING_DIR`, a throwaway `GETWRITE_WINDOW_SECRET` (random; value never printed or recorded), own `PORT`, own throwaway `GETWRITE_PROJECTS_DIR`. All throwaway folders were under `os.tmpdir()` (path asserted before use).
+- Pairing: the script wrote `pairing-state.json` (salted HMAC of a random 6-digit code, as `frontend/scripts/sharing-refusal-smoke.mjs` does), then in a fresh browser context opened `http://<lan-ip>:56235/pair`, typed the code into the page's input and pressed Enter. The code and the cookie value were never printed.
+
+### Measured
+
+1. Fresh context, nothing paired, `http://<lan-ip>:A/`: 0 cookies; the navigation was redirected with status 307 to `/pair` on port A, final status 200, h1 "Pair this device", pairing input present.
+2. After submitting the code at A: path became `/`. Cookie set for `<lan-ip>`: name `getwrite_device`, domain `<lan-ip>` (host-only; no port in the attribute, no leading dot), path `/`, SameSite `Strict`, HttpOnly true, Secure false, expiry present (about 365 days). Value not recorded.
+3. Paired context, `http://<lan-ip>:A/`: status 200, no redirect, h1 "GetWrite", no pairing input (application page).
+4. In the SAME context, before requesting B: the context's cookie jar held 1 cookie matching the URL `http://<lan-ip>:B`.
+5. In the SAME context, `GET http://<lan-ip>:B/api/auth-status`: status 200, no `x-getwrite-gate` header.
+6. In the SAME context, `http://<lan-ip>:B/` in the page: status 200, no redirect, final path `/` on port B, h1 "GetWrite", no pairing input, body text length 603 (the same as at A); that is the application page, not the pairing page.
+7. Cookie attributes after requesting B: still one cookie `getwrite_device`, domain `<lan-ip>`, path `/`, SameSite Strict, HttpOnly true, Secure false, expiry present (about 365 days). No second cookie appeared.
+8. Control, a second fresh context never paired, `http://<lan-ip>:B/`: 307 to `/pair` on port B, final 200, h1 "Pair this device", pairing input present.
+
+### Separate items
+
+- **`localStorage` and `sessionStorage` (from the run):** after setting a marker key in both at origin A, A held 1 key in each; at B (same context, same host, other port) each held 0 keys and the marker was absent; back at A each still held 1 key with the marker present. Measured: both storages were separate per port in this run. (The page at B was also an application page, and it added no key of its own at the time of reading.)
+- **Saved bookmark (reasoning, not run):** a bookmark or saved home-screen link at `http://<lan-ip>:<old port>` names a different origin from `http://<lan-ip>:<new port>`; opening it requests the old port, where this feature leaves no listener, so it does not reach the server on the new port. What a given browser or phone shows for that failed request was not exercised here (Task 6 covers Chromium for 3000). The bookmark itself was not created or opened in this run.
+
+### Verdict (this run only)
+
+In this run, the device paired at `http://<lan-ip>:56235` was treated as paired at `http://<lan-ip>:56236`: the same context got status 200 on `/api/auth-status` and the application page (not the pairing page) at B, with a single host-only cookie that has no port in its scope, against the same credential store. A never-paired context at B was sent to the pairing page, so the result is not a property of B refusing nothing.
+
+FR-14 hypothesis (b), "browsers scope cookies by host and not by port, so a device paired at one port may still be paired at another on the same host": **confirmed by this run**, for Chromium 148 headless, plain HTTP, one host address, two instances of one build sharing one `GETWRITE_SHARING_DIR`. The cookie being sent to B and accepted by the shared store is observed; the run did not separate which of the two (cookie scoping in the browser, the shared store) would alone be enough, because neither was varied. Not named as a cause beyond what was observed.
+
+### Not run
+
+- Any other browser (Firefox, WebKit, desktop Chrome, Safari, Android Chrome) and a real second device (this is Task 21 for the phone).
+- The packaged or dev Electron app and the numbers 7340 and 3000 (ports were ephemeral; the Host allowlist matched `<lan-ip>:<port>` for each instance's own `PORT`).
+- HTTPS, a `.local` hostname, a different LAN address for the same host, IPv6.
+- A browser holding a cookie from a store that does not contain its hash (the shared store was the same for A and B; a different store at B was not run).
+- The bookmark case itself; the cookie surviving a browser restart; cookie renewal (`Max-Age`) at B as a separate check (expiry present, about 365 days, was read, not compared before and after).
+- Node 20.
+
+### Cleanup
+
+Pids started: 84112, 84113 (no descendants found); both stopped by pid; none left alive. The throwaway folder under `os.tmpdir()` was removed. After the run no listener on A, B, 3000 or 7340. `~/Library/Application Support/getwrite-electron/` and `~/Library/Logs/getwrite-electron` were not read, listed or written. No cookie, secret or code value was printed or recorded.

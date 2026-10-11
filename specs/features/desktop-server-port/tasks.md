@@ -70,7 +70,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-14 and the evidence for OQ-4. Main checkout, outside the sandbox, after `pnpm build` and copying `.next/static` into `.next/standalone/frontend/.next/static` (the build needs 3000 and 7340 free only to start nothing; the servers use free ports A and B). A request from the host to its own LAN address is not a second-device result: label it so. If the machine has no LAN address, record that and stop.
 **POS:** task_b7d271a3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Experiment (agent): what a client opening the old address sees, and whether a real browser accepts port 7340
 **What:** Record what real Chromium shows at the old port with nothing listening, whether it answers from the LAN address when a dev server holds it, and whether Chromium accepts a page served on port 7340.
