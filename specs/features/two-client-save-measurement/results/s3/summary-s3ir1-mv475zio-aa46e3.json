@@ -1,0 +1,530 @@
+[
+  {
+    "variant": "i",
+    "runId": "s3ir1-mv475zio-aa46e3",
+    "port": 63997,
+    "pid": 68147,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": false,
+    "nonCanonicalRevisions": [],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir1-mv475zio-aa46e3-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir1-mv475zio-aa46e3-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "i",
+    "runId": "s3ir2-mv4773si-9f259e",
+    "port": 64079,
+    "pid": 70091,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": false,
+    "nonCanonicalRevisions": [],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir2-mv4773si-9f259e-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir2-mv4773si-9f259e-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "i",
+    "runId": "s3ir3-mv47882n-8f7b8b",
+    "port": 64179,
+    "pid": 72182,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": false,
+    "nonCanonicalRevisions": [],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir3-mv47882n-8f7b8b-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir3-mv47882n-8f7b8b-rep03-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "ii",
+    "runId": "s3iir1-mv479cbd-45a716",
+    "port": 64256,
+    "pid": 74081,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= B#1"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir1-mv479cbd-45a716-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir1-mv479cbd-45a716-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "ii",
+    "runId": "s3iir2-mv47ar6i-f87348",
+    "port": 64336,
+    "pid": 76344,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= B#1"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir2-mv47ar6i-f87348-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir2-mv47ar6i-f87348-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "ii",
+    "runId": "s3iir3-mv47c62p-b04484",
+    "port": 64415,
+    "pid": 78674,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= B#1"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir3-mv47c62p-b04484-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir3-mv47c62p-b04484-rep03-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "iii",
+    "runId": "s3iiir1-mv47dl0w-2f01ea",
+    "port": 64496,
+    "pid": 80929,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": false,
+    "nonCanonicalRevisions": [],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir1-mv47dl0w-2f01ea-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir1-mv47dl0w-2f01ea-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "iii",
+    "runId": "s3iiir2-mv47epad-ab5c22",
+    "port": 64566,
+    "pid": 82823,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": false,
+    "nonCanonicalRevisions": [],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir2-mv47epad-ab5c22-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir2-mv47epad-ab5c22-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "iii",
+    "runId": "s3iiir3-mv47ftjm-d94a7a",
+    "port": 64645,
+    "pid": 84721,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": false,
+    "nonCanonicalRevisions": [],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir3-mv47ftjm-d94a7a-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir3-mv47ftjm-d94a7a-rep03-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "iv",
+    "runId": "s3ivr1-mv47gxsw-65efc4",
+    "port": 64717,
+    "pid": 86553,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= A#1"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr1-mv47gxsw-65efc4-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr1-mv47gxsw-65efc4-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "iv",
+    "runId": "s3ivr2-mv47icrk-2381e9",
+    "port": 64795,
+    "pid": 88894,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= A#1"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr2-mv47icrk-2381e9-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr2-mv47icrk-2381e9-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "iv",
+    "runId": "s3ivr3-mv47jrp9-d8c5c6",
+    "port": 64871,
+    "pid": 91153,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= A#1"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr3-mv47jrp9-d8c5c6-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr3-mv47jrp9-d8c5c6-rep03-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "v",
+    "runId": "s3vr1-mv47l6gi-42d84c",
+    "port": 64968,
+    "pid": 93602,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= B#3"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr1-mv47l6gi-42d84c-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr1-mv47l6gi-42d84c-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "v",
+    "runId": "s3vr2-mv47mx5s-2d0963",
+    "port": 65075,
+    "pid": 96390,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= B#3"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr2-mv47mx5s-2d0963-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr2-mv47mx5s-2d0963-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "v",
+    "runId": "s3vr3-mv47onvg-f50888",
+    "port": 65207,
+    "pid": 99189,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= B#3"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr3-mv47onvg-f50888-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr3-mv47onvg-f50888-rep03-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "vi",
+    "runId": "s3vir1-mv47qelr-21d346",
+    "port": 65298,
+    "pid": 2351,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= A#3"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir1-mv47qelr-21d346-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir1-mv47qelr-21d346-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "vi",
+    "runId": "s3vir2-mv47s5ba-45d988",
+    "port": 65403,
+    "pid": 5158,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= A#3"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir2-mv47s5ba-45d988-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir2-mv47s5ba-45d988-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "vi",
+    "runId": "s3vir3-mv47tw1k-48d6c0",
+    "port": 65502,
+    "pid": 7962,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold B#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "B#1",
+    "held": [
+      "B#1"
+    ],
+    "backupCreated": true,
+    "nonCanonicalRevisions": [
+      {
+        "dir": "v-2",
+        "canonical": false,
+        "name": "Auto-backup before large deletion",
+        "automaticSnapshot": true,
+        "contains": "= A#3"
+      }
+    ],
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir3-mv47tw1k-48d6c0-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir3-mv47tw1k-48d6c0-rep03-digest.txt",
+    "harnessError": null
+  }
+]

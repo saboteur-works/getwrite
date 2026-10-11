@@ -1789,3 +1789,3405 @@ JSON written: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-clie
 7. Servers and contexts stopped by recorded pids, throwaway folders removed, ports confirmed free: process table and the post-run checks above.
 8. `git status --short` shows no change outside `specs/`: pasted above.
 9. Harness fault found: the mislabelled field; the first set of three repetitions was discarded and re-run; stated above.
+
+## S3 stale client
+
+Task 4. Date 2026-10-11 (runs 19:09 to 19:29 UTC). Main checkout `/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/two-client-save-measurement`, `git rev-parse --short HEAD` = `c92d82ca` (the new script `scripts/s3-stale-client.mjs` and `results/s3/` are new, uncommitted files under `specs/`). `node --version` = `v24.15.0` (no Node 22 or 20 run is claimed). Script: `scripts/s3-stale-client.mjs` (written in this task; it uses the Task 2 harness libraries unchanged). Result JSON: `results/s3/s3<variant>r<n>-<run id>-rep0<n>.json` (18 files), `results/s3/summary-s3ir1-mv475zio-aa46e3.json`, and one `*-digest.txt` per repetition (the text pasted under "The pasted records" below).
+
+**Server (every repetition): the built standalone server** (`frontend/.next/standalone/frontend/server.js`, built at `812f2859` in Task 1, reused; `frontend/` unchanged, so not rebuilt), sharing on, on a free port the script picked, one fresh server, one fresh project and one fresh resource per repetition. **Every request in this section is host to itself (the private LAN address of this machine), not a second-device result.** Both clients are headless Chromium (Playwright `chrome-headless-shell`), two separate paired browser contexts, real keystrokes into the TipTap editor.
+
+### Where each thing ran
+
+| What | Where |
+|---|---|
+| `node --check scripts/s3-stale-client.mjs`, `pnpm knip`, `git status`, reading and aggregating the JSON | inside the command sandbox |
+| the 18 repetitions (`node scripts/s3-stale-client.mjs i,ii,iii,iv,v,vi 3`), the throwaway servers, Chromium, every `lsof` / `ps` check | OUTSIDE the sandbox (`dangerouslyDisableSandbox`) |
+
+Output of the run: `/tmp/getwrite-two-client/logs/s3-run1.out` (the full printed records, request logs as long JSON lines; 1.6 MB, not pasted whole). Server logs: `/tmp/getwrite-two-client/logs/s3<variant>r<n>-<run id>-server.log` (not read, not pasted). A write of the knip output to `/tmp/...` from inside the sandbox was refused (`operation not permitted`), so the knip output went to the session scratchpad instead.
+
+### What was run (the variants, 3 repetitions each, 18 repetitions in all, every one recorded, none discarded)
+
+Sequence of one repetition (identical in every variant except for what the saver types): a fresh server, project and resource holding `BASE alpha bravo charlie`; client A opens the resource, then client B opens it, both wait until the editor shows the base text (footers `All changes saved · not saved yet`). The STALE client is then left alone (no input, no reload). The SAVER types its addition with real keystrokes (caret to the end with `ControlOrMeta+End`, 40 ms per key) and waits until the footer reads saved; 5 s later (measured 5005 to 5016 ms after the acknowledgement) the next typing starts. The stale client types its single marker and waits for saved; the stores are read about 3.5 to 4.5 s after each acknowledgement (quiet wait: no request in flight, then the digest of the resource's files, sidecar, indexes and writing log unchanged across two reads 1000 ms apart; 1003 to 1105 ms in every read); both editors are read right after the stale save was acknowledged, at +5 s, at +30 s (no reload), and after both pages were reloaded; the stores are read once more after the reload.
+
+| Variant | Stale client | Saver | Saver types | Stale client then types | Saver's saves before the stale save |
+|---|---|---|---|---|---|
+| (i) | A | B | ` B1` | ` A1` | 1 |
+| (ii) | A | B | ` B2LONG` + the 40-word list (41 words appended; B's document 45 words) | ` A1` | 1 |
+| (iii) | B | A | ` A1` | ` B1` | 1 |
+| (iv) | B | A | ` A2LONG` + the 40-word list (A's document 45 words) | ` B1` | 1 |
+| (v) added by the lead | A | B | three saves: ` B1`, then ` B2LONG` + the list, then ` B2` (B's document 47 words) | `Q` (no leading space, so the document reads `BASE alpha bravo charlieQ`) | 3 |
+| (vi) the mirror of (v) | B | A | three saves: ` A1`, ` A2LONG` + the list, ` A2` (A's document 47 words) | `Q` | 3 |
+
+(v) and (vi) were run (3 repetitions each). In (v)/(vi) the three saver saves were acknowledged 21.4, 7.7 and 7.6 s apart (rep 1 of (v): `B#1` `19:21:21.111Z`, `B#2` `19:21:42.534Z`, `B#3` `19:21:50.248Z`, then the stale save `19:21:57.895Z`); the long addition takes about 13.8 s to type at 40 ms a key (typing time 13830 to 13876 ms measured), so the second save is later than the 5 s minimum; every gap from an acknowledgement to the next typing was 5005 to 5016 ms (30 values, all variants). The stale client's page sent no request between its last opening response and its own save in any of the 18 repetitions (its save was request number 20 after 19 opening requests; the idle between the last opening response and the save was 10.3 s in (iii) to 40.5 s in (v), the saver's typing and waiting included).
+
+**The word `charlieQ`:** with the fixed name `Q` typed with no leading space, the character attaches to the last word of the stale editor's document. The stale document in (v)/(vi) therefore has 4 words, `BASE alpha bravo charlieQ`, and carries no separate token `Q`. The harness's request marker list therefore shows `[]` for that save (the marker list matches whole words); the stale text is identified by its sha256 and by the stored document equalling the harness-held document. This is a property of the specified marker, not a harness fault.
+
+**Varied:** which client is stale (A, B); the saver's addition (short one word, long 41 words, three saves with a long one in the middle); the stale client's marker (` A1`/` B1`, `Q`). **Held fixed:** base document, typing delay (40 ms), waits (5 s after a save, 30 s), the stale client's own single marker per variant, one resource in one plain project, headless Chromium, host to itself, the built server, A opening before B, the stale client unreloaded and untouched until its own typing.
+
+### Processes, ports, folders (per repetition)
+
+Before each repetition: `lsof -nP -iTCP:7340 -sTCP:LISTEN` and `-iTCP:3000` printed nothing (recorded in each record's `preChecks` as `none`); the chosen port had no listener immediately before the start. Before the whole run `ps` showed no `next-server`, `chrome-headless-shell`, `s1-in-turn` or `s3-stale` process and `/tmp/getwrite-two-client/` held only `logs/`. Nothing on 7340 or 3000 was touched (nothing was found there at any time). Servers stopped by their recorded pid (SIGTERM; each `stillAliveAfterTerm: []`), Chromium's recorded processes confirmed gone after `browser.close()` (`browserPidsAliveAfterClose: []`), each throwaway folder removed with the removal confirmed by the script (`removed: true`, path asserted under `/private/tmp/getwrite-two-client/<run id>`; `/tmp` is a symlink to `/private/tmp` on this machine). After the run (`ps`, `lsof`, run outside the sandbox): no `next-server`, `chrome-headless-shell` or `s3-stale` process; no listener on 7340, 3000 or any of the 18 chosen ports; `/tmp/getwrite-two-client/` held only `logs/`. No file under `~/Library/Application Support/getwrite-electron/`, `~/Documents/GetWrite`, `~/Library/Logs/getwrite-electron` or the repo's `projects/` was read, listed or written. No cookie, window secret, pairing code or credential was printed or recorded (the records hold `deviceCookiePresent: true` only). The pid table is pasted at the end of this section (after the findings).
+
+### Discarded runs
+
+None. No repetition had a harness error (`HARNESS ERROR` count in the output: 0; exit status 0). No harness library was changed. The script was run once in full and nothing was run twice. (Before that run, one derived-field expression, `backupDecision_inputs`, was corrected after a re-read of the script, then `node --check` passed; no result existed at that time.)
+
+### Backup rule, read (not run)
+
+`frontend/src/lib/models/revision-core.ts` `snapshotBeforeDestructiveWrite` reads the canonical revision's current content and asks `content-loss.ts` `isDestructiveContentChange(previous, incoming)`: false when the previous document has 0 words; true when the incoming document has 0 words; otherwise true only if `previousWords - incomingWords >= MIN_WORDS_LOST` (10) AND `incomingWords <= previousWords * DESTRUCTIVE_SURVIVING_RATIO` (0.5). When true it writes a new non-canonical revision named `Auto-backup before large deletion` (`AUTOMATIC_SNAPSHOT_NAME`, `revision-core.ts`) with `automaticSnapshot: true` holding the PREVIOUS canonical content, before the new content is written, and the response carries `snapshotCreated: true`. The two constants are labelled "CHOSEN, NOT MEASURED" in the source. The comparison is made against what the server holds when the save is processed, not against what the saving client's editor held. Read, not run. The word counts the harness computed for the cases that ran: (i)/(iii) previous 5, incoming 5, lost 0; (ii)/(iv) previous 45, incoming 5, lost 40, 5 <= 22.5; (v)/(vi) previous 47, incoming 4, lost 43, 4 <= 23.5. **This record does not claim the threshold beyond what ran:** only two shapes of loss ran (nothing lost; 40 or 43 words lost with about 9 to 11% of the words kept), so the 10-word floor, the one-half ratio and the empty-document clause were not exercised near their edges.
+
+### Verdict per variant (against the Task 1 definition; raw observation beside it)
+
+"PASS" is the harness `verdict` function applied after the reload: all four stores (`content.bin` of the canonical revision, `content.tiptap.json`, `content.txt`, sidecar `wordCount` and `updatedAt`) hold exactly the last-processed save's whole document, parseable, the sidecar `updatedAt` is that save's response `updatedAt`, and both clients' text after reload equals that document's text. In all 18 repetitions the last processed save was the stale client's, determined by the response `updatedAt` order, the response arrival order and the send order, which agreed (`sendOrderAgreesWithUpdatedAt: true`); no tie and no disagreement, so no repetition was "order not determined".
+
+| Variant | Verdict | Repetitions | Last processed | Stores after the reload | Backup revision created | Raw observation beside the verdict |
+|---|---|---|---|---|---|---|
+| (i) stale A, short ` B1` | PASS | 3 of 3 | A's ` A1` document (`A#1`) | all four = `A#1`; `wordCount` 5 | 0 of 3 | `v-1` only; `B1` in no store |
+| (ii) stale A, long B | PASS | 3 of 3 | `A#1` | all four = `A#1`; `wordCount` 5 | 3 of 3 | `v-1` (canonical) and `v-2` "Auto-backup before large deletion" = B's document |
+| (iii) stale B, short ` A1` | PASS | 3 of 3 | B's ` B1` document (`B#1`) | all four = `B#1`; `wordCount` 5 | 0 of 3 | `v-1` only; `A1` in no store |
+| (iv) stale B, long A | PASS | 3 of 3 | `B#1` | all four = `B#1`; `wordCount` 5 | 3 of 3 | `v-2` = A's document |
+| (v) stale A, B saved 3 times, `Q` | PASS | 3 of 3 | A's `Q` document (`A#1`, 4 words) | all four = `A#1`; `wordCount` 4 | 3 of 3 | `v-2` = B's third document (`B#3`, 47 words); B's first two documents (`B#1`, `B#2`) are in no revision |
+| (vi) stale B, A saved 3 times, `Q` | PASS | 3 of 3 | B's `Q` document (`B#1`, 4 words) | all four = `B#1`; `wordCount` 4 | 3 of 3 | `v-2` = A's third document (`A#3`) |
+
+**Per variant: PASS, stable (all 3 repetitions agree, and the repetitions agreed with each other on every normalised field: stores, revisions, writing-log entries, search counts, editor text and footer wording, notification surfaces; compared by script, timestamps and ids ignored).** Conditions: two headless Chromium clients, host to itself, built standalone server, one plain project, one resource, the stale client unreloaded and untouched, 5 s between a save and the next typing, short single-marker or long additions as in the table. **What 3 repetitions bound:** 3 clean repetitions per variant bound the failure rate only very loosely (an exact one-sided 95% binomial bound is about 63%; the rule of three, 3/n, is not informative at n = 3); the 6 variants are different conditions and are not pooled. 20 clean repetitions would bound it at roughly 14%; neither is proof of zero. **PASS here is the Task 1 definition applied** ("the last-processed save's whole document is in every store, both clients show it after a reload"); it says nothing about the findings below, which are recorded without a verdict, and in particular it does not mean the first saver's text survived in the document (it did not; see (a), (d)).
+
+### Step-by-step server state (identical classification in the 3 repetitions of each variant)
+
+| Variant | After the saver's last save before the stale save | After the stale client's save |
+|---|---|---|
+| (i) | all four = `B#1`, `wordCount` 5, `v-1` only (content `B#1`), log `[{added 1, deleted 0}]` | all four = `A#1`, `wordCount` 5, `v-1` only (content `A#1`), log adds `{added 1, deleted 1}`; search `B1` 0 hits, `A1` 1 hit |
+| (ii) | all four = `B#1` (45 words), `wordCount` 45, `v-1` only, log `[{added 41, deleted 0}]`; search `B2LONG` 1, `harbor` 1 | all four = `A#1` (5 words), `wordCount` 5, `v-1` = `A#1` and `v-2` (non-canonical, "Auto-backup before large deletion", `automaticSnapshot` true) = `B#1`; log adds `{added 1, deleted 41}`; search `B2LONG` 0, `harbor` 0, `A1` 1; response `snapshotCreated: true` |
+| (iii) | as (i) with A and B swapped | as (i) swapped |
+| (iv) | as (ii) swapped (`A#1` 45 words) | as (ii) swapped: `v-2` = `A#1`; log adds `{added 1, deleted 41}` |
+| (v) | after `B#1`: wc 5; after `B#2`: wc 46; after `B#3`: wc 47, `v-1` only (no backup at any of the three, growth only); log `[{1,0},{41,0},{1,0}]` | all four = `A#1` (4 words, `charlieQ`), `wordCount` 4, `v-1` = `A#1`, `v-2` = `B#3`; log adds `{added 1, deleted 44}`; search `charlieQ` 1; `B1`, `B2LONG`, `B2`, `harbor` 0 |
+| (vi) | as (v) swapped (`A#1`..`A#3`) | as (v) swapped: `v-2` = `A#3`; log adds `{added 1, deleted 44}` |
+
+Other raw facts, all 18 repetitions: exactly one canonical revision in every read; no `.tmp-*` entry under `revisions/<R1>/`; the sidecar `wordCount` equalled the word count of the stored document and the sidecar `updatedAt` equalled the stale save's response `updatedAt` after the stale save; the actual writing-log entries equalled the independently computed expected entries in every step of every repetition; the `.trash` directories (the project's `.trash/` and the projects folder's `.trash/`) did not exist after any repetition (`absent`); the mention index had no record for R (the fixture declares no entity) and the diagnostics record was the raw `{dialogueRatio 0, averageSentenceLength, topRepeatedWords [], heuristicVersion 1}` (printed, not compared to the stored plain text by the harness, as in S1). The stale client's save response carried `snapshotCreated: true` in 12 of 12 repetitions of (ii), (iv), (v), (vi) and `false` in 6 of 6 of (i), (iii); no response carried a `writingLog` signal.
+
+### Each open editor (outcome 2), text and footer verbatim, identical in the 3 repetitions of a variant
+
+(Footer autosave label; the footer's "Words" and "Today" figures are in the last table.) Taking (ii) as the example (A stale, B the saver) and listing the others by their differences:
+
+| Moment | Stale client (A) text | Stale footer label | Saver (B) text | Saver footer label | Server holds |
+|---|---|---|---|---|---|
+| both open | `BASE alpha bravo charlie` | `All changes saved · not saved yet` | same | same | base |
+| B saved, at the moment A started typing (5 s later) | `BASE alpha bravo charlie` (no B text) | `All changes saved · not saved yet` | `BASE alpha bravo charlie B2LONG harbor ... nimbus` (45 words) | `All changes saved · just now` | `B#1` |
+| right after A's save was acknowledged | `BASE alpha bravo charlie A1` | `Saved · just now` | unchanged, 45 words | `All changes saved · just now` | `A#1` |
+| +5 s | same | `All changes saved · just now` | same | `All changes saved · just now` | `A#1` |
+| +30 s, no reload | same | `All changes saved · just now` | still the 45-word B text | `All changes saved · 13s ago` | `A#1` |
+| after reload (both) | `BASE alpha bravo charlie A1` | `All changes saved · not saved yet` | `BASE alpha bravo charlie A1` | `All changes saved · not saved yet` | `A#1` |
+
+Variant differences (all read from the pasted records; the footer wording is verbatim there): (i) the saver's text is `BASE alpha bravo charlie B1` throughout until the reload; (iii)/(iv) the same with the roles swapped; (v) the stale editor's text is `BASE alpha bravo charlie` until it types, then `BASE alpha bravo charlieQ`; the saver's editor holds the 47-word B text (`BASE alpha bravo charlie B1 B2LONG harbor ... nimbus B2`) until the reload; (vi) swapped. The autosave label is relative-time text rendered by the page; its values in repetition 1 of each variant (the value of N differs between variants and was recorded as rendered; no cause is stated for the differences):
+
+| Variant (rep 1) | stale label: right after / +5 s / +30 s | saver label: right after / +5 s / +30 s |
+|---|---|---|
+| (i) | `Saved · just now` / `All changes saved · just now` / `All changes saved · 18s ago` | `All changes saved · just now` / `All changes saved · just now` / `All changes saved · 27s ago` |
+| (ii) | `Saved · just now` / `All changes saved · just now` / `All changes saved · just now` | `All changes saved · just now` / `All changes saved · just now` / `All changes saved · 13s ago` |
+| (iii) | `Saved · just now` / `All changes saved · just now` / `All changes saved · 19s ago` | `All changes saved · just now` / `All changes saved · just now` / `All changes saved · 26s ago` |
+| (iv) | `Saved · just now` / `All changes saved · just now` / `All changes saved · 5s ago` | `All changes saved · just now` / `All changes saved · 12s ago` / `All changes saved · 12s ago` |
+| (v) | `Saved · just now` / `All changes saved · just now` / `All changes saved · 19s ago` | `All changes saved · just now` / `All changes saved · just now` / `All changes saved · 28s ago` |
+| (vi) | `Saved · just now` / `All changes saved · just now` / `All changes saved · 20s ago` | `All changes saved · just now` / `All changes saved · just now` / `All changes saved · 27s ago` |
+
+Editor text compared with the stored document's text (the harness's `editorEqualsServerText`): after the stale save, the stale client's editor equalled the server text and the saver's did not, right after, at +5 s and at +30 s, in 18 of 18 repetitions; after the reload both equalled it in 18 of 18. The saver's open editor was never changed by the stale save: its text read the same before and after (tables above).
+
+| Footer "Words" and "Today's writing" figures (verbatim fragments of `#editview-footer`), repetition 1 of each variant | stale client before it typed | right after its save | saver, right after the stale save | saver at +30 s | both after reload |
+|---|---|---|---|---|---|
+| (i) stale A | `Words: 4 ... Today: 0` | `Words: 5 ... Today: 1` | `Words: 5 ... Today: 1` | `Words: 5 ... Today: 1` | `Words: 5 ... Today: 1` |
+| (ii) stale A | `Words: 4 ... Today: 0` | `Words: 5 ... Today: 1` | `Words: 45 ... Today: 41` | `Words: 45 ... Today: 41` | `Words: 5 ... Today: 1` |
+| (iv) stale B | `Words: 4 ... Today: 0` | `Words: 5 ... Today: 1` | `Words: 45 ... Today: 41` | `Words: 45 ... Today: 41` | `Words: 5 ... Today: 1` |
+| (v) stale A | `Words: 4 ... Today: 0` | `Words: 4 ... Today: 0` | `Words: 47 ... Today: 43` | `Words: 47 ... Today: 43` | `Words: 4 ... Today: 0` |
+| (vi) stale B | `Words: 4 ... Today: 0` | `Words: 4 ... Today: 0` | `Words: 47 ... Today: 43` | `Words: 47 ... Today: 43` | `Words: 4 ... Today: 0` |
+
+Raw observation, no cause: the saver's footer figures stayed at the values from its own last save until its page was reloaded; after the reload both footers read the server-derived figures. The sum of the net values of the actual writing-log entries (the server's day file) was +1 in (i)/(iii) ((1) + (0)), +1 in (ii)/(iv) ((41) + (−40)), and 0 in (v)/(vi) ((1) + (41) + (1) + (−43)); the figures after the reload equal those sums. (Footers for (iii) read as (i) with the clients swapped.)
+
+### Requests the pages made (outcome 3 and finding (b) input)
+
+From the request logs pasted below: every client made 19 requests while opening (number 19 is `GET /api/resource/revision/R1`), then only its own saves and their follow-ups (each PATCH followed by a writing-log GET and a diagnostics GET), then, after the 30 s read, the reload burst. PATCH requests per repetition: 2 in (i) to (iv) (1 by the stale client, 1 by the saver), 4 in (v)/(vi) (1 by the stale client, 3 by the saver); 48 in all, every one carrying a document, every one answered 200, every one sent 2455 to 2464 ms after the end of its client's last keystroke; none before a client's first typing, none during the waits, none after a reload mark. Total requests per page, whole repetition: 46 to 52. Neither page requested the resource's content again between its open and its reload (the only later `GET /api/resource/revision/...` is the reload's). Each page logged three `visibilitychange` events, all to `hidden` (one at page load, two at the reload), none to `visible` (Task 2 raw observation, reproduced; a headed browser was not tried).
+
+### Notification surfaces (outcome 3), named
+
+Surfaces checked: `role` `status`/`alert`/`alertdialog`/`dialog` elements added or changed (a MutationObserver, which includes any toast: the app's toast library renders such elements), JS dialogs, console errors and warnings, page errors, failed requests, non-2xx responses, the footer text (read at every moment above) and the response `snapshotCreated`/`writingLog` fields. The window for the stale client starts at the first saver save acknowledgement; for the saver, at the stale client's save acknowledgement; both end after the reload read.
+
+- **The overwritten client (the saver): before its reload, nothing.** In 18 of 18 repetitions no surface changed on the saver's page as a result of the stale client's save: no status, alert, dialog or toast element, no JS dialog, no page error, no console message, no failed request, no non-2xx response, no changed footer wording.
+- **The overwriting client (the stale one): a toast in the long variants only.** In 12 of 12 repetitions of (ii), (iv), (v), (vi) a `role=status` element appeared on the stale client's page with the text `Saved a backup of your previous content` followed by a line break and `Find it in Revision Control, named “Auto-backup before large deletion”.`, 11 to 16 ms after its save's response event (the status element's appearance, Playwright event times), together with its own `Loading diagnostics…` status. In 6 of 6 repetitions of (i), (iii) the only status element before the reload was its own `Loading diagnostics…` (the page's follow-up to its own save). The stale client's page is the one that wrote over the other's text; it was not told that anything was overwritten, only that a backup of "your previous content" was saved (the wording is as rendered; I did not open Revision Control in the UI, so the statement that the backup appears there is the toast's, not mine).
+- At each page's reload (identical in all 36 pages), relative to the reload mark (the moment the harness called `page.reload`): `Error fetching projects: TypeError: Failed to fetch` (console error) 49 to 108 ms after the mark; `Failed to load resource: the server responded with a status of 404 (Not Found)` (console error) 78 to 140 ms, with the request log showing `GET /api/auth/get-session` answered 404 74 to 133 ms after the mark (the same 404 for the same path occurs at each page's first load before any save); five `GET`s (`/api/encryption`, `/api/version-check`, `/api/auth-status`, `/api/projects`, `/api/sharing/limits`) `net::ERR_ABORTED` 48 to 108 ms after the mark; two `[react-tooltip] Do not set \`style.border\`. Use \`border\` prop instead.` warnings 930 to 1033 ms after the mark; `Loading this document…` and `Loading diagnostics…` status elements 967 to 1036 ms after the mark. Nothing of these before the reload mark in any repetition (36 pages). Reported as raw observations relative to the marks; no cause is named.
+
+### Outcome 4, the lost-update shape
+
+- In all 18 repetitions the stale client's editor held the base text only when it began typing (`BASE alpha bravo charlie`; none of the saver's text). Its single save carried the base text plus its own marker (or `charlieQ`): the request marker tokens contained none of the first saver's markers (`B1`/`A1`, `B2LONG`/`A2LONG`, `B2`/`A2`) and 0 of the 40 list words, and after it all four stores held that document. The first saver's words were therefore not in the stale client's save and not in any canonical store afterwards (search for the saver's marker tokens: 0 hits; for the list word `harbor`: 0 hits).
+- The stale client sent no PATCH before it typed (0 in 18 of 18); its save followed its typing by 2455 to 2464 ms. So the overwrite happened after typing, as measured here. Whether a stale editor's save WITHOUT typing would overwrite is not exercised here (no stale editor sent a save without typing; S4 does the touches).
+
+### Findings (a) to (g), raw observations, NO verdict
+
+What was varied: which client is stale; the saver's addition (1 word, 41 words, 3 saves); the stale marker (` A1`/` B1`, `Q`). Held fixed: base document, 40 ms typing, 5 s and 30 s waits, plain project, headless Chromium, host to itself. Repetitions: 3 per variant, 18 in all; the six variants agreed within themselves.
+
+- **(a) A stale editor replaced the other device's text on a keystroke.** Observed in 18 of 18 repetitions (all six variants): the stale client's save after its one marker left none of the first saver's added words (1 word in (i)/(iii), 41 in (ii)/(iv), 44 words of the saver's final document absent from the stale document in (v)/(vi), counting `charlie`, which became `charlieQ`) in the canonical `content.bin`, `content.tiptap.json` or `content.txt`. Each stale document was its editor's text plus its own typing.
+- **(b) A save sent with no typing.** None observed in 18 of 18: the stale clients' only PATCH followed their typing by 2455 to 2464 ms; 0 PATCHes before it; no request at all from the last opening response to the PATCH (10.3 to 40.5 s). Not varied: focus changes, clicks without typing, scroll, visibility change, idle longer than 40.5 s (S4 does those).
+- **(c) Whether the overwritten device was told anything.** The overwritten device (the saver): on the surfaces named above, nothing, before its reload, in 18 of 18 repetitions. The overwriting device (the stale one) was shown a "Saved a backup of your previous content" status in the 12 repetitions in which a backup was created and nothing about the overwrite in the 6 in which none was.
+- **(d) Whether the overwritten text survives anywhere recoverable, and under what condition.** Locations read after the stale save and again after the reload: every `v-*` directory of the resource's revisions (`content.bin` and `metadata.json`), `resources/<R1>/content.tiptap.json` and `content.txt`, the sidecar, the `meta/index/mentions.json` and `diagnostics.json` records for R, the writing-log entries (counts only), search, and the names under the project's `.trash/` and the projects folder's `.trash/` (neither existed). Result by variant:
+  - **(ii), (iv), (v), (vi): the overwritten text is present, in full, in one non-canonical revision `v-2` named `Auto-backup before large deletion` (`automaticSnapshot: true`), byte-for-byte equal to the first saver's last document before the stale save** (`B#1` in (ii), `A#1` in (iv), `B#3` in (v), `A#3` in (vi)); 12 of 12 repetitions; all 41 (or 44) words absent from the stale document were present in `v-2` and in no other location. In (v)/(vi) the saver's earlier documents (`B#1`, `B#2` / `A#1`, `A#2`) are in no revision on their own; their words are inside the third document, which is what the backup holds. The backup was created in the stale save's request, before the content was written (the response `snapshotCreated: true`). Whether the backup can be opened or restored in the UI was not tried.
+  - **(i), (iii): an overwrite that left no recoverable copy among the locations read: ` B1` in (i) and ` A1` in (iii), 6 of 6 repetitions.** After the stale save the saver's text was in no revision (only `v-1`, whose content was the stale document), no resource file, no sidecar, no index record; it remained only in the saver's still-open editor until that page was reloaded. Not looked at: browser storage and caches, the server's memory and logs, anything outside the locations listed.
+  - Condition, as observed: a revision was created in the four variants in which the stale document lost 40 or 43 of the server's 45 or 47 words (about 9 to 11% kept), and in neither variant in which it lost 0 words. The rule that explains this is the one read above (labelled hypothesis until a run varies the loss).
+- **(e) An overwritten editor keeps showing text the server no longer holds.** Observed in 18 of 18 repetitions: after the stale save, the saver's editor kept showing its own text (e.g. `... B2LONG harbor ... nimbus`) while all four server stores held the stale document, right after the stale save, at +5 s and at +30 s (the +30 s read is about 37.6 to 37.8 s after the saver's last save: the server-assigned `updatedAt` of the saver's last save and of the stale save were 7.63 to 7.75 s apart in all 18 repetitions, plus the 30 s; no reload); its footer read `All changes saved ...` with a relative time, and its "Words"/"Today" figures kept the pre-overwrite values; both editors equalled the server text only after the reload.
+- **(f) The writing-log effect.** The actual entries equalled the independently computed ones in every step of every repetition. The stale client's save was logged as the word-bag difference against the saver's last document: {added 1, deleted 1} in (i)/(iii) (the stale marker added, the saver's marker counted as deleted), {added 1, deleted 41} in (ii)/(iv) (the 41 words the saver had added counted as deleted), {added 1, deleted 44} in (v)/(vi) (`charlieQ` added; `charlie`, `B1` or `A1`, `B2LONG` or `A2LONG`, the 40 list words and `B2` or `A2` counted as deleted). Net over the day file: +1, +1, 0 for (i)/(iii), (ii)/(iv), (v)/(vi), equal to the stored document's change from the base (+1, +1, 0).
+- **(g) A failed save on the device the writer believes is last.** None: every save was answered 200 on both clients in all 18 repetitions; `failedSavesStale` and `failedSavesSaver` were empty. The 404 "Revision <id> not found" response did not appear in any request log (pointer, no cause: Feature 77 FR-37 record and the lead's POS note of 2026-10-10).
+
+### Hypotheses (labelled; none established by this task)
+
+- Hypothesis H1: the auto-backup is written when the server's current document is large and the incoming (stale) one is small, as read in `content-loss.ts` (at least 10 words lost and at most half kept, or an empty incoming document). Consistent with 12 of 12 backups in the long variants and 0 of 6 in the short ones. The experiment that discriminates it from other conditions (for example "any stale save over a document that grew by more than N words", or the saver's document being longer than some size) is to vary the amount lost and kept: for example a saver addition of 9, 10 and 11 words against a stale document that keeps more than half, exactly half and less than half; the long variants against the short ones (this task) are only two points and do not locate the edge. Not run.
+- Hypothesis H2: the toast on the stale client appears because the response carries `snapshotCreated: true` (read, not run, per the spec's "What the client does with the response": the client shows a toast only when `snapshotCreated` is true; `useCanonicalAutosave.ts` was not re-read in this task). Consistent with 12 of 12 toasts coinciding with `snapshotCreated: true` and none without it. Discriminating experiment: a response with `snapshotCreated: true` that does not show a toast, or a toast without the flag; none occurred.
+- Hypothesis H3: the saver's editor keeps its text because nothing in the page asks the server again after opening. Consistent with the request logs (no second `GET /api/resource/revision/...` between open and reload on any page in 18 repetitions) and with the code reading in the spec; same status as in S1; discriminating experiment as in S1 (a trigger that does re-fetch, such as selecting another resource and back; not run).
+- Hypothesis H4: the footer "Today" figure and "Words" figure on the saver stay at their own last-save values because they are computed from that client's own state until a reload. Consistent with the tables above; not tested (the discriminating experiment would read the code path that fills the footer, or reload only one client while the other stays).
+
+### What was not exercised by this scenario
+
+A stale client that types after an idle longer than 40.5 s (S4); touches without typing (click, focus, scroll, visibility) (S4); a stale save that is much larger or much smaller in other ratios (only 1 word lost, and 40 or 43 words lost with about 10% kept); a stale save that loses between 10 words and half the document (the edge of the backup rule); more than 3 saver saves or saver saves closer than about 7.6 s; a stale client that already received some of the saver's text; both clients stale; three or more clients; near-simultaneous saves (S2); different resources (S5); other documents (one paragraph of plain text, no formatting, no entity, no tags); client type (headless Chromium only; Firefox and Safari not tried; no headed browser; no mobile browser); a second host or device; an encrypted project; the lock-then-save 404 shape; restoring from the backup in the UI or opening Revision Control; the project type (plain `blank` only); Node 22 or 20.
+
+### knip
+
+`pnpm knip` (inside the sandbox) after this task: exit 1 as in the baseline; Unused files 79 (Task 3 left 78; the one new entry is `specs/features/two-client-save-measurement/scripts/s3-stale-client.mjs`). It is listed, not hidden. The other sections' counts were not re-compared by set in this task.
+
+### Not run / not varied
+
+- Everything under "What was not exercised by this scenario" above.
+- Any repetition beyond the 3 per variant (so every verdict rests on 3 repetitions).
+- The Revision Control UI and restoring the backup; the empty-document clause of the backup rule; the 10-word floor and the one-half ratio at their edges.
+- The stale client's save without typing, focus, visibility and scroll (S4); near-simultaneous saves (S2); different resources (S5).
+- Comparing the diagnostics record to the stored plain text, and the mention index against mentions (as in the Harness section).
+- A phone, and any result from a second device.
+- Nothing was discarded; no variant was left out. (vi), which the lead asked for "if time allows", was run.
+
+### Process record (every server pid started; all stopped by recorded pid)
+
+One server per repetition (18), each the single process `next-server (v16.2.6)` (the retitled `node`; the descendant walk found no other child). Chromium's recorded processes are the descendants of the script that are not the server.
+
+| Variant | Rep | Run id | Port | Server pid (`next-server (v16.2.6)`) | Chromium pids recorded | 7340 / 3000 before | Teardown |
+|---|---|---|---|---|---|---|---|
+| i | 1 | `s3ir1-mv475zio-aa46e3` | 63997 | 68147 | 68176, 68177, 68178, 68183, 68185 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| i | 2 | `s3ir2-mv4773si-9f259e` | 64079 | 70091 | 70156, 70157, 70158, 70173, 70175 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| i | 3 | `s3ir3-mv47882n-8f7b8b` | 64179 | 72182 | 72199, 72200, 72201, 72254, 72259 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| ii | 1 | `s3iir1-mv479cbd-45a716` | 64256 | 74081 | 74098, 74099, 74100, 74102, 74104 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| ii | 2 | `s3iir2-mv47ar6i-f87348` | 64336 | 76344 | 76361, 76362, 76363, 76426, 76428 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| ii | 3 | `s3iir3-mv47c62p-b04484` | 64415 | 78674 | 78691, 78692, 78693, 78695, 78697 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| iii | 1 | `s3iiir1-mv47dl0w-2f01ea` | 64496 | 80929 | 80946, 80995, 80996, 81011, 81016 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| iii | 2 | `s3iiir2-mv47epad-ab5c22` | 64566 | 82823 | 82840, 82841, 82842, 82845, 82907 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| iii | 3 | `s3iiir3-mv47ftjm-d94a7a` | 64645 | 84721 | 84738, 84739, 84740, 84742, 84744 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| iv | 1 | `s3ivr1-mv47gxsw-65efc4` | 64717 | 86553 | 86631, 86632, 86633, 86638, 86642 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| iv | 2 | `s3ivr2-mv47icrk-2381e9` | 64795 | 88894 | 88913, 88914, 88915, 88917, 88979 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| iv | 3 | `s3ivr3-mv47jrp9-d8c5c6` | 64871 | 91153 | 91230, 91231, 91232, 91235, 91237 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| v | 1 | `s3vr1-mv47l6gi-42d84c` | 64968 | 93602 | 93619, 93620, 93621, 93624, 93626 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| v | 2 | `s3vr2-mv47mx5s-2d0963` | 65075 | 96390 | 96407, 96408, 96409, 96412, 96414 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| v | 3 | `s3vr3-mv47onvg-f50888` | 65207 | 99189 | 99206, 99207, 99208, 99213, 99215 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| vi | 1 | `s3vir1-mv47qelr-21d346` | 65298 | 2351 | 2368, 2369, 2370, 2375, 2379 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| vi | 2 | `s3vir2-mv47s5ba-45d988` | 65403 | 5158 | 5178, 5179, 5180, 5183, 5245 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+| vi | 3 | `s3vir3-mv47tw1k-48d6c0` | 65502 | 7962 | 7979, 7980, 7981, 7986, 8048 | none / none | stillAliveAfterTerm [], browserPidsAliveAfterClose [], folder removed true, listeners after: port [], 7340 [], 3000 [] |
+
+### The pasted records (S3)
+
+Each record below is the script's own per-repetition digest file (`results/s3/<run id>-rep0<n>-digest.txt`, verbatim, pasted unchanged), followed by the complete request log of each client as written to the JSON (`extra.requestLogA` / `extra.requestLogB`), formatted one request per line. The digest holds every step's stores, revisions, writing log, search, `.trash` names, editors and footers, the notification lists with offsets, every PATCH, the failed saves and the teardown. The script's full printed record (the same data plus the verdict inputs, labels registered, reload marks and visibility events) is in `/tmp/getwrite-two-client/logs/s3-run1.out` and, as JSON, in the `results/s3/*-rep0<n>.json` files (marker strings and hashes only; a search of the 18 JSON files for `getwrite_device`, `Cookie`, `secret`, `passphrase`, `pairing` is stated under "git status (S3)" below). Order: variant (i), (ii), (iii), (iv), (v), (vi), repetitions 1 to 3.
+
+#### Record: variant i, repetition 1 (`s3ir1-mv475zio-aa46e3`)
+
+```
+REPETITION s3 variant i rep 1/3 run=s3ir1-mv475zio-aa46e3 commit=c92d82ca node=v24.15.0
+variant: stale A, saver B (short ` B1`), stale types ` A1`
+server: built standalone, sharing on, port 63997, pid 68147; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":68147,"comm":"next-server (v16.2.6)"}]; browser pids 68176,68177,68178,68183,68185; throwaway root /private/tmp/getwrite-two-client/s3ir1-mv475zio-aa46e3
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"616eceb4930d91e1d97dd48a58aeb26b89f8b85fb8aeb8b83a29dff512e039c2","status":200,"updatedAt":"2026-10-11T19:09:32.270Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:09:32.270Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:09:32.270Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:09:32.270Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:09:32.270Z","name":"Doc s3ir1-mv475zio-aa46e3","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:09:32.269Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"}]
+  search: {"B1":1,"A1":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (stale) typed; typing started 5016 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1","status":200,"updatedAt":"2026-10-11T19:09:40.009Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:09:40.009Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:09:40.009Z"} evidence={"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:09:32.270Z","2026-10-11T19:09:40.009Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:09:40.009Z","name":"Doc s3ir1-mv475zio-aa46e3","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1","B#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true; entry timestamps ["2026-10-11T19:09:32.269Z","2026-10-11T19:09:40.007Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"A#1","added":1,"deleted":1,"deletedTokens":"B1","addedTokens":"A1"}]
+  search: {"B1":0,"A1":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · 18s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 27s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlie A1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie A1" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:09:40.009Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true
+final search: {"B1":0,"A1":1}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:09:40.009Z"}; evidence {"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:09:32.270Z","2026-10-11T19:09:40.009Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 1 (B1); where they are, after the stale save: {"lostTokenCount":1,"lostTokens":"B1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}; after reload: {"lostTokenCount":1,"lostTokens":"B1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}
+stale save contains the first saver's text: request marker tokens [["A1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [false]; auto-backup revisions after reload: []
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Loading diagnostics…","msAfterSince":7661,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":38733,"msAfterReloadMark":983},{"role":"status","text":"Loading diagnostics…","msAfterSince":38733,"msAfterReloadMark":983}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":37816,"msAfterReloadMark":67},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":37846,"msAfterReloadMark":96},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38700,"msAfterReloadMark":950},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38731,"msAfterReloadMark":982}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":37815,"msAfterReloadMark":65},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":37815,"msAfterReloadMark":65},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":37815,"msAfterReloadMark":65},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":37815,"msAfterReloadMark":65},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":37815,"msAfterReloadMark":65}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":37841,"msAfterReloadMark":91}],"patchResponseSignals":[{"n":20,"snapshotCreated":false,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:10:10.107Z","msAfterSince":37750}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32007,"msAfterReloadMark":976},{"role":"status","text":"Loading diagnostics…","msAfterSince":32007,"msAfterReloadMark":976}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31081,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31110,"msAfterReloadMark":79},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31975,"msAfterReloadMark":944},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32006,"msAfterReloadMark":975}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31080,"msAfterReloadMark":49},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31080,"msAfterReloadMark":49},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31080,"msAfterReloadMark":49},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31080,"msAfterReloadMark":49},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31080,"msAfterReloadMark":49}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31106,"msAfterReloadMark":74}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:10:11.123Z","msAfterSince":31031}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:09:40.000Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:09:32.264Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":68147,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3ir1-mv475zio-aa46e3"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir1-mv475zio-aa46e3-rep01.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:09:27.564 resp 19:09:27.572 (8 ms)
+#2 GET /api/encryption -> 200 send 19:09:27.578 resp 19:09:27.580 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:09:27.578 resp 19:09:27.582 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:09:27.578 resp 19:09:27.582 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:09:27.578 resp 19:09:27.584 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:09:27.578 resp 19:09:27.582 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:09:28.415 resp 19:09:28.420 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:09:28.428 resp 19:09:28.467 (39 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:09:28.441 resp 19:09:28.469 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:09:28.441 resp 19:09:28.470 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:09:28.441 resp 19:09:28.470 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:09:28.441 resp 19:09:28.470 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:09:28.496 resp 19:09:28.506 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:09:28.496 resp 19:09:28.504 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:09:28.496 resp 19:09:28.506 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:09:28.496 resp 19:09:28.505 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:09:28.496 resp 19:09:28.504 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:09:28.496 resp 19:09:28.504 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:09:28.506 resp 19:09:28.530 (23 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:09:40.000 resp 19:09:40.012 (11 ms) updatedAt=2026-10-11T19:09:40.009Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 7d8b0fcac1ba]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:09:40.016 resp 19:09:40.022 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:09:40.017 resp 19:09:40.023 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:10:10.173 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:10:10.173 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:10:10.173 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:10:10.173 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:10:10.173 resp - (-)
+#28 GET /api/encryption -> 200 send 19:10:10.197 resp 19:10:10.200 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:10:10.197 resp 19:10:10.202 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:10:10.197 resp 19:10:10.202 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:10:10.197 resp 19:10:10.205 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:10:10.197 resp 19:10:10.203 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:10:10.198 resp 19:10:10.204 (5 ms)
+#34 POST /api/project -> 200 send 19:10:11.047 resp 19:10:11.052 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:11.057 resp 19:10:11.066 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:11.064 resp 19:10:11.072 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:10:11.064 resp 19:10:11.072 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:10:11.064 resp 19:10:11.072 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:10:11.064 resp 19:10:11.069 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:10:11.093 resp 19:10:11.102 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:10:11.093 resp 19:10:11.101 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:10:11.093 resp 19:10:11.102 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:10:11.093 resp 19:10:11.101 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:10:11.093 resp 19:10:11.100 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:10:11.093 resp 19:10:11.101 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:10:11.103 resp 19:10:11.116 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:09:28.627 resp 19:09:28.640 (13 ms)
+#2 GET /api/encryption -> 200 send 19:09:28.639 resp 19:09:28.641 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:09:28.639 resp 19:09:28.645 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:09:28.639 resp 19:09:28.645 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:09:28.639 resp 19:09:28.645 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:09:28.639 resp 19:09:28.645 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:09:29.487 resp 19:09:29.494 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:09:29.506 resp 19:09:29.550 (44 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:09:29.522 resp 19:09:29.552 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:09:29.522 resp 19:09:29.552 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:09:29.522 resp 19:09:29.552 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:09:29.522 resp 19:09:29.552 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:09:29.578 resp 19:09:29.599 (21 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:09:29.578 resp 19:09:29.594 (16 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:09:29.579 resp 19:09:29.599 (20 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:09:29.579 resp 19:09:29.599 (20 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:09:29.579 resp 19:09:29.594 (15 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:09:29.579 resp 19:09:29.594 (15 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:09:29.600 resp 19:09:29.624 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:09:32.264 resp 19:09:32.273 (9 ms) updatedAt=2026-10-11T19:09:32.270Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 616eceb4930d]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:09:32.277 resp 19:09:32.281 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:09:32.277 resp 19:09:32.282 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:10:11.172 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:10:11.172 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:10:11.172 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:10:11.172 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:10:11.172 resp - (-)
+#28 GET /api/encryption -> 200 send 19:10:11.196 resp 19:10:11.200 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:10:11.196 resp 19:10:11.200 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:10:11.196 resp 19:10:11.201 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:10:11.196 resp 19:10:11.203 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:10:11.196 resp 19:10:11.202 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:10:11.198 resp 19:10:11.202 (4 ms)
+#34 POST /api/project -> 200 send 19:10:12.052 resp 19:10:12.060 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:12.067 resp 19:10:12.075 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:12.074 resp 19:10:12.081 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:10:12.074 resp 19:10:12.081 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:10:12.074 resp 19:10:12.081 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:10:12.074 resp 19:10:12.079 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:10:12.101 resp 19:10:12.110 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:10:12.101 resp 19:10:12.110 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:10:12.101 resp 19:10:12.111 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:10:12.101 resp 19:10:12.110 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:10:12.101 resp 19:10:12.110 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:10:12.101 resp 19:10:12.109 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:10:12.112 resp 19:10:12.125 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant i, repetition 2 (`s3ir2-mv4773si-9f259e`)
+
+```
+REPETITION s3 variant i rep 2/3 run=s3ir2-mv4773si-9f259e commit=c92d82ca node=v24.15.0
+variant: stale A, saver B (short ` B1`), stale types ` A1`
+server: built standalone, sharing on, port 64079, pid 70091; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":70091,"comm":"next-server (v16.2.6)"}]; browser pids 70156,70157,70158,70173,70175; throwaway root /private/tmp/getwrite-two-client/s3ir2-mv4773si-9f259e
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"8558a278da89117e1d142af5e551c62045e138813affe3b939a57923a127a821","status":200,"updatedAt":"2026-10-11T19:10:24.503Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:10:24.503Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:10:24.503Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:10:24.503Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:10:24.503Z","name":"Doc s3ir2-mv4773si-9f259e","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:10:24.501Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"}]
+  search: {"B1":1,"A1":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (stale) typed; typing started 5008 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"5287dcd1b438ed1a72af020ab832c30727f91fbb2825e36f0d84c3b9def4e80b","status":200,"updatedAt":"2026-10-11T19:10:32.228Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:10:32.228Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:10:32.228Z"} evidence={"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:10:24.503Z","2026-10-11T19:10:32.228Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:10:32.228Z","name":"Doc s3ir2-mv4773si-9f259e","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1","B#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true; entry timestamps ["2026-10-11T19:10:24.501Z","2026-10-11T19:10:32.226Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"A#1","added":1,"deleted":1,"deletedTokens":"B1","addedTokens":"A1"}]
+  search: {"B1":0,"A1":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · 18s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 27s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlie A1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie A1" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:10:32.228Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true
+final search: {"B1":0,"A1":1}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:10:32.228Z"}; evidence {"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:10:24.503Z","2026-10-11T19:10:32.228Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 1 (B1); where they are, after the stale save: {"lostTokenCount":1,"lostTokens":"B1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}; after reload: {"lostTokenCount":1,"lostTokens":"B1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}
+stale save contains the first saver's text: request marker tokens [["A1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [false]; auto-backup revisions after reload: []
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Loading diagnostics…","msAfterSince":7659,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":38731,"msAfterReloadMark":986},{"role":"status","text":"Loading diagnostics…","msAfterSince":38731,"msAfterReloadMark":986}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":37814,"msAfterReloadMark":69},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":37846,"msAfterReloadMark":101},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38699,"msAfterReloadMark":955},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38729,"msAfterReloadMark":985}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":37812,"msAfterReloadMark":68},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":37812,"msAfterReloadMark":68},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":37812,"msAfterReloadMark":68},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":37812,"msAfterReloadMark":68},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":37812,"msAfterReloadMark":68}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":37839,"msAfterReloadMark":95}],"patchResponseSignals":[{"n":20,"snapshotCreated":false,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:11:02.325Z","msAfterSince":37744}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31999,"msAfterReloadMark":967},{"role":"status","text":"Loading diagnostics…","msAfterSince":32000,"msAfterReloadMark":968}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31082,"msAfterReloadMark":49},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31111,"msAfterReloadMark":79},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31964,"msAfterReloadMark":931},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31998,"msAfterReloadMark":965}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31081,"msAfterReloadMark":49},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31081,"msAfterReloadMark":49},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31081,"msAfterReloadMark":49},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31081,"msAfterReloadMark":49},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31081,"msAfterReloadMark":49}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31107,"msAfterReloadMark":74}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:11:03.345Z","msAfterSince":31033}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:10:32.216Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2461,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:10:24.489Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2464,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":70091,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3ir2-mv4773si-9f259e"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir2-mv4773si-9f259e-rep02.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:10:19.753 resp 19:10:19.762 (9 ms)
+#2 GET /api/encryption -> 200 send 19:10:19.768 resp 19:10:19.770 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:10:19.768 resp 19:10:19.772 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:10:19.768 resp 19:10:19.772 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:10:19.768 resp 19:10:19.774 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:10:19.768 resp 19:10:19.772 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:10:20.607 resp 19:10:20.614 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:20.624 resp 19:10:20.661 (37 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:20.638 resp 19:10:20.663 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:10:20.638 resp 19:10:20.663 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:10:20.638 resp 19:10:20.664 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:10:20.638 resp 19:10:20.664 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:10:20.686 resp 19:10:20.697 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:10:20.686 resp 19:10:20.696 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:10:20.686 resp 19:10:20.697 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:10:20.686 resp 19:10:20.696 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:10:20.686 resp 19:10:20.695 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:10:20.686 resp 19:10:20.695 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:10:20.698 resp 19:10:20.722 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:10:32.216 resp 19:10:32.231 (15 ms) updatedAt=2026-10-11T19:10:32.228Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 5287dcd1b438]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:10:32.237 resp 19:10:32.243 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:10:32.237 resp 19:10:32.243 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:11:02.393 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:11:02.393 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:11:02.393 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:11:02.393 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:11:02.393 resp - (-)
+#28 GET /api/encryption -> 200 send 19:11:02.418 resp 19:11:02.421 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:11:02.418 resp 19:11:02.423 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:11:02.418 resp 19:11:02.423 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:11:02.418 resp 19:11:02.427 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:11:02.418 resp 19:11:02.425 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:11:02.420 resp 19:11:02.426 (6 ms)
+#34 POST /api/project -> 200 send 19:11:03.268 resp 19:11:03.273 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:03.279 resp 19:11:03.288 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:03.286 resp 19:11:03.293 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:11:03.286 resp 19:11:03.293 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:11:03.286 resp 19:11:03.293 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:11:03.286 resp 19:11:03.291 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:11:03.313 resp 19:11:03.323 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:03.313 resp 19:11:03.323 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:11:03.313 resp 19:11:03.324 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:03.313 resp 19:11:03.324 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:11:03.313 resp 19:11:03.322 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:11:03.313 resp 19:11:03.323 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:11:03.324 resp 19:11:03.338 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:10:20.821 resp 19:10:20.833 (13 ms)
+#2 GET /api/encryption -> 200 send 19:10:20.833 resp 19:10:20.834 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:10:20.833 resp 19:10:20.837 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:10:20.833 resp 19:10:20.837 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:10:20.833 resp 19:10:20.839 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:10:20.833 resp 19:10:20.839 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:10:21.677 resp 19:10:21.682 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:21.694 resp 19:10:21.736 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:10:21.710 resp 19:10:21.738 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:10:21.710 resp 19:10:21.738 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:10:21.710 resp 19:10:21.738 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:10:21.710 resp 19:10:21.739 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:10:21.761 resp 19:10:21.773 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:10:21.761 resp 19:10:21.772 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:10:21.761 resp 19:10:21.774 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:10:21.761 resp 19:10:21.773 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:10:21.761 resp 19:10:21.772 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:10:21.761 resp 19:10:21.772 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:10:21.775 resp 19:10:21.799 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:10:24.489 resp 19:10:24.507 (18 ms) updatedAt=2026-10-11T19:10:24.503Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 8558a278da89]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:10:24.512 resp 19:10:24.517 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:10:24.512 resp 19:10:24.518 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:11:03.394 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:11:03.394 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:11:03.394 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:11:03.394 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:11:03.394 resp - (-)
+#28 GET /api/encryption -> 200 send 19:11:03.417 resp 19:11:03.420 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:11:03.417 resp 19:11:03.421 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:11:03.417 resp 19:11:03.422 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:11:03.417 resp 19:11:03.425 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:11:03.417 resp 19:11:03.423 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:11:03.419 resp 19:11:03.424 (5 ms)
+#34 POST /api/project -> 200 send 19:11:04.263 resp 19:11:04.269 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:04.276 resp 19:11:04.284 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:04.283 resp 19:11:04.290 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:11:04.283 resp 19:11:04.290 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:11:04.283 resp 19:11:04.288 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:11:04.283 resp 19:11:04.287 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:11:04.313 resp 19:11:04.323 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:04.313 resp 19:11:04.323 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:11:04.313 resp 19:11:04.323 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:04.313 resp 19:11:04.337 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:11:04.313 resp 19:11:04.322 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:11:04.313 resp 19:11:04.322 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:11:04.324 resp 19:11:04.337 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant i, repetition 3 (`s3ir3-mv47882n-8f7b8b`)
+
+```
+REPETITION s3 variant i rep 3/3 run=s3ir3-mv47882n-8f7b8b commit=c92d82ca node=v24.15.0
+variant: stale A, saver B (short ` B1`), stale types ` A1`
+server: built standalone, sharing on, port 64179, pid 72182; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":72182,"comm":"next-server (v16.2.6)"}]; browser pids 72199,72200,72201,72254,72259; throwaway root /private/tmp/getwrite-two-client/s3ir3-mv47882n-8f7b8b
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"f30220fb1d73004761cd2118aadb57dc1c55bf66093aec7bf42ff360c56e20b8","status":200,"updatedAt":"2026-10-11T19:11:16.662Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:11:16.662Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:11:16.662Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:11:16.662Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:11:16.662Z","name":"Doc s3ir3-mv47882n-8f7b8b","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:11:16.660Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"}]
+  search: {"B1":1,"A1":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (stale) typed; typing started 5009 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"5c31363c7750f46d9cf1d9b1c6a126614d4f93de71b6a7d250879912339cb4d4","status":200,"updatedAt":"2026-10-11T19:11:24.396Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:11:24.396Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:11:24.396Z"} evidence={"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:11:16.662Z","2026-10-11T19:11:24.396Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:11:24.396Z","name":"Doc s3ir3-mv47882n-8f7b8b","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1","B#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true; entry timestamps ["2026-10-11T19:11:16.660Z","2026-10-11T19:11:24.394Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"A#1","added":1,"deleted":1,"deletedTokens":"B1","addedTokens":"A1"}]
+  search: {"B1":0,"A1":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · 18s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 27s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlie A1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie A1" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:11:24.396Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true
+final search: {"B1":0,"A1":1}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:11:24.396Z"}; evidence {"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:11:16.662Z","2026-10-11T19:11:24.396Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 1 (B1); where they are, after the stale save: {"lostTokenCount":1,"lostTokens":"B1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}; after reload: {"lostTokenCount":1,"lostTokens":"B1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}
+stale save contains the first saver's text: request marker tokens [["A1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [false]; auto-backup revisions after reload: []
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Loading diagnostics…","msAfterSince":7664,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":38719,"msAfterReloadMark":980},{"role":"status","text":"Loading diagnostics…","msAfterSince":38719,"msAfterReloadMark":980}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":37801,"msAfterReloadMark":62},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":37832,"msAfterReloadMark":92},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38689,"msAfterReloadMark":950},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38717,"msAfterReloadMark":978}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":37800,"msAfterReloadMark":61},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":37800,"msAfterReloadMark":61},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":37800,"msAfterReloadMark":61},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":37800,"msAfterReloadMark":61},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":37800,"msAfterReloadMark":61}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":37826,"msAfterReloadMark":87}],"patchResponseSignals":[{"n":20,"snapshotCreated":false,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:11:54.483Z","msAfterSince":37739}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31997,"msAfterReloadMark":977},{"role":"status","text":"Loading diagnostics…","msAfterSince":31997,"msAfterReloadMark":977}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31069,"msAfterReloadMark":49},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31098,"msAfterReloadMark":78},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31958,"msAfterReloadMark":938},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31995,"msAfterReloadMark":975}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31068,"msAfterReloadMark":48},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31068,"msAfterReloadMark":48},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31068,"msAfterReloadMark":48},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31068,"msAfterReloadMark":48},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31068,"msAfterReloadMark":48}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31094,"msAfterReloadMark":74}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:11:55.495Z","msAfterSince":31020}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:11:24.383Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:11:16.650Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":72182,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3ir3-mv47882n-8f7b8b"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ir3-mv47882n-8f7b8b-rep03.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:11:11.970 resp 19:11:11.982 (12 ms)
+#2 GET /api/encryption -> 200 send 19:11:11.982 resp 19:11:11.983 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:11:11.982 resp 19:11:11.986 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:11:11.982 resp 19:11:11.986 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:11:11.982 resp 19:11:11.988 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:11:11.982 resp 19:11:11.988 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:11:12.825 resp 19:11:12.836 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:12.847 resp 19:11:12.888 (40 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:12.863 resp 19:11:12.890 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:11:12.863 resp 19:11:12.890 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:11:12.863 resp 19:11:12.890 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:11:12.863 resp 19:11:12.890 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:11:12.917 resp 19:11:12.929 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:12.917 resp 19:11:12.928 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:11:12.917 resp 19:11:12.930 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:12.917 resp 19:11:12.930 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:11:12.917 resp 19:11:12.927 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:11:12.917 resp 19:11:12.928 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:11:12.931 resp 19:11:12.954 (23 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:11:24.383 resp 19:11:24.399 (16 ms) updatedAt=2026-10-11T19:11:24.396Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 5c31363c7750]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:24.405 resp 19:11:24.411 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:24.405 resp 19:11:24.412 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:11:54.544 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:11:54.544 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:11:54.544 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:11:54.544 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:11:54.544 resp - (-)
+#28 GET /api/encryption -> 200 send 19:11:54.568 resp 19:11:54.571 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:11:54.568 resp 19:11:54.573 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:11:54.568 resp 19:11:54.573 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:11:54.568 resp 19:11:54.576 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:11:54.568 resp 19:11:54.574 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:11:54.569 resp 19:11:54.575 (5 ms)
+#34 POST /api/project -> 200 send 19:11:55.419 resp 19:11:55.426 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:55.432 resp 19:11:55.442 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:55.440 resp 19:11:55.447 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:11:55.440 resp 19:11:55.448 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:11:55.440 resp 19:11:55.447 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:11:55.440 resp 19:11:55.445 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:11:55.464 resp 19:11:55.474 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:55.464 resp 19:11:55.473 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:11:55.464 resp 19:11:55.474 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:55.464 resp 19:11:55.474 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:11:55.464 resp 19:11:55.473 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:11:55.464 resp 19:11:55.473 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:11:55.475 resp 19:11:55.488 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:11:13.051 resp 19:11:13.063 (12 ms)
+#2 GET /api/encryption -> 200 send 19:11:13.063 resp 19:11:13.065 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:11:13.063 resp 19:11:13.067 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:11:13.063 resp 19:11:13.067 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:11:13.063 resp 19:11:13.069 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:11:13.063 resp 19:11:13.067 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:11:13.901 resp 19:11:13.906 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:13.916 resp 19:11:13.954 (38 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:13.930 resp 19:11:13.956 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:11:13.930 resp 19:11:13.956 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:11:13.930 resp 19:11:13.956 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:11:13.930 resp 19:11:13.956 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:11:13.980 resp 19:11:13.993 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:13.981 resp 19:11:13.992 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:11:13.981 resp 19:11:13.993 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:13.981 resp 19:11:13.992 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:11:13.981 resp 19:11:13.991 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:11:13.981 resp 19:11:13.992 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:11:13.994 resp 19:11:14.018 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:11:16.650 resp 19:11:16.666 (16 ms) updatedAt=2026-10-11T19:11:16.662Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 f30220fb1d73]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:16.671 resp 19:11:16.676 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:16.671 resp 19:11:16.677 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:11:55.544 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:11:55.544 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:11:55.544 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:11:55.544 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:11:55.544 resp - (-)
+#28 GET /api/encryption -> 200 send 19:11:55.568 resp 19:11:55.571 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:11:55.568 resp 19:11:55.571 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:11:55.568 resp 19:11:55.573 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:11:55.568 resp 19:11:55.575 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:11:55.568 resp 19:11:55.573 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:11:55.570 resp 19:11:55.573 (4 ms)
+#34 POST /api/project -> 200 send 19:11:56.421 resp 19:11:56.427 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:56.434 resp 19:11:56.442 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:11:56.441 resp 19:11:56.447 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:11:56.441 resp 19:11:56.447 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:11:56.441 resp 19:11:56.447 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:11:56.441 resp 19:11:56.445 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:11:56.474 resp 19:11:56.484 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:11:56.474 resp 19:11:56.483 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:11:56.474 resp 19:11:56.484 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:11:56.474 resp 19:11:56.484 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:11:56.474 resp 19:11:56.483 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:11:56.474 resp 19:11:56.482 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:11:56.485 resp 19:11:56.499 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant ii, repetition 1 (`s3iir1-mv479cbd-45a716`)
+
+```
+REPETITION s3 variant ii rep 1/3 run=s3iir1-mv479cbd-45a716 commit=c92d82ca node=v24.15.0
+variant: stale A, saver B (` B2LONG` + 40 words), stale types ` A1`
+server: built standalone, sharing on, port 64256, pid 74081; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":74081,"comm":"next-server (v16.2.6)"}]; browser pids 74098,74099,74100,74102,74104; throwaway root /private/tmp/getwrite-two-client/s3iir1-mv479cbd-45a716
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":490,"sha256":"e737cd430f6339c67e53ef225f72ca98322d33c04878feabbcd16d15f067e296","status":200,"updatedAt":"2026-10-11T19:12:22.533Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=45 matches B#1; updatedAt=2026-10-11T19:12:22.533Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:12:22.533Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:12:22.533Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":45,"updatedAt":"2026-10-11T19:12:22.533Z","name":"Doc s3iir1-mv479cbd-45a716","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41}] expected=[{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:12:22.531Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"B2LONG":1,"A1":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":45,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (stale) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"f03aa8b0b1c2cb71378fd02438e8ca204a1d2aa01997591a6075292335ab76b0","status":200,"updatedAt":"2026-10-11T19:12:30.278Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:12:30.278Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:12:30.278Z"} evidence={"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:12:22.533Z","2026-10-11T19:12:30.278Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:12:30.278Z","name":"Doc s3iir1-mv479cbd-45a716","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true; entry timestamps ["2026-10-11T19:12:22.531Z","2026-10-11T19:12:30.276Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#1","added":1,"deleted":41,"deletedTokens":"B2LONG harbor lantern meadow copper ...(+36)","addedTokens":"A1"}]
+  search: {"B2LONG":0,"A1":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 13s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlie A1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie A1" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:12:30.278Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true
+final search: {"B2LONG":0,"A1":1,"harbor":0}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:12:30.278Z"}; evidence {"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:12:22.533Z","2026-10-11T19:12:30.278Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 41 (B2LONG harbor lantern meadow copper willow ...(+35)); where they are, after the stale save: {"lostTokenCount":41,"lostTokens":"B2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}; after reload: {"lostTokenCount":41,"lostTokens":"B2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}
+stale save contains the first saver's text: request marker tokens [["A1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":7679,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":7679,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":38744,"msAfterReloadMark":990},{"role":"status","text":"Loading diagnostics…","msAfterSince":38744,"msAfterReloadMark":990}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":37824,"msAfterReloadMark":70},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":37854,"msAfterReloadMark":100},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38708,"msAfterReloadMark":954},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38742,"msAfterReloadMark":988}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":37823,"msAfterReloadMark":68},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":37823,"msAfterReloadMark":68},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":37823,"msAfterReloadMark":68},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":37823,"msAfterReloadMark":68},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":37823,"msAfterReloadMark":68}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":37849,"msAfterReloadMark":95}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:13:00.372Z","msAfterSince":37754}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32047,"msAfterReloadMark":1010},{"role":"status","text":"Loading diagnostics…","msAfterSince":32047,"msAfterReloadMark":1010}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31124,"msAfterReloadMark":87},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31153,"msAfterReloadMark":116},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32015,"msAfterReloadMark":978},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32045,"msAfterReloadMark":1008}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":86},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":86},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":86},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":86},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":86}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31149,"msAfterReloadMark":112}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:13:01.394Z","msAfterSince":31037}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:12:30.265Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:12:22.517Z","status":200,"hasDocument":true,"markers":["B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B2LONG harb","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":74081,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3iir1-mv479cbd-45a716"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir1-mv479cbd-45a716-rep01.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:12:04.142 resp 19:12:04.155 (13 ms)
+#2 GET /api/encryption -> 200 send 19:12:04.155 resp 19:12:04.159 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:12:04.155 resp 19:12:04.159 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:12:04.155 resp 19:12:04.159 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:12:04.155 resp 19:12:04.162 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:12:04.155 resp 19:12:04.160 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:12:04.999 resp 19:12:05.009 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:12:05.020 resp 19:12:05.061 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:12:05.036 resp 19:12:05.063 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:12:05.036 resp 19:12:05.064 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:12:05.036 resp 19:12:05.064 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:12:05.036 resp 19:12:05.064 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:12:05.089 resp 19:12:05.100 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:12:05.089 resp 19:12:05.099 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:12:05.089 resp 19:12:05.099 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:12:05.089 resp 19:12:05.100 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:12:05.089 resp 19:12:05.098 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:12:05.089 resp 19:12:05.099 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:12:05.100 resp 19:12:05.126 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:12:30.265 resp 19:12:30.281 (16 ms) updatedAt=2026-10-11T19:12:30.278Z snapshotCreated=true writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 f03aa8b0b1c2]
+#21 POST /api/project-resources -> 200 send 19:12:30.297 resp 19:12:30.304 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:12:30.298 resp 19:12:30.303 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:12:30.298 resp 19:12:30.303 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:13:00.440 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:13:00.440 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:13:00.440 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:13:00.440 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:13:00.440 resp - (-)
+#29 GET /api/encryption -> 200 send 19:13:00.465 resp 19:13:00.468 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:13:00.465 resp 19:13:00.470 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:13:00.465 resp 19:13:00.470 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:13:00.465 resp 19:13:00.473 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:13:00.465 resp 19:13:00.471 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:13:00.467 resp 19:13:00.472 (5 ms)
+#35 POST /api/project -> 200 send 19:13:01.311 resp 19:13:01.318 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:01.325 resp 19:13:01.335 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:01.333 resp 19:13:01.340 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:13:01.333 resp 19:13:01.340 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:13:01.333 resp 19:13:01.340 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:13:01.333 resp 19:13:01.338 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:13:01.363 resp 19:13:01.372 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:13:01.363 resp 19:13:01.372 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:13:01.363 resp 19:13:01.373 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:13:01.363 resp 19:13:01.372 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:13:01.363 resp 19:13:01.371 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:13:01.363 resp 19:13:01.371 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:13:01.374 resp 19:13:01.387 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:12:05.223 resp 19:12:05.235 (12 ms)
+#2 GET /api/encryption -> 200 send 19:12:05.235 resp 19:12:05.236 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:12:05.235 resp 19:12:05.241 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:12:05.235 resp 19:12:05.241 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:12:05.235 resp 19:12:05.241 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:12:05.235 resp 19:12:05.241 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:12:06.081 resp 19:12:06.087 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:12:06.099 resp 19:12:06.140 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:12:06.115 resp 19:12:06.142 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:12:06.115 resp 19:12:06.142 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:12:06.115 resp 19:12:06.142 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:12:06.115 resp 19:12:06.142 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:12:06.165 resp 19:12:06.177 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:12:06.165 resp 19:12:06.176 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:12:06.165 resp 19:12:06.178 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:12:06.165 resp 19:12:06.177 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:12:06.165 resp 19:12:06.176 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:12:06.165 resp 19:12:06.176 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:12:06.179 resp 19:12:06.203 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:12:22.517 resp 19:12:22.536 (19 ms) updatedAt=2026-10-11T19:12:22.533Z snapshotCreated=false writingLog=null doc[len 490 markers ["B2LONG"] listWords 40 sha256 e737cd430f63]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:12:22.544 resp 19:12:22.550 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:12:22.544 resp 19:12:22.551 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:13:01.479 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:13:01.479 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:13:01.479 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:13:01.479 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:13:01.479 resp - (-)
+#28 GET /api/encryption -> 200 send 19:13:01.503 resp 19:13:01.509 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:13:01.503 resp 19:13:01.509 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:13:01.503 resp 19:13:01.509 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:13:01.503 resp 19:13:01.512 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:13:01.503 resp 19:13:01.510 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:13:01.505 resp 19:13:01.509 (4 ms)
+#34 POST /api/project -> 200 send 19:13:02.356 resp 19:13:02.363 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:02.371 resp 19:13:02.380 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:02.378 resp 19:13:02.385 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:13:02.378 resp 19:13:02.386 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:13:02.378 resp 19:13:02.385 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:13:02.378 resp 19:13:02.383 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:13:02.405 resp 19:13:02.414 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:13:02.405 resp 19:13:02.413 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:13:02.405 resp 19:13:02.415 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:13:02.405 resp 19:13:02.414 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:13:02.405 resp 19:13:02.413 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:13:02.405 resp 19:13:02.413 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:13:02.416 resp 19:13:02.429 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant ii, repetition 2 (`s3iir2-mv47ar6i-f87348`)
+
+```
+REPETITION s3 variant ii rep 2/3 run=s3iir2-mv47ar6i-f87348 commit=c92d82ca node=v24.15.0
+variant: stale A, saver B (` B2LONG` + 40 words), stale types ` A1`
+server: built standalone, sharing on, port 64336, pid 76344; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":76344,"comm":"next-server (v16.2.6)"}]; browser pids 76361,76362,76363,76426,76428; throwaway root /private/tmp/getwrite-two-client/s3iir2-mv47ar6i-f87348
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":490,"sha256":"89f094f47bf1ee9dff488412306c8b067d27f01addcf2e299f63fa42fb5acbf9","status":200,"updatedAt":"2026-10-11T19:13:28.468Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=45 matches B#1; updatedAt=2026-10-11T19:13:28.468Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:13:28.468Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:13:28.468Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":45,"updatedAt":"2026-10-11T19:13:28.468Z","name":"Doc s3iir2-mv47ar6i-f87348","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41}] expected=[{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:13:28.465Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"B2LONG":1,"A1":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":45,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (stale) typed; typing started 5013 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"164d948aa8d7d2dbd68c97415837a7d79d6a4e0fc46283e1bb022e911c3c0072","status":200,"updatedAt":"2026-10-11T19:13:36.216Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:13:36.216Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:13:36.216Z"} evidence={"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:13:28.468Z","2026-10-11T19:13:36.216Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:13:36.216Z","name":"Doc s3iir2-mv47ar6i-f87348","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true; entry timestamps ["2026-10-11T19:13:28.465Z","2026-10-11T19:13:36.214Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#1","added":1,"deleted":41,"deletedTokens":"B2LONG harbor lantern meadow copper ...(+36)","addedTokens":"A1"}]
+  search: {"B2LONG":0,"A1":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 13s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlie A1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie A1" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:13:36.216Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true
+final search: {"B2LONG":0,"A1":1,"harbor":0}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:13:36.216Z"}; evidence {"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:13:28.468Z","2026-10-11T19:13:36.216Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 41 (B2LONG harbor lantern meadow copper willow ...(+35)); where they are, after the stale save: {"lostTokenCount":41,"lostTokens":"B2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}; after reload: {"lostTokenCount":41,"lostTokens":"B2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}
+stale save contains the first saver's text: request marker tokens [["A1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":7674,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":7674,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":38736,"msAfterReloadMark":988},{"role":"status","text":"Loading diagnostics…","msAfterSince":38736,"msAfterReloadMark":988}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":37815,"msAfterReloadMark":67},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":37844,"msAfterReloadMark":97},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38699,"msAfterReloadMark":952},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38734,"msAfterReloadMark":987}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":37814,"msAfterReloadMark":67},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":37814,"msAfterReloadMark":67},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":37814,"msAfterReloadMark":67},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":37814,"msAfterReloadMark":67},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":37814,"msAfterReloadMark":67}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":37840,"msAfterReloadMark":92}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:14:06.306Z","msAfterSince":37748}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32050,"msAfterReloadMark":1016},{"role":"status","text":"Loading diagnostics…","msAfterSince":32050,"msAfterReloadMark":1016}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31119,"msAfterReloadMark":84},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31149,"msAfterReloadMark":115},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32015,"msAfterReloadMark":981},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32049,"msAfterReloadMark":1014}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31118,"msAfterReloadMark":84},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31118,"msAfterReloadMark":84},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31118,"msAfterReloadMark":84},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31118,"msAfterReloadMark":84},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31118,"msAfterReloadMark":84}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31145,"msAfterReloadMark":110}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:14:07.329Z","msAfterSince":31034}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:13:36.203Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2461,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:13:28.453Z","status":200,"hasDocument":true,"markers":["B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2458,"lastTypingStartsWith":" B2LONG harb","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":76344,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3iir2-mv47ar6i-f87348"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir2-mv47ar6i-f87348-rep02.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:13:10.045 resp 19:13:10.058 (13 ms)
+#2 GET /api/encryption -> 200 send 19:13:10.057 resp 19:13:10.059 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:13:10.057 resp 19:13:10.063 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:13:10.057 resp 19:13:10.063 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:13:10.057 resp 19:13:10.063 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:13:10.057 resp 19:13:10.063 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:13:10.906 resp 19:13:10.917 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:10.928 resp 19:13:10.969 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:10.944 resp 19:13:10.971 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:13:10.944 resp 19:13:10.971 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:13:10.944 resp 19:13:10.971 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:13:10.944 resp 19:13:10.972 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:13:10.997 resp 19:13:11.010 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:13:10.997 resp 19:13:11.009 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:13:10.997 resp 19:13:11.010 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:13:10.997 resp 19:13:11.009 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:13:10.997 resp 19:13:11.008 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:13:10.997 resp 19:13:11.008 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:13:11.011 resp 19:13:11.036 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:13:36.203 resp 19:13:36.219 (16 ms) updatedAt=2026-10-11T19:13:36.216Z snapshotCreated=true writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 164d948aa8d7]
+#21 POST /api/project-resources -> 200 send 19:13:36.234 resp 19:13:36.240 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:13:36.235 resp 19:13:36.240 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:13:36.235 resp 19:13:36.243 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:14:06.373 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:14:06.373 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:14:06.373 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:14:06.373 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:14:06.373 resp - (-)
+#29 GET /api/encryption -> 200 send 19:14:06.397 resp 19:14:06.400 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:14:06.397 resp 19:14:06.401 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:14:06.397 resp 19:14:06.402 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:14:06.397 resp 19:14:06.405 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:14:06.397 resp 19:14:06.403 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:14:06.399 resp 19:14:06.403 (4 ms)
+#35 POST /api/project -> 200 send 19:14:07.244 resp 19:14:07.251 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:07.258 resp 19:14:07.267 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:07.265 resp 19:14:07.273 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:14:07.265 resp 19:14:07.273 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:14:07.265 resp 19:14:07.272 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:14:07.265 resp 19:14:07.271 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:14:07.296 resp 19:14:07.308 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:14:07.296 resp 19:14:07.306 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:14:07.297 resp 19:14:07.307 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:14:07.297 resp 19:14:07.306 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:14:07.297 resp 19:14:07.305 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:14:07.297 resp 19:14:07.305 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:14:07.307 resp 19:14:07.323 (16 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:13:11.134 resp 19:13:11.147 (13 ms)
+#2 GET /api/encryption -> 200 send 19:13:11.147 resp 19:13:11.149 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:13:11.147 resp 19:13:11.151 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:13:11.147 resp 19:13:11.151 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:13:11.147 resp 19:13:11.153 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:13:11.147 resp 19:13:11.151 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:13:11.999 resp 19:13:12.007 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:12.019 resp 19:13:12.060 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:13:12.035 resp 19:13:12.063 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:13:12.035 resp 19:13:12.063 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:13:12.035 resp 19:13:12.063 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:13:12.035 resp 19:13:12.063 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:13:12.089 resp 19:13:12.101 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:13:12.089 resp 19:13:12.101 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:13:12.089 resp 19:13:12.101 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:13:12.089 resp 19:13:12.101 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:13:12.089 resp 19:13:12.100 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:13:12.089 resp 19:13:12.100 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:13:12.102 resp 19:13:12.127 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:13:28.453 resp 19:13:28.471 (18 ms) updatedAt=2026-10-11T19:13:28.468Z snapshotCreated=false writingLog=null doc[len 490 markers ["B2LONG"] listWords 40 sha256 89f094f47bf1]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:13:28.479 resp 19:13:28.486 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:13:28.479 resp 19:13:28.486 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:14:07.412 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:14:07.412 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:14:07.412 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:14:07.412 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:14:07.412 resp - (-)
+#28 GET /api/encryption -> 200 send 19:14:07.437 resp 19:14:07.443 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:14:07.437 resp 19:14:07.443 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:14:07.437 resp 19:14:07.443 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:14:07.437 resp 19:14:07.446 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:14:07.437 resp 19:14:07.443 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:14:07.439 resp 19:14:07.443 (4 ms)
+#34 POST /api/project -> 200 send 19:14:08.295 resp 19:14:08.302 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:08.309 resp 19:14:08.318 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:08.317 resp 19:14:08.324 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:14:08.317 resp 19:14:08.324 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:14:08.317 resp 19:14:08.324 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:14:08.317 resp 19:14:08.322 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:14:08.346 resp 19:14:08.355 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:14:08.346 resp 19:14:08.354 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:14:08.346 resp 19:14:08.355 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:14:08.346 resp 19:14:08.355 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:14:08.346 resp 19:14:08.353 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:14:08.346 resp 19:14:08.354 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:14:08.357 resp 19:14:08.372 (15 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant ii, repetition 3 (`s3iir3-mv47c62p-b04484`)
+
+```
+REPETITION s3 variant ii rep 3/3 run=s3iir3-mv47c62p-b04484 commit=c92d82ca node=v24.15.0
+variant: stale A, saver B (` B2LONG` + 40 words), stale types ` A1`
+server: built standalone, sharing on, port 64415, pid 78674; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":78674,"comm":"next-server (v16.2.6)"}]; browser pids 78691,78692,78693,78695,78697; throwaway root /private/tmp/getwrite-two-client/s3iir3-mv47c62p-b04484
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":490,"sha256":"7620ba7f07a8fcf23ba0df8e756c14b8772a0bb092139fbb24f7f55623b6b88e","status":200,"updatedAt":"2026-10-11T19:14:34.382Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=45 matches B#1; updatedAt=2026-10-11T19:14:34.382Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:14:34.382Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:14:34.382Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":45,"updatedAt":"2026-10-11T19:14:34.382Z","name":"Doc s3iir3-mv47c62p-b04484","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41}] expected=[{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:14:34.380Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"B2LONG":1,"A1":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":45,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (stale) typed; typing started 5012 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"03ee6b0ab41138995812e2e3084985717daaf1a0781a2593ca5343e3691f4a1b","status":200,"updatedAt":"2026-10-11T19:14:42.134Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:14:42.134Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:14:42.134Z"} evidence={"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:14:34.382Z","2026-10-11T19:14:42.134Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:14:42.134Z","name":"Doc s3iir3-mv47c62p-b04484","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true; entry timestamps ["2026-10-11T19:14:34.380Z","2026-10-11T19:14:42.133Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#1","added":1,"deleted":41,"deletedTokens":"B2LONG harbor lantern meadow copper ...(+36)","addedTokens":"A1"}]
+  search: {"B2LONG":0,"A1":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 13s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlie A1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie A1" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:14:42.134Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true
+final search: {"B2LONG":0,"A1":1,"harbor":0}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:14:42.134Z"}; evidence {"byUpdatedAt":["B20","A20"],"byResponseArrival":["B20","A20"],"bySend":["B20","A20"],"updatedAtValues":["2026-10-11T19:14:34.382Z","2026-10-11T19:14:42.134Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 41 (B2LONG harbor lantern meadow copper willow ...(+35)); where they are, after the stale save: {"lostTokenCount":41,"lostTokens":"B2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}; after reload: {"lostTokenCount":41,"lostTokens":"B2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}
+stale save contains the first saver's text: request marker tokens [["A1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":7676,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":7676,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":38752,"msAfterReloadMark":997},{"role":"status","text":"Loading diagnostics…","msAfterSince":38752,"msAfterReloadMark":997}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":37826,"msAfterReloadMark":70},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":37855,"msAfterReloadMark":99},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38716,"msAfterReloadMark":961},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":38750,"msAfterReloadMark":995}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":37825,"msAfterReloadMark":70},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":37825,"msAfterReloadMark":70},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":37825,"msAfterReloadMark":70},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":37825,"msAfterReloadMark":70},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":37825,"msAfterReloadMark":70}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":37850,"msAfterReloadMark":95}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:15:12.231Z","msAfterSince":37755}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32061,"msAfterReloadMark":1017},{"role":"status","text":"Loading diagnostics…","msAfterSince":32061,"msAfterReloadMark":1017}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31129,"msAfterReloadMark":84},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31158,"msAfterReloadMark":114},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32030,"msAfterReloadMark":985},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32059,"msAfterReloadMark":1015}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31128,"msAfterReloadMark":84},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31128,"msAfterReloadMark":84},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31128,"msAfterReloadMark":84},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31128,"msAfterReloadMark":84},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31128,"msAfterReloadMark":84}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31154,"msAfterReloadMark":110}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:15:13.261Z","msAfterSince":31044}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:14:42.122Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:14:34.371Z","status":200,"hasDocument":true,"markers":["B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2455,"lastTypingStartsWith":" B2LONG harb","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":78674,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3iir3-mv47c62p-b04484"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iir3-mv47c62p-b04484-rep03.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:14:16.002 resp 19:14:16.014 (12 ms)
+#2 GET /api/encryption -> 200 send 19:14:16.014 resp 19:14:16.015 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:14:16.014 resp 19:14:16.017 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:14:16.014 resp 19:14:16.017 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:14:16.014 resp 19:14:16.019 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:14:16.014 resp 19:14:16.017 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:14:16.856 resp 19:14:16.867 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:16.878 resp 19:14:16.918 (40 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:16.894 resp 19:14:16.920 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:14:16.894 resp 19:14:16.920 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:14:16.894 resp 19:14:16.921 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:14:16.894 resp 19:14:16.921 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:14:16.947 resp 19:14:16.959 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:14:16.947 resp 19:14:16.958 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:14:16.947 resp 19:14:16.959 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:14:16.947 resp 19:14:16.959 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:14:16.947 resp 19:14:16.957 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:14:16.947 resp 19:14:16.958 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:14:16.960 resp 19:14:16.985 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:14:42.122 resp 19:14:42.138 (16 ms) updatedAt=2026-10-11T19:14:42.134Z snapshotCreated=true writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 03ee6b0ab411]
+#21 POST /api/project-resources -> 200 send 19:14:42.152 resp 19:14:42.159 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:14:42.153 resp 19:14:42.159 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:14:42.153 resp 19:14:42.161 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:15:12.300 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:15:12.300 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:15:12.300 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:15:12.300 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:15:12.300 resp - (-)
+#29 GET /api/encryption -> 200 send 19:15:12.324 resp 19:15:12.327 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:15:12.324 resp 19:15:12.328 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:15:12.325 resp 19:15:12.329 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:15:12.325 resp 19:15:12.331 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:15:12.325 resp 19:15:12.329 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:15:12.326 resp 19:15:12.330 (4 ms)
+#35 POST /api/project -> 200 send 19:15:13.178 resp 19:15:13.184 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:13.192 resp 19:15:13.200 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:13.199 resp 19:15:13.206 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:15:13.199 resp 19:15:13.207 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:15:13.199 resp 19:15:13.206 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:15:13.199 resp 19:15:13.204 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:15:13.229 resp 19:15:13.240 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:15:13.229 resp 19:15:13.238 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:15:13.229 resp 19:15:13.240 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:15:13.229 resp 19:15:13.239 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:15:13.229 resp 19:15:13.238 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:15:13.229 resp 19:15:13.238 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:15:13.241 resp 19:15:13.255 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:14:17.080 resp 19:14:17.092 (12 ms)
+#2 GET /api/encryption -> 200 send 19:14:17.092 resp 19:14:17.093 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:14:17.092 resp 19:14:17.096 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:14:17.092 resp 19:14:17.096 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:14:17.092 resp 19:14:17.098 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:14:17.092 resp 19:14:17.096 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:14:17.940 resp 19:14:17.947 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:17.959 resp 19:14:18.001 (43 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:14:17.975 resp 19:14:18.003 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:14:17.975 resp 19:14:18.003 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:14:17.975 resp 19:14:18.004 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:14:17.975 resp 19:14:18.004 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:14:18.030 resp 19:14:18.039 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:14:18.030 resp 19:14:18.038 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:14:18.030 resp 19:14:18.039 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:14:18.030 resp 19:14:18.038 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:14:18.030 resp 19:14:18.037 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:14:18.030 resp 19:14:18.037 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:14:18.039 resp 19:14:18.063 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:14:34.371 resp 19:14:34.384 (13 ms) updatedAt=2026-10-11T19:14:34.382Z snapshotCreated=false writingLog=null doc[len 490 markers ["B2LONG"] listWords 40 sha256 7620ba7f07a8]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:14:34.392 resp 19:14:34.398 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:14:34.392 resp 19:14:34.398 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:15:13.344 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:15:13.344 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:15:13.344 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:15:13.344 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:15:13.344 resp - (-)
+#28 GET /api/encryption -> 200 send 19:15:13.368 resp 19:15:13.374 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:15:13.368 resp 19:15:13.374 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:15:13.368 resp 19:15:13.374 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:15:13.368 resp 19:15:13.377 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:15:13.368 resp 19:15:13.374 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:15:13.370 resp 19:15:13.375 (5 ms)
+#34 POST /api/project -> 200 send 19:15:14.229 resp 19:15:14.237 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:14.246 resp 19:15:14.254 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:14.253 resp 19:15:14.261 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:15:14.253 resp 19:15:14.261 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:15:14.253 resp 19:15:14.260 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:15:14.253 resp 19:15:14.259 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:15:14.278 resp 19:15:14.288 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:15:14.278 resp 19:15:14.287 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:15:14.278 resp 19:15:14.289 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:15:14.279 resp 19:15:14.288 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:15:14.279 resp 19:15:14.286 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:15:14.279 resp 19:15:14.286 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:15:14.290 resp 19:15:14.303 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant iii, repetition 1 (`s3iiir1-mv47dl0w-2f01ea`)
+
+```
+REPETITION s3 variant iii rep 1/3 run=s3iiir1-mv47dl0w-2f01ea commit=c92d82ca node=v24.15.0
+variant: stale B, saver A (short ` A1`), stale types ` B1`
+server: built standalone, sharing on, port 64496, pid 80929; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":80929,"comm":"next-server (v16.2.6)"}]; browser pids 80946,80995,80996,81011,81016; throwaway root /private/tmp/getwrite-two-client/s3iiir1-mv47dl0w-2f01ea
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"10d5d4a27a766b6b5bd000f26c92bbc5d42e24bdf95d7acea6db24128d492fe4","status":200,"updatedAt":"2026-10-11T19:15:26.740Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:15:26.740Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:15:26.740Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:15:26.740Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:15:26.740Z","name":"Doc s3iiir1-mv47dl0w-2f01ea","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:15:26.737Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"}]
+  search: {"A1":1,"B1":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (stale) typed; typing started 5016 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"273439d20f7d656e11efb8e6b073f8b13ef4770e6dd93fc9a665ee01b6d0bf8e","status":200,"updatedAt":"2026-10-11T19:15:34.468Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:15:34.468Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:15:34.468Z"} evidence={"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:15:26.740Z","2026-10-11T19:15:34.468Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:15:34.468Z","name":"Doc s3iiir1-mv47dl0w-2f01ea","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1","B#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true; entry timestamps ["2026-10-11T19:15:26.737Z","2026-10-11T19:15:34.466Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"B#1","added":1,"deleted":1,"deletedTokens":"A1","addedTokens":"B1"}]
+  search: {"A1":0,"B1":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · 26s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 19s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlie B1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:15:34.468Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true
+final search: {"A1":0,"B1":1}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:15:34.468Z"}; evidence {"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:15:26.740Z","2026-10-11T19:15:34.468Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 1 (A1); where they are, after the stale save: {"lostTokenCount":1,"lostTokens":"A1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}; after reload: {"lostTokenCount":1,"lostTokens":"A1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}
+stale save contains the first saver's text: request marker tokens [["B1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [false]; auto-backup revisions after reload: []
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Loading diagnostics…","msAfterSince":7668,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":39748,"msAfterReloadMark":975},{"role":"status","text":"Loading diagnostics…","msAfterSince":39748,"msAfterReloadMark":975}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":38824,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":38854,"msAfterReloadMark":81},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39717,"msAfterReloadMark":943},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39746,"msAfterReloadMark":973}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":38823,"msAfterReloadMark":50},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":38823,"msAfterReloadMark":50},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":38823,"msAfterReloadMark":50},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":38823,"msAfterReloadMark":50},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":38823,"msAfterReloadMark":50}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":38849,"msAfterReloadMark":75}],"patchResponseSignals":[{"n":20,"snapshotCreated":false,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:16:05.586Z","msAfterSince":38774}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31005,"msAfterReloadMark":991},{"role":"status","text":"Loading diagnostics…","msAfterSince":31005,"msAfterReloadMark":991}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30083,"msAfterReloadMark":68},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30113,"msAfterReloadMark":99},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":30972,"msAfterReloadMark":958},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31003,"msAfterReloadMark":989}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30082,"msAfterReloadMark":68},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30082,"msAfterReloadMark":68},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30082,"msAfterReloadMark":68},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30082,"msAfterReloadMark":68},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30082,"msAfterReloadMark":68}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30108,"msAfterReloadMark":94}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:16:04.561Z","msAfterSince":30014}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:15:34.455Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:15:26.725Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":80929,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3iiir1-mv47dl0w-2f01ea"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir1-mv47dl0w-2f01ea-rep01.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:15:22.036 resp 19:15:22.048 (12 ms)
+#2 GET /api/encryption -> 200 send 19:15:22.048 resp 19:15:22.050 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:15:22.048 resp 19:15:22.051 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:15:22.048 resp 19:15:22.052 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:15:22.048 resp 19:15:22.053 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:15:22.048 resp 19:15:22.052 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:15:22.889 resp 19:15:22.899 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:22.910 resp 19:15:22.951 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:22.926 resp 19:15:22.953 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:15:22.926 resp 19:15:22.953 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:15:22.926 resp 19:15:22.953 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:15:22.926 resp 19:15:22.953 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:15:22.980 resp 19:15:22.991 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:15:22.980 resp 19:15:22.990 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:15:22.980 resp 19:15:22.991 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:15:22.980 resp 19:15:22.990 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:15:22.980 resp 19:15:22.989 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:15:22.980 resp 19:15:22.990 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:15:22.992 resp 19:15:23.016 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:15:26.725 resp 19:15:26.742 (18 ms) updatedAt=2026-10-11T19:15:26.740Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 10d5d4a27a76]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:15:26.748 resp 19:15:26.753 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:15:26.748 resp 19:15:26.754 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:16:04.629 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:16:04.629 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:16:04.629 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:16:04.629 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:16:04.629 resp - (-)
+#28 GET /api/encryption -> 200 send 19:16:04.653 resp 19:16:04.656 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:16:04.653 resp 19:16:04.658 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:16:04.653 resp 19:16:04.659 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:16:04.653 resp 19:16:04.661 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:16:04.653 resp 19:16:04.659 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:16:04.655 resp 19:16:04.660 (5 ms)
+#34 POST /api/project -> 200 send 19:16:05.504 resp 19:16:05.511 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:05.519 resp 19:16:05.528 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:05.526 resp 19:16:05.533 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:16:05.526 resp 19:16:05.533 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:16:05.526 resp 19:16:05.533 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:16:05.526 resp 19:16:05.531 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:16:05.554 resp 19:16:05.564 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:05.554 resp 19:16:05.563 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:16:05.554 resp 19:16:05.564 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:05.554 resp 19:16:05.565 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:16:05.554 resp 19:16:05.563 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:16:05.554 resp 19:16:05.563 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:16:05.565 resp 19:16:05.578 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:15:23.115 resp 19:15:23.127 (12 ms)
+#2 GET /api/encryption -> 200 send 19:15:23.127 resp 19:15:23.128 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:15:23.127 resp 19:15:23.131 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:15:23.127 resp 19:15:23.131 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:15:23.127 resp 19:15:23.133 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:15:23.127 resp 19:15:23.131 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:15:23.973 resp 19:15:23.980 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:23.992 resp 19:15:24.034 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:15:24.008 resp 19:15:24.036 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:15:24.008 resp 19:15:24.036 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:15:24.008 resp 19:15:24.036 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:15:24.008 resp 19:15:24.036 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:15:24.064 resp 19:15:24.075 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:15:24.064 resp 19:15:24.074 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:15:24.064 resp 19:15:24.075 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:15:24.064 resp 19:15:24.075 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:15:24.064 resp 19:15:24.074 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:15:24.064 resp 19:15:24.074 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:15:24.076 resp 19:15:24.101 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:15:34.455 resp 19:15:34.471 (16 ms) updatedAt=2026-10-11T19:15:34.468Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 273439d20f7d]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:15:34.477 resp 19:15:34.484 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:15:34.477 resp 19:15:34.484 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:16:05.635 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:16:05.635 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:16:05.635 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:16:05.635 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:16:05.635 resp - (-)
+#28 GET /api/encryption -> 200 send 19:16:05.660 resp 19:16:05.663 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:16:05.660 resp 19:16:05.665 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:16:05.660 resp 19:16:05.665 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:16:05.660 resp 19:16:05.667 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:16:05.660 resp 19:16:05.666 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:16:05.661 resp 19:16:05.666 (5 ms)
+#34 POST /api/project -> 200 send 19:16:06.512 resp 19:16:06.520 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:06.529 resp 19:16:06.536 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:06.535 resp 19:16:06.541 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:16:06.535 resp 19:16:06.541 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:16:06.536 resp 19:16:06.540 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:16:06.536 resp 19:16:06.540 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:16:06.562 resp 19:16:06.571 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:06.562 resp 19:16:06.570 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:16:06.562 resp 19:16:06.571 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:06.562 resp 19:16:06.570 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:16:06.562 resp 19:16:06.569 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:16:06.562 resp 19:16:06.569 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:16:06.573 resp 19:16:06.586 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant iii, repetition 2 (`s3iiir2-mv47epad-ab5c22`)
+
+```
+REPETITION s3 variant iii rep 2/3 run=s3iiir2-mv47epad-ab5c22 commit=c92d82ca node=v24.15.0
+variant: stale B, saver A (short ` A1`), stale types ` B1`
+server: built standalone, sharing on, port 64566, pid 82823; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":82823,"comm":"next-server (v16.2.6)"}]; browser pids 82840,82841,82842,82845,82907; throwaway root /private/tmp/getwrite-two-client/s3iiir2-mv47epad-ab5c22
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"407e4309eee0b342b655dc1fb117ee4622884814426d51a0ffb2bfa73d4ab7e2","status":200,"updatedAt":"2026-10-11T19:16:18.910Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:16:18.910Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:16:18.910Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:16:18.910Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:16:18.910Z","name":"Doc s3iiir2-mv47epad-ab5c22","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:16:18.907Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"}]
+  search: {"A1":1,"B1":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (stale) typed; typing started 5008 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"bbd2cd5f7235a4ad51257557f81be56ffb1173b8975bcec0e46b9ad322ceb7d5","status":200,"updatedAt":"2026-10-11T19:16:26.634Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:16:26.634Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:16:26.634Z"} evidence={"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:16:18.910Z","2026-10-11T19:16:26.634Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:16:26.634Z","name":"Doc s3iiir2-mv47epad-ab5c22","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1","B#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true; entry timestamps ["2026-10-11T19:16:18.907Z","2026-10-11T19:16:26.633Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"B#1","added":1,"deleted":1,"deletedTokens":"A1","addedTokens":"B1"}]
+  search: {"A1":0,"B1":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · 26s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 19s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlie B1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:16:26.634Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true
+final search: {"A1":0,"B1":1}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:16:26.634Z"}; evidence {"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:16:18.910Z","2026-10-11T19:16:26.634Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 1 (A1); where they are, after the stale save: {"lostTokenCount":1,"lostTokens":"A1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}; after reload: {"lostTokenCount":1,"lostTokens":"A1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}
+stale save contains the first saver's text: request marker tokens [["B1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [false]; auto-backup revisions after reload: []
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Loading diagnostics…","msAfterSince":7648,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":39722,"msAfterReloadMark":967},{"role":"status","text":"Loading diagnostics…","msAfterSince":39722,"msAfterReloadMark":967}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":38805,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":38835,"msAfterReloadMark":80},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39685,"msAfterReloadMark":930},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39721,"msAfterReloadMark":965}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":38804,"msAfterReloadMark":49},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":38805,"msAfterReloadMark":50},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":38804,"msAfterReloadMark":49},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":38804,"msAfterReloadMark":49},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":38805,"msAfterReloadMark":50}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":38830,"msAfterReloadMark":74}],"patchResponseSignals":[{"n":20,"snapshotCreated":false,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:16:57.752Z","msAfterSince":38755}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31002,"msAfterReloadMark":992},{"role":"status","text":"Loading diagnostics…","msAfterSince":31002,"msAfterReloadMark":992}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30077,"msAfterReloadMark":67},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30108,"msAfterReloadMark":98},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":30966,"msAfterReloadMark":956},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31001,"msAfterReloadMark":990}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30077,"msAfterReloadMark":66},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30077,"msAfterReloadMark":66},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30077,"msAfterReloadMark":66},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30077,"msAfterReloadMark":66},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30077,"msAfterReloadMark":66}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30103,"msAfterReloadMark":93}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:16:56.726Z","msAfterSince":30010}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:16:26.624Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:16:18.899Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":82823,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3iiir2-mv47epad-ab5c22"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir2-mv47epad-ab5c22-rep02.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:16:14.211 resp 19:16:14.224 (13 ms)
+#2 GET /api/encryption -> 200 send 19:16:14.223 resp 19:16:14.224 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:16:14.223 resp 19:16:14.227 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:16:14.223 resp 19:16:14.228 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:16:14.223 resp 19:16:14.229 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:16:14.223 resp 19:16:14.228 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:16:15.072 resp 19:16:15.082 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:15.093 resp 19:16:15.134 (40 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:15.109 resp 19:16:15.135 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:16:15.109 resp 19:16:15.136 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:16:15.109 resp 19:16:15.136 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:16:15.109 resp 19:16:15.136 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:16:15.163 resp 19:16:15.174 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:15.163 resp 19:16:15.173 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:16:15.163 resp 19:16:15.174 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:15.163 resp 19:16:15.174 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:16:15.163 resp 19:16:15.172 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:16:15.163 resp 19:16:15.172 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:16:15.175 resp 19:16:15.199 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:16:18.899 resp 19:16:18.913 (14 ms) updatedAt=2026-10-11T19:16:18.910Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 407e4309eee0]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:18.918 resp 19:16:18.923 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:18.918 resp 19:16:18.924 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:16:56.793 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:16:56.793 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:16:56.793 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:16:56.793 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:16:56.793 resp - (-)
+#28 GET /api/encryption -> 200 send 19:16:56.818 resp 19:16:56.821 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:16:56.818 resp 19:16:56.822 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:16:56.818 resp 19:16:56.823 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:16:56.818 resp 19:16:56.825 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:16:56.818 resp 19:16:56.823 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:16:56.819 resp 19:16:56.824 (5 ms)
+#34 POST /api/project -> 200 send 19:16:57.668 resp 19:16:57.675 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:57.682 resp 19:16:57.692 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:57.689 resp 19:16:57.696 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:16:57.690 resp 19:16:57.696 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:16:57.690 resp 19:16:57.696 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:16:57.690 resp 19:16:57.694 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:16:57.720 resp 19:16:57.729 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:57.720 resp 19:16:57.728 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:16:57.720 resp 19:16:57.729 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:57.720 resp 19:16:57.729 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:16:57.720 resp 19:16:57.728 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:16:57.720 resp 19:16:57.728 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:16:57.731 resp 19:16:57.744 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:16:15.295 resp 19:16:15.308 (13 ms)
+#2 GET /api/encryption -> 200 send 19:16:15.307 resp 19:16:15.308 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:16:15.307 resp 19:16:15.311 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:16:15.307 resp 19:16:15.311 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:16:15.307 resp 19:16:15.313 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:16:15.307 resp 19:16:15.311 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:16:16.151 resp 19:16:16.157 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:16.168 resp 19:16:16.210 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:16.184 resp 19:16:16.212 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:16:16.185 resp 19:16:16.212 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:16:16.185 resp 19:16:16.212 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:16:16.185 resp 19:16:16.212 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:16:16.238 resp 19:16:16.250 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:16.238 resp 19:16:16.250 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:16:16.238 resp 19:16:16.251 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:16.238 resp 19:16:16.250 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:16:16.238 resp 19:16:16.249 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:16:16.238 resp 19:16:16.249 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:16:16.251 resp 19:16:16.276 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:16:26.624 resp 19:16:26.636 (13 ms) updatedAt=2026-10-11T19:16:26.634Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 bbd2cd5f7235]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:26.642 resp 19:16:26.647 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:26.642 resp 19:16:26.648 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:16:57.801 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:16:57.801 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:16:57.801 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:16:57.801 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:16:57.801 resp - (-)
+#28 GET /api/encryption -> 200 send 19:16:57.824 resp 19:16:57.827 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:16:57.824 resp 19:16:57.828 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:16:57.824 resp 19:16:57.829 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:16:57.824 resp 19:16:57.833 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:16:57.824 resp 19:16:57.831 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:16:57.826 resp 19:16:57.831 (6 ms)
+#34 POST /api/project -> 200 send 19:16:58.668 resp 19:16:58.674 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:58.681 resp 19:16:58.691 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:16:58.689 resp 19:16:58.696 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:16:58.689 resp 19:16:58.697 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:16:58.689 resp 19:16:58.696 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:16:58.689 resp 19:16:58.694 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:16:58.720 resp 19:16:58.730 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:16:58.720 resp 19:16:58.729 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:16:58.720 resp 19:16:58.731 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:16:58.720 resp 19:16:58.730 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:16:58.720 resp 19:16:58.729 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:16:58.720 resp 19:16:58.729 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:16:58.731 resp 19:16:58.745 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant iii, repetition 3 (`s3iiir3-mv47ftjm-d94a7a`)
+
+```
+REPETITION s3 variant iii rep 3/3 run=s3iiir3-mv47ftjm-d94a7a commit=c92d82ca node=v24.15.0
+variant: stale B, saver A (short ` A1`), stale types ` B1`
+server: built standalone, sharing on, port 64645, pid 84721; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":84721,"comm":"next-server (v16.2.6)"}]; browser pids 84738,84739,84740,84742,84744; throwaway root /private/tmp/getwrite-two-client/s3iiir3-mv47ftjm-d94a7a
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"1662faf13e7b0f2b01de020ddd271277610b3b0aa063979d7324e87a69df2111","status":200,"updatedAt":"2026-10-11T19:17:11.090Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:17:11.090Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:17:11.090Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:17:11.090Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:17:11.090Z","name":"Doc s3iiir3-mv47ftjm-d94a7a","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:17:11.087Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"}]
+  search: {"A1":1,"B1":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (stale) typed; typing started 5015 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"e9f9a67ebff57fdf40597371f04765bed1f73cea075d35bf47a4298206a80ded","status":200,"updatedAt":"2026-10-11T19:17:18.816Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:17:18.816Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:17:18.816Z"} evidence={"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:17:11.090Z","2026-10-11T19:17:18.816Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:17:18.816Z","name":"Doc s3iiir3-mv47ftjm-d94a7a","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1","B#1"]; expected wordCounts {"base":4,"A#1":5,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true; entry timestamps ["2026-10-11T19:17:11.087Z","2026-10-11T19:17:18.815Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"B#1","added":1,"deleted":1,"deletedTokens":"A1","addedTokens":"B1"}]
+  search: {"A1":0,"B1":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1" / All changes saved · 26s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 19s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlie B1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:17:18.816Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] expected=[{"added":1,"deleted":0,"net":1},{"added":1,"deleted":1,"net":0}] match=true
+final search: {"A1":0,"B1":1}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:17:18.816Z"}; evidence {"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:17:11.090Z","2026-10-11T19:17:18.816Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 1 (A1); where they are, after the stale save: {"lostTokenCount":1,"lostTokens":"A1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}; after reload: {"lostTokenCount":1,"lostTokens":"A1","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[]}
+stale save contains the first saver's text: request marker tokens [["B1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [false]; auto-backup revisions after reload: []
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Loading diagnostics…","msAfterSince":7659,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":39743,"msAfterReloadMark":976},{"role":"status","text":"Loading diagnostics…","msAfterSince":39743,"msAfterReloadMark":976}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":38819,"msAfterReloadMark":51},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":38846,"msAfterReloadMark":79},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39709,"msAfterReloadMark":941},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39741,"msAfterReloadMark":974}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":38818,"msAfterReloadMark":51},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":38818,"msAfterReloadMark":51},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":38818,"msAfterReloadMark":51},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":38818,"msAfterReloadMark":51},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":38818,"msAfterReloadMark":51}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":38843,"msAfterReloadMark":76}],"patchResponseSignals":[{"n":20,"snapshotCreated":false,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:17:49.935Z","msAfterSince":38767}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31000,"msAfterReloadMark":985},{"role":"status","text":"Loading diagnostics…","msAfterSince":31000,"msAfterReloadMark":985}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30083,"msAfterReloadMark":69},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30114,"msAfterReloadMark":99},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":30966,"msAfterReloadMark":952},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":30999,"msAfterReloadMark":984}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30083,"msAfterReloadMark":68},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30083,"msAfterReloadMark":68},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30083,"msAfterReloadMark":68},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30083,"msAfterReloadMark":68},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30083,"msAfterReloadMark":68}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30108,"msAfterReloadMark":94}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:17:48.916Z","msAfterSince":30014}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:17:18.808Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:17:11.076Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2462,"lastTypingStartsWith":" A1","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":84721,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3iiir3-mv47ftjm-d94a7a"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3iiir3-mv47ftjm-d94a7a-rep03.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:17:06.376 resp 19:17:06.389 (12 ms)
+#2 GET /api/encryption -> 200 send 19:17:06.388 resp 19:17:06.390 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:17:06.388 resp 19:17:06.392 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:17:06.388 resp 19:17:06.392 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:17:06.388 resp 19:17:06.394 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:17:06.388 resp 19:17:06.392 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:17:07.236 resp 19:17:07.245 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:07.255 resp 19:17:07.295 (40 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:07.271 resp 19:17:07.297 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:17:07.271 resp 19:17:07.297 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:17:07.271 resp 19:17:07.298 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:17:07.271 resp 19:17:07.298 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:17:07.321 resp 19:17:07.331 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:07.321 resp 19:17:07.330 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:17:07.321 resp 19:17:07.331 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:07.321 resp 19:17:07.331 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:17:07.321 resp 19:17:07.330 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:17:07.321 resp 19:17:07.330 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:17:07.333 resp 19:17:07.357 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:17:11.076 resp 19:17:11.092 (17 ms) updatedAt=2026-10-11T19:17:11.090Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 1662faf13e7b]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:11.098 resp 19:17:11.103 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:11.098 resp 19:17:11.103 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:17:48.984 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:17:48.984 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:17:48.984 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:17:48.984 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:17:48.984 resp - (-)
+#28 GET /api/encryption -> 200 send 19:17:49.008 resp 19:17:49.014 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:17:49.008 resp 19:17:49.012 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:17:49.008 resp 19:17:49.013 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:17:49.008 resp 19:17:49.016 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:17:49.009 resp 19:17:49.013 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:17:49.010 resp 19:17:49.015 (5 ms)
+#34 POST /api/project -> 200 send 19:17:49.858 resp 19:17:49.863 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:49.868 resp 19:17:49.875 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:49.873 resp 19:17:49.878 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:17:49.873 resp 19:17:49.879 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:17:49.873 resp 19:17:49.878 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:17:49.873 resp 19:17:49.877 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:17:49.902 resp 19:17:49.912 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:49.902 resp 19:17:49.910 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:17:49.902 resp 19:17:49.912 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:49.902 resp 19:17:49.911 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:17:49.902 resp 19:17:49.910 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:17:49.902 resp 19:17:49.910 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:17:49.913 resp 19:17:49.929 (16 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:17:07.453 resp 19:17:07.466 (13 ms)
+#2 GET /api/encryption -> 200 send 19:17:07.465 resp 19:17:07.466 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:17:07.465 resp 19:17:07.469 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:17:07.465 resp 19:17:07.470 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:17:07.465 resp 19:17:07.471 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:17:07.465 resp 19:17:07.471 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:17:08.313 resp 19:17:08.320 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:08.332 resp 19:17:08.374 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:08.348 resp 19:17:08.376 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:17:08.348 resp 19:17:08.376 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:17:08.348 resp 19:17:08.376 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:17:08.348 resp 19:17:08.376 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:17:08.405 resp 19:17:08.417 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:08.405 resp 19:17:08.416 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:17:08.405 resp 19:17:08.417 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:08.405 resp 19:17:08.417 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:17:08.405 resp 19:17:08.416 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:17:08.405 resp 19:17:08.416 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:17:08.418 resp 19:17:08.443 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:17:18.808 resp 19:17:18.818 (10 ms) updatedAt=2026-10-11T19:17:18.816Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 e9f9a67ebff5]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:18.822 resp 19:17:18.829 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:18.822 resp 19:17:18.829 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:17:49.986 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:17:49.986 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:17:49.986 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:17:49.986 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:17:49.986 resp - (-)
+#28 GET /api/encryption -> 200 send 19:17:50.009 resp 19:17:50.011 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:17:50.009 resp 19:17:50.013 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:17:50.009 resp 19:17:50.014 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:17:50.009 resp 19:17:50.016 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:17:50.009 resp 19:17:50.014 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:17:50.010 resp 19:17:50.014 (4 ms)
+#34 POST /api/project -> 200 send 19:17:50.862 resp 19:17:50.869 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:50.876 resp 19:17:50.884 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:50.883 resp 19:17:50.890 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:17:50.883 resp 19:17:50.891 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:17:50.883 resp 19:17:50.890 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:17:50.883 resp 19:17:50.888 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:17:50.912 resp 19:17:50.922 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:50.912 resp 19:17:50.921 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:17:50.912 resp 19:17:50.922 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:50.912 resp 19:17:50.922 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:17:50.912 resp 19:17:50.921 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:17:50.912 resp 19:17:50.921 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:17:50.923 resp 19:17:50.937 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant iv, repetition 1 (`s3ivr1-mv47gxsw-65efc4`)
+
+```
+REPETITION s3 variant iv rep 1/3 run=s3ivr1-mv47gxsw-65efc4 commit=c92d82ca node=v24.15.0
+variant: stale B, saver A (` A2LONG` + 40 words), stale types ` B1`
+server: built standalone, sharing on, port 64717, pid 86553; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":86553,"comm":"next-server (v16.2.6)"}]; browser pids 86631,86632,86633,86638,86642; throwaway root /private/tmp/getwrite-two-client/s3ivr1-mv47gxsw-65efc4
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":490,"sha256":"c2436bc1dfb2a2dcb83aac9f388050a3e204c0dd7c8ba649be6dceb8b8ac91d3","status":200,"updatedAt":"2026-10-11T19:18:16.971Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=45 matches A#1; updatedAt=2026-10-11T19:18:16.971Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:18:16.971Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:18:16.971Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":45,"updatedAt":"2026-10-11T19:18:16.971Z","name":"Doc s3ivr1-mv47gxsw-65efc4","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41}] expected=[{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:18:16.968Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"A2LONG":1,"B1":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":45,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (stale) typed; typing started 5013 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"bb35396296e8c118f11a2c5c89ac07687c56fe6d8744c932f668d52d7fafefd0","status":200,"updatedAt":"2026-10-11T19:18:24.707Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 12s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:18:24.707Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:18:24.707Z"} evidence={"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:18:16.971Z","2026-10-11T19:18:24.707Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:18:24.707Z","name":"Doc s3ivr1-mv47gxsw-65efc4","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"A#1":45,"B#1":5}
+  writing log actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true; entry timestamps ["2026-10-11T19:18:16.968Z","2026-10-11T19:18:24.705Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#1","added":1,"deleted":41,"deletedTokens":"A2LONG harbor lantern meadow copper ...(+36)","addedTokens":"B1"}]
+  search: {"A2LONG":0,"B1":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 12s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 5s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlie B1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:18:24.707Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true
+final search: {"A2LONG":0,"B1":1,"harbor":0}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:18:24.707Z"}; evidence {"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:18:16.971Z","2026-10-11T19:18:24.707Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 41 (A2LONG harbor lantern meadow copper willow ...(+35)); where they are, after the stale save: {"lostTokenCount":41,"lostTokens":"A2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}; after reload: {"lostTokenCount":41,"lostTokens":"A2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}
+stale save contains the first saver's text: request marker tokens [["B1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":7671,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":7671,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":39788,"msAfterReloadMark":970},{"role":"status","text":"Loading diagnostics…","msAfterSince":39788,"msAfterReloadMark":970}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":38869,"msAfterReloadMark":51},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":38898,"msAfterReloadMark":80},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39757,"msAfterReloadMark":939},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39786,"msAfterReloadMark":968}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":38868,"msAfterReloadMark":50},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":38868,"msAfterReloadMark":50},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":38868,"msAfterReloadMark":50},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":38868,"msAfterReloadMark":50},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":38868,"msAfterReloadMark":50}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":38894,"msAfterReloadMark":76}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:18:55.872Z","msAfterSince":38818}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31049,"msAfterReloadMark":1035},{"role":"status","text":"Loading diagnostics…","msAfterSince":31049,"msAfterReloadMark":1035}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30121,"msAfterReloadMark":106},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30153,"msAfterReloadMark":139},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31014,"msAfterReloadMark":1000},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31047,"msAfterReloadMark":1033}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30146,"msAfterReloadMark":131}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:18:54.801Z","msAfterSince":30015}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:18:24.695Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:18:16.956Z","status":200,"hasDocument":true,"markers":["A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A2LONG harb","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":86553,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3ivr1-mv47gxsw-65efc4"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr1-mv47gxsw-65efc4-rep01.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:17:58.605 resp 19:17:58.617 (13 ms)
+#2 GET /api/encryption -> 200 send 19:17:58.617 resp 19:17:58.618 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:17:58.617 resp 19:17:58.621 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:17:58.617 resp 19:17:58.621 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:17:58.617 resp 19:17:58.623 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:17:58.617 resp 19:17:58.621 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:17:59.459 resp 19:17:59.466 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:59.476 resp 19:17:59.519 (43 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:17:59.490 resp 19:17:59.521 (31 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:17:59.490 resp 19:17:59.521 (31 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:17:59.490 resp 19:17:59.521 (31 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:17:59.490 resp 19:17:59.521 (31 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:17:59.546 resp 19:17:59.558 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:17:59.546 resp 19:17:59.556 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:17:59.546 resp 19:17:59.557 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:17:59.546 resp 19:17:59.557 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:17:59.546 resp 19:17:59.556 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:17:59.546 resp 19:17:59.555 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:17:59.558 resp 19:17:59.584 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:18:16.956 resp 19:18:16.973 (17 ms) updatedAt=2026-10-11T19:18:16.971Z snapshotCreated=false writingLog=null doc[len 490 markers ["A2LONG"] listWords 40 sha256 c2436bc1dfb2]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:18:16.981 resp 19:18:16.988 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:18:16.981 resp 19:18:16.988 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:18:54.906 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:18:54.906 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:18:54.906 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:18:54.906 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:18:54.906 resp - (-)
+#28 GET /api/encryption -> 200 send 19:18:54.931 resp 19:18:54.937 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:18:54.931 resp 19:18:54.936 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:18:54.931 resp 19:18:54.937 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:18:54.931 resp 19:18:54.940 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:18:54.931 resp 19:18:54.939 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:18:54.932 resp 19:18:54.940 (8 ms)
+#34 POST /api/project -> 200 send 19:18:55.786 resp 19:18:55.793 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:18:55.801 resp 19:18:55.809 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:18:55.808 resp 19:18:55.814 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:18:55.808 resp 19:18:55.814 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:18:55.808 resp 19:18:55.814 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:18:55.808 resp 19:18:55.812 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:18:55.837 resp 19:18:55.849 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:18:55.837 resp 19:18:55.846 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:18:55.837 resp 19:18:55.847 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:18:55.837 resp 19:18:55.847 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:18:55.837 resp 19:18:55.845 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:18:55.837 resp 19:18:55.846 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:18:55.848 resp 19:18:55.864 (16 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:17:59.679 resp 19:17:59.692 (13 ms)
+#2 GET /api/encryption -> 200 send 19:17:59.692 resp 19:17:59.693 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:17:59.692 resp 19:17:59.696 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:17:59.692 resp 19:17:59.697 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:17:59.692 resp 19:17:59.698 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:17:59.692 resp 19:17:59.697 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:18:00.539 resp 19:18:00.546 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:18:00.558 resp 19:18:00.599 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:18:00.574 resp 19:18:00.601 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:18:00.574 resp 19:18:00.601 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:18:00.574 resp 19:18:00.602 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:18:00.574 resp 19:18:00.602 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:18:00.629 resp 19:18:00.637 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:18:00.629 resp 19:18:00.637 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:18:00.629 resp 19:18:00.638 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:18:00.629 resp 19:18:00.637 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:18:00.629 resp 19:18:00.636 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:18:00.629 resp 19:18:00.637 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:18:00.639 resp 19:18:00.664 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:18:24.695 resp 19:18:24.710 (15 ms) updatedAt=2026-10-11T19:18:24.707Z snapshotCreated=true writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 bb35396296e8]
+#21 POST /api/project-resources -> 200 send 19:18:24.725 resp 19:18:24.732 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:18:24.725 resp 19:18:24.731 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:18:24.725 resp 19:18:24.733 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:18:55.922 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:18:55.922 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:18:55.922 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:18:55.922 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:18:55.922 resp - (-)
+#29 GET /api/encryption -> 200 send 19:18:55.946 resp 19:18:55.949 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:18:55.946 resp 19:18:55.950 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:18:55.946 resp 19:18:55.951 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:18:55.946 resp 19:18:55.953 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:18:55.946 resp 19:18:55.952 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:18:55.948 resp 19:18:55.951 (4 ms)
+#35 POST /api/project -> 200 send 19:18:56.795 resp 19:18:56.803 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:18:56.810 resp 19:18:56.819 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:18:56.817 resp 19:18:56.825 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:18:56.817 resp 19:18:56.825 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:18:56.817 resp 19:18:56.825 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:18:56.817 resp 19:18:56.823 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:18:56.843 resp 19:18:56.851 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:18:56.843 resp 19:18:56.850 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:18:56.843 resp 19:18:56.853 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:18:56.843 resp 19:18:56.851 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:18:56.843 resp 19:18:56.849 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:18:56.843 resp 19:18:56.850 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:18:56.854 resp 19:18:56.867 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant iv, repetition 2 (`s3ivr2-mv47icrk-2381e9`)
+
+```
+REPETITION s3 variant iv rep 2/3 run=s3ivr2-mv47icrk-2381e9 commit=c92d82ca node=v24.15.0
+variant: stale B, saver A (` A2LONG` + 40 words), stale types ` B1`
+server: built standalone, sharing on, port 64795, pid 88894; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":88894,"comm":"next-server (v16.2.6)"}]; browser pids 88913,88914,88915,88917,88979; throwaway root /private/tmp/getwrite-two-client/s3ivr2-mv47icrk-2381e9
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":490,"sha256":"cbc1a5dff10ce1579a1189e7e9453c69088c3ea36609ce00ff84f0c17a35bbb6","status":200,"updatedAt":"2026-10-11T19:19:23.086Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=45 matches A#1; updatedAt=2026-10-11T19:19:23.086Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:19:23.086Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:19:23.086Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":45,"updatedAt":"2026-10-11T19:19:23.086Z","name":"Doc s3ivr2-mv47icrk-2381e9","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41}] expected=[{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:19:23.084Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"A2LONG":1,"B1":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":45,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (stale) typed; typing started 5015 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"d58a2e845653531d6924e37ad1b9f1074dd3237c97849a58344b3df1c6bc8341","status":200,"updatedAt":"2026-10-11T19:19:30.825Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 12s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:19:30.825Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:19:30.825Z"} evidence={"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:19:23.086Z","2026-10-11T19:19:30.825Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:19:30.825Z","name":"Doc s3ivr2-mv47icrk-2381e9","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"A#1":45,"B#1":5}
+  writing log actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true; entry timestamps ["2026-10-11T19:19:23.084Z","2026-10-11T19:19:30.824Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#1","added":1,"deleted":41,"deletedTokens":"A2LONG harbor lantern meadow copper ...(+36)","addedTokens":"B1"}]
+  search: {"A2LONG":0,"B1":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 12s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 5s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlie B1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:19:30.825Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true
+final search: {"A2LONG":0,"B1":1,"harbor":0}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:19:30.825Z"}; evidence {"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:19:23.086Z","2026-10-11T19:19:30.825Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 41 (A2LONG harbor lantern meadow copper willow ...(+35)); where they are, after the stale save: {"lostTokenCount":41,"lostTokens":"A2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}; after reload: {"lostTokenCount":41,"lostTokens":"A2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}
+stale save contains the first saver's text: request marker tokens [["B1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":7667,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":7667,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":39796,"msAfterReloadMark":972},{"role":"status","text":"Loading diagnostics…","msAfterSince":39796,"msAfterReloadMark":972}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":38874,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":38904,"msAfterReloadMark":80},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39764,"msAfterReloadMark":940},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39794,"msAfterReloadMark":970}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":38874,"msAfterReloadMark":50},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":38874,"msAfterReloadMark":50},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":38874,"msAfterReloadMark":50},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":38874,"msAfterReloadMark":50},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":38874,"msAfterReloadMark":50}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":38899,"msAfterReloadMark":76}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:20:01.995Z","msAfterSince":38824}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31050,"msAfterReloadMark":1036},{"role":"status","text":"Loading diagnostics…","msAfterSince":31050,"msAfterReloadMark":1036}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30121,"msAfterReloadMark":106},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30153,"msAfterReloadMark":138},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31016,"msAfterReloadMark":1001},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31047,"msAfterReloadMark":1033}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":106},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":106}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30146,"msAfterReloadMark":131}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:20:00.925Z","msAfterSince":30014}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:19:30.818Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:19:23.076Z","status":200,"hasDocument":true,"markers":["A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A2LONG harb","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":88894,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3ivr2-mv47icrk-2381e9"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr2-mv47icrk-2381e9-rep02.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:19:04.631 resp 19:19:04.643 (12 ms)
+#2 GET /api/encryption -> 200 send 19:19:04.643 resp 19:19:04.644 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:19:04.643 resp 19:19:04.648 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:19:04.643 resp 19:19:04.648 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:19:04.643 resp 19:19:04.649 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:19:04.643 resp 19:19:04.647 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:19:05.489 resp 19:19:05.499 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:19:05.511 resp 19:19:05.552 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:19:05.527 resp 19:19:05.554 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:19:05.527 resp 19:19:05.554 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:19:05.527 resp 19:19:05.554 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:19:05.527 resp 19:19:05.555 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:19:05.579 resp 19:19:05.591 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:19:05.579 resp 19:19:05.590 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:19:05.579 resp 19:19:05.591 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:19:05.579 resp 19:19:05.591 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:19:05.579 resp 19:19:05.589 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:19:05.579 resp 19:19:05.590 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:19:05.592 resp 19:19:05.617 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:19:23.076 resp 19:19:23.088 (12 ms) updatedAt=2026-10-11T19:19:23.086Z snapshotCreated=false writingLog=null doc[len 490 markers ["A2LONG"] listWords 40 sha256 cbc1a5dff10c]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:19:23.096 resp 19:19:23.102 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:19:23.096 resp 19:19:23.103 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:20:01.030 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:20:01.030 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:20:01.030 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:20:01.030 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:20:01.030 resp - (-)
+#28 GET /api/encryption -> 200 send 19:20:01.054 resp 19:20:01.060 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:20:01.054 resp 19:20:01.060 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:20:01.054 resp 19:20:01.060 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:20:01.054 resp 19:20:01.063 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:20:01.054 resp 19:20:01.060 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:20:01.056 resp 19:20:01.063 (7 ms)
+#34 POST /api/project -> 200 send 19:20:01.912 resp 19:20:01.918 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:01.926 resp 19:20:01.935 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:01.933 resp 19:20:01.940 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:20:01.933 resp 19:20:01.940 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:20:01.933 resp 19:20:01.940 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:20:01.933 resp 19:20:01.938 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:20:01.961 resp 19:20:01.973 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:20:01.961 resp 19:20:01.971 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:20:01.961 resp 19:20:01.972 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:20:01.961 resp 19:20:01.971 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:20:01.961 resp 19:20:01.970 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:20:01.961 resp 19:20:01.971 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:20:01.973 resp 19:20:01.988 (15 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:19:05.713 resp 19:19:05.725 (12 ms)
+#2 GET /api/encryption -> 200 send 19:19:05.725 resp 19:19:05.726 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:19:05.725 resp 19:19:05.729 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:19:05.725 resp 19:19:05.729 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:19:05.725 resp 19:19:05.731 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:19:05.725 resp 19:19:05.729 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:19:06.573 resp 19:19:06.579 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:19:06.592 resp 19:19:06.639 (48 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:19:06.608 resp 19:19:06.642 (33 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:19:06.608 resp 19:19:06.642 (33 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:19:06.608 resp 19:19:06.642 (33 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:19:06.608 resp 19:19:06.642 (33 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:19:06.671 resp 19:19:06.683 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:19:06.671 resp 19:19:06.682 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:19:06.671 resp 19:19:06.683 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:19:06.671 resp 19:19:06.683 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:19:06.671 resp 19:19:06.682 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:19:06.671 resp 19:19:06.682 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:19:06.684 resp 19:19:06.709 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:19:30.818 resp 19:19:30.827 (9 ms) updatedAt=2026-10-11T19:19:30.825Z snapshotCreated=true writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 d58a2e845653]
+#21 POST /api/project-resources -> 200 send 19:19:30.839 resp 19:19:30.845 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:19:30.839 resp 19:19:30.845 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:19:30.839 resp 19:19:30.847 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:20:02.045 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:20:02.045 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:20:02.045 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:20:02.045 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:20:02.045 resp - (-)
+#29 GET /api/encryption -> 200 send 19:20:02.069 resp 19:20:02.072 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:20:02.069 resp 19:20:02.072 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:20:02.069 resp 19:20:02.073 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:20:02.069 resp 19:20:02.076 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:20:02.069 resp 19:20:02.074 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:20:02.071 resp 19:20:02.075 (4 ms)
+#35 POST /api/project -> 200 send 19:20:02.919 resp 19:20:02.928 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:02.935 resp 19:20:02.944 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:02.943 resp 19:20:02.951 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:20:02.943 resp 19:20:02.951 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:20:02.943 resp 19:20:02.950 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:20:02.943 resp 19:20:02.949 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:20:02.968 resp 19:20:02.978 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:20:02.968 resp 19:20:02.976 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:20:02.969 resp 19:20:02.978 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:20:02.969 resp 19:20:02.977 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:20:02.969 resp 19:20:02.975 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:20:02.969 resp 19:20:02.976 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:20:02.979 resp 19:20:02.993 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant iv, repetition 3 (`s3ivr3-mv47jrp9-d8c5c6`)
+
+```
+REPETITION s3 variant iv rep 3/3 run=s3ivr3-mv47jrp9-d8c5c6 commit=c92d82ca node=v24.15.0
+variant: stale B, saver A (` A2LONG` + 40 words), stale types ` B1`
+server: built standalone, sharing on, port 64871, pid 91153; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":91153,"comm":"next-server (v16.2.6)"}]; browser pids 91230,91231,91232,91235,91237; throwaway root /private/tmp/getwrite-two-client/s3ivr3-mv47jrp9-d8c5c6
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":490,"sha256":"22fd08d4b81765edb7607ef96c7ab417275658d4a6400c1e2b10284ce8ce4f63","status":200,"updatedAt":"2026-10-11T19:20:28.892Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=45 matches A#1; updatedAt=2026-10-11T19:20:28.892Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:20:28.892Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:20:28.892Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":45,"updatedAt":"2026-10-11T19:20:28.892Z","name":"Doc s3ivr3-mv47jrp9-d8c5c6","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":45}
+  writing log actual=[{"added":41,"deleted":0,"net":41}] expected=[{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:20:28.890Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"A2LONG":1,"B1":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":45,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (stale) typed; typing started 5013 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"4d20f239510fff09ced1713204d7001d9a4c4f86a8577e62c356616a7d3883e8","status":200,"updatedAt":"2026-10-11T19:20:36.618Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 12s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:20:36.618Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:20:36.618Z"} evidence={"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:20:28.892Z","2026-10-11T19:20:36.618Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:20:36.618Z","name":"Doc s3ivr3-mv47jrp9-d8c5c6","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"A#1":45,"B#1":5}
+  writing log actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true; entry timestamps ["2026-10-11T19:20:28.890Z","2026-10-11T19:20:36.617Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#1","added":1,"deleted":41,"deletedTokens":"A2LONG harbor lantern meadow copper ...(+36)","addedTokens":"B1"}]
+  search: {"A2LONG":0,"B1":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A2LONG harbor lantern meadow copper ... [45 words]" / All changes saved · 12s ago ; B: "BASE alpha bravo charlie B1" / All changes saved · 6s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlie B1" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:20:36.618Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#1"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] expected=[{"added":41,"deleted":0,"net":41},{"added":1,"deleted":41,"net":-40}] match=true
+final search: {"A2LONG":0,"B1":1,"harbor":0}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:20:36.618Z"}; evidence {"byUpdatedAt":["A20","B20"],"byResponseArrival":["A20","B20"],"bySend":["A20","B20"],"updatedAtValues":["2026-10-11T19:20:28.892Z","2026-10-11T19:20:36.618Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 41 (A2LONG harbor lantern meadow copper willow ...(+35)); where they are, after the stale save: {"lostTokenCount":41,"lostTokens":"A2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}; after reload: {"lostTokenCount":41,"lostTokens":"A2LONG harbor lantern meadow copper willow ember falcon ...(+33)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":41}]}
+stale save contains the first saver's text: request marker tokens [["B1"]], list words present [0], ends with charlieQ: false; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":7661,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":7661,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":39789,"msAfterReloadMark":974},{"role":"status","text":"Loading diagnostics…","msAfterSince":39789,"msAfterReloadMark":974}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":38864,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":38894,"msAfterReloadMark":80},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39752,"msAfterReloadMark":938},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":39786,"msAfterReloadMark":971}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":38863,"msAfterReloadMark":49},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":38863,"msAfterReloadMark":49},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":38863,"msAfterReloadMark":49},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":38863,"msAfterReloadMark":49},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":38863,"msAfterReloadMark":49}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":38888,"msAfterReloadMark":74}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:21:07.785Z","msAfterSince":38815}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31047,"msAfterReloadMark":1032},{"role":"status","text":"Loading diagnostics…","msAfterSince":31047,"msAfterReloadMark":1032}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30121,"msAfterReloadMark":106},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30153,"msAfterReloadMark":138},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31011,"msAfterReloadMark":996},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31045,"msAfterReloadMark":1030}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30147,"msAfterReloadMark":132}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:21:06.719Z","msAfterSince":30015}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:20:36.610Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2457,"lastTypingStartsWith":" B1","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:20:28.877Z","status":200,"hasDocument":true,"markers":["A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2458,"lastTypingStartsWith":" A2LONG harb","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":91153,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3ivr3-mv47jrp9-d8c5c6"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3ivr3-mv47jrp9-d8c5c6-rep03.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:20:10.642 resp 19:20:10.654 (12 ms)
+#2 GET /api/encryption -> 200 send 19:20:10.654 resp 19:20:10.655 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:20:10.654 resp 19:20:10.658 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:20:10.654 resp 19:20:10.658 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:20:10.654 resp 19:20:10.660 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:20:10.654 resp 19:20:10.658 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:20:11.490 resp 19:20:11.496 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:11.505 resp 19:20:11.540 (35 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:11.518 resp 19:20:11.542 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:20:11.518 resp 19:20:11.542 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:20:11.518 resp 19:20:11.542 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:20:11.518 resp 19:20:11.542 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:20:11.571 resp 19:20:11.581 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:20:11.571 resp 19:20:11.580 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:20:11.571 resp 19:20:11.582 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:20:11.571 resp 19:20:11.581 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:20:11.571 resp 19:20:11.580 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:20:11.571 resp 19:20:11.580 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:20:11.582 resp 19:20:11.607 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:20:28.877 resp 19:20:28.894 (17 ms) updatedAt=2026-10-11T19:20:28.892Z snapshotCreated=false writingLog=null doc[len 490 markers ["A2LONG"] listWords 40 sha256 22fd08d4b817]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:20:28.901 resp 19:20:28.908 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:20:28.902 resp 19:20:28.909 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:21:06.825 resp - (-)
+#24 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:21:06.825 resp - (-)
+#25 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:21:06.825 resp - (-)
+#26 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:21:06.825 resp - (-)
+#27 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:21:06.825 resp - (-)
+#28 GET /api/encryption -> 200 send 19:21:06.849 resp 19:21:06.855 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/version-check -> 200 send 19:21:06.849 resp 19:21:06.855 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/auth-status -> 200 send 19:21:06.849 resp 19:21:06.855 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/projects -> 200 send 19:21:06.849 resp 19:21:06.858 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/sharing/limits -> 200 send 19:21:06.849 resp 19:21:06.856 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/auth/get-session -> 404 send 19:21:06.851 resp 19:21:06.858 (7 ms)
+#34 POST /api/project -> 200 send 19:21:07.701 resp 19:21:07.708 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:07.715 resp 19:21:07.725 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:07.723 resp 19:21:07.729 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:21:07.723 resp 19:21:07.729 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/tags -> 200 send 19:21:07.723 resp 19:21:07.727 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/query/saved -> 200 send 19:21:07.723 resp 19:21:07.727 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project-resources -> 200 send 19:21:07.752 resp 19:21:07.763 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:07.752 resp 19:21:07.761 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 POST /api/project-resources -> 200 send 19:21:07.752 resp 19:21:07.763 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:07.752 resp 19:21:07.762 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:21:07.752 resp 19:21:07.760 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:21:07.752 resp 19:21:07.761 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:21:07.764 resp 19:21:07.778 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:20:11.703 resp 19:20:11.716 (13 ms)
+#2 GET /api/encryption -> 200 send 19:20:11.715 resp 19:20:11.717 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:20:11.715 resp 19:20:11.719 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:20:11.715 resp 19:20:11.721 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:20:11.715 resp 19:20:11.721 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:20:11.715 resp 19:20:11.721 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:20:12.563 resp 19:20:12.570 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:12.582 resp 19:20:12.624 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:20:12.598 resp 19:20:12.626 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:20:12.598 resp 19:20:12.626 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:20:12.598 resp 19:20:12.626 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:20:12.598 resp 19:20:12.627 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:20:12.653 resp 19:20:12.661 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:20:12.653 resp 19:20:12.661 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:20:12.653 resp 19:20:12.662 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:20:12.653 resp 19:20:12.661 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:20:12.653 resp 19:20:12.660 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:20:12.653 resp 19:20:12.660 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:20:12.663 resp 19:20:12.688 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:20:36.610 resp 19:20:36.620 (10 ms) updatedAt=2026-10-11T19:20:36.618Z snapshotCreated=true writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 4d20f239510f]
+#21 POST /api/project-resources -> 200 send 19:20:36.631 resp 19:20:36.637 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:20:36.632 resp 19:20:36.637 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:20:36.632 resp 19:20:36.639 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:21:07.834 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:21:07.834 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:21:07.834 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:21:07.834 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:21:07.834 resp - (-)
+#29 GET /api/encryption -> 200 send 19:21:07.858 resp 19:21:07.861 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:21:07.858 resp 19:21:07.862 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:21:07.858 resp 19:21:07.863 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:21:07.858 resp 19:21:07.866 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:21:07.858 resp 19:21:07.864 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:21:07.859 resp 19:21:07.865 (6 ms)
+#35 POST /api/project -> 200 send 19:21:08.709 resp 19:21:08.716 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:08.723 resp 19:21:08.732 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:08.730 resp 19:21:08.735 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:21:08.730 resp 19:21:08.736 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:21:08.730 resp 19:21:08.735 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:21:08.730 resp 19:21:08.733 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:21:08.760 resp 19:21:08.770 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:08.760 resp 19:21:08.768 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:21:08.760 resp 19:21:08.770 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:08.760 resp 19:21:08.770 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:21:08.760 resp 19:21:08.768 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:21:08.760 resp 19:21:08.768 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:21:08.771 resp 19:21:08.785 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant v, repetition 1 (`s3vr1-mv47l6gi-42d84c`)
+
+```
+REPETITION s3 variant v rep 1/3 run=s3vr1-mv47l6gi-42d84c commit=c92d82ca node=v24.15.0
+variant: stale A untouched while B saves 3 times (` B1`, ` B2LONG`+40 words, ` B2`), then A types `Q`
+server: built standalone, sharing on, port 64968, pid 93602; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":93602,"comm":"next-server (v16.2.6)"}]; browser pids 93619,93620,93621,93624,93626; throwaway root /private/tmp/getwrite-two-client/s3vr1-mv47l6gi-42d84c
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"1668b38c26d35811a54c593b110b3dd0dc9c4a524affc40259eaef81d3d66290","status":200,"updatedAt":"2026-10-11T19:21:21.111Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:21:21.111Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:21:21.111Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:21:21.111Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:21:21.111Z","name":"Doc s3vr1-mv47l6gi-42d84c","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:21:21.109Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"}]
+  search: {"B1":1,"B2LONG":0,"B2":0,"charlieQ":0,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (saver) typed; typing started 5013 ms after the previous save acknowledgement; this client had sent 1 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  sent: [{"n":23,"markers":["B1","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":493,"sha256":"24c56616545c90e672e4a2cc5bb9f2adc08ec322e36cd186ac3a4c8882c69297","status":200,"updatedAt":"2026-10-11T19:21:42.534Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#2","content.tiptap.json: = B#2","content.txt: = B#2","sidecar wordCount=46 matches B#2; updatedAt=2026-10-11T19:21:42.534Z","stores agree on B#2"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#2","updatedAt":"2026-10-11T19:21:42.534Z"} evidence={"byUpdatedAt":["B20","B23"],"byResponseArrival":["B20","B23"],"bySend":["B20","B23"],"updatedAtValues":["2026-10-11T19:21:21.111Z","2026-10-11T19:21:42.534Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#2"}]
+  sidecar: {"parsed":true,"wordCount":46,"updatedAt":"2026-10-11T19:21:42.534Z","name":"Doc s3vr1-mv47l6gi-42d84c","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#2"]; expected wordCounts {"base":4,"B#1":5,"B#2":46}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:21:21.109Z","2026-10-11T19:21:42.533Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"B1":1,"B2LONG":1,"B2":0,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":46,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#2, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 3: B (saver) typed; typing started 5013 ms after the previous save acknowledgement; this client had sent 2 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now
+  sent: [{"n":26,"markers":["B1","B2","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":496,"sha256":"833fe0ba9fd417e3dfbd442fd80a552d3adab9c8e1d7d074a28fa2081a6b1439","status":200,"updatedAt":"2026-10-11T19:21:50.248Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#3","content.tiptap.json: = B#3","content.txt: = B#3","sidecar wordCount=47 matches B#3; updatedAt=2026-10-11T19:21:50.248Z","stores agree on B#3"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#3","updatedAt":"2026-10-11T19:21:50.248Z"} evidence={"byUpdatedAt":["B20","B23","B26"],"byResponseArrival":["B20","B23","B26"],"bySend":["B20","B23","B26"],"updatedAtValues":["2026-10-11T19:21:21.111Z","2026-10-11T19:21:42.534Z","2026-10-11T19:21:50.248Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#3"}]
+  sidecar: {"parsed":true,"wordCount":47,"updatedAt":"2026-10-11T19:21:50.248Z","name":"Doc s3vr1-mv47l6gi-42d84c","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#3"]; expected wordCounts {"base":4,"B#1":5,"B#2":46,"B#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:21:21.109Z","2026-10-11T19:21:42.533Z","2026-10-11T19:21:50.246Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B2"}]
+  search: {"B1":1,"B2LONG":1,"B2":1,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":47,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#3, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 4: A (stale) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  sent: [{"n":20,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"length":206,"sha256":"415c81455badb38ad4931506ea1d14d0862754ca880b658e65d6b2b010616b7c","status":200,"updatedAt":"2026-10-11T19:21:57.895Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlieQ" / Saved · just now ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlieQ" / All changes saved · just now ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=4 matches base/A#1; updatedAt=2026-10-11T19:21:57.895Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:21:57.895Z"} evidence={"byUpdatedAt":["B20","B23","B26","A20"],"byResponseArrival":["B20","B23","B26","A20"],"bySend":["B20","B23","B26","A20"],"updatedAtValues":["2026-10-11T19:21:21.111Z","2026-10-11T19:21:42.534Z","2026-10-11T19:21:50.248Z","2026-10-11T19:21:57.895Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#3"}]
+  sidecar: {"parsed":true,"wordCount":4,"updatedAt":"2026-10-11T19:21:57.895Z","name":"Doc s3vr1-mv47l6gi-42d84c","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["base","A#1"]; expected wordCounts {"base":4,"A#1":4,"B#1":5,"B#2":46,"B#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true; entry timestamps ["2026-10-11T19:21:21.109Z","2026-10-11T19:21:42.533Z","2026-10-11T19:21:50.246Z","2026-10-11T19:21:57.894Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B2"},{"save":"A#1","added":1,"deleted":44,"deletedTokens":"charlie B1 B2LONG harbor lantern ...(+39)","addedTokens":"charlieQ"}]
+  search: {"B1":0,"B2LONG":0,"B2":0,"charlieQ":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":4,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlieQ" / All changes saved · 19s ago ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · 28s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlieQ" / All changes saved · not saved yet ; B: "BASE alpha bravo charlieQ" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=4 matches base/A#1; updatedAt=2026-10-11T19:21:57.895Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#3"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true
+final search: {"B1":0,"B2LONG":0,"B2":0,"charlieQ":1,"harbor":0}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:21:57.895Z"}; evidence {"byUpdatedAt":["B20","B23","B26","A20"],"byResponseArrival":["B20","B23","B26","A20"],"bySend":["B20","B23","B26","A20"],"updatedAtValues":["2026-10-11T19:21:21.111Z","2026-10-11T19:21:42.534Z","2026-10-11T19:21:50.248Z","2026-10-11T19:21:57.895Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 44 (charlie B1 B2LONG harbor lantern meadow ...(+38)); where they are, after the stale save: {"lostTokenCount":44,"lostTokens":"charlie B1 B2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}; after reload: {"lostTokenCount":44,"lostTokens":"charlie B1 B2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}
+stale save contains the first saver's text: request marker tokens [[]], list words present [0], ends with charlieQ: true; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":36717,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":36717,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":67781,"msAfterReloadMark":992},{"role":"status","text":"Loading diagnostics…","msAfterSince":67781,"msAfterReloadMark":992}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":66859,"msAfterReloadMark":69},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":66890,"msAfterReloadMark":100},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":67747,"msAfterReloadMark":957},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":67778,"msAfterReloadMark":988}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":66857,"msAfterReloadMark":68},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":66857,"msAfterReloadMark":68},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":66857,"msAfterReloadMark":68},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":66857,"msAfterReloadMark":68},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":66857,"msAfterReloadMark":68}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":66884,"msAfterReloadMark":94}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:22:27.985Z","msAfterSince":66790}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32047,"msAfterReloadMark":1009},{"role":"status","text":"Loading diagnostics…","msAfterSince":32047,"msAfterReloadMark":1009}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31124,"msAfterReloadMark":86},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31152,"msAfterReloadMark":114},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32012,"msAfterReloadMark":974},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32044,"msAfterReloadMark":1006}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":85},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":85},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":85},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":85},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31123,"msAfterReloadMark":85}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31148,"msAfterReloadMark":110}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:22:29.009Z","msAfterSince":31038}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:21:57.883Z","status":200,"hasDocument":true,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":"Q","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:21:21.098Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B1","afterAReloadMark":false},{"n":23,"sendAt":"2026-10-11T19:21:42.521Z","status":200,"hasDocument":true,"markers":["B1","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2463,"lastTypingStartsWith":" B2LONG harb","afterAReloadMark":false},{"n":26,"sendAt":"2026-10-11T19:21:50.236Z","status":200,"hasDocument":true,"markers":["B1","B2","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2458,"lastTypingStartsWith":" B2","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":93602,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3vr1-mv47l6gi-42d84c"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr1-mv47l6gi-42d84c-rep01.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:21:16.393 resp 19:21:16.406 (13 ms)
+#2 GET /api/encryption -> 200 send 19:21:16.405 resp 19:21:16.407 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:21:16.405 resp 19:21:16.409 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:21:16.405 resp 19:21:16.411 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:21:16.405 resp 19:21:16.411 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:21:16.405 resp 19:21:16.411 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:21:17.253 resp 19:21:17.264 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:17.275 resp 19:21:17.316 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:17.291 resp 19:21:17.318 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:21:17.292 resp 19:21:17.318 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:21:17.292 resp 19:21:17.318 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:21:17.292 resp 19:21:17.318 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:21:17.345 resp 19:21:17.356 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:17.346 resp 19:21:17.355 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:21:17.346 resp 19:21:17.357 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:17.346 resp 19:21:17.356 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:21:17.346 resp 19:21:17.355 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:21:17.346 resp 19:21:17.355 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:21:17.357 resp 19:21:17.382 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:21:57.883 resp 19:21:57.898 (15 ms) updatedAt=2026-10-11T19:21:57.895Z snapshotCreated=true writingLog=null doc[len 206 markers [] listWords 0 sha256 415c81455bad]
+#21 POST /api/project-resources -> 200 send 19:21:57.913 resp 19:21:57.919 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:57.913 resp 19:21:57.919 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:57.913 resp 19:21:57.922 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:22:28.053 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:22:28.053 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:22:28.053 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:22:28.053 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:22:28.053 resp - (-)
+#29 GET /api/encryption -> 200 send 19:22:28.077 resp 19:22:28.081 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:22:28.077 resp 19:22:28.082 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:22:28.077 resp 19:22:28.082 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:22:28.077 resp 19:22:28.086 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:22:28.077 resp 19:22:28.083 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:22:28.079 resp 19:22:28.085 (6 ms)
+#35 POST /api/project -> 200 send 19:22:28.928 resp 19:22:28.934 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:28.942 resp 19:22:28.951 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:28.949 resp 19:22:28.957 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:22:28.949 resp 19:22:28.957 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:22:28.949 resp 19:22:28.957 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:22:28.949 resp 19:22:28.955 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:22:28.977 resp 19:22:28.987 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:22:28.977 resp 19:22:28.986 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:22:28.977 resp 19:22:28.987 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:22:28.977 resp 19:22:28.986 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:22:28.977 resp 19:22:28.985 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:22:28.977 resp 19:22:28.986 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:22:28.988 resp 19:22:29.001 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:21:17.477 resp 19:21:17.491 (13 ms)
+#2 GET /api/encryption -> 200 send 19:21:17.490 resp 19:21:17.491 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:21:17.490 resp 19:21:17.494 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:21:17.490 resp 19:21:17.494 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:21:17.490 resp 19:21:17.496 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:21:17.490 resp 19:21:17.494 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:21:18.337 resp 19:21:18.344 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:18.356 resp 19:21:18.399 (43 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:21:18.372 resp 19:21:18.401 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:21:18.372 resp 19:21:18.401 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:21:18.373 resp 19:21:18.402 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:21:18.373 resp 19:21:18.403 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:21:18.429 resp 19:21:18.436 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:18.429 resp 19:21:18.436 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:21:18.429 resp 19:21:18.437 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:18.429 resp 19:21:18.436 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:21:18.429 resp 19:21:18.435 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:21:18.429 resp 19:21:18.435 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:21:18.438 resp 19:21:18.462 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:21:21.098 resp 19:21:21.113 (15 ms) updatedAt=2026-10-11T19:21:21.111Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 1668b38c26d3]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:21.119 resp 19:21:21.124 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:21.119 resp 19:21:21.124 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 PATCH /api/resource/revision/R1 -> 200 send 19:21:42.521 resp 19:21:42.537 (16 ms) updatedAt=2026-10-11T19:21:42.534Z snapshotCreated=false writingLog=null doc[len 493 markers ["B1","B2LONG"] listWords 40 sha256 24c56616545c]
+#24 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:42.544 resp 19:21:42.550 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#25 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:42.544 resp 19:21:42.551 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#26 PATCH /api/resource/revision/R1 -> 200 send 19:21:50.236 resp 19:21:50.250 (14 ms) updatedAt=2026-10-11T19:21:50.248Z snapshotCreated=false writingLog=null doc[len 496 markers ["B1","B2","B2LONG"] listWords 40 sha256 833fe0ba9fd4]
+#27 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:21:50.256 resp 19:21:50.261 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#28 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:21:50.256 resp 19:21:50.262 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:22:29.094 resp - (-)
+#30 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:22:29.094 resp - (-)
+#31 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:22:29.094 resp - (-)
+#32 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:22:29.094 resp - (-)
+#33 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:22:29.094 resp - (-)
+#34 GET /api/encryption -> 200 send 19:22:29.118 resp 19:22:29.123 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/version-check -> 200 send 19:22:29.118 resp 19:22:29.123 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/auth-status -> 200 send 19:22:29.118 resp 19:22:29.124 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/projects -> 200 send 19:22:29.118 resp 19:22:29.127 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 GET /api/sharing/limits -> 200 send 19:22:29.118 resp 19:22:29.124 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 GET /api/auth/get-session -> 404 send 19:22:29.120 resp 19:22:29.124 (4 ms)
+#40 POST /api/project -> 200 send 19:22:29.969 resp 19:22:29.975 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:29.983 resp 19:22:29.992 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:29.990 resp 19:22:29.996 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:22:29.990 resp 19:22:29.998 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:22:29.991 resp 19:22:29.996 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/query/saved -> 200 send 19:22:29.991 resp 19:22:29.995 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project-resources -> 200 send 19:22:30.019 resp 19:22:30.028 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:22:30.019 resp 19:22:30.027 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#48 POST /api/project-resources -> 200 send 19:22:30.019 resp 19:22:30.028 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#49 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:22:30.019 resp 19:22:30.028 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#50 POST /api/project/tags -> 200 send 19:22:30.019 resp 19:22:30.026 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#51 POST /api/project/tags -> 200 send 19:22:30.019 resp 19:22:30.026 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#52 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:22:30.030 resp 19:22:30.045 (15 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant v, repetition 2 (`s3vr2-mv47mx5s-2d0963`)
+
+```
+REPETITION s3 variant v rep 2/3 run=s3vr2-mv47mx5s-2d0963 commit=c92d82ca node=v24.15.0
+variant: stale A untouched while B saves 3 times (` B1`, ` B2LONG`+40 words, ` B2`), then A types `Q`
+server: built standalone, sharing on, port 65075, pid 96390; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":96390,"comm":"next-server (v16.2.6)"}]; browser pids 96407,96408,96409,96412,96414; throwaway root /private/tmp/getwrite-two-client/s3vr2-mv47mx5s-2d0963
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"3c178e3eae23a8c440addbc27e2386711fdbafcc03b6ded1a83e7922d8393b9c","status":200,"updatedAt":"2026-10-11T19:22:42.354Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:22:42.354Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:22:42.354Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:22:42.354Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:22:42.354Z","name":"Doc s3vr2-mv47mx5s-2d0963","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:22:42.351Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"}]
+  search: {"B1":1,"B2LONG":0,"B2":0,"charlieQ":0,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (saver) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 1 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  sent: [{"n":23,"markers":["B1","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":493,"sha256":"db1f266d6dc071201de9b92b336957389a9900093c5b38cabae82b80c18ac698","status":200,"updatedAt":"2026-10-11T19:23:03.780Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#2","content.tiptap.json: = B#2","content.txt: = B#2","sidecar wordCount=46 matches B#2; updatedAt=2026-10-11T19:23:03.780Z","stores agree on B#2"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#2","updatedAt":"2026-10-11T19:23:03.780Z"} evidence={"byUpdatedAt":["B20","B23"],"byResponseArrival":["B20","B23"],"bySend":["B20","B23"],"updatedAtValues":["2026-10-11T19:22:42.354Z","2026-10-11T19:23:03.780Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#2"}]
+  sidecar: {"parsed":true,"wordCount":46,"updatedAt":"2026-10-11T19:23:03.780Z","name":"Doc s3vr2-mv47mx5s-2d0963","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#2"]; expected wordCounts {"base":4,"B#1":5,"B#2":46}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:22:42.351Z","2026-10-11T19:23:03.777Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"B1":1,"B2LONG":1,"B2":0,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":46,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#2, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 3: B (saver) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 2 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now
+  sent: [{"n":26,"markers":["B1","B2","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":496,"sha256":"957790adb9c84179a6dce29bc2dd6ca7cbc5060afe8c6f15795109df0b855364","status":200,"updatedAt":"2026-10-11T19:23:11.494Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#3","content.tiptap.json: = B#3","content.txt: = B#3","sidecar wordCount=47 matches B#3; updatedAt=2026-10-11T19:23:11.494Z","stores agree on B#3"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#3","updatedAt":"2026-10-11T19:23:11.494Z"} evidence={"byUpdatedAt":["B20","B23","B26"],"byResponseArrival":["B20","B23","B26"],"bySend":["B20","B23","B26"],"updatedAtValues":["2026-10-11T19:22:42.354Z","2026-10-11T19:23:03.780Z","2026-10-11T19:23:11.494Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#3"}]
+  sidecar: {"parsed":true,"wordCount":47,"updatedAt":"2026-10-11T19:23:11.494Z","name":"Doc s3vr2-mv47mx5s-2d0963","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#3"]; expected wordCounts {"base":4,"B#1":5,"B#2":46,"B#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:22:42.351Z","2026-10-11T19:23:03.777Z","2026-10-11T19:23:11.492Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B2"}]
+  search: {"B1":1,"B2LONG":1,"B2":1,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":47,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#3, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 4: A (stale) typed; typing started 5013 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  sent: [{"n":20,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"length":206,"sha256":"66291d7a28fb45bca70004206f97ab3c41e42d0cdd779a43adafa583b58348de","status":200,"updatedAt":"2026-10-11T19:23:19.147Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlieQ" / Saved · just now ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlieQ" / All changes saved · just now ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=4 matches base/A#1; updatedAt=2026-10-11T19:23:19.147Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:23:19.147Z"} evidence={"byUpdatedAt":["B20","B23","B26","A20"],"byResponseArrival":["B20","B23","B26","A20"],"bySend":["B20","B23","B26","A20"],"updatedAtValues":["2026-10-11T19:22:42.354Z","2026-10-11T19:23:03.780Z","2026-10-11T19:23:11.494Z","2026-10-11T19:23:19.147Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#3"}]
+  sidecar: {"parsed":true,"wordCount":4,"updatedAt":"2026-10-11T19:23:19.147Z","name":"Doc s3vr2-mv47mx5s-2d0963","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["base","A#1"]; expected wordCounts {"base":4,"A#1":4,"B#1":5,"B#2":46,"B#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true; entry timestamps ["2026-10-11T19:22:42.351Z","2026-10-11T19:23:03.777Z","2026-10-11T19:23:11.492Z","2026-10-11T19:23:19.145Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B2"},{"save":"A#1","added":1,"deleted":44,"deletedTokens":"charlie B1 B2LONG harbor lantern ...(+39)","addedTokens":"charlieQ"}]
+  search: {"B1":0,"B2LONG":0,"B2":0,"charlieQ":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":4,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlieQ" / All changes saved · 19s ago ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · 28s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlieQ" / All changes saved · not saved yet ; B: "BASE alpha bravo charlieQ" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=4 matches base/A#1; updatedAt=2026-10-11T19:23:19.147Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#3"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true
+final search: {"B1":0,"B2LONG":0,"B2":0,"charlieQ":1,"harbor":0}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:23:19.147Z"}; evidence {"byUpdatedAt":["B20","B23","B26","A20"],"byResponseArrival":["B20","B23","B26","A20"],"bySend":["B20","B23","B26","A20"],"updatedAtValues":["2026-10-11T19:22:42.354Z","2026-10-11T19:23:03.780Z","2026-10-11T19:23:11.494Z","2026-10-11T19:23:19.147Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 44 (charlie B1 B2LONG harbor lantern meadow ...(+38)); where they are, after the stale save: {"lostTokenCount":44,"lostTokens":"charlie B1 B2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}; after reload: {"lostTokenCount":44,"lostTokens":"charlie B1 B2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}
+stale save contains the first saver's text: request marker tokens [[]], list words present [0], ends with charlieQ: true; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":36730,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":36730,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":67806,"msAfterReloadMark":994},{"role":"status","text":"Loading diagnostics…","msAfterSince":67806,"msAfterReloadMark":994}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":66882,"msAfterReloadMark":70},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":66911,"msAfterReloadMark":99},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":67767,"msAfterReloadMark":955},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":67804,"msAfterReloadMark":992}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":66880,"msAfterReloadMark":68},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":66880,"msAfterReloadMark":68},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":66880,"msAfterReloadMark":68},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":66880,"msAfterReloadMark":68},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":66880,"msAfterReloadMark":68}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":66907,"msAfterReloadMark":95}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:23:49.242Z","msAfterSince":66812}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32055,"msAfterReloadMark":1014},{"role":"status","text":"Loading diagnostics…","msAfterSince":32055,"msAfterReloadMark":1014}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31127,"msAfterReloadMark":86},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31156,"msAfterReloadMark":115},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32021,"msAfterReloadMark":980},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32052,"msAfterReloadMark":1011}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31126,"msAfterReloadMark":85},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31126,"msAfterReloadMark":85},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31126,"msAfterReloadMark":85},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31126,"msAfterReloadMark":85},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31126,"msAfterReloadMark":85}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31152,"msAfterReloadMark":111}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:23:50.270Z","msAfterSince":31041}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:23:19.137Z","status":200,"hasDocument":true,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2457,"lastTypingStartsWith":"Q","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:22:42.340Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B1","afterAReloadMark":false},{"n":23,"sendAt":"2026-10-11T19:23:03.764Z","status":200,"hasDocument":true,"markers":["B1","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2457,"lastTypingStartsWith":" B2LONG harb","afterAReloadMark":false},{"n":26,"sendAt":"2026-10-11T19:23:11.486Z","status":200,"hasDocument":true,"markers":["B1","B2","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2457,"lastTypingStartsWith":" B2","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":96390,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3vr2-mv47mx5s-2d0963"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr2-mv47mx5s-2d0963-rep02.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:22:37.655 resp 19:22:37.668 (12 ms)
+#2 GET /api/encryption -> 200 send 19:22:37.668 resp 19:22:37.669 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:22:37.668 resp 19:22:37.672 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:22:37.668 resp 19:22:37.672 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:22:37.668 resp 19:22:37.674 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:22:37.668 resp 19:22:37.673 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:22:38.512 resp 19:22:38.523 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:38.534 resp 19:22:38.574 (40 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:38.549 resp 19:22:38.576 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:22:38.550 resp 19:22:38.576 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:22:38.550 resp 19:22:38.576 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:22:38.550 resp 19:22:38.577 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:22:38.602 resp 19:22:38.615 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:22:38.602 resp 19:22:38.613 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:22:38.602 resp 19:22:38.614 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:22:38.602 resp 19:22:38.614 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:22:38.602 resp 19:22:38.612 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:22:38.602 resp 19:22:38.613 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:22:38.615 resp 19:22:38.641 (26 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:23:19.137 resp 19:23:19.148 (11 ms) updatedAt=2026-10-11T19:23:19.147Z snapshotCreated=true writingLog=null doc[len 206 markers [] listWords 0 sha256 66291d7a28fb]
+#21 POST /api/project-resources -> 200 send 19:23:19.161 resp 19:23:19.167 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:23:19.161 resp 19:23:19.166 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:23:19.161 resp 19:23:19.167 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:23:49.310 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:23:49.311 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:23:49.311 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:23:49.311 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:23:49.311 resp - (-)
+#29 GET /api/encryption -> 200 send 19:23:49.336 resp 19:23:49.339 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:23:49.336 resp 19:23:49.341 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:23:49.336 resp 19:23:49.340 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:23:49.336 resp 19:23:49.344 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:23:49.336 resp 19:23:49.342 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:23:49.338 resp 19:23:49.341 (3 ms)
+#35 POST /api/project -> 200 send 19:23:50.184 resp 19:23:50.190 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:23:50.197 resp 19:23:50.205 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:23:50.204 resp 19:23:50.211 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:23:50.204 resp 19:23:50.211 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:23:50.204 resp 19:23:50.211 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:23:50.204 resp 19:23:50.208 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:23:50.237 resp 19:23:50.247 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:23:50.237 resp 19:23:50.246 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:23:50.237 resp 19:23:50.248 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:23:50.237 resp 19:23:50.247 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:23:50.237 resp 19:23:50.246 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:23:50.237 resp 19:23:50.246 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:23:50.249 resp 19:23:50.263 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:22:38.737 resp 19:22:38.750 (13 ms)
+#2 GET /api/encryption -> 200 send 19:22:38.750 resp 19:22:38.751 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:22:38.750 resp 19:22:38.754 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:22:38.750 resp 19:22:38.754 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:22:38.750 resp 19:22:38.756 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:22:38.750 resp 19:22:38.755 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:22:39.590 resp 19:22:39.596 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:39.604 resp 19:22:39.642 (38 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:22:39.616 resp 19:22:39.644 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:22:39.616 resp 19:22:39.645 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:22:39.616 resp 19:22:39.645 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:22:39.616 resp 19:22:39.645 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:22:39.669 resp 19:22:39.677 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:22:39.670 resp 19:22:39.677 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:22:39.670 resp 19:22:39.677 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:22:39.670 resp 19:22:39.677 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:22:39.670 resp 19:22:39.676 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:22:39.670 resp 19:22:39.676 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:22:39.678 resp 19:22:39.701 (22 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:22:42.340 resp 19:22:42.356 (16 ms) updatedAt=2026-10-11T19:22:42.354Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 3c178e3eae23]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:22:42.361 resp 19:22:42.367 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:22:42.361 resp 19:22:42.367 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 PATCH /api/resource/revision/R1 -> 200 send 19:23:03.764 resp 19:23:03.782 (18 ms) updatedAt=2026-10-11T19:23:03.780Z snapshotCreated=false writingLog=null doc[len 493 markers ["B1","B2LONG"] listWords 40 sha256 db1f266d6dc0]
+#24 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:23:03.789 resp 19:23:03.795 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#25 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:23:03.789 resp 19:23:03.796 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#26 PATCH /api/resource/revision/R1 -> 200 send 19:23:11.486 resp 19:23:11.495 (9 ms) updatedAt=2026-10-11T19:23:11.494Z snapshotCreated=false writingLog=null doc[len 496 markers ["B1","B2","B2LONG"] listWords 40 sha256 957790adb9c8]
+#27 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:23:11.499 resp 19:23:11.505 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#28 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:23:11.499 resp 19:23:11.505 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:23:50.355 resp - (-)
+#30 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:23:50.355 resp - (-)
+#31 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:23:50.355 resp - (-)
+#32 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:23:50.355 resp - (-)
+#33 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:23:50.355 resp - (-)
+#34 GET /api/encryption -> 200 send 19:23:50.380 resp 19:23:50.385 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/version-check -> 200 send 19:23:50.380 resp 19:23:50.386 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/auth-status -> 200 send 19:23:50.380 resp 19:23:50.386 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/projects -> 200 send 19:23:50.380 resp 19:23:50.389 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 GET /api/sharing/limits -> 200 send 19:23:50.380 resp 19:23:50.386 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 GET /api/auth/get-session -> 404 send 19:23:50.381 resp 19:23:50.386 (5 ms)
+#40 POST /api/project -> 200 send 19:23:51.235 resp 19:23:51.242 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/PRJ/entity-alias-table -> 200 send 19:23:51.251 resp 19:23:51.259 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/PRJ/entity-alias-table -> 200 send 19:23:51.258 resp 19:23:51.266 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:23:51.258 resp 19:23:51.266 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:23:51.258 resp 19:23:51.265 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/query/saved -> 200 send 19:23:51.258 resp 19:23:51.264 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project-resources -> 200 send 19:23:51.285 resp 19:23:51.294 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:23:51.285 resp 19:23:51.292 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#48 POST /api/project-resources -> 200 send 19:23:51.285 resp 19:23:51.294 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#49 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:23:51.285 resp 19:23:51.294 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#50 POST /api/project/tags -> 200 send 19:23:51.285 resp 19:23:51.292 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#51 POST /api/project/tags -> 200 send 19:23:51.285 resp 19:23:51.292 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#52 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:23:51.295 resp 19:23:51.309 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant v, repetition 3 (`s3vr3-mv47onvg-f50888`)
+
+```
+REPETITION s3 variant v rep 3/3 run=s3vr3-mv47onvg-f50888 commit=c92d82ca node=v24.15.0
+variant: stale A untouched while B saves 3 times (` B1`, ` B2LONG`+40 words, ` B2`), then A types `Q`
+server: built standalone, sharing on, port 65207, pid 99189; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":99189,"comm":"next-server (v16.2.6)"}]; browser pids 99206,99207,99208,99213,99215; throwaway root /private/tmp/getwrite-two-client/s3vr3-mv47onvg-f50888
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: B (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"1a162aa4361022ac35a0a6d89968387fec58b215693a2152ee80042ebf753c98","status":200,"updatedAt":"2026-10-11T19:24:03.669Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:24:03.669Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:24:03.669Z"} evidence={"byUpdatedAt":["B20"],"byResponseArrival":["B20"],"bySend":["B20"],"updatedAtValues":["2026-10-11T19:24:03.669Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:24:03.669Z","name":"Doc s3vr3-mv47onvg-f50888","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#1"]; expected wordCounts {"base":4,"B#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:24:03.666Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"}]
+  search: {"B1":1,"B2LONG":0,"B2":0,"charlieQ":0,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: B (saver) typed; typing started 5015 ms after the previous save acknowledgement; this client had sent 1 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1" / All changes saved · just now
+  sent: [{"n":23,"markers":["B1","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":493,"sha256":"b3f11b6f95253b16730aa880d67773b8c8343cab92339d5742086e4d88138bf5","status":200,"updatedAt":"2026-10-11T19:24:25.108Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#2","content.tiptap.json: = B#2","content.txt: = B#2","sidecar wordCount=46 matches B#2; updatedAt=2026-10-11T19:24:25.108Z","stores agree on B#2"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#2","updatedAt":"2026-10-11T19:24:25.108Z"} evidence={"byUpdatedAt":["B20","B23"],"byResponseArrival":["B20","B23"],"bySend":["B20","B23"],"updatedAtValues":["2026-10-11T19:24:03.669Z","2026-10-11T19:24:25.108Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#2"}]
+  sidecar: {"parsed":true,"wordCount":46,"updatedAt":"2026-10-11T19:24:25.108Z","name":"Doc s3vr3-mv47onvg-f50888","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#2"]; expected wordCounts {"base":4,"B#1":5,"B#2":46}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:24:03.666Z","2026-10-11T19:24:25.106Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"B1":1,"B2LONG":1,"B2":0,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":46,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#2, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 3: B (saver) typed; typing started 5012 ms after the previous save acknowledgement; this client had sent 2 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now
+  sent: [{"n":26,"markers":["B1","B2","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":496,"sha256":"45501964f81749a25cb01e9dce4b29b0a95208fe9e286b23cbac62c6842a6cdb","status":200,"updatedAt":"2026-10-11T19:24:32.824Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#3","content.tiptap.json: = B#3","content.txt: = B#3","sidecar wordCount=47 matches B#3; updatedAt=2026-10-11T19:24:32.824Z","stores agree on B#3"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#3","updatedAt":"2026-10-11T19:24:32.824Z"} evidence={"byUpdatedAt":["B20","B23","B26"],"byResponseArrival":["B20","B23","B26"],"bySend":["B20","B23","B26"],"updatedAtValues":["2026-10-11T19:24:03.669Z","2026-10-11T19:24:25.108Z","2026-10-11T19:24:32.824Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#3"}]
+  sidecar: {"parsed":true,"wordCount":47,"updatedAt":"2026-10-11T19:24:32.824Z","name":"Doc s3vr3-mv47onvg-f50888","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["B#3"]; expected wordCounts {"base":4,"B#1":5,"B#2":46,"B#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:24:03.666Z","2026-10-11T19:24:25.106Z","2026-10-11T19:24:32.822Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B2"}]
+  search: {"B1":1,"B2LONG":1,"B2":1,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":47,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#3, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 4: A (stale) typed; typing started 5010 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  sent: [{"n":20,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"length":206,"sha256":"ad384630a6f8d25b78d07fe094f11d013380221b4bdf80d1defca3e2796932e3","status":200,"updatedAt":"2026-10-11T19:24:40.459Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlieQ" / Saved · just now ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlieQ" / All changes saved · just now ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=4 matches base/A#1; updatedAt=2026-10-11T19:24:40.459Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:24:40.459Z"} evidence={"byUpdatedAt":["B20","B23","B26","A20"],"byResponseArrival":["B20","B23","B26","A20"],"bySend":["B20","B23","B26","A20"],"updatedAtValues":["2026-10-11T19:24:03.669Z","2026-10-11T19:24:25.108Z","2026-10-11T19:24:32.824Z","2026-10-11T19:24:40.459Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#3"}]
+  sidecar: {"parsed":true,"wordCount":4,"updatedAt":"2026-10-11T19:24:40.459Z","name":"Doc s3vr3-mv47onvg-f50888","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["base","A#1"]; expected wordCounts {"base":4,"A#1":4,"B#1":5,"B#2":46,"B#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true; entry timestamps ["2026-10-11T19:24:03.666Z","2026-10-11T19:24:25.106Z","2026-10-11T19:24:32.822Z","2026-10-11T19:24:40.458Z"]
+  writing-log tokens by processed save: [{"save":"B#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B1"},{"save":"B#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"B2LONG harbor lantern meadow copper ...(+36)"},{"save":"B#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"B2"},{"save":"A#1","added":1,"deleted":44,"deletedTokens":"charlie B1 B2LONG harbor lantern ...(+39)","addedTokens":"charlieQ"}]
+  search: {"B1":0,"B2LONG":0,"B2":0,"charlieQ":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":4,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlieQ" / All changes saved · 19s ago ; B: "BASE alpha bravo charlie B1 B2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · 28s ago; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+--- after reload (both): A: "BASE alpha bravo charlieQ" / All changes saved · not saved yet ; B: "BASE alpha bravo charlieQ" / All changes saved · not saved yet; versus server text: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=4 matches base/A#1; updatedAt=2026-10-11T19:24:40.459Z","stores agree on A#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= B#3"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true
+final search: {"B1":0,"B2LONG":0,"B2":0,"charlieQ":1,"harbor":0}
+last processed: {"docLabel":"A#1","updatedAt":"2026-10-11T19:24:40.459Z"}; evidence {"byUpdatedAt":["B20","B23","B26","A20"],"byResponseArrival":["B20","B23","B26","A20"],"bySend":["B20","B23","B26","A20"],"updatedAtValues":["2026-10-11T19:24:03.669Z","2026-10-11T19:24:25.108Z","2026-10-11T19:24:32.824Z","2026-10-11T19:24:40.459Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 44 (charlie B1 B2LONG harbor lantern meadow ...(+38)); where they are, after the stale save: {"lostTokenCount":44,"lostTokens":"charlie B1 B2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}; after reload: {"lostTokenCount":44,"lostTokens":"charlie B1 B2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}
+stale save contains the first saver's text: request marker tokens [[]], list words present [0], ends with charlieQ: true; stores after stale save held ["A#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["A#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":false}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":36730,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":36730,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":67795,"msAfterReloadMark":994},{"role":"status","text":"Loading diagnostics…","msAfterSince":67795,"msAfterReloadMark":994}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":66873,"msAfterReloadMark":72},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":66904,"msAfterReloadMark":102},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":67760,"msAfterReloadMark":958},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":67792,"msAfterReloadMark":990}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":66872,"msAfterReloadMark":70},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":66872,"msAfterReloadMark":70},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":66872,"msAfterReloadMark":70},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":66872,"msAfterReloadMark":70},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":66872,"msAfterReloadMark":70}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":66899,"msAfterReloadMark":97}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:25:10.549Z","msAfterSince":66802}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":32049,"msAfterReloadMark":1011},{"role":"status","text":"Loading diagnostics…","msAfterSince":32049,"msAfterReloadMark":1011}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":31122,"msAfterReloadMark":84},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":31152,"msAfterReloadMark":114},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32014,"msAfterReloadMark":976},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":32046,"msAfterReloadMark":1008}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":31122,"msAfterReloadMark":84},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":31122,"msAfterReloadMark":84},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":31122,"msAfterReloadMark":84},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":31122,"msAfterReloadMark":84},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":31122,"msAfterReloadMark":84}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":31148,"msAfterReloadMark":110}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:25:11.574Z","msAfterSince":31038}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:24:40.446Z","status":200,"hasDocument":true,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2461,"lastTypingStartsWith":"Q","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:24:03.656Z","status":200,"hasDocument":true,"markers":["B1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B1","afterAReloadMark":false},{"n":23,"sendAt":"2026-10-11T19:24:25.094Z","status":200,"hasDocument":true,"markers":["B1","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" B2LONG harb","afterAReloadMark":false},{"n":26,"sendAt":"2026-10-11T19:24:32.812Z","status":200,"hasDocument":true,"markers":["B1","B2","B2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" B2","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":99189,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3vr3-mv47onvg-f50888"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vr3-mv47onvg-f50888-rep03.json
+```
+
+Request log, client A (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:23:58.970 resp 19:23:58.982 (12 ms)
+#2 GET /api/encryption -> 200 send 19:23:58.982 resp 19:23:58.983 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:23:58.982 resp 19:23:58.986 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:23:58.982 resp 19:23:58.985 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:23:58.982 resp 19:23:58.988 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:23:58.982 resp 19:23:58.986 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:23:59.827 resp 19:23:59.836 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:23:59.847 resp 19:23:59.887 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:23:59.863 resp 19:23:59.889 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:23:59.863 resp 19:23:59.889 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:23:59.863 resp 19:23:59.890 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:23:59.863 resp 19:23:59.890 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:23:59.920 resp 19:23:59.932 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:23:59.920 resp 19:23:59.931 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:23:59.920 resp 19:23:59.933 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:23:59.920 resp 19:23:59.932 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:23:59.920 resp 19:23:59.930 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:23:59.920 resp 19:23:59.930 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:23:59.933 resp 19:23:59.958 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:24:40.446 resp 19:24:40.461 (15 ms) updatedAt=2026-10-11T19:24:40.459Z snapshotCreated=true writingLog=null doc[len 206 markers [] listWords 0 sha256 ad384630a6f8]
+#21 POST /api/project-resources -> 200 send 19:24:40.477 resp 19:24:40.484 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:24:40.478 resp 19:24:40.483 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:24:40.478 resp 19:24:40.486 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:25:10.619 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:25:10.619 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:25:10.619 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:25:10.619 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:25:10.619 resp - (-)
+#29 GET /api/encryption -> 200 send 19:25:10.645 resp 19:25:10.648 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:25:10.645 resp 19:25:10.649 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:25:10.645 resp 19:25:10.649 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:25:10.645 resp 19:25:10.652 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:25:10.645 resp 19:25:10.650 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:25:10.646 resp 19:25:10.651 (5 ms)
+#35 POST /api/project -> 200 send 19:25:11.493 resp 19:25:11.500 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:11.507 resp 19:25:11.516 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:11.514 resp 19:25:11.521 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:25:11.514 resp 19:25:11.521 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:25:11.514 resp 19:25:11.521 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:25:11.514 resp 19:25:11.519 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:25:11.542 resp 19:25:11.552 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:11.542 resp 19:25:11.552 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:25:11.542 resp 19:25:11.553 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:11.542 resp 19:25:11.552 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:25:11.542 resp 19:25:11.551 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:25:11.542 resp 19:25:11.551 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:25:11.554 resp 19:25:11.567 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:24:00.053 resp 19:24:00.061 (9 ms)
+#2 GET /api/encryption -> 200 send 19:24:00.067 resp 19:24:00.069 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:24:00.067 resp 19:24:00.071 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:24:00.068 resp 19:24:00.071 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:24:00.068 resp 19:24:00.073 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:24:00.068 resp 19:24:00.071 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:24:00.906 resp 19:24:00.910 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:24:00.920 resp 19:24:00.959 (39 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:24:00.934 resp 19:24:00.961 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:24:00.934 resp 19:24:00.961 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:24:00.934 resp 19:24:00.961 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:24:00.934 resp 19:24:00.961 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:24:00.986 resp 19:24:00.994 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:24:00.986 resp 19:24:00.992 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:24:00.986 resp 19:24:00.994 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:24:00.986 resp 19:24:00.993 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:24:00.986 resp 19:24:00.992 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:24:00.986 resp 19:24:00.992 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:24:00.995 resp 19:24:01.018 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:24:03.656 resp 19:24:03.671 (15 ms) updatedAt=2026-10-11T19:24:03.669Z snapshotCreated=false writingLog=null doc[len 208 markers ["B1"] listWords 0 sha256 1a162aa43610]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:24:03.677 resp 19:24:03.682 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:24:03.677 resp 19:24:03.684 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 PATCH /api/resource/revision/R1 -> 200 send 19:24:25.094 resp 19:24:25.110 (16 ms) updatedAt=2026-10-11T19:24:25.108Z snapshotCreated=false writingLog=null doc[len 493 markers ["B1","B2LONG"] listWords 40 sha256 b3f11b6f9525]
+#24 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:24:25.116 resp 19:24:25.123 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#25 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:24:25.116 resp 19:24:25.123 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#26 PATCH /api/resource/revision/R1 -> 200 send 19:24:32.812 resp 19:24:32.825 (14 ms) updatedAt=2026-10-11T19:24:32.824Z snapshotCreated=false writingLog=null doc[len 496 markers ["B1","B2","B2LONG"] listWords 40 sha256 45501964f817]
+#27 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:24:32.831 resp 19:24:32.836 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#28 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:24:32.831 resp 19:24:32.837 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:25:11.657 resp - (-)
+#30 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:25:11.657 resp - (-)
+#31 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:25:11.657 resp - (-)
+#32 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:25:11.657 resp - (-)
+#33 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:25:11.657 resp - (-)
+#34 GET /api/encryption -> 200 send 19:25:11.682 resp 19:25:11.687 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/version-check -> 200 send 19:25:11.682 resp 19:25:11.688 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/auth-status -> 200 send 19:25:11.682 resp 19:25:11.688 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/projects -> 200 send 19:25:11.682 resp 19:25:11.689 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 GET /api/sharing/limits -> 200 send 19:25:11.682 resp 19:25:11.688 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 GET /api/auth/get-session -> 404 send 19:25:11.684 resp 19:25:11.688 (4 ms)
+#40 POST /api/project -> 200 send 19:25:12.534 resp 19:25:12.541 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:12.550 resp 19:25:12.558 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:12.557 resp 19:25:12.566 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:25:12.557 resp 19:25:12.566 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:25:12.557 resp 19:25:12.565 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/query/saved -> 200 send 19:25:12.557 resp 19:25:12.563 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project-resources -> 200 send 19:25:12.584 resp 19:25:12.594 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:12.584 resp 19:25:12.592 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#48 POST /api/project-resources -> 200 send 19:25:12.585 resp 19:25:12.594 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#49 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:12.585 resp 19:25:12.594 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#50 POST /api/project/tags -> 200 send 19:25:12.585 resp 19:25:12.592 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#51 POST /api/project/tags -> 200 send 19:25:12.585 resp 19:25:12.592 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#52 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:25:12.595 resp 19:25:12.609 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant vi, repetition 1 (`s3vir1-mv47qelr-21d346`)
+
+```
+REPETITION s3 variant vi rep 1/3 run=s3vir1-mv47qelr-21d346 commit=c92d82ca node=v24.15.0
+variant: stale B untouched while A saves 3 times (` A1`, ` A2LONG`+40 words, ` A2`), then B types `Q`
+server: built standalone, sharing on, port 65298, pid 2351; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":2351,"comm":"next-server (v16.2.6)"}]; browser pids 2368,2369,2370,2375,2379; throwaway root /private/tmp/getwrite-two-client/s3vir1-mv47qelr-21d346
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"310aab1222bb301d1dd98a5f1ee9be1a9f1ce47197977c4e8c792e802487a342","status":200,"updatedAt":"2026-10-11T19:25:24.956Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:25:24.956Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:25:24.956Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:25:24.956Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:25:24.956Z","name":"Doc s3vir1-mv47qelr-21d346","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:25:24.953Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"}]
+  search: {"A1":1,"A2LONG":0,"A2":0,"charlieQ":0,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (saver) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 1 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":23,"markers":["A1","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":493,"sha256":"c46841a1b2e2edf0232658b3828d1d4d4a19350ace14409013bf095a9f0104fa","status":200,"updatedAt":"2026-10-11T19:25:46.366Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#2","content.tiptap.json: = A#2","content.txt: = A#2","sidecar wordCount=46 matches A#2; updatedAt=2026-10-11T19:25:46.366Z","stores agree on A#2"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#2","updatedAt":"2026-10-11T19:25:46.366Z"} evidence={"byUpdatedAt":["A20","A23"],"byResponseArrival":["A20","A23"],"bySend":["A20","A23"],"updatedAtValues":["2026-10-11T19:25:24.956Z","2026-10-11T19:25:46.366Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#2"}]
+  sidecar: {"parsed":true,"wordCount":46,"updatedAt":"2026-10-11T19:25:46.366Z","name":"Doc s3vir1-mv47qelr-21d346","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#2"]; expected wordCounts {"base":4,"A#1":5,"A#2":46}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:25:24.953Z","2026-10-11T19:25:46.364Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"A1":1,"A2LONG":1,"A2":0,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":46,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#2, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 3: A (saver) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 2 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":26,"markers":["A1","A2","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":496,"sha256":"a6843bcf24a32066335cfa7009644fb51bd1ca5cc799bec902bc4e426de44b75","status":200,"updatedAt":"2026-10-11T19:25:54.097Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#3","content.tiptap.json: = A#3","content.txt: = A#3","sidecar wordCount=47 matches A#3; updatedAt=2026-10-11T19:25:54.097Z","stores agree on A#3"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#3","updatedAt":"2026-10-11T19:25:54.097Z"} evidence={"byUpdatedAt":["A20","A23","A26"],"byResponseArrival":["A20","A23","A26"],"bySend":["A20","A23","A26"],"updatedAtValues":["2026-10-11T19:25:24.956Z","2026-10-11T19:25:46.366Z","2026-10-11T19:25:54.097Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#3"}]
+  sidecar: {"parsed":true,"wordCount":47,"updatedAt":"2026-10-11T19:25:54.097Z","name":"Doc s3vir1-mv47qelr-21d346","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#3"]; expected wordCounts {"base":4,"A#1":5,"A#2":46,"A#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:25:24.953Z","2026-10-11T19:25:46.364Z","2026-10-11T19:25:54.094Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A2"}]
+  search: {"A1":1,"A2LONG":1,"A2":1,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":47,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#3, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 4: B (stale) typed; typing started 5005 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"length":206,"sha256":"bf115847aaefc635cd0a1fd454652928553cb124f44d520ad9712d585193ea2b","status":200,"updatedAt":"2026-10-11T19:26:01.722Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlieQ" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlieQ" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=4 matches base/B#1; updatedAt=2026-10-11T19:26:01.722Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:26:01.722Z"} evidence={"byUpdatedAt":["A20","A23","A26","B20"],"byResponseArrival":["A20","A23","A26","B20"],"bySend":["A20","A23","A26","B20"],"updatedAtValues":["2026-10-11T19:25:24.956Z","2026-10-11T19:25:46.366Z","2026-10-11T19:25:54.097Z","2026-10-11T19:26:01.722Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#3"}]
+  sidecar: {"parsed":true,"wordCount":4,"updatedAt":"2026-10-11T19:26:01.722Z","name":"Doc s3vir1-mv47qelr-21d346","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["base","B#1"]; expected wordCounts {"base":4,"A#1":5,"A#2":46,"A#3":47,"B#1":4}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true; entry timestamps ["2026-10-11T19:25:24.953Z","2026-10-11T19:25:46.364Z","2026-10-11T19:25:54.094Z","2026-10-11T19:26:01.720Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A2"},{"save":"B#1","added":1,"deleted":44,"deletedTokens":"charlie A1 A2LONG harbor lantern ...(+39)","addedTokens":"charlieQ"}]
+  search: {"A1":0,"A2LONG":0,"A2":0,"charlieQ":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":4,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · 27s ago ; B: "BASE alpha bravo charlieQ" / All changes saved · 20s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlieQ" / All changes saved · not saved yet ; B: "BASE alpha bravo charlieQ" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=4 matches base/B#1; updatedAt=2026-10-11T19:26:01.722Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#3"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true
+final search: {"A1":0,"A2LONG":0,"A2":0,"charlieQ":1,"harbor":0}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:26:01.722Z"}; evidence {"byUpdatedAt":["A20","A23","A26","B20"],"byResponseArrival":["A20","A23","A26","B20"],"bySend":["A20","A23","A26","B20"],"updatedAtValues":["2026-10-11T19:25:24.956Z","2026-10-11T19:25:46.366Z","2026-10-11T19:25:54.097Z","2026-10-11T19:26:01.722Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 44 (charlie A1 A2LONG harbor lantern meadow ...(+38)); where they are, after the stale save: {"lostTokenCount":44,"lostTokens":"charlie A1 A2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}; after reload: {"lostTokenCount":44,"lostTokens":"charlie A1 A2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}
+stale save contains the first saver's text: request marker tokens [[]], list words present [0], ends with charlieQ: true; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":36705,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":36705,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":68828,"msAfterReloadMark":980},{"role":"status","text":"Loading diagnostics…","msAfterSince":68828,"msAfterReloadMark":980}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":67898,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":67928,"msAfterReloadMark":80},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":68788,"msAfterReloadMark":940},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":68824,"msAfterReloadMark":976}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":67898,"msAfterReloadMark":50},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":67898,"msAfterReloadMark":49},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":67898,"msAfterReloadMark":50},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":67898,"msAfterReloadMark":50},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":67898,"msAfterReloadMark":49}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":67923,"msAfterReloadMark":75}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:26:32.882Z","msAfterSince":67848}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31052,"msAfterReloadMark":1036},{"role":"status","text":"Loading diagnostics…","msAfterSince":31052,"msAfterReloadMark":1036}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30122,"msAfterReloadMark":107},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30153,"msAfterReloadMark":138},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31017,"msAfterReloadMark":1002},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31048,"msAfterReloadMark":1033}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30146,"msAfterReloadMark":131}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:26:31.814Z","msAfterSince":30015}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:26:01.708Z","status":200,"hasDocument":true,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2461,"lastTypingStartsWith":"Q","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:25:24.940Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2462,"lastTypingStartsWith":" A1","afterAReloadMark":false},{"n":23,"sendAt":"2026-10-11T19:25:46.350Z","status":200,"hasDocument":true,"markers":["A1","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A2LONG harb","afterAReloadMark":false},{"n":26,"sendAt":"2026-10-11T19:25:54.083Z","status":200,"hasDocument":true,"markers":["A1","A2","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A2","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":2351,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3vir1-mv47qelr-21d346"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir1-mv47qelr-21d346-rep01.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:25:20.255 resp 19:25:20.267 (12 ms)
+#2 GET /api/encryption -> 200 send 19:25:20.267 resp 19:25:20.269 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:25:20.267 resp 19:25:20.271 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:25:20.267 resp 19:25:20.271 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:25:20.267 resp 19:25:20.273 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:25:20.267 resp 19:25:20.271 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:25:21.110 resp 19:25:21.120 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:21.132 resp 19:25:21.175 (43 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:21.148 resp 19:25:21.177 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:25:21.148 resp 19:25:21.177 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:25:21.148 resp 19:25:21.177 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:25:21.148 resp 19:25:21.177 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:25:21.203 resp 19:25:21.215 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:21.203 resp 19:25:21.213 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:25:21.203 resp 19:25:21.215 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:21.203 resp 19:25:21.214 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:25:21.203 resp 19:25:21.213 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:25:21.203 resp 19:25:21.213 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:25:21.216 resp 19:25:21.240 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:25:24.940 resp 19:25:24.957 (17 ms) updatedAt=2026-10-11T19:25:24.956Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 310aab1222bb]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:24.963 resp 19:25:24.968 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:24.963 resp 19:25:24.968 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 PATCH /api/resource/revision/R1 -> 200 send 19:25:46.350 resp 19:25:46.368 (17 ms) updatedAt=2026-10-11T19:25:46.366Z snapshotCreated=false writingLog=null doc[len 493 markers ["A1","A2LONG"] listWords 40 sha256 c46841a1b2e2]
+#24 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:46.374 resp 19:25:46.381 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#25 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:46.374 resp 19:25:46.381 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#26 PATCH /api/resource/revision/R1 -> 200 send 19:25:54.083 resp 19:25:54.098 (15 ms) updatedAt=2026-10-11T19:25:54.097Z snapshotCreated=false writingLog=null doc[len 496 markers ["A1","A2","A2LONG"] listWords 40 sha256 a6843bcf24a3]
+#27 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:54.103 resp 19:25:54.109 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#28 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:54.103 resp 19:25:54.109 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:26:31.920 resp - (-)
+#30 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:26:31.920 resp - (-)
+#31 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:26:31.920 resp - (-)
+#32 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:26:31.920 resp - (-)
+#33 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:26:31.920 resp - (-)
+#34 GET /api/encryption -> 200 send 19:26:31.943 resp 19:26:31.949 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/version-check -> 200 send 19:26:31.943 resp 19:26:31.949 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/auth-status -> 200 send 19:26:31.943 resp 19:26:31.949 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/projects -> 200 send 19:26:31.943 resp 19:26:31.953 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 GET /api/sharing/limits -> 200 send 19:26:31.943 resp 19:26:31.949 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 GET /api/auth/get-session -> 404 send 19:26:31.945 resp 19:26:31.952 (7 ms)
+#40 POST /api/project -> 200 send 19:26:32.801 resp 19:26:32.808 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:32.816 resp 19:26:32.824 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:32.823 resp 19:26:32.831 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:26:32.823 resp 19:26:32.831 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:26:32.823 resp 19:26:32.831 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/query/saved -> 200 send 19:26:32.823 resp 19:26:32.829 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project-resources -> 200 send 19:26:32.851 resp 19:26:32.860 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:26:32.851 resp 19:26:32.860 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#48 POST /api/project-resources -> 200 send 19:26:32.851 resp 19:26:32.861 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#49 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:26:32.851 resp 19:26:32.860 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#50 POST /api/project/tags -> 200 send 19:26:32.851 resp 19:26:32.859 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#51 POST /api/project/tags -> 200 send 19:26:32.851 resp 19:26:32.859 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#52 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:26:32.862 resp 19:26:32.875 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:25:21.336 resp 19:25:21.349 (13 ms)
+#2 GET /api/encryption -> 200 send 19:25:21.349 resp 19:25:21.350 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:25:21.349 resp 19:25:21.353 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:25:21.349 resp 19:25:21.354 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:25:21.349 resp 19:25:21.355 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:25:21.349 resp 19:25:21.353 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:25:22.191 resp 19:25:22.196 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:22.207 resp 19:25:22.249 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:25:22.223 resp 19:25:22.251 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:25:22.223 resp 19:25:22.251 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:25:22.223 resp 19:25:22.252 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:25:22.223 resp 19:25:22.252 (29 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:25:22.277 resp 19:25:22.285 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:25:22.277 resp 19:25:22.285 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:25:22.277 resp 19:25:22.286 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:25:22.277 resp 19:25:22.286 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:25:22.277 resp 19:25:22.284 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:25:22.277 resp 19:25:22.284 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:25:22.287 resp 19:25:22.312 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:26:01.708 resp 19:26:01.723 (15 ms) updatedAt=2026-10-11T19:26:01.722Z snapshotCreated=true writingLog=null doc[len 206 markers [] listWords 0 sha256 bf115847aaef]
+#21 POST /api/project-resources -> 200 send 19:26:01.738 resp 19:26:01.745 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:26:01.739 resp 19:26:01.744 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:26:01.739 resp 19:26:01.745 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:26:32.931 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:26:32.931 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:26:32.931 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:26:32.931 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:26:32.931 resp - (-)
+#29 GET /api/encryption -> 200 send 19:26:32.956 resp 19:26:32.958 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:26:32.956 resp 19:26:32.960 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:26:32.956 resp 19:26:32.961 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:26:32.956 resp 19:26:32.962 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:26:32.956 resp 19:26:32.961 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:26:32.957 resp 19:26:32.962 (5 ms)
+#35 POST /api/project -> 200 send 19:26:33.807 resp 19:26:33.815 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:33.821 resp 19:26:33.830 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:33.828 resp 19:26:33.835 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:26:33.828 resp 19:26:33.835 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:26:33.828 resp 19:26:33.834 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:26:33.828 resp 19:26:33.832 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:26:33.861 resp 19:26:33.871 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:26:33.861 resp 19:26:33.870 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:26:33.861 resp 19:26:33.871 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:26:33.861 resp 19:26:33.870 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:26:33.861 resp 19:26:33.869 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:26:33.861 resp 19:26:33.869 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:26:33.872 resp 19:26:33.886 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant vi, repetition 2 (`s3vir2-mv47s5ba-45d988`)
+
+```
+REPETITION s3 variant vi rep 2/3 run=s3vir2-mv47s5ba-45d988 commit=c92d82ca node=v24.15.0
+variant: stale B untouched while A saves 3 times (` A1`, ` A2LONG`+40 words, ` A2`), then B types `Q`
+server: built standalone, sharing on, port 65403, pid 5158; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":5158,"comm":"next-server (v16.2.6)"}]; browser pids 5178,5179,5180,5183,5245; throwaway root /private/tmp/getwrite-two-client/s3vir2-mv47s5ba-45d988
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"d4757d028f830dbae29c561055bca79163a8d4e1dc8cf39ed18dfd1e0c0bf59c","status":200,"updatedAt":"2026-10-11T19:26:46.226Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:26:46.226Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1006,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:26:46.226Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:26:46.226Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:26:46.226Z","name":"Doc s3vir2-mv47s5ba-45d988","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:26:46.225Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"}]
+  search: {"A1":1,"A2LONG":0,"A2":0,"charlieQ":0,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (saver) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 1 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":23,"markers":["A1","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":493,"sha256":"33158b963d8b8b7bcac33716e736ec5fe34a3001ab8b132090df34a8e4b4109b","status":200,"updatedAt":"2026-10-11T19:27:07.644Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#2","content.tiptap.json: = A#2","content.txt: = A#2","sidecar wordCount=46 matches A#2; updatedAt=2026-10-11T19:27:07.644Z","stores agree on A#2"]
+  quiet={"quiet":true,"waitedMs":1004,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#2","updatedAt":"2026-10-11T19:27:07.644Z"} evidence={"byUpdatedAt":["A20","A23"],"byResponseArrival":["A20","A23"],"bySend":["A20","A23"],"updatedAtValues":["2026-10-11T19:26:46.226Z","2026-10-11T19:27:07.644Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#2"}]
+  sidecar: {"parsed":true,"wordCount":46,"updatedAt":"2026-10-11T19:27:07.644Z","name":"Doc s3vir2-mv47s5ba-45d988","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#2"]; expected wordCounts {"base":4,"A#1":5,"A#2":46}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:26:46.225Z","2026-10-11T19:27:07.642Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"A1":1,"A2LONG":1,"A2":0,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":46,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#2, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 3: A (saver) typed; typing started 5015 ms after the previous save acknowledgement; this client had sent 2 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":26,"markers":["A1","A2","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":496,"sha256":"6410cc983499220d6f6c7d7b44e4b507dbec2850d4cc1959b813143a66f0a276","status":200,"updatedAt":"2026-10-11T19:27:15.369Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#3","content.tiptap.json: = A#3","content.txt: = A#3","sidecar wordCount=47 matches A#3; updatedAt=2026-10-11T19:27:15.369Z","stores agree on A#3"]
+  quiet={"quiet":true,"waitedMs":1005,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#3","updatedAt":"2026-10-11T19:27:15.369Z"} evidence={"byUpdatedAt":["A20","A23","A26"],"byResponseArrival":["A20","A23","A26"],"bySend":["A20","A23","A26"],"updatedAtValues":["2026-10-11T19:26:46.226Z","2026-10-11T19:27:07.644Z","2026-10-11T19:27:15.369Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#3"}]
+  sidecar: {"parsed":true,"wordCount":47,"updatedAt":"2026-10-11T19:27:15.369Z","name":"Doc s3vir2-mv47s5ba-45d988","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#3"]; expected wordCounts {"base":4,"A#1":5,"A#2":46,"A#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:26:46.225Z","2026-10-11T19:27:07.642Z","2026-10-11T19:27:15.367Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A2"}]
+  search: {"A1":1,"A2LONG":1,"A2":1,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":47,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#3, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 4: B (stale) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"length":206,"sha256":"c9ea0fdc2fbe29a6ff1679add3e2a35ac7f9c89bc065dac8992958253433cff3","status":200,"updatedAt":"2026-10-11T19:27:23.019Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlieQ" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlieQ" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=4 matches base/B#1; updatedAt=2026-10-11T19:27:23.019Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:27:23.019Z"} evidence={"byUpdatedAt":["A20","A23","A26","B20"],"byResponseArrival":["A20","A23","A26","B20"],"bySend":["A20","A23","A26","B20"],"updatedAtValues":["2026-10-11T19:26:46.226Z","2026-10-11T19:27:07.644Z","2026-10-11T19:27:15.369Z","2026-10-11T19:27:23.019Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#3"}]
+  sidecar: {"parsed":true,"wordCount":4,"updatedAt":"2026-10-11T19:27:23.019Z","name":"Doc s3vir2-mv47s5ba-45d988","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["base","B#1"]; expected wordCounts {"base":4,"A#1":5,"A#2":46,"A#3":47,"B#1":4}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true; entry timestamps ["2026-10-11T19:26:46.225Z","2026-10-11T19:27:07.642Z","2026-10-11T19:27:15.367Z","2026-10-11T19:27:23.017Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A2"},{"save":"B#1","added":1,"deleted":44,"deletedTokens":"charlie A1 A2LONG harbor lantern ...(+39)","addedTokens":"charlieQ"}]
+  search: {"A1":0,"A2LONG":0,"A2":0,"charlieQ":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":4,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · 27s ago ; B: "BASE alpha bravo charlieQ" / All changes saved · 20s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlieQ" / All changes saved · not saved yet ; B: "BASE alpha bravo charlieQ" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=4 matches base/B#1; updatedAt=2026-10-11T19:27:23.019Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#3"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true
+final search: {"A1":0,"A2LONG":0,"A2":0,"charlieQ":1,"harbor":0}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:27:23.019Z"}; evidence {"byUpdatedAt":["A20","A23","A26","B20"],"byResponseArrival":["A20","A23","A26","B20"],"bySend":["A20","A23","A26","B20"],"updatedAtValues":["2026-10-11T19:26:46.226Z","2026-10-11T19:27:07.644Z","2026-10-11T19:27:15.369Z","2026-10-11T19:27:23.019Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 44 (charlie A1 A2LONG harbor lantern meadow ...(+38)); where they are, after the stale save: {"lostTokenCount":44,"lostTokens":"charlie A1 A2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}; after reload: {"lostTokenCount":44,"lostTokens":"charlie A1 A2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}
+stale save contains the first saver's text: request marker tokens [[]], list words present [0], ends with charlieQ: true; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":36731,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":36731,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":68852,"msAfterReloadMark":974},{"role":"status","text":"Loading diagnostics…","msAfterSince":68853,"msAfterReloadMark":975}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":67928,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":67958,"msAfterReloadMark":80},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":68819,"msAfterReloadMark":941},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":68849,"msAfterReloadMark":971}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":67927,"msAfterReloadMark":49},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":67927,"msAfterReloadMark":49},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":67927,"msAfterReloadMark":49},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":67927,"msAfterReloadMark":49},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":67927,"msAfterReloadMark":49}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":67953,"msAfterReloadMark":75}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:27:54.183Z","msAfterSince":67878}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31050,"msAfterReloadMark":1035},{"role":"status","text":"Loading diagnostics…","msAfterSince":31051,"msAfterReloadMark":1036}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30121,"msAfterReloadMark":106},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30153,"msAfterReloadMark":138},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31015,"msAfterReloadMark":1000},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31046,"msAfterReloadMark":1032}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":106},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":106},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":105},{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30120,"msAfterReloadMark":106},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30121,"msAfterReloadMark":106}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30145,"msAfterReloadMark":131}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:27:53.116Z","msAfterSince":30015}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:27:23.005Z","status":200,"hasDocument":true,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":"Q","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:26:46.215Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2463,"lastTypingStartsWith":" A1","afterAReloadMark":false},{"n":23,"sendAt":"2026-10-11T19:27:07.627Z","status":200,"hasDocument":true,"markers":["A1","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":" A2LONG harb","afterAReloadMark":false},{"n":26,"sendAt":"2026-10-11T19:27:15.356Z","status":200,"hasDocument":true,"markers":["A1","A2","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2460,"lastTypingStartsWith":" A2","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":5158,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3vir2-mv47s5ba-45d988"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir2-mv47s5ba-45d988-rep02.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:26:41.524 resp 19:26:41.532 (9 ms)
+#2 GET /api/encryption -> 200 send 19:26:41.538 resp 19:26:41.540 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:26:41.538 resp 19:26:41.542 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:26:41.538 resp 19:26:41.542 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:26:41.538 resp 19:26:41.544 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:26:41.538 resp 19:26:41.542 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:26:42.386 resp 19:26:42.396 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:42.408 resp 19:26:42.452 (44 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:42.424 resp 19:26:42.454 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:26:42.424 resp 19:26:42.454 (30 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:26:42.424 resp 19:26:42.454 (31 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:26:42.424 resp 19:26:42.455 (31 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:26:42.477 resp 19:26:42.488 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:26:42.477 resp 19:26:42.487 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:26:42.477 resp 19:26:42.488 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:26:42.477 resp 19:26:42.487 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:26:42.477 resp 19:26:42.486 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:26:42.477 resp 19:26:42.487 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:26:42.488 resp 19:26:42.513 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:26:46.215 resp 19:26:46.229 (14 ms) updatedAt=2026-10-11T19:26:46.226Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 d4757d028f83]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:26:46.234 resp 19:26:46.238 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:26:46.234 resp 19:26:46.239 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 PATCH /api/resource/revision/R1 -> 200 send 19:27:07.627 resp 19:27:07.645 (18 ms) updatedAt=2026-10-11T19:27:07.644Z snapshotCreated=false writingLog=null doc[len 493 markers ["A1","A2LONG"] listWords 40 sha256 33158b963d8b]
+#24 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:27:07.651 resp 19:27:07.657 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#25 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:27:07.651 resp 19:27:07.657 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#26 PATCH /api/resource/revision/R1 -> 200 send 19:27:15.356 resp 19:27:15.371 (15 ms) updatedAt=2026-10-11T19:27:15.369Z snapshotCreated=false writingLog=null doc[len 496 markers ["A1","A2","A2LONG"] listWords 40 sha256 6410cc983499]
+#27 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:27:15.376 resp 19:27:15.382 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#28 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:27:15.376 resp 19:27:15.382 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:27:53.221 resp - (-)
+#30 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:27:53.221 resp - (-)
+#31 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:27:53.221 resp - (-)
+#32 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:27:53.221 resp - (-)
+#33 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:27:53.222 resp - (-)
+#34 GET /api/encryption -> 200 send 19:27:53.245 resp 19:27:53.250 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/version-check -> 200 send 19:27:53.245 resp 19:27:53.251 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/auth-status -> 200 send 19:27:53.245 resp 19:27:53.251 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/projects -> 200 send 19:27:53.245 resp 19:27:53.254 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 GET /api/sharing/limits -> 200 send 19:27:53.245 resp 19:27:53.251 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 GET /api/auth/get-session -> 404 send 19:27:53.246 resp 19:27:53.254 (7 ms)
+#40 POST /api/project -> 200 send 19:27:54.102 resp 19:27:54.108 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/PRJ/entity-alias-table -> 200 send 19:27:54.116 resp 19:27:54.124 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/PRJ/entity-alias-table -> 200 send 19:27:54.123 resp 19:27:54.130 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:27:54.123 resp 19:27:54.130 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:27:54.123 resp 19:27:54.128 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/query/saved -> 200 send 19:27:54.123 resp 19:27:54.127 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project-resources -> 200 send 19:27:54.151 resp 19:27:54.160 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:27:54.151 resp 19:27:54.160 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#48 POST /api/project-resources -> 200 send 19:27:54.151 resp 19:27:54.161 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#49 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:27:54.151 resp 19:27:54.160 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#50 POST /api/project/tags -> 200 send 19:27:54.151 resp 19:27:54.159 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#51 POST /api/project/tags -> 200 send 19:27:54.151 resp 19:27:54.159 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#52 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:27:54.162 resp 19:27:54.177 (15 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:26:42.610 resp 19:26:42.622 (13 ms)
+#2 GET /api/encryption -> 200 send 19:26:42.622 resp 19:26:42.624 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:26:42.622 resp 19:26:42.627 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:26:42.622 resp 19:26:42.627 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:26:42.622 resp 19:26:42.628 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:26:42.622 resp 19:26:42.627 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:26:43.464 resp 19:26:43.470 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:43.481 resp 19:26:43.523 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:26:43.497 resp 19:26:43.525 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:26:43.497 resp 19:26:43.525 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:26:43.497 resp 19:26:43.525 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:26:43.497 resp 19:26:43.525 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:26:43.552 resp 19:26:43.560 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:26:43.552 resp 19:26:43.559 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:26:43.552 resp 19:26:43.560 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:26:43.552 resp 19:26:43.560 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:26:43.552 resp 19:26:43.558 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:26:43.552 resp 19:26:43.559 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:26:43.561 resp 19:26:43.586 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:27:23.005 resp 19:27:23.021 (15 ms) updatedAt=2026-10-11T19:27:23.019Z snapshotCreated=true writingLog=null doc[len 206 markers [] listWords 0 sha256 c9ea0fdc2fbe]
+#21 POST /api/project-resources -> 200 send 19:27:23.036 resp 19:27:23.042 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:27:23.036 resp 19:27:23.042 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:27:23.036 resp 19:27:23.043 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:27:54.232 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:27:54.232 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:27:54.232 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:27:54.232 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:27:54.232 resp - (-)
+#29 GET /api/encryption -> 200 send 19:27:54.257 resp 19:27:54.260 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:27:54.257 resp 19:27:54.261 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:27:54.257 resp 19:27:54.262 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:27:54.257 resp 19:27:54.265 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:27:54.257 resp 19:27:54.262 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:27:54.258 resp 19:27:54.263 (5 ms)
+#35 POST /api/project -> 200 send 19:27:55.108 resp 19:27:55.116 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:27:55.124 resp 19:27:55.132 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:27:55.132 resp 19:27:55.138 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:27:55.132 resp 19:27:55.138 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:27:55.132 resp 19:27:55.138 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:27:55.132 resp 19:27:55.136 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:27:55.158 resp 19:27:55.166 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:27:55.158 resp 19:27:55.165 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:27:55.158 resp 19:27:55.167 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:27:55.158 resp 19:27:55.166 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:27:55.158 resp 19:27:55.165 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:27:55.158 resp 19:27:55.165 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:27:55.168 resp 19:27:55.182 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+#### Record: variant vi, repetition 3 (`s3vir3-mv47tw1k-48d6c0`)
+
+```
+REPETITION s3 variant vi rep 3/3 run=s3vir3-mv47tw1k-48d6c0 commit=c92d82ca node=v24.15.0
+variant: stale B untouched while A saves 3 times (` A1`, ` A2LONG`+40 words, ` A2`), then B types `Q`
+server: built standalone, sharing on, port 65502, pid 7962; host to itself, not a second-device result; times are Playwright event times on the host clock
+pre-checks: 7340="none" 3000="none" chosen port before start: none; server pids [{"pid":7962,"comm":"next-server (v16.2.6)"}]; browser pids 7979,7980,7981,7986,8048; throwaway root /private/tmp/getwrite-two-client/s3vir3-mv47tw1k-48d6c0
+both open: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+initial server state: ["content.bin (canonical): = base","content.tiptap.json: = base","content.txt: = base","sidecar wordCount=4 matches base; updatedAt=null","stores agree on base"]
+--- step 1: A (saver) typed; typing started n/a after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie" / All changes saved · not saved yet ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"length":208,"sha256":"32a01308aca0068ad43d5bcda16926b3abf11d4fd7d8c834193f4cef10035d72","status":200,"updatedAt":"2026-10-11T19:28:07.543Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#1","content.tiptap.json: = A#1","content.txt: = A#1","sidecar wordCount=5 matches A#1; updatedAt=2026-10-11T19:28:07.543Z","stores agree on A#1"]
+  quiet={"quiet":true,"waitedMs":1004,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#1","updatedAt":"2026-10-11T19:28:07.543Z"} evidence={"byUpdatedAt":["A20"],"byResponseArrival":["A20"],"bySend":["A20"],"updatedAtValues":["2026-10-11T19:28:07.543Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#1"}]
+  sidecar: {"parsed":true,"wordCount":5,"updatedAt":"2026-10-11T19:28:07.543Z","name":"Doc s3vir3-mv47tw1k-48d6c0","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#1"]; expected wordCounts {"base":4,"A#1":5}
+  writing log actual=[{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:28:07.540Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"}]
+  search: {"A1":1,"A2LONG":0,"A2":0,"charlieQ":0,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":5,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 2: A (saver) typed; typing started 5015 ms after the previous save acknowledgement; this client had sent 1 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":23,"markers":["A1","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":493,"sha256":"091fb8beaa6f0b8506140160df802e909b55728d7b5e70c05b8705595c50d759","status":200,"updatedAt":"2026-10-11T19:28:28.917Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#2","content.tiptap.json: = A#2","content.txt: = A#2","sidecar wordCount=46 matches A#2; updatedAt=2026-10-11T19:28:28.917Z","stores agree on A#2"]
+  quiet={"quiet":true,"waitedMs":1003,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#2","updatedAt":"2026-10-11T19:28:28.917Z"} evidence={"byUpdatedAt":["A20","A23"],"byResponseArrival":["A20","A23"],"bySend":["A20","A23"],"updatedAtValues":["2026-10-11T19:28:07.543Z","2026-10-11T19:28:28.917Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#2"}]
+  sidecar: {"parsed":true,"wordCount":46,"updatedAt":"2026-10-11T19:28:28.917Z","name":"Doc s3vir3-mv47tw1k-48d6c0","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#2"]; expected wordCounts {"base":4,"A#1":5,"A#2":46}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41}] match=true; entry timestamps ["2026-10-11T19:28:07.540Z","2026-10-11T19:28:28.915Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"}]
+  search: {"A1":1,"A2LONG":1,"A2":0,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":46,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#2, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 3: A (saver) typed; typing started 5010 ms after the previous save acknowledgement; this client had sent 2 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [46 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":26,"markers":["A1","A2","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"length":496,"sha256":"99b1fefc3fb391d7ced99fb5f2881a632417dabbce3963dead1d8d2ecfb22375","status":200,"updatedAt":"2026-10-11T19:28:36.642Z","snapshotCreated":false,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / Saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  stores: ["content.bin (canonical): = A#3","content.tiptap.json: = A#3","content.txt: = A#3","sidecar wordCount=47 matches A#3; updatedAt=2026-10-11T19:28:36.642Z","stores agree on A#3"]
+  quiet={"quiet":true,"waitedMs":1004,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"A#3","updatedAt":"2026-10-11T19:28:36.642Z"} evidence={"byUpdatedAt":["A20","A23","A26"],"byResponseArrival":["A20","A23","A26"],"bySend":["A20","A23","A26"],"updatedAtValues":["2026-10-11T19:28:07.543Z","2026-10-11T19:28:28.917Z","2026-10-11T19:28:36.642Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= A#3"}]
+  sidecar: {"parsed":true,"wordCount":47,"updatedAt":"2026-10-11T19:28:36.642Z","name":"Doc s3vir3-mv47tw1k-48d6c0","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["A#3"]; expected wordCounts {"base":4,"A#1":5,"A#2":46,"A#3":47}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1}] match=true; entry timestamps ["2026-10-11T19:28:07.540Z","2026-10-11T19:28:28.915Z","2026-10-11T19:28:36.640Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A2"}]
+  search: {"A1":1,"A2LONG":1,"A2":1,"charlieQ":0,"harbor":1}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":47,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold A#3, the last processed save"],"flags":{"reloadChecked":false}}
+--- step 4: B (stale) typed; typing started 5014 ms after the previous save acknowledgement; this client had sent 0 PATCH before this typing
+  editors before typing: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlie" / All changes saved · not saved yet
+  sent: [{"n":20,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"length":206,"sha256":"ea532da4742ab59308a7a0205ba91d52794c9c0dc560521d42e65fd6484c2fe5","status":200,"updatedAt":"2026-10-11T19:28:44.285Z","snapshotCreated":true,"writingLog":null}]
+  editors right after save acknowledged: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlieQ" / Saved · just now
+  editors at +5 s: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · just now ; B: "BASE alpha bravo charlieQ" / All changes saved · just now
+  stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=4 matches base/B#1; updatedAt=2026-10-11T19:28:44.285Z","stores agree on B#1"]
+  quiet={"quiet":true,"waitedMs":1007,"reads":2,"intervalMs":1000} canonicalCount=1 last processed so far={"docLabel":"B#1","updatedAt":"2026-10-11T19:28:44.285Z"} evidence={"byUpdatedAt":["A20","A23","A26","B20"],"byResponseArrival":["A20","A23","A26","B20"],"bySend":["A20","A23","A26","B20"],"updatedAtValues":["2026-10-11T19:28:07.543Z","2026-10-11T19:28:28.917Z","2026-10-11T19:28:36.642Z","2026-10-11T19:28:44.285Z"]}
+  revisions: [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#3"}]
+  sidecar: {"parsed":true,"wordCount":4,"updatedAt":"2026-10-11T19:28:44.285Z","name":"Doc s3vir3-mv47tw1k-48d6c0","keys":["createdAt","folderId","id","name","orderIndex","slug","type","updatedAt","userMetadata","wordCount"]} wordCount matches ["base","B#1"]; expected wordCounts {"base":4,"A#1":5,"A#2":46,"A#3":47,"B#1":4}
+  writing log actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true; entry timestamps ["2026-10-11T19:28:07.540Z","2026-10-11T19:28:28.915Z","2026-10-11T19:28:36.640Z","2026-10-11T19:28:44.284Z"]
+  writing-log tokens by processed save: [{"save":"A#1","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A1"},{"save":"A#2","added":41,"deleted":0,"deletedTokens":"","addedTokens":"A2LONG harbor lantern meadow copper ...(+36)"},{"save":"A#3","added":1,"deleted":0,"deletedTokens":"","addedTokens":"A2"},{"save":"B#1","added":1,"deleted":44,"deletedTokens":"charlie A1 A2LONG harbor lantern ...(+39)","addedTokens":"charlieQ"}]
+  search: {"A1":0,"A2LONG":0,"A2":0,"charlieQ":1,"harbor":0}
+  .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+  diagnostics record: {"dialogueRatio":0,"averageSentenceLength":4,"topRepeatedWords":[],"heuristicVersion":1} mention records: []
+  step-state verdict (informational, not the repetition verdict): {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":false}}
+--- 30 s after the stale client's save, no reload: A: "BASE alpha bravo charlie A1 A2LONG harbor lantern meadow cop ... [47 words]" / All changes saved · 27s ago ; B: "BASE alpha bravo charlieQ" / All changes saved · 20s ago; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+--- after reload (both): A: "BASE alpha bravo charlieQ" / All changes saved · not saved yet ; B: "BASE alpha bravo charlieQ" / All changes saved · not saved yet; versus server text: {"serverHolds":["B#1"],"A_editorEqualsServerText":true,"B_editorEqualsServerText":true}
+final stores: ["content.bin (canonical): = B#1","content.tiptap.json: = B#1","content.txt: = B#1","sidecar wordCount=4 matches base/B#1; updatedAt=2026-10-11T19:28:44.285Z","stores agree on B#1"]
+final revisions (every v-* dir): [{"dir":"v-1","canonical":true,"name":"Initial Draft","automaticSnapshot":false,"contains":"= B#1"},{"dir":"v-2","canonical":false,"name":"Auto-backup before large deletion","automaticSnapshot":true,"contains":"= A#3"}]; other entries under revisions/<R1>/: []
+final .trash names: {"projectTrash":"absent","projectsFolderTrash":"absent","note":"names only, ids replaced by labels; 'absent' means the directory does not exist"}
+final writing log: actual=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] expected=[{"added":1,"deleted":0,"net":1},{"added":41,"deleted":0,"net":41},{"added":1,"deleted":0,"net":1},{"added":1,"deleted":44,"net":-43}] match=true
+final search: {"A1":0,"A2LONG":0,"A2":0,"charlieQ":1,"harbor":0}
+last processed: {"docLabel":"B#1","updatedAt":"2026-10-11T19:28:44.285Z"}; evidence {"byUpdatedAt":["A20","A23","A26","B20"],"byResponseArrival":["A20","A23","A26","B20"],"bySend":["A20","A23","A26","B20"],"updatedAtValues":["2026-10-11T19:28:07.543Z","2026-10-11T19:28:28.917Z","2026-10-11T19:28:36.642Z","2026-10-11T19:28:44.285Z"]}
+VERDICT: {"verdict":"PASS","reasons":["all four stores hold B#1, the last processed save"],"flags":{"reloadChecked":true}}
+lost tokens (first saver's final-document words absent from the stale document): 44 (charlie A1 A2LONG harbor lantern meadow ...(+38)); where they are, after the stale save: {"lostTokenCount":44,"lostTokens":"charlie A1 A2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}; after reload: {"lostTokenCount":44,"lostTokens":"charlie A1 A2LONG harbor lantern meadow copper willow ...(+36)","canonicalContentBin":0,"contentTiptapJson":0,"contentTxt":0,"nonCanonicalRevisions":[{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"lostTokensPresent":44}]}
+stale save contains the first saver's text: request marker tokens [[]], list words present [0], ends with charlieQ: true; stores after stale save held ["B#1"]
+snapshotCreated flags: stale save response [true]; auto-backup revisions after reload: [{"dir":"v-2","name":"Auto-backup before large deletion","automaticSnapshot":true,"isCanonical":false}]
+saver editor right after the stale save vs server: {"serverHolds":["B#1"],"A_editorEqualsServerText":false,"B_editorEqualsServerText":true}
+notifications, stale client (since the first saver's ack; surfaces named: role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags): {"surfaces":[{"role":"status","text":"Saved a backup of your previous content\nFind it in Revision Control, named “Auto-backup before large deletion”.","msAfterSince":36682,"msAfterReloadMark":null},{"role":"status","text":"Loading diagnostics…","msAfterSince":36682,"msAfterReloadMark":null},{"role":"status","text":"Loading this document…","msAfterSince":68796,"msAfterReloadMark":977},{"role":"status","text":"Loading diagnostics…","msAfterSince":68796,"msAfterReloadMark":977}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":67869,"msAfterReloadMark":50},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":67898,"msAfterReloadMark":79},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":68759,"msAfterReloadMark":940},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":68792,"msAfterReloadMark":974}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":67868,"msAfterReloadMark":49},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":67868,"msAfterReloadMark":49},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":67868,"msAfterReloadMark":49},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":67868,"msAfterReloadMark":49},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":67868,"msAfterReloadMark":49}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":67893,"msAfterReloadMark":75}],"patchResponseSignals":[{"n":20,"snapshotCreated":true,"writingLog":null}],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:29:15.439Z","msAfterSince":67819}]}
+notifications, saver client (since the stale client's ack): {"surfaces":[{"role":"status","text":"Loading this document…","msAfterSince":31051,"msAfterReloadMark":1035},{"role":"status","text":"Loading diagnostics…","msAfterSince":31051,"msAfterReloadMark":1035}],"console":[{"type":"error","text":"Error fetching projects: TypeError: Failed to fetch","msAfterSince":30124,"msAfterReloadMark":108},{"type":"error","text":"Failed to load resource: the server responded with a status of 404 (Not Found)","msAfterSince":30156,"msAfterReloadMark":140},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31017,"msAfterReloadMark":1001},{"type":"warning","text":"[react-tooltip] Do not set `style.border`. Use `border` prop instead.","msAfterSince":31047,"msAfterReloadMark":1031}],"pageErrors":[],"dialogs":[],"failedRequests":[{"method":"GET","path":"/api/projects","error":"net::ERR_ABORTED","msAfterSince":30124,"msAfterReloadMark":108},{"method":"GET","path":"/api/sharing/limits","error":"net::ERR_ABORTED","msAfterSince":30124,"msAfterReloadMark":108},{"method":"GET","path":"/api/version-check","error":"net::ERR_ABORTED","msAfterSince":30123,"msAfterReloadMark":108},{"method":"GET","path":"/api/encryption","error":"net::ERR_ABORTED","msAfterSince":30123,"msAfterReloadMark":108},{"method":"GET","path":"/api/auth-status","error":"net::ERR_ABORTED","msAfterSince":30123,"msAfterReloadMark":108}],"nonOkResponses":[{"method":"GET","path":"/api/auth/get-session","status":404,"body":"","msAfterSince":30149,"msAfterReloadMark":133}],"patchResponseSignals":[],"reloadMarks":[{"name":"page.reload","at":"2026-10-11T19:29:14.373Z","msAfterSince":30016}]}
+every PATCH by stale: [{"n":20,"sendAt":"2026-10-11T19:28:44.271Z","status":200,"hasDocument":true,"markers":[],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2459,"lastTypingStartsWith":"Q","afterAReloadMark":false}]
+every PATCH by saver: [{"n":20,"sendAt":"2026-10-11T19:28:07.530Z","status":200,"hasDocument":true,"markers":["A1"],"baseWordsPresent":true,"listWordsPresent":0,"note":null,"msAfterLastTypingEnd":2461,"lastTypingStartsWith":" A1","afterAReloadMark":false},{"n":23,"sendAt":"2026-10-11T19:28:28.902Z","status":200,"hasDocument":true,"markers":["A1","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2457,"lastTypingStartsWith":" A2LONG harb","afterAReloadMark":false},{"n":26,"sendAt":"2026-10-11T19:28:36.628Z","status":200,"hasDocument":true,"markers":["A1","A2","A2LONG"],"baseWordsPresent":true,"listWordsPresent":40,"note":null,"msAfterLastTypingEnd":2458,"lastTypingStartsWith":" A2","afterAReloadMark":false}]
+failed saves: stale []; saver []
+
+teardown: {"errors":[],"browserPidsRecorded":5,"browserPidsAliveAfterClose":[],"browserPidsAliveAfterTerm":[],"server":{"recorded":[{"pid":7962,"comm":"next-server (v16.2.6)"}],"stillAliveAfterTerm":[],"stillAliveAfterKill":[],"portListenersAfter":[],"listeners7340After":[],"listeners3000After":[]},"listeners7340After":[],"listeners3000After":[],"cleanup":{"removed":true,"path":"/private/tmp/getwrite-two-client/s3vir3-mv47tw1k-48d6c0"}}
+JSON: /Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s3/s3vir3-mv47tw1k-48d6c0-rep03.json
+```
+
+Request log, client A (saver), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:28:02.836 resp 19:28:02.844 (9 ms)
+#2 GET /api/encryption -> 200 send 19:28:02.850 resp 19:28:02.852 (2 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:28:02.850 resp 19:28:02.854 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:28:02.850 resp 19:28:02.855 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:28:02.851 resp 19:28:02.856 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:28:02.851 resp 19:28:02.854 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:28:03.694 resp 19:28:03.704 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:28:03.716 resp 19:28:03.757 (41 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:28:03.732 resp 19:28:03.759 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:28:03.732 resp 19:28:03.760 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:28:03.732 resp 19:28:03.760 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:28:03.732 resp 19:28:03.760 (27 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:28:03.785 resp 19:28:03.796 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:28:03.785 resp 19:28:03.796 (11 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:28:03.785 resp 19:28:03.797 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:28:03.785 resp 19:28:03.797 (12 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:28:03.785 resp 19:28:03.795 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:28:03.785 resp 19:28:03.795 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:28:03.798 resp 19:28:03.822 (24 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:28:07.530 resp 19:28:07.544 (15 ms) updatedAt=2026-10-11T19:28:07.543Z snapshotCreated=false writingLog=null doc[len 208 markers ["A1"] listWords 0 sha256 32a01308aca0]
+#21 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:28:07.550 resp 19:28:07.555 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:28:07.550 resp 19:28:07.556 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 PATCH /api/resource/revision/R1 -> 200 send 19:28:28.902 resp 19:28:28.918 (16 ms) updatedAt=2026-10-11T19:28:28.917Z snapshotCreated=false writingLog=null doc[len 493 markers ["A1","A2LONG"] listWords 40 sha256 091fb8beaa6f]
+#24 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:28:28.925 resp 19:28:28.931 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#25 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:28:28.925 resp 19:28:28.932 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#26 PATCH /api/resource/revision/R1 -> 200 send 19:28:36.628 resp 19:28:36.644 (16 ms) updatedAt=2026-10-11T19:28:36.642Z snapshotCreated=false writingLog=null doc[len 496 markers ["A1","A2","A2LONG"] listWords 40 sha256 99b1fefc3fb3]
+#27 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:28:36.649 resp 19:28:36.655 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#28 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:28:36.649 resp 19:28:36.655 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#29 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:29:14.481 resp - (-)
+#30 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:29:14.481 resp - (-)
+#31 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:29:14.481 resp - (-)
+#32 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:29:14.481 resp - (-)
+#33 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:29:14.481 resp - (-)
+#34 GET /api/encryption -> 200 send 19:29:14.504 resp 19:29:14.511 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#35 GET /api/version-check -> 200 send 19:29:14.504 resp 19:29:14.510 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/auth-status -> 200 send 19:29:14.505 resp 19:29:14.511 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/projects -> 200 send 19:29:14.505 resp 19:29:14.514 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 GET /api/sharing/limits -> 200 send 19:29:14.505 resp 19:29:14.511 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 GET /api/auth/get-session -> 404 send 19:29:14.506 resp 19:29:14.513 (7 ms)
+#40 POST /api/project -> 200 send 19:29:15.359 resp 19:29:15.366 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 GET /api/project/PRJ/entity-alias-table -> 200 send 19:29:15.374 resp 19:29:15.382 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/PRJ/entity-alias-table -> 200 send 19:29:15.381 resp 19:29:15.390 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:29:15.381 resp 19:29:15.390 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 POST /api/project/tags -> 200 send 19:29:15.381 resp 19:29:15.390 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/query/saved -> 200 send 19:29:15.381 resp 19:29:15.388 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project-resources -> 200 send 19:29:15.408 resp 19:29:15.418 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:29:15.408 resp 19:29:15.417 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#48 POST /api/project-resources -> 200 send 19:29:15.408 resp 19:29:15.418 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#49 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:29:15.408 resp 19:29:15.418 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#50 POST /api/project/tags -> 200 send 19:29:15.408 resp 19:29:15.417 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#51 POST /api/project/tags -> 200 send 19:29:15.408 resp 19:29:15.417 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#52 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:29:15.420 resp 19:29:15.433 (14 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+Request log, client B (stale), ids replaced by labels, times UTC hh:mm:ss.mmm (Playwright event times, host to itself):
+
+```
+#1 GET /api/auth/get-session -> 404 send 19:28:03.919 resp 19:28:03.931 (12 ms)
+#2 GET /api/encryption -> 200 send 19:28:03.931 resp 19:28:03.932 (1 ms) updatedAt=null snapshotCreated=null writingLog=null
+#3 GET /api/version-check -> 200 send 19:28:03.931 resp 19:28:03.935 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#4 GET /api/auth-status -> 200 send 19:28:03.931 resp 19:28:03.935 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#5 GET /api/projects -> 200 send 19:28:03.931 resp 19:28:03.937 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#6 GET /api/sharing/limits -> 200 send 19:28:03.931 resp 19:28:03.935 (4 ms) updatedAt=null snapshotCreated=null writingLog=null
+#7 POST /api/project -> 200 send 19:28:04.778 resp 19:28:04.785 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#8 GET /api/project/PRJ/entity-alias-table -> 200 send 19:28:04.797 resp 19:28:04.839 (42 ms) updatedAt=null snapshotCreated=null writingLog=null
+#9 GET /api/project/PRJ/entity-alias-table -> 200 send 19:28:04.813 resp 19:28:04.841 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#10 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:28:04.813 resp 19:28:04.841 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#11 POST /api/project/tags -> 200 send 19:28:04.813 resp 19:28:04.842 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#12 POST /api/project/query/saved -> 200 send 19:28:04.813 resp 19:28:04.842 (28 ms) updatedAt=null snapshotCreated=null writingLog=null
+#13 POST /api/project-resources -> 200 send 19:28:04.868 resp 19:28:04.876 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#14 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:28:04.868 resp 19:28:04.875 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#15 POST /api/project-resources -> 200 send 19:28:04.868 resp 19:28:04.876 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#16 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:28:04.868 resp 19:28:04.876 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#17 POST /api/project/tags -> 200 send 19:28:04.868 resp 19:28:04.874 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#18 POST /api/project/tags -> 200 send 19:28:04.868 resp 19:28:04.874 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#19 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:28:04.877 resp 19:28:04.903 (25 ms) updatedAt=null snapshotCreated=null writingLog=null
+#20 PATCH /api/resource/revision/R1 -> 200 send 19:28:44.271 resp 19:28:44.287 (16 ms) updatedAt=2026-10-11T19:28:44.285Z snapshotCreated=true writingLog=null doc[len 206 markers [] listWords 0 sha256 ea532da4742a]
+#21 POST /api/project-resources -> 200 send 19:28:44.302 resp 19:28:44.309 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#22 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:28:44.303 resp 19:28:44.308 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#23 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:28:44.303 resp 19:28:44.309 (6 ms) updatedAt=null snapshotCreated=null writingLog=null
+#24 GET /api/encryption -> null FAILED net::ERR_ABORTED send 19:29:15.488 resp - (-)
+#25 GET /api/version-check -> null FAILED net::ERR_ABORTED send 19:29:15.488 resp - (-)
+#26 GET /api/auth-status -> null FAILED net::ERR_ABORTED send 19:29:15.488 resp - (-)
+#27 GET /api/projects -> null FAILED net::ERR_ABORTED send 19:29:15.488 resp - (-)
+#28 GET /api/sharing/limits -> null FAILED net::ERR_ABORTED send 19:29:15.488 resp - (-)
+#29 GET /api/encryption -> 200 send 19:29:15.512 resp 19:29:15.515 (3 ms) updatedAt=null snapshotCreated=null writingLog=null
+#30 GET /api/version-check -> 200 send 19:29:15.512 resp 19:29:15.517 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#31 GET /api/auth-status -> 200 send 19:29:15.512 resp 19:29:15.518 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#32 GET /api/projects -> 200 send 19:29:15.513 resp 19:29:15.520 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#33 GET /api/sharing/limits -> 200 send 19:29:15.513 resp 19:29:15.518 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#34 GET /api/auth/get-session -> 404 send 19:29:15.514 resp 19:29:15.518 (4 ms)
+#35 POST /api/project -> 200 send 19:29:16.366 resp 19:29:16.373 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#36 GET /api/project/PRJ/entity-alias-table -> 200 send 19:29:16.380 resp 19:29:16.388 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#37 GET /api/project/PRJ/entity-alias-table -> 200 send 19:29:16.387 resp 19:29:16.394 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#38 POST /api/project/PRJ-MANIFEST-ID/reindex -> 200 send 19:29:16.387 resp 19:29:16.394 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#39 POST /api/project/tags -> 200 send 19:29:16.387 resp 19:29:16.393 (7 ms) updatedAt=null snapshotCreated=null writingLog=null
+#40 POST /api/project/query/saved -> 200 send 19:29:16.387 resp 19:29:16.391 (5 ms) updatedAt=null snapshotCreated=null writingLog=null
+#41 POST /api/project-resources -> 200 send 19:29:16.416 resp 19:29:16.426 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#42 GET /api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z -> 200 send 19:29:16.416 resp 19:29:16.425 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#43 POST /api/project-resources -> 200 send 19:29:16.416 resp 19:29:16.426 (10 ms) updatedAt=null snapshotCreated=null writingLog=null
+#44 GET /api/resource/R1/diagnostics?projectId=PRJ -> 200 send 19:29:16.416 resp 19:29:16.426 (9 ms) updatedAt=null snapshotCreated=null writingLog=null
+#45 POST /api/project/tags -> 200 send 19:29:16.416 resp 19:29:16.424 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#46 POST /api/project/tags -> 200 send 19:29:16.416 resp 19:29:16.425 (8 ms) updatedAt=null snapshotCreated=null writingLog=null
+#47 GET /api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1 -> 200 send 19:29:16.427 resp 19:29:16.441 (13 ms) updatedAt=null snapshotCreated=null writingLog=null
+```
+
+
+### git status (S3)
+
+`git status --short` after Task 4 (nothing outside `specs/`; `experiments.md` is the only modified tracked file):
+
+```
+ M specs/features/two-client-save-measurement/experiments.md
+?? specs/features/two-client-save-measurement/results/s3/
+?? specs/features/two-client-save-measurement/scripts/s3-stale-client.mjs
+```
+
+A search of the 18 JSON files and 18 digest files in `results/s3/` for `secret`, `passphrase`, `pairing`, `getwrite_device` found none; the word `cookie` occurs only as the key `deviceCookiePresent` (36 occurrences, value `true`).
+
+### Task 4 done-when, item by item
+
+1. 3 repetitions for each of the 4 variants (i) to (iv), 12 repetitions, a fresh resource each, all recorded; plus the lead's additional variant (v) (3 repetitions) and its mirror (vi) (3 repetitions, run): 18 repetitions in all, none discarded. Tables and the pasted records above.
+2. Six outcomes after each save: outcome 1 (four stores classified, revisions, `.trash` names), 2 (editors and footers right after, +5 s, +30 s, reload), 3 (surfaces named, offsets from the reload marks), 4, 5 (revisions, writing log against expected, search, `wordCount`, indexes), 6 (failed saves) are in each pasted digest; the summaries above are derived from them.
+3. Whether the stale save contains the first saver's text: no, in 18 of 18 (request marker tokens and list words; outcome 1: none of the saver's words in any store).
+4. Whether the first saver's text survives anywhere, and under which variant a backup was created: in (ii), (iv), (v), (vi) (12 of 12 repetitions) an `Auto-backup before large deletion` revision `v-2` (`automaticSnapshot: true`, non-canonical) holding the saver's last document in full; in (i) and (iii) (6 of 6) no copy among the locations read. Backup rule: read, not run, stated above; the threshold is not claimed beyond what ran.
+5. Stale editor's text and footer; whether the overwritten client's open editor still shows text the server no longer holds (yes, 18 of 18, until reload); writing-log entries against expected (equal, 18 of 18) and the other device's words counted as deleted (yes, in every variant).
+6. Per variant verdict against the definition: PASS, stable, 3 of 3, for (i) to (vi); findings (a) to (g) with raw observations and no verdict; the overwrite that left no recoverable copy is its own finding naming (i) and (iii) (6 of 6).
+7. Varied and held fixed stated; not-run list stated; hypotheses labelled with the discriminating experiment named (H1: vary the amount lost around 10 words and one half, not run).
+8. Safety record: ports 7340 and 3000 checked before every repetition and found empty; 18 servers started, each stopped by its recorded pid; Chromium processes recorded and gone; 18 throwaway folders removed with removal confirmed; after the run no process, no listener, only `/tmp/getwrite-two-client/logs/` left.
+9. `git status --short` shows no change outside `specs/`: pasted above. knip lists the new script as an unused file (79 unused files, one more than Task 3 left).
+10. Harness faults and discarded repetitions: none.

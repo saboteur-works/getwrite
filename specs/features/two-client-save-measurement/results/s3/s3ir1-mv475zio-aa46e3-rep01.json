@@ -1,0 +1,4002 @@
+{
+  "scenario": "s3",
+  "repetition": 1,
+  "runId": "s3ir1-mv475zio-aa46e3",
+  "commit": "c92d82ca",
+  "startedAt": "2026-10-11T19:09:25.427Z",
+  "node": "v24.15.0",
+  "note": "S3 stale client, variant i (stale A, saver B (short ` B1`), stale types ` A1`), repetition 1 of 3. Measurement of the unchanged product. Fresh server, project and resource.",
+  "server": {
+    "kind": "built standalone server (frontend/.next/standalone/frontend/server.js), sharing on",
+    "port": 63997,
+    "pid": 68147,
+    "address": "private LAN IPv4 of this host (host to itself, not a second-device result)"
+  },
+  "labelEvery": "host to itself, not a second-device result",
+  "timesAre": "Playwright event times on the host clock, not wire times",
+  "steps": [
+    {
+      "at": "2026-10-11T19:09:25.447Z",
+      "tMs": 21,
+      "name": "fixture created through POST /api/projects and POST /api/resource",
+      "resourceLabel": "R1",
+      "baseContentChars": 109,
+      "searchTokens": [
+        "B1",
+        "A1"
+      ]
+    },
+    {
+      "at": "2026-10-11T19:09:27.471Z",
+      "tMs": 2045,
+      "name": "initial stores read before any client opened the resource",
+      "classification": [
+        "content.bin (canonical): = base",
+        "content.tiptap.json: = base",
+        "content.txt: = base",
+        "sidecar wordCount=4 matches base; updatedAt=null",
+        "stores agree on base"
+      ]
+    },
+    {
+      "at": "2026-10-11T19:09:29.638Z",
+      "tMs": 4211,
+      "name": "both clients opened R in the real editor (A first, then B)",
+      "openA": {
+        "openedInMs": 1069
+      },
+      "openB": {
+        "openedInMs": 1094
+      },
+      "editors": {
+        "at": "2026-10-11T19:09:29.634Z",
+        "A": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:09:29.641Z",
+      "tMs": 4214,
+      "name": "step 1: B (saver) about to type ' B1'",
+      "msSinceLastSaveAck": null,
+      "editorsBeforeTyping": {
+        "at": "2026-10-11T19:09:29.638Z",
+        "A": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:09:32.364Z",
+      "tMs": 6937,
+      "name": "step 1: B typed and save acknowledged",
+      "typed": {
+        "firstToLastMs": 139,
+        "delayMs": 40,
+        "chars": 3
+      },
+      "editorAfterTyping": "BASE alpha bravo charlie B1",
+      "footerAfterTyping": {
+        "full": "Words: 5 | Node: Body | Today's writing Today: 0 Autosave queued…",
+        "autosave": "Autosave queued…"
+      },
+      "saved": {
+        "ok": true,
+        "footer": {
+          "full": "Words: 5 | Node: Body | Today's writing Today: 1 Saved · just now",
+          "autosave": "Saved · just now"
+        },
+        "savedSeenAt": 1791745772358.4155,
+        "waitedMs": 2551
+      },
+      "editorsRightAfterSave": {
+        "at": "2026-10-11T19:09:32.358Z",
+        "A": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 Saved · just now",
+            "autosave": "Saved · just now"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:09:37.374Z",
+      "tMs": 11947,
+      "name": "step 1: 5000 ms after the save acknowledgement",
+      "editorsAt5s": {
+        "at": "2026-10-11T19:09:37.360Z",
+        "A": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+            "autosave": "All changes saved · just now"
+          }
+        }
+      },
+      "msFromSaveAckToEndOfStoresRead": 4533
+    },
+    {
+      "at": "2026-10-11T19:09:37.380Z",
+      "tMs": 11953,
+      "name": "step 2: A (stale) about to type ' A1'",
+      "msSinceLastSaveAck": 5016,
+      "editorsBeforeTyping": {
+        "at": "2026-10-11T19:09:37.374Z",
+        "A": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+            "autosave": "All changes saved · just now"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:09:40.098Z",
+      "tMs": 14671,
+      "name": "step 2: A typed and save acknowledged",
+      "typed": {
+        "firstToLastMs": 144,
+        "delayMs": 40,
+        "chars": 3
+      },
+      "editorAfterTyping": "BASE alpha bravo charlie A1",
+      "footerAfterTyping": {
+        "full": "Words: 5 | Node: Body | Today's writing Today: 0 Autosave queued…",
+        "autosave": "Autosave queued…"
+      },
+      "saved": {
+        "ok": true,
+        "footer": {
+          "full": "Words: 5 | Node: Body | Today's writing Today: 1 Saved · just now",
+          "autosave": "Saved · just now"
+        },
+        "savedSeenAt": 1791745780092.5068,
+        "waitedMs": 2549
+      },
+      "editorsRightAfterSave": {
+        "at": "2026-10-11T19:09:40.092Z",
+        "A": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 Saved · just now",
+            "autosave": "Saved · just now"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+            "autosave": "All changes saved · just now"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:09:45.106Z",
+      "tMs": 19680,
+      "name": "step 2: 5000 ms after the save acknowledgement",
+      "editorsAt5s": {
+        "at": "2026-10-11T19:09:45.093Z",
+        "A": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+            "autosave": "All changes saved · just now"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+            "autosave": "All changes saved · just now"
+          }
+        }
+      },
+      "msFromSaveAckToEndOfStoresRead": 4527
+    },
+    {
+      "at": "2026-10-11T19:10:10.107Z",
+      "tMs": 44681,
+      "name": "30 s after the stale client's save acknowledgement, no reload (b)",
+      "msSinceStaleSaveAck": 30015,
+      "editors": {
+        "at": "2026-10-11T19:10:10.094Z",
+        "A": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · 18s ago",
+            "autosave": "All changes saved · 18s ago"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · 27s ago",
+            "autosave": "All changes saved · 27s ago"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:10:12.136Z",
+      "tMs": 46710,
+      "name": "both reloaded (page reload, then reopen) (c)",
+      "reloadA": {
+        "openedInMs": 958
+      },
+      "reloadB": {
+        "openedInMs": 968
+      },
+      "editors": {
+        "at": "2026-10-11T19:10:12.133Z",
+        "A": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-10-11T19:10:13.156Z",
+      "tMs": 47730,
+      "name": "final stores read after reload",
+      "classification": [
+        "content.bin (canonical): = A#1",
+        "content.tiptap.json: = A#1",
+        "content.txt: = A#1",
+        "sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:09:40.009Z",
+        "stores agree on A#1"
+      ]
+    }
+  ],
+  "outcomes": {
+    "1": {
+      "onDiskNames": "revisions/<R1>/v-N/content.bin (UTF-8 JSON text of the document the client sent) + metadata.json; resources/<R1>/content.tiptap.json; resources/<R1>/content.txt; meta/resource-<R1>.meta.json; .trash names listed",
+      "initial": {
+        "quiet": {
+          "quiet": true,
+          "waitedMs": 2009,
+          "reads": 4,
+          "intervalMs": 1000
+        },
+        "classification": [
+          "content.bin (canonical): = base",
+          "content.tiptap.json: = base",
+          "content.txt: = base",
+          "sidecar wordCount=4 matches base; updatedAt=null",
+          "stores agree on base"
+        ],
+        "allFourAgree": true,
+        "heldLabels": [
+          "base"
+        ],
+        "canonicalCount": 1,
+        "revisions": [
+          {
+            "dir": "v-1",
+            "versionNumber": 1,
+            "metadataParsed": true,
+            "isCanonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "preserve": false,
+            "createdAt": "2026-10-11T19:09:25.446Z",
+            "savedAt": "2026-10-11T19:09:25.446Z",
+            "hasId": true,
+            "contentBin": {
+              "bytes": 109,
+              "sha256": "2642f35db296aa8e807fcee83ca02fcc876fee0e6793a3726c3993d2481fabe1"
+            },
+            "contentEquals": [
+              "base"
+            ]
+          }
+        ],
+        "otherRevisionDirEntries": [],
+        "revisionContents": [
+          {
+            "dir": "v-1",
+            "canonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "status": "equals",
+            "equals": [
+              "base"
+            ],
+            "sha256": "2642f35db296aa8e807fcee83ca02fcc876fee0e6793a3726c3993d2481fabe1",
+            "bytes": 109
+          }
+        ],
+        "sidecar": {
+          "parsed": true,
+          "wordCount": 4,
+          "updatedAt": null,
+          "name": "Doc s3ir1-mv475zio-aa46e3",
+          "keys": [
+            "createdAt",
+            "folderId",
+            "id",
+            "name",
+            "orderIndex",
+            "slug",
+            "type",
+            "userMetadata",
+            "wordCount"
+          ]
+        },
+        "wordCountMatchesDocs": [
+          "base"
+        ],
+        "expectedWordCounts": {
+          "base": 4
+        },
+        "contentTiptapJson": {
+          "bytes": 196,
+          "sha256": "abbba3532944c6ba49bd92919009b6651571e83e8ed732ff2637c5cbbfd11440"
+        },
+        "contentTxt": {
+          "bytes": 24,
+          "sha256": "ef6459dadd84634b16c4730ac335cac361447c798f9d37ec6a2956834a91f04b"
+        },
+        "lastProcessed": {
+          "determined": false,
+          "reason": "no successful save"
+        },
+        "evidence": {},
+        "writingLogActual": [],
+        "writingLogEntryTimestamps": [],
+        "writingLogExpected": [],
+        "writingLogMatchesExpected": true,
+        "writingLogTokensByProcessedSave": [],
+        "search": {
+          "B1": {
+            "status": 200,
+            "count": 0,
+            "resourceIds": []
+          },
+          "A1": {
+            "status": 200,
+            "count": 0,
+            "resourceIds": []
+          }
+        },
+        "trash": {
+          "projectTrash": "absent",
+          "projectsFolderTrash": "absent",
+          "note": "names only, ids replaced by labels; 'absent' means the directory does not exist"
+        },
+        "mentionIndex": {
+          "filePresent": true,
+          "recordsForResource": []
+        },
+        "diagnosticsIndex": {
+          "filePresent": true,
+          "recordForResource": {
+            "dialogueRatio": 0,
+            "averageSentenceLength": 4,
+            "topRepeatedWords": [],
+            "heuristicVersion": 1
+          }
+        },
+        "stepStateVerdict_informational": {
+          "verdict": "UNSTABLE",
+          "reasons": [
+            "order not determined: no successful save; stores agree on base"
+          ],
+          "flags": {
+            "reloadChecked": false
+          }
+        }
+      },
+      "afterEachStep": {
+        "step1_B_saver": {
+          "quiet": {
+            "quiet": true,
+            "waitedMs": 1007,
+            "reads": 2,
+            "intervalMs": 1000
+          },
+          "classification": [
+            "content.bin (canonical): = B#1",
+            "content.tiptap.json: = B#1",
+            "content.txt: = B#1",
+            "sidecar wordCount=5 matches B#1; updatedAt=2026-10-11T19:09:32.270Z",
+            "stores agree on B#1"
+          ],
+          "allFourAgree": true,
+          "heldLabels": [
+            "B#1"
+          ],
+          "canonicalCount": 1,
+          "revisions": [
+            {
+              "dir": "v-1",
+              "versionNumber": 1,
+              "metadataParsed": true,
+              "isCanonical": true,
+              "name": "Initial Draft",
+              "automaticSnapshot": false,
+              "preserve": false,
+              "createdAt": "2026-10-11T19:09:25.446Z",
+              "savedAt": "2026-10-11T19:09:25.446Z",
+              "hasId": true,
+              "contentBin": {
+                "bytes": 208,
+                "sha256": "616eceb4930d91e1d97dd48a58aeb26b89f8b85fb8aeb8b83a29dff512e039c2"
+              },
+              "contentEquals": [
+                "B#1"
+              ]
+            }
+          ],
+          "otherRevisionDirEntries": [],
+          "revisionContents": [
+            {
+              "dir": "v-1",
+              "canonical": true,
+              "name": "Initial Draft",
+              "automaticSnapshot": false,
+              "status": "equals",
+              "equals": [
+                "B#1"
+              ],
+              "sha256": "616eceb4930d91e1d97dd48a58aeb26b89f8b85fb8aeb8b83a29dff512e039c2",
+              "bytes": 208
+            }
+          ],
+          "sidecar": {
+            "parsed": true,
+            "wordCount": 5,
+            "updatedAt": "2026-10-11T19:09:32.270Z",
+            "name": "Doc s3ir1-mv475zio-aa46e3",
+            "keys": [
+              "createdAt",
+              "folderId",
+              "id",
+              "name",
+              "orderIndex",
+              "slug",
+              "type",
+              "updatedAt",
+              "userMetadata",
+              "wordCount"
+            ]
+          },
+          "wordCountMatchesDocs": [
+            "B#1"
+          ],
+          "expectedWordCounts": {
+            "base": 4,
+            "B#1": 5
+          },
+          "contentTiptapJson": {
+            "bytes": 340,
+            "sha256": "b03643fd37ee51ea85ea5067fa751dafd7feffcf439c0a9f6a83cc2f406d2d60"
+          },
+          "contentTxt": {
+            "bytes": 27,
+            "sha256": "b310b25e52eca6b0a1f1c6b974fc82e599d6910188f345b730bc8630dbf9a915"
+          },
+          "lastProcessed": {
+            "docLabel": "B#1",
+            "updatedAt": "2026-10-11T19:09:32.270Z"
+          },
+          "evidence": {
+            "byUpdatedAt": [
+              "B20"
+            ],
+            "byResponseArrival": [
+              "B20"
+            ],
+            "bySend": [
+              "B20"
+            ],
+            "updatedAtValues": [
+              "2026-10-11T19:09:32.270Z"
+            ]
+          },
+          "writingLogActual": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            }
+          ],
+          "writingLogEntryTimestamps": [
+            "2026-10-11T19:09:32.269Z"
+          ],
+          "writingLogExpected": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            }
+          ],
+          "writingLogMatchesExpected": true,
+          "writingLogTokensByProcessedSave": [
+            {
+              "save": "B#1",
+              "addedCount": 1,
+              "deletedCount": 0,
+              "addedTokens": [
+                "B1"
+              ],
+              "deletedTokens": []
+            }
+          ],
+          "search": {
+            "B1": {
+              "status": 200,
+              "count": 1,
+              "resourceIds": [
+                "e44cb41a-6c4e-4dab-97cd-3c081f9fdbfe"
+              ]
+            },
+            "A1": {
+              "status": 200,
+              "count": 0,
+              "resourceIds": []
+            }
+          },
+          "trash": {
+            "projectTrash": "absent",
+            "projectsFolderTrash": "absent",
+            "note": "names only, ids replaced by labels; 'absent' means the directory does not exist"
+          },
+          "mentionIndex": {
+            "filePresent": true,
+            "recordsForResource": []
+          },
+          "diagnosticsIndex": {
+            "filePresent": true,
+            "recordForResource": {
+              "dialogueRatio": 0,
+              "averageSentenceLength": 5,
+              "topRepeatedWords": [],
+              "heuristicVersion": 1
+            }
+          },
+          "stepStateVerdict_informational": {
+            "verdict": "PASS",
+            "reasons": [
+              "all four stores hold B#1, the last processed save"
+            ],
+            "flags": {
+              "reloadChecked": false
+            }
+          }
+        },
+        "step2_A_stale": {
+          "quiet": {
+            "quiet": true,
+            "waitedMs": 1005,
+            "reads": 2,
+            "intervalMs": 1000
+          },
+          "classification": [
+            "content.bin (canonical): = A#1",
+            "content.tiptap.json: = A#1",
+            "content.txt: = A#1",
+            "sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:09:40.009Z",
+            "stores agree on A#1"
+          ],
+          "allFourAgree": true,
+          "heldLabels": [
+            "A#1"
+          ],
+          "canonicalCount": 1,
+          "revisions": [
+            {
+              "dir": "v-1",
+              "versionNumber": 1,
+              "metadataParsed": true,
+              "isCanonical": true,
+              "name": "Initial Draft",
+              "automaticSnapshot": false,
+              "preserve": false,
+              "createdAt": "2026-10-11T19:09:25.446Z",
+              "savedAt": "2026-10-11T19:09:25.446Z",
+              "hasId": true,
+              "contentBin": {
+                "bytes": 208,
+                "sha256": "7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1"
+              },
+              "contentEquals": [
+                "A#1"
+              ]
+            }
+          ],
+          "otherRevisionDirEntries": [],
+          "revisionContents": [
+            {
+              "dir": "v-1",
+              "canonical": true,
+              "name": "Initial Draft",
+              "automaticSnapshot": false,
+              "status": "equals",
+              "equals": [
+                "A#1"
+              ],
+              "sha256": "7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1",
+              "bytes": 208
+            }
+          ],
+          "sidecar": {
+            "parsed": true,
+            "wordCount": 5,
+            "updatedAt": "2026-10-11T19:09:40.009Z",
+            "name": "Doc s3ir1-mv475zio-aa46e3",
+            "keys": [
+              "createdAt",
+              "folderId",
+              "id",
+              "name",
+              "orderIndex",
+              "slug",
+              "type",
+              "updatedAt",
+              "userMetadata",
+              "wordCount"
+            ]
+          },
+          "wordCountMatchesDocs": [
+            "A#1",
+            "B#1"
+          ],
+          "expectedWordCounts": {
+            "base": 4,
+            "A#1": 5,
+            "B#1": 5
+          },
+          "contentTiptapJson": {
+            "bytes": 340,
+            "sha256": "8bb785b6912e265320d90d0c9733f7feb3201b944354212766e4bd54d1bcda22"
+          },
+          "contentTxt": {
+            "bytes": 27,
+            "sha256": "b71058e96e11f9980d6864dee1034be30d4b5eeff7b4beaf07b45a678e0215f0"
+          },
+          "lastProcessed": {
+            "docLabel": "A#1",
+            "updatedAt": "2026-10-11T19:09:40.009Z"
+          },
+          "evidence": {
+            "byUpdatedAt": [
+              "B20",
+              "A20"
+            ],
+            "byResponseArrival": [
+              "B20",
+              "A20"
+            ],
+            "bySend": [
+              "B20",
+              "A20"
+            ],
+            "updatedAtValues": [
+              "2026-10-11T19:09:32.270Z",
+              "2026-10-11T19:09:40.009Z"
+            ]
+          },
+          "writingLogActual": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            },
+            {
+              "added": 1,
+              "deleted": 1,
+              "net": 0
+            }
+          ],
+          "writingLogEntryTimestamps": [
+            "2026-10-11T19:09:32.269Z",
+            "2026-10-11T19:09:40.007Z"
+          ],
+          "writingLogExpected": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            },
+            {
+              "added": 1,
+              "deleted": 1,
+              "net": 0
+            }
+          ],
+          "writingLogMatchesExpected": true,
+          "writingLogTokensByProcessedSave": [
+            {
+              "save": "B#1",
+              "addedCount": 1,
+              "deletedCount": 0,
+              "addedTokens": [
+                "B1"
+              ],
+              "deletedTokens": []
+            },
+            {
+              "save": "A#1",
+              "addedCount": 1,
+              "deletedCount": 1,
+              "addedTokens": [
+                "A1"
+              ],
+              "deletedTokens": [
+                "B1"
+              ]
+            }
+          ],
+          "search": {
+            "B1": {
+              "status": 200,
+              "count": 0,
+              "resourceIds": []
+            },
+            "A1": {
+              "status": 200,
+              "count": 1,
+              "resourceIds": [
+                "e44cb41a-6c4e-4dab-97cd-3c081f9fdbfe"
+              ]
+            }
+          },
+          "trash": {
+            "projectTrash": "absent",
+            "projectsFolderTrash": "absent",
+            "note": "names only, ids replaced by labels; 'absent' means the directory does not exist"
+          },
+          "mentionIndex": {
+            "filePresent": true,
+            "recordsForResource": []
+          },
+          "diagnosticsIndex": {
+            "filePresent": true,
+            "recordForResource": {
+              "dialogueRatio": 0,
+              "averageSentenceLength": 5,
+              "topRepeatedWords": [],
+              "heuristicVersion": 1
+            }
+          },
+          "stepStateVerdict_informational": {
+            "verdict": "PASS",
+            "reasons": [
+              "all four stores hold A#1, the last processed save"
+            ],
+            "flags": {
+              "reloadChecked": false
+            }
+          }
+        }
+      },
+      "afterReload": {
+        "quiet": {
+          "quiet": true,
+          "waitedMs": 1005,
+          "reads": 2,
+          "intervalMs": 1000
+        },
+        "classification": [
+          "content.bin (canonical): = A#1",
+          "content.tiptap.json: = A#1",
+          "content.txt: = A#1",
+          "sidecar wordCount=5 matches A#1/B#1; updatedAt=2026-10-11T19:09:40.009Z",
+          "stores agree on A#1"
+        ],
+        "allFourAgree": true,
+        "heldLabels": [
+          "A#1"
+        ],
+        "canonicalCount": 1,
+        "revisions": [
+          {
+            "dir": "v-1",
+            "versionNumber": 1,
+            "metadataParsed": true,
+            "isCanonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "preserve": false,
+            "createdAt": "2026-10-11T19:09:25.446Z",
+            "savedAt": "2026-10-11T19:09:25.446Z",
+            "hasId": true,
+            "contentBin": {
+              "bytes": 208,
+              "sha256": "7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1"
+            },
+            "contentEquals": [
+              "A#1"
+            ]
+          }
+        ],
+        "otherRevisionDirEntries": [],
+        "revisionContents": [
+          {
+            "dir": "v-1",
+            "canonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "status": "equals",
+            "equals": [
+              "A#1"
+            ],
+            "sha256": "7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1",
+            "bytes": 208
+          }
+        ],
+        "sidecar": {
+          "parsed": true,
+          "wordCount": 5,
+          "updatedAt": "2026-10-11T19:09:40.009Z",
+          "name": "Doc s3ir1-mv475zio-aa46e3",
+          "keys": [
+            "createdAt",
+            "folderId",
+            "id",
+            "name",
+            "orderIndex",
+            "slug",
+            "type",
+            "updatedAt",
+            "userMetadata",
+            "wordCount"
+          ]
+        },
+        "wordCountMatchesDocs": [
+          "A#1",
+          "B#1"
+        ],
+        "expectedWordCounts": {
+          "base": 4,
+          "A#1": 5,
+          "B#1": 5
+        },
+        "contentTiptapJson": {
+          "bytes": 340,
+          "sha256": "8bb785b6912e265320d90d0c9733f7feb3201b944354212766e4bd54d1bcda22"
+        },
+        "contentTxt": {
+          "bytes": 27,
+          "sha256": "b71058e96e11f9980d6864dee1034be30d4b5eeff7b4beaf07b45a678e0215f0"
+        },
+        "lastProcessed": {
+          "docLabel": "A#1",
+          "updatedAt": "2026-10-11T19:09:40.009Z"
+        },
+        "evidence": {
+          "byUpdatedAt": [
+            "B20",
+            "A20"
+          ],
+          "byResponseArrival": [
+            "B20",
+            "A20"
+          ],
+          "bySend": [
+            "B20",
+            "A20"
+          ],
+          "updatedAtValues": [
+            "2026-10-11T19:09:32.270Z",
+            "2026-10-11T19:09:40.009Z"
+          ]
+        },
+        "writingLogActual": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "writingLogEntryTimestamps": [
+          "2026-10-11T19:09:32.269Z",
+          "2026-10-11T19:09:40.007Z"
+        ],
+        "writingLogExpected": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "writingLogMatchesExpected": true,
+        "writingLogTokensByProcessedSave": [
+          {
+            "save": "B#1",
+            "addedCount": 1,
+            "deletedCount": 0,
+            "addedTokens": [
+              "B1"
+            ],
+            "deletedTokens": []
+          },
+          {
+            "save": "A#1",
+            "addedCount": 1,
+            "deletedCount": 1,
+            "addedTokens": [
+              "A1"
+            ],
+            "deletedTokens": [
+              "B1"
+            ]
+          }
+        ],
+        "search": {
+          "B1": {
+            "status": 200,
+            "count": 0,
+            "resourceIds": []
+          },
+          "A1": {
+            "status": 200,
+            "count": 1,
+            "resourceIds": [
+              "e44cb41a-6c4e-4dab-97cd-3c081f9fdbfe"
+            ]
+          }
+        },
+        "trash": {
+          "projectTrash": "absent",
+          "projectsFolderTrash": "absent",
+          "note": "names only, ids replaced by labels; 'absent' means the directory does not exist"
+        },
+        "mentionIndex": {
+          "filePresent": true,
+          "recordsForResource": []
+        },
+        "diagnosticsIndex": {
+          "filePresent": true,
+          "recordForResource": {
+            "dialogueRatio": 0,
+            "averageSentenceLength": 5,
+            "topRepeatedWords": [],
+            "heuristicVersion": 1
+          }
+        },
+        "stepStateVerdict_informational": {
+          "verdict": "PASS",
+          "reasons": [
+            "all four stores hold A#1, the last processed save"
+          ],
+          "flags": {
+            "reloadChecked": false
+          }
+        }
+      }
+    },
+    "2": {
+      "note": "(a) immediately after the save was acknowledged; (5 s) just before the next client typed; (b) 30 s after the STALE client's save (no reload); (c) after reload.",
+      "step0_bothOpen": {
+        "at": "2026-10-11T19:09:29.634Z",
+        "A": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie",
+          "footer": {
+            "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        }
+      },
+      "steps": {
+        "step1_B_saver": {
+          "editorsBeforeTyping": {
+            "at": "2026-10-11T19:09:29.638Z",
+            "A": {
+              "text": "BASE alpha bravo charlie",
+              "footer": {
+                "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+                "autosave": "All changes saved · not saved yet"
+              }
+            },
+            "B": {
+              "text": "BASE alpha bravo charlie",
+              "footer": {
+                "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+                "autosave": "All changes saved · not saved yet"
+              }
+            }
+          },
+          "editorsRightAfterSave": {
+            "at": "2026-10-11T19:09:32.358Z",
+            "A": {
+              "text": "BASE alpha bravo charlie",
+              "footer": {
+                "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+                "autosave": "All changes saved · not saved yet"
+              }
+            },
+            "B": {
+              "text": "BASE alpha bravo charlie B1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 Saved · just now",
+                "autosave": "Saved · just now"
+              }
+            }
+          },
+          "editorsAt5s": {
+            "at": "2026-10-11T19:09:37.360Z",
+            "A": {
+              "text": "BASE alpha bravo charlie",
+              "footer": {
+                "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+                "autosave": "All changes saved · not saved yet"
+              }
+            },
+            "B": {
+              "text": "BASE alpha bravo charlie B1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+                "autosave": "All changes saved · just now"
+              }
+            }
+          },
+          "vsServerRightAfter": {
+            "serverHolds": [
+              "B#1"
+            ],
+            "A_editorEqualsServerText": false,
+            "B_editorEqualsServerText": true
+          },
+          "vsServerAt5s": {
+            "serverHolds": [
+              "B#1"
+            ],
+            "A_editorEqualsServerText": false,
+            "B_editorEqualsServerText": true
+          }
+        },
+        "step2_A_stale": {
+          "editorsBeforeTyping": {
+            "at": "2026-10-11T19:09:37.374Z",
+            "A": {
+              "text": "BASE alpha bravo charlie",
+              "footer": {
+                "full": "Words: 4 | Node: Body | Today's writing Today: 0 All changes saved · not saved yet",
+                "autosave": "All changes saved · not saved yet"
+              }
+            },
+            "B": {
+              "text": "BASE alpha bravo charlie B1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+                "autosave": "All changes saved · just now"
+              }
+            }
+          },
+          "editorsRightAfterSave": {
+            "at": "2026-10-11T19:09:40.092Z",
+            "A": {
+              "text": "BASE alpha bravo charlie A1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 Saved · just now",
+                "autosave": "Saved · just now"
+              }
+            },
+            "B": {
+              "text": "BASE alpha bravo charlie B1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+                "autosave": "All changes saved · just now"
+              }
+            }
+          },
+          "editorsAt5s": {
+            "at": "2026-10-11T19:09:45.093Z",
+            "A": {
+              "text": "BASE alpha bravo charlie A1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+                "autosave": "All changes saved · just now"
+              }
+            },
+            "B": {
+              "text": "BASE alpha bravo charlie B1",
+              "footer": {
+                "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · just now",
+                "autosave": "All changes saved · just now"
+              }
+            }
+          },
+          "vsServerRightAfter": {
+            "serverHolds": [
+              "A#1"
+            ],
+            "A_editorEqualsServerText": true,
+            "B_editorEqualsServerText": false
+          },
+          "vsServerAt5s": {
+            "serverHolds": [
+              "A#1"
+            ],
+            "A_editorEqualsServerText": true,
+            "B_editorEqualsServerText": false
+          }
+        }
+      },
+      "at30sAfterStaleSave_noReload": {
+        "at": "2026-10-11T19:10:10.094Z",
+        "A": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · 18s ago",
+            "autosave": "All changes saved · 18s ago"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie B1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · 27s ago",
+            "autosave": "All changes saved · 27s ago"
+          }
+        }
+      },
+      "vsServerAt30s": {
+        "serverHolds": [
+          "A#1"
+        ],
+        "A_editorEqualsServerText": true,
+        "B_editorEqualsServerText": false
+      },
+      "afterReload": {
+        "at": "2026-10-11T19:10:12.133Z",
+        "A": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        },
+        "B": {
+          "text": "BASE alpha bravo charlie A1",
+          "footer": {
+            "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · not saved yet",
+            "autosave": "All changes saved · not saved yet"
+          }
+        }
+      },
+      "vsServerAfterReload": {
+        "serverHolds": [
+          "A#1"
+        ],
+        "A_editorEqualsServerText": true,
+        "B_editorEqualsServerText": true
+      }
+    },
+    "3": {
+      "A_stale_sinceFirstSaverSave": {
+        "sinceAt": "2026-10-11T19:09:32.358Z",
+        "surfacesChecked": "role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags",
+        "surfaces": [
+          {
+            "role": "status",
+            "text": "Loading diagnostics…",
+            "msAfterSince": 7661,
+            "msAfterReloadMark": null
+          },
+          {
+            "role": "status",
+            "text": "Loading this document…",
+            "msAfterSince": 38733,
+            "msAfterReloadMark": 983
+          },
+          {
+            "role": "status",
+            "text": "Loading diagnostics…",
+            "msAfterSince": 38733,
+            "msAfterReloadMark": 983
+          }
+        ],
+        "console": [
+          {
+            "type": "error",
+            "text": "Error fetching projects: TypeError: Failed to fetch",
+            "msAfterSince": 37816,
+            "msAfterReloadMark": 67
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "msAfterSince": 37846,
+            "msAfterReloadMark": 96
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 38700,
+            "msAfterReloadMark": 950
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 38731,
+            "msAfterReloadMark": 982
+          }
+        ],
+        "pageErrors": [],
+        "dialogs": [],
+        "failedRequests": [
+          {
+            "method": "GET",
+            "path": "/api/projects",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/sharing/limits",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth-status",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/encryption",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/version-check",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          }
+        ],
+        "nonOkResponses": [
+          {
+            "method": "GET",
+            "path": "/api/auth/get-session",
+            "status": 404,
+            "body": "",
+            "msAfterSince": 37841,
+            "msAfterReloadMark": 91
+          }
+        ],
+        "patchResponseSignals": [
+          {
+            "n": 20,
+            "snapshotCreated": false,
+            "writingLog": null
+          }
+        ],
+        "reloadMarks": [
+          {
+            "name": "page.reload",
+            "at": "2026-10-11T19:10:10.107Z",
+            "msAfterSince": 37750
+          }
+        ]
+      },
+      "B_saver_sinceStaleSave": {
+        "sinceAt": "2026-10-11T19:09:40.092Z",
+        "surfacesChecked": "role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags",
+        "surfaces": [
+          {
+            "role": "status",
+            "text": "Loading this document…",
+            "msAfterSince": 32007,
+            "msAfterReloadMark": 976
+          },
+          {
+            "role": "status",
+            "text": "Loading diagnostics…",
+            "msAfterSince": 32007,
+            "msAfterReloadMark": 976
+          }
+        ],
+        "console": [
+          {
+            "type": "error",
+            "text": "Error fetching projects: TypeError: Failed to fetch",
+            "msAfterSince": 31081,
+            "msAfterReloadMark": 50
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "msAfterSince": 31110,
+            "msAfterReloadMark": 79
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 31975,
+            "msAfterReloadMark": 944
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 32006,
+            "msAfterReloadMark": 975
+          }
+        ],
+        "pageErrors": [],
+        "dialogs": [],
+        "failedRequests": [
+          {
+            "method": "GET",
+            "path": "/api/encryption",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/version-check",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth-status",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/sharing/limits",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          }
+        ],
+        "nonOkResponses": [
+          {
+            "method": "GET",
+            "path": "/api/auth/get-session",
+            "status": 404,
+            "body": "",
+            "msAfterSince": 31106,
+            "msAfterReloadMark": 74
+          }
+        ],
+        "patchResponseSignals": [],
+        "reloadMarks": [
+          {
+            "name": "page.reload",
+            "at": "2026-10-11T19:10:11.123Z",
+            "msAfterSince": 31031
+          }
+        ]
+      }
+    },
+    "4": {
+      "note": "established from outcome 1 (which document each store held after the stale client's save) and the PATCH log (markers in each sent document)",
+      "staleClientDocumentSent": [
+        {
+          "markers": [
+            "A1"
+          ],
+          "baseWordsPresent": true,
+          "listWordsPresent": 0,
+          "length": 208
+        }
+      ],
+      "staleSaveEndsWithCharlieQ": false,
+      "saverTextTokensNotInStaleDocument": 1,
+      "saverMarkerTokensInStaleDocument": [],
+      "staleSaveContainsFirstSaverText_byRequestMarkers": [],
+      "staleSaveContainsFirstSaverListWords": 0,
+      "storesHeldAfterStaleSave": [
+        "A#1"
+      ],
+      "saverMarkerTokensInServerPlainAfterStaleSave": [],
+      "stalePatchesSentBeforeItsTyping": 0,
+      "staleEditorTextAtTypingStart": "BASE alpha bravo charlie",
+      "saverEditorTextAtStaleTypingStart": "BASE alpha bravo charlie B1",
+      "everyPatchSentByStale": [
+        {
+          "n": 20,
+          "sendAt": "2026-10-11T19:09:40.000Z",
+          "status": 200,
+          "hasDocument": true,
+          "markers": [
+            "A1"
+          ],
+          "baseWordsPresent": true,
+          "listWordsPresent": 0,
+          "note": null,
+          "msAfterLastTypingEnd": 2460,
+          "lastTypingStartsWith": " A1",
+          "afterAReloadMark": false
+        }
+      ],
+      "everyPatchSentBySaver": [
+        {
+          "n": 20,
+          "sendAt": "2026-10-11T19:09:32.264Z",
+          "status": 200,
+          "hasDocument": true,
+          "markers": [
+            "B1"
+          ],
+          "baseWordsPresent": true,
+          "listWordsPresent": 0,
+          "note": null,
+          "msAfterLastTypingEnd": 2460,
+          "lastTypingStartsWith": " B1",
+          "afterAReloadMark": false
+        }
+      ]
+    },
+    "5": {
+      "afterEachStep": {
+        "step1_B_saver": {
+          "revisions": [
+            {
+              "dir": "v-1",
+              "canonical": true,
+              "name": "Initial Draft",
+              "automaticSnapshot": false,
+              "contains": "= B#1"
+            }
+          ],
+          "writingLogActual": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            }
+          ],
+          "writingLogExpected": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            }
+          ],
+          "writingLogMatchesExpected": true,
+          "tokensByProcessedSave": [
+            {
+              "save": "B#1",
+              "addedCount": 1,
+              "deletedCount": 0,
+              "addedTokens": [
+                "B1"
+              ],
+              "deletedTokens": []
+            }
+          ],
+          "search": {
+            "B1": {
+              "status": 200,
+              "count": 1,
+              "resourceIds": [
+                "e44cb41a-6c4e-4dab-97cd-3c081f9fdbfe"
+              ]
+            },
+            "A1": {
+              "status": 200,
+              "count": 0,
+              "resourceIds": []
+            }
+          },
+          "sidecarWordCount": 5,
+          "expectedWordCounts": {
+            "base": 4,
+            "B#1": 5
+          },
+          "mentionIndex": {
+            "filePresent": true,
+            "recordsForResource": []
+          },
+          "diagnosticsIndex": {
+            "filePresent": true,
+            "recordForResource": {
+              "dialogueRatio": 0,
+              "averageSentenceLength": 5,
+              "topRepeatedWords": [],
+              "heuristicVersion": 1
+            }
+          }
+        },
+        "step2_A_stale": {
+          "revisions": [
+            {
+              "dir": "v-1",
+              "canonical": true,
+              "name": "Initial Draft",
+              "automaticSnapshot": false,
+              "contains": "= A#1"
+            }
+          ],
+          "writingLogActual": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            },
+            {
+              "added": 1,
+              "deleted": 1,
+              "net": 0
+            }
+          ],
+          "writingLogExpected": [
+            {
+              "added": 1,
+              "deleted": 0,
+              "net": 1
+            },
+            {
+              "added": 1,
+              "deleted": 1,
+              "net": 0
+            }
+          ],
+          "writingLogMatchesExpected": true,
+          "tokensByProcessedSave": [
+            {
+              "save": "B#1",
+              "addedCount": 1,
+              "deletedCount": 0,
+              "addedTokens": [
+                "B1"
+              ],
+              "deletedTokens": []
+            },
+            {
+              "save": "A#1",
+              "addedCount": 1,
+              "deletedCount": 1,
+              "addedTokens": [
+                "A1"
+              ],
+              "deletedTokens": [
+                "B1"
+              ]
+            }
+          ],
+          "search": {
+            "B1": {
+              "status": 200,
+              "count": 0,
+              "resourceIds": []
+            },
+            "A1": {
+              "status": 200,
+              "count": 1,
+              "resourceIds": [
+                "e44cb41a-6c4e-4dab-97cd-3c081f9fdbfe"
+              ]
+            }
+          },
+          "sidecarWordCount": 5,
+          "expectedWordCounts": {
+            "base": 4,
+            "A#1": 5,
+            "B#1": 5
+          },
+          "mentionIndex": {
+            "filePresent": true,
+            "recordsForResource": []
+          },
+          "diagnosticsIndex": {
+            "filePresent": true,
+            "recordForResource": {
+              "dialogueRatio": 0,
+              "averageSentenceLength": 5,
+              "topRepeatedWords": [],
+              "heuristicVersion": 1
+            }
+          }
+        }
+      },
+      "afterReload": {
+        "revisions": [
+          {
+            "dir": "v-1",
+            "canonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "contains": "= A#1"
+          }
+        ],
+        "writingLogActual": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "writingLogExpected": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "writingLogMatchesExpected": true,
+        "search": {
+          "B1": {
+            "status": 200,
+            "count": 0,
+            "resourceIds": []
+          },
+          "A1": {
+            "status": 200,
+            "count": 1,
+            "resourceIds": [
+              "e44cb41a-6c4e-4dab-97cd-3c081f9fdbfe"
+            ]
+          }
+        },
+        "mentionIndex": {
+          "filePresent": true,
+          "recordsForResource": []
+        },
+        "diagnosticsIndex": {
+          "filePresent": true,
+          "recordForResource": {
+            "dialogueRatio": 0,
+            "averageSentenceLength": 5,
+            "topRepeatedWords": [],
+            "heuristicVersion": 1
+          }
+        }
+      },
+      "indexesComparedToPlainText": "not compared by the harness (diagnostics heuristics are TypeScript and not ported; the fixture declares no entity so the mention index holds no record); raw records are printed"
+    },
+    "6": {
+      "failedSavesStale": [],
+      "failedSavesSaver": [],
+      "result": "no failed save",
+      "pointerIf404": "no 404 save response"
+    }
+  },
+  "verdictInputs": {
+    "saves": [
+      {
+        "id": "A20",
+        "docLabel": "A#1",
+        "updatedAt": "2026-10-11T19:09:40.009Z",
+        "sendT": 1791745780000.995,
+        "respT": 1791745780012.3914
+      },
+      {
+        "id": "B20",
+        "docLabel": "B#1",
+        "updatedAt": "2026-10-11T19:09:32.270Z",
+        "sendT": 1791745772264.1553,
+        "respT": 1791745772273.159
+      }
+    ],
+    "lastProcessed": {
+      "docLabel": "A#1",
+      "updatedAt": "2026-10-11T19:09:40.009Z"
+    },
+    "evidence": {
+      "byUpdatedAt": [
+        "B20",
+        "A20"
+      ],
+      "byResponseArrival": [
+        "B20",
+        "A20"
+      ],
+      "bySend": [
+        "B20",
+        "A20"
+      ],
+      "updatedAtValues": [
+        "2026-10-11T19:09:32.270Z",
+        "2026-10-11T19:09:40.009Z"
+      ]
+    },
+    "sendOrderAgreesWithUpdatedAt": true,
+    "documentHashes": {
+      "base": "2642f35db296aa8e807fcee83ca02fcc876fee0e6793a3726c3993d2481fabe1",
+      "A#1": "7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1",
+      "B#1": "616eceb4930d91e1d97dd48a58aeb26b89f8b85fb8aeb8b83a29dff512e039c2"
+    },
+    "requireReload": true,
+    "reloadTexts": {
+      "A": "BASE alpha bravo charlie A1",
+      "B": "BASE alpha bravo charlie A1"
+    }
+  },
+  "verdict": {
+    "verdict": "PASS",
+    "reasons": [
+      "all four stores hold A#1, the last processed save"
+    ],
+    "flags": {
+      "reloadChecked": true
+    }
+  },
+  "findings": {
+    "a_stale_editor_replaced_other_text_on_a_keystroke": {
+      "staleClientDocumentMarkers": [
+        [
+          "A1"
+        ]
+      ],
+      "saverTokensNotInStaleDocument": 1,
+      "storesHeldAfterStaleSave": [
+        "A#1"
+      ],
+      "saverTokensStillInServerPlainAfterStaleSave": 0,
+      "varied": "which client is stale; saver addition short; number of saver saves 1"
+    },
+    "b_saves_sent_with_no_typing": {
+      "patchesStale": [
+        {
+          "n": 20,
+          "hasDocument": true,
+          "markers": [
+            "A1"
+          ],
+          "msAfterLastTypingEnd": 2460,
+          "afterAReloadMark": false
+        }
+      ],
+      "patchesSaver": [
+        {
+          "n": 20,
+          "hasDocument": true,
+          "markers": [
+            "B1"
+          ],
+          "msAfterLastTypingEnd": 2460,
+          "afterAReloadMark": false
+        }
+      ],
+      "stalePatchesBeforeItsOwnTyping": 0,
+      "typingActions": {
+        "stale": [
+          " A1"
+        ],
+        "saver": [
+          " B1"
+        ]
+      }
+    },
+    "c_overwritten_device_told_anything": {
+      "saver_overwritten_sinceStaleSave": {
+        "sinceAt": "2026-10-11T19:09:40.092Z",
+        "surfacesChecked": "role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags",
+        "surfaces": [
+          {
+            "role": "status",
+            "text": "Loading this document…",
+            "msAfterSince": 32007,
+            "msAfterReloadMark": 976
+          },
+          {
+            "role": "status",
+            "text": "Loading diagnostics…",
+            "msAfterSince": 32007,
+            "msAfterReloadMark": 976
+          }
+        ],
+        "console": [
+          {
+            "type": "error",
+            "text": "Error fetching projects: TypeError: Failed to fetch",
+            "msAfterSince": 31081,
+            "msAfterReloadMark": 50
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "msAfterSince": 31110,
+            "msAfterReloadMark": 79
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 31975,
+            "msAfterReloadMark": 944
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 32006,
+            "msAfterReloadMark": 975
+          }
+        ],
+        "pageErrors": [],
+        "dialogs": [],
+        "failedRequests": [
+          {
+            "method": "GET",
+            "path": "/api/encryption",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/version-check",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth-status",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          },
+          {
+            "method": "GET",
+            "path": "/api/sharing/limits",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 31080,
+            "msAfterReloadMark": 49
+          }
+        ],
+        "nonOkResponses": [
+          {
+            "method": "GET",
+            "path": "/api/auth/get-session",
+            "status": 404,
+            "body": "",
+            "msAfterSince": 31106,
+            "msAfterReloadMark": 74
+          }
+        ],
+        "patchResponseSignals": [],
+        "reloadMarks": [
+          {
+            "name": "page.reload",
+            "at": "2026-10-11T19:10:11.123Z",
+            "msAfterSince": 31031
+          }
+        ]
+      },
+      "stale_sinceFirstSaverSave": {
+        "sinceAt": "2026-10-11T19:09:32.358Z",
+        "surfacesChecked": "role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags",
+        "surfaces": [
+          {
+            "role": "status",
+            "text": "Loading diagnostics…",
+            "msAfterSince": 7661,
+            "msAfterReloadMark": null
+          },
+          {
+            "role": "status",
+            "text": "Loading this document…",
+            "msAfterSince": 38733,
+            "msAfterReloadMark": 983
+          },
+          {
+            "role": "status",
+            "text": "Loading diagnostics…",
+            "msAfterSince": 38733,
+            "msAfterReloadMark": 983
+          }
+        ],
+        "console": [
+          {
+            "type": "error",
+            "text": "Error fetching projects: TypeError: Failed to fetch",
+            "msAfterSince": 37816,
+            "msAfterReloadMark": 67
+          },
+          {
+            "type": "error",
+            "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "msAfterSince": 37846,
+            "msAfterReloadMark": 96
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 38700,
+            "msAfterReloadMark": 950
+          },
+          {
+            "type": "warning",
+            "text": "[react-tooltip] Do not set `style.border`. Use `border` prop instead.",
+            "msAfterSince": 38731,
+            "msAfterReloadMark": 982
+          }
+        ],
+        "pageErrors": [],
+        "dialogs": [],
+        "failedRequests": [
+          {
+            "method": "GET",
+            "path": "/api/projects",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/sharing/limits",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth-status",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/encryption",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          },
+          {
+            "method": "GET",
+            "path": "/api/version-check",
+            "error": "net::ERR_ABORTED",
+            "msAfterSince": 37815,
+            "msAfterReloadMark": 65
+          }
+        ],
+        "nonOkResponses": [
+          {
+            "method": "GET",
+            "path": "/api/auth/get-session",
+            "status": 404,
+            "body": "",
+            "msAfterSince": 37841,
+            "msAfterReloadMark": 91
+          }
+        ],
+        "patchResponseSignals": [
+          {
+            "n": 20,
+            "snapshotCreated": false,
+            "writingLog": null
+          }
+        ],
+        "reloadMarks": [
+          {
+            "name": "page.reload",
+            "at": "2026-10-11T19:10:10.107Z",
+            "msAfterSince": 37750
+          }
+        ]
+      },
+      "note": "full lists in outcome 3; surfaces named there"
+    },
+    "d_overwritten_text_recoverable": {
+      "lostTokens": "B1",
+      "lostTokenCount": 1,
+      "afterStaleSave": {
+        "locations": {
+          "lostTokenCount": 1,
+          "lostTokens": "B1",
+          "canonicalContentBin": 0,
+          "contentTiptapJson": 0,
+          "contentTxt": 0,
+          "nonCanonicalRevisions": []
+        },
+        "revisions": [
+          {
+            "dir": "v-1",
+            "canonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "contains": "= A#1"
+          }
+        ],
+        "trash": {
+          "projectTrash": "absent",
+          "projectsFolderTrash": "absent",
+          "note": "names only, ids replaced by labels; 'absent' means the directory does not exist"
+        }
+      },
+      "afterReload": {
+        "locations": {
+          "lostTokenCount": 1,
+          "lostTokens": "B1",
+          "canonicalContentBin": 0,
+          "contentTiptapJson": 0,
+          "contentTxt": 0,
+          "nonCanonicalRevisions": []
+        },
+        "revisions": [
+          {
+            "dir": "v-1",
+            "canonical": true,
+            "name": "Initial Draft",
+            "automaticSnapshot": false,
+            "contains": "= A#1"
+          }
+        ],
+        "trash": {
+          "projectTrash": "absent",
+          "projectsFolderTrash": "absent",
+          "note": "names only, ids replaced by labels; 'absent' means the directory does not exist"
+        }
+      },
+      "autoBackupRevisionsAfterReload": [],
+      "staleSaveResponseSnapshotCreated": false,
+      "noRecoverableCopyAmongLocationsRead": true,
+      "locationsNotLooked": "browser storage and caches, the server's memory and logs, the writer's other devices"
+    },
+    "e_overwritten_editor_shows_text_the_server_no_longer_holds": {
+      "saverEditorEqualsServerRightAfterStaleSave": false,
+      "saverEditorTextRightAfterStaleSave_tokens": 5,
+      "saverEditorAt5s_equalsServer": false,
+      "saverEditorAt30s_noReload_equalsServer": false,
+      "saverEditorAfterReload_equalsServer": true,
+      "staleEditorEqualsServerRightAfterOwnSave": true,
+      "saverEditorFooterAt30s": {
+        "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · 27s ago",
+        "autosave": "All changes saved · 27s ago"
+      },
+      "staleEditorFooterAt30s": {
+        "full": "Words: 5 | Node: Body | Today's writing Today: 1 All changes saved · 18s ago",
+        "autosave": "All changes saved · 18s ago"
+      }
+    },
+    "f_writing_log_effect": {
+      "actual": [
+        {
+          "added": 1,
+          "deleted": 0,
+          "net": 1
+        },
+        {
+          "added": 1,
+          "deleted": 1,
+          "net": 0
+        }
+      ],
+      "expected": [
+        {
+          "added": 1,
+          "deleted": 0,
+          "net": 1
+        },
+        {
+          "added": 1,
+          "deleted": 1,
+          "net": 0
+        }
+      ],
+      "tokensByProcessedSave": [
+        {
+          "save": "B#1",
+          "addedCount": 1,
+          "deletedCount": 0,
+          "deletedTokens": "",
+          "addedTokens": "B1"
+        },
+        {
+          "save": "A#1",
+          "addedCount": 1,
+          "deletedCount": 1,
+          "deletedTokens": "B1",
+          "addedTokens": "A1"
+        }
+      ],
+      "matchesExpected": true
+    },
+    "g_failed_save_on_the_device_the_writer_believes_is_last": {
+      "failedSavesStale": [],
+      "failedSavesSaver": [],
+      "result": "none"
+    }
+  },
+  "extra": {
+    "variant": {
+      "id": "i",
+      "description": "stale A, saver B (short ` B1`), stale types ` A1`",
+      "stale": "A",
+      "saver": "B",
+      "saverMarkerStrings": [
+        " B1"
+      ],
+      "staleMarkerString": " A1"
+    },
+    "preChecks": {
+      "listeners7340": "none",
+      "listeners3000": "none",
+      "chosenPort": 63997,
+      "chosenPortListenersBeforeStart": "none (checked immediately before start)",
+      "serverPidsRecorded": [
+        {
+          "pid": 68147,
+          "comm": "next-server (v16.2.6)"
+        }
+      ],
+      "browserPidsRecorded": [
+        {
+          "pid": 68176,
+          "comm": "chrome-headless-shell"
+        },
+        {
+          "pid": 68177,
+          "comm": "chrome-headless-shell"
+        },
+        {
+          "pid": 68178,
+          "comm": "chrome-headless-shell"
+        },
+        {
+          "pid": 68183,
+          "comm": "chrome-headless-shell"
+        },
+        {
+          "pid": 68185,
+          "comm": "chrome-headless-shell"
+        }
+      ],
+      "clientsPaired": {
+        "A": {
+          "paired": true,
+          "deviceCookiePresent": true
+        },
+        "B": {
+          "paired": true,
+          "deviceCookiePresent": true
+        }
+      },
+      "throwawayRootAsserted": "/private/tmp/getwrite-two-client/s3ir1-mv475zio-aa46e3"
+    },
+    "backupCondition_readNotRun": "revision-core.ts snapshotBeforeDestructiveWrite -> content-loss.ts isDestructiveContentChange(previous, incoming): snapshot only if previous word count > 0 AND (incoming has 0 words OR (previous - incoming >= MIN_WORDS_LOST = 10 AND incoming <= previous * DESTRUCTIVE_SURVIVING_RATIO = 0.5)); the snapshot is a non-canonical revision named 'Auto-backup before large deletion' (automaticSnapshot true) holding the PREVIOUS canonical content. Read, not run. The constants are labelled CHOSEN, NOT MEASURED in the source.",
+    "backupDecision_inputs": {
+      "note": "word counts of the documents the harness holds (the canonical content before the stale save is the saver's last document); the rule is read, not run",
+      "wordsInServerCanonicalBeforeStaleSave": 5,
+      "wordsInStaleDocument": 5,
+      "wordsLostIfStaleSaveProcessed": 0,
+      "saverFinalLabel": "B#1",
+      "staleLabel": "A#1"
+    },
+    "requestLogA": [
+      {
+        "n": 1,
+        "method": "GET",
+        "path": "/api/auth/get-session",
+        "sendT": 1791745767564.199,
+        "sendAt": "2026-10-11T19:09:27.564Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745767564.199,
+        "respT": 1791745767572.336,
+        "respAt": "2026-10-11T19:09:27.572Z",
+        "durMs": 8,
+        "status": 404,
+        "errorBody": ""
+      },
+      {
+        "n": 2,
+        "method": "GET",
+        "path": "/api/encryption",
+        "sendT": 1791745767578.444,
+        "sendAt": "2026-10-11T19:09:27.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745767578.444,
+        "respT": 1791745767580.348,
+        "respAt": "2026-10-11T19:09:27.580Z",
+        "durMs": 2,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 3,
+        "method": "GET",
+        "path": "/api/version-check",
+        "sendT": 1791745767578.456,
+        "sendAt": "2026-10-11T19:09:27.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745767578.456,
+        "respT": 1791745767582.149,
+        "respAt": "2026-10-11T19:09:27.582Z",
+        "durMs": 4,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 4,
+        "method": "GET",
+        "path": "/api/auth-status",
+        "sendT": 1791745767578.466,
+        "sendAt": "2026-10-11T19:09:27.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745767578.466,
+        "respT": 1791745767582.219,
+        "respAt": "2026-10-11T19:09:27.582Z",
+        "durMs": 4,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 5,
+        "method": "GET",
+        "path": "/api/projects",
+        "sendT": 1791745767578.475,
+        "sendAt": "2026-10-11T19:09:27.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745767578.475,
+        "respT": 1791745767584.325,
+        "respAt": "2026-10-11T19:09:27.584Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 6,
+        "method": "GET",
+        "path": "/api/sharing/limits",
+        "sendT": 1791745767578.487,
+        "sendAt": "2026-10-11T19:09:27.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745767578.487,
+        "respT": 1791745767582.381,
+        "respAt": "2026-10-11T19:09:27.582Z",
+        "durMs": 4,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 7,
+        "method": "POST",
+        "path": "/api/project",
+        "sendT": 1791745768415.004,
+        "sendAt": "2026-10-11T19:09:28.415Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768415.004,
+        "respT": 1791745768420.534,
+        "respAt": "2026-10-11T19:09:28.420Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 8,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745768428.983,
+        "sendAt": "2026-10-11T19:09:28.428Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768428.983,
+        "respT": 1791745768467.509,
+        "respAt": "2026-10-11T19:09:28.467Z",
+        "durMs": 39,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 9,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745768441.386,
+        "sendAt": "2026-10-11T19:09:28.441Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768441.386,
+        "respT": 1791745768469.902,
+        "respAt": "2026-10-11T19:09:28.469Z",
+        "durMs": 29,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 10,
+        "method": "POST",
+        "path": "/api/project/PRJ-MANIFEST-ID/reindex",
+        "sendT": 1791745768441.403,
+        "sendAt": "2026-10-11T19:09:28.441Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768441.403,
+        "respT": 1791745768470.189,
+        "respAt": "2026-10-11T19:09:28.470Z",
+        "durMs": 29,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 11,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745768441.573,
+        "sendAt": "2026-10-11T19:09:28.441Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768441.573,
+        "respT": 1791745768470.256,
+        "respAt": "2026-10-11T19:09:28.470Z",
+        "durMs": 29,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 12,
+        "method": "POST",
+        "path": "/api/project/query/saved",
+        "sendT": 1791745768441.594,
+        "sendAt": "2026-10-11T19:09:28.441Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768441.594,
+        "respT": 1791745768470.309,
+        "respAt": "2026-10-11T19:09:28.470Z",
+        "durMs": 29,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 13,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745768496.364,
+        "sendAt": "2026-10-11T19:09:28.496Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768496.364,
+        "respT": 1791745768506.237,
+        "respAt": "2026-10-11T19:09:28.506Z",
+        "durMs": 10,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 14,
+        "method": "GET",
+        "path": "/api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z",
+        "sendT": 1791745768496.384,
+        "sendAt": "2026-10-11T19:09:28.496Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768496.384,
+        "respT": 1791745768504.849,
+        "respAt": "2026-10-11T19:09:28.504Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 15,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745768496.394,
+        "sendAt": "2026-10-11T19:09:28.496Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768496.394,
+        "respT": 1791745768506.095,
+        "respAt": "2026-10-11T19:09:28.506Z",
+        "durMs": 10,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 16,
+        "method": "GET",
+        "path": "/api/resource/R1/diagnostics?projectId=PRJ",
+        "sendT": 1791745768496.404,
+        "sendAt": "2026-10-11T19:09:28.496Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768496.404,
+        "respT": 1791745768505.69,
+        "respAt": "2026-10-11T19:09:28.505Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 17,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745768496.412,
+        "sendAt": "2026-10-11T19:09:28.496Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768496.412,
+        "respT": 1791745768504.238,
+        "respAt": "2026-10-11T19:09:28.504Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 18,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745768496.423,
+        "sendAt": "2026-10-11T19:09:28.496Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768496.423,
+        "respT": 1791745768504.542,
+        "respAt": "2026-10-11T19:09:28.504Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 19,
+        "method": "GET",
+        "path": "/api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1",
+        "sendT": 1791745768506.786,
+        "sendAt": "2026-10-11T19:09:28.506Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768506.786,
+        "respT": 1791745768530.28,
+        "respAt": "2026-10-11T19:09:28.530Z",
+        "durMs": 23,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 20,
+        "method": "PATCH",
+        "path": "/api/resource/revision/R1",
+        "sendT": 1791745780000.995,
+        "sendAt": "2026-10-11T19:09:40.000Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745780000.995,
+        "respT": 1791745780012.391,
+        "respAt": "2026-10-11T19:09:40.012Z",
+        "durMs": 11,
+        "status": 200,
+        "fields": {
+          "updatedAt": "2026-10-11T19:09:40.009Z",
+          "snapshotCreated": false,
+          "writingLog": null
+        },
+        "doc": {
+          "parseable": true,
+          "length": 208,
+          "sha256": "7d8b0fcac1ba1b3a526603d68c28734148f86cf4b8ff3f690787093eb72883e1",
+          "markers": [
+            "A1"
+          ],
+          "baseWordsPresent": true,
+          "listWordsPresent": 0
+        }
+      },
+      {
+        "n": 21,
+        "method": "GET",
+        "path": "/api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z",
+        "sendT": 1791745780016.905,
+        "sendAt": "2026-10-11T19:09:40.016Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745780016.905,
+        "respT": 1791745780022.893,
+        "respAt": "2026-10-11T19:09:40.022Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 22,
+        "method": "GET",
+        "path": "/api/resource/R1/diagnostics?projectId=PRJ",
+        "sendT": 1791745780017.099,
+        "sendAt": "2026-10-11T19:09:40.017Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745780017.099,
+        "respT": 1791745780023.328,
+        "respAt": "2026-10-11T19:09:40.023Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 23,
+        "method": "GET",
+        "path": "/api/encryption",
+        "sendT": 1791745810173.025,
+        "sendAt": "2026-10-11T19:10:10.173Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810173.025,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 24,
+        "method": "GET",
+        "path": "/api/version-check",
+        "sendT": 1791745810173.054,
+        "sendAt": "2026-10-11T19:10:10.173Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810173.054,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 25,
+        "method": "GET",
+        "path": "/api/auth-status",
+        "sendT": 1791745810173.067,
+        "sendAt": "2026-10-11T19:10:10.173Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810173.067,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 26,
+        "method": "GET",
+        "path": "/api/projects",
+        "sendT": 1791745810173.078,
+        "sendAt": "2026-10-11T19:10:10.173Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810173.078,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 27,
+        "method": "GET",
+        "path": "/api/sharing/limits",
+        "sendT": 1791745810173.085,
+        "sendAt": "2026-10-11T19:10:10.173Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810173.085,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 28,
+        "method": "GET",
+        "path": "/api/encryption",
+        "sendT": 1791745810197.299,
+        "sendAt": "2026-10-11T19:10:10.197Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810197.299,
+        "respT": 1791745810200.385,
+        "respAt": "2026-10-11T19:10:10.200Z",
+        "durMs": 3,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 29,
+        "method": "GET",
+        "path": "/api/version-check",
+        "sendT": 1791745810197.309,
+        "sendAt": "2026-10-11T19:10:10.197Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810197.309,
+        "respT": 1791745810202.181,
+        "respAt": "2026-10-11T19:10:10.202Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 30,
+        "method": "GET",
+        "path": "/api/auth-status",
+        "sendT": 1791745810197.316,
+        "sendAt": "2026-10-11T19:10:10.197Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810197.316,
+        "respT": 1791745810202.438,
+        "respAt": "2026-10-11T19:10:10.202Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 31,
+        "method": "GET",
+        "path": "/api/projects",
+        "sendT": 1791745810197.322,
+        "sendAt": "2026-10-11T19:10:10.197Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810197.322,
+        "respT": 1791745810205.239,
+        "respAt": "2026-10-11T19:10:10.205Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 32,
+        "method": "GET",
+        "path": "/api/sharing/limits",
+        "sendT": 1791745810197.386,
+        "sendAt": "2026-10-11T19:10:10.197Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810197.386,
+        "respT": 1791745810203.259,
+        "respAt": "2026-10-11T19:10:10.203Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 33,
+        "method": "GET",
+        "path": "/api/auth/get-session",
+        "sendT": 1791745810198.964,
+        "sendAt": "2026-10-11T19:10:10.198Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745810198.964,
+        "respT": 1791745810204.243,
+        "respAt": "2026-10-11T19:10:10.204Z",
+        "durMs": 5,
+        "status": 404,
+        "errorBody": ""
+      },
+      {
+        "n": 34,
+        "method": "POST",
+        "path": "/api/project",
+        "sendT": 1791745811047.578,
+        "sendAt": "2026-10-11T19:10:11.047Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811047.578,
+        "respT": 1791745811052.202,
+        "respAt": "2026-10-11T19:10:11.052Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 35,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745811057.851,
+        "sendAt": "2026-10-11T19:10:11.057Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811057.851,
+        "respT": 1791745811066.314,
+        "respAt": "2026-10-11T19:10:11.066Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 36,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745811064.38,
+        "sendAt": "2026-10-11T19:10:11.064Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811064.38,
+        "respT": 1791745811072.015,
+        "respAt": "2026-10-11T19:10:11.072Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 37,
+        "method": "POST",
+        "path": "/api/project/PRJ-MANIFEST-ID/reindex",
+        "sendT": 1791745811064.397,
+        "sendAt": "2026-10-11T19:10:11.064Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811064.397,
+        "respT": 1791745811072.203,
+        "respAt": "2026-10-11T19:10:11.072Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 38,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745811064.41,
+        "sendAt": "2026-10-11T19:10:11.064Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811064.41,
+        "respT": 1791745811072.135,
+        "respAt": "2026-10-11T19:10:11.072Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 39,
+        "method": "POST",
+        "path": "/api/project/query/saved",
+        "sendT": 1791745811064.425,
+        "sendAt": "2026-10-11T19:10:11.064Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811064.425,
+        "respT": 1791745811069.822,
+        "respAt": "2026-10-11T19:10:11.069Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 40,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745811093.054,
+        "sendAt": "2026-10-11T19:10:11.093Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811093.054,
+        "respT": 1791745811102.067,
+        "respAt": "2026-10-11T19:10:11.102Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 41,
+        "method": "GET",
+        "path": "/api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z",
+        "sendT": 1791745811093.067,
+        "sendAt": "2026-10-11T19:10:11.093Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811093.067,
+        "respT": 1791745811101.412,
+        "respAt": "2026-10-11T19:10:11.101Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 42,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745811093.077,
+        "sendAt": "2026-10-11T19:10:11.093Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811093.077,
+        "respT": 1791745811102.305,
+        "respAt": "2026-10-11T19:10:11.102Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 43,
+        "method": "GET",
+        "path": "/api/resource/R1/diagnostics?projectId=PRJ",
+        "sendT": 1791745811093.084,
+        "sendAt": "2026-10-11T19:10:11.093Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811093.084,
+        "respT": 1791745811101.785,
+        "respAt": "2026-10-11T19:10:11.101Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 44,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745811093.092,
+        "sendAt": "2026-10-11T19:10:11.093Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811093.092,
+        "respT": 1791745811100.682,
+        "respAt": "2026-10-11T19:10:11.100Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 45,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745811093.099,
+        "sendAt": "2026-10-11T19:10:11.093Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811093.099,
+        "respT": 1791745811101.012,
+        "respAt": "2026-10-11T19:10:11.101Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 46,
+        "method": "GET",
+        "path": "/api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1",
+        "sendT": 1791745811103.422,
+        "sendAt": "2026-10-11T19:10:11.103Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811103.422,
+        "respT": 1791745811116.314,
+        "respAt": "2026-10-11T19:10:11.116Z",
+        "durMs": 13,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      }
+    ],
+    "requestLogB": [
+      {
+        "n": 1,
+        "method": "GET",
+        "path": "/api/auth/get-session",
+        "sendT": 1791745768627.362,
+        "sendAt": "2026-10-11T19:09:28.627Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768627.362,
+        "respT": 1791745768640.444,
+        "respAt": "2026-10-11T19:09:28.640Z",
+        "durMs": 13,
+        "status": 404,
+        "errorBody": ""
+      },
+      {
+        "n": 2,
+        "method": "GET",
+        "path": "/api/encryption",
+        "sendT": 1791745768639.619,
+        "sendAt": "2026-10-11T19:09:28.639Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768639.619,
+        "respT": 1791745768641.049,
+        "respAt": "2026-10-11T19:09:28.641Z",
+        "durMs": 1,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 3,
+        "method": "GET",
+        "path": "/api/version-check",
+        "sendT": 1791745768639.63,
+        "sendAt": "2026-10-11T19:09:28.639Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768639.63,
+        "respT": 1791745768645.186,
+        "respAt": "2026-10-11T19:09:28.645Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 4,
+        "method": "GET",
+        "path": "/api/auth-status",
+        "sendT": 1791745768639.64,
+        "sendAt": "2026-10-11T19:09:28.639Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768639.64,
+        "respT": 1791745768645.533,
+        "respAt": "2026-10-11T19:09:28.645Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 5,
+        "method": "GET",
+        "path": "/api/projects",
+        "sendT": 1791745768639.648,
+        "sendAt": "2026-10-11T19:09:28.639Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768639.648,
+        "respT": 1791745768645.982,
+        "respAt": "2026-10-11T19:09:28.645Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 6,
+        "method": "GET",
+        "path": "/api/sharing/limits",
+        "sendT": 1791745768639.657,
+        "sendAt": "2026-10-11T19:09:28.639Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745768639.657,
+        "respT": 1791745768645.445,
+        "respAt": "2026-10-11T19:09:28.645Z",
+        "durMs": 6,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 7,
+        "method": "POST",
+        "path": "/api/project",
+        "sendT": 1791745769487.488,
+        "sendAt": "2026-10-11T19:09:29.487Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769487.488,
+        "respT": 1791745769494.258,
+        "respAt": "2026-10-11T19:09:29.494Z",
+        "durMs": 7,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 8,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745769506.185,
+        "sendAt": "2026-10-11T19:09:29.506Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769506.185,
+        "respT": 1791745769550.017,
+        "respAt": "2026-10-11T19:09:29.550Z",
+        "durMs": 44,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 9,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745769522.052,
+        "sendAt": "2026-10-11T19:09:29.522Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769522.052,
+        "respT": 1791745769552.037,
+        "respAt": "2026-10-11T19:09:29.552Z",
+        "durMs": 30,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 10,
+        "method": "POST",
+        "path": "/api/project/PRJ-MANIFEST-ID/reindex",
+        "sendT": 1791745769522.074,
+        "sendAt": "2026-10-11T19:09:29.522Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769522.074,
+        "respT": 1791745769552.185,
+        "respAt": "2026-10-11T19:09:29.552Z",
+        "durMs": 30,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 11,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745769522.251,
+        "sendAt": "2026-10-11T19:09:29.522Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769522.251,
+        "respT": 1791745769552.461,
+        "respAt": "2026-10-11T19:09:29.552Z",
+        "durMs": 30,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 12,
+        "method": "POST",
+        "path": "/api/project/query/saved",
+        "sendT": 1791745769522.278,
+        "sendAt": "2026-10-11T19:09:29.522Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769522.278,
+        "respT": 1791745769552.519,
+        "respAt": "2026-10-11T19:09:29.552Z",
+        "durMs": 30,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 13,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745769578.977,
+        "sendAt": "2026-10-11T19:09:29.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769578.977,
+        "respT": 1791745769599.909,
+        "respAt": "2026-10-11T19:09:29.599Z",
+        "durMs": 21,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 14,
+        "method": "GET",
+        "path": "/api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z",
+        "sendT": 1791745769578.998,
+        "sendAt": "2026-10-11T19:09:29.578Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769578.998,
+        "respT": 1791745769594.585,
+        "respAt": "2026-10-11T19:09:29.594Z",
+        "durMs": 16,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 15,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745769579.01,
+        "sendAt": "2026-10-11T19:09:29.579Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769579.01,
+        "respT": 1791745769599.43,
+        "respAt": "2026-10-11T19:09:29.599Z",
+        "durMs": 20,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 16,
+        "method": "GET",
+        "path": "/api/resource/R1/diagnostics?projectId=PRJ",
+        "sendT": 1791745769579.02,
+        "sendAt": "2026-10-11T19:09:29.579Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769579.02,
+        "respT": 1791745769599.048,
+        "respAt": "2026-10-11T19:09:29.599Z",
+        "durMs": 20,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 17,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745769579.03,
+        "sendAt": "2026-10-11T19:09:29.579Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769579.03,
+        "respT": 1791745769594.338,
+        "respAt": "2026-10-11T19:09:29.594Z",
+        "durMs": 15,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 18,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745769579.044,
+        "sendAt": "2026-10-11T19:09:29.579Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769579.044,
+        "respT": 1791745769594.506,
+        "respAt": "2026-10-11T19:09:29.594Z",
+        "durMs": 15,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 19,
+        "method": "GET",
+        "path": "/api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1",
+        "sendT": 1791745769600.234,
+        "sendAt": "2026-10-11T19:09:29.600Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745769600.234,
+        "respT": 1791745769624.634,
+        "respAt": "2026-10-11T19:09:29.624Z",
+        "durMs": 24,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 20,
+        "method": "PATCH",
+        "path": "/api/resource/revision/R1",
+        "sendT": 1791745772264.155,
+        "sendAt": "2026-10-11T19:09:32.264Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745772264.155,
+        "respT": 1791745772273.159,
+        "respAt": "2026-10-11T19:09:32.273Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": "2026-10-11T19:09:32.270Z",
+          "snapshotCreated": false,
+          "writingLog": null
+        },
+        "doc": {
+          "parseable": true,
+          "length": 208,
+          "sha256": "616eceb4930d91e1d97dd48a58aeb26b89f8b85fb8aeb8b83a29dff512e039c2",
+          "markers": [
+            "B1"
+          ],
+          "baseWordsPresent": true,
+          "listWordsPresent": 0
+        }
+      },
+      {
+        "n": 21,
+        "method": "GET",
+        "path": "/api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z",
+        "sendT": 1791745772277.28,
+        "sendAt": "2026-10-11T19:09:32.277Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745772277.28,
+        "respT": 1791745772281.489,
+        "respAt": "2026-10-11T19:09:32.281Z",
+        "durMs": 4,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 22,
+        "method": "GET",
+        "path": "/api/resource/R1/diagnostics?projectId=PRJ",
+        "sendT": 1791745772277.299,
+        "sendAt": "2026-10-11T19:09:32.277Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745772277.299,
+        "respT": 1791745772282.106,
+        "respAt": "2026-10-11T19:09:32.282Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 23,
+        "method": "GET",
+        "path": "/api/encryption",
+        "sendT": 1791745811172.603,
+        "sendAt": "2026-10-11T19:10:11.172Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811172.603,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 24,
+        "method": "GET",
+        "path": "/api/version-check",
+        "sendT": 1791745811172.616,
+        "sendAt": "2026-10-11T19:10:11.172Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811172.616,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 25,
+        "method": "GET",
+        "path": "/api/auth-status",
+        "sendT": 1791745811172.623,
+        "sendAt": "2026-10-11T19:10:11.172Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811172.623,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 26,
+        "method": "GET",
+        "path": "/api/projects",
+        "sendT": 1791745811172.63,
+        "sendAt": "2026-10-11T19:10:11.172Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811172.63,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 27,
+        "method": "GET",
+        "path": "/api/sharing/limits",
+        "sendT": 1791745811172.636,
+        "sendAt": "2026-10-11T19:10:11.172Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811172.636,
+        "respT": null,
+        "respAt": null,
+        "durMs": null,
+        "status": null,
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "n": 28,
+        "method": "GET",
+        "path": "/api/encryption",
+        "sendT": 1791745811196.833,
+        "sendAt": "2026-10-11T19:10:11.196Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811196.833,
+        "respT": 1791745811200.063,
+        "respAt": "2026-10-11T19:10:11.200Z",
+        "durMs": 3,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 29,
+        "method": "GET",
+        "path": "/api/version-check",
+        "sendT": 1791745811196.844,
+        "sendAt": "2026-10-11T19:10:11.196Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811196.844,
+        "respT": 1791745811200.599,
+        "respAt": "2026-10-11T19:10:11.200Z",
+        "durMs": 4,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 30,
+        "method": "GET",
+        "path": "/api/auth-status",
+        "sendT": 1791745811196.851,
+        "sendAt": "2026-10-11T19:10:11.196Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811196.851,
+        "respT": 1791745811201.229,
+        "respAt": "2026-10-11T19:10:11.201Z",
+        "durMs": 4,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 31,
+        "method": "GET",
+        "path": "/api/projects",
+        "sendT": 1791745811196.93,
+        "sendAt": "2026-10-11T19:10:11.196Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811196.93,
+        "respT": 1791745811203.606,
+        "respAt": "2026-10-11T19:10:11.203Z",
+        "durMs": 7,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 32,
+        "method": "GET",
+        "path": "/api/sharing/limits",
+        "sendT": 1791745811196.941,
+        "sendAt": "2026-10-11T19:10:11.196Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811196.941,
+        "respT": 1791745811202.27,
+        "respAt": "2026-10-11T19:10:11.202Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 33,
+        "method": "GET",
+        "path": "/api/auth/get-session",
+        "sendT": 1791745811198.154,
+        "sendAt": "2026-10-11T19:10:11.198Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745811198.154,
+        "respT": 1791745811202.362,
+        "respAt": "2026-10-11T19:10:11.202Z",
+        "durMs": 4,
+        "status": 404,
+        "errorBody": ""
+      },
+      {
+        "n": 34,
+        "method": "POST",
+        "path": "/api/project",
+        "sendT": 1791745812052.812,
+        "sendAt": "2026-10-11T19:10:12.052Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812052.812,
+        "respT": 1791745812060.196,
+        "respAt": "2026-10-11T19:10:12.060Z",
+        "durMs": 7,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 35,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745812067.714,
+        "sendAt": "2026-10-11T19:10:12.067Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812067.714,
+        "respT": 1791745812075.875,
+        "respAt": "2026-10-11T19:10:12.075Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 36,
+        "method": "GET",
+        "path": "/api/project/PRJ/entity-alias-table",
+        "sendT": 1791745812074.462,
+        "sendAt": "2026-10-11T19:10:12.074Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812074.462,
+        "respT": 1791745812081.553,
+        "respAt": "2026-10-11T19:10:12.081Z",
+        "durMs": 7,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 37,
+        "method": "POST",
+        "path": "/api/project/PRJ-MANIFEST-ID/reindex",
+        "sendT": 1791745812074.476,
+        "sendAt": "2026-10-11T19:10:12.074Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812074.476,
+        "respT": 1791745812081.643,
+        "respAt": "2026-10-11T19:10:12.081Z",
+        "durMs": 7,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 38,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745812074.625,
+        "sendAt": "2026-10-11T19:10:12.074Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812074.625,
+        "respT": 1791745812081.327,
+        "respAt": "2026-10-11T19:10:12.081Z",
+        "durMs": 7,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 39,
+        "method": "POST",
+        "path": "/api/project/query/saved",
+        "sendT": 1791745812074.642,
+        "sendAt": "2026-10-11T19:10:12.074Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812074.642,
+        "respT": 1791745812079.318,
+        "respAt": "2026-10-11T19:10:12.079Z",
+        "durMs": 5,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 40,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745812101.448,
+        "sendAt": "2026-10-11T19:10:12.101Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812101.448,
+        "respT": 1791745812110.458,
+        "respAt": "2026-10-11T19:10:12.110Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 41,
+        "method": "GET",
+        "path": "/api/project/writing-log?projectId=PRJ&from=2026-10-11T06%3A00%3A00.000Z&to=2026-10-12T06%3A00%3A00.000Z",
+        "sendT": 1791745812101.598,
+        "sendAt": "2026-10-11T19:10:12.101Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812101.598,
+        "respT": 1791745812110.145,
+        "respAt": "2026-10-11T19:10:12.110Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 42,
+        "method": "POST",
+        "path": "/api/project-resources",
+        "sendT": 1791745812101.609,
+        "sendAt": "2026-10-11T19:10:12.101Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812101.609,
+        "respT": 1791745812111.24,
+        "respAt": "2026-10-11T19:10:12.111Z",
+        "durMs": 10,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 43,
+        "method": "GET",
+        "path": "/api/resource/R1/diagnostics?projectId=PRJ",
+        "sendT": 1791745812101.618,
+        "sendAt": "2026-10-11T19:10:12.101Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812101.618,
+        "respT": 1791745812110.859,
+        "respAt": "2026-10-11T19:10:12.110Z",
+        "durMs": 9,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 44,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745812101.627,
+        "sendAt": "2026-10-11T19:10:12.101Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812101.627,
+        "respT": 1791745812110.008,
+        "respAt": "2026-10-11T19:10:12.110Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 45,
+        "method": "POST",
+        "path": "/api/project/tags",
+        "sendT": 1791745812101.636,
+        "sendAt": "2026-10-11T19:10:12.101Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812101.636,
+        "respT": 1791745812109.397,
+        "respAt": "2026-10-11T19:10:12.109Z",
+        "durMs": 8,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      },
+      {
+        "n": 46,
+        "method": "GET",
+        "path": "/api/resource/revision/R1?projectId=PRJ&revisionId=REV-R1",
+        "sendT": 1791745812112.261,
+        "sendAt": "2026-10-11T19:10:12.112Z",
+        "releaseT": null,
+        "effectiveSendT": 1791745812112.261,
+        "respT": 1791745812125.733,
+        "respAt": "2026-10-11T19:10:12.125Z",
+        "durMs": 13,
+        "status": 200,
+        "fields": {
+          "updatedAt": null,
+          "snapshotCreated": null,
+          "writingLog": null
+        }
+      }
+    ],
+    "labelsRegistered": [
+      {
+        "label": "PRJ",
+        "idLength": 36
+      },
+      {
+        "label": "PRJ-MANIFEST-ID",
+        "idLength": 36
+      },
+      {
+        "label": "R1",
+        "idLength": 36
+      },
+      {
+        "label": "REV-R1",
+        "idLength": 36
+      }
+    ],
+    "pageReloadMarks": {
+      "A": [
+        {
+          "name": "page.reload",
+          "t": 1791745810107.9705,
+          "at": "2026-10-11T19:10:10.107Z"
+        }
+      ],
+      "B": [
+        {
+          "name": "page.reload",
+          "t": 1791745811123.7598,
+          "at": "2026-10-11T19:10:11.123Z"
+        }
+      ]
+    },
+    "visibilityEvents": {
+      "A": [
+        {
+          "t": 1791745767479,
+          "state": "hidden",
+          "at": "2026-10-11T19:09:27.479Z",
+          "msAfterReloadMark": null
+        },
+        {
+          "t": 1791745810122,
+          "state": "hidden",
+          "at": "2026-10-11T19:10:10.122Z",
+          "msAfterReloadMark": 14
+        },
+        {
+          "t": 1791745810173,
+          "state": "hidden",
+          "at": "2026-10-11T19:10:10.173Z",
+          "msAfterReloadMark": 65
+        }
+      ],
+      "B": [
+        {
+          "t": 1791745768546,
+          "state": "hidden",
+          "at": "2026-10-11T19:09:28.546Z",
+          "msAfterReloadMark": null
+        },
+        {
+          "t": 1791745811130,
+          "state": "hidden",
+          "at": "2026-10-11T19:10:11.130Z",
+          "msAfterReloadMark": 6
+        },
+        {
+          "t": 1791745811172,
+          "state": "hidden",
+          "at": "2026-10-11T19:10:11.172Z",
+          "msAfterReloadMark": 48
+        }
+      ]
+    },
+    "timelineSummary": {
+      "stepGapsMs": [
+        {
+          "step": 1,
+          "who": "B",
+          "role": "saver",
+          "msSinceLastSaveAckWhenTypingStarted": null
+        },
+        {
+          "step": 2,
+          "who": "A",
+          "role": "stale",
+          "msSinceLastSaveAckWhenTypingStarted": 5016
+        }
+      ]
+    },
+    "teardown": {
+      "errors": [],
+      "browserPidsRecorded": 5,
+      "browserPidsAliveAfterClose": [],
+      "browserPidsAliveAfterTerm": [],
+      "server": {
+        "recorded": [
+          {
+            "pid": 68147,
+            "comm": "next-server (v16.2.6)"
+          }
+        ],
+        "stillAliveAfterTerm": [],
+        "stillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": []
+      },
+      "listeners7340After": [],
+      "listeners3000After": [],
+      "cleanup": {
+        "removed": true,
+        "path": "/private/tmp/getwrite-two-client/s3ir1-mv475zio-aa46e3"
+      }
+    }
+  }
+}

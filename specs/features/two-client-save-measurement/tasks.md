@@ -59,7 +59,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 3
 **Notes:** Satisfies FR-12, FR-5, FR-6, FR-7, FR-20, FR-33 (d), (e), (f). Main checkout, outside the sandbox. The point of the long variant is to reach the large-deletion backup condition; the record states whether it was reached and does not claim the threshold beyond what ran.
 **POS:** task_6aca3394
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Scenario S4, idle then resume
 **What:** Run S4 with a scripted 60 s idle three times and one scripted 10-minute idle: A sits idle while B edits and saves, A is touched without typing, then A types one character.
