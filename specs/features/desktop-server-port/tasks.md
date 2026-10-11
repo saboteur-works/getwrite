@@ -110,7 +110,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 8
 **Notes:** Satisfies FR-11 (b), (c), (d), FR-10. Estimate raised from 5 to 8 by the owner at the Task 7 stop (the server-side addition and the load ordering). Do not change `classify-request.ts` or `gate.ts` classification rules. Measured motivation (Task 3): the window header reached a foreign listener on every poll, a foreign 200 page was loaded into the window and received the desktop bridge, and polling continued after the child exited. The packaged server child was not measured in Task 3; Task 19 covers it.
 **POS:** task_18291efb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Before forking, check that nothing listens on the port on any address; refuse to start with a plain message naming the port (tests first)
 **What:** Confirmed scope (a) of FR-11 (Owner decision at the Task 7 stop, 2026-10-10): before forking the server the app checks that nothing is listening on the port on any address and, if something is, refuses to start the server, shows a plain message naming the port, does not fall back to another port, and never loads a foreign page into the window.

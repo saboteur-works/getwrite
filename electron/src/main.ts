@@ -10,7 +10,6 @@ import {
 import type { IpcMainInvokeEvent, UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
-import http from "http";
 import { randomBytes } from "crypto";
 import { PORT, localOrigin, serverPortEnv } from "./server-config";
 import { isLocalOriginUrl, isTrustedSender } from "./navigation-guard";
@@ -18,7 +17,13 @@ import {
   createWindowSecret,
   installWindowSecret,
 } from "./sharing/window-secret";
-import { waitForServer, type ReadinessGet } from "./sharing/server-readiness";
+import { waitForServer } from "./sharing/server-readiness";
+import { httpReadinessGet } from "./sharing/readiness-http";
+import {
+  READINESS_KEY_ENV,
+  createReadinessKey,
+} from "./sharing/readiness-identity";
+import { createExitSignal, runLaunchSequence } from "./sharing/server-launch";
 import { buildServerBindEnv, resolveSharingMode } from "./sharing/sharing-mode";
 import os from "os";
 import {
@@ -139,20 +144,29 @@ function resolveDirectories() {
   };
 }
 
-/** Node `http` sender for the readiness check (see `server-readiness.ts`). */
-const httpReadinessGet: ReadinessGet = (url, headers, onResponse) => {
-  const request = http.get(url, { headers }, (res) => {
-    res.resume();
-    onResponse(res.statusCode);
-  });
-  return { onError: (callback) => void request.on("error", callback) };
-};
-
 /**
  * Created once per launch. Held here and in the server's env only; never
  * logged and never sent over IPC or exposed through the preload bridge.
  */
 const windowSecret = createWindowSecret(randomBytes);
+
+/**
+ * Created once per launch, separate from the window secret. Handed to the
+ * forked server's env only; the readiness poll proves it by challenge and
+ * never sends it. Never logged and never sent over IPC.
+ */
+const readinessKey = createReadinessKey(randomBytes);
+
+/** Told when the forked server exits, so the readiness wait can stop. */
+const serverExit = createExitSignal();
+
+let windowSecretInstalled = false;
+/** Tags the window's requests to the local origin; called only once the server is confirmed. */
+function ensureWindowSecretInstalled(): void {
+  if (windowSecretInstalled) return;
+  installWindowSecret(session.defaultSession, localOrigin(PORT), windowSecret);
+  windowSecretInstalled = true;
+}
 
 function startServer(
   dirs: ReturnType<typeof resolveDirectories>,
@@ -183,6 +197,7 @@ function startServer(
     // the server's env. HOSTNAME, GETWRITE_BIND and GETWRITE_SHARING come only
     // from buildServerBindEnv.
     GETWRITE_WINDOW_SECRET: windowSecret,
+    [READINESS_KEY_ENV]: readinessKey,
     GETWRITE_SHARING_DIR: app.getPath("userData"),
     ...buildServerBindEnv(mode),
   };
@@ -704,6 +719,7 @@ function createWindow(): BrowserWindow {
 function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
+  let confirmed = false;
 
   const abort = (msg: string) => {
     if (stopped) return;
@@ -725,7 +741,7 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
   });
 
   win.webContents.on("did-fail-load", (_e, code, desc) => {
-    if (stopped) return;
+    if (stopped || !confirmed) return;
     log(`did-fail-load ${code} ${desc} — retrying in 1s`);
     retryTimer = setTimeout(() => {
       if (!stopped && !win.isDestroyed()) {
@@ -734,18 +750,25 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
     }, 1000);
   });
 
-  waitForServer({
-    url: localOrigin(PORT),
-    secret: windowSecret,
-    get: httpReadinessGet,
-  })
-    .then(() => {
+  void runLaunchSequence({
+    confirmServer: () =>
+      waitForServer({
+        origin: localOrigin(PORT),
+        key: readinessKey,
+        get: httpReadinessGet,
+        randomBytes,
+        watchExit: serverExit.watch,
+      }),
+    installWindowSecret: ensureWindowSecretInstalled,
+    loadLocalOrigin: () => {
+      confirmed = true;
       log("server ready");
       if (!stopped && !win.isDestroyed()) {
         win.loadURL(localOrigin(PORT)).catch(() => {});
       }
-    })
-    .catch((err) => abort(`Server failed to start: ${err}`));
+    },
+    showFailure: abort,
+  });
 
   return { abort };
 }
@@ -776,12 +799,6 @@ if (!app.requestSingleInstanceLock()) {
     initLog();
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
-    // Before any window loads: tags the window's requests to the local server.
-    installWindowSecret(
-      session.defaultSession,
-      localOrigin(PORT),
-      windowSecret,
-    );
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
     registerSharingHandlers();
@@ -802,6 +819,7 @@ if (!app.requestSingleInstanceLock()) {
       const message = error instanceof Error ? error.message : String(error);
       log(`FAILED to start: ${message}`);
       currentAbort?.(message);
+      serverExit.fire(null);
       return;
     }
 
@@ -814,6 +832,7 @@ if (!app.requestSingleInstanceLock()) {
     // with the code first; subscribe via the common base so the union typechecks.
     (serverProcess as NodeJS.EventEmitter).on("exit", (code: number | null) => {
       log(`server exited with code ${code}`);
+      serverExit.fire(code);
       if (code !== 0) {
         currentAbort?.(`Server exited unexpectedly (code ${code})`);
       }

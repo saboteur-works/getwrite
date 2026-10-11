@@ -33,7 +33,12 @@ const DEFAULT_SERVER = path.join(
 const STATIC_DIR = path.join(FRONTEND, ".next/static");
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const DUMMY = "dummy";
-const ENUMERATED_EXCEPTIONS = ["GET /pair", "POST /api/sharing/pair"];
+const ENUMERATED_EXCEPTIONS = [
+  "GET /pair",
+  "POST /api/sharing/pair",
+  // Feature 80, Task 9: the desktop readiness identity route.
+  "GET /api/sharing/ready",
+];
 
 const failures = [];
 let checks = 0;

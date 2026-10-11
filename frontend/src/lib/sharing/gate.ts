@@ -39,6 +39,8 @@ import {
 
 const PAIR_PAGE = "/pair";
 const PAIR_ENDPOINT = "/api/sharing/pair";
+/** Feature 80: the desktop main process's identity poll; see `isReadinessException`. */
+const READINESS_ENDPOINT = "/api/sharing/ready";
 const STATIC_PREFIX = "/_next/static/";
 
 /** Shown to a person whose device is refused; the FR-20 working copy, verbatim. */
@@ -69,6 +71,17 @@ export function isStaticAsset(pathname: string): boolean {
 function isPairingException(pathname: string, method: string): boolean {
   if (pathname === PAIR_PAGE) return true;
   return pathname === PAIR_ENDPOINT && method.toUpperCase() === "POST";
+}
+
+/**
+ * The one exception that does not depend on the store. The desktop main
+ * process polls it before it has sent the window secret to anything and holds
+ * no device credential, so it cannot be classified; the route returns only an
+ * HMAC of the caller's own challenge. Exact path, GET only. The Host check has
+ * already run when this is consulted.
+ */
+function isReadinessException(pathname: string, method: string): boolean {
+  return pathname === READINESS_ENDPOINT && method.toUpperCase() === "GET";
 }
 
 async function loadStore(
@@ -230,6 +243,9 @@ export async function runGate(
         : refuseCrossOrigin();
     case "not-confirmed": {
       if (isStaticAsset(pathname)) return forward(request, classification);
+      if (isReadinessException(pathname, request.method)) {
+        return forward(request, classification);
+      }
       const isStoreUsable = classification.reason !== "store-corrupt";
       if (isStoreUsable && isPairingException(pathname, request.method)) {
         return forward(request, classification);

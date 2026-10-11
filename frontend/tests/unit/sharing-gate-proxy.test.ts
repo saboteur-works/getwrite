@@ -432,6 +432,72 @@ describe("corrupt store", () => {
   });
 });
 
+describe("readiness identity route (Feature 80, Task 9)", () => {
+  const READY = "/api/sharing/ready";
+  const CHALLENGE_QUERY = `?challenge=${"ab".repeat(32)}`;
+
+  it("passes GET with no credential, unclassified as not confirmed", async () => {
+    const res = await proxy(req(`${READY}${CHALLENGE_QUERY}`));
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toBe("not-confirmed:no-credential");
+  });
+
+  it("passes GET with a corrupt store (the app must start so the panel can say so)", async () => {
+    await writeFile(path.join(dir, CREDENTIALS_FILE_NAME), "{ not json");
+    const res = await proxy(req(READY));
+    expect(isPassThrough(res)).toBe(true);
+    expect(forwarded(res)).toBe("not-confirmed:store-corrupt");
+  });
+
+  it("refuses every other method and every sub-path or sibling", async () => {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+      expect((await proxy(req(READY, { method }))).status).toBe(401);
+    }
+    for (const p of [`${READY}/x`, `${READY}x`, "/api/sharing/readiness"]) {
+      expect((await proxy(req(p))).status).toBe(401);
+    }
+  });
+
+  it("does not change what other routes get: still refused with and without a wrong window header", async () => {
+    expect((await proxy(req("/api/projects"))).status).toBe(401);
+    const wrong = await proxy(
+      req("/api/projects", { headers: { [WINDOW_HEADER]: "x".repeat(64) } }),
+    );
+    expect(wrong.status).toBe(401);
+  });
+
+  it("applies the Host allowlist first: a foreign Host is refused with the host refusal", async () => {
+    const res = await proxy(
+      new NextRequest(`http://evil.example:3000${READY}`, {
+        headers: { host: "evil.example:3000" },
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(res.headers.get("x-getwrite-gate")).toBe("host-not-allowed");
+  });
+
+  it("is refused when bound beyond loopback with the gate off, except for the window", async () => {
+    vi.stubEnv("GETWRITE_BIND", "0.0.0.0");
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    const res = await proxy(req(READY));
+    expect(res.status).toBe(403);
+    expect(res.headers.get("x-getwrite-gate")).toBe("bind-without-gate");
+  });
+
+  it("passes with sharing off", async () => {
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    expect(isPassThrough(await proxy(req(READY)))).toBe(true);
+  });
+
+  it("the gate does not read the readiness key", async () => {
+    const text = await readFile(
+      path.join(FRONTEND, "src/lib/sharing/gate.ts"),
+      "utf8",
+    );
+    expect(text).not.toMatch(/READINESS_KEY|readiness-proof/);
+  });
+});
+
 describe("forwarded classification header", () => {
   const forgeries = ["confirmed:forged-device", "window", "off"];
 
