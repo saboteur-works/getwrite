@@ -32,3 +32,12 @@ This directory contains Architectural Decision Records (ADRs) for GetWrite.
 18. [Tenant Resolution — Mapping a Request to a Per-User Data Root](./adr-018-tenant-resolution-per-user-data-root.md)
 19. [Object-Store Backend Adapter — Proving the Seam Against a Non-Filesystem Backend](./adr-019-object-store-backend-adapter.md)
 20. [Hybrid Identity — better-auth + PostgreSQL Alongside Filesystem/Object-Store Tenant Content](./adr-020-hybrid-auth-postgres-better-auth.md)
+21. [Native Android via Capacitor + In-Process Model Layer Behind a Build-Time Transport Seam](./adr-021-native-android-via-capacitor-in-process.md)
+
+## 2026-08
+
+22. [End-to-End Encryption via a Storage-Adapter Decorator](./adr-022-end-to-end-encryption-via-storage-adapter-decorator.md)
+
+## 2026-10
+
+23. [Saboteur Port Blocks of Ten; the Desktop Server Uses 7340](./adr-023-saboteur-port-blocks-of-ten.md)

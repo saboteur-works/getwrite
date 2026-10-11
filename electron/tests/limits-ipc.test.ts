@@ -10,6 +10,7 @@ import { createLimitsHandlers } from "../src/sharing/limits-ipc";
 import { LIMITS_FILE_NAME } from "../src/sharing/limits-store";
 import { isTrustedSender } from "../src/navigation-guard";
 import { localOrigin, PORT } from "../src/server-config";
+import { lookalikeOriginUrl } from "./helpers/lookalike-origin";
 
 const ORIGIN = localOrigin(PORT);
 const TRUSTED = { senderFrame: { url: `${ORIGIN}/` } };
@@ -22,7 +23,7 @@ const UNTRUSTED: Record<string, { senderFrame?: { url?: string | null } }> = {
   "credential-embedding url": {
     senderFrame: { url: `http://localhost:${PORT}@evil.example/` },
   },
-  "lookalike port": { senderFrame: { url: `http://localhost:${PORT}1/` } },
+  "lookalike port": { senderFrame: { url: lookalikeOriginUrl(PORT) } },
 };
 
 const FILE = JSON.stringify({
@@ -66,6 +67,24 @@ function buildReal() {
     isTrustedSender: (url) => isTrustedSender(url, ORIGIN),
   });
 }
+
+describe("the lookalike-port sender is a valid origin that differs from the trusted one", () => {
+  it.each([PORT, 1, 41234, 65535])(
+    "for trusted port %i the sender URL parses, shares the hostname and differs in origin",
+    (port) => {
+      const trusted = new URL(localOrigin(port));
+      const sender = new URL(lookalikeOriginUrl(port));
+      expect(sender.origin).not.toBe(trusted.origin);
+      expect(sender.hostname).toBe(trusted.hostname);
+      expect(sender.protocol).toBe(trusted.protocol);
+      expect(sender.port).not.toBe(trusted.port);
+      expect(isTrustedSender(sender.href, localOrigin(port))).toBe(false);
+      expect(isTrustedSender(`${trusted.origin}/`, localOrigin(port))).toBe(
+        true,
+      );
+    },
+  );
+});
 
 describe("untrusted senders", () => {
   for (const [label, event] of Object.entries(UNTRUSTED)) {

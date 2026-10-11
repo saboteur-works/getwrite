@@ -60,10 +60,22 @@ const MIN_ENTRIES = 80;
 const ENUMERATED_EXCEPTIONS: readonly string[] = [
   "GET /pair",
   "POST /api/sharing/pair",
+  // Feature 80, Task 9: the desktop readiness identity route. The main process
+  // polls it before it holds a paired-device credential and before it sends
+  // the window secret, so it cannot be gated. It returns only an HMAC of the
+  // caller's own challenge (see readiness-route.test.ts) and no data.
+  "GET /api/sharing/ready",
+];
+/**
+ * Exceptions that stay reachable when the store is corrupt: they read no store
+ * and the app must still start so the sharing panel can report the corruption.
+ */
+const STORE_INDEPENDENT_EXCEPTIONS: readonly string[] = [
+  "GET /api/sharing/ready",
 ];
 /** Not enumerated from the tree: build output the proxy forwards (Task 6). */
 const STATIC_EXCEPTION = "/_next/static/";
-const EXCEPTION_COUNT = 3;
+const EXCEPTION_COUNT = 4;
 
 interface Entry {
   kind: "route" | "page";
@@ -151,6 +163,8 @@ function proxy(request: NextRequest): Promise<NextResponse> {
 
 const label = (e: { method: string; url: string }): string =>
   `${e.method} ${e.url}`;
+const isExceptionName = (name: string): boolean =>
+  ENUMERATED_EXCEPTIONS.includes(name);
 const isException = (e: Entry): boolean =>
   ENUMERATED_EXCEPTIONS.includes(label(e));
 
@@ -292,6 +306,13 @@ describe("route and page enumeration", () => {
     expect(isException(limits[0])).toBe(false);
   });
 
+  it("enumerates the readiness route by walking, exporting GET only", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const ready = entries.filter((e) => e.url === "/api/sharing/ready");
+    expect(ready.map(label)).toEqual(["GET /api/sharing/ready"]);
+    expect(STORE_INDEPENDENT_EXCEPTIONS.every(isExceptionName)).toBe(true);
+  });
+
   it("counts the documented exceptions", () => {
     expect(ENUMERATED_EXCEPTIONS.length + 1).toBe(EXCEPTION_COUNT);
     expect(STATIC_EXCEPTION).toBe("/_next/static/");
@@ -341,9 +362,13 @@ describe("sharing on: every enumerated URL is refused when unconfirmed", () => {
         );
         if (isException(entry)) {
           exceptionsSeen += 1;
-          // Reachable unless the store is corrupt (then it must refuse too).
+          // Reachable unless the store is corrupt (then it must refuse too),
+          // except an exception that reads no store.
           const isCorruptCase = credentialCase.name === "corrupt store";
-          if (isPassThrough(res) === isCorruptCase) wrong.push(label(entry));
+          const shouldPass =
+            !isCorruptCase ||
+            STORE_INDEPENDENT_EXCEPTIONS.includes(label(entry));
+          if (isPassThrough(res) !== shouldPass) wrong.push(label(entry));
           continue;
         }
         if (!isRefusal(res)) wrong.push(label(entry));

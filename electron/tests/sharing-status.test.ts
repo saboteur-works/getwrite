@@ -45,6 +45,19 @@ describe("buildSharingStatus", () => {
     });
   });
 
+  it("reports the port passed in and builds the addresses from it, with no 3000 or 7340", () => {
+    const s = buildSharingStatus({
+      enabled: true,
+      env: {},
+      interfaces: iface,
+      port: 41234,
+      credentialStore: "ok",
+    });
+    expect(s.port).toBe(41234);
+    expect(s.addresses).toEqual(["http://192.168.1.20:41234"]);
+    expect(JSON.stringify(s)).not.toMatch(/\b(3000|7340)\b/);
+  });
+
   it("gives no addresses when disabled", () => {
     const s = buildSharingStatus({
       enabled: false,

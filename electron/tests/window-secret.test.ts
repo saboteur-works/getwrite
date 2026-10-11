@@ -1,5 +1,6 @@
 /**
- * Per-launch window secret: generation, header attach, readiness check.
+ * Per-launch window secret: generation and header attach. The readiness check
+ * moved to server-readiness.test.ts (Feature 80, Task 9).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -12,10 +13,6 @@ import {
   type BeforeSendHeadersResponse,
   type WindowSecretSession,
 } from "../src/sharing/window-secret";
-import {
-  waitForServer,
-  type ReadinessGet,
-} from "../src/sharing/server-readiness";
 
 const ORIGIN = "http://localhost:3000";
 const SECRET = "s".repeat(64);
@@ -92,6 +89,20 @@ describe("installWindowSecret", () => {
     expect(out.response?.requestHeaders?.[WINDOW_HEADER]).toBe(SECRET);
   });
 
+  it("follows the origin passed in: header on 41234, none on 3000 or 7340", () => {
+    const origin = "http://localhost:41234";
+    const { session, fire } = fakeSession();
+    installWindowSecret(session, origin, SECRET);
+    expect(
+      fire(`${origin}/api/x`, {}).response?.requestHeaders?.[WINDOW_HEADER],
+    ).toBe(SECRET);
+    for (const other of ["http://localhost:3000", "http://localhost:7340"]) {
+      expect(
+        fire(`${other}/api/x`, {}).response?.requestHeaders?.[WINDOW_HEADER],
+      ).toBeUndefined();
+    }
+  });
+
   it("preserves existing headers", () => {
     const { session, fire } = fakeSession();
     installWindowSecret(session, ORIGIN, SECRET);
@@ -134,47 +145,5 @@ describe("installWindowSecret", () => {
     );
     expect(src).not.toMatch(/console\./);
     expect(src).not.toMatch(/\blog\(/);
-  });
-});
-
-describe("waitForServer (readiness check)", () => {
-  it("sends the window header with the request and resolves on a non-5xx", async () => {
-    const seen: Array<{ url: string; headers: Record<string, string> }> = [];
-    const get: ReadinessGet = (url, headers, onResponse) => {
-      seen.push({ url, headers });
-      onResponse(200);
-      return { onError: () => undefined };
-    };
-    await waitForServer({ url: ORIGIN, secret: SECRET, get });
-    expect(seen).toHaveLength(1);
-    expect(seen[0].url).toBe(ORIGIN);
-    expect(seen[0].headers[WINDOW_HEADER]).toBe(SECRET);
-  });
-
-  it("sends the header on every retry", async () => {
-    const seen: Array<Record<string, string>> = [];
-    let n = 0;
-    const get: ReadinessGet = (_url, headers, onResponse) => {
-      seen.push(headers);
-      n += 1;
-      onResponse(n < 3 ? 503 : 200);
-      return { onError: () => undefined };
-    };
-    await waitForServer({ url: ORIGIN, secret: SECRET, get, retryMs: 1 });
-    expect(seen).toHaveLength(3);
-    for (const h of seen) expect(h[WINDOW_HEADER]).toBe(SECRET);
-  });
-
-  it("retries after a connection error and rejects at the deadline", async () => {
-    const get: ReadinessGet = () => ({ onError: (cb) => cb() });
-    await expect(
-      waitForServer({
-        url: ORIGIN,
-        secret: SECRET,
-        get,
-        timeoutMs: 20,
-        retryMs: 5,
-      }),
-    ).rejects.toThrow("Server did not start in time");
   });
 });

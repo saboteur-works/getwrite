@@ -108,6 +108,39 @@ describe("computed at call time", () => {
   });
 });
 
+describe.each([7340, 41234])("with the server port %i", (port) => {
+  const interfaces = {
+    en0: [{ address: "192.168.1.20", family: "IPv4", internal: false }],
+  } as MachineInterfaces;
+  const base = { port, hostname: "box", interfaces };
+
+  it("accepts the LAN address, localhost and 127.0.0.1 on that port only", () => {
+    for (const name of ["192.168.1.20", "localhost", "127.0.0.1"]) {
+      expect(isAllowedHost({ ...base, hostHeader: `${name}:${port}` })).toBe(
+        true,
+      );
+      expect(isAllowedHost({ ...base, hostHeader: `${name}:3000` })).toBe(
+        false,
+      );
+      expect(
+        isAllowedHost({ ...base, hostHeader: `${name}:${port + 1}` }),
+      ).toBe(false);
+      expect(isAllowedHost({ ...base, hostHeader: name })).toBe(false);
+    }
+  });
+
+  it("lists exactly the names on that port", () => {
+    expect(ownHostNames(base).sort()).toEqual(
+      [
+        `127.0.0.1:${port}`,
+        `192.168.1.20:${port}`,
+        `box.local:${port}`,
+        `localhost:${port}`,
+      ].sort(),
+    );
+  });
+});
+
 describe("readOwnMachine", () => {
   it("returns the live interfaces and hostname", () => {
     const machine = readOwnMachine();

@@ -10,15 +10,21 @@ import {
 import type { IpcMainInvokeEvent, UtilityProcess } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
-import http from "http";
 import { randomBytes } from "crypto";
-import { PORT, localOrigin } from "./server-config";
+import { PORT, localOrigin, serverPortEnv } from "./server-config";
 import { isLocalOriginUrl, isTrustedSender } from "./navigation-guard";
 import {
   createWindowSecret,
   installWindowSecret,
 } from "./sharing/window-secret";
-import { waitForServer, type ReadinessGet } from "./sharing/server-readiness";
+import { waitForServer } from "./sharing/server-readiness";
+import { httpReadinessGet } from "./sharing/readiness-http";
+import {
+  READINESS_KEY_ENV,
+  createReadinessKey,
+} from "./sharing/readiness-identity";
+import { createExitSignal, runLaunchSequence } from "./sharing/server-launch";
+import { createPortGuard } from "./port-in-use";
 import { buildServerBindEnv, resolveSharingMode } from "./sharing/sharing-mode";
 import os from "os";
 import {
@@ -139,20 +145,42 @@ function resolveDirectories() {
   };
 }
 
-/** Node `http` sender for the readiness check (see `server-readiness.ts`). */
-const httpReadinessGet: ReadinessGet = (url, headers, onResponse) => {
-  const request = http.get(url, { headers }, (res) => {
-    res.resume();
-    onResponse(res.statusCode);
-  });
-  return { onError: (callback) => void request.on("error", callback) };
-};
-
 /**
  * Created once per launch. Held here and in the server's env only; never
  * logged and never sent over IPC or exposed through the preload bridge.
  */
 const windowSecret = createWindowSecret(randomBytes);
+
+/**
+ * Created once per launch, separate from the window secret. Handed to the
+ * forked server's env only; the readiness poll proves it by challenge and
+ * never sends it. Never logged and never sent over IPC.
+ */
+const readinessKey = createReadinessKey(randomBytes);
+
+/** Told when the forked server exits, so the readiness wait can stop. */
+const serverExit = createExitSignal();
+
+let windowSecretInstalled = false;
+/** Tags the window's requests to the local origin; called only once the server is confirmed. */
+function ensureWindowSecretInstalled(): void {
+  if (windowSecretInstalled) return;
+  installWindowSecret(session.defaultSession, localOrigin(PORT), windowSecret);
+  windowSecretInstalled = true;
+}
+
+// Pre-fork port check and bind-failure recognition (Feature 80, FR-11 a).
+const portGuard = createPortGuard({ port: PORT });
+// The refusal message when the pre-fork check found the port taken; no server
+// is forked then, and no readiness request or window load follows.
+let portRefusal: string | undefined;
+// Lets a child's last output line arrive after its exit event before the stop
+// message is chosen from it (the order of the two was not measured).
+const OUTPUT_SETTLE_MS = 250;
+
+function showServerStop(fallback: string, show: (msg: string) => void): void {
+  setTimeout(() => show(portGuard.stopMessage(fallback)), OUTPUT_SETTLE_MS);
+}
 
 function startServer(
   dirs: ReturnType<typeof resolveDirectories>,
@@ -170,7 +198,7 @@ function startServer(
   }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    PORT: String(PORT),
+    PORT: serverPortEnv(PORT),
     GETWRITE_PROJECTS_DIR: dirs.projectsDir,
     GETWRITE_TEMPLATES_DIR: dirs.templatesDir,
     // Marks this server as the Electron desktop build so the frontend can gate
@@ -183,6 +211,7 @@ function startServer(
     // the server's env. HOSTNAME, GETWRITE_BIND and GETWRITE_SHARING come only
     // from buildServerBindEnv.
     GETWRITE_WINDOW_SECRET: windowSecret,
+    [READINESS_KEY_ENV]: readinessKey,
     GETWRITE_SHARING_DIR: app.getPath("userData"),
     ...buildServerBindEnv(mode),
   };
@@ -704,6 +733,7 @@ function createWindow(): BrowserWindow {
 function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
+  let confirmed = false;
 
   const abort = (msg: string) => {
     if (stopped) return;
@@ -725,7 +755,7 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
   });
 
   win.webContents.on("did-fail-load", (_e, code, desc) => {
-    if (stopped) return;
+    if (stopped || !confirmed) return;
     log(`did-fail-load ${code} ${desc} — retrying in 1s`);
     retryTimer = setTimeout(() => {
       if (!stopped && !win.isDestroyed()) {
@@ -734,18 +764,27 @@ function loadWhenReady(win: BrowserWindow): { abort: (msg: string) => void } {
     }, 1000);
   });
 
-  waitForServer({
-    url: localOrigin(PORT),
-    secret: windowSecret,
-    get: httpReadinessGet,
-  })
-    .then(() => {
+  void runLaunchSequence({
+    confirmServer: () =>
+      waitForServer({
+        origin: localOrigin(PORT),
+        key: readinessKey,
+        get: httpReadinessGet,
+        randomBytes,
+        watchExit: serverExit.watch,
+      }),
+    installWindowSecret: ensureWindowSecretInstalled,
+    loadLocalOrigin: () => {
+      confirmed = true;
       log("server ready");
       if (!stopped && !win.isDestroyed()) {
         win.loadURL(localOrigin(PORT)).catch(() => {});
       }
-    })
-    .catch((err) => abort(`Server failed to start: ${err}`));
+    },
+    portBlocked: () => portRefusal,
+    showFailure: (msg) =>
+      portRefusal ? abort(msg) : showServerStop(msg, abort),
+  });
 
   return { abort };
 }
@@ -772,16 +811,10 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     initLog();
     log(`app ready — isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
-    // Before any window loads: tags the window's requests to the local server.
-    installWindowSecret(
-      session.defaultSession,
-      localOrigin(PORT),
-      windowSecret,
-    );
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
     registerSharingHandlers();
@@ -790,11 +823,22 @@ if (!app.requestSingleInstanceLock()) {
 
     const dirs = resolveDirectories();
 
+    // Nothing may hold the port before the server is forked (FR-11 a). The
+    // check runs before the window's launch sequence starts, so a refused
+    // launch makes no request to whatever holds the port.
+    portRefusal = await portGuard.preflight();
+
     // Open the window first, so anything that fails below has somewhere to say
     // so. Previously `startServer` ran before the window existed, and a throw
     // took the whole callback down with it — leaving a launched app with no
     // window, no dialog, and no indication of what went wrong.
     openMainWindow();
+
+    if (portRefusal) {
+      log("not starting the server: the port check refused the launch");
+      serverExit.fire(null);
+      return;
+    }
 
     try {
       serverProcess = startServer(dirs);
@@ -802,20 +846,28 @@ if (!app.requestSingleInstanceLock()) {
       const message = error instanceof Error ? error.message : String(error);
       log(`FAILED to start: ${message}`);
       currentAbort?.(message);
+      serverExit.fire(null);
       return;
     }
 
-    serverProcess.stdout?.on("data", (d) => log(d.toString().trim()));
-    serverProcess.stderr?.on("data", (d) =>
-      log(`[stderr] ${d.toString().trim()}`),
-    );
+    serverProcess.stdout?.on("data", (d) => {
+      portGuard.observeOutput(d.toString());
+      log(d.toString().trim());
+    });
+    serverProcess.stderr?.on("data", (d) => {
+      portGuard.observeOutput(d.toString());
+      log(`[stderr] ${d.toString().trim()}`);
+    });
 
     // ChildProcess and UtilityProcess both extend EventEmitter and emit "exit"
     // with the code first; subscribe via the common base so the union typechecks.
     (serverProcess as NodeJS.EventEmitter).on("exit", (code: number | null) => {
       log(`server exited with code ${code}`);
+      serverExit.fire(code);
       if (code !== 0) {
-        currentAbort?.(`Server exited unexpectedly (code ${code})`);
+        showServerStop(`Server exited unexpectedly (code ${code})`, (msg) =>
+          currentAbort?.(msg),
+        );
       }
     });
   });

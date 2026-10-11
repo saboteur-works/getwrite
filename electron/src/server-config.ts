@@ -8,7 +8,16 @@
  */
 
 /** The port the embedded Next.js server listens on. */
-export const PORT = 3000;
+export const PORT = 7340;
+
+/**
+ * The value of the forked server's `PORT` env for a port. Kept as a pure
+ * function so the one place `main.ts` hands the port to the server is tested
+ * with a port other than the constant.
+ */
+export function serverPortEnv(port: number): string {
+  return String(port);
+}
 
 /**
  * The loopback address. `main.ts` does not read this: the server's bind
