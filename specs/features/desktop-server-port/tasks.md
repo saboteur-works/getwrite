@@ -60,7 +60,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 5
 **Notes:** Satisfies FR-12 (run), part of FR-5(c), and the evidence for OQ-2. Main checkout, outside the sandbox. `pnpm dev` writes nowhere outside the repo's `projects/` only if started in the copied tree; use the copied tree for every command here and say so.
 **POS:** task_28437125
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Experiment (agent): does a paired device stay paired when the same host is reached on another port (cookie scope, in a real browser)
 **What:** Measure in a real browser against a built server with a throwaway sharing directory whether a device paired at one port is treated as paired at another port on the same host with the same credential store.

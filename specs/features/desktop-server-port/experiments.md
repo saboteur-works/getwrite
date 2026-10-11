@@ -2010,3 +2010,94 @@ The size of Task 9 (readiness accepts only the forked server) is set by items 1,
 - A native dialog or other user-visible message besides the `data:` page was not searched for (only the window list and the log were checked).
 - Node 20 or 22; only v24.15.0.
 - The discarded first set of runs is not recorded beyond the one note in Method.
+
+## Dev commands and coexistence
+
+**Which port: 3000.** The constant in `electron/src/server-config.ts` has not changed yet, so every Electron run here uses 3000, the port the unchanged code uses. Valid for the mechanisms; says nothing about 7340.
+
+Task 4. Date 2026-10-10. Main checkout, branch `feat/desktop-server-port`, `git rev-parse --short HEAD` = `3e1249ee`, tree clean before (the only addition is this section and `scripts/dev-ports.mjs`). Node v24.15.0. Electron 34.5.8 (`electron/node_modules/electron`), Next.js 16.2.6 (Turbopack) as printed by `next dev`. Script: `specs/features/desktop-server-port/scripts/dev-ports.mjs`.
+
+### Method
+
+- **Outside the command sandbox** (`dangerouslyDisableSandbox: true`) for every run: `ps`, `lsof`, Electron, Playwright `_electron` and `next dev` need it. No run was tried inside the sandbox, so this section does not show whether any of it would work there.
+- **Pre-check:** `lsof -nP -iTCP:3000 -sTCP:LISTEN` printed nothing (exit 1) before every run, and the script refuses to run otherwise. Runs were one at a time; after each, 3000 had no listener. Final check after the last run: 3000 free, no process whose command line mentions the throwaway folder name, no throwaway folder under `os.tmpdir()`, no `gw-devports*` folder under `~/Library/Logs`.
+- **Listening port per command:** `lsof -nP -iTCP -sTCP:LISTEN -a -p <pid>` for every pid in the recorded set. The set is the pid the script started plus its descendants found by parent-pid recursion (`ps -A -o pid=,ppid=,comm=`) every 500 ms while alive; the listening socket is held by a descendant, as expected, so the full recorded set is listed with each result. Only recorded pids were signalled (SIGTERM; no run needed SIGKILL), never by port, and a recorded pid was signalled only if `ps` still showed the same command name for it.
+- **Copied tree for every command.** A throwaway fake repo root under `os.tmpdir()`: a copy of `electron/dist` and `electron/package.json` (with a throwaway `name`, `productName` removed, so `app.getPath("logs")` is a throwaway `~/Library/Logs/gw-devports-throwaway-…` folder and not the owner's `~/Library/Logs/getwrite-electron`; the script asserted `app.getPath("logs")` equals that folder in every Electron run), a copy of the root `package.json` and `pnpm-workspace.yaml`, symlinks to the real `frontend/` and `getwrite-config/`, and an empty `projects/`. Every non-Electron command also had `GETWRITE_PROJECTS_DIR` set to a throwaway folder. For `pnpm dev` the working directory was the fake tree's `frontend/` (a symlink to the real `frontend/`; `.next/` is therefore the real, gitignored one); for `pnpm start` it was the fake root (and once the real repo root, see below); the Electron runs used the fake tree's `projects/` (dev mode takes `isPackaged === false` to mean `<repo root>/projects`, and that root was the fake one). This is "the development code path in a copied tree"; the difference from the repo tree itself was not measured, except that `pnpm start` was also run once from the real repo root with `GETWRITE_PROJECTS_DIR` throwaway.
+- **Repo `projects/` untouched, measured:** the script prints a snapshot of the repo's `projects/` (entry count to depth 3, a SHA-1 prefix of the entry NAMES, directory mtime; no content read) before and after each run. Every run printed identical before and after: `entries(depth<=3)=703 sha1(names)=e70c2de84411 dir-mtime=2026-10-08T17:57:24.427Z`.
+- **Not `pnpm electron:dev` itself.** `pnpm electron:dev` runs `tsc && pnpm run build:worker && electron dist/main.js` in `electron/`. The script ran the Electron binary directly on `<fake>/electron` (so it runs the copied `dist/main.js`) with Playwright's `_electron.launch`. `tsc` and `build:worker` were not re-run; `electron/dist` was last built by Task 3 and the commits since touch only `specs/`. That is an inference from the commit log, not a comparison of `dist` against a fresh build.
+- Env for every run: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `GETWRITE_ENABLE_DEV_IDENTITY`, `GETWRITE_BIND`, `HOSTNAME`, `GETWRITE_SHARING`, `GETWRITE_WINDOW_SECRET`, `GETWRITE_SHARING_DIR`, `GETWRITE_PROJECTS_DIR` (except as stated), `ELECTRON_RUN_AS_NODE` and `PORT` removed (except as stated). Sharing was left at its default (off) throughout. `~/Library/Application Support/getwrite-electron/` and `~/Library/Logs/getwrite-electron` were not read, listed or written. No cookie, window-secret value, credential or pairing code was printed or stored; window text excerpts were cut to 120 characters.
+
+### Scripts read (and not run)
+
+| File | What it assumes | Status |
+| --- | --- | --- |
+| `package.json` (root), lines 7, 8, 10 | `start` and `dev` both `pnpm --filter getwrite-frontend dev`; `electron:dev` is `pnpm --filter getwrite-electron dev` | read |
+| `frontend/package.json` lines 6, 9 | `dev` is `next dev`; `start` is `next start`; neither passes a port argument | read |
+| `electron/package.json` line 17 | `dev` is `tsc && pnpm run build:worker && electron dist/main.js` | read |
+| `electron/src/main.ts` lines 224 to 228 | non-packaged `startServer` spawns `pnpm dev` in `<repo root>/frontend` with the env that carries `PORT` | read; its effect on the port is what the Electron run below measured |
+| `cli/src/qa/server.ts` lines 15 to 19 | picks a free port itself (bind to port 0, read it back, close) and passes it as `PORT`, "which `next dev` honors" | read, not run (the `PORT` run below is this task's own run of the same claim) |
+| `demo/README.md` line 17 | "Dev server running on :3000 (`pnpm start` from repo root). The Playwright config will start one if absent." | read, not run |
+| `demo/seed.mjs` lines 3 and 15 | drives `http://localhost:3000`; `GW_BASE` overrides the base URL (default `http://localhost:3000`) | read, not run |
+| `demo/playwright.demo.config.ts` lines 4, 16, 25, 28 | `baseURL` and `webServer.url` are `http://localhost:3000`; `webServer.command` is `pnpm --filter getwrite-frontend dev` with `reuseExistingServer: true` | read, not run |
+
+### Results: the port each command LISTENS on
+
+All four non-Electron runs used the same throwaway-projects setup and ended with 3000 free and the repo `projects/` snapshot unchanged. `HOSTNAME` was unset (the Electron run is the one that sets it, via the app).
+
+| Command (cwd) | Started pid | Recorded set (pid ppid comm) | LISTEN row | Port | `next dev` output |
+| --- | --- | --- | --- | --- | --- |
+| `pnpm dev` (fake tree `frontend/`) | 65330 | 65330 sh; 65350 node; 65387 node; 65393 `next-server (v16.2.6)` | pid 65393 | `*:3000` | `Local: http://localhost:3000`, `Network: http://10.0.0.226:3000`, `Ready in 133ms` |
+| `pnpm start` (fake root) | 66191 | 66191 sh; 66211 node; 66248 sh; 66252 node; 66274 node; 66328 `next-server` | pid 66328 | `*:3000` | the same; first lines `getwrite@2.2.0 start …` then `pnpm --filter getwrite-frontend dev` then `next dev` |
+| `pnpm start` (real repo root, `GETWRITE_PROJECTS_DIR` throwaway) | 67951 | 67951 sh; 67971 node; 68008 sh; 68012 node; 68034 node; 68040 `next-server` | pid 68040 | `*:3000` | the same |
+| `pnpm dev` with `PORT=55885` (a free port the script picked with a bind to port 0; fake tree `frontend/`) | 67145 | 67145 sh; 67165 node; 67202 node; 67208 `next-server` | pid 67208 | `*:55885`; nothing on 3000 at that moment | `Local: http://localhost:55885`, `Network: http://10.0.0.226:55885` |
+
+Measured: `pnpm dev` and `pnpm start` listen on 3000 with no `PORT` set; `next dev` listens on the port in `PORT` when it is set and on nothing else (3000 had no listener while the `PORT=55885` run was up). In each case the listening socket is held by the `next-server` process, four or five levels below the pid the script started, and the wildcard address `*` was bound.
+
+| Command | Started pid | Recorded set | LISTEN rows |
+| --- | --- | --- | --- |
+| `pnpm electron:dev` equivalent (real Electron, `isPackaged` false, fake tree, no `PORT`) | 68885 (Electron main) | 68885 Electron; 68934 Electron Helper (GPU); 68935 Electron Helper; 68936 sh; 68940 node; 68959 node; 68965 `next-server (v16.2.6)`; 68982 Electron Helper (Renderer) | pid 68965: `*:3000`. pid 68885 (Electron main) also had two LISTEN rows, `127.0.0.1:55913` and `127.0.0.1:55915`. |
+
+Measured for the Electron run: `app.isPackaged` was `false`; the window's URL was `http://localhost:3000/`, title "GetWrite", not loading; the app's own log has `Spawning dev server in: <fake>/frontend`, `Local: http://localhost:3000`, `server ready`, and then `GET / 200` and `GET /api/…` lines. The only listener on 3000 was the `next-server` in the recorded set (pid 68965). The two `127.0.0.1` ports on the Electron main process are not the app's server port; what opened them was not discriminated. A launch through Playwright is a candidate (an inspector or debugging socket), and an Electron started without Playwright and inspected with the same `lsof` command would settle it; that was not run. After `app.close()` three recorded processes were still alive (68940 node, 68959 node, 68965 `next-server`) and were stopped by those recorded pids; this matches the earlier note that dev-mode Electron leaves its server running after the window closes, here observed through `app.close()` rather than a user closing the window.
+
+Disposition facts for the `electron:dev` path, read together with the run: `startServer` sets `PORT: String(PORT)` in the child's env (Task 3 read this); the run shows the dev server then listened on 3000, the value of `PORT`. A run with a different value of the constant has not been made (the constant has not changed); the statement that `electron:dev` follows the constant rests on the read of `main.ts` plus the `PORT` result above, not on a run with a changed constant.
+
+### Coexistence: how the single-instance lock is keyed
+
+- **Read:** `electron/src/main.ts` lines 764 to 778: `if (!app.requestSingleInstanceLock()) { app.quit(); } else { app.on("second-instance", …) }`, called with no `additionalData`. The comment above it says a second launch "would collide on the fixed server port". The bundled Electron 34.5.8 type documentation (`electron/node_modules/electron/electron.d.ts`, `requestSingleInstanceLock`) says the call returns `false` when another instance of the application already holds the lock, and that on macOS the system's own single-instance handling applies only to launches from Finder; it does not say what the lock is keyed by. I did not find it stated anywhere I read. The claim in the task text that Electron keys the lock by `userData` path is therefore NOT supported by what I read; the runs below are the only evidence.
+- **Run, two instances with two DIFFERENT throwaway `--user-data-dir` values** (script: `node dev-ports.mjs two pw`). Both instances started from the same fake tree (same `package.json` `name`, same projects folder, same log folder), differing only in `--user-data-dir`.
+  - Instance 1 (pid 70433): `hasSingleInstanceLock()` was `true`; window `http://localhost:3000/`, title "GetWrite"; the only listener on 3000 was pid 70513 (`next-server`, in instance 1's recorded set).
+  - Instance 2 (launched through Playwright `_electron.launch`, pid 70567): **did not quit.** The launch succeeded and the process was still running after 40 s. Its window showed a `data:` page with the text "Server exited unexpectedly (code 1) Log: …/getw…" (cut to 120 characters). It had Electron Helper (GPU), Helper and Helper (Renderer) children (70568, 70569, 70687) and no `next-server` of its own; the only listener on 3000 after the run was still pid 70513, instance 1's.
+  - The log file is shared by both instances (same app `name`), so its lines carry no instance label. Reading the 37 lines written after instance 2 started, in time order, with the attribution INFERRED from their order and not labelled in the log: a second `app ready — isPackaged: false`, `Spawning dev server in: <fake>/frontend`, `> next dev`, then `server ready` at 04:02:01.746Z, then `[stderr] ⨯ Failed to start server`, `Error: listen EADDRINUSE: address already in use :::3000` (`code: 'EADDRINUSE'`, `errno: -48`, `syscall: 'listen'`). The `server ready` line preceded the `EADDRINUSE` line by about 380 ms; Task 3 recorded the same ordering (readiness resolved on the listener that already held the port, then the forked child exited with code 1). The exit code of instance 2's forked server is "code 1" by the window text.
+  - Instance 1's window afterwards was unchanged (still `http://localhost:3000/`, "GetWrite"). Neither instance's window count was more than 1.
+- **Control, the SAME `--user-data-dir` for both** (script: `node dev-ports.mjs two plain same`; instance 2 started by a plain spawn so its exit status could be read): instance 2 exited at **190 ms with code 0**, signal none. Instance 1's window and server were unchanged; the only listener on 3000 remained instance 1's `next-server`. No new log line from a second app start appeared after instance 2 started (the 6 new lines were all instance 1's `GET` requests). (The script's label for the second launch in that run says "different folder"; that line is a script wording slip, the line before it says the folder was the same.)
+- **Measured, stated narrowly:** in dev mode, on Electron 34.5.8 on macOS, with the same app `name` in `package.json`, the second instance quit when it shared the first one's `--user-data-dir` and did not quit when it used a different one. In the different-folder case the second app's own server failed to bind 3000 (exit code 1) and the window showed the "Server exited unexpectedly" page.
+- **Hypothesis (c), stated as a hypothesis:** whether a dev app and a packaged app can run at once depends on how Electron keys its single-instance lock. What these two runs show is that, in dev mode with an unchanged `name`, the key distinguishes at least the `--user-data-dir` value. They do not show what else is in the key (for example the app name, the executable path or the bundle). Whether a packaged build and a dev build, each with its default `userData`, can run at once is NOT established. Reading only: `electron/package.json` has `"name": "getwrite-electron"` and `electron/electron-builder.yml` has `productName: GetWrite`; the owner's memory notes say the desktop `userData` is `~/Library/Application Support/getwrite-electron/` (that folder was not looked at). Which default `userData` path a dev run and a packaged run each get was not measured. Experiment that would settle it: start the dev-mode app (copied tree, throwaway `--user-data-dir`) and an unpacked packaged build (throwaway `--user-data-dir`) together and record whether the second quits; and, to see whether the executable or the name matters when `--user-data-dir` is the same, start the packaged build with the dev run's `--user-data-dir`.
+- **Whatever the lock does, both would want 3000 today.** Measured: with two dev-mode instances alive, the second's server could not bind 3000 (above). That is the 3000 collision for two dev-mode apps; for a dev app and a packaged app it is the same constant read by both, but it was not run.
+
+### What this means for Task 7's question (facts only)
+
+- `pnpm dev`, `pnpm start` and `next dev` take their port from `PORT` when it is set and otherwise listen on 3000. The Electron dev path sets `PORT` from the constant, and the dev server then listened on 3000.
+- Two dev-mode app instances with different `--user-data-dir` values both start; the second's server fails to bind the shared port. With the same `--user-data-dir` the second quits.
+- The packaged-plus-dev case was not run.
+
+### Optional packaged coexistence run: not run
+
+An unpacked build exists at `dist-electron/mac-arm64/GetWrite.app` (modified 2026-10-10 19:41, before this branch's Task 1 build). Its bundled `BUILD_ID` is `8OTBrMRg8WFeB9d9y6BWG`; `frontend/.next/BUILD_ID` from Task 1's build (2026-10-10 21:35) is `Lt_IMCR4ikE_OHjrz5Gl8`. They differ, so the existing build is not from the current frontend build. I did not run it: it is a stale build, and a packaged app's `app.getPath("logs")` would not be the throwaway folder (dev mode could be redirected by renaming the copied `package.json`; I did not find or test an equivalent for a packaged app, and the unrenamed path is not the repo's), so a run risked appending to a log outside the throwaway folders. Rebuilding with `electron-builder --dir` into a throwaway output directory was not attempted.
+
+### Not run / not established
+
+- A dev-mode app and a packaged app together (either order), and the packaged app's default `userData` name versus the dev run's: not run.
+- A packaged app alone on 3000: not run in this task (Task 19 repeats on 7340).
+- `pnpm electron:dev` as written (`tsc`, `build:worker`, then `electron dist/main.js`): not run; the Electron binary was started directly on the copied `dist`.
+- What opened `127.0.0.1:55913` and `127.0.0.1:55915` on the Electron main process: not discriminated.
+- What the lock is keyed by beyond the `--user-data-dir` value (app name, executable, bundle): not established; the 2-run pair changed only `--user-data-dir`.
+- Whether the lock behaves the same on Windows or Linux: not run.
+- `pnpm electron:dev` with a changed port constant: not run (the constant has not changed).
+- The demo scripts (`demo/seed.mjs`, `demo/playwright.demo.config.ts`, `demo/README.md`) and the QA harness (`cli/src/qa/server.ts`): read, not run.
+- Behaviour with `HOSTNAME=127.0.0.1` or with sharing on for the plain `next dev` commands: not run here (Task 3 recorded that dev-mode `next dev` ignored `HOSTNAME=127.0.0.1`).
+- Node 20: not run.
+- Instance 2's `hasSingleInstanceLock()` value in the different-folder run: not read.
+
+### Cleanup
+
+Pids started and recorded: `pnpm dev` run 65330 with 4 descendants; `pnpm start` (fake root) 66191 with 6; `pnpm start` (real root) 67951 with 6; `PORT` run 67145 with 4; Electron run 68885 with its helpers and `next dev` chain; two-instance run 70433 and 70567 with their children; same-folder run 73999 and 74131 with their children. Each run's script signalled only the recorded pids that were still alive with the same command name (SIGTERM; each time "none alive" afterwards). 3000 was free after every run, throwaway folders under `os.tmpdir()` and the throwaway log folders under `~/Library/Logs` were removed (the script prints `throwaway root removed: true; throwaway log folder removed: true` for each). `git status --short` afterwards: see the task report.
