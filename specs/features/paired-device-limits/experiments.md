@@ -1111,3 +1111,17 @@ Date 2026-10-10. Reported by the owner, not observed by the pipeline: unpacked b
 - Steps 1 to 6, 8 and 9: owner's words, "The other steps seem to work." No per-step detail was given.
 - Step 7 (creating the workspace passphrase from the phone is refused): NOT done. The owner's workspace already has a passphrase, so creation could not be attempted. The only coverage of step 7 is scripted: Task 26 (built server) and Task 27 steps A1 to A4 (Playwright Chromium, throwaway workspace with no passphrase).
 - No observation was reported about the phone's open editor when the desktop locks the workspace.
+
+## Dark-mode text colour in dialogs
+
+Date 2026-10-10. Run by the pipeline lead. Owner report during the manual check: "there was some black text in dark mode" (the screen was not named). Standalone server from a build of `ad25f1bd`, sharing off, throwaway projects folder, loopback port 3988; Playwright Chromium outside the sandbox; the theme class on `<html>` was set by the script (`gw-theme-light`, then `gw-theme-dark`), and a `<p>` appended directly to `<body>` (where Radix dialogs are portaled) was read with `getComputedStyle`.
+
+| Theme | `<p>` with no class, in `<body>` | `text-gw-secondary` | `text-gw-primary` | `bg-gw-chrome` background |
+| --- | --- | --- | --- | --- |
+| light | rgb(0, 0, 0) | rgb(99, 97, 96) | rgb(10, 10, 10) | rgb(245, 244, 240) |
+| dark | rgb(0, 0, 0) | rgb(136, 134, 128) | rgb(245, 244, 240) | rgb(17, 17, 16) |
+
+- Measured: text with no colour class placed directly under `<body>` is black in both themes; on the dark chrome background that is black on near-black.
+- Read, not measured in the rendered dialogs: before `ad25f1bd` the three warning lines in the "Turn off Limit unlocking?" dialog and the "The project was not deleted. …" line had no colour class and sit inside `ConfirmDialog` details, which is portaled to `<body>`; `ad25f1bd` gives them `text-gw-secondary`. The actual dialogs were not opened in a dark window in this measurement, and which element the owner saw was not established.
+- Not changed: `ConfirmDialog`'s details wrapper and `DialogContent` set no text colour themselves, so details text of other callers that carries no colour class would get the same black (callers not audited). The limit switches are native checkboxes with `role="switch"`; how they look in dark mode was not checked.
+- The throwaway server was stopped by the pid `lsof` showed on port 3988 after checking its command; the owner's app on port 3000 was not signalled.
