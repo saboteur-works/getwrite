@@ -2336,3 +2336,26 @@ Processes: the app pid (Electron main) and its recorded descendants (the dev ser
 Not verified / not run: pairing through the page's own fields (blocked, above); a second physical device; pairing from the packaged app; pairing in a production-built page at 7340 with Chromium (Task 15 covered the built server with the gate; the browser flow on the built server was not run here); sharing turned on through the settings toggle and a restart; the Feature 77 defect on a Safari/WebKit or Firefox engine; whether the same dev-mode page also fails to pair on port 3000 on the base commit (not run; so whether this is related to the port change is unknown, and the only observation is that it occurs on 7340 in dev mode).
 
 Task 16 not ticked.
+
+## Unpacked build
+
+Date 2026-10-10. Task 18. Recorded by the implementing agent. Tip `72e834c2` (clean tree at start). `node --version` `v24.15.0`. All build commands ran OUTSIDE the command sandbox; the pre-checks and read-only checks ran inside it. Logs of the three commands: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t18-{build,worker,pack}.log`.
+
+Order note: Task 18 was run BEFORE Task 17, and Task 16 is to be re-run on this build. This is a reorder approved by the lead; the dependency lines in `tasks.md` were not edited.
+
+Pre-check (23:49 MDT): `lsof -nP -iTCP:7340 -sTCP:LISTEN` and the same for 3000 printed nothing: no listener on either. The build starts nothing long-running.
+
+Frontend build REUSED, not rebuilt (the lead verified no change under `frontend/app|src|components` or `electron/src` since it was made). Confirmed: `frontend/.next/BUILD_ID` = `AiPwFqEOMOtFfGilBzM2s`; `frontend/.next/standalone/frontend/.next/static` and `frontend/.next/static` identical (`diff -rq` no difference). `electron/dist/server-config.js` contains `PORT = 7340`.
+
+Commands (cwd `electron/`) and exit statuses, each read directly from `$?` with output in a log file:
+- `pnpm build` (tsc): exit 0.
+- `pnpm build:worker` (esbuild): exit 0 (the docx worker bundle printed a size warning marker, 2.0mb).
+- `pnpm exec electron-builder --config electron-builder.yml --dir`: exit 0. electron-builder 25.1.8, electron 34.5.8, `platform=darwin arch=arm64`. This is the unpacked-directory option; `pnpm electron:package` itself was not used because it does not pass `--dir`.
+
+Output: `/Users/jedaisaboteur/Repositories/getwrite/dist-electron/mac-arm64/GetWrite.app` (the `directories.output` in `electron-builder.yml` is `../dist-electron`, ignored by `.gitignore`). Size `du -sh` 367M. Only arm64 was packaged (the `--dir` run printed one packaging line, arch=arm64).
+- Bundled BUILD_ID: `GetWrite.app/Contents/Resources/frontend/.next/standalone/frontend/.next/BUILD_ID` = `AiPwFqEOMOtFfGilBzM2s`, equal to `frontend/.next/BUILD_ID`. The bundled `.../standalone/frontend/.next/static` contains `chunks` and `media`.
+- Signing, as printed: "skipped macOS application code signing  reason=cannot find valid "Developer ID Application" identity ..." (one identity found, "localhost", `CSSMERR_TP_CERT_EXPIRED`, 0 valid). `codesign -dv` on the app: `Signature=adhoc`, linker-signed. No notarization step was printed. No installer produced by this run: no `.dmg` was written (the newest `.dmg` in `dist-electron/` is dated 2026-10-08 from earlier release builds; 6 pre-existing `.dmg` files there, untouched). A pre-existing `dist-electron/mac/` directory (2026-10-08) also remains, untouched.
+
+`git status --short` after the build: empty (no tracked change, no untracked file).
+
+Not verified / not run: that the packaged app launches; the packaged app's `app.getPath("logs")` location; the override mechanism for `~/Documents/GetWrite` (Task 19 reads `electron/src/projects-dir.ts` for that, not examined here, so no blocker is recorded or ruled out); an x64 build; the frontend build was reused, not rebuilt, in this task.

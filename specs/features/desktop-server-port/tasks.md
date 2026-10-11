@@ -200,7 +200,7 @@ Shape of the work: measure first (baselines, the grep inventory, port-in-use tod
 **Estimate:** 3
 **Notes:** Main checkout only (builds fail in git worktrees here), outside the command sandbox. Packaging may take long. Remember the packaged build resolves projects to `~/Documents/GetWrite` unless overridden: Task 19 must override with a throwaway projects folder or start the app only with an override mechanism read from `electron/src/projects-dir.ts`; if no override exists that keeps it away from `~/Documents/GetWrite`, record that as a blocker for Task 19 rather than risk the owner's real folder.
 **POS:** task_d145a897
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Verification (agent): the unpacked build on 7340
 **What:** Run the unpacked build with throwaway folders and repeat Task 17's checks against it.
