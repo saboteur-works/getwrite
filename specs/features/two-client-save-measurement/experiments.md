@@ -7738,3 +7738,24 @@ Task 11. 2026-10-12. The owner was shown the per-scenario verdicts, FR-66's prer
 4. **The `GET /api/projects` observation** (several projects on one server): filed as a note for separate tracking, at the owner's say.
 
 The lead's view given to the owner, labelled as a view and not a finding: the `content.bin` mix is a separate save-path defect; a later statement should say what was measured (a device with an older copy replaces newer text when it saves, with no warning).
+
+## Review of the scripts after the runs
+
+2026-10-12. The owner ran a code review of the branch at the last gate; it returned ten findings, all in the measurement scripts. The lead checked which of them touch a recorded number, using read-only passes over `results/` (no server, browser or app started). **No script was changed**: the committed results rest on the scripts as committed.
+
+### Checked against the recorded data
+
+1. **The writing-log "none" label in S2 (review finding 1; this record's "Differences" item 2).** Recounted from the 30 summary files: **39** repetitions carry no matching candidate, not 38: G0-P2-BA 14, G0-P3-AB 5, G0-P3-BA 19 **and G5-P2-BA 1** (the earlier figure left the last one out). In **39 of 39** the two logged entries are `+1/-0` and `+41/-0`, which is the "both diffed against the base" pair. `s2-near-simultaneous.mjs` builds that candidate in A-then-B order and compares it by position with the entries in timestamp order (read, and now run against the data). So the "none" label in these 39 is the script's ordering, and they belong with "both diffed against the base". This is the experiment named in "Differences" item 2, run over the summaries' entry counts. No verdict or finding count other than the 38 changes.
+2. **A successful save whose response could not be parsed would be dropped from the order evidence (finding 4).** Searched every repetition file (634) for a 200 answer to a content `PATCH` without a parsed `updatedAt`: none among the request records (1283 saves, all with `updatedAt`). The only four hits are S4's compact request listing, which never carries the field. It did not happen in these runs.
+3. **Page-side timestamps use the wall clock and the harness uses a monotonic clock, which would diverge after a machine sleep (finding 2).** `sleepAffected` is false in 600 of 600 S2 repetitions and the recorded heartbeats show no gap above 1.6 s in any measurement run (the 18-hour clock gap is in the final suites, after the measurements). Not triggered in these runs; a re-run on a machine that sleeps would be affected.
+4. **S4's "no recoverable copy" test treats an unreadable store as "no copy" and does not look in `content.tiptap.json` (finding 6).** In all 4 S4 runs the verdict is PASS, which requires `content.bin` to parse and `content.tiptap.json` to hold exactly A's document, so neither gap applied.
+5. **S1 (finding 7).** The field `patchesBeforeTypingInThisStep` cannot detect an untyped save made before the step (its baseline count is taken after it), and step 1's "right after save" comparison was computed from the 5 s snapshot. Finding (b) for S1 does not rest on that field: it rests on the count of content saves (9, three per repetition) and each one's delay after its client's last key. Step 1's "right after" reading in the S1 section is therefore a 5 s reading; steps 2 and 3 are unaffected (read, not re-run).
+
+### Harness limits that did not affect a recorded number (not fixed)
+
+- Summary files store each repetition's path as an absolute path on this machine, so `s2-findings.mjs` and `s2-summary.mjs --rows` only work from this checkout location (finding 5).
+- `s2-run-all.mjs`'s stop handler does not stop the plan loop, and `s2-near-simultaneous.mjs`'s exits without writing a summary for completed repetitions (findings 3, 8). The 30-variant run was not interrupted.
+- The main-module guard in `s2-near-simultaneous.mjs` fails silently under a path with a space or a symlink (finding 9). Not the case here: all 600 repetitions ran.
+- Helpers are duplicated across the scenario scripts instead of shared from `lib/` (finding 10).
+
+These should be fixed before the scripts are re-run as a baseline for later sync work.
