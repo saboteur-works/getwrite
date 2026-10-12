@@ -1,0 +1,19 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "attrs": {
+        "id": "994982a3-aace-4285-8f71-d41ba1aafab4",
+        "textAlign": null,
+        "paragraphLeading": "1.5"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "BASE alpha bravo charlie P2 D3"
+        }
+      ]
+    }
+  ]
+}

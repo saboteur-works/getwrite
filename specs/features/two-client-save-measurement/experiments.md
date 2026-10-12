@@ -7681,3 +7681,60 @@ That is 19 files, matching 66 + 19 = 85. Besides those 19 and the changed count 
 5. Storybook tree already gone when killed; cause unestablished.
 
 No suite failed. No count in any suite differs from the baseline except item 1.
+
+## Phone step, reported by the owner
+
+Task 10. Date 2026-10-12. Run by the lead and the owner. **ONE run; stability is not assessable.** One phone (Pixel 7 Pro), one browser (Chrome 154.0.8037.127, the owner's report), one network; Wi-Fi stayed connected (the owner's report). The pipeline did not watch either screen: every item under "Reported by the owner" rests on the owner's report alone. The phone's clock is not assumed to match the host's; the run is ordered by the owner's report and the server timestamps only. The pairing code was never seen or recorded.
+
+### How the app was started (lead)
+
+- Listeners checked first: 7340 none, 3000 none.
+- The unpacked build `dist-electron/mac-arm64/GetWrite.app` (the Feature 80 build; this branch changes no product code), started by the lead with `--user-data-dir=<throwaway>/userdata` and a seeded `workspace.json` `{ sharingEnabled: true, projectsDir: <throwaway>/projects }`, the throwaway root under the session scratch folder. Main pid 82656; server pid 82662 listening on `*:7340`.
+- **Deviation from the task text: no mechanism kept the app off its real log folder.** Feature 80 measured that this build's log folder does not follow the settings folder, so the app appended its own lines to the owner's real log folder during this run (disclosed to the owner before the run). That folder was not read, listed or written by the lead.
+- **Not verified directly:** the server process's environment could not be read from outside (`ps eww` printed none of the variables). That the app used the throwaway projects folder was checked instead by listing it after the owner created the project: one project folder with one resource appeared there, and `device-credentials.json` and `pairing-state.json` appeared in the throwaway settings folder (names only; neither file was read).
+- The owner paired the phone to this throwaway instance (so the phone needs pairing with the owner's real app again) and created one project with one resource "Phone test" holding `BASE alpha bravo charlie`.
+
+### Reported by the owner
+
+The owner did not give clock times, and did not report in the fixed form for every item; what was said is given as said.
+
+1. Both devices showed `BASE alpha bravo charlie`.
+2. Typing D1 on the desktop triggered an autosave there; no change was seen on the phone.
+3. "Phone saved P1, desktop still shows D1, no messages, the footer has all changes saved." After reloading, the text was `BASE alpha bravo charlie P1` on both devices. The desktop remained at D1 until the reload.
+4. The phone still showed P1 after 5 minutes (real duration not reported; backgrounded, by the step-6 report). The owner typed P2; "similar result as last time, both devices show what was last typed into them with expected footers until reload when desktop caught back up to the phone entry".
+5. On return the phone's footer said saved and the phone showed `BASE alpha bravo charlie P3`. The desktop had `BASE alpha bravo charlie P2`, to which the owner appended D3 "after waiting". After the reload the text read `BASE alpha bravo charlie P2 D3`.
+6. Pixel 7 Pro; Chrome 154.0.8037.127; Wi-Fi stayed connected; Chrome was backgrounded. Nothing else was reported as looking wrong.
+
+**Deviation by the owner (owner's report):** in steps 2 to 4 the owner REPLACED the previous marker with the new one instead of appending; in step 5 the desktop's D3 was appended and the phone's P3 replaced P2. So the documents were, by the owner's report: `... D1` (desktop, step 2), `... P1` (phone, step 3), `... D2` then `... P2` (step 4, final `BASE alpha bravo charlie P2`), `... P3` (phone) and `... P2 D3` (desktop) in step 5.
+
+### Read from disk by the lead, after the report and with the owner's say
+
+Only the throwaway project was read. A copy is in `results/phone-step/project/`.
+
+- Canonical revision `v-1/content.bin` (211 bytes, parseable), `content.tiptap.json` and `content.txt` all hold one paragraph `BASE alpha bravo charlie P2 D3`. Sidecar `wordCount` 6, `updatedAt` `2026-10-12T19:18:34.154Z`. The four files' modification times are all 13:18:34 local. **Against the definition: PASS for this one run** (all four stores hold the whole document of the last save, and the owner reports both devices showing it after the reload).
+- Revisions: only `v-1` ("Initial Draft"). No backup revision. No `.trash` folder.
+- Writing log, `meta/writing-log/2026-10-12.json`, nine entries (added/deleted, UTC time): 4/0 18:58:22; 1/0 19:00:15; 1/1 19:01:18; 1/1 19:03:29; 1/1 19:14:52; 1/1 19:14:55; 1/1 19:15:10; 1/1 19:17:34; 2/1 19:18:34.
+- **Step 5, from the counts:** the 19:17:34 entry (1 added, 1 deleted) is what the word-bag rule gives for `... P2` replaced by `... P3`, and the 19:18:34 entry (2 added, 1 deleted) is what it gives for `... P3` replaced by `... P2 D3`; a desktop save over `... P2` would have given 1 added, 0 deleted. So the counts are consistent with the phone's P3 save having been processed about 60 s before the desktop's save replaced it. The log holds counts, not text; this is an inference from the counts, and which device sent which save is from the owner's report, not from the log.
+- **Not accounted for:** three entries within 18 s (19:14:52, 19:14:55, 19:15:10), each 1 added and 1 deleted, where the owner's step 4 names one save (P2). Cause not established. A request log of this run would settle it; none was kept.
+- No replaced text (D1, P1, D2, P3) is in any store read.
+
+### What this run shows and does not
+
+- In kind it agrees with the scripted S1, S3 and S4 observations: the later save's whole document is stored, the other device's text is gone with no message reported, and an open page did not change until reloaded, including after about five minutes in the background on the phone.
+- It is not a near-simultaneous run (the closest two saves the steps name were about 60 s apart), so it says nothing about the S2 result.
+- Not done: the fixed report form per step (verbatim footers, clock times), the real duration of the background periods, the phone locked rather than backgrounded, any other phone, browser or network.
+
+### Stop and clean-up (lead)
+
+Main pid 82656 stopped by pid after its command name was checked; its four child pids (82658, 82659, 82662, 82723) were gone 6 s later; no listener on 7340. The throwaway settings and projects folders were removed (removal confirmed).
+
+## Owner decisions at the stop
+
+Task 11. 2026-10-12. The owner was shown the per-scenario verdicts, FR-66's prerequisite statement (FAIL), findings (a) to (g), the separate S2 observations, the not-run list, the final suites and the phone result.
+
+1. **What follows:** "Keep as recorded for now." The carried default stands: sharing ships without the "last save wins" statement and the gap is recorded. Feature 79's sentence is not written. No save-path change and no changed promise is started by this run. The owner added that "the goal is to eventually get better sync".
+2. **Held scenarios (S6, S7, S8, S10) and the cut S9:** left to the lead ("If you think they're valuable"). Lead's call: not run now. They are recorded as inputs for the later sync work, where the questions they should answer will be set by that feature's own spec; the harness and scripts stay in this folder and can be re-run.
+3. **A pinning test:** left to the lead ("If you think it's valuable as a baseline"). Lead's call: not written. The behaviour it would pin is the behaviour the sync work is meant to change, and the scripted scenarios here are the re-runnable baseline.
+4. **The `GET /api/projects` observation** (several projects on one server): filed as a note for separate tracking, at the owner's say.
+
+The lead's view given to the owner, labelled as a view and not a finding: the `content.bin` mix is a separate save-path defect; a later statement should say what was measured (a device with an older copy replaces newer text when it saves, with no warning).

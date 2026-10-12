@@ -1,0 +1,43 @@
+{
+  "id": "aa2ca180-4683-4d84-bd0d-3c04d1490494",
+  "name": "New Test",
+  "slug": "new-test",
+  "createdAt": "2026-10-12T18:57:52.297Z",
+  "projectType": "blank",
+  "rootPath": "/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/phone-step/projects/d0e70420-7c64-4b1e-a74c-48811b34e8d3",
+  "config": {
+    "maxRevisions": 50,
+    "statuses": [],
+    "customNoiseWords": [],
+    "excludedGlobalNoiseWords": [],
+    "autoPrune": true,
+    "editorConfig": {
+      "headings": {
+        "h1": {
+          "fontSize": "40px",
+          "fontFamily": "IBM Plex Serif",
+          "fontWeight": "700",
+          "letterSpacing": "0.01em"
+        },
+        "h2": {
+          "fontSize": "28px",
+          "fontFamily": "IBM Plex Serif",
+          "fontWeight": "700"
+        },
+        "h3": {
+          "fontSize": "20px",
+          "fontFamily": "IBM Plex Serif",
+          "fontWeight": "500"
+        }
+      },
+      "body": {
+        "fontFamily": "IBM Plex Serif",
+        "fontSize": "15px",
+        "lineHeight": "1.8",
+        "paragraphSpacing": "16px"
+      }
+    },
+    "metadataRevision": 11,
+    "features": {}
+  }
+}

@@ -119,7 +119,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 3
 **Notes:** NOT executable by an implementor. Satisfies FR-26, FR-27, FR-24, FR-25. The orchestrator leaves it unticked until the owner has acted and does not treat that as a failure. What the phone adds beyond the scripts: a real second device and mobile browser, real tab suspension and resume (step 5), real network timing, a real mobile editor's input events. It is not a stand-in for other phones, browsers or networks. If a build is not already available, building it is the lead's step and is outside this list.
 **POS:** task_97bd328a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: STOP for the owner: present the verdict, the findings and the phone result; the owner decides what follows
 **What:** The lead presents the scripted verdict, the findings and the phone result to the owner and stops; the owner decides what follows.
@@ -129,7 +129,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 1
 **Notes:** NOT executable by an implementor. Satisfies FR-31, FR-32. The orchestrator does not tick it itself and does not treat it as a failure while it is unticked. A FAIL of the prerequisite is not a decision; the owner decides. The lead presents only what the records support and does not recommend an outcome beyond what the spec allows.
 **POS:** task_b6032c38
-**Done:** [ ]
+**Done:** [x]
 
 ## FR to task coverage
 
