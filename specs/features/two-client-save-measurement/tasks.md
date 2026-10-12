@@ -109,7 +109,7 @@ Shape of the work: baselines on the unedited tree and one fresh build; one share
 **Estimate:** 3
 **Notes:** Satisfies FR-30, FR-28. Main checkout, one task at a time, build/e2e/smoke outside the sandbox, unit suites, knip and git inside. Records and does not fix.
 **POS:** task_803ff67c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Owner phone step: the six-step procedure on the real app with the owner's Android phone
 **What:** The owner runs the six-step phone procedure on a throwaway project in the real desktop app (the unpacked build the lead starts) with the Android phone in Chrome as the second device, and reports in the fixed form.
