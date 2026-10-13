@@ -33,20 +33,16 @@
  *   node s4-idle-resume.mjs <d60|d600> [repetitions]
  */
 import { BASE_TEXT, MARKERS, createFixtureProject, createFixtureResource } from "./lib/fixture.mjs";
-import { labelDocs, savesFrom } from "./lib/clients.mjs";
 import { createRecord } from "./lib/record.mjs";
-import { openSession, searchFor, settleAndRead } from "./lib/session.mjs";
+import { openSession } from "./lib/session.mjs";
 import {
-  compareLog,
   describeClassification,
-  determineLastProcessed,
-  expectedLogEntries,
-  logEntriesSince,
   plainOfContent,
   verdict,
 } from "./lib/stores.mjs";
 import { RESULTS_DIR, errLine, hostNow, isoOf, normalizeWs, sha256, sleep } from "./lib/util.mjs";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { allSaves, compactState, readServerState, snapEditors } from "./lib/shared.mjs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const say = (s) => console.log(s);
@@ -63,111 +59,6 @@ const VARIANTS = {
 
 const tokensOf = (text) => (text ? text.trim().split(/\s+/).filter(Boolean) : []);
 const clipList = (arr, n = 6) => (arr.length > n ? `${arr.slice(0, n).join(" ")} ...(+${arr.length - n})` : arr.join(" "));
-
-const snapEditors = async (A, B) => ({
-  at: isoOf(hostNow()),
-  A: { text: await A.editorText(), footer: await A.footer() },
-  B: { text: await B.editorText(), footer: await B.footer() },
-});
-
-function allDocs(ctx) {
-  const a = labelDocs(ctx.A);
-  const b = labelDocs(ctx.B);
-  return { docs: { base: ctx.resource.baseContent, ...a.docs, ...b.docs }, byNA: a.byN, byNB: b.byN };
-}
-function allSaves(ctx) {
-  const { byNA, byNB } = allDocs(ctx);
-  return [...savesFrom(ctx.A, (n) => byNA[n]), ...savesFrom(ctx.B, (n) => byNB[n])];
-}
-
-/** Names (relative paths, ids replaced by labels) under a directory; "absent" if it does not exist. */
-function namesUnder(dir, labels, cap = 200) {
-  if (!existsSync(dir)) return "absent";
-  const out = [];
-  const walk = (d) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const full = path.join(d, e.name);
-      out.push(labels.apply(path.relative(dir, full)) + (e.isDirectory() ? "/" : ""));
-      if (e.isDirectory() && out.length < cap) walk(full);
-    }
-  };
-  walk(dir);
-  return out.sort().slice(0, cap);
-}
-const trashNames = (ctx) => ({
-  projectTrash: namesUnder(path.join(ctx.resource.projectPath, ".trash"), ctx.session.labels),
-  projectsFolderTrash: namesUnder(path.join(ctx.session.server.projectsDir, ".trash"), ctx.session.labels),
-  note: "names only, ids replaced by labels; 'absent' means the directory does not exist",
-});
-
-/** Word-bag tokens added and deleted between two plain texts (port of word-diff.ts, read, not run). */
-function wordDelta(before, after) {
-  const toks = (t) => (t && t.trim() ? t.trim().split(/\s+/).filter((x) => /\w/.test(x)) : []);
-  const bag = (arr) => {
-    const m = new Map();
-    for (const t of arr) m.set(t, (m.get(t) ?? 0) + 1);
-    return m;
-  };
-  const b = bag(toks(before));
-  const a = bag(toks(after));
-  const diff = (x, y) => {
-    const out = [];
-    for (const [t, c] of x) for (let i = 0; i < Math.max(0, c - (y.get(t) ?? 0)); i += 1) out.push(t);
-    return out;
-  };
-  return { addedTokens: diff(a, b), deletedTokens: diff(b, a) };
-}
-
-async function readServerState(ctx, sinceMs, tokens) {
-  const { docs } = allDocs(ctx);
-  const st = await settleAndRead({ session: ctx.session, resource: ctx.resource, docs });
-  const saves = allSaves(ctx);
-  const last = determineLastProcessed(saves);
-  const processed = [...saves].sort((x, y) => Date.parse(x.updatedAt) - Date.parse(y.updatedAt));
-  const order = processed.map((s) => s.docLabel);
-  const expected = expectedLogEntries(ctx.resource.baseContent, order.map((l) => docs[l]));
-  const logSince = logEntriesSince(st.snapshot, sinceMs);
-  const cmp = compareLog(logSince, expected);
-  let prev = plainOfContent(ctx.resource.baseContent) ?? "";
-  const logTokens = order.map((l) => {
-    const cur = plainOfContent(docs[l]) ?? "";
-    const d = wordDelta(prev, cur);
-    prev = cur;
-    return { save: l, addedCount: d.addedTokens.length, deletedCount: d.deletedTokens.length, addedTokens: d.addedTokens, deletedTokens: d.deletedTokens };
-  });
-  const search = await searchFor(ctx.session, ctx.resource, tokens);
-  const stepVerdict = verdict({ classification: st.classification, last, docs, requireReload: false });
-  const heldPlain = st.classification.storesAgree && st.classification.heldLabels.length ? plainOfContent(docs[st.classification.heldLabels[0]]) : null;
-  return { st, saves, last, order, expected, logSince, cmp, logTokens, search, stepVerdict, heldPlain, docs, trash: trashNames(ctx) };
-}
-
-const compactState = (r) => ({
-  quiet: r.st.quiet,
-  classification: describeClassification(r.st.classification),
-  allFourAgree: r.st.classification.storesAgree,
-  heldLabels: r.st.classification.heldLabels,
-  canonicalCount: r.st.classification.canonicalCount,
-  revisions: r.st.summary.revisions,
-  otherRevisionDirEntries: r.st.summary.otherRevisionEntries,
-  revisionContents: r.st.classification.revisionContents,
-  sidecar: r.st.summary.sidecar,
-  wordCountMatchesDocs: r.st.classification.sidecar.wordCountMatchesDocs,
-  expectedWordCounts: r.st.classification.expectedWordCounts,
-  contentTiptapJson: r.st.summary.contentTiptapJson,
-  contentTxt: r.st.summary.contentTxt,
-  lastProcessed: r.last.determined ? { docLabel: r.last.docLabel, updatedAt: r.last.updatedAt } : { determined: false, reason: r.last.reason },
-  evidence: r.last.evidence,
-  writingLogActual: r.cmp.actual,
-  writingLogEntryTimestamps: r.logSince.map((e) => e.timestamp),
-  writingLogExpected: r.expected,
-  writingLogMatchesExpected: r.cmp.match,
-  writingLogTokensByProcessedSave: r.logTokens,
-  search: r.search,
-  trash: r.trash,
-  mentionIndex: { filePresent: r.st.summary.mentionsFilePresent, recordsForResource: r.st.summary.mentionRecords },
-  diagnosticsIndex: { filePresent: r.st.summary.diagnosticsFilePresent, recordForResource: r.st.summary.diagnosticsRecord },
-  stepStateVerdict_informational: r.stepVerdict,
-});
 
 /** A log of EVERY request and WebSocket of a page (any URL), with host-clock event times. */
 function attachAllRequestLog(page, labels) {

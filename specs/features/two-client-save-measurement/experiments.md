@@ -7759,3 +7759,33 @@ The lead's view given to the owner, labelled as a view and not a finding: the `c
 - Helpers are duplicated across the scenario scripts instead of shared from `lib/` (finding 10).
 
 These should be fixed before the scripts are re-run as a baseline for later sync work.
+
+### Scripts changed after the runs (2026-10-13)
+
+At the owner's request ("do the robustness items") the four harness limits listed above were fixed. **Every result under `results/` was produced by the scripts as at commit `069fe36c`**; the changes below are in the commit that carries this section and were made after all runs. Nothing under `results/` was changed, and no measurement, server, browser or app was started for this work. The other five review findings (1, 2, 4, 6, 7, checked against the data above) are not fixed in the scripts.
+
+What changed, all under `scripts/`:
+
+- **Repetition paths (finding 5).** `s2-summary.mjs --rows` and `s2-findings.mjs` now look a repetition file up by its file name under `results/s2` first (`resolveRepFile` in `lib/util.mjs`), and a file that is not found is named on stderr instead of read as absent. `s2-near-simultaneous.mjs` now stores the path relative to `results/` in new summaries. The 30 committed summaries still hold absolute paths and are read through the lookup.
+- **Stop handling (findings 3, 8).** `s2-run-all.mjs` starts no further variant after SIGTERM or SIGINT and exits 143 without writing "ALL DONE". `s2-near-simultaneous.mjs` no longer exits at once on a stop: it finishes the repetition in progress (at most 45 s), runs its teardown and writes the summary with `aborted` set and the repetitions not run listed, then exits 130; a second signal or the 45 s limit falls back to the old immediate close.
+- **Main-module guard (finding 9).** `isMainModule` in `lib/util.mjs` compares real paths as file URLs.
+- **Shared helpers (finding 10).** Copies that were the same in logic moved to `lib/shared.mjs` (`wordDelta`, `snapEditors`, `notificationsSince`, `allDocs`, `allSaves`, `namesUnder`, `trashNames`, `readServerState`, `compactState`, `pairLogEntries`); `PLAIN_OF_PAIRING` added to `lib/fixture.mjs`; `assertNoForbiddenKeys` exported from `lib/record.mjs`. Copies that differ between scripts were left where they are (for example `notificationsSince`, `namesUnder` and `allSaves` in S2, `readServerState` and `compactState` in S1, `compactState` in S5).
+
+What was run (lead, 2026-10-13, read-only over `results/`):
+
+- `s2-summary.mjs`, `s2-summary.mjs --rows` and `s2-findings.mjs` run from an export of the scripts at `7fb2996b` and from the changed scripts, against the same `results/`: output byte-identical for all three (155049, 23187 and 18005 bytes; stderr empty in all six runs).
+- `self-check.mjs` on the changed scripts: 14 cases, 0 mismatches, "SELF-CHECK OK".
+- `node --check` on every script: clean. Every name imported from `lib/` by a script exists as an export of that module (checked by script).
+
+What the implementor reports having run (not re-run by the lead):
+
+- The path lookup from a copy in another folder with the stored paths rewritten to a foreign absolute path: rows for the files present were identical to the real checkout's, and missing files were named.
+- The driver's stop, against a stub child that sleeps (not the real harness): after SIGTERM the progress file read "STOPPED by SIGTERM: not started: V2 V3" and the driver had exited.
+- The guard through a symlink in a folder with a space in its name, using `--list` only: the old code printed nothing, the new code printed the variant list.
+- A lint pass for undefined names: the same three findings before and after, none new.
+
+**Read, not run:**
+
+- The new stop path in `s2-near-simultaneous.mjs` (it needs a real server and browser run to be interrupted).
+- The moved helpers inside S1, S3, S4 and S5: those scripts were not run again, and `self-check.mjs` does not call `trashNames`, `readServerState` or `compactState`. That the moved copies were the same in logic rests on the implementor's whitespace-normalised comparison and on reading. The first re-run of each scenario script is the check.
+- A stop that arrives during the driver's last variant now writes "STOPPED … during the last variant" instead of "ALL DONE" (a three-line change by the lead after the implementor's hand-back).

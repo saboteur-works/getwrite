@@ -9,8 +9,8 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { RESULTS_DIR } from "./lib/util.mjs";
-import { WORD40 } from "./lib/fixture.mjs";
+import { RESULTS_DIR, resolveRepFile } from "./lib/util.mjs";
+import { PLAIN_OF_PAIRING } from "./lib/fixture.mjs";
 
 const dir = path.join(RESULTS_DIR, "s2");
 const files = readdirSync(dir).filter((f) => f.startsWith("summary-") && f.endsWith(".json")).sort();
@@ -131,8 +131,7 @@ for (const v of variants) {
   for (const r of notDone) nonClean.push({ variant: v.variant, n: r.n, verdict: "NOT COMPLETED", error: r.error });
 }
 
-const BASE = "BASE alpha bravo charlie";
-const plainOf = { P1: { A: `${BASE} A1`, B: `${BASE} B1` }, P2: { A: `${BASE} A1`, B: `${BASE} B2LONG ${WORD40.join(" ")}` }, P3: { A: `${BASE} A2LONG ${WORD40.join(" ")}`, B: `${BASE} B1` } };
+const plainOf = PLAIN_OF_PAIRING;
 const normT = (t) => String(t).replace(/\s+/g, " ").trim();
 const showsText = (text, pairing) => {
   const t = normT(text);
@@ -153,12 +152,19 @@ if (process.argv.includes("--rows")) {
   const which = process.argv.find((a) => a.startsWith("--variant="))?.slice(10);
   console.log("| variant | rep | first released | release gap ms | release A / B (mm:ss.SSS) | updatedAt A / B | response arrival A / B | arrival gap ms | content.bin | content.tiptap.json | content.txt | content.bin detail | sidecar wordCount matches | sidecar updatedAt = response of | verdict | log (added/deleted) | editors after reload show A / B | file |");
   console.log("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+  const missingRepFiles = [];
   for (const r of allReps.filter(nonCleanRep).filter((x) => !which || x.variant === which)) {
     const o = r.order;
     let detail = "";
     let reloadShows = "n/a";
+    const repFile = resolveRepFile(r.file);
+    if (!repFile) {
+      missingRepFiles.push(r.file ? path.basename(r.file) : `(no file named, ${r.variant} rep ${r.n})`);
+      console.error(`s2-summary: repetition file not found: ${missingRepFiles.at(-1)} (${r.variant} rep ${r.n})`);
+    }
     try {
-      const rep = JSON.parse(readFileSync(r.file, "utf8"));
+      if (!repFile) throw new Error("repetition file not found");
+      const rep = JSON.parse(readFileSync(repFile, "utf8"));
       const d = rep.outcomes[1].storeDiffsIfNone;
       detail = Object.entries(d).map(([k, x]) => `${k.replace("content.", "")}: ${x.status}, ${x.bytes} bytes${x.mix ? `, ${x.mix}` : ""}`).join("; ");
       const ed = rep.outcomes[2].afterReload.editors;
@@ -169,6 +175,7 @@ if (process.argv.includes("--rows")) {
     const verdictText = r.verdict + (r.verdict === "PASS" ? "" : r.verdict === "UNSTABLE" ? " (updatedAt tie)" : ` (${(r.disagreed ?? []).join("+") || r.reasons?.[0]})`);
     console.log(`| ${r.variant} | ${r.n} | ${o.firstReleased} | ${o.releaseGapMs_secondMinusFirst} | ${tt(o.releaseAt.A)} / ${tt(o.releaseAt.B)} | ${tt(o.updatedAt.A)} / ${tt(o.updatedAt.B)} | ${tt(o.responseArrivalAt.A)} / ${tt(o.responseArrivalAt.B)} | ${o.arrivalGapMs_secondMinusFirst} | ${r.stores.contentBin} | ${r.stores.contentTiptapJson} | ${r.stores.contentTxt} | ${detail} | ${r.stores.sidecarWordCountMatches.join("/") || "none"} | ${r.stores.sidecarUpdatedAtEqualsResponseOf.join("/") || "none"} | ${verdictText} | ${r.log.entries.map((e) => `${e.added}/${e.deleted}`).join(", ")} | ${reloadShows} | ${r.file ? path.basename(r.file) : ""} |`);
   }
+  if (missingRepFiles.length) console.error(`s2-summary: ${missingRepFiles.length} repetition file(s) not found, rows above marked "(file not read)"`);
   process.exit(0);
 }
 

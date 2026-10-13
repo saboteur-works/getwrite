@@ -36,6 +36,13 @@ export const WORD40 = [
   "gable", "harvest", "ivory", "jasper", "knoll", "lagoon", "mantle", "nimbus",
 ];
 
+/** The plain text each client's typing leaves, per pairing (P1 to P3 of s2-near-simultaneous.mjs). */
+export const PLAIN_OF_PAIRING = {
+  P1: { A: `${BASE_TEXT} A1`, B: `${BASE_TEXT} B1` },
+  P2: { A: `${BASE_TEXT} A1`, B: `${BASE_TEXT} B2LONG ${WORD40.join(" ")}` },
+  P3: { A: `${BASE_TEXT} A2LONG ${WORD40.join(" ")}`, B: `${BASE_TEXT} B1` },
+};
+
 /** ` A2LONG harbor lantern ...` (prefix is "A2LONG" or "B2LONG"). */
 export function longAddition(prefix) {
   return ` ${prefix} ${WORD40.join(" ")}`;

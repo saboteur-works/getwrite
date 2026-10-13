@@ -42,7 +42,8 @@ import {
   verdict,
 } from "./lib/stores.mjs";
 import { RESULTS_DIR, errLine, hostNow, isoOf, normalizeWs, sha256, sleep } from "./lib/util.mjs";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { namesUnder, notificationsSince, pairLogEntries, snapEditors } from "./lib/shared.mjs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const say = (s) => console.log(s);
@@ -124,20 +125,6 @@ const filesOf = (map, resLabel) =>
     .map(([p, v]) => ({ path: p, bytes: v.bytes, sha256: v.sha256 }))
     .sort((a, b) => a.path.localeCompare(b.path));
 
-function namesUnder(dir, labels, cap = 200) {
-  if (!existsSync(dir)) return "absent";
-  const out = [];
-  const walk = (d) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const full = path.join(d, e.name);
-      out.push(labels.apply(path.relative(dir, full)) + (e.isDirectory() ? "/" : ""));
-      if (e.isDirectory() && out.length < cap) walk(full);
-    }
-  };
-  walk(dir);
-  return out.sort().slice(0, cap);
-}
-
 // ---------------------------------------------------------------------------
 // Reading the two resources
 // ---------------------------------------------------------------------------
@@ -192,12 +179,6 @@ const compactState = (r) => ({
 // Helpers copied in shape from s1-in-turn.mjs
 // ---------------------------------------------------------------------------
 
-const snapEditors = async (A, B) => ({
-  at: isoOf(hostNow()),
-  A: { text: await A.editorText(), footer: await A.footer() },
-  B: { text: await B.editorText(), footer: await B.footer() },
-});
-
 function patchAnalysis(client, typings) {
   const marks = client.marks();
   return client.requests
@@ -222,40 +203,6 @@ function patchAnalysis(client, typings) {
     });
 }
 
-async function notificationsSince(client, sinceT) {
-  const marks = client.marks();
-  const rel = (t) => {
-    const prior = marks.filter((m) => m.t <= t).at(-1);
-    return { msAfterSince: Math.round(t - sinceT), msAfterReloadMark: prior ? Math.round(t - prior.t) : null };
-  };
-  const surfaces = (await client.surfaces(sinceT)).map((s) => ({ role: s.role, text: s.text, ...rel(s.t) }));
-  const consoleMsgs = client.consoleMsgs.filter((m) => m.t >= sinceT).map((m) => ({ type: m.type, text: m.text, ...rel(m.t) }));
-  const pageErrors = client.pageErrors.filter((m) => m.t >= sinceT).map((m) => ({ text: m.text, ...rel(m.t) }));
-  const dialogs = client.dialogs.filter((m) => m.t >= sinceT).map((m) => ({ type: m.type, message: m.message, ...rel(m.t) }));
-  const failed = client.failedRequests
-    .map((f) => ({ f, req: client.requests.find((r) => r.n === f.n) }))
-    .filter(({ req }) => req && req.sendT >= sinceT)
-    .map(({ f, req }) => ({ method: f.method, path: client.log().find((l) => l.n === f.n)?.path, error: f.error, ...rel(req.sendT) }));
-  const nonOk = client.requests
-    .filter((r) => r.sendT >= sinceT && r.ok === false)
-    .map((r) => ({ method: r.method, path: client.log().find((l) => l.n === r.n)?.path, status: r.status, body: r.errorBody, ...rel(r.sendT) }));
-  const toastSignals = client.requests
-    .filter((r) => r.method === "PATCH" && r.fields && r.respT >= sinceT)
-    .map((r) => ({ n: r.n, snapshotCreated: r.fields.snapshotCreated, writingLog: r.fields.writingLog }));
-  return {
-    sinceAt: isoOf(sinceT),
-    surfacesChecked: "role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags",
-    surfaces,
-    console: consoleMsgs,
-    pageErrors,
-    dialogs,
-    failedRequests: failed,
-    nonOkResponses: nonOk,
-    patchResponseSignals: toastSignals,
-    reloadMarks: marks.map((m) => ({ name: m.name, at: isoOf(m.t), msAfterSince: Math.round(m.t - sinceT) })),
-  };
-}
-
 /** Achieved gap between the two content saves, from the logged times (host clock, Playwright event times). */
 function achievedGaps(A, B) {
   const pa = A.requests.find((r) => r.method === "PATCH" && r.doc);
@@ -277,21 +224,6 @@ function achievedGaps(A, B) {
     statuses: { A: pa.status, B: pb.status },
     note: "effective send = release time for a held request (the harness continued it), else the page's request event; Playwright event times, not wire times",
   };
-}
-
-/** Pair each save with the writing-log entry nearest below its updatedAt (arithmetic only). */
-function pairLogEntries(entries, saves) {
-  const used = new Set();
-  return [...saves]
-    .sort((x, y) => Date.parse(x.updatedAt) - Date.parse(y.updatedAt))
-    .map((s) => {
-      const cand = entries
-        .map((e, i) => ({ e, i, d: Date.parse(s.updatedAt) - Date.parse(e.timestamp) }))
-        .filter((x) => x.d >= 0 && !used.has(x.i))
-        .sort((x, y) => x.d - y.d)[0];
-      if (cand) used.add(cand.i);
-      return { save: s.docLabel, updatedAt: s.updatedAt, entryTimestamp: cand?.e.timestamp ?? null, entryMinusUpdatedAtMs: cand ? -cand.d : null };
-    });
 }
 
 // ---------------------------------------------------------------------------

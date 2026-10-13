@@ -25,7 +25,6 @@
  *   node s1-in-turn.mjs [repetitions=3]
  */
 import { BASE_TEXT, MARKERS, createFixtureProject, createFixtureResource } from "./lib/fixture.mjs";
-import { labelDocs, savesFrom } from "./lib/clients.mjs";
 import { createRecord } from "./lib/record.mjs";
 import { openSession, searchFor, settleAndRead } from "./lib/session.mjs";
 import {
@@ -38,6 +37,7 @@ import {
   verdict,
 } from "./lib/stores.mjs";
 import { RESULTS_DIR, errLine, hostNow, isoOf, normalizeWs, sha256, sleep } from "./lib/util.mjs";
+import { allDocs, allSaves, notificationsSince, snapEditors, wordDelta } from "./lib/shared.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -46,41 +46,6 @@ const TOKENS = ["A1", "A2", "B1", "BASE"];
 const WAIT_AFTER_SAVE_MS = 5000;
 const READ_AT_MS = 3500; // stores are read inside the 5 s wait, starting here
 const LONG_WAIT_MS = 30000;
-
-/** Word-bag tokens added and deleted between two plain texts (port of word-diff.ts, read, not run). */
-function wordDelta(before, after) {
-  const toks = (t) => (t && t.trim() ? t.trim().split(/\s+/).filter((x) => /\w/.test(x)) : []);
-  const bag = (arr) => {
-    const m = new Map();
-    for (const t of arr) m.set(t, (m.get(t) ?? 0) + 1);
-    return m;
-  };
-  const b = bag(toks(before));
-  const a = bag(toks(after));
-  const diff = (x, y) => {
-    const out = [];
-    for (const [t, c] of x) for (let i = 0; i < Math.max(0, c - (y.get(t) ?? 0)); i += 1) out.push(t);
-    return out;
-  };
-  return { addedTokens: diff(a, b), deletedTokens: diff(b, a) };
-}
-
-const snapEditors = async (A, B) => ({
-  at: isoOf(hostNow()),
-  A: { text: await A.editorText(), footer: await A.footer() },
-  B: { text: await B.editorText(), footer: await B.footer() },
-});
-
-function allDocs(ctx) {
-  const a = labelDocs(ctx.A);
-  const b = labelDocs(ctx.B);
-  return { docs: { base: ctx.resource.baseContent, ...a.docs, ...b.docs }, byNA: a.byN, byNB: b.byN };
-}
-
-function allSaves(ctx) {
-  const { byNA, byNB } = allDocs(ctx);
-  return [...savesFrom(ctx.A, (n) => byNA[n]), ...savesFrom(ctx.B, (n) => byNB[n])];
-}
 
 /** Read the six-outcome server state now (quiet wait, classify, log vs expected, search). */
 async function readServerState(ctx, sinceMs) {
@@ -155,41 +120,6 @@ function patchAnalysis(client, typings) {
         afterAReloadMark: marks.some((m) => m.t < r.sendT),
       };
     });
-}
-
-/** Notifications a client saw at or after `sinceT`, with offsets from `sinceT` and from the nearest earlier reload mark. */
-async function notificationsSince(client, sinceT) {
-  const marks = client.marks();
-  const rel = (t) => {
-    const prior = marks.filter((m) => m.t <= t).at(-1);
-    return { msAfterSince: Math.round(t - sinceT), msAfterReloadMark: prior ? Math.round(t - prior.t) : null };
-  };
-  const surfaces = (await client.surfaces(sinceT)).map((s) => ({ role: s.role, text: s.text, ...rel(s.t) }));
-  const consoleMsgs = client.consoleMsgs.filter((m) => m.t >= sinceT).map((m) => ({ type: m.type, text: m.text, ...rel(m.t) }));
-  const pageErrors = client.pageErrors.filter((m) => m.t >= sinceT).map((m) => ({ text: m.text, ...rel(m.t) }));
-  const dialogs = client.dialogs.filter((m) => m.t >= sinceT).map((m) => ({ type: m.type, message: m.message, ...rel(m.t) }));
-  const failed = client.failedRequests
-    .map((f) => ({ f, req: client.requests.find((r) => r.n === f.n) }))
-    .filter(({ req }) => req && req.sendT >= sinceT)
-    .map(({ f, req }) => ({ method: f.method, path: client.log().find((l) => l.n === f.n)?.path, error: f.error, ...rel(req.sendT) }));
-  const nonOk = client.requests
-    .filter((r) => r.sendT >= sinceT && r.ok === false)
-    .map((r) => ({ method: r.method, path: client.log().find((l) => l.n === r.n)?.path, status: r.status, body: r.errorBody, ...rel(r.sendT) }));
-  const toastSignals = client.requests
-    .filter((r) => r.method === "PATCH" && r.fields && r.respT >= sinceT)
-    .map((r) => ({ n: r.n, snapshotCreated: r.fields.snapshotCreated, writingLog: r.fields.writingLog }));
-  return {
-    sinceAt: isoOf(sinceT),
-    surfacesChecked: "role=status/alert/alertdialog/dialog elements (MutationObserver, incl. toasts), JS dialogs, console errors+warnings, page errors, failed requests, non-2xx responses, footer text (read at steps), snapshotCreated flags",
-    surfaces,
-    console: consoleMsgs,
-    pageErrors,
-    dialogs,
-    failedRequests: failed,
-    nonOkResponses: nonOk,
-    patchResponseSignals: toastSignals,
-    reloadMarks: marks.map((m) => ({ name: m.name, at: isoOf(m.t), msAfterSince: Math.round(m.t - sinceT) })),
-  };
 }
 
 async function runRepetition(n, total) {

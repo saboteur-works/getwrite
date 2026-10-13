@@ -34,7 +34,7 @@
  */
 import { BASE_TEXT, MARKERS, createFixtureProject, createFixtureResource, longAddition } from "./lib/fixture.mjs";
 import { createClient, labelDocs, savesFrom } from "./lib/clients.mjs";
-import { createRecord } from "./lib/record.mjs";
+import { assertNoForbiddenKeys, createRecord } from "./lib/record.mjs";
 import { openSession, searchFor, settleAndRead } from "./lib/session.mjs";
 import { pidAlive } from "./lib/server.mjs";
 import {
@@ -49,7 +49,8 @@ import {
   snapshotDigest,
   verdict,
 } from "./lib/stores.mjs";
-import { RESULTS_DIR, errLine, hostNow, isoOf, normalizeWs, sha256, sleep } from "./lib/util.mjs";
+import { RESULTS_DIR, errLine, hostNow, isMainModule, isoOf, normalizeWs, sha256, sleep } from "./lib/util.mjs";
+import { pairLogEntries, snapEditors, wordDelta } from "./lib/shared.mjs";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -59,6 +60,7 @@ const LONG_DELAY_MS = 10;
 const POST_ACK_WAIT_MS = 5000;
 const POST_ACK_WAIT_FIRST_REP_MS = 30000;
 const MAX_ATTEMPTS = 3;
+const STOP_GRACE_MS = 45000; // a stop request waits this long for the repetition in progress (s2-run-all.mjs gives its child 60 s)
 const live = { session: null };
 
 const PAIRINGS = {
@@ -75,36 +77,9 @@ export function parseVariant(id) {
 
 const tokensOf = (text) => (text ? text.trim().split(/\s+/).filter(Boolean) : []);
 
-/** Word-bag tokens added and deleted between two plain texts (port of word-diff.ts, read, not run). */
-function wordDelta(before, after) {
-  const toks = (t) => (t && t.trim() ? t.trim().split(/\s+/).filter((x) => /\w/.test(x)) : []);
-  const bag = (arr) => {
-    const m = new Map();
-    for (const t of arr) m.set(t, (m.get(t) ?? 0) + 1);
-    return m;
-  };
-  const b = bag(toks(before));
-  const a = bag(toks(after));
-  const diff = (x, y) => {
-    const out = [];
-    for (const [t, c] of x) for (let i = 0; i < Math.max(0, c - (y.get(t) ?? 0)); i += 1) out.push(t);
-    return out;
-  };
-  return { addedTokens: diff(a, b), deletedTokens: diff(b, a) };
-}
 const clip = (arr, n = 6) => (arr.length > n ? `${arr.slice(0, n).join(" ")} ...(+${arr.length - n})` : arr.join(" "));
 const r3 = (x) => (x === null || x === undefined ? null : Math.round(x * 1000) / 1000);
 
-const FORBIDDEN_KEYS = new Set(["raw", "content", "cookie", "cookies", "secret", "code", "password", "passphrase"]);
-function assertNoForbiddenKeys(value, trail = "") {
-  if (Array.isArray(value)) value.forEach((v, i) => assertNoForbiddenKeys(v, `${trail}[${i}]`));
-  else if (value && typeof value === "object") {
-    for (const [k, v] of Object.entries(value)) {
-      if (FORBIDDEN_KEYS.has(k)) throw new Error(`record refuses key "${k}" at ${trail || "(root)"}`);
-      assertNoForbiddenKeys(v, `${trail}.${k}`);
-    }
-  }
-}
 /** Same guard as lib/record.mjs writeJson, written compact (no indentation) because S2 writes many records. */
 function writeCompactJson(rec, dir) {
   assertNoForbiddenKeys(rec.data);
@@ -127,12 +102,6 @@ function namesUnder(dir, labels, cap = 100) {
   walk(dir);
   return out.sort().slice(0, cap);
 }
-
-const snapEditors = async (A, B) => ({
-  at: isoOf(hostNow()),
-  A: { text: await A.editorText(), footer: await A.footer() },
-  B: { text: await B.editorText(), footer: await B.footer() },
-});
 
 async function notificationsSince(client, sinceT) {
   const marks = client.marks();
@@ -165,21 +134,6 @@ async function notificationsSince(client, sinceT) {
     nonOkResponses: nonOk,
     patchResponseSignals: toastSignals,
   };
-}
-
-/** Pair each save with the writing-log entry nearest below its updatedAt (arithmetic only). */
-function pairLogEntries(entries, saves) {
-  const used = new Set();
-  return [...saves]
-    .sort((x, y) => Date.parse(x.updatedAt) - Date.parse(y.updatedAt))
-    .map((s) => {
-      const cand = entries
-        .map((e, i) => ({ e, i, d: Date.parse(s.updatedAt) - Date.parse(e.timestamp) }))
-        .filter((x) => x.d >= 0 && !used.has(x.i))
-        .sort((x, y) => x.d - y.d)[0];
-      if (cand) used.add(cand.i);
-      return { save: s.docLabel, updatedAt: s.updatedAt, entryTimestamp: cand?.e.timestamp ?? null, entryMinusUpdatedAtMs: cand ? -cand.d : null };
-    });
 }
 
 // ---------------------------------------------------------------------------
@@ -595,6 +549,9 @@ async function runRepetition({ variant, n, attempt, total, hb }) {
 // One variant
 // ---------------------------------------------------------------------------
 
+/** A repetition file as stored in the summary: relative to RESULTS_DIR (the readers also accept an absolute path). */
+const relToResults = (file) => (file ? path.relative(RESULTS_DIR, file) : file);
+
 async function runVariant(variantId, total) {
   const variant = parseVariant(variantId);
   const wallStart = new Date();
@@ -603,13 +560,32 @@ async function runVariant(variantId, total) {
   const discardedDir = path.join(resultsDir, "discarded");
   mkdirSync(discardedDir, { recursive: true });
   say(`VARIANT ${variantId}: ${total} repetitions, one fresh server + Chromium + project + resource each (host to itself, not a second-device result)`);
-  const onSignal = async () => {
+  // A stop request (SIGINT/SIGTERM) does not exit at once: it ends the repetition
+  // loop after the repetition in progress, so the teardown in the finally block runs
+  // and the summary of what was done is written. The summary marks the variant
+  // with `aborted` and lists the repetitions not run. If the repetition in
+  // progress does not finish within STOP_GRACE_MS, or a second stop request
+  // arrives, the old behaviour applies: close the session (server and browser,
+  // by recorded pid), then exit 130 without a summary.
+  let stopRequested = null;
+  let graceTimer = null;
+  const forceExit = async () => {
     hb.stop();
     await live.session?.close().catch(() => {});
     process.exit(130);
   };
-  process.once("SIGINT", onSignal);
-  process.once("SIGTERM", onSignal);
+  const onSignal = (signal) => {
+    if (stopRequested) {
+      forceExit();
+      return;
+    }
+    stopRequested = signal;
+    say(`  ${signal} received: no further repetition will start; the one in progress finishes (at most ${STOP_GRACE_MS / 1000} s), then teardown and the summary run`);
+    graceTimer = setTimeout(forceExit, STOP_GRACE_MS);
+    graceTimer.unref();
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
 
   const reps = [];
   const discarded = [];
@@ -625,12 +601,13 @@ async function runVariant(variantId, total) {
 
   try {
     for (let n = 1; n <= total; n += 1) {
+      if (stopRequested && !aborted) aborted = `interrupted by ${stopRequested} before repetition ${n}`;
       if (aborted) {
         notRun.push(n);
         continue;
       }
       let done = false;
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS && !done; attempt += 1) {
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS && !done && !stopRequested; attempt += 1) {
         const ctl = await runRepetition({ variant, n, attempt, total, hb });
         noteDescendants(ctl);
         const completed = !ctl.out.error;
@@ -669,7 +646,7 @@ async function runVariant(variantId, total) {
         }
       }
       if (!done) {
-        aborted = `repetition ${n} failed ${MAX_ATTEMPTS} attempts in setup`;
+        aborted = stopRequested ? `interrupted by ${stopRequested} during repetition ${n}` : `repetition ${n} failed ${MAX_ATTEMPTS} attempts in setup`;
         notRun.push(n);
         say(`  ABORT: ${aborted}`);
       }
@@ -677,8 +654,10 @@ async function runVariant(variantId, total) {
   } finally {
     hb.stop();
     const descendantPidsAliveAfter = [...descendantPidsSeen.keys()].filter((pid) => pidAlive(pid));
+    clearTimeout(graceTimer);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);
+    if (stopRequested) process.exitCode = 130;
     const wallEnd = new Date();
     const summary = {
       variant: variantId,
@@ -695,7 +674,7 @@ async function runVariant(variantId, total) {
       heartbeat: { beats: hb.beats, maxWallGapMs: hb.maxWallGapMs, maxPerfGapMs: Math.round(hb.maxPerfGapMs), gapsOver3s: hb.gapsOver3s },
       descendantPidsRecordedDuringRun: [...descendantPidsSeen.entries()].map(([pid, comm]) => ({ pid, comm })),
       descendantPidsAliveAfterTeardown: descendantPidsAliveAfter,
-      reps: reps.map((r) => (r.completed ? { n: r.n, attempt: r.attempt, file: r.file, ...r.flat } : r)),
+      reps: reps.map((r) => (r.completed ? { n: r.n, attempt: r.attempt, file: relToResults(r.file), ...r.flat } : { ...r, file: relToResults(r.file) })),
     };
     const sfile = path.join(resultsDir, `summary-s2-${variantId.toLowerCase()}-${Date.now().toString(36)}.json`);
     writeFileSync(sfile, `${JSON.stringify(summary, null, 2)}\n`);
@@ -712,7 +691,7 @@ async function main() {
   await runVariant(arg, Number(process.argv[3] ?? 20));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((e) => {
     console.error(`script error: ${errLine(e)}`);
     process.exit(1);

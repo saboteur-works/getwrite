@@ -12,8 +12,9 @@
  *
  * It spawns only `node s2-near-simultaneous.mjs`; the pid of the driver and of
  * the current child are written to the progress file so they can be stopped by
- * pid (nothing here stops anything by name or port). On SIGTERM the driver
- * signals ONLY its current child pid and exits.
+ * pid (nothing here stops anything by name or port). On SIGTERM or SIGINT the
+ * driver signals ONLY its current child pid, starts no further variant, and
+ * exits once that child has exited (after 60 s at the latest).
  *
  * Run OUTSIDE the command sandbox. Usage: node s2-run-all.mjs [variantId ...]
  */
@@ -35,8 +36,10 @@ const note = (s) => appendFileSync(PROGRESS, `${new Date().toISOString()} ${s}\n
 
 const plan = process.argv.length > 2 ? process.argv.slice(2) : [...TIER1, ...TIER2, ...TIER3];
 let current = null;
-process.on("SIGTERM", () => {
-  note(`driver pid ${process.pid} got SIGTERM; signalling only its current child pid ${current?.pid ?? "none"}`);
+let stopRequested = null;
+const onStop = (signal) => {
+  stopRequested = signal;
+  note(`driver pid ${process.pid} got ${signal}; no further variant will start; signalling only its current child pid ${current?.pid ?? "none"}`);
   if (current) {
     try {
       process.kill(current.pid, "SIGTERM");
@@ -45,10 +48,18 @@ process.on("SIGTERM", () => {
     }
   }
   setTimeout(() => process.exit(143), 60000).unref();
-});
+};
+process.on("SIGTERM", () => onStop("SIGTERM"));
+process.on("SIGINT", () => onStop("SIGINT"));
 
 note(`driver pid ${process.pid} starts; plan of ${plan.length} variants: ${plan.join(" ")}`);
-for (const v of plan) {
+let stoppedEarly = false;
+for (const [i, v] of plan.entries()) {
+  if (stopRequested) {
+    stoppedEarly = true;
+    note(`STOPPED by ${stopRequested}: not started: ${plan.slice(i).join(" ")}`);
+    break;
+  }
   await new Promise((resolve) => {
     const out = path.join(LOG_DIR, `s2-${v}.out`);
     const child = spawn("/bin/sh", ["-c", `exec "${process.execPath}" "${path.join(HERE, "s2-near-simultaneous.mjs")}" ${v} 20 > "${out}" 2>&1`], { cwd: HERE, stdio: "ignore" });
@@ -61,4 +72,8 @@ for (const v of plan) {
     });
   });
 }
-note("ALL DONE");
+if (stoppedEarly) process.exitCode = 143;
+else if (stopRequested) {
+  note(`STOPPED by ${stopRequested} during the last variant: no variant was left to start`);
+  process.exitCode = 143;
+} else note("ALL DONE");

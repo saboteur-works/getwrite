@@ -27,7 +27,7 @@ const OUTCOME_TITLES = {
 };
 const FORBIDDEN_KEYS = new Set(["raw", "content", "cookie", "cookies", "secret", "code", "password", "passphrase"]);
 
-function assertNoForbiddenKeys(value, trail = "") {
+export function assertNoForbiddenKeys(value, trail = "") {
   if (Array.isArray(value)) {
     value.forEach((v, i) => assertNoForbiddenKeys(v, `${trail}[${i}]`));
   } else if (value && typeof value === "object") {

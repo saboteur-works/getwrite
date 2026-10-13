@@ -7,16 +7,15 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { WORD40 } from "./lib/fixture.mjs";
-import { RESULTS_DIR } from "./lib/util.mjs";
+import { PLAIN_OF_PAIRING } from "./lib/fixture.mjs";
+import { RESULTS_DIR, resolveRepFile } from "./lib/util.mjs";
 
 const dir = path.join(RESULTS_DIR, "s2");
 const summaries = readdirSync(dir)
   .filter((f) => f.startsWith("summary-") && f.endsWith(".json"))
   .map((f) => JSON.parse(readFileSync(path.join(dir, f), "utf8")));
 
-const BASE = "BASE alpha bravo charlie";
-const plainOf = { P1: { A: `${BASE} A1`, B: `${BASE} B1` }, P2: { A: `${BASE} A1`, B: `${BASE} B2LONG ${WORD40.join(" ")}` }, P3: { A: `${BASE} A2LONG ${WORD40.join(" ")}`, B: `${BASE} B1` } };
+const plainOf = PLAIN_OF_PAIRING;
 const norm = (t) => String(t).replace(/\s+/g, " ").trim();
 const shows = (text, pairing) => {
   const t = norm(text);
@@ -30,14 +29,21 @@ const fmt = (m) => [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => 
 
 const per = [];
 const total = { reps: 0 };
+const missingFiles = [];
 const allConsole = new Map();
 const allSurfaces = new Map();
 for (const s of summaries) {
   const v = { variant: s.variant, reps: 0, a: new Map(), b: new Map(), d: new Map(), e: { ack: 0, later: 0, reload: new Map() }, f: new Map(), g: 0, c: new Map(), consoleTexts: new Map(), toastBackup: 0 };
   for (const r of s.reps.filter((x) => x.completed !== false && x.file)) {
+    const repFile = resolveRepFile(r.file);
+    if (!repFile) {
+      missingFiles.push(`${s.variant} rep ${r.n}: ${path.basename(r.file)}`);
+      console.error(`s2-findings: repetition file not found: ${path.basename(r.file)} (${s.variant} rep ${r.n})`);
+      continue;
+    }
     v.reps += 1;
     total.reps += 1;
-    const rep = JSON.parse(readFileSync(r.file, "utf8"));
+    const rep = JSON.parse(readFileSync(repFile, "utf8"));
     const f = rep.extra.s2;
     const pairing = f.pairing;
     // (a) what the stored document carries
@@ -88,6 +94,7 @@ per.sort((x, y) => {
 });
 
 console.log(`repetitions read: ${total.reps}`);
+if (missingFiles.length) console.log(`repetition files NOT FOUND (not counted below): ${missingFiles.length}: ${missingFiles.join("; ")}`);
 console.log("");
 console.log("(a) what the stored document carries");
 for (const v of per) console.log(`- ${v.variant}: ${fmt(v.a)}`);
