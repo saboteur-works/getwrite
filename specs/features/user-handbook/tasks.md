@@ -38,7 +38,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 1, 2
 **Estimate:** 5
 **Notes:** Needs the app running: desktop method for Start Page buttons, imports and workspace folder, web method for the rest. Out of the sandbox for app runs. Stop and clean up per the process-safety rules after each run. The original old files are left untouched until Task 10.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Verify and write the write part
 **What:** Run every statement on `writing-log.md`, `editor/headings.md`, `editor/settings.md`, `search.md` and the "Rich text editor" statements of `features.md`, and write `write/` pages.

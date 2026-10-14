@@ -68,6 +68,10 @@ export async function startDesktop(run) {
   const app = await _electron.launch({
     executablePath: ELECTRON_BIN,
     args: [path.join(fake, "electron"), `--user-data-dir=${userData}`],
+    // Task 3 addition: launch with cwd = <fake root>/electron, as `pnpm electron:dev` does
+    // from electron/. Without it, the import worker's relative project-type lookup
+    // (frontend/src/lib/projectTypes.ts) found no templates (measured, Task 3).
+    cwd: path.join(fake, "electron"),
     env: cleanEnv(),
     timeout: 120000,
   });

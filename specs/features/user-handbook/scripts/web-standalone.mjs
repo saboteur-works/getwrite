@@ -13,7 +13,7 @@
  * Run OUTSIDE the command sandbox.
  */
 import { spawn } from "node:child_process";
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync } from "node:fs";
+import { closeSync, cpSync, existsSync, mkdirSync, openSync, readdirSync } from "node:fs";
 import path from "node:path";
 import {
   LOG_DIR, REPO, Recorder, assertThrowaway, cleanupRun, createRun, errLine, isMain, listeners,
@@ -22,7 +22,7 @@ import {
 
 const SERVER_JS = path.join(REPO, "frontend/.next/standalone/frontend/server.js");
 
-export async function startWeb(run) {
+export async function startWeb(run, opts = {}) {
   if (!existsSync(SERVER_JS)) throw new Error("built standalone server.js is missing");
   let port = await pickFreePort();
   while (PROTECTED_PORTS.includes(port)) port = await pickFreePort();
@@ -33,11 +33,21 @@ export async function startWeb(run) {
   const serverLog = path.join(LOG_DIR, `${run.runId}-server.log`);
   const env = { ...process.env };
   for (const k of ["DATABASE_URL", "BETTER_AUTH_SECRET", "GETWRITE_ENABLE_DEV_IDENTITY", "GETWRITE_SHARING", "GETWRITE_BIND", "GETWRITE_WINDOW_SECRET", "GETWRITE_SHARING_DIR", "GETWRITE_DESKTOP"]) delete env[k];
+  // Task 3 addition: opts.copyTemplates puts a throwaway COPY of the project-type
+  // specs under the run folder, so a Project Type Manager save or delete cannot
+  // reach the repo's getwrite-config/.
+  let templatesDir = path.join(REPO, "getwrite-config/templates/project-types");
+  if (opts.copyTemplates) {
+    const copy = path.join(run.dir, "templates");
+    cpSync(templatesDir, copy, { recursive: true });
+    assertThrowaway(copy);
+    templatesDir = copy;
+  }
   Object.assign(env, {
     PORT: String(port),
     HOSTNAME: "127.0.0.1",
     GETWRITE_PROJECTS_DIR: projectsDir,
-    GETWRITE_TEMPLATES_DIR: path.join(REPO, "getwrite-config/templates/project-types"),
+    GETWRITE_TEMPLATES_DIR: templatesDir,
   });
   const fd = openSync(serverLog, "a");
   let child;
@@ -48,7 +58,7 @@ export async function startWeb(run) {
   }
   const rec = new Recorder();
   rec.add(child.pid, "node");
-  const handle = { port, pid: child.pid, child, rec, projectsDir, serverLog, baseUrl: `http://127.0.0.1:${port}`, run, portsBefore: pre };
+  const handle = { port, pid: child.pid, child, rec, projectsDir, templatesDir, serverLog, baseUrl: `http://127.0.0.1:${port}`, run, portsBefore: pre };
   for (let i = 0; i < 300; i++) {
     if (child.exitCode !== null) {
       await stopWeb(handle);

@@ -1,0 +1,20 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 89353 port 64808 (throwaway projects dir; templates repo read-only)
+R-03 raw body after creating folder: ["Get","Write","Tree Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH","⌘K","Workspace"]
+R-01/03/09 tree after creating a document, folder, image, audio: ["[folder] Workspace","  [resource] Doc One","  [resource] Picture","  [resource] Tone"]
+R-09 recent files kinds: null
+R-09 tree row icons (svg class per row): ["Workspace:,lucide-folder,lucide-ellipsis-vertical","Doc One:lucide-file-text,lucide-ellipsis-vertical","Picture:lucide-image,lucide-ellipsis-vertical","Tone:lucide-music,lucide-ellipsis-vertical"]
+R-03 tree after reload (no rename yet): ["[folder] Workspace","  [resource] Picture","  [resource] Tone","  [resource] Doc One","  [folder] Folder One"]
+R-02 click Doc One: editor present=1; work area text ["Doc One","Doc One","EDITING CANONICAL REVISION","Words: 0","DOC ONE"]
+R-02 click Picture: imgs=1; lines ["SUBTYPE","SUBTYPE","No subtype","No subtypes yet. Add them in Project Settings, Metadata tab.","DOCUMENT","STATUS","Draft","In review","Published","TAGS","No tags yet. Create some in Project Settings.","+ ADD FIELD"]
+R-02 click Tone: audio elements=1
+R-04 rename dialog: ["H3:Rename resource","LABEL:Name","INPUT:Doc One","BUTTON:Cancel","BUTTON:Save"]
+R-04 after rename and reload: ["[folder] Workspace","  [resource] Picture","  [resource] Tone","  [resource] Doc Renamed","  [folder] Folder One"]
+R-05 Move to dialog: ["H2:Move “Doc Renamed”","P:Choose a destination folder.","SPAN:Workspace","BUTTON:Cancel","BUTTON:Move"]
+R-06 tree before drag: ["[folder] Workspace","  [resource] Picture","  [resource] Tone","  [resource] Doc Renamed","  [folder] Folder One","    [resource] Alpha Doc","    [resource] Bravo Doc","    [resource] Charlie Doc"]
+R-06 tree after dragging Charlie Doc above Alpha Doc: ["[folder] Workspace","  [resource] Picture","  [resource] Tone","  [resource] Doc Renamed","  [folder] Folder One","    [resource] Charlie Doc","    [resource] Alpha Doc","    [resource] Bravo Doc"]
+R-06 tree after reload: ["[folder] Workspace","  [resource] Picture","  [resource] Tone","  [resource] Doc Renamed","  [folder] Folder One","    [resource] Charlie Doc","    [resource] Alpha Doc","    [resource] Bravo Doc"]
+R-10/R-07 selecting Folder One: tab ["Organizer"]; Work Area lines ["Doc Renamed","Folder One","Folder One","Charlie Doc","text file","Open","Alpha Doc","text file","Open","Bravo Doc","text file","Open"]
+stop: recorded 89353(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

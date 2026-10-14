@@ -1,0 +1,21 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 59331 port 60359 (throwaway projects dir; templates repo read-only)
+S-01 first page at /: ["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in your next manuscript or open a clean slate for your next draft.","0 ACTIVE PROJECTS","0 WRITING ASSETS","0 FOLDERS ORGANIZED","WRITING AT A GLANCE","0","Projects ready to open and continue.","RESOURCES"]
+S-10..13 web buttons: ["Open project settings menu","Start a New Project","App Settings","Create the first project"]
+S-05 after Create: url path /; header shows project: ["Get","Write","Alpha Novel","RESOURCES"]
+S-02/03 start page with 2 projects: ["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Beta Blank or open a clean slate for your next draft.","2 ACTIVE PROJECTS","4 WRITING ASSETS","13 FOLDERS ORGANIZED","WRITING AT A GLANCE","2","Projects ready to open and continue.","RESOURCES","4","FOLDERS","13","START A NEW PROJECT","APP SETTINGS","LIBRARY","Projects","Open a project or manage its packaging and metadata.","PROJECT","Beta Blank","0 resources · 1 folder","LAST EDITED JUST NOW","blank","/private/tmp/getwrite-handbook/web-mv8lhzu1-f76f7d/projects/965a602e-e525-4a15-9ac9-d84a33ba0051","OPEN PROJECT","READY TO WRITE","PROJECT","Alpha Novel","4 resources · 12 folders","LAST EDITED 8S AGO","novel","/private/tmp/getwrite-handbook/web-mv8lhzu1-f76f7d/projects/97291152-87ae-4197-a786-eea97fb14f01","OPEN PROJECT","READY TO WRITE"]
+S-06 after Open: header ["Get","Write","Beta Blank","RESOURCES","Workspace","SMART FOLDERS"]
+S-07 after rename: names on page ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Gamma Renamed or open a clean slate for your next draft.","Gamma Renamed","Alpha Novel"]
+S-07 after reload: ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Gamma Renamed or open a clean slate for your next draft.","Gamma Renamed","Alpha Novel"]
+S-07 throwaway projects dir project.json names: ["Gamma Renamed","Alpha Novel"]
+S-09 editor footer: ["Words: 3","Saved · just now","Top repeated words: None"]
+S-09 in-project Compile Project dialog list: ["SELECT ALL","SELECT NONE","Workspace","Compile Doc","Root Doc","2 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (2)"]
+S-09 Start Page Package dialog list: ["Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Compile Doc","1 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (1)"]
+S-09 after Select all: ["Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (1)"]
+S-09 download: gamma-renamed.txt bytes=45; content="Compile Doc\n===========\n\nHello compile world."
+S-08 confirm dialog: ["Delete project","This will permanently remove the project and its resources. Are you sure?"]
+S-08 after delete, before reload (2 s): projects on page ["Gamma Renamed","Alpha Novel"]; dirs now 1
+S-08 after delete and reload: projects on page ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Gamma Renamed or open a clean slate for your next draft.","Gamma Renamed"]; dirs before=2 after=1
+stop: recorded 59331(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

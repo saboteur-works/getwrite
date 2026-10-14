@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 6726 port 51024 (throwaway projects dir; templates repo read-only)
+R-05 before move: ["[folder] Workspace","[folder] Target Folder","[resource] Mover Doc"]
+R-05 destination choices: ["Workspace","Workspace","Workspace","Workspace","Workspace","Target Folder","Target Folder","Target Folder","Target Folder","Target Folder","Mover Doc","Mover Doc","Mover Doc","Mover Doc","Mover Doc"]
+R-05 after move: ["[folder] Workspace","[folder] Target Folder","  [resource] Mover Doc"]
+R-05 after reload: ["[folder] Workspace","[folder] Target Folder","  [resource] Mover Doc"]
+stop: recorded 6726(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
