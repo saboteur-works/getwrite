@@ -1,0 +1,105 @@
+# Feature: User handbook — structure and the existing pages absorbed (Feature 81)
+
+> Scope note: this spec is longer than the usual 500 words because it must pin a directory layout, a 21-file page mapping, a verification procedure and a definition of done for a migration of 21 existing pages. It is one slice by owner decision (Gate 2, 2026-10-14, "1a"), not a sign the scope should be cut. Facts below are labelled "read" (from a file, not run) or "measured" (a command was run on 2026-10-14). Nothing about the running app has been exercised yet.
+
+## Overview
+
+GetWrite's user documentation is 21 Markdown files under `docs/user/` plus a separate in-app help (`frontend/components/help/help-content.ts`, left alone). The pages were not checked against the app when written, and some contradict each other (read: `features.md` says GetWrite "quietly trims old history", while `revisions.md` and `project-configuration.md` say the app does not prune revisions on its own and ignores `maxRevisions` and `autoPrune`). This feature creates the handbook at `docs/user/handbook/` (product spec FR-69), moves or merges all 21 pages into it, leaves stubs at the old paths, and checks every statement on every page by running it: in the running app, or by running the CLI against a throwaway project. A statement that cannot be run is dropped and recorded as dropped. It adds no new coverage: Features 82 to 85 add coverage, runtime differences, the Upcoming section, and the upkeep rules.
+
+## Goals
+
+- A writer can open one contents page and reach every topic the old pages covered.
+- Every statement left in the handbook has a recorded check, at a stated app version and base commit.
+- A repository that publishes the handbook can read it from a release tag without editing it.
+- Every old `docs/user/` path, and every link to one from `README.md`, still resolves.
+- The old pages and the handbook never disagree, because the old paths hold stubs only.
+
+## Non-goals
+
+- New coverage of released features the old pages miss (Feature 82).
+- The "Differences by runtime" part, "Desktop only" labels, the CLI appendix, and describing Android (Feature 83).
+- The "Upcoming" section and any `status: unreleased` front matter (Feature 84). Feature 81 only leaves the unreleased home-network-sharing text out.
+- The standard, PR template, link-check workflow and release step (Feature 85).
+- Changing the in-app help, any app code, or any app behaviour.
+- Rewriting pages for style. Edits are only those verification requires, plus the moves, splits and link repairs below.
+
+## User stories
+
+- US-1: As a writer, I want to find a topic from one contents page so that I do not have to guess which file holds it.
+- US-2: As a writer, I want to rely on statements that were checked against the app, and to see the warnings and limits for a feature so that I do not meet them by surprise.
+- US-3: As a maintainer of a repository that generates online documentation, I want to consume a handbook that is plain Markdown with relative links and minimal front matter so that I can use a release tag without hand-editing.
+- US-4: As a GetWrite maintainer, I want to keep the old `docs/user/` paths and the README links working so that nothing that links to them breaks while the handbook becomes the single written source.
+
+## Functional requirements
+
+- FR-1: The handbook MUST live at `docs/user/handbook/` with `index.md` as its contents and six part folders: `getting-started/`, `organize/`, `write/`, `story/`, `views/`, `protect-and-finish/`. The parts follow the headings of the current `features.md` tour (read); the owner accepted the six folders as drafted (OQ-4, Gate 3, 2026-10-14) and will take a final look at the paths before merge, because they become a published contract. [US-1]
+- FR-2: `index.md` MUST list every handbook page, grouped by part, as a relative link with the page's title and summary, in `order` sequence. It MUST link only to pages that exist in the same PR, and every page MUST be linked from it. It MUST NOT contain placeholder or unlinked entries for Features 82 to 85 (OQ-5). [US-1]
+- FR-3: Each topic MUST be one kebab-case `.md` file. Where a page moves unchanged in topic, it MUST keep its old file name (for example `metadata-queries.md`, `entity-roster.md`). File names MUST NOT contain an order number. [US-3]
+- FR-4: Every handbook page, and `index.md`, MUST begin with YAML front matter holding exactly `title`, `order` and `summary`, and no other key (`status` is not used in this feature). `order` MUST be an integer, unique across the handbook, `0` for `index.md`, then increasing in steps of 10 in the index's sequence. `summary` MUST be one sentence on one line. [US-3]
+- FR-5: Links inside the handbook MUST be relative and MUST resolve inside `docs/user/handbook/`, including any `#anchor`. A page MUST NOT link to a file outside the handbook (the callouts to developer docs under `docs/features/` are dropped, and no GitHub links to developer docs are added, OQ-3); `https://` links to other external sites are allowed. Images, if any page uses one, MUST be in `docs/user/handbook/images/` and linked relatively; no existing page uses an image (measured: `find docs/user -type f ! -name "*.md"` returned nothing), so `images/` MUST be created only if a page needs it. [US-3]
+- FR-6: Every file under `docs/user/` MUST be handled as in the page mapping table below. Absorbed content MUST change only through FR-12 outcomes, FR-9, FR-5 and the mapping's splits; it MUST NOT gain statements the old page did not make. [US-1][US-4]
+- FR-7: Each old path MUST be left as a stub of at most five lines: a heading naming the page, one sentence saying it moved, and a relative link to the new page (to each new page where the source was split or dissolved). A stub MUST contain no other content and no front matter. [US-4]
+- FR-8: After the change, every link in `README.md` to `docs/user/` MUST resolve, including `#why-desktop-not-web`, and `README.md` SHOULD point at the handbook page rather than at a stub. The five developer docs that link to old `docs/user/` pages (read, `grep`: `docs/features/project-types.md`, `revisions.md`, `editor/headings.md`, `editor/settings.md`, `data/metadata.md`) MUST still resolve, through the stubs or repointed. [US-4]
+- FR-9: The handbook MUST NOT describe home-network sharing: the "Home-network sharing (not yet released)" section of `features.md` is not carried, and the sentence in `start-page.md`'s App Settings bullet that mentions it is removed. After the change, a case-insensitive search of `docs/user/handbook/` for `sharing`, `paired`, `pairing`, `home network` and `7340` MUST return no match. Statements about features merged after the `getwrite-v2.2.0` tag stay in the main parts (OQ-1), and each affected section MUST carry the visible note `Not yet in a release (merged after 2.2.0).` Which sections get the note MUST be decided per statement against the tag (for example `git merge-base --is-ancestor <introducing commit> getwrite-v2.2.0`, or the PR list in OQ-1), and the decision and its evidence MUST be recorded. The note is plain Markdown; front matter is unchanged. [US-2]
+- FR-10: Every handbook page except `index.md` MUST end with the line `Verified against GetWrite <version> (root package.json), base commit <short sha>.` where `<version>` is the root `package.json` `version` at the time of checking (measured 2026-10-14: 2.2.0) and `<short sha>` is the commit the page was checked on. If that commit is not the one tagged `getwrite-v<version>`, the line MUST read `Verified against GetWrite <version> (root package.json) plus unreleased changes, base commit <short sha>.` (measured 2026-10-14: tag `getwrite-v2.2.0` is 622 commits behind `HEAD` f06a7c3b, so the second form applies). The sha is the checked base, not the PR's own commit. A page's recorded base commit stands for its text (OQ-6); later behaviour-changing PRs update the pages they touch (product spec FR-69(j)). Before merge, the writer-visible commits since each page's base commit MUST be listed, only pages those commits touch MUST be re-checked, and a re-checked page's verified-against line MUST take the new sha. [US-2]
+- FR-11: A verification record MUST exist at `specs/features/user-handbook/verification.md`, with one section per handbook page and one row per factual statement: a short quote, a label (`run` or `read`), the build and runtime used, the evidence (command and observed result, or file and line), and the outcome (`kept`, `corrected` or `dropped`). The evidence column may cite source for context, but the verdict needs a `run`. Every "Not yet in a release" note (FR-9) MUST be listed in a separate table of the record (page, section, statement, introducing commit or PR, ancestor-of-tag result) so Features 84 and 85 can convert them later. A page is not done until every statement on it has a row. [US-2]
+- FR-12: A factual statement is any sentence claiming what the app shows or does, a label, a key, a default, a file or folder location, or a command. A statement is verified only when its row says `run`: the behaviour was observed in the running app, or the command was run with the CLI against a throwaway project. `read` (found in source, not run) is not sufficient for any statement (OQ-2). A statement that cannot be run MUST be dropped and its row recorded as `dropped`. A statement with no row MUST be dropped. A statement the app contradicts MUST be corrected to what was observed, or dropped, and the row MUST keep the original and the observed result. [US-2]
+- FR-13: The handbook MUST state observed behaviour as observed and MUST NOT give a cause that no experiment separated from the alternatives. Existing causal or promissory wording (for example "so it never piles up", "signed-soon", "planned for a future release") MUST be dropped or reduced to what was measured. [US-2]
+- FR-14: Each page MUST end, above its verified-against line, with a "Warnings and limits" section listing the warnings, limits and gotchas a writer could meet by surprise on that topic: only items confirmed during verification (candidates already in the old pages, read: permanent Trash deletion cannot be undone, protected revisions and the revision cap, a goal field showing a stale value after save until reload, a bag-of-words writing log that counts a moved paragraph as nothing). A page with none confirmed MUST say "None recorded." [US-2]
+- FR-15: Statements MUST be run by one of two methods (OQ-3), and every `run` row MUST name its runtime: "desktop, Electron dev, fake root" or "web build of the same frontend". (1) Desktop: an unpackaged Electron dev run from a throwaway "fake repo root" tree, with `--user-data-dir=<tmp>` and a throwaway app `name` so that `app.getPath("logs")` does not reach `~/Library/Logs/getwrite-electron`, as in `specs/features/desktop-server-port/scripts/dev-ports.mjs`. It must run outside the command sandbox. `GETWRITE_PROJECTS_DIR` alone does not redirect the dev desktop app (read from `electron/src/projects-dir.ts:411-418`), so it is not sufficient. (2) Web: a built standalone server with throwaway `GETWRITE_PROJECTS_DIR` and related variables, as in `specs/features/two-client-save-measurement/scripts/lib/server.mjs`. Desktop-only controls (the Scrivener and Word import buttons, native file pickers, the workspace folder, the desktop global noise words) MUST be run by method 1; if they cannot be, the statement is dropped. [US-2]
+- FR-16: Statements about commands (`prune`, `reindex`, `repair-revisions` as they occur in the old pages) MUST be run against a throwaway project with the built CLI (`pnpm cli:build`), and the page MUST use the command name the CLI actually answers to. Read, not run: the old pages write `getwrite prune`, while the project notes name the executable `getwrite-cli`. [US-2]
+- FR-17: While running anything, the task MUST: check each port is free (`lsof -nP -iTCP:<port> -sTCP:LISTEN`) before starting a process, including 7340 (desktop server), 3000 (dev server) and 6006 (Storybook); stop only processes it started, by recorded pid; use throwaway workspace and settings folders; and never write to `~/Library/Application Support/getwrite-electron/`, `~/Documents/GetWrite` or the repo's `projects/`. [US-2]
+- FR-18: The change MUST touch only `docs/user/`, `README.md`, the developer docs repointed under FR-8, and `specs/features/user-handbook/`. It MUST NOT edit `frontend/components/help/help-content.ts` or any app code, and it MUST NOT add Features 82 to 85 content. [US-4]
+- FR-19: The feature is done when: (a) a one-off link check over every handbook file, every stub, `README.md` and the five repointed developer docs finds zero unresolved relative links and anchors, with the command and its output recorded in the verification record (the committed check is Feature 85); (b) all 22 handbook pages and `index.md` pass FR-4, and every non-stub page has its verified-against line; (c) all 21 old paths are stubs per FR-7; (d) FR-9's search returns no match; (e) the verification record has a row for every statement, every row is `run` or `dropped`, and no row is unresolved; (f) every "Not yet in a release" note is listed in the record per FR-11. [US-1][US-2][US-3][US-4]
+
+### Page mapping (FR-6)
+
+| Old path (`docs/user/`) | Handbook destination | Operation |
+| --- | --- | --- |
+| `installing.md` | `getting-started/installing.md` | move |
+| `start-page.md` | `organize/start-page.md` | move; sharing sentence removed (FR-9) |
+| `project-types.md` | `organize/project-types.md` | move |
+| `resource-tree.md` | `organize/resource-tree.md` | move |
+| `features.md` | `index.md` (intro only) and `write/editor.md` (its "Rich text editor" statements) | dissolve: per-feature summaries duplicate other pages and are not carried; a statement found only here is kept only if verified and placed on the page for its topic; sharing section left out (FR-9) |
+| `writing-log.md` | `write/writing-log.md` | move |
+| `editor/headings.md` | `write/headings.md` | move |
+| `editor/settings.md` | `write/editor-appearance.md` | move, renamed to match its tour heading |
+| `search.md` | `write/search.md` | move |
+| `metadata.md` | `story/metadata.md` | move (tags, providers and subtypes stay inside it) |
+| `metadata-queries.md` | `story/metadata-queries.md` | move |
+| `views/organizer.md`, `data.md`, `diff.md`, `timeline.md`, `entity-roster.md`, `entity-relationship-graph.md` | `views/<same name>` | move (six files) |
+| `revisions.md` | `protect-and-finish/revisions.md` and `protect-and-finish/trash.md` | split: the "Deleting and recovering resources (Trash)" section becomes `trash.md` with only the statements it already makes (Feature 82 widens it) |
+| `resources.md` | `protect-and-finish/resources.md` | move |
+| `compiling.md` | `protect-and-finish/compiling.md` | move |
+| `project-configuration.md` | `protect-and-finish/project-configuration.md` | move |
+
+Result: 21 source files become 22 handbook pages plus `index.md`: 20 pages are moved from a source (including `revisions.md`), `trash.md` is split out of `revisions.md`, and `editor.md` comes from `features.md`, which is otherwise dissolved.
+
+## Open questions
+
+- OQ-1 (resolved): Many pages describe features merged after the `getwrite-v2.2.0` tag (measured: 622 commits since; `CHANGELOG.md` has no occurrence of `writing-log`, `subtype`, `protect` or `rollup`, and `plaintext` appears nowhere, read by `grep -ic`), and the owner's rule is that "released" means in a tagged release. Should statements about such features be kept in the main parts, moved to Feature 84's Upcoming, or kept with a visible marker? The feature entry settles only home-network sharing. — Impact: FR-6, FR-9, FR-11
+  Resolution: Resolved (2026-10-14): option b. Statements about features merged after the last tag stay in the main parts; each affected section carries the visible note "Not yet in a release (merged after 2.2.0)", every note is listed in the verification record (FR-11) so Features 84 and 85 can convert them, and the sections are chosen per statement against the tag (FR-9).
+  Evidence: Owner decision, Gate 3, 2026-10-14 (answers "1b, 2c, 3a, 4a, 5a"). Lead-measured: `git log --merges --first-parent getwrite-v2.2.0..origin/main` lists 40 PRs merged after the 2.2.0 tag (2026-09-24), including #233 protect revision, #236 writing log, #237 status roll-up, #238 word-count goals, #240 prose diagnostics, #247 plain-text import, #249 to #251 Organizer filtering, icons and drag reorder, #252 editor context menu, #253 and #255 entity graph connections, positions and focal point, #256 noise flagging, #257 mention navigation, #260 and #261 subtypes and templates, #262 repair-revisions, #263 to #268 sharing and related.
+- OQ-2 (resolved): May a behavioural statement (what happens when a control is used) stay when it was only read in source and not run, as FR-69(b) and the feature entry allow ("running app or its source"), or must behaviour be `run`, with `read` limited to static facts such as file names, keys and defaults? — Impact: FR-12, FR-15, FR-19
+  Resolution: Resolved (2026-10-14): option c. Every statement must be `run`; `read` is not sufficient for any statement, and a statement that cannot be run is dropped and recorded as dropped (FR-12).
+  Evidence: Owner decision, Gate 3, 2026-10-14 (answers "1b, 2c, 3a, 4a, 5a").
+- OQ-3 (resolved): How is the desktop app to be run with throwaway workspace and settings folders? Read from `CLAUDE.md`: a development desktop build uses the repo's `projects/`, a packaged build defaults to `~/Documents/GetWrite`, and the override lives under `~/Library/Application Support/getwrite-electron/`, all three forbidden for writes. Whether Electron can be pointed at a throwaway user-data folder (for example with a command-line switch) has not been tried. If it cannot, desktop-only statements fall to OQ-2. Also unsettled: whether `https://` links to the GitHub repository for the developer references dropped by FR-5 are wanted. — Impact: FR-5, FR-15, FR-17
+  Resolution: Resolved (2026-10-14): two proven run methods (desktop from a fake repo root, web from a built standalone server), written into FR-15; old callouts to developer docs are dropped and no GitHub links to developer docs are added (option a, FR-5).
+  Evidence: Owner decision, Gate 3, 2026-10-14 (answers "1b, 2c, 3a, 4a, 5a"). Triage, read from source, not run in this task: `electron/src/projects-dir.ts:411-418` (`GETWRITE_PROJECTS_DIR` alone does not redirect the dev desktop app); existing scripts `specs/features/desktop-server-port/scripts/dev-ports.mjs` and `specs/features/two-client-save-measurement/scripts/lib/server.mjs` were used to run the desktop and web builds in earlier features.
+- OQ-4 (resolved): Are the six part folders, the global `order` scheme (steps of 10) and the file names in the mapping table acceptable? They are derived from the tour headings in `features.md`, not from an owner decision. — Impact: FR-1, FR-3, FR-4, FR-6
+  Resolution: Resolved (2026-10-14): accepted as drafted. The owner gets a final look at the paths before merge because they become a published contract (FR-1).
+  Evidence: Owner decision, Gate 3, 2026-10-14 (answers "1b, 2c, 3a, 4a, 5a").
+- OQ-5 (resolved): Should `index.md` show visible, unlinked placeholder entries for Features 82 to 85 (for example "Trash: coming")? FR-2 only forbids links to pages that do not exist; the feature entry does not say. — Impact: FR-2, FR-9
+  Resolution: Resolved (2026-10-14): no placeholders for Features 82 to 85 in `index.md` (FR-2).
+  Evidence: Owner decision, Gate 3, 2026-10-14 (answers "1b, 2c, 3a, 4a, 5a").
+- OQ-6 (resolved): If `main` advances between verification and merge, must pages touched by writer-visible changes in that interval be re-checked, or does the recorded base commit stand? — Impact: FR-10, FR-19
+  Resolution: Resolved (2026-10-14): a page's recorded base commit stands for its text; later behaviour-changing PRs update the pages they touch (product spec FR-69(j)). Before merge, list writer-visible commits since each page's base commit and re-check only pages those commits touch; a re-checked page's verified-against line gets the new sha (FR-10).
+  Evidence: Triage resolution accepted at Gate 3 without objection, 2026-10-14.
+
+## Out of scope (deferred)
+
+- Pages for the Trash, encryption, status roll-up, prose diagnostics, resource subtypes, templates and the imports as a writer sees them (Feature 82).
+- "Differences by runtime", "Desktop only" labels, the CLI appendix and Android wording (Feature 83).
+- The Upcoming section for home-network sharing and the `status: unreleased` marker (Feature 84).
+- `docs/standards/user-handbook.md`, the PR template, `.github/workflows/handbook-links.yml` and the release step that clears markers (Feature 85).
+- Aligning the in-app help text with the handbook.

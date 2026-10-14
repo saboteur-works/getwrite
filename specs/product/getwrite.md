@@ -125,6 +125,15 @@ reassurance.
 or publisher without manual cleanup, and revision history reliably recovers
 lost work.
 
+**Maintainer of a repository that publishes GetWrite's online documentation** (secondary)
+The person who owns another repository that reads GetWrite's user-facing
+documentation content and generates online documentation from it (named in
+the owner's 2026-10-14 request; which repositories exist is not stated here).
+**Key need:** Content they can consume from the GetWrite repository without
+reverse-engineering it.
+**Success looks like:** They can publish the handbook and keep it current
+with the app without hand-rewriting it (see OQ-90).
+
 ## User Stories
 
 **Scrivener-frustrated novelists**
@@ -222,6 +231,16 @@ lost work.
   without creating an account or using a hosted service, so that I can read
   and write from the couch or a tablet while my files stay on my own
   machine. [Later]
+- US-28: As a writer on deadline, I want to read GetWrite's online documentation
+  as a user handbook that is accurate to what the app does today, including
+  its warnings and gotchas, so that I can learn the app and avoid losing
+  work or being surprised by a limit. [Later]
+
+**Maintainer of a repository that publishes GetWrite's online documentation**
+- US-29: As a maintainer of a repository that generates GetWrite's online user
+  documentation, I want to take the handbook content from the GetWrite
+  repository and publish it without rewriting it by hand, so that the online
+  documentation and the app do not drift apart. [Later]
 
 ## Functional Requirements
 
@@ -1372,6 +1391,66 @@ lost work.
   not run: the unlocked key set is held in a single module-level variable
   in the server process (`keyring-session.ts`), which is consistent with
   this requirement but was not exercised with two devices. [US-27]
+- FR-69: The product MUST provide a user handbook for writers at
+  `docs/user/handbook/` in the GetWrite repository (Owner request and Gate 0
+  decision, 2026-10-14: the handbook is documentation-based and is added to
+  this spec as a requirement; milestone placement was not decided at Gate 1,
+  see OQ-91).
+  The handbook:
+  (a) MUST be structured: organised into parts a reader can navigate
+  individually, with each topic findable from the handbook's own contents;
+  (b) MUST be accurate to the current state of GetWrite: every factual
+  statement about what the app does MUST be checkable against the running
+  app or its source at a stated app version or commit, and a statement the
+  app does not bear out MUST NOT appear; where the maintainers have not
+  measured a behaviour, the handbook MUST NOT state it as fact;
+  (c) MUST cover, for each feature it describes, the warnings, limits and
+  gotchas a writer would otherwise meet by surprise (for example, behaviour
+  that can lose or overwrite work, actions that cannot be undone, and
+  settings that take effect only after a restart or reload);
+  (d) MUST be consumable by other repositories that generate online user
+  documentation from it, without hand-editing in the consuming repository;
+  and
+  (e) MUST NOT describe a capability the app does not have.
+  Decisions (Owner decision, Gate 1, 2026-10-14; resolved: OQ-86 to OQ-91):
+  (f) Relationship to existing content (OQ-86): the handbook MUST absorb
+  `docs/user/*.md`: the existing pages are moved or merged into
+  `docs/user/handbook/`, short stubs are left at the old paths (the README
+  and `docs/user/installing.md` link to them), and the handbook is the single
+  written source of user documentation. The in-app help
+  (`frontend/components/help/help-content.ts`) is left alone and is a known,
+  separate source, not covered by the single-source rule.
+  (g) Format (OQ-87): portable defaults. Plain Markdown; one stable
+  kebab-case file per topic; an index file serving as the handbook's
+  contents; minimal YAML front matter (`title`, `order`, `summary`); relative
+  links only; images in an `images/` folder next to the pages, linked
+  relatively. Consumers read from a release tag (release-please tags
+  already exist), not from `main`. These are defaults chosen without the
+  consuming repositories' stated requirements, which were not asked.
+  (h) Unreleased features (OQ-88): a feature merged but not released is
+  documented in a separate, clearly flagged "Upcoming" section, and each such
+  page MUST carry the front matter marker `status: unreleased` so consumers
+  can exclude it. "Released" means included in a tagged release
+  (release-please); this is triage evidence of medium confidence (the
+  release-please manifest and CHANGELOG contents were not read). Home-network
+  sharing (Features 75 to 77 and 80) is currently in this category.
+  (i) Runtimes (OQ-89): the desktop app is the main path. A "Differences by
+  runtime" part covers hosted web and the CLI, and a page carries a short
+  "Desktop only" (or similar) label where behaviour differs. Android is
+  described as not yet available, not documented.
+  (j) Currency (OQ-90): any feature that changes writer-visible behaviour
+  MUST update the handbook in the same PR, as part of the pipeline's
+  definition of done. Each page MUST carry a "verified against version or
+  commit X" line, which is the evidence of accuracy for (b). A link check
+  MUST be added. Where the app and the handbook disagree, the authority
+  hierarchy (specs, then code, then docs) applies and the handbook is
+  corrected.
+  (k) Audience (OQ-91): writers, plus a CLI appendix for writer-facing CLI
+  commands (the imports, `repair-revisions`, `reindex`, `doctor` and the
+  like). Self-hosting stays in developer docs. Milestone placement was not
+  decided at Gate 1; FR-69 stays under Later Requirements.
+  Status: not started; no `docs/user/handbook/` directory exists
+  (read from the repository, 2026-10-14). [US-28][US-29]
 ## Constraints
 
 - Folder names carry no application semantics: any folder layout is valid,
@@ -2910,6 +2989,48 @@ Superseded in part (Owner decision, 2026-10-10): project deletion becomes one of
 **Resolution:** Enforcement is at the route, through one shared check that fails closed: anything other than the sharing-off or desktop-window classification is treated as a paired device subject to the limits, and a missing or unparseable classification is treated the same. Two experiments are prerequisites and this decision does not settle them. To be settled by experiment (plan task), result reported to the owner before dependent work: (i) that the gate's classification (the `x-getwrite-classification` header the gate sets) reaches a route handler on a POST with a JSON body, in the standalone build and in `next dev`, including that a forged client copy is replaced (measured so far only for a GET, Feature 75's experiments section E). To be settled by experiment (plan task), result reported to the owner before dependent work: (ii) whether the encryption route validates the `projectId` it joins into a path for `enable` and `export`; triage found no validation by reading (`frontend/app/api/encryption/route.ts` ~195-204, `enable-encryption.ts` ~118); if a traversal value is accepted, that is a defect to fix regardless of this feature.
 **Evidence:** Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs'). Read, not run, except as stated for the GET measurement.
 **Impact:** FR-67, FR-68; Feature 77 design.
+
+**OQ-86 (resolved): What is the relationship between the handbook and the existing user-facing content: replace, absorb, sit beside, or be the single source?**
+**Resolution:** Resolved (2026-10-14): option b. The handbook absorbs `docs/user/*.md`: the existing pages are moved or merged into `docs/user/handbook/`, short stubs are left at the old paths (the README and `docs/user/installing.md` link to them), and the handbook is the single written source of user documentation. The in-app help (`frontend/components/help/help-content.ts`) is left alone and recorded as a known, separate source.
+**Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "1b").
+Facts read, not run: `docs/user/` holds 21 markdown files (including `docs/user/editor/` and `docs/user/views/`), and the in-app help is authored in `frontend/components/help/help-content.ts` (806 lines, typed blocks rendered by `HelpPage.tsx`). The `docs/user/` pages could be left as they are, absorbed into the handbook, or removed, and the in-app help could keep its own copy or be generated from the handbook; the owner has not said which. Whether two copies of the same statement may exist is part of this question.
+**Impact:** FR-69 (scope and single-source rule); risk of the pages and the help contradicting the handbook.
+**Owner:** Product owner.
+
+**OQ-87 (resolved): What do the consuming repositories need from the handbook content?**
+**Resolution:** Resolved (2026-10-14): option b, portable defaults. Plain Markdown; one stable kebab-case file per topic; an index file as the handbook's contents; minimal YAML front matter (`title`, `order`, `summary`); relative links only; images in an `images/` folder next to the pages, linked relatively. Consumers read from a release tag (release-please tags already exist), not from `main`. This is a default chosen without the consumers' actual requirements, which were not asked.
+**Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "2b").
+Not stated by the owner: stable file paths or slugs, front matter, link style (relative or absolute), how images and screenshots are carried, how the content is versioned against app releases, and which file format is used. This spec makes no file-format choice. Which repositories consume it, and whether one or several, is also unknown.
+**Impact:** FR-69(d); US-29.
+**Owner:** Product owner, with the maintainer(s) of the consuming repositories.
+
+**OQ-88 (resolved): Are features that are merged but not released documented, hidden, or marked?**
+**Resolution:** Resolved (2026-10-14): option c. Merged-but-unreleased features are documented in a separate, clearly flagged "Upcoming" section, each such page carrying the machine-readable front matter marker `status: unreleased` so consumers can exclude it. "Released" means included in a tagged release (release-please); this is triage evidence, medium confidence (the manifest and CHANGELOG contents were not read). Home-network sharing (Features 75 to 77 and 80) is currently in this category.
+**Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "3c").
+At the time of writing this spec records home-network sharing (Features 75 to 77 and 80) as merged to `main` and not released (FR-67, FR-68 status text). The same question applies to any later unreleased feature. Options include documenting them, omitting them until release, or documenting them with a visible "not yet released" marking; how "released" is determined for a given handbook version is also open.
+**Impact:** FR-69(b), FR-69(e).
+**Owner:** Product owner.
+
+**OQ-89 (resolved): Which runtimes does the handbook cover?**
+**Resolution:** Resolved (2026-10-14): option b. Desktop is the main path; a "Differences by runtime" part covers hosted web and the CLI; pages carry a short "Desktop only" (or similar) label where behaviour differs; Android is described as not yet available rather than documented.
+**Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "4b").
+The repository ships a desktop app (Electron), a hosted web mode with optional hosted auth, an Android shell (Capacitor) and a CLI (`getwrite-cli`), per `CLAUDE.md`. Whether the handbook covers all four, only some, or treats runtime differences as a section is not decided, nor how a behaviour that differs by runtime is labelled.
+**Impact:** FR-69(b), FR-69(c).
+**Owner:** Product owner.
+
+**OQ-90 (resolved): How does the handbook stay accurate as features ship, and is updating it part of every later feature's definition of done?**
+**Resolution:** Resolved (2026-10-14): option a. Any feature that changes writer-visible behaviour MUST update the handbook in the same PR, as part of the pipeline's definition of done; each page carries a "verified against version/commit X" line as the evidence of accuracy for FR-69(b); a link check is added. Where the app and the handbook disagree, the authority hierarchy (specs, then code, then docs) applies and the handbook is corrected.
+**Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "5a").
+The question as asked, not decided at the time: whether a handbook update is required for every feature that changes writer-visible behaviour, whether an automated or review-time check is expected, and who is responsible when the app and the handbook disagree. Also open: what evidence of "accurate" the owner will accept for FR-69(b) (for example a per-page verification record).
+**Impact:** FR-69(b); the pipeline's definition of done for later features.
+**Owner:** Product owner.
+
+**OQ-91 (resolved, milestone part not decided): Who is the audience, and where does the handbook sit in the milestones?**
+**Resolution:** Resolved (2026-10-14), audience part: option b. Writers, plus a CLI appendix for writer-facing CLI commands (the imports, `repair-revisions`, `reindex`, `doctor` and the like); self-hosting stays in developer docs. Milestone placement was not decided at Gate 1: the owner did not answer that part, and FR-69 stays under Later Requirements. This is not a blocker, since documentation gates no code.
+**Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "6b", audience only).
+The owner's request says "users"; this spec reads that as writers. Whether self-hosters (hosted web mode, environment configuration) and CLI users are also an audience is not decided, nor is the milestone for FR-69, which is placed under Later Requirements only because that is the last group in this document.
+**Impact:** FR-69 scope and milestone; US-28, US-29.
+**Owner:** Product owner.
 
 ## Out of Scope (Deferred)
 
