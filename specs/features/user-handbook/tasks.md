@@ -20,7 +20,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** none
 **Estimate:** 5
 **Notes:** Satisfies FR-15, FR-16, FR-17. The desktop and web runs and `lsof`/`ps` run OUTSIDE the command sandbox; `pnpm cli:build` runs inside. `GETWRITE_PROJECTS_DIR` alone does not redirect the dev desktop app (read, not run: `electron/src/projects-dir.ts:411-418`), so the fake repo root and `--user-data-dir` are required. A build that fails in a worktree must be run in the main checkout. If Electron cannot be pointed at throwaway folders, record that as a blocker; desktop-only statements are then dropped (OQ-2/FR-15), not read.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Baseline inventory, release check and record skeleton
 **What:** List every factual statement on the 21 old pages into the verification record skeleton, fix the handbook page order, and run the per-section release check against `getwrite-v2.2.0`.
