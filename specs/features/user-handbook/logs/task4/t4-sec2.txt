@@ -1,0 +1,52 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 89770 port 53096 (throwaway projects dir; templates throwaway copy)
+A-03/04/05/08 default body p style on a Blank project: {"family":"\"IBM Plex Serif\"","size":"15px","lh":"22.5px","color":"rgb(26, 25, 22)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":"line-height: 1.5;","gaps":[16,16]}
+A-03/04/05 project.json config keys: ["maxRevisions","statuses","customNoiseWords","excludedGlobalNoiseWords","autoPrune","editorConfig","metadataRevision"]; editor-related: {"editorConfig":{"headings":{"h1":{"fontSize":"40px","fontFamily":"IBM Plex Serif","fontWeight":"700","letterSpacing":"0.01em"},"h2":{"fontSize":"28px","fontFamily":"IBM Plex Serif","fontWeight":"700"},"h3":{"fontSize":"20px","fontFamily":"IBM Plex Serif","fontWeight":"500"}},"body":{"fontFamily":"IBM Plex Serif","fontSize":"15px","lineHeight":"1.8","paragraphSpacing":"16px"}}}
+A-05 toolbar Line Height field value: "1.5"
+H-01/H-04 caret in one line (no selection), clicked Heading 1..6: tags ["H1","H2","H3","H4","H5","H6"]
+H-04 editor structure: ["P:First paragraph.","P:Second paragraph.","P:Third paragraph.","H1:Heading line 1","H2:Heading line 2","H3:Heading line 3","H4:Heading line 4","H5:Heading line 5","H6:Heading line 6","P:","P:"]
+H-07..H-11 default h1 style: {"size":"40px","family":"\"IBM Plex Serif\"","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"}; h2: {"size":"28px","family":"\"IBM Plex Serif\"","weight":"700","ls":"normal","color":"rgb(26, 25, 22)","lh":"36.4px"}; h3: {"size":"20px","family":"\"IBM Plex Serif\"","weight":"500","ls":"normal","color":"rgb(26, 25, 22)","lh":"26px"}; h4: {"size":"16px","family":"\"IBM Plex Sans\", sans-serif","weight":"400","ls":"normal","color":"rgb(26, 25, 22)","lh":"20.8px"}
+H-05 gear menu items: ["User Preferences","Project Settings","Project Type Manager","Switch to dark mode","Help","Close Project"]
+H-05 Project Settings tab buttons: ["Close","Editor","Default Revision Name","Manage Tags","Metadata","Timeline","Organizer","Writing Goals","Noise Words","Entities","Project Encryption","","",""]
+H-05 any tab/button named exactly 'Heading Styles': 0; text 'Heading Styles' occurrences in dialog: 2
+H-03/H-12 Editor tab visible text: ["Heading Styles","Configure project-specific heading styles for the editor. H1 through H3 are always available, and you can add H4 through H6 as needed.","H1","Set the typography attributes applied to H1 in the editor.","FONT SIZE","FONT FAMILY","FONT WEIGHT","Use default","Normal","Bold","LETTER SPACING","COLOR","PREVIEW","The quick brown fox jumps over the lazy dog","H2","Set the typography attributes applied to H2 in the editor.","FONT SIZE"]
+H-07..H-11 controls (labels, default values): ["INPUT:H1 Font Size=40|ph=e.g. 32","INPUT:H1 Font Family=IBM Plex Serif|ph=e.g. IBM Plex Sans","SELECT:H1 Font Weight=700","INPUT:H1 Letter Spacing=0.01|ph=e.g. 0.08","BUTTON:Choose H1 color=","INPUT:H1 Color=#000000","INPUT:H2 Font Size=28|ph=e.g. 32","INPUT:H2 Font Family=IBM Plex Serif|ph=e.g. IBM Plex Sans","SELECT:H2 Font Weight=700","INPUT:H2 Letter Spacing=|ph=e.g. 0.08","BUTTON:Choose H2 color=","INPUT:H2 Color=#000000","INPUT:H3 Font Size=20|ph=e.g. 32","INPUT:H3 Font Family=IBM Plex Serif|ph=e.g. IBM Plex Sans","SELECT:H3 Font Weight=","INPUT:H3 Letter Spacing=|ph=e.g. 0.08","BUTTON:Choose H3 color=","INPUT:H3 Color=#000000"]
+H-09 H1 weight options: [":Use default","400:Normal","700:Bold"]
+H-08 H1 Font Family control type: {"type":"text","list":"_r_j_","tag":"INPUT"}
+H-11 Color control: {"type":"color","value":"#000000"}; pipette button label 'Choose H1 color' present: 1
+H-11 clicked the pipette button in headless Chromium: dialog input count 30 -> 30; H1 Color value "#000000"; page text lines containing 'color' or 'Color': ["COLOR","COLOR","COLOR"]
+H-13 typed H1 size 99 and spacing 0.2 without Save: editor h1 before={"size":"40px","family":"\"IBM Plex Serif\"","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"} after={"size":"40px","family":"\"IBM Plex Serif\"","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"}; dialog preview style: {"size":"99px","ls":"19.8px"}
+H-14 after clicking the headings Cancel: dialog count=0; editor h1={"size":"40px","family":"\"IBM Plex Serif\"","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"}
+H-14 reopened after Cancel: H1 size="40", spacing="0.01"
+H-14 typed 99, clicked Close (no Save), reopened: H1 size="40"; editor h1 size=40px
+H-06/07..11 right after Save (dialog still open): h1={"size":"60px","family":"Merriweather","weight":"400","ls":"3px","color":"rgb(204, 0, 0)","lh":"78px"}; h2={"size":"33px","family":"\"IBM Plex Serif\"","weight":"700","ls":"normal","color":"rgb(26, 25, 22)","lh":"42.9px"}; h3={"size":"20px","family":"\"IBM Plex Serif\"","weight":"500","ls":"normal","color":"rgb(26, 25, 22)","lh":"26px"}
+H-06 dialog state after Save Changes: dialog open=1; visible text containing 'Saved'/'saved': ["All changes saved · just now"]
+H-06 after closing the dialog (no reload): h1={"size":"60px","family":"Merriweather","weight":"400","ls":"3px","color":"rgb(204, 0, 0)","lh":"78px"}
+H-06 project.json after save: editor-related config {"editorConfig":{"headings":{"h1":{"fontSize":"60px","fontFamily":"Merriweather","fontWeight":"400","letterSpacing":"0.05em","color":"#cc0000"},"h2":{"fontSize":"33px","fontFamily":"IBM Plex Serif","fontWeight":"700"},"h3":{"fontSize":"20px","fontFamily":"IBM Plex Serif","fontWeight":"500"}},"body":{"fontFamily":"IBM Plex Serif","fontSize":"15px","lineHeight":"1.8","paragraphSpacing":"16px"}}}
+H-06 after reload: h1={"size":"60px","family":"Merriweather","weight":"400","ls":"3px","color":"rgb(204, 0, 0)","lh":"78px"}; h2={"size":"33px","family":"\"IBM Plex Serif\"","weight":"700","ls":"normal","color":"rgb(26, 25, 22)","lh":"42.9px"}
+H-06 second project 'Other Project' (Blank, new): h1={"size":"40px","family":"\"IBM Plex Serif\"","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"}
+H-15 light: h1(custom color)=rgb(204, 0, 0); h2(no custom color)=rgb(26, 25, 22); h3=rgb(26, 25, 22); p=rgb(26, 25, 22); html class="gw-theme-light gw-density-comfortable"
+H-15 after 'Switch to dark mode': h1(custom color)=rgb(204, 0, 0); h2(no custom color)=rgb(245, 244, 240); h3=rgb(245, 244, 240); p=rgb(245, 244, 240); html class="gw-density-comfortable gw-theme-dark"
+A-11 p text color light vs dark: see lines above (light vs dark)
+H-15 STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('text=/Switch to (dark|light) mode/')[22m
+H-12 after Add H4: headings controls ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size"]; buttons ["Choose H1 color","Choose H2 color","Choose H3 color","Remove H4","Choose H4 color","Add H5"]
+H-12 after Add H5, Add H6: ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size","H5 Font Size","H6 Font Size"]; buttons ["Choose H1 color","Choose H2 color","Choose H3 color","Remove H4","Choose H4 color","Remove H5","Choose H5 color","Remove H6","Choose H6 color"]
+H-12 remove controls for H1..H3 present: []
+H-12 Remove H6 buttons: 1
+H-12 after removing H6: ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size","H5 Font Size"]
+H-12 after Save with H4 size 22 (H5 left empty): dialog count=1; editor h4 style={"size":"22px","family":"\"IBM Plex Sans\", sans-serif","weight":"400","ls":"normal","color":"rgb(245, 244, 240)","lh":"28.6px"}
+H-12 after save and reload, heading levels listed: ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size"]
+H-12 toolbar heading buttons now: ["Heading 1","Heading 2","Heading 3","Heading 4","Heading 5","Heading 6"]
+A-09 Body Text Styles field default values/placeholders: ["Font Family=\"IBM Plex Serif\"|ph=\"e.g. IBM Plex Serif\"","Font Size=\"15px\"|ph=\"e.g. 18px\"","Line Height=\"1.8\"|ph=\"e.g. 1.8\"","Paragraph Spacing=\"16px\"|ph=\"e.g. 1em\""]
+A-09 after Body Text Styles Save (size 20px, line height 2.2, paragraph spacing 30px, family Lato): {"family":"Lato","size":"20px","lh":"30px","color":"rgb(245, 244, 240)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":"line-height: 1.5;","gaps":[30,30,398.8,30]}
+A-09 project.json config body: {"editorConfig":{"headings":{},"body":{"fontFamily":"Lato","fontSize":"20px","lineHeight":"2.2","paragraphSpacing":"30px"}}}
+A-09 after reload: {"family":"Lato","size":"20px","lh":"30px","color":"rgb(245, 244, 240)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":"line-height: 1.5;","gaps":[30,30,398.8,30]}
+A-06 Body Text Styles line height set to 1 and saved: {"family":"Lato","size":"20px","lh":"30px","color":"rgb(245, 244, 240)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":"line-height: 1.5;","gaps":[30,30,398.8,30]}; project.json body={"fontFamily":"Lato","fontSize":"20px","lineHeight":"1","paragraphSpacing":"30px"}
+A-06 toolbar Line Height field set to 1.2 (+Enter): field value="1.2"; {"family":"Lato","size":"20px","lh":"24px","color":"rgb(245, 244, 240)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":"line-height: 1.2;","gaps":[30,30,398.8,30]}
+A-06 toolbar Line Height 0.5: field="0.5"; p lh="10px"
+A-10 CLI project create --spec <custom spec: body Lato 18px, lineHeight 2.4, paragraphSpacing 40px>: exit=0; ["Created project at: /private/tmp/getwrite-handbook/t4sec2-mv8ou4a2-b8e9ee/projects/11111111-2222-4333-8444-555555555555","Folders: 1, Resources: 0",""]
+A-10 project.json editorConfig.body of the new project: {"fontFamily":"Lato","fontSize":"18px","lineHeight":"2.4","paragraphSpacing":"40px"}
+A-10 rendered body p in that project: {"family":"Lato","size":"18px","lh":"27px","color":"rgb(245, 244, 240)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":"line-height: 1.5;","gaps":[40]}; toolbar Line Height field="1.5"
+stop: recorded 89770(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

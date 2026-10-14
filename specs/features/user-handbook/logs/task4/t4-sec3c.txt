@@ -1,0 +1,36 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 14059 port 53941 (throwaway projects dir; templates repo read-only)
+server TZ=Pacific/Kiritimati; UTC now 2026-10-14T22:44:58.486Z; server-local date 2026-10-15
+W-27 a: first 5 words: text="alpha beta gamma delta epsilon" -> new entries ["+5/-0/net5"]; entries so far ["+5/-0/net5"]; footer ["Today's writing","Today: 5","All changes saved · just now"]
+W-31/W-34 b: same five words in reverse order: text="epsilon delta gamma beta alpha" -> new entries []; entries so far ["+5/-0/net5"]; footer ["Today's writing","Today: 5","All changes saved · just now"]
+   revision content.bin hash before/after: ["20a9c4598e89"] -> ["6fd52d1aa71d"] (a changed hash means the save wrote different content)
+c: three paragraphs: text="P1 one two\nP2 three four\nP3 five six" -> new entries ["+9/-5/net4"]; entries so far ["+5/-0/net5","+9/-5/net4"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+   after cut/paste, editor paragraphs: ["","P1 one two","P2 three four","P3 five six"]
+W-30 c: paragraph P1 moved to the end -> new entries []; footer ["Today's writing","Today: 9","All changes saved · just now"]; content.bin hash ["325e9f1c2481"] -> ["2559a53a8498"]
+W-32 d1: 'three' -> 'Three': text="P2 Three four\nP3 five six\nP1 one two" -> new entries ["+1/-1/net0"]; entries so far ["+5/-0/net5","+9/-5/net4","+1/-1/net0"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+W-32 d2: 'four' -> 'four,': text="P2 Three four,\nP3 five six\nP1 one two" -> new entries ["+1/-1/net0"]; entries so far ["+5/-0/net5","+9/-5/net4","+1/-1/net0","+1/-1/net0"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+W-35 e: swap 'five' for 'zzz': text="P2 Three four,\nP3 zzz six\nP1 one two" -> new entries ["+1/-1/net0"]; entries so far ["+5/-0/net5","+9/-5/net4","+1/-1/net0","+1/-1/net0","+1/-1/net0"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+W-27 f: delete 'P1 one' (2 words): text="P2 Three four,\nP3 zzz six\ntwo" -> new entries ["+0/-2/net-2"]; entries so far ["+5/-0/net5","+9/-5/net4","+1/-1/net0","+1/-1/net0","+1/-1/net0","+0/-2/net-2"]; footer ["Today's writing","Today: 7","All changes saved · just now"]
+W-33 g: typed ' ephemeral' and deleted it again before the autosave: new entries []; footer ["Words: 7","Node: Body","Today's writing","Today: 7","All changes saved · just now"]; editor text "P2 Three four,\n\nP3 zzz six\n\ntwo"
+W-27 dialog numbers vs entries: dialog ["No daily goal set","Added: 17","Deleted: 10","Net: 7","Imported (not counted toward goal): 0"]; sum of entries added=17 deleted=10 net=7; entries [{"added":5,"deleted":0,"net":5},{"added":9,"deleted":5,"net":4},{"added":1,"deleted":1,"net":0},{"added":1,"deleted":1,"net":0},{"added":1,"deleted":1,"net":0},{"added":0,"deleted":2,"net":-2}]
+W-28 revision control open: text ["EDITING CANONICAL REVISION","REVISION CONTROL","SAVE, BROWSE, AND RESTORE DOCUMENT REVISIONS.","SAVE EXPLICIT REVISION","EXISTING REVISIONS","Initial Draft","CANONICAL","Draft"]
+W-28 revisions on disk after Save Explicit Revision: [{"v":"v-1","canonical":true},{"v":"v-2","canonical":false}]; entries ["+5/-0/net5","+9/-5/net4","+1/-1/net0","+1/-1/net0","+1/-1/net0","+0/-2/net-2"]
+W-28 revision cards text: ["EDITING CANONICAL REVISION","SAVE, BROWSE, AND RESTORE DOCUMENT REVISIONS.","Named Revision","Protect","View Revision","Set as Canonical Revision","Initial Draft","CANONICAL","Protect","In review"]
+W-28 buttons in revision control: ["Save","Protect revision v2","View Revision","Set as Canonical Revision","Delete Revision","Roll Back to Revision","Protect revision v1"]
+W-36 CLI import-plaintext: exit=0; ["Imported plain-text project to: /private/tmp/getwrite-handbook/t4sec3c-mv8p6qv4-f06c68/projects/22222222-3333-4444-8555-666666666666","Folders: 0, Resources: 1","Report written to: /private/tmp/getwrite-handbook/t4sec3c-mv8p6qv4-f06c68/projects/22222222-3333-4444-8555-666666666666/plaintext-import-report.txt"]
+W-36 import project files in meta/writing-log: ["2026-10-14.json"]; entries [{"added":8,"deleted":0,"net":8,"timestamp":"2026-10-14T22:45:59.986Z","source":"plaintext"}]
+W-36 projects on the Start Page: ["Open project settings menu","Open Imported Notes","Open Count Test"]
+W-36 STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button:has-text("Today\'s writing")')[22m
+W-45 reindex on the Count Test project: exit=0; output ["[reindex] Done — indexed 1 resource(s), 0 mention(s) in /private/tmp/getwrite-handbook/t4sec3c-mv8p6qv4-f06c68/projects/b07d4bdd-6077-4513-ad79-0aecb8f98c5f"]
+W-45 meta/writing-log before ["2026-10-14.json:a48474d2c475"] after ["2026-10-14.json:a48474d2c475"]
+W-41/42/43 files: ["2026-10-14.json"]; UTC date 2026-10-14; server-local date (TZ=Pacific/Kiritimati) 2026-10-15; day file keys ["entries"]; entry timestamps ["2026-10-14T22:45:10.188Z","2026-10-14T22:45:20.606Z","2026-10-14T22:45:31.498Z","2026-10-14T22:45:36.724Z","2026-10-14T22:45:41.938Z","2026-10-14T22:45:47.144Z"]
+W-39 files for Leg Doc: ["/resources/97f8e936-cdfe-49f5-82bc-dc93dcdce0c7/content.tiptap.json","/resources/97f8e936-cdfe-49f5-82bc-dc93dcdce0c7/content.txt","/revisions/97f8e936-cdfe-49f5-82bc-dc93dcdce0c7/v-1/content.bin","/revisions/97f8e936-cdfe-49f5-82bc-dc93dcdce0c7/v-1/metadata.json"]
+W-39 entries before: ["+4/-0/net4"]; revision content.bin head: "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"attrs\":{\"id\":\""
+W-39 doc opened with a plain-text revision: editor text "legacy plain text, not a TipTap document"
+W-40 toast/status text right after the save: ["Today's writing"]
+W-40 footer after the save: ["Words: 8","Node: Body","Today's writing","Today: 4","Today's count may be incomplete","All changes saved · just now","Today's word count may be incomplete: this save couldn't be counted."]; entries ["+4/-0/net4","skipped"]; raw entries [{"f":"2026-10-14.json","skipped":true,"timestamp":"2026-10-14T22:47:02.998Z"}]
+W-40 role=status/alert elements: ["Today's word count may be incomplete: this save couldn't be counted."]
+W-40 dialog numbers: ["No daily goal set","Added: 4","Deleted: 0","Net: 4","Imported (not counted toward goal): 0","Today's count may be incomplete"]
+stop: recorded 14059(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,12 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+electron pid 35415; isPackaged=false; userData is throwaway: true
+W-36 docx import opened project "multi-heading"; day entries [{"file":"2026-10-14.json","added":14,"deleted":0,"net":14,"timestamp":"2026-10-14T22:53:39.578Z","source":"docx"}]
+   tree text ["Chapter One"]
+W-36 docx import project: dialog ["No daily goal set","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 14"]; footer ["Today's writing","Today: 0"]
+W-36 scrivener import opened project "sample"; day entries [{"file":"2026-10-14.json","added":84,"deleted":0,"net":84,"timestamp":"2026-10-14T22:53:56.552Z","source":"scrivener"}]
+   tree text ["Chapter One","Chapter One","Chapter Two","Chapter Two","Scene One","Research","Character Notes","Backslash Newline Paragraphs","Mixed Par And Backslash Newline","Hex Escapes And Layout Words","Archive","Old Draft"]
+scriv STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button:has-text("Today\'s writing")')[22m
+stop: recorded 35415(Electron),35417(Electron Helper (GPU)),35418(Electron Helper),35419(sh),35423(node),35442(node),35448(next-server (v16.2.6)),35523(Electron Helper (Renderer)); after SIGTERM: none alive
+listener on 7340 after stop: none; throwaway log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

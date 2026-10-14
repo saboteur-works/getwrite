@@ -47,7 +47,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 1, 2
 **Estimate:** 5
 **Notes:** Needs the app running (web build for most; desktop method for any desktop-only control). Out of the sandbox. Writing-log checks should use throwaway projects only. Facts as measured; no cause for any observed count.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Verify and write the story part
 **What:** Run every statement on `metadata.md` and `metadata-queries.md` and write the two story pages.

@@ -1,0 +1,56 @@
+// Task 4, web build: W-30 moving a paragraph by cut and paste, W-28 viewing an older revision. Run OUTSIDE the sandbox.
+import { withWeb, say, J, bodyText, step, pm, newProjectWithDoc, waitSaved, walk } from "./task4-lib.mjs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import path from "node:path";
+const entries = (h) => { const out = []; for (const d of readdirSync(h.projectsDir)) { const dir = path.join(h.projectsDir, d, "meta", "writing-log"); if (!existsSync(dir)) continue; for (const f of readdirSync(dir).sort()) out.push(...JSON.parse(readFileSync(path.join(dir, f), "utf8")).entries); } return out; };
+const summ = (es) => es.map((e) => e.skipped ? "skipped" : `+${e.added}/-${e.deleted}/net${e.net}`);
+const paras = (page) => page.evaluate(() => [...document.querySelectorAll(".ProseMirror p")].map((p) => p.textContent));
+const hashAll = (h) => walk(h.projectsDir).filter((p) => /content\.bin$/.test(p)).map((f) => createHash("sha256").update(readFileSync(f)).digest("hex").slice(0, 10));
+await withWeb("t4sec3e", {}, async ({ h, page }) => {
+  await newProjectWithDoc(page, h, "Move Test", "Doc One");
+  await pm(page).click();
+  await page.keyboard.type("P1 one two");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("P2 three four");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("P3 five six");
+  await waitSaved(page);
+  say(`W-30 setup: paragraphs ${J(await paras(page))}; entries ${J(summ(entries(h)))}`);
+  const before = entries(h).length;
+  const hb = hashAll(h);
+  const sel = (page) => page.evaluate(() => { const s = getSelection(); return { text: getSelection().toString(), anchor: s.anchorNode && (s.anchorNode.textContent || "").slice(0, 20), off: s.anchorOffset }; });
+  await pm(page).locator("p").first().click({ clickCount: 3 });
+  await page.keyboard.press("Meta+x");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Delete");
+  await page.waitForTimeout(200);
+  say(`W-30 after cut and Delete: paragraphs ${J(await paras(page))}; selection ${J(await sel(page))}`);
+  await page.keyboard.press("Meta+ArrowDown");
+  say(`W-30 after Meta+ArrowDown: selection ${J(await sel(page))}`);
+  await page.keyboard.press("Enter");
+  say(`W-30 after Enter: paragraphs ${J(await paras(page))}; selection ${J(await sel(page))}`);
+  await page.keyboard.press("Meta+v");
+  await page.waitForTimeout(500);
+  say(`W-30 after moving to the end: paragraphs ${J(await paras(page))}`);
+  const f = await waitSaved(page, 4500);
+  say(`W-30 new entries ${J(summ(entries(h).slice(before)))}; content.bin hashes ${J(hb)} -> ${J(hashAll(h))}; footer ${J(f.filter((l) => /Today|saved/.test(l)))}`);
+  // W-28: view the older revision and try to edit it
+  await page.click("button:has-text('Expand')"); await page.waitForTimeout(500);
+  await page.locator('input[placeholder="Revision name"]').fill("Named Revision");
+  await page.click("button:has-text('Save')"); await page.waitForTimeout(1500);
+  // change the canonical text so the two revisions differ
+  await pm(page).locator("p").last().click();
+  await page.keyboard.press("End"); await page.keyboard.type(" extra words added now");
+  await waitSaved(page, 4500);
+  say(`W-28 canonical saved again; entries ${J(summ(entries(h)))}`);
+  await page.click('button[aria-label="View Revision"], button:has-text("View Revision") >> nth=0');
+  await page.waitForTimeout(1500);
+  say(`W-28 viewing the named revision: editing line ${J((await bodyText(page)).split("\n").filter((l) => /EDITING|VIEWING|revision/i.test(l)).slice(0, 5))}; editor text ${J(await pm(page).innerText())}`);
+  const eb = entries(h).length;
+  await pm(page).click();
+  await page.keyboard.type(" typed into the older revision");
+  await page.waitForTimeout(6000);
+  say(`W-28 typed in the older revision, waited 6 s: new entries ${J(summ(entries(h).slice(eb)))}; footer ${J((await bodyText(page)).split("\n").filter((l) => /saved|Today|Words|non-canonical|unsaved|Unsaved/i.test(l)))}`);
+  say(`W-28 revision files: ${J(walk(h.projectsDir).filter((p) => /content\.bin$/.test(p)).map((p) => [p.split("/").slice(-2)[0], readFileSync(p, "utf8").length]))}`);
+});
