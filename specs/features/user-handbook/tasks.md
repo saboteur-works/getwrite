@@ -29,7 +29,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** none
 **Estimate:** 5
 **Notes:** Satisfies FR-9, FR-10, FR-11, FR-12, FR-6. Git and grep only: inside the sandbox, no app needed. Do not decide `kept`/`dropped` here; this task only inventories. Record the statement list verbatim in short quotes so Tasks 3 to 8 can pick it up without rereading by guess. Run-order-wise this can be done in parallel with Task 1.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Verify and write getting-started and organize pages
 **What:** Run every statement on `installing.md`, `start-page.md`, `project-types.md` and `resource-tree.md` and write the four handbook pages.
