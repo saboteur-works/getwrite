@@ -1,0 +1,254 @@
+[
+  {
+    "variant": "d60",
+    "runId": "s4d60r1-mv48948p-ba5a33",
+    "port": 49875,
+    "pid": 34141,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "idleMeasuredMs": 60001,
+    "elapsedWallSeconds": 129.1,
+    "maxWallGapMs": 1004,
+    "gapsOver3s": [],
+    "idleRequestsA": {
+      "api": 0,
+      "allUnfiltered": 0
+    },
+    "perTouch": [
+      {
+        "touch": "click",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": [
+          "document.focusout",
+          "document.focusin"
+        ]
+      },
+      {
+        "touch": "focus_out_and_back",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": [
+          "document.focusout",
+          "document.focusin"
+        ]
+      },
+      {
+        "touch": "scroll",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      },
+      {
+        "touch": "visibility_second_page",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      },
+      {
+        "touch": "bringToFront_A",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      }
+    ],
+    "aPatchesBeforeQ": 0,
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s4/s4d60r1-mv48948p-ba5a33-rep01.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s4/s4d60r1-mv48948p-ba5a33-rep01-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "d60",
+    "runId": "s4d60r2-mv48by4k-70ead0",
+    "port": 50003,
+    "pid": 38449,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "idleMeasuredMs": 60002,
+    "elapsedWallSeconds": 129.1,
+    "maxWallGapMs": 1006,
+    "gapsOver3s": [],
+    "idleRequestsA": {
+      "api": 0,
+      "allUnfiltered": 0
+    },
+    "perTouch": [
+      {
+        "touch": "click",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": [
+          "document.focusout",
+          "document.focusin"
+        ]
+      },
+      {
+        "touch": "focus_out_and_back",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": [
+          "document.focusout",
+          "document.focusin"
+        ]
+      },
+      {
+        "touch": "scroll",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      },
+      {
+        "touch": "visibility_second_page",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      },
+      {
+        "touch": "bringToFront_A",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      }
+    ],
+    "aPatchesBeforeQ": 0,
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s4/s4d60r2-mv48by4k-70ead0-rep02.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s4/s4d60r2-mv48by4k-70ead0-rep02-digest.txt",
+    "harnessError": null
+  },
+  {
+    "variant": "d60",
+    "runId": "s4d60r3-mv48eryb-afbdb2",
+    "port": 50100,
+    "pid": 42709,
+    "verdict": {
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "flags": {
+        "reloadChecked": true
+      }
+    },
+    "last": "A#1",
+    "held": [
+      "A#1"
+    ],
+    "idleMeasuredMs": 60001,
+    "elapsedWallSeconds": 129.1,
+    "maxWallGapMs": 1003,
+    "gapsOver3s": [],
+    "idleRequestsA": {
+      "api": 0,
+      "allUnfiltered": 0
+    },
+    "perTouch": [
+      {
+        "touch": "click",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": [
+          "document.focusout",
+          "document.focusin"
+        ]
+      },
+      {
+        "touch": "focus_out_and_back",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": [
+          "document.focusout",
+          "document.focusin"
+        ]
+      },
+      {
+        "touch": "scroll",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      },
+      {
+        "touch": "visibility_second_page",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      },
+      {
+        "touch": "bringToFront_A",
+        "a": {
+          "api": 0,
+          "allUnfiltered": 0
+        },
+        "patches": 0,
+        "events": []
+      }
+    ],
+    "aPatchesBeforeQ": 0,
+    "jsonFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s4/s4d60r3-mv48eryb-afbdb2-rep03.json",
+    "digestFile": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s4/s4d60r3-mv48eryb-afbdb2-rep03-digest.txt",
+    "harnessError": null
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "variant": "G0-P1-AB",
+  "n": 3,
+  "attempt": 3,
+  "why": "setup failure before the release: locator.waitFor: Error: strict mode violation: getByRole('button', { name: 'Open S2 G0-P1-AB r3 9cbde9', exact: true }) resolved to 3 elements:",
+  "record": {
+    "scenario": "s2",
+    "repetition": 3,
+    "runId": "s2-g0-p1-ab-mv49wuqy-9cbde9",
+    "commit": "cb0b23a1",
+    "startedAt": "2026-10-11T20:27:37.065Z",
+    "node": "v24.15.0",
+    "note": "S2 near-simultaneous, variant G0-P1-AB (gap asked 0 ms, pairing P1, first released A), repetition 3 of 20, attempt 3. Both clients edit the SAME resource, both opened from the base, no reload between. Measurement of the unchanged product. Fresh project and resource; one server and one browser per variant.",
+    "server": {
+      "kind": "built standalone server (frontend/.next/standalone/frontend/server.js), sharing on",
+      "port": 52683,
+      "pid": 33023,
+      "address": "private LAN IPv4 of this host (host to itself, not a second-device result)"
+    },
+    "labelEvery": "host to itself, not a second-device result",
+    "timesAre": "Playwright event times on the host clock, not wire times",
+    "steps": [
+      {
+        "at": "2026-10-11T20:27:37.753Z",
+        "tMs": 688,
+        "name": "fixture created (project + resource through the app's API); initial stores read",
+        "initial": [
+          "content.bin (canonical): = base",
+          "content.tiptap.json: = base",
+          "content.txt: = base",
+          "sidecar wordCount=4 matches base; updatedAt=null",
+          "stores agree on base"
+        ]
+      }
+    ],
+    "outcomes": {},
+    "verdictInputs": null,
+    "verdict": null,
+    "findings": {},
+    "extra": {
+      "ERROR": {
+        "phase": "setup",
+        "message": "locator.waitFor: Error: strict mode violation: getByRole('button', { name: 'Open S2 G0-P1-AB r3 9cbde9', exact: true }) resolved to 3 elements:"
+      }
+    }
+  }
+}

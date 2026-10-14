@@ -1,0 +1,12 @@
+{
+  "id": "6572885f-b4ba-4e8c-a4ac-171b0caed4fa",
+  "slug": "workspace",
+  "name": "Workspace",
+  "parentId": null,
+  "orderIndex": 0,
+  "createdAt": "2026-10-12T18:57:52.299Z",
+  "type": "folder",
+  "metadataSource": {
+    "isMetadataSource": false
+  }
+}

@@ -1,0 +1,4648 @@
+{
+  "variant": "G15-P1-BA",
+  "asked": {
+    "gapMs": 15,
+    "pairing": "P1",
+    "firstReleased": "B"
+  },
+  "repetitionsAsked": 20,
+  "repetitionsCompleted": 20,
+  "repetitionsNotCompletedAfterRelease": [],
+  "repetitionsNotRun": [],
+  "aborted": null,
+  "discardedAttempts": [],
+  "wallStart": "2026-10-11T23:15:10.423Z",
+  "wallEnd": "2026-10-11T23:20:30.604Z",
+  "wallSeconds": 320,
+  "heartbeat": {
+    "beats": 315,
+    "maxWallGapMs": 1594,
+    "maxPerfGapMs": 1594,
+    "gapsOver3s": []
+  },
+  "descendantPidsRecordedDuringRun": [
+    {
+      "pid": 93890,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 93907,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 93908,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 93909,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 93911,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 93973,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 95496,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 95513,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 95514,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 95515,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 95517,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 95519,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96202,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 96219,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96220,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96221,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96223,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96225,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96913,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 96930,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96931,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96932,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96994,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 96996,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 97621,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 97698,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 97699,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 97700,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 97702,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 97704,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 98386,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 98404,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 98405,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 98406,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 98408,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 98410,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99094,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 99111,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99112,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99113,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99115,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99117,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99805,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 99822,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99823,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99824,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99886,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 99888,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 766,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 876,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 877,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 879,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 882,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 886,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 1650,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 1667,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 1668,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 1669,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 1671,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 1673,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 2368,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 2385,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 2386,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 2387,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 2389,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 2452,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3099,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 3116,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3117,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3118,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3180,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3182,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3815,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 3892,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3893,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3894,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3898,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 3900,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 4594,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 4612,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 4613,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 4614,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 4616,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 4618,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 5305,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 5322,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 5323,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 5324,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 5326,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 5389,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6022,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 6042,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6043,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6044,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6106,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6108,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6751,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 6828,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6829,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6830,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6832,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 6834,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 7515,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 7532,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 7533,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 7534,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 7539,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 7541,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 8228,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 8245,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 8246,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 8247,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 8309,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 8311,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 8935,
+      "comm": "next-server (v16.2.6)"
+    },
+    {
+      "pid": 9012,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 9013,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 9014,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 9016,
+      "comm": "chrome-headless-shell"
+    },
+    {
+      "pid": 9023,
+      "comm": "chrome-headless-shell"
+    }
+  ],
+  "descendantPidsAliveAfterTeardown": [],
+  "reps": [
+    {
+      "n": 1,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r1-mv4fy21k-afc9ec-rep01.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r1-mv4fy21k-afc9ec",
+      "port": 60020,
+      "serverPid": 93890,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 140,
+        "B": 140
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.062,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.931,
+        "requestEventGapMs_BminusA": 1.075,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:15:16.011Z",
+          "B": "2026-10-11T23:15:15.995Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:15:16.011Z",
+          "B": "2026-10-11T23:15:15.995Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:15:15.823Z",
+          "B": "2026-10-11T23:15:15.825Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:15:16.021Z",
+          "B": "2026-10-11T23:15:16.009Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 10.413,
+          "B": 13.439
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.905,
+        "updatedAt": {
+          "A": "2026-10-11T23:15:16.020Z",
+          "B": "2026-10-11T23:15:16.005Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 15,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:15:16.020Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · 27s ago",
+          "B": "All changes saved · 27s ago"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          93890
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 2,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r2-mv4fywq1-96c296-rep02.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r2-mv4fywq1-96c296",
+      "port": 60092,
+      "serverPid": 95496,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 138,
+        "B": 138
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.043,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.281,
+        "requestEventGapMs_BminusA": 1.177,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:15:55.751Z",
+          "B": "2026-10-11T23:15:55.736Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:15:55.751Z",
+          "B": "2026-10-11T23:15:55.736Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:15:55.551Z",
+          "B": "2026-10-11T23:15:55.552Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:15:55.762Z",
+          "B": "2026-10-11T23:15:55.749Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.3,
+          "B": 13.628
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.953,
+        "updatedAt": {
+          "A": "2026-10-11T23:15:55.760Z",
+          "B": "2026-10-11T23:15:55.745Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 15,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:15:55.760Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          95496
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 3,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r3-mv4fz82u-640dbe-rep03.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r3-mv4fz82u-640dbe",
+      "port": 60130,
+      "serverPid": 96202,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 142,
+        "B": 142
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.049,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.448,
+        "requestEventGapMs_BminusA": 0.829,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:16:10.510Z",
+          "B": "2026-10-11T23:16:10.495Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:16:10.510Z",
+          "B": "2026-10-11T23:16:10.495Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:16:10.319Z",
+          "B": "2026-10-11T23:16:10.320Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:16:10.521Z",
+          "B": "2026-10-11T23:16:10.509Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 10.889,
+          "B": 13.796
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.541,
+        "updatedAt": {
+          "A": "2026-10-11T23:16:10.519Z",
+          "B": "2026-10-11T23:16:10.505Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 14,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:16:10.519Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          96202
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 4,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r4-mv4fzjhw-faeea8-rep04.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r4-mv4fzjhw-faeea8",
+      "port": 60164,
+      "serverPid": 96913,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 141,
+        "B": 141
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.028,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.874,
+        "requestEventGapMs_BminusA": 0.956,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:16:25.254Z",
+          "B": "2026-10-11T23:16:25.238Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:16:25.254Z",
+          "B": "2026-10-11T23:16:25.238Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:16:25.058Z",
+          "B": "2026-10-11T23:16:25.059Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:16:25.265Z",
+          "B": "2026-10-11T23:16:25.252Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 10.66,
+          "B": 13.372
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 13.162,
+        "updatedAt": {
+          "A": "2026-10-11T23:16:25.263Z",
+          "B": "2026-10-11T23:16:25.248Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 15,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:16:25.263Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          96913
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 5,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r5-mv4fzuu6-13000b-rep05.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r5-mv4fzuu6-13000b",
+      "port": 60206,
+      "serverPid": 97621,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 141,
+        "B": 141
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.026,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.467,
+        "requestEventGapMs_BminusA": -0.316,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:16:39.976Z",
+          "B": "2026-10-11T23:16:39.961Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:16:39.976Z",
+          "B": "2026-10-11T23:16:39.961Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:16:39.785Z",
+          "B": "2026-10-11T23:16:39.785Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:16:39.987Z",
+          "B": "2026-10-11T23:16:39.977Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 10.917,
+          "B": 15.722
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 10.662,
+        "updatedAt": {
+          "A": "2026-10-11T23:16:39.983Z",
+          "B": "2026-10-11T23:16:39.973Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 10,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:16:39.983Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          97621
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 6,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r6-mv4g067s-5357b4-rep06.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r6-mv4g067s-5357b4",
+      "port": 60242,
+      "serverPid": 98386,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 141,
+        "B": 141
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.043,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.291,
+        "requestEventGapMs_BminusA": -0.725,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:16:54.743Z",
+          "B": "2026-10-11T23:16:54.727Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:16:54.743Z",
+          "B": "2026-10-11T23:16:54.727Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:16:54.557Z",
+          "B": "2026-10-11T23:16:54.556Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:16:54.754Z",
+          "B": "2026-10-11T23:16:54.741Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.029,
+          "B": 13.678
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.641,
+        "updatedAt": {
+          "A": "2026-10-11T23:16:54.752Z",
+          "B": "2026-10-11T23:16:54.737Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 15,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:16:54.752Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          98386
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 7,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r7-mv4g0hli-4935d6-rep07.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r7-mv4g0hli-4935d6",
+      "port": 60279,
+      "serverPid": 99094,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 137,
+        "B": 136
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.095,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.528,
+        "requestEventGapMs_BminusA": -1.01,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:17:09.463Z",
+          "B": "2026-10-11T23:17:09.448Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:17:09.463Z",
+          "B": "2026-10-11T23:17:09.448Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:17:09.272Z",
+          "B": "2026-10-11T23:17:09.271Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:17:09.474Z",
+          "B": "2026-10-11T23:17:09.461Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.128,
+          "B": 13.839
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.817,
+        "updatedAt": {
+          "A": "2026-10-11T23:17:09.472Z",
+          "B": "2026-10-11T23:17:09.458Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 14,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:17:09.472Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          99094
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 8,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r8-mv4g0sy8-31df78-rep08.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r8-mv4g0sy8-31df78",
+      "port": 60315,
+      "serverPid": 99805,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 141,
+        "B": 140
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.036,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.724,
+        "requestEventGapMs_BminusA": 0.751,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:17:24.158Z",
+          "B": "2026-10-11T23:17:24.142Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:17:24.158Z",
+          "B": "2026-10-11T23:17:24.142Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:17:23.973Z",
+          "B": "2026-10-11T23:17:23.973Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:17:24.169Z",
+          "B": "2026-10-11T23:17:24.157Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.291,
+          "B": 14.216
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.799,
+        "updatedAt": {
+          "A": "2026-10-11T23:17:24.167Z",
+          "B": "2026-10-11T23:17:24.153Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 14,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:17:24.167Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          99805
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 9,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r9-mv4g14ax-b4e649-rep09.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r9-mv4g14ax-b4e649",
+      "port": 60355,
+      "serverPid": 766,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 142,
+        "B": 142
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.038,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.036,
+        "requestEventGapMs_BminusA": 0.382,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:17:38.916Z",
+          "B": "2026-10-11T23:17:38.901Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:17:38.916Z",
+          "B": "2026-10-11T23:17:38.901Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:17:38.727Z",
+          "B": "2026-10-11T23:17:38.727Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:17:38.926Z",
+          "B": "2026-10-11T23:17:38.917Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 10.234,
+          "B": 15.793
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 9.477,
+        "updatedAt": {
+          "A": "2026-10-11T23:17:38.921Z",
+          "B": "2026-10-11T23:17:38.912Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 9,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:17:38.921Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          766
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 10,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r10-mv4g1fp3-bc3737-rep10.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r10-mv4g1fp3-bc3737",
+      "port": 60389,
+      "serverPid": 1650,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 141,
+        "B": 141
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.038,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 16.005,
+        "requestEventGapMs_BminusA": 0.169,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:17:53.641Z",
+          "B": "2026-10-11T23:17:53.625Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:17:53.641Z",
+          "B": "2026-10-11T23:17:53.625Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:17:53.446Z",
+          "B": "2026-10-11T23:17:53.446Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:17:53.652Z",
+          "B": "2026-10-11T23:17:53.640Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.091,
+          "B": 14.474
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.623,
+        "updatedAt": {
+          "A": "2026-10-11T23:17:53.650Z",
+          "B": "2026-10-11T23:17:53.635Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 15,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:17:53.650Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          1650
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 11,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r11-mv4g1r1w-dc345b-rep11.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r11-mv4g1r1w-dc345b",
+      "port": 60426,
+      "serverPid": 2368,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 140,
+        "B": 140
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.034,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.265,
+        "requestEventGapMs_BminusA": -0.862,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:18:08.353Z",
+          "B": "2026-10-11T23:18:08.338Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:18:08.353Z",
+          "B": "2026-10-11T23:18:08.338Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:18:08.173Z",
+          "B": "2026-10-11T23:18:08.172Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:18:08.364Z",
+          "B": "2026-10-11T23:18:08.353Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.059,
+          "B": 15.555
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 10.768,
+        "updatedAt": {
+          "A": "2026-10-11T23:18:08.359Z",
+          "B": "2026-10-11T23:18:08.349Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 10,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:18:08.359Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          2368
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 12,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r12-mv4g22ej-e7ca08-rep12.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r12-mv4g22ej-e7ca08",
+      "port": 60459,
+      "serverPid": 3099,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 140,
+        "B": 141
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.035,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.411,
+        "requestEventGapMs_BminusA": 1.098,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:18:23.100Z",
+          "B": "2026-10-11T23:18:23.084Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:18:23.100Z",
+          "B": "2026-10-11T23:18:23.084Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:18:22.915Z",
+          "B": "2026-10-11T23:18:22.916Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:18:23.111Z",
+          "B": "2026-10-11T23:18:23.098Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.134,
+          "B": 13.81
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.735,
+        "updatedAt": {
+          "A": "2026-10-11T23:18:23.108Z",
+          "B": "2026-10-11T23:18:23.094Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 14,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:18:23.108Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          3099
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 13,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r13-mv4g2dse-7e424a-rep13.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r13-mv4g2dse-7e424a",
+      "port": 60500,
+      "serverPid": 3815,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 141,
+        "B": 141
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.044,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.606,
+        "requestEventGapMs_BminusA": 1.093,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:18:37.867Z",
+          "B": "2026-10-11T23:18:37.851Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:18:37.867Z",
+          "B": "2026-10-11T23:18:37.851Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:18:37.665Z",
+          "B": "2026-10-11T23:18:37.666Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:18:37.878Z",
+          "B": "2026-10-11T23:18:37.867Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.503,
+          "B": 16.286
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 10.823,
+        "updatedAt": {
+          "A": "2026-10-11T23:18:37.875Z",
+          "B": "2026-10-11T23:18:37.863Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 12,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:18:37.875Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          3815
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 14,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r14-mv4g2p6q-fe0340-rep14.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r14-mv4g2p6q-fe0340",
+      "port": 60536,
+      "serverPid": 4594,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 140,
+        "B": 140
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.039,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.289,
+        "requestEventGapMs_BminusA": -0.382,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:18:52.672Z",
+          "B": "2026-10-11T23:18:52.657Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:18:52.672Z",
+          "B": "2026-10-11T23:18:52.657Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:18:52.483Z",
+          "B": "2026-10-11T23:18:52.483Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:18:52.685Z",
+          "B": "2026-10-11T23:18:52.673Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 12.505,
+          "B": 15.831
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 11.963,
+        "updatedAt": {
+          "A": "2026-10-11T23:18:52.681Z",
+          "B": "2026-10-11T23:18:52.668Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 13,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:18:52.681Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          4594
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 15,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r15-mv4g30le-6c225e-rep15.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r15-mv4g30le-6c225e",
+      "port": 60574,
+      "serverPid": 5305,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 140,
+        "B": 139
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.035,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.716,
+        "requestEventGapMs_BminusA": -0.968,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:19:07.417Z",
+          "B": "2026-10-11T23:19:07.401Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:19:07.417Z",
+          "B": "2026-10-11T23:19:07.401Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:19:07.229Z",
+          "B": "2026-10-11T23:19:07.228Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:19:07.428Z",
+          "B": "2026-10-11T23:19:07.415Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.355,
+          "B": 13.314
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 13.757,
+        "updatedAt": {
+          "A": "2026-10-11T23:19:07.426Z",
+          "B": "2026-10-11T23:19:07.410Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 16,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:19:07.426Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          5305
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 16,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r16-mv4g3byu-ef9e1c-rep16.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r16-mv4g3byu-ef9e1c",
+      "port": 60616,
+      "serverPid": 6022,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 138,
+        "B": 138
+      },
+      "lastKeyEndsDifferByMs_BminusA": -0.032,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.194,
+        "requestEventGapMs_BminusA": 0.343,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:19:22.156Z",
+          "B": "2026-10-11T23:19:22.141Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:19:22.156Z",
+          "B": "2026-10-11T23:19:22.141Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:19:21.973Z",
+          "B": "2026-10-11T23:19:21.974Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:19:22.165Z",
+          "B": "2026-10-11T23:19:22.159Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 9.02,
+          "B": 17.6
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 6.614,
+        "updatedAt": {
+          "A": "2026-10-11T23:19:22.162Z",
+          "B": "2026-10-11T23:19:22.155Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 7,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:19:22.162Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          6022
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 17,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r17-mv4g3nd5-97e052-rep17.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r17-mv4g3nd5-97e052",
+      "port": 60659,
+      "serverPid": 6751,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 138,
+        "B": 136
+      },
+      "lastKeyEndsDifferByMs_BminusA": 7.201,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.518,
+        "requestEventGapMs_BminusA": 4.753,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:19:36.878Z",
+          "B": "2026-10-11T23:19:36.862Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:19:36.878Z",
+          "B": "2026-10-11T23:19:36.862Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:19:36.686Z",
+          "B": "2026-10-11T23:19:36.691Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:19:36.889Z",
+          "B": "2026-10-11T23:19:36.876Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.067,
+          "B": 13.938
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 12.647,
+        "updatedAt": {
+          "A": "2026-10-11T23:19:36.886Z",
+          "B": "2026-10-11T23:19:36.872Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 14,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:19:36.886Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          6751
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 18,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r18-mv4g3yqc-d43c38-rep18.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r18-mv4g3yqc-d43c38",
+      "port": 60695,
+      "serverPid": 7515,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 138,
+        "B": 139
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.063,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 14.58,
+        "requestEventGapMs_BminusA": 0.357,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:19:51.666Z",
+          "B": "2026-10-11T23:19:51.651Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:19:51.666Z",
+          "B": "2026-10-11T23:19:51.651Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:19:51.476Z",
+          "B": "2026-10-11T23:19:51.476Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:19:51.676Z",
+          "B": "2026-10-11T23:19:51.661Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 10.711,
+          "B": 9.823
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 15.468,
+        "updatedAt": {
+          "A": "2026-10-11T23:19:51.673Z",
+          "B": "2026-10-11T23:19:51.657Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 16,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:19:51.673Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          7515
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 19,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r19-mv4g4a59-298a1b-rep19.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r19-mv4g4a59-298a1b",
+      "port": 60741,
+      "serverPid": 8228,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 137,
+        "B": 137
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.007,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 15.406,
+        "requestEventGapMs_BminusA": 0.509,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:20:06.528Z",
+          "B": "2026-10-11T23:20:06.513Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:20:06.528Z",
+          "B": "2026-10-11T23:20:06.513Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:20:06.335Z",
+          "B": "2026-10-11T23:20:06.335Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:20:06.539Z",
+          "B": "2026-10-11T23:20:06.525Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 11.07,
+          "B": 11.643
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 14.833,
+        "updatedAt": {
+          "A": "2026-10-11T23:20:06.536Z",
+          "B": "2026-10-11T23:20:06.521Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 15,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:20:06.536Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 4,
+        "B": 4
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          8228
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    },
+    {
+      "n": 20,
+      "attempt": 1,
+      "file": "/Users/jedaisaboteur/Repositories/getwrite/specs/features/two-client-save-measurement/results/s2/s2-g15-p1-ba-r20-mv4g4llt-a6ee85-rep20.json",
+      "variant": "G15-P1-BA",
+      "runId": "s2-g15-p1-ba-r20-mv4g4llt-a6ee85",
+      "port": 60778,
+      "serverPid": 8935,
+      "listeners7340Before": "none",
+      "listeners3000Before": "none",
+      "askedGapMs": 15,
+      "pairing": "P1",
+      "askedOrder": "BA",
+      "typedMs": {
+        "A": 138,
+        "B": 138
+      },
+      "lastKeyEndsDifferByMs_BminusA": 0.041,
+      "order": {
+        "firstReleased": "B",
+        "releaseGapMs_secondMinusFirst": 14.626,
+        "requestEventGapMs_BminusA": 4.628,
+        "effectiveSendAt": {
+          "A": "2026-10-11T23:20:21.428Z",
+          "B": "2026-10-11T23:20:21.413Z"
+        },
+        "releaseAt": {
+          "A": "2026-10-11T23:20:21.428Z",
+          "B": "2026-10-11T23:20:21.413Z"
+        },
+        "requestEventAt": {
+          "A": "2026-10-11T23:20:21.250Z",
+          "B": "2026-10-11T23:20:21.255Z"
+        },
+        "responseArrivalAt": {
+          "A": "2026-10-11T23:20:21.435Z",
+          "B": "2026-10-11T23:20:21.422Z"
+        },
+        "sendToResponseMs_fromRelease": {
+          "A": 7.389,
+          "B": 8.985
+        },
+        "arrivalFirst": "B",
+        "arrivalGapMs_secondMinusFirst": 13.03,
+        "updatedAt": {
+          "A": "2026-10-11T23:20:21.432Z",
+          "B": "2026-10-11T23:20:21.419Z"
+        },
+        "updatedAtFirst": "B",
+        "updatedAtGapMs_secondMinusFirst": 13,
+        "statuses": {
+          "A": 200,
+          "B": 200
+        },
+        "lastBy": {
+          "release": "A",
+          "updatedAt": "A",
+          "arrival": "A"
+        },
+        "disagree": {
+          "releaseVsUpdatedAt": false,
+          "releaseVsArrival": false,
+          "updatedAtVsArrival": false
+        },
+        "note": "release time = when the harness continued the held request (Playwright event time on the host clock); arrival = the page's response event time; neither is a wire time. 'lastBy' is the client that is LAST by that evidence."
+      },
+      "verdict": "PASS",
+      "reasons": [
+        "all four stores hold A#1, the last processed save"
+      ],
+      "lastProcessedDetermined": true,
+      "lastProcessed": "A#1",
+      "reasonUndetermined": null,
+      "stores": {
+        "contentBin": "A#1",
+        "contentTiptapJson": "A#1",
+        "contentTxt": "A#1",
+        "sidecarWordCountMatches": [
+          "A#1",
+          "B#1"
+        ],
+        "sidecarUpdatedAtEqualsResponseOf": [
+          "A#1"
+        ],
+        "allAgree": true,
+        "held": [
+          "A#1"
+        ]
+      },
+      "disagreed": null,
+      "mixOrUnparseable": false,
+      "mixHints": [],
+      "storesStatus": {
+        "contentBin": "equals",
+        "contentTiptapJson": "equals",
+        "contentTxt": "equals"
+      },
+      "sidecar": {
+        "wordCount": 5,
+        "updatedAt": "2026-10-11T23:20:21.432Z"
+      },
+      "wordCountExpected": {
+        "base": 4,
+        "A#1": 5,
+        "B#1": 5
+      },
+      "revisions": [
+        {
+          "dir": "v-1",
+          "canonical": true,
+          "name": "Initial Draft",
+          "automaticSnapshot": false,
+          "contains": "= A#1"
+        }
+      ],
+      "backupCreated": false,
+      "log": {
+        "count": 2,
+        "entries": [
+          {
+            "added": 1,
+            "deleted": 0,
+            "net": 1
+          },
+          {
+            "added": 1,
+            "deleted": 1,
+            "net": 0
+          }
+        ],
+        "matches": {
+          "A_then_B": true,
+          "B_then_A": true,
+          "both_diffed_against_base": false
+        }
+      },
+      "failed": {
+        "A": [],
+        "B": []
+      },
+      "patchCounts": {
+        "A": 1,
+        "B": 1
+      },
+      "editors": {
+        "rightAfterAck": {
+          "A": true,
+          "B": false
+        },
+        "later": {
+          "A": true,
+          "B": false
+        },
+        "afterReload": {
+          "A": true,
+          "B": true
+        },
+        "laterFootersSaved": {
+          "A": "All changes saved · just now",
+          "B": "All changes saved · just now"
+        }
+      },
+      "surfaceTexts": {
+        "A": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ],
+        "B": [
+          "Loading diagnostics…",
+          "Loading this document…"
+        ]
+      },
+      "consoleCounts": {
+        "A": 5,
+        "B": 5
+      },
+      "changedByReload": false,
+      "sleepAffected": false,
+      "search": {
+        "BASE": {
+          "status": 200,
+          "count": 1
+        },
+        "A1": {
+          "status": 200,
+          "count": 1
+        },
+        "B1": {
+          "status": 200,
+          "count": 0
+        }
+      },
+      "teardown": {
+        "errors": [],
+        "browserPidsRecorded": 5,
+        "browserPidsAliveAfterClose": [],
+        "browserPidsAliveAfterTerm": [],
+        "serverPidsRecorded": [
+          8935
+        ],
+        "serverStillAliveAfterKill": [],
+        "portListenersAfter": [],
+        "listeners7340After": [],
+        "listeners3000After": [],
+        "folderRemoved": true
+      }
+    }
+  ]
+}
