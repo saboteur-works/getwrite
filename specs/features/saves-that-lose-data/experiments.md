@@ -103,13 +103,15 @@ Storybook started with `pnpm storybook` (background job). Process tree recorded 
 |---|---|---|---|
 | `pnpm test:ci` (frontend) | run | exit 0; 610 files passed; 6501 passed / 1 skipped (6502) | 6468 passed / 1 skipped |
 | `pnpm typecheck` (frontend) | run | exit 0 | not stated |
-| `pnpm lint` (frontend) | run | exit 1; 400 problems: 2 errors, 398 warnings | 0 errors / 395 warnings |
+| `pnpm lint` (frontend) | run | exit 1; 400 problems: 2 errors, 398 warnings (initial run); after the two lint fixes, 0 errors, 398 warnings | 0 errors / 395 warnings |
 | `pnpm knip` (repo root) | run | exit 1; output recorded below | no clean baseline |
 | `pnpm test:e2e` (Storybook on 6006) | run | exit 0; 212 passed, 2 flaky (passed on retry), 1 skipped | 214 passed / 1 skipped |
 
 - test:ci: +33 passed over the reported baseline. That figure is a difference of totals; it was not itemised per test file here. The commits changed or added tests in `StartPage.test.tsx`, `metadata-schema.test.ts`, `project-editor-config-route.test.ts`, `project-loader.test.ts`, `resource-delete-route.test.ts`, `trash-folder-cascade.test.ts`, `trash-ref-record.test.ts`, `resource-crud-core-entity-graph-position.test.ts`, `native-editor-config-backend.test.ts` and the two experiment test files.
 - lint: the 2 errors are in files this feature added. (1) `frontend/tests/f87-status-wordcount-experiment.test.tsx:91:5`, `react-hooks/rules-of-hooks` ("React Hook "React.useEffect" is called in function "default" that is neither a React function component nor a custom React Hook function"). (2) `frontend/tests/unit/f87-pov-delete-experiment.test.ts:91:9`, `@typescript-eslint/naming-convention` (variable `schemaPresent` needs a prefix is/has/should/can/did/will). Not fixed here. The warning delta (+3 over the reported 395) was not itemised per file; which of the 398 are in files this feature touched was not counted.
-- e2e: 212 passed + 2 flaky = 214 tests ended passing, 1 skipped, matching the reported 214 / 1 in total only when the flaky pair is counted as passed. The two flaky tests (each failed once and passed on retry): `e2e/start-page.e2e.spec.ts:96` "start page open project button fires onOpen with the project directory id" and `e2e/start-to-editor-flow.e2e.spec.ts:97` "API failure surfaces an error and keeps the user on the start page". Whether they are flaky on the baseline was not measured; no cause is stated. `StartPage.tsx` was touched by Task 13, and these two tests are Start Page tests; that is a coincidence of location, not a finding.
+- e2e: 212 passed + 2 flaky = 214 tests ended passing, 1 skipped, matching the reported 214 / 1 in total only when the flaky pair is counted as passed. The two flaky tests (each failed once and passed on retry): `e2e/start-page.e2e.spec.ts:96` "start page open project button fires onOpen with the project directory id" and `e2e/start-to-editor-flow.e2e.spec.ts:97` "API failure surfaces an error and keeps the user on the start page". Whether they are flaky on the baseline was not measured; no cause is stated. `StartPage.tsx` was touched by Task 13, and these two tests are Start Page tests.
+
+Lead measurement, 2026-10-15, on branch HEAD a6bb3c5d: `pnpm exec playwright test e2e/start-page.e2e.spec.ts:96 e2e/start-to-editor-flow.e2e.spec.ts:97 --repeat-each=20 --retries=0` passed 40 of 40 (Playwright's own static Storybook on 6006, free before and after). The two tests did not fail in isolation; their failure inside the full suite was not reproduced and was not measured on main.
 
 ### knip (no clean baseline)
 

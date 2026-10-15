@@ -88,7 +88,7 @@ async function run(phase: Phase, site: Site): Promise<void> {
   const projectJson = JSON.parse(
     await fs.readFile(path.join(root, "project.json"), "utf8"),
   ) as { config?: { metadataSchema?: unknown } };
-  const schemaPresent = projectJson.config?.metadataSchema !== undefined;
+  const isSchemaPresent = projectJson.config?.metadataSchema !== undefined;
 
   let folderId: string | undefined;
   if (site === "softDeleteFolder") {
@@ -147,7 +147,7 @@ async function run(phase: Phase, site: Site): Promise<void> {
     after?.["userMetadata"] as Record<string, unknown> | undefined
   )?.["pov"];
   console.log(
-    `F87C phase=${phase} site=${site} metadataSchemaInProjectJson=${schemaPresent} ` +
+    `F87C phase=${phase} site=${site} metadataSchemaInProjectJson=${isSchemaPresent} ` +
       `keys=${JSON.stringify(keys)} povInKeys=${keys.includes("pov")} ` +
       `otherPovAfterDelete=${JSON.stringify(pov)}`,
   );

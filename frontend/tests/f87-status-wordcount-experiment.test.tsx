@@ -87,7 +87,7 @@ vi.mock("../src/lib/api/projects", async (importOriginal) => ({
 
 vi.mock("../components/Start/StartPage", () => ({
   __esModule: true,
-  default: (props: { onOpen?: (id: string) => void }) => {
+  default: function MockStartPage(props: { onOpen?: (id: string) => void }) {
     React.useEffect(() => {
       props.onOpen?.(PROJECT_ID);
       // eslint-disable-next-line react-hooks/exhaustive-deps
