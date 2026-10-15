@@ -1,0 +1,63 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 7162 port 63588 (throwaway projects dir; templates repo read-only)
+M-44 no subtypes defined: Subtype select disabled=true; sidebar text=["SUBTYPE","SUBTYPE","No subtype","No subtypes yet. Add them in Project Settings, Metadata tab."]
+M-26 project.json config.subtypes at creation: undefined (key present: false)
+M-28 order of sections in the Metadata tab: ["Subtypes","Metadata Fields","Built-in features"]
+M-29 added "Scene" with the Add button: list=["Scene"]; project.json=["Scene"]
+M-29 added "Profile" with Enter: list=["Scene","Profile"]
+M-29 list now ["Scene","Profile","Outline"]; controls per entry: ["Move Scene up","Move Scene down","Remove Scene","Move Profile up","Move Profile down","Remove Profile","Move Outline up","Move Outline down","Remove Outline"]
+M-29 after Move Outline up: list=["Scene","Outline","Profile"]; project.json=["Scene","Outline","Profile"]
+M-39 adding "scene" when "Scene" exists: list=["Scene","Profile","Outline"]; message=["\"scene\" already exists."]
+M-39 adding "  SCENE  ": list=["Scene","Profile","Outline"]; message=["\"SCENE\" already exists."]
+M-29 blank add: message=["Enter a subtype name."]
+M-41 any rename control for a subtype entry (aria-labels containing Rename/Edit in the Subtypes section): 0
+M-44 after defining: Subtype select disabled=false; options=["No subtype","Scene","Profile","Outline"]; hint present=false
+M-30 sidebar order of sections: ["PROSE DIAGNOSTICS","SUBTYPE","SUBTYPE","DOCUMENT","TAGS"]
+M-30 Scene A subtype after choosing Scene: sidecar resourceSubtype="Scene"
+M-31 after choosing No subtype: sidecar resourceSubtype=undefined; sidecar keys=["id","name","type","createdAt","orderIndex","folderId","slug","userMetadata","wordCount"]
+M-27 subtypes now: Scene A="Scene" Scene B="Scene" Outline A="Outline" Plain=undefined; Subtype is a single select (multiple=false)
+M-27 Pic (type image): Subtype select disabled=false; sidecar resourceSubtype="Profile"
+M-27 Tune (type audio): Subtype select disabled=false; sidecar resourceSubtype="Profile"
+M-25/M-33 before restricting (all custom fields unrestricted): Scene A=["STATUS","BEAT","GENERIC"] Outline A=["STATUS","BEAT","GENERIC"] Plain=["STATUS","BEAT","GENERIC"]
+M-32 Applies-to group for Beat: checkboxes=["Scene","Profile","Outline"]; for Status/Synopsis/Point of View/Story Date present=[0,0,0,0]
+M-32 after ticking Scene: schema appliesTo="no schema file in meta/: backlinks.json,index,resource-19475e79-844b-4a68-9301-8a7f84319d36.meta.json,resource-316e1081-8b20-435f-881f-6c8e9666bbb8.meta.json,resource-404e98af-a4b5-4444-b830-d9a8d4402aac.meta.json,resource-58f191ed-43df-4235-af03-e07ea37bd9de.meta.json,resource-bbf00fbb-3e5f-45cf-b781-5980942c544e.meta.json,resource-e9343a3b-6366-40fb-a111-96b70899bdd7.meta.json"
+M-34/M-35 after restricting Beat to Scene: Scene A=["STATUS","BEAT","GENERIC"] Scene B=["STATUS","BEAT","GENERIC"] Outline A=["STATUS","GENERIC"] Plain=["STATUS","GENERIC"] Pic(Profile)=["STATUS","GENERIC"]
+M-37 Scene A changed to Outline: sidebar fields=["GENERIC"]; sidecar userMetadata={"beat":"act one","gen":"kept anyway"}
+M-37 Scene A cleared: sidebar fields=["GENERIC"]; sidecar userMetadata={"beat":"act one","gen":"kept anyway"}
+M-37 Scene A set back to Scene: sidebar fields=["BEAT","GENERIC"]; Beat input value="act one"
+M-40 after removing Scene from the list: list=["Profile","Outline"]; project.json=["Profile","Outline"]; Applies-to group for Beat=["Profile","Outline","Scene (not in the current list)"]
+M-40 Scene A: Subtype select shows="Scene (not in the current list)"; options=["No subtype","Scene (not in the current list)","Profile","Outline"]; sidecar resourceSubtype="Scene"; Beat visible=true
+M-40 Scene B: Subtype select shows="Scene (not in the current list)"; Beat visible=true
+M-42 after adding "SCENE": list=["Profile","Outline","SCENE"]; Applies-to group for Beat=["Profile","Outline","SCENE"]; Scene checkbox for Beat checked=[false,false,true]
+M-42 Scene A: Subtype select shows="SCENE"; sidecar resourceSubtype="Scene"; Beat visible=true
+M-43 resource context menu items: ["Create","New Smart Folder","Rename","Move to…","Copy","Duplicate","Delete","Export"]
+M-43 Entities tab text: ["Entities","Entities","Turn entity tracking on or off for this project. Disabling it hides the Entity, Entities Mentioned, and Entity Mentions sections, but keeps any values you’ve already saved.","Entities","The Entity, Entities Mentioned, and Entity Mentions sections in the sidebar."]
+M-43 sidebar sections with Entities on: ["SUBTYPE","SUBTYPE","DOCUMENT","TAGS","ENTITY","ENTITY KIND","RELATED ENTITY","ENTITIES MENTIONED","ENTITY MENTIONS"]; controls=["Subtype","entity-kind-input","entity-relationship-target-select","entity-relationship-type-select"]
+M-43 Move dialog: {"text":"Move “Plain”\n\nChoose a destination folder.\n\nWorkspace\nCANCEL\nMOVE","buttons":["Destination folder","CANCEL","MOVE"]}
+M-43 destination picker buttons: ["Collapse Workspace","Workspace options","Collapse Stuff","Stuff options","Expand Workspace","Workspace"]
+M-43 after moving Plain into Stuff: sidecar folderId=ed36a961-f867-480b-ba81-6ce30935099a; folders=[["ed36a961-f867-480b-ba81-6ce30935099a","Stuff"],["33993341-343b-4139-a3be-e11fca14ac68","Workspace"]]; resourceSubtype="Profile"
+M-43 after setting Entity Kind=character on Plain: entityKind="character"; resourceSubtype="Profile"
+M-43 after changing Plain's subtype to Outline: entityKind="character"; resourceSubtype="Outline"; Scene A entityKind=undefined (never set)
+M-46 Create resource dialog text: "New resource\nTITLE\nTYPE\nDocument\nImage\nAudio\nFolder\nPARENT FOLDER\nWorkspace\nCANCEL\nCREATE"; select options=["Document","Image","Audio","Folder"]
+M-46 the word "template" anywhere in the open app window text: false
+M-46 gear menu items: ["Sub Test","User Preferences","Project Settings","Project Type Manager","Switch to dark mode","Help","Close Project","GETWRITE V2.2.0","RESOURCES","Workspace"]
+$ getwrite-cli templates save-from-resource <throwaway project> 404e98af-a4b5-4444-b830-d9a8d4402aac tplscene --name Scene template -> exit 0; out: ["Saved template tplscene"]
+$ getwrite-cli templates list <throwaway project> -> exit 0; out: ["tplscene\tScene template\ttext"]
+M-46 template file(s): [["/meta/templates/tplscene.changes.jsonl","{\"ts\":\"2026-10-15T01:47:05.409Z\",\"action\":\"create\",\"keys\":[\"created\"]}\n"],["/meta/templates/tplscene.json","{\n  \"id\": \"tplscene\",\n  \"name\": \"Scene template\",\n  \"type\": \"text\",\n  \"plainText\": \"\",\n  \"userMetadata\": {\n    \"beat\": \"act one\",\n    \"gen\": \"kept anyway\"\n  },\n  \"resourceSubtype\": \"Scene\"\n}"]]
+$ getwrite-cli templates create <throwaway project> tplscene From Template -> exit 0; out: ["Created resource 06c48ad4-ee45-4f1d-bf7f-8b083b21e1fc"]
+M-46 resource created from the template: {"name":"From Template","resourceSubtype":"Scene","userMetadata":{"beat":"act one","gen":"kept anyway"}}
+M-46 in the app after reload: Subtype select shows="SCENE"
+M-47 debug body: ["Get","Write","Sub Test","RESOURCES","Workspace","From Template","SMART FOLDERS","EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH","⌘K","","WORK AREA","","Sub Test","","Select a file from the resource tree, or create a new resource to continue.","","CREATE RESOURCE","RECENT FILES"]
+M-47 debug after expandAll: ["RESOURCES","Workspace","Scene A","Pic","Tune","Scene B","Outline A","Stuff","Plain","From Template","SMART FOLDERS","EDIT","ORGANIZER"]; expand buttons=["Collapse Workspace","Collapse Stuff"]
+M-47 Duplicate opens a dialog: {"text":"Create resource\nTITLE\nTYPE\nDocument\nImage\nAudio\nFolder\nPARENT FOLDER\nProject Root\nCANCEL\nCREATE","title":"Scene A (Copy)"}
+M-47 after Duplicate then Create: resources named like Scene A=[["Scene A","Scene",{"beat":"act one","gen":"kept anyway"}],["Scene A (Copy)","Scene",{"beat":"act one","gen":"kept anyway"}]]
+M-47 the duplicate in the app: Subtype select shows="SCENE"
+M-47 Copy opens: {"text":"Create resource\nTITLE\nTYPE\nDocument\nImage\nAudio\nFolder\nPARENT FOLDER\nProject Root\nCANCEL\nCREATE","title":"Scene A (Copy)"}
+M-47 after Copy: resources with Scene A in the name=[["Scene A","Scene"],["Scene A (Copy)","Scene"],["Scene A (Copy)","Scene"]]
+M-38 Scene A's subtype right now: "Scene"; Beat visible in its sidebar=true
+M-38 Scene A is Profile now: Beat hidden in the sidebar=true; stored beat="act one"
+M-45 query builder field list while subtypes exist (a resource has a subtype): ["SYNOPSIS","NOTES","STATUS","POINT OF VIEW","BEAT","GENERIC","STORY DATE","DURATION (MINUTES)","STORY END DATE","TYPE","FOLDER","WORD COUNT","CHARACTER COUNT","CREATED AT","UPDATED AT","STATUSES","TAGS","LINKED FROM","LINKS TO","MENTIONS"]; contains a subtype field=false
+M-38 smart folder "Beat is act one" while Scene A's subtype hides Beat: result=["Scene A (Copy)","Scene A (Copy)","From Template","Scene A"]
+stop: recorded 7162(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

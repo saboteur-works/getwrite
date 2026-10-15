@@ -1,0 +1,19 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 37129 port 64149 (throwaway projects dir; templates repo read-only)
+Elena sidecar: entityKind="character"
+M-65 Elena's sidebar sections: ["ELENA","PROSE DIAGNOSTICS","SUBTYPE","SUBTYPE","DOCUMENT","STATUS","TAGS","WORD COUNT GOAL","WORD COUNT GOAL","ENTITY","ENTITY KIND","ALIASES","ADD","REMOVE ENTITY","RELATIONSHIPS","RELATED ENTITY","RELATIONSHIP TYPE","ADD","ENTITIES MENTIONED","ENTITY MENTIONS","MENTIONED","MENTIONED"]
+M-65 text under ENTITY MENTIONS: "ENTITY MENTIONS\nScene One\nMENTIONED\nScene Two\nMENTIONED\nCOMPILE THIS ENTITY'S RESOURCES\n+ ADD FIELD"
+M-66 compile controls in the sidebar: ["COMPILE THIS ENTITY'S RESOURCES"]
+M-66 compile button text: "COMPILE THIS ENTITY'S RESOURCES"
+M-66 after clicking: dialog="Compile Entity Resources\n\nEvery resource associated with this entity, in resource-tree order.\n\n2 resources to compile\nScene One\nScene Two\nInclude section headers\nCOMPILE AS\ntxt\nmd\npdf\ndocx\nCLOSE\nCOMPILE (2)"
+M-66 after Compile (2) with the default format: download event="ent-test.txt"; dialog now=null
+M-66 downloaded file content (throwaway): "Scene One\n=========\n\nElena walked home alone.\n\n\nScene Two\n=========\n\nThen Elena left the house."
+M-67 before: html class="gw-theme-light gw-density-comfortable"; data-theme=null; localStorage="{}"
+M-67 after Switch to dark mode: html class="gw-density-comfortable gw-theme-dark"; data-theme=null; localStorage="{\"getwrite-color-mode\":\"dark\",\"getwrite-appearance-preferences\":\"{\\\"colorModePreference\\\":\\\"dark\\\",\\\"density\\\":\\\"comfortable\\\",\\\"reducedMotion\\\":false}\"}"; project.json changed=true; menu now offers=["Switch to light mode"]
+M-67 project.json after (config keys): ["maxRevisions","statuses","customNoiseWords","excludedGlobalNoiseWords","autoPrune","editorConfig","metadataRevision","features"]; preferences-like keys: []
+M-67 after a reload: html class="gw-theme-dark gw-density-comfortable"
+M-67 in a second new project: html class="gw-theme-dark gw-density-comfortable"
+M-68 config.statuses of the first project (default): []
+stop: recorded 37129(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

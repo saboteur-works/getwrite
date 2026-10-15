@@ -1,0 +1,30 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 38985 port 62408 (throwaway projects dir; templates repo read-only)
+tag creation: dialog lines=["FLASHBACK"]; project.json config.tags=[{"id":"60951a27-47c0-4d71-b5b1-069c10d6896a","name":"flashback"}]
+sidebar Tags section right after creating the tag in Project Settings (dialog closed, no reload): ["No tags yet. Create some in Project Settings."]
+data Scene A: wordCount=50 userMetadata={"pov":"Mara","status":"Draft","storyDate":"2026-01-05","fsel":"Red","fmulti":["Alpha","Beta"]}
+data Scene B: wordCount=600 userMetadata={"pov":"Mara","status":"In review","storyDate":"2026-03-01","fsel":"Green","fmulti":["Alpha"]}
+data Scene C: wordCount=40 userMetadata={"pov":"Elena","status":"Draft","storyDate":"2026-02-01","fmulti":["Beta"]}
+data Scene D: wordCount=5 userMetadata={}
+config.tags=[{"id":"60951a27-47c0-4d71-b5b1-069c10d6896a","name":"flashback"}]; tagAssignments={"b32d67d0-036f-487f-89a2-3bce41959d56":["60951a27-47c0-4d71-b5b1-069c10d6896a"],"fe507c7a-50e5-4691-a2d7-520eec4d275d":["60951a27-47c0-4d71-b5b1-069c10d6896a"]}
+meta/backlinks.json (id -> ids it links to): {"0920c62c-45f9-495e-b7aa-3157267f7e8a":[],"8ce40862-4202-4438-b809-e101225f19f4":["fd3f8d99-bb95-4e30-9474-be4660bd2d9b"],"abdf37b0-9c98-4684-b3eb-9c9c3a7570dc":["b32d67d0-036f-487f-89a2-3bce41959d56"],"b32d67d0-036f-487f-89a2-3bce41959d56":["0920c62c-45f9-495e-b7aa-3157267f7e8a"],"fd3f8d99-bb95-4e30-9474-be4660bd2d9b":[],"fe507c7a-50e5-4691-a2d7-520eec4d275d":["0920c62c-45f9-495e-b7aa-3157267f7e8a"]}; ids: {"Scene A":"b32d67d0","Scene B":"fe507c7a","Scene C":"8ce40862","Scene D":"abdf37b0","Mara":"0920c62c","Elena":"fd3f8d99"}
+Q-13 chips now: 3; groups: 2
+Q-14 builder: group combinators=["All of","Any of"]; pill=["AND"]
+Q-14 "POV is Mara AND (Status is Draft OR Status is In review)": result=["Scene A","Scene B"] (data: A=Mara/Draft, B=Mara/In review, C=Elena/Draft)
+Q-14 saved file: "{\"id\":\"33c9a341-6dd8-43e1-80f3-dc3f18656085\",\"name\":\"Maraand(DraftorInreview)\",\"definition\":{\"op\":\"and\",\"children\":[{\"op\":\"eq\",\"field\":\"pov\",\"value\":{\"id\":\"0920c62c-45f9-495e-b7aa-3157267f7e8a\",\"name\":\"Mara\"}},{\"op\":\"or\",\"children\":[{\"op\":\"eq\",\"field\":\"status\",\"value\":\"Draft\"},{\"op\":\"eq\",\"field\":\"status\",\"value\":\"Inreview\"}]}]}}"
+Q-13 add-group buttons inside the builder: 1; any control for nesting a group inside a group: ["+ ADD GROUP"]
+Q-12 pill after click: ["OR"]
+Q-12 "POV is Elena OR (Status is In review)": result=["Scene C","Scene B"] (data: B=In review, C=Elena)
+Q-24 Tags value control: "<span class=\"picker-typeahead\"><span data-state=\"closed\" style=\"display: contents;\"><input class=\"picker-typeahead__input\" placeholder=\"search…\" aria-label=\"Search resource\" autocomplete=\"off\" type=\"text\" value=\"\"></span></span>"
+Q-24 options offered when typing "flash": []
+Q-24 after typing "flashback" in the Tags value box: suggestions=[]
+Q-24 Tags chip after Enter: ""
+Q-45 chips: ["TAGS includes does not include includes all of includes any of includes none of ───────────── is empty has any value","POINT OF VIEW is [ops] MARA","WORD COUNT equals does not equal is less than is at most is greater than is at least is between ───────────── is empty has any value"]
+Q-45 "Tags includes flashback AND POV is Mara AND Word Count is less than 500": result=[] (data: A=50 words,Mara,flashback; B=600 words)
+Q-46 is-between value controls: ["From date:date","To date:date"]
+Q-46 "Story Date is between 2026-01-01 and 2026-02-15": result=["Scene C","Scene A"] (data: A=01-05, C=02-01, B=03-01)
+Q-48 "Status is empty": result=["Scene D","Elena","Mara"] (data: A,B,C have a status)
+Q-48/Q-38 "Point of View is empty": result=["Scene D","Elena","Mara"] (data: A,B=Mara, C=Elena)
+stop: recorded 38985(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

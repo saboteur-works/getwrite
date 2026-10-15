@@ -1,0 +1,30 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 88713 port 63258 (throwaway projects dir; templates repo read-only)
+fixtures: jpg 899 bytes (64x48, hand-added EXIF Make=Canon Model=TestCam); mp3 16527 bytes (2 s sine)
+M-25 text resource sidebar: ["SYNOPSIS","STATUS","F TEXT","TAGS"]
+M-60 Manage Tags tab: ["Noise Words","Entities","Project Encryption","Manage Tags","","Create and delete project-scoped tags. Assign them to resources from the metadata sidebar.","","No tags yet. Add one below.","","New Tag","","Color","ADD TAG"]; controls=["BUTTON:Editor","BUTTON:Manage Tags","BUTTON:Add H4","BUTTON:Save Changes","BUTTON:Save Changes","BUTTON:Save Changes","INPUT:New tag name","INPUT:Set tag color","BUTTON:Add Tag","BUTTON:Add","BUTTON:Rename Synopsis","BUTTON:Rename key of Synopsis","BUTTON:Rename Notes","BUTTON:Rename key of Notes","BUTTON:Rename Point of View","BUTTON:Rename key of Point of View","BUTTON:Rename F Text","BUTTON:Rename key of F Text","BUTTON:Add field to Document","BUTTON:Delete Timeline group","BUTTON:Rename Story Date","BUTTON:Rename key of Story Date","BUTTON:Rename Duration (minutes)","BUTTON:Rename key of Duration (minutes)","BUTTON:Rename Story End Date","BUTTON:Rename key of Story End Date","BUTTON:Add field to Timeline","BUTTON:Add schema group","BUTTON:Save daily goal","BUTTON:Save word-count goal","BUTTON:Add word","BUTTON:Save highlight durat"]
+M-60 after Enter: ["FLASHBACK"]
+M-60 dialog lines mentioning the tags: ["Configure editor typography, tags, and metadata for this project.","Editor","Create and delete project-scoped tags. Assign them to resources from the metadata sidebar.","FLASHBACK","DRAFT2"]; buttons/inputs with tag names: ["Delete tag flashback","Delete tag draft2","New tag name","Set tag color"]; tags.json: []
+M-23/24 image sidebar text: "PICTURE\nIMAGE\nDIMENSIONS\n\n64 × 48 px\n\nMAKE\n\nCanon\n\nMODEL\n\nTestCam\n\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Add them in Project Settings, Metadata tab.\n\nDOCUMENT\nSYNOPSIS\nSTATUS\nDraft\nIn review\nPublished\nF TEXT\nTAGS\nFLASHBACK\nDRAFT2\n+ ADD FIELD"
+M-23 image sidebar controls: ["SELECT:Subtype","TEXTAREA:synopsis","SELECT:status","INPUT:ftext"]
+M-23 image sidecar: {"id":"d2042657-046f-48a3-b182-3ad2ec71037b","name":"Picture","type":"image","createdAt":"2026-10-15T01:38:37.722Z","orderIndex":0,"folderId":"c5e49838-452f-4e7b-aef3-a47fb27708ff","slug":"picture","userMetadata":{},"file":"original.jpg","width":64,"height":48,"exif":{"Make":"Canon","Model":"TestCam"}}
+M-23/24 audio sidebar text: "TONE\nAUDIO\nFORMAT\n\nMP3\n\nDURATION\n\n2s\n\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Add them in Project Settings, Metadata tab.\n\nDOCUMENT\nSYNOPSIS\nSTATUS\nDraft\nIn review\nPublished\nF TEXT\nTAGS\nFLASHBACK\nDRAFT2\n+ ADD FIELD"
+M-23 audio sidebar controls: ["SELECT:Subtype","TEXTAREA:synopsis","SELECT:status","INPUT:ftext"]
+M-23 audio sidecar: {"id":"347b8589-e770-4571-b043-a851caba4492","name":"Tone","type":"audio","createdAt":"2026-10-15T01:38:40.305Z","orderIndex":0,"folderId":"c5e49838-452f-4e7b-aef3-a47fb27708ff","slug":"tone","userMetadata":{},"file":"original.mp3","durationSeconds":2.0375510204081633,"format":"mp3"}
+M-23 image sidecar after edits: {"status":"Published","synopsis":"A red rectangle.","ftext":"photo-field"}
+M-23 image Tags section text: ["","No subtypes yet. Add them in Project Settings, Metadata tab.","","DOCUMENT","SYNOPSIS","STATUS","Draft","In review","Published","F TEXT","TAGS","FLASHBACK","DRAFT2","+ ADD FIELD"]; tag controls: ["Tags","flashback","draft2"]
+M-59 tag control element: {"tag":"BUTTON","role":null,"type":"button","pressed":"false"}
+M-59 project.json tag-related content after assignment: {"tags":[{"id":"8db9c324-9524-403c-ae5e-cd816a240408","name":"flashback"},{"id":"48efc8b9-68ad-4efd-81cf-80a68a9e53e3","name":"draft2"}],"tagAssignments":{"d2042657-046f-48a3-b182-3ad2ec71037b":["8db9c324-9524-403c-ae5e-cd816a240408"]}}
+M-23/M-59 after clicking the flashback tag on the image: state={"pressed":"true","cls":"chip chip--sharp chip--sm chip--tag-active"}; files containing "flashback": ["/project.json"]
+M-59 after clicking it again (remove): state={"pressed":"false"}; files containing "flashback": ["/project.json"]
+M-23 audio resource tag assigned (draft2): files containing "draft2": ["/project.json"]
+M-60 Manage Tags tab controls with two tags present: ["Delete tag flashback","Delete tag draft2","New tag name","Set tag color","Rename Synopsis","Rename key of Synopsis","Rename Notes","Rename key of Notes","Rename Point of View","Rename key of Point of View","Rename F Text","Rename key of F Text","Rename Story Date","Rename key of Story Date","Rename Duration (minutes)","Rename key of Duration (minutes)","Rename Story End Date","Rename key of Story End Date"]; clicking the tag name text: ["H1 Font Family","H2 Font Family","H3 Font Family","Font Family","Font Size","Line Height","Paragraph Spacing","Initial Draft","New tag name","","","","","2"]
+M-60 delete tag draft2: dialog/confirm=[]
+M-60 after delete: tags in dialog=["Delete tag flashback"]; files containing "draft2": []
+M-60 audio sidebar Tags right after delete (dialog closed): ["Published","F TEXT","TAGS","FLASHBACK","DRAFT2","+ ADD FIELD"]
+M-60 audio sidebar Tags after a reload: ["In review","Published","F TEXT","TAGS","FLASHBACK","+ ADD FIELD"]; project.json tag-related content: {"tags":[{"id":"8db9c324-9524-403c-ae5e-cd816a240408","name":"flashback"}],"tagAssignments":{"d2042657-046f-48a3-b182-3ad2ec71037b":["8db9c324-9524-403c-ae5e-cd816a240408"],"347b8589-e770-4571-b043-a851caba4492":[]}}
+M-23 audio sidecar after status: {"status":"Draft"}
+M-58 second new project, Manage Tags tab: ["No tags yet. Add one below."]
+stop: recorded 88713(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

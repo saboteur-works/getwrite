@@ -56,7 +56,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 1, 2
 **Estimate:** 5
 **Notes:** Needs the app running, web build of the same frontend unless a statement names a desktop control. Out of the sandbox. Statements the evaluator treats differently from the page's wording are corrected to the observed behaviour, with original and observed kept in the row.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Verify and write the views part
 **What:** Run every statement on the six view pages and write them into the handbook.

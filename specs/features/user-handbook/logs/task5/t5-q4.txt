@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 4293 port 63510 (throwaway projects dir; templates repo read-only)
+Q-16 field list of a new Blank project (no optional fields switched on): ["SYNOPSIS","NOTES","STATUS","POINT OF VIEW","STORY DATE","DURATION (MINUTES)","STORY END DATE","TYPE","FOLDER","WORD COUNT","CHARACTER COUNT","CREATED AT","UPDATED AT","STATUSES","TAGS","LINKED FROM","LINKS TO","MENTIONS"]
+Q-09 field picker search box: ["Search fields…"]
+Q-41 method: a saved-query file with three levels (and > or > and) was written by hand into the throwaway project's meta/queries; the page was then reloaded
+smart folders listed: ["Deep nesting"]
+Q-41 builder for the 3-level query: banner=["QUERY USES ADVANCED NESTING — CHIP EDITING IS DISABLED\nEDIT IN ADVANCED MODE"]; chips=0; Add-group disabled=true
+Q-42 JSON editor: textarea present=1; first chars="{ \"op\": \"and\", \"children\": [ { \"op\": \"eq\", \"field\": \"status\", \"v"; buttons=["BACK TO CHIP VIEW","CANCEL"]
+Q-43 Back to chip view with the 3-level JSON: alert=["Query uses nesting beyond two levels — edit it to use only simple conditions before restoring chip view.",""]; chips shown=0; banner=[]; editor open=1
+Q-43 after replacing the JSON with a 2-level query and choosing Back to chip view: chips=3; groups=2; advanced banner present=0; editor open=0
+stop: recorded 4293(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

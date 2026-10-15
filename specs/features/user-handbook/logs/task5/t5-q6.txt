@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 56664 port 64572 (throwaway projects dir; templates repo read-only)
+Scene A after typing and waiting 6 s: wordCount=10; footer=["Words: 10"]
+Scene A after then choosing a Status: wordCount=0; userMetadata={"status":"Draft"}; footer=["Words: 10"]
+Scene B after typing and waiting 6 s: wordCount=5; footer=["Words: 5"]
+Scene B after then choosing a Status: wordCount=0; userMetadata={"status":"Draft"}; footer=["Words: 5"]
+after reselecting Scene A: wordCount=0
+stop: recorded 56664(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
