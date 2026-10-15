@@ -302,6 +302,50 @@ describe("loadProjectFromDisk", () => {
     }
   });
 
+  it("loads a resource whose sidecar wordCount is 777 and whose content.txt has 5 words with wordCount 5 (FR-9)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-recount-"));
+    try {
+      const spec = {
+        id: "test-loader-recount",
+        name: "Loader Recount Test",
+        folders: [{ name: "Workspace", special: true }],
+        defaultResources: [
+          {
+            name: "Recount",
+            type: "text" as const,
+            folder: "Workspace",
+            template: "one two three four five",
+          },
+        ],
+      };
+      const { resources: created } = await createAndAssertProject(spec, {
+        projectRoot: tmp,
+        name: "Recount Project",
+      });
+      await flushIndexer();
+
+      const id = (created[0] as { id: string }).id;
+      const sidecarPath = path.join(tmp, "meta", `resource-${id}.meta.json`);
+      const sidecar = JSON.parse(await fs.readFile(sidecarPath, "utf-8"));
+      await fs.writeFile(
+        sidecarPath,
+        JSON.stringify({ ...sidecar, wordCount: 777 }),
+        "utf-8",
+      );
+      const content = await fs.readFile(
+        path.join(tmp, "resources", id, "content.txt"),
+        "utf-8",
+      );
+      expect(content.trim().split(/\s+/)).toHaveLength(5);
+
+      const loaded = await loadProjectFromDisk(tmp);
+      const res = loaded.resources.find((r) => r.id === id);
+      expect(res?.wordCount).toBe(5);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("loads a legacy project whose spec used a Workspace and `special` folders (FR8)", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-legacy-"));
     try {

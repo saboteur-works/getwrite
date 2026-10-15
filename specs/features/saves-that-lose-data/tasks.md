@@ -85,7 +85,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 3
 **Estimate:** 1
 **Notes:** Satisfies FR-9 (OQ-2 resolved to keep the recount, POS task_7f1afd5d). Subject to the Part B halt: if Task 3 halted the part, this task is not run. The handbook sentence at `views/data.md:26` is for the scribe follow-up; do not edit it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: D-36 experiment: is `pov` in the reference-key list for a never-edited schema
 **What:** Reproduce D-36 in a project whose `config.metadataSchema` was never edited, repeat after one schema edit, and record `project.json` `config.metadataSchema` and the other resource's `userMetadata.pov` after deletion each time.
