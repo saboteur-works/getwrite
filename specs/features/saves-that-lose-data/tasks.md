@@ -148,7 +148,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 2, 6, 7, 11, 13
 **Estimate:** 3
 **Notes:** Satisfies FR-25, FR-27. `pnpm test:e2e`, `pnpm storybook` and `lsof` run OUTSIDE the sandbox in the main checkout; the others inside. If a part halted, its later tasks are unticked and this task records that; the dependency on a halted part's tasks is then treated as satisfied by the halt report. Any manual check in the running app is optional and is reported separately from the tests. The handbook warnings these fixes make stale go to the scribe as a follow-up (OQ-7); list them as a pointer only.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 14
