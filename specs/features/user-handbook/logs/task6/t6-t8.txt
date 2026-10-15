@@ -1,0 +1,45 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 59992 port 52145 (throwaway projects dir; templates repo read-only)
+T-44..47 at 100%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|235.5x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|47.1x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 150%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|365.4x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|73.1x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 200%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|495.2x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|99x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 300%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|755x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|151x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 400%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|1014.7x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|202.9x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 600%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|1534.2x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|306.8x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 800%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|2053.7x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|410.7x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+T-44..47 at 1000%:
+  The Very Long Journey Home|text="The Very Long Journey Home"|2573.2x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+  Tiny Event Scene|text="Tiny"|10x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=8px|radius=3px|inner=
+  Point Event Scene|text=""|2x28|minW=0px|overflow=visible|textOverflow=clip|whiteSpace=normal|fs=16px|radius=1px|inner=
+  A Medium Named Bar Scene|text="A Medium Named Bar Scene"|514.6x28|minW=0px|overflow=hidden|textOverflow=ellipsis|whiteSpace=nowrap|fs=9px|radius=3px|inner=
+stop: recorded 59992(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 3736 port 65168 (throwaway projects dir; templates repo read-only)
+S-14 App Settings dialog (opened at /, no login screen): ["CREATE THE FIRST PROJECT","App Settings","Settings here apply across every project on this device, not to a single project. No login is required.","Global noise words","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.","No noise words yet. Add one below.","ADD","CLOSE"]
+S-14 dialog controls: ["INPUT:New noise word","BUTTON:Add","BUTTON:Close"]
+entities checkbox before=false after=false
+S-15 control, entity "Quillfeather" with no global word set: observation lines []
+S-15 App Settings list after add: ["Settings here apply across every project on this device, not to a single project. No login is required.","Global noise words","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.","quillfeather","ADD","CLOSE"]
+S-15 App Settings list after reload: ["Global noise words","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.","quillfeather","ADD","CLOSE"]
+S-15 after adding global word quillfeather, same entity: observation lines ["\"Quillfeather\" also reads as a common English word or name, so this name may produce detected matches that aren't about this entity."]
+S-15 project Noise Words tab: ["Writing Goals","Noise Words","Entities","Project Encryption","Noise Words","Words flagged as noise when mentioned as entities in this project. Add your own custom words below, and choose which words from your cross-project global list should not apply to this project.","Custom noise words","No custom noise words yet. Add one below.","Add a custom noise word","ADD WORD","Global noise words","Words from your cross-project global list. Check a word to exclude it from applying within this project only.","quillfeather","Excluded in this project"]
+stop: recorded 3736(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

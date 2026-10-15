@@ -1,0 +1,46 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 42842 port 51853 (throwaway projects dir; templates repo read-only)
+F-08 editor element: count=1 contenteditable=true
+F-08 after typing, editor text: "Plain words here"
+F-09 toolbar button labels: ["Undo","Redo","Bold","Italic","Underline","Strikethrough","Inline code","Align Left","Align Center","Align Right","Align Justify","Heading 1","Heading 2","Heading 3","Heading 4","Heading 5","Heading 6","Bullet list","Ordered list","Blockquote","Horizontal rule","Highlight","Insert Table","Insert image","Edit as Markdown"]
+F-09 Bold button, trial 1, selection before click="Plain words here": <p><strong>Plain words here</strong></p>
+F-09 Bold button, trial 2, selection before click="Plain words here": <p><strong>Plain words here</strong></p>
+F-09 Italic button, trial 1, selection before click="Plain words here": <p><em>Plain words here</em></p>
+F-09 Italic button, trial 2, selection before click="Plain words here": <p><em>Plain words here</em></p>
+F-09 Underline button, trial 1, selection before click="Plain words here": <p><u>Plain words here</u></p>
+F-09 Underline button, trial 2, selection before click="Plain words here": <p><u>Plain words here</u></p>
+F-09 Strikethrough button, trial 1, selection before click="Plain words here": <p><s>Plain words here</s></p>
+F-09 Strikethrough button, trial 2, selection before click="Plain words here": <p><s>Plain words here</s></p>
+F-09 Inline code button, trial 1, selection before click="Plain words here": <p><code>Plain words here</code></p>
+F-09 Inline code button, trial 2, selection before click="Plain words here": <p><code>Plain words here</code></p>
+F-10 Control+B (bold), trial 1, selection="Plain words here": <p>Plain words here</p>
+F-10 Control+B (bold), trial 2, selection="Plain words here": <p>Plain words here</p>
+F-10 Meta+B (bold), trial 1, selection="Plain words here": <p><strong>Plain words here</strong></p>
+F-10 Meta+B (bold), trial 2, selection="Plain words here": <p><strong>Plain words here</strong></p>
+F-10 Control+I (italic), trial 1, selection="Plain words here": <p>Plain words here</p>
+F-10 Control+I (italic), trial 2, selection="Plain words here": <p>Plain words here</p>
+F-10 Meta+I (italic), trial 1, selection="Plain words here": <p><em>Plain words here</em></p>
+F-10 Meta+I (italic), trial 2, selection="Plain words here": <p><em>Plain words here</em></p>
+F-10 Control+U (underline), trial 1, selection="Plain words here": <p>Plain words here</p>
+F-10 Control+U (underline), trial 2, selection="Plain words here": <p>Plain words here</p>
+F-10 Meta+U (underline), trial 1, selection="Plain words here": <p><u>Plain words here</u></p>
+F-10 Meta+U (underline), trial 2, selection="Plain words here": <p><u>Plain words here</u></p>
+navigator.platform in the run: MacIntel
+F-11 footer 250 ms after typing 3 paragraphs / 8 words / 42 chars: ["Words: 8","Node: Body","Today's writing","Today: 3"]
+F-11 whole-window text lines containing 'har' or 'ara' or 'Words': ["Words: 8","Top repeated words: None"]
+F-11 footer after 2 more words: ["Words: 10","Node: Body","Today's writing","Today: 3"]
+SE header after opening Alpha Scene: ["Alpha Scene","Beta Chapter","Gamma Note","Alpha Scene"]
+SE search affordance text near search box: ["⌘K"]
+SE-01 Control+k from the editor: focused element = "Search resources..."
+SE-02 after typing "beta" (Control+k): result-like text ["Beta Chapter","Beta Chapter"]
+SE-02 listbox/option elements: ["Beta ChapterText","Beta ChapterText","Beta Chapter","Text"]
+SE-03 after Enter (Control+k): header lines ["Alpha Scene","Beta Chapter","Gamma Note","Beta Chapter"]; editing doc title area ["EDITING CANONICAL REVISION"]
+SE-01 Meta+k from the editor: focused element = "Search resources..."
+SE-02 after typing "beta" (Meta+k): result-like text ["Beta Chapter","Beta Chapter"]
+SE-02 listbox/option elements: ["Beta ChapterText","Beta ChapterText","Beta Chapter","Text"]
+SE-03 after Enter (Meta+k): header lines ["Alpha Scene","Beta Chapter","Gamma Note","Beta Chapter"]; editing doc title area ["EDITING CANONICAL REVISION"]
+SE-03 click path: result count for 'Gamma Note' text elements=2
+SE-03 after clicking the result: ["Alpha Scene","Gamma Note","Gamma Note","EDITING CANONICAL REVISION"]
+stop: recorded 42842(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

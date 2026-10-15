@@ -1,0 +1,19 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 97832 port 50834 (throwaway projects dir; templates repo read-only)
+I-21 projects folder entries: 1 (one folder per project, named by a UUID: true)
+I-21/24 files under the project folder (uuids abbreviated): ["folders/","folders/workspace/","folders/workspace/folder.json","meta/","meta/backlinks.json","meta/index/","meta/index/diagnostics.json","meta/index/inverted.json","meta/index/mentions.json","meta/resource-<uuid>.meta.json","meta/writing-log/","meta/writing-log/2026-10-14.json","project.json","resources/","resources/<uuid>/","resources/<uuid>/content.tiptap.json","resources/<uuid>/content.txt","revisions/","revisions/<uuid>/","revisions/<uuid>/v-1/","revisions/<uuid>/v-1/content.bin","revisions/<uuid>/v-1/metadata.json"]
+I-24 project.json is readable text; top-level keys: ["id","name","slug","createdAt","projectType","rootPath","config"]
+I-24 resources/<uuid>/content.txt (present) reads: "Plain text kept on disk."
+I-25 files with database extensions under the projects folder: []
+I-24 backup copy (cp -r of the project folder) staged: 22 entries
+stop: recorded 97832(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 98805 port 50870 (throwaway projects dir; templates repo read-only)
+I-24 second, fresh server pointed at a folder holding only the copy: start page lists ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Store Test or open a clean slate for your next draft.","1 ACTIVE PROJECT","1 WRITING ASSETS","Store Test","1 resource · 1 folder"]
+I-24 copied project opens; document text in editor: "Plain text kept on disk."
+stop: recorded 98805(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
+stage removed: true

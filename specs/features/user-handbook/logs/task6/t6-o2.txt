@@ -1,0 +1,35 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 52542 port 49972 (throwaway projects dir; templates repo read-only)
+O-10 filter controls in a new Blank project (config.statuses empty): ["SELECT|Filter by status|All statuses/No status|val=","INPUT|Minimum words||val=","INPUT|Maximum words||val="]
+filters bar button text: ["Filters","Advanced filters"]
+stored: ["F3:text:status=null:pov=null:words=0","O2:text:status=null:pov=null:words=0","O1:text:status=\"Published\":pov=null:words=2","F1:text:status=\"In review\":pov={\"id\":\"e9ab57a6-88a8-46fd-b779-5501d27e3f38\",\"name\":\"F2\"}:words=12","F2:text:status=\"Published\":pov={\"id\":\"137d1904-2ad3-416c-9be9-9200e3bda89a\",\"name\":\"F3\"}:words=60","Pic:image:status=null:pov=null:words=null"]
+O-10 status options now: ["SELECT|Filter by status|All statuses/Draft/In review/Published/No status|val="]
+O-10 no filter: ["Empty","Other","F1","Pic","F2","F3"]
+O-10 status=Draft: ["Empty","Other","Pic","F3"]
+O-10 status=In review: ["F1"]
+O-10 status=Published: ["F2"]
+O-10 status=No status: []
+O-15 controls with status active: ["SELECT|Filter by status|All statuses/Draft/In review/Published/No status|val=In review","BUTTON|Clear status filter||val=","INPUT|Minimum words||val=","INPUT|Maximum words||val=","BUTTON|Clear all filters||val="]
+O-15 after Clear status filter: ["Empty","Other","F1","Pic","F2","F3"] ; controls: []
+O-11 min 10: ["F1","F2"]
+O-11 min 10, max 30: ["F1"]
+O-11 max 30 only: ["F1","F3"]
+O-15 controls: ["BUTTON|Clear word count filter||val=","BUTTON|Clear all filters||val="]
+O-15 after clear word count: ["Empty","Other","F1","Pic","F2","F3"]
+O-12 min 0 (every document has >= 0): ["F1","F2","F3"]
+O-13 advanced controls: ["SELECT|Filter by status|All statuses/Draft/In review/Published/No status|val=","SELECT|Filter by Point of View|All Point of View|val=","SELECT|Filter by Pov Char|All Pov Char/F2/F3|val="]
+O-13 Pov Char=F2: ["F1"]
+O-15 clear controls: ["BUTTON|Clear all filters||val=","BUTTON|Clear Pov Char filter||val="]
+O-14 Pov Char=F2 + status=Published (F1 is In review, F2 Published): []
+O-14/O-16 + min words 100: [] ; body lines: ["No cards match the current filters."]
+O-15 Clear all present: 1
+O-15 after Clear all filters: ["Empty","Other","F1","Pic","F2","F3"] ; controls: ["SELECT|Filter by status|All statuses/Draft/In review/Published/No status|val=","INPUT|Minimum words||val=","INPUT|Maximum words||val=","SELECT|Filter by Point of View|All Point of View|val=","SELECT|Filter by Pov Char|All Pov Char/F2/F3|val="]
+O-15 Clear all button count with no filter: 0
+O-16 empty folder text: ["EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH","⌘K","Empty","HIDE BODIES","","This folder is empty.","","METADATA",""]
+O-17 Workspace status=Published: ["F2"]
+O-17 Other folder: status control value="" cards=["O1","O2"]
+O-17 Other status=Draft: ["O2"]
+O-17 back in Workspace: status control value="" cards=["Empty","Other","F1","Pic","F2","F3"]
+stop: recorded 52542(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

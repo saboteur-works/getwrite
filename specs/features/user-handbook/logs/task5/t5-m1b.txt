@@ -1,0 +1,35 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 31131 port 64046 (throwaway projects dir; templates repo read-only)
+tree text: ["RESOURCES","Workspace","Scene One","Scene Two","Characters","Elena","Mara","Places","Paris","SMART FOLDERS","EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH"]
+M-15 sidebar with Timeline and POV on: "SCENE ONE\nPROSE DIAGNOSTICS\n\nDialogue ratio: 0%\n\nAverage sentence length: 0.0\n\nTop repeated words: None\n\nShow detail\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Add them in Project Settings, Metadata tab.\n\nDOCUMENT\nSTATUS\nDraft\nIn review\nPublished\nPOV\nTIMELINE\nSTORY DATE / TIME\nDURATION\nmin\nhr\nday\nyr\nEND DATE / TIME\n—\nOverride\nTAGS\n\nNo tags yet. Create some in Project Settings.\n\nWORD COUNT GOAL\nWORD COUNT GOAL\n+ ADD FIELD"
+M-15 manager groups: ["DOCUMENT","Status","Point of View","TIMELINE","Story Date","Duration (minutes)","Story End Date"]
+M-16 Timeline view before any Story Date is set: ["ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH","⌘K","0 SCENES","−","200%","+","SEP 15","SEP 18","SEP 21","SEP 25","SEP 28","OCT 1","OCT 4","OCT 8","OCT 11","OCT 14","NO DATED SCENES","Add story dates in the metadata sidebar","METADATA","SCENE ONE"]
+M-14 POV suggestions: ["Mara"]
+M-14 sidecar userMetadata after choosing Mara: {"pov":{"id":"136547a2-b320-4a72-ab9d-2cd0c4fc3ccc","name":"Mara"}}
+M-15 story-date input type: ["date","time"]
+M-15 sidecar userMetadata after Story Date: {"pov":{"id":"136547a2-b320-4a72-ab9d-2cd0c4fc3ccc","name":"Mara"},"storyDate":"2026-01-05"}
+M-15 Scene Two sidecar userMetadata: {"pov":{"id":"86327519-78d5-4d72-a657-0927d7d1c852","name":"Elena"},"storyDate":"2026-01-03","storyDuration":30}; duration unit options: ["min","hr","day","yr"]
+M-14/16 Timeline view after Story Dates: text=["SMART FOLDERS","EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH","⌘K","2 SCENES","ALL","MARA","ELENA","−","200%","+","POV","Mara","Elena","Outline","JAN 3","JAN 3","JAN 4","JAN 4","WORKSPACE","2 scenes","Scene","· 2d ·","METADATA","SCENE TWO","PROSE DIAGNOSTICS","","Dialogue ratio: 0%","","Average sentence length: 0.0","","Top repeated words: None"]
+M-14 Timeline legend dots and scene blocks (name, computed background, x): {"legend":[["Elena","rgba(0, 0, 0, 0)"],["Mara","rgba(0, 0, 0, 0)"],["Mara","rgba(0, 0, 0, 0)"],["Elena","rgba(0, 0, 0, 0)"]],"blocks":[["Data","rgb(245, 244, 240)",470],["Diff","rgb(245, 244, 240)",542],["Toggle search filters","rgb(236, 234, 227)",572],["Scene Two","rgb(90, 128, 96)",466]]}
+M-14 Timeline legend: dot colors by POV name: [["Mara","rgb(74, 110, 148)"],["Elena","rgb(90, 128, 96)"]]
+M-14 filter MARA: counter=["1 SCENE","1 scene"]; elements taller than 15px with the Mara dot colour rgb(74, 110, 148) (x, width, height): [[2026,2,28]]
+M-14 filter ELENA: counter=["1 SCENE","1 scene","Scene"]; elements taller than 15px with the Elena dot colour rgb(90, 128, 96) (x, width, height): [[466,16,28]]
+M-14 after choosing the ELENA filter in the Timeline view: scene counter=["1 SCENE","1 scene","Scene"]
+M-21 sidebar controls: ["INPUT:ftext","INPUT:fnum","INPUT:story-date-input","INPUT:story-date-input-time","INPUT:fbool","SELECT:fsel","SELECT:fmulti","INPUT:fref","INPUT:multi-resource-ref-input","INPUT:story-date-input","INPUT:story-date-input-time"]
+M-21 fmulti element: {"multiple":true,"options":["Alpha","Beta","Gamma"]}
+M-21 sidecar after text/number/bool/select/multi: {"pov":{"id":"136547a2-b320-4a72-ab9d-2cd0c4fc3ccc","name":"Mara"},"storyDate":"2026-01-05","ftext":"hello","fnum":42,"fbool":true,"fsel":"Green","fmulti":["Alpha","Gamma"]}
+M-21 number of date inputs in the sidebar (F Date in the Document group, Story Date in the Timeline group): 2; label text above the F Date input and above the Story Date input: ["Story Date / Time","Story Date / Time"]
+M-21 sidecar after date: {"pov":{"id":"136547a2-b320-4a72-ab9d-2cd0c4fc3ccc","name":"Mara"},"storyDate":"2026-01-05","ftext":"hello","fnum":42,"fbool":true,"fsel":"Green","fmulti":["Alpha","Gamma"],"fdate":"2026-02-09"}
+M-22 Ref field (no folder scope) suggestions for "S": ["Scene One","Scene Two","Paris"]
+M-22 Multi Ref field, Folder scope "Any folder", suggestions for "e": ["Scene One","Scene Two","Elena"]
+M-21 sidecar after ref and multi-ref: {"pov":{"id":"136547a2-b320-4a72-ab9d-2cd0c4fc3ccc","name":"Mara"},"storyDate":"2026-01-05","ftext":"hello","fnum":42,"fbool":true,"fsel":"Green","fmulti":["Alpha","Gamma"],"fdate":"2026-02-09","fref":{"id":"f7b3ceac-b20b-4722-84bf-0bb9f1df87b4","name":"Paris"},"fmref":[{"id":"86327519-78d5-4d72-a657-0927d7d1c852","name":"Elena"},{"id":"136547a2-b320-4a72-ab9d-2cd0c4fc3ccc","name":"Mara"}]}
+M-21 after reload: input values=["ftext=hello","fnum=42","fbool=true","fsel=Green","fmulti=Alpha+Gamma","fref=Paris","multi-resource-ref-input="]; sidebar text tail=[]
+M-62 the word "provider" in the Project Settings dialog text: false; in the page body: false
+M-22 Folder scope controls in manager (Ref and Multi Ref fields): ["Ref folder for F MultiRef:BUTTON"]; manager text near Folder scope: ["Folder scope","Any folder","Max selections"]
+M-22 picker popover right after opening: ["Any folder","Expand Workspace","Workspace"]
+M-22 picker entries after expanding Workspace: ["Any folder","Collapse Workspace","Workspace","Characters","Places"]
+M-22 after choosing Characters: button text="Characters"; include-subfolders checkbox present=1
+M-22 Multi Ref field scoped to Characters, suggestions for "a" (Scene Two selected; Paris and Scene One contain an "a"): ["Mara","Elena"]
+stop: recorded 31131(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

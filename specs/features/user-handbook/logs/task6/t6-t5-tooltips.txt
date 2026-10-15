@@ -1,0 +1,18 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 47882 port 51887 (throwaway projects dir; templates repo read-only)
+zoom for tooltips: 200%
+T-50 tooltip for Morning: chipRect=[466,260,65,28] tips=[{"cls":"","text":"Morning | DATE | May 1 06:00 | POV | Mara | DURATION | 3h | SOURCE | Act One | NOTES | First sentence of the long note. More words follow here to make the note long. More words follow here to make the note l… | IN REVIEW","parts":["Morning[w700]","DATE[w400]","May 1  06:00[w400]","POV[w400]","Mara[w400]","DURATION[w400]","3h[w400]","SOURCE[w400]","Act One[w400]","NOTES[w400]","First sentence of the long note. More words follow here to m[w400]","In review[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[484,158,230,215]}]
+T-52 element at tooltip center for Morning: DIV.; tooltip bottom 373 vs chip top 260
+T-50 tooltip for Noon: chipRect=[596,266,2,28] tips=[{"cls":"","text":"Noon | DATE | May 1 12:00 | POV | Elena | DURATION | Point event | SOURCE | Act One","parts":["Noon[w700]","DATE[w400]","May 1  12:00[w400]","POV[w400]","Elena[w400]","DURATION[w400]","Point event[w400]","SOURCE[w400]","Act One[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[611,158,155,120]}]
+T-52 element at tooltip center for Noon: DIV.timeline-legend; tooltip bottom 278 vs chip top 266
+T-50 tooltip for Evening: chipRect=[726,260,32,28] tips=[{"cls":"","text":"Evening | DATE | May 1 18:00 | DURATION | 2h | SOURCE | Act One","parts":["Evening[w700]","DATE[w400]","May 1  18:00[w400]","DURATION[w400]","2h[w400]","SOURCE[w400]","Act One[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[744,161,155,103]}]
+T-52 element at tooltip center for Evening: DIV.timeline-legend; tooltip bottom 264 vs chip top 260
+T-50 tooltip for Night: chipRect=[845,260,11,28] tips=[{"cls":"","text":"Night | DATE | May 1 23:30 | POV | Mara | DURATION | 30m | SOURCE | Act One","parts":["Night[w700]","DATE[w400]","May 1  23:30[w400]","POV[w400]","Mara[w400]","DURATION[w400]","30m[w400]","SOURCE[w400]","Act One[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[863,158,155,120]}]
+T-52 element at tooltip center for Night: DIV.timeline-legend; tooltip bottom 278 vs chip top 260
+T-50 tooltip for D1: chipRect=[466,322,2,28] tips=[{"cls":"","text":"D1 | DATE | May 1 06:00 | DURATION | Point event | SOURCE | Act Two","parts":["D1[w700]","DATE[w400]","May 1  06:00[w400]","DURATION[w400]","Point event[w400]","SOURCE[w400]","Act Two[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[481,223,155,103]}]
+T-52 element at tooltip center for D1: DIV.; tooltip bottom 326 vs chip top 322
+T-50 tooltip for D2: chipRect=[978,322,2,28] tips=[{"cls":"","text":"D2 | DATE | May 4 06:00 | POV | Elena | DURATION | Point event | SOURCE | Act Two","parts":["D2[w700]","DATE[w400]","May 4  06:00[w400]","POV[w400]","Elena[w400]","DURATION[w400]","Point event[w400]","SOURCE[w400]","Act Two[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[810,206,155,120]}]
+T-52 element at tooltip center for D2: DIV.; tooltip bottom 326 vs chip top 322
+stop: recorded 47882(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

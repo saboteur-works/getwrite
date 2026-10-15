@@ -1,0 +1,31 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 69269 port 63955 (throwaway projects dir; templates throwaway copy)
+TYPE Article outline: ["[folder] Workspace","  [folder] Articles","    [folder] Article 1","  [resource] Article Outline","[folder] References","  [folder] Fact Checking","[folder] Sources","  [folder] Interviews & Transcripts","[folder] Ideas"]
+TYPE Article recent files: ["RECENT FILES","1 shown","Article Outline","text","Created just now","METADATA"]
+TYPE Blank outline: ["[folder] Workspace"]
+TYPE Blank recent files: ["RECENT FILES","0 shown","No files yet. Use Create Resource to add your first text, image, or audio item.","METADATA"]
+TYPE Game Writing outline: ["[folder] Workspace","  [folder] Lore","    [folder] Factions","    [folder] History","    [folder] Geography & Worldbuilding","    [folder] Characters","  [folder] Quests & Story Arcs","  [folder] Dialogue & Scripts","[folder] Research","[folder] Notes"]
+TYPE Game Writing recent files: ["RECENT FILES","0 shown","No files yet. Use Create Resource to add your first text, image, or audio item.","METADATA"]
+TYPE Novel outline: ["[folder] Workspace","  [folder] Front Matter","  [folder] Prologue","  [folder] Chapters","    [folder] Chapter 1","      [resource] Scene 1","  [folder] Epilogue","[folder] Story Elements","  [folder] Characters","    [resource] Character Profile","  [folder] Items","    [resource] Item Profile","  [folder] Locations","    [resource] Location Profile","[folder] Outline","[folder] Notes"]
+TYPE Novel recent files: ["RECENT FILES","4 shown","Location Profile","text","Created just now","Item Profile","text","Created just now","Character Profile","text","Created just now","Scene 1","text","Created just now","METADATA"]
+TYPE Poetry and Lyrics outline: ["[folder] Workspace","[folder] Inspiration","  [folder] Phrases & Fragments","  [folder] Influences","[folder] Experiments"]
+TYPE Poetry and Lyrics recent files: ["RECENT FILES","0 shown","No files yet. Use Create Resource to add your first text, image, or audio item.","METADATA"]
+TYPE Serial outline: ["[folder] Workspace","  [folder] Parts","    [folder] Part 1","      [resource] Scene 1","[folder] Story Elements","  [folder] Characters","  [folder] Items","  [folder] Locations","[folder] Outline","[folder] Notes"]
+TYPE Serial recent files: ["RECENT FILES","1 shown","Scene 1","text","Created just now","METADATA"]
+P-12 gear menu items on Start Page: ["User Preferences","Project Type Manager","Help"]
+P-12 manager header and list: ["Project Type Management","View, create, and edit project type templates from getwrite-config/templates/project-types.","TEMPLATES","article.json","blank.json","game_writing.json","novel.json","poetry_and_lyrics.json","serial.json","NEW PROJECT TYPE"]
+P-12 buttons: ["Close","Articlearticle.json","Blankblank.json","Game Writinggame_writing.json","Novelnovel.json","Poetry and Lyricspoetry_and_lyrics.json","Serialserial.json","New Project Type","Add Status","Remove","Remove","Remove","Remove","Add Folder","Remove","Remove","Remove","Remove","Add Default Folder","Remove","Remove","Remove","Remove","Add Resource","Remove Resource"]
+P-14 edit form: name value "Novel"
+P-14 after typing: list entry text ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in P Novel or open a clean slate for your next draft.","P Novel","novel","Novel Edited","novel.json","UNSAVED CHANGES"]
+P-14 save-like controls (button texts matching save/apply/update/delete): ["Novel Editednovel.jsonUnsaved changes"]
+P-14 right-click on list entry: []
+P-13 after filling new type: list ["ZZ Test Type","new draft","UNSAVED CHANGES","UNSAVED CHANGES"]
+P-15 default folder / default resource controls present: ["Add Status","Add Folder","Add Default Folder","Add Resource"]
+P-15 after clicking Add Default Folder and Add Resource: remove buttons 3
+P-14/16 template files changed on disk (throwaway copy): []; files now ["article_project_type.json","blank_project_type.json","game_documentation.json","novel_project_type.json","poetry_and_lyrics_type.json","project-type.schema.json","serial_project_type.json"]
+P-14/16 reopened list: ["article.json","blank.json","game_writing.json","novel.json","poetry_and_lyrics.json","serial.json"]
+P-14 New Project dialog types: ["Article — Short-form article project typ","Blank — Minimal project type with only a","Game Writing — Project type optimized fo","Novel — Project type optimized for long-","Poetry and Lyrics — Project type optimiz","Serial — Serialized fiction project type"]
+P-16 files still on disk: ["article_project_type.json","blank_project_type.json","game_documentation.json","novel_project_type.json","poetry_and_lyrics_type.json","project-type.schema.json","serial_project_type.json"]
+stop: recorded 69269(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

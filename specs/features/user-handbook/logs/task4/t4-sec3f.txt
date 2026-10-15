@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 41328 port 54636 (throwaway projects dir; templates repo read-only)
+W-21/24 resource goal input "10": sidecar wordCountGoal=[10]; progress ["6 / 10 words · 60%"]; alert [""]
+W-21/24 resource goal input "4": sidecar wordCountGoal=[4]; progress ["6 / 4 words · Goal reached"]; alert [""]
+W-21/24 resource goal input "": sidecar wordCountGoal=[null]; progress []; alert [""]
+W-21/24 resource goal input "abc": sidecar wordCountGoal=[null]; progress []; alert ["Enter a non-negative whole number, or leave blank to clear the goal.",""]
+W-21/24 resource goal input "-3": sidecar wordCountGoal=[null]; progress []; alert ["Enter a non-negative whole number, or leave blank to clear the goal.",""]
+W-21/24 resource goal input "2.5": sidecar wordCountGoal=[null]; progress []; alert ["Enter a non-negative whole number, or leave blank to clear the goal.",""]
+W-21/24 resource goal input "0": sidecar wordCountGoal=[0]; progress []; alert [""]
+H-08 font-family datalist options: ["Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","Arial","Courier New","Garamond","Georgia","Helvetica","Palatino","Tahoma","Times New Roman","Trebuchet MS","Verdana","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","Arial","Courier New","Garamond","Georgia","Helvetica","Palatino","Tahoma","Times New Roman","Trebuchet MS","Verdana","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","Arial","Courier New","Garamond","Georgia","Helvetica","Palatino","Tahoma","Times New Roman","Trebuchet MS","Verdana","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","Arial","Courier New","Garamond","Georgia","Helvetica","Palatino","Tahoma","Times New Roman","Trebuchet MS","Verdana"]; datalist ids ["_r_j_","_r_k_","_r_l_","_r_m_"]
+stop: recorded 41328(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,45 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 39195 port 60329 (throwaway projects dir; templates repo read-only)
+RS-01 New resource dialog type options: ["Document","Image","Audio","Folder"]
+RS-01 sidecars (name:type): ["Map Pic:image","Chapter Doc:text","Demo Tune:audio"]
+RS-01 folders on disk: ["box","box2","workspace"]; resources dirs: 3
+RS-01 tree items: ["Workspace","Map Pic","Chapter Doc","Demo Tune","Box","Box2"]
+RS-04 toolbar buttons: ["Bold","Italic","Underline","Strikethrough","Inline code","Heading 1","Heading 2","Heading 3","Heading 4","Heading 5","Heading 6","Bullet list","Ordered list","Blockquote"]
+RS-04 editor html: "<p data-id=\"5cad929b-b4d7-4f91-827c-26c06f84ed5c\" style=\"line-height: 1.5;\">Plain words. More words.</p>"
+RS-04 tabs selected: ["EDIT"]
+RS-05 Work Area for the image: {"imgs":[{"w":64,"h":48,"alt":"Map Pic"}],"selectedTab":["MEDIA"]}
+RS-05 sidebar IMAGE block: "IMAGE\nDIMENSIONS\n\n64 × 48 px\n\nMAKE\n\nCanon\n\nMODEL\n\nTestCam\n\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Add them in Proj"
+RS-06 audio widget: {"audio":[{"d":3,"paused":true}],"buttons":["Play"],"sliders":["Seek|undefined|max=undefined"]}
+RS-06 after clicking Play: {"paused":false,"t":0.81841,"btn":["Pause"]}
+RS-06 after clicking Pause: {"paused":true,"btn":["Play"]}
+RS-06 after clicking 75% along the Seek track (3 s file): {"currentTime":0,"seekableEnd":0,"valuenow":"0"}
+RS-06 sidebar AUDIO block: "AUDIO\nFORMAT\n\nMP3\n\nDURATION\n\n3s\n\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Ad"
+RS-07 after selecting folder Box: selected tab=["ORGANIZER"]; cards=["Inner Doc"]
+RS-07 after selecting Workspace: cards=["Box","Box2","Map Pic","Chapter Doc","Demo Tune"]
+RS-02 folders (id -> name): {"534d8fd2":"Box","553c4f60":"Box2","989e2287":"Workspace"}; Inner Doc folderId before: "534d8fd2"
+RS-02 ids before: {"Map Pic":"895a760a","Chapter Doc":"9c66530f","Demo Tune":"9ecebccb","Inner Doc":"cc43ee28"}
+RS-02 Chapter Doc friend stored: {"id":"cc43ee28-bf6e-45cc-b760-a357d3ff7b30","name":"Inner Doc"}
+RS-02 rename dialog: "Rename resource\nName\nCANCEL\nSAVE"
+RS-02 after rename: tree items ["Workspace","Map Pic","Chapter Doc","Demo Tune","Box","Inner Renamed","Box2"]
+RS-02 move dialog: "Move “Inner Renamed”\n\nChoose a destination folder.\n\nBox\nCANCEL\nMOVE"
+RS-02 destination choices: ["Project Root","Workspace"]
+RS-02 after clicking Move: dialog=null; toasts/status=[]
+RS-02 ids after rename + move: {"Map Pic":"895a760a","Chapter Doc":"9c66530f","Demo Tune":"9ecebccb","Inner Renamed":"cc43ee28"}
+RS-02 same id: true
+RS-02 Inner Renamed sidecar name/folderId after: ["Inner Renamed","989e2287","Workspace"]
+RS-02 tree after move: ["Workspace","Map Pic","Chapter Doc","Demo Tune","Box","Box2","Inner Renamed"]
+RS-02 Chapter Doc friend input after rename of its target: "Inner Doc" ; stored {"id":"cc43ee28-bf6e-45cc-b760-a357d3ff7b30","name":"Inner Doc"}
+RS-08 sidebar section headings: ["CHAPTER DOC","PROSE DIAGNOSTICS","SUBTYPE","SUBTYPE","DOCUMENT","SYNOPSIS","NOTES","STATUS","FRIEND","TIMELINE","STORY DATE / TIME","DURATION","END DATE / TIME","TAGS","WORD COUNT GOAL","WORD COUNT GOAL"]
+RS-08 sidecar userMetadata: {"friend":{"id":"cc43ee28-bf6e-45cc-b760-a357d3ff7b30","name":"Inner Doc"},"status":"Published","notes":"a note"}
+RS-08 Map Pic sidebar headings: ["MAP PIC","IMAGE","DIMENSIONS","MAKE","MODEL","SUBTYPE","SUBTYPE","DOCUMENT","SYNOPSIS","NOTES","STATUS","FRIEND","TIMELINE","STORY DATE / TIME","DURATION","END DATE / TIME","TAGS"] ; userMetadata={"status":"Published","notes":"note on Map Pic"} ; story date input present=1
+RS-08 Demo Tune sidebar headings: ["DEMO TUNE","AUDIO","FORMAT","DURATION","SUBTYPE","SUBTYPE","DOCUMENT","SYNOPSIS","NOTES","STATUS","FRIEND","TIMELINE","STORY DATE / TIME","DURATION","END DATE / TIME","TAGS"] ; userMetadata={"status":"Published","notes":"note on Demo Tune"} ; story date input present=1
+RS-08 story date inputs in the sidebar: ["notes","status","story-date-input","story-date-input-time","story-duration-quantity","story-duration-unit"]
+RS-09 Chapter Doc revision dirs: ["v-1"]
+RS-09 revision dirs after two named saves: ["v-1","v-2","v-3"]
+RS-09 cards: ["Draft B","Draft A","Initial Draft [CANONICAL]"]
+RS-09 Map Pic revisions dir exists: false
+RS-09 Demo Tune revisions dir exists: false
+RS-09 Revision Control on the image: 0
+stop: recorded 39195(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

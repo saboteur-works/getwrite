@@ -17,7 +17,11 @@
     "frontend/src/store/transport/native-trash-backend.web-stub.ts",
     // native-writing-log-backend.web-stub.ts: same Turbopack-only alias
     // substitute as the trash stub above (Feature 59).
-    "frontend/src/store/transport/native-writing-log-backend.web-stub.ts"
+    "frontend/src/store/transport/native-writing-log-backend.web-stub.ts",
+    // specs/**: per-feature measurement and verification scripts (Features
+    // 78, 81 and earlier), run by hand from the specs that record them —
+    // not app code.
+    "specs/**"
   ],
   "workspaces": {
     ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },

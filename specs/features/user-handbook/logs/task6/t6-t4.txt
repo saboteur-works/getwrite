@@ -1,0 +1,28 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 34738 port 51606 (throwaway projects dir; templates repo read-only)
+User Preferences dialog text: "User Preferences\n\nPersonal settings stored in the selected project's metadata.\n\nCLOSE\nTheme\n\nChoose the default UI appearance mode.\n\nLight\nDark\nSystem\nDensity\n\nControl spacing density across app layouts.\n\nComfortable\nCompact\nMotion\n\nReduce non-essential motion and transitions.\n\nEnable reduced motion"
+T-32 first lines of the Timeline view: ["6 SCENES","ALL","ELENA","MARA","−","200%","+","POV","Elena","Mara","Outline","DEC 25","JAN 23","FEB 21"] ; contains 'Timeline —': false
+T-32 timeline-root first child classes: ["timeline-toolbar|6 SCENES/ALL/ELENA/MARA/−/200%/+","timeline-legend|POV/Elena/Mara/Outline","|DEC 25/JAN 23/FEB 21/MAR 22/APR 20/MAY 2","|"]
+T-12 zoom label: start 200%; Ctrl+wheel up 300%; Meta+wheel up 400%; plain wheel up 400%; Ctrl+wheel down 300%; Meta+wheel down 200%; platform=MacIntel
+back at 200%
+T-39 enabled zoom-in: {"color":"rgb(99, 97, 96)","opacity":"1","cursor":"pointer","backgroundColor":"rgba(0, 0, 0, 0)"} ; disabled zoom-out at 100%: {"color":"rgb(216, 213, 206)","opacity":"1","cursor":"default","backgroundColor":"rgba(0, 0, 0, 0)"}
+T-17 legend: {"text":"POV | Elena | Mara | Outline","html":"<div style=\"width: 100px; min-width: 100px; flex-shrink: 0;\"></div><span class=\"timeline-legend-header\">POV</span><span class=\"timeline-legend-entry\"><span style=\"width: 7px; height: 7px; border-radius: 50%; background-color: var(--timeline-pov-0); flex-shrink: 0;\"></span>Elena</span><span class=\"timeline-legend-entry\"><span style=\"width: 7px; height: 7px; border-radius: 50%; background-color: var(--timeline-pov-1); flex-shrink: 0;\"></span>Mara</span><span class=\"timeline-legend-entry\" style=\"margin-left: 8px;\"><span style=\"width: 22px; height: 9px; border-radius: 2px; flex-shrink: 0; background: repeating-linear-gradient(45deg, var(--timeline-outline-stripe) 0px, var(--timeline-outline-stripe) 1.5px, transparent 1.5px, transparent 5px); border: 0.5px solid var(--timeline-axis-color);\"></span>Outline</span>","pos":"{\"x\":304,\"y\":188,\"width\":752,\"height\":32,\"top\":188,\"right\":1056,\"bottom\":220,\"left\":304}","axisTop":"{\"x\":-72,\"y\":220,\"width\":1800,\"height\":32,\"top\":220,\"right\":1728,\"bottom\":252,\"left\":-72}"}
+T-35 legend entries styles: ["Elena|swatch 7pxx7px radius=50% bg=rgb(74, 110, 148) img=none|text font=\"IBM Plex Mono\", monospace color=rgb(99, 97, 96)","Mara|swatch 7pxx7px radius=50% bg=rgb(90, 128, 96) img=none|text font=\"IBM Plex Mono\", monospace color=rgb(99, 97, 96)","Outline|swatch 22pxx9px radius=2px bg=rgba(0, 0, 0, 0) img=repeating-linear-gradient(45deg, rgba(0,|text font=\"IBM Plex Mono\", monospace color=rgb(99, 97, 96)"]
+T-16/T-48 chip colors: ["Dawn|bg=rgb(90, 128, 96)|opacity=1|radius=3px|border=0px rgba(10, 10, 10, 0.82)|bgimg=none","Midday|bg=rgb(74, 110, 148)|opacity=1|radius=3px|border=0px rgba(10, 10, 10, 0.82)|bgimg=none","Midday Two|bg=rgb(228, 225, 218)|opacity=1|radius=3px|border=0px rgba(10, 10, 10, 0.82)|bgimg=none","Spring|bg=rgb(90, 128, 96)|opacity=1|radius=1px|border=0px rgb(10, 10, 10)|bgimg=none","Late|bg=rgb(90, 128, 96)|opacity=1|radius=1px|border=0px rgb(10, 10, 10)|bgimg=none","Long|bg=rgb(74, 110, 148)|opacity=1|radius=3px|border=0px rgba(10, 10, 10, 0.82)|bgimg=none"]
+T-49 Long chip: normal={"backgroundColor":"rgb(74, 110, 148)","filter":"none","opacity":"1","outlineStyle":"none","outlineWidth":"3px","boxShadow":"none","transform":"none"} hover={"backgroundColor":"rgb(74, 110, 148)","filter":"brightness(1.3)","opacity":"1","outlineStyle":"solid","outlineWidth":"1px","boxShadow":"none","transform":"none"} keyboard focus (Tab round trip)={"backgroundColor":"rgb(74, 110, 148)","filter":"none","outlineStyle":"solid","outlineWidth":"1px","outlineColor":"rgba(212, 64, 64, 0.2)","boxShadow":"none"} focus-visible=true
+chips now: ["Dawn|Dawn|10x28@466,260","Midday|Midday|10x28@467,260","Midday Two|Midday|10x28@467,300","Spring||2x28@821,362","Late||2x28@2026,362","Long|Long|124x28@638,412"] zoom 200% tab=["TIMELINE"]
+T-50 tooltips STEP ERROR locator.hover: Timeout 15000ms exceeded. | Call log: | [2m  - waiting for locator('.timeline-chip[aria-label="Dawn"]').first()[22m
+T-14 editor present (.ProseMirror count)=0 ; timeline-root present=1
+T-14 after clicking the Midday chip: selected tab=["TIMELINE"] ; sidebar heading="MIDDAY" ; editor title line=["Long","Undated","SMART FOLDERS","EDIT"]
+T-40 tick label vs tick line: {"label":"Jan 23","labelTop":230,"labelBottom":243,"lineTop":247,"lineBottom":252,"lineHeight":5,"axisTop":220,"axisBottom":252}
+T-36 every scene with a POV is Mara, Midday Two has none: legend="POV | Mara | Outline" ; pills=["ALL","MARA"]
+T-36 every scene has the same POV (Mara) and all of them have one: legend=null ; pills=["ALL","MARA"]
+T-36 no scene has a POV: legend=null ; pills=[]
+T-17 two POVs again (Mara, Elena) and scenes with none: legend="POV | Mara | Elena | Outline"
+Long folderId before: "bdb29700-235b-451e-9adf-36ae31688e27"
+T-19 Long without a folderId: timeline row texts=["6 SCENES","ACT ONE","3 scenes","ACT TWO","2 scenes","Long"]
+T-19 chips: ["Dawn","Midday","Midday Two","Spring","Late","Long"] rows: ["ACT ONE / 3 scenes / Dawn / Midday / Mid","ACT TWO / 2 scenes / · 26w ·","Long"]
+T-19 tree after: ["RESOURCES","Workspace","Mara","Elena","Act One","Dawn","Midday","Midday Two","Act Two","Spring","Late"]
+stop: recorded 34738(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

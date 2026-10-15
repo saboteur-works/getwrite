@@ -1,6 +1,6 @@
 # Editor: Headings (developer reference)
 
-The text editor supports user-defined heading styles, configurable per project. For the writer-facing guide to customizing headings in the app, see [docs/user/editor/headings.md](../../user/editor/headings.md).
+The text editor supports user-defined heading styles, configurable per project. For the writer-facing guide to customizing headings in the app, see [docs/user/handbook/write/headings.md](../../user/handbook/write/headings.md).
 
 ## Heading Levels
 
@@ -46,7 +46,7 @@ Headings are selected in the Editor via MenuBar buttons.
 
 ## Heading Style Customization
 
-Heading styles are configured through the **Heading Styles** tab of the **Project Settings** dialog (gear menu); changes are project-scoped and take effect immediately. The tab stages edits locally and commits on **Save**. For the full UI walkthrough, see the [user guide](../../user/editor/headings.md). Implementation notes follow.
+Heading styles are configured through the **Heading Styles** tab of the **Project Settings** dialog (gear menu); changes are project-scoped and take effect immediately. The tab stages edits locally and commits on **Save**. For the full UI walkthrough, see the [user guide](../../user/handbook/write/headings.md). Implementation notes follow.
 
 ### API
 

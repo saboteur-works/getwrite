@@ -1,0 +1,41 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 1459 port 52995 (throwaway projects dir; templates repo read-only)
+G-34 tabs with Entities off: ["EDIT:on","ORGANIZER:disabled","DATA:on","DIFF:on","TIMELINE:disabled","ENTITIES:disabled","GRAPH:disabled","TRASH:on"]
+G-34 tooltip on the greyed Graph tab: ["Entities are off. Turn them on in User Preferences → Entities."]
+config at start: {} ; focal status="No focal point set." ; positions file=null
+G-35 buttons/inputs in the graph view: ["BUTTON||KIND COLORS & SHAPES","BUTTON|Graph settings|","BUTTON|Reset view|","BUTTON||Clear focal point","BUTTON||Alice","BUTTON||Set Alice as focal point","BUTTON||Bob","BUTTON||Set Bob as focal point","BUTTON||Carol","BUTTON||Set Carol as focal point","BUTTON||Dave","BUTTON||Set Dave as focal point","BUTTON||Eve","BUTTON||Set Eve as focal point"]
+G-35 double-click on an authored edge: tab=["GRAPH"] relationships still: 8
+G-20 edges=19 list items=19 ; hover results: ["0:cooccurrence:true:Alice and Bob are mentioned close together in a shared resource, an av","1:cooccurrence:true:Carol and Bob are mentioned close together in a shared resource, an av","2:cooccurrence:true:Carol and Alice are mentioned close together in a shared resource, an ","3:cooccurrence:true:Dave and Alice are mentioned close together in a shared resource, an a","4:cooccurrence:null:null","5:cooccurrence:true:Carol and Bob are mentioned close together in a shared resource, an av","6:cooccurrence:false:Kind: character — default color diamond","7:authored:true:Alice and Bob are mentioned close together in a shared resource, an av","8:authored:true:Carol and Alice are mentioned close together in a shared resource, an ","9:backlinks:true:Alice and Bob are mentioned close together in a shared resource, an av","10:proximityMentions:true:Alice and Bob are mentioned close together in a shared resource, an av","11:proximityMentions:true:Carol and Bob are mentioned close together in a shared resource, an av","12:proximityMentions:true:Carol and Alice are mentioned close together in a shared resource, an ","13:proximityMentions:true:Alice and Bob are mentioned close together in a shared resource, an av","14:proximityMentions:true:Dave and Alice are mentioned close together in a shared resource, an a","15:proximityMentions:true:Alice and Bob are mentioned close together in a shared resource, an av","16:proximityMentions:null:null","17:proximityMentions:true:Carol and Bob are mentioned close together in a shared resource, an av","18:proximityMentions:false:Kind: character — default color diamond"]
+G-20 tooltips not found in the list: ["Kind: character — default color diamond","Kind: character — default color diamond"]
+config after toggling the three types off again: ["authored","cooccurrence"]
+G-25 before: viewport=translate(0, 0) scale(1) opacities={"Eve":"1","Dave":"1","Carol":"1","Alice":"1","Bob":"1"} dimmed edges=0 of 9 canvas center=[680,552]
+G-19 shift-click on Dave: tab=["GRAPH"] (a plain click goes to Edit) ; focal status="Current focal point: Dave." ; viewport=translate(8.326933089989666, -46.345184504432495) scale(1) ; Dave screen pos [672,598] -> [680,552] ; canvas center [680,552]
+G-25 radius 1: opacities={"Eve":"0.15","Dave":"1","Carol":"0.15","Alice":"1","Bob":"0.15"} dimmed edges=8 of 9 ; positions file after=null
+G-26 radius set to 2: config radius=2 opacities={"Eve":"1","Dave":"1","Carol":"1","Alice":"1","Bob":"1"} dimmed edges=0 of 9
+G-26 radius 3: config radius=3 opacities={"Eve":"1","Dave":"1","Carol":"1","Alice":"1","Bob":"1"}
+G-26 radius back to 1: {"Eve":"0.15","Dave":"1","Carol":"0.15","Alice":"1","Bob":"0.15"}
+G-27 dimmed nodes: ["Eve","Carol","Bob"]
+G-27 drag dimmed Eve: [741,550] -> [741,550]; tab=["GRAPH"]
+G-27 hover a dimmed edge: "Alice → Bob (mentor of)"
+G-27 plain click on dimmed Eve: tab=["GRAPH"] sidebar="S1"
+after returning to the Graph tab (navigated Edit and back): focal status="Current focal point: Dave." opacities={"Eve":"0.15","Dave":"1","Carol":"0.15","Alice":"1","Bob":"0.15"}
+G-28 shift-click Carol: focal="Current focal point: Carol." opacities={"Eve":"1","Dave":"0.15","Carol":"1","Alice":"1","Bob":"1"}
+G-29 list buttons: ["entity-graph-clear-focal-point-button|Clear focal point","entity-graph-node-activate-button|Alice","entity-graph-node-set-focal-button|Set Alice as focal point","entity-graph-node-activate-button|Bob","entity-graph-node-set-focal-button|Set Bob as focal point","entity-graph-node-activate-button|Carol","entity-graph-node-set-focal-button|Set Carol as focal point","entity-graph-node-activate-button|Dave","entity-graph-node-set-focal-button|Set Dave as focal point","entity-graph-node-activate-button|Eve","entity-graph-node-set-focal-button|Set Eve as focal point"]
+G-29 'Set Bob as focal point' via keyboard: focal="Current focal point: Bob." opacities={"Eve":"1","Dave":"0.15","Carol":"1","Alice":"1","Bob":"1"}
+G-29 'Clear focal point' via keyboard: focal="No focal point set." opacities={"Eve":"1","Dave":"1","Carol":"1","Alice":"1","Bob":"1"} dimmed edges=0 of 9
+G-30 focal set to Eve: "No focal point set."
+G-30 after leaving the Graph tab and coming back: "No focal point set."
+G-30 after a page reload: "No focal point set." ; project.json has a focal key: ["entityGraphFocalHopRadius"]
+G-22 drag Alice by (+90,+60): [634,479] -> [725,538] ; positions file=[{"entityId":"6bacadc9-57a4-4818-b1b6-c401d9906c2f","x":435.91634355956563,"y":336.05121294518716,"connectionTypesSnapshot":["authored","cooccurrence"],"savedAt":"2026-10-15T03:30:29.381Z"}]
+G-22 after Edit and back: Alice [724,539]
+G-22 after a page reload: Alice [724,539]
+G-22 after closing and reopening the project: Alice [724,539]
+G-24 position file location: "872edf86-fad0-4995-886a-2c7151b27e92/meta/entity-graph-positions.json"
+G-23 after declaring one more entity (Zed): Alice [724,539] (dragged position was [725,538]); nodes=["Eve","Dave","Carol","Alice","Bob","Zed"]
+G-23 after changing the hop radius to 2: Alice [724,539]
+G-23 after turning Backlinks on: Alice [724,539] -> [724,539] ; positions file=[{"entityId":"6bacadc9-57a4-4818-b1b6-c401d9906c2f","x":435.91634355956563,"y":336.05121294518716,"connectionTypesSnapshot":["authored","cooccurrence"],"savedAt":"2026-10-15T03:30:29.381Z"}]
+G-23 after turning Backlinks off again: Alice [724,539] ; positions file=[{"entityId":"6bacadc9-57a4-4818-b1b6-c401d9906c2f","x":435.91634355956563,"y":336.05121294518716,"connectionTypesSnapshot":["authored","cooccurrence"],"savedAt":"2026-10-15T03:30:29.381Z"}]
+G-23 after reload: Alice [724,539]
+stop: recorded 1459(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

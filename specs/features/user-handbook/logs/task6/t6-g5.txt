@@ -1,0 +1,16 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 22882 port 53393 (throwaway projects dir; templates repo read-only)
+edges: ["Bob and Alice share 1 resource","Bob and Eve share 1 resource","Bob and Carol share 1 resource","Dave and Alice share 1 resource","Eve and Carol share 1 resource"]
+focal="Current focal point: Dave." opacities={"Bob":"0.15","Eve":"0.15","Dave":"1","Alice":"1","Carol":"0.15"} edges dimmed flags=["0:true","1:true","2:true","3:false","4:true"]
+dimmed=["Bob","Eve","Carol"] undimmed besides Dave=["Alice"]
+drag undimmed Alice (+40,+25): [801,523] -> [843,547] ; focal="Current focal point: Dave." tab=["GRAPH"] opacities={"Bob":"0.15","Eve":"0.15","Dave":"1","Alice":"1","Carol":"0.15"}
+drag DIMMED Bob (+40,+25): [932,531] -> [973,554] ; focal="Current focal point: Dave." tab=["GRAPH"] opacities={"Bob":"0.15","Eve":"0.15","Dave":"1","Alice":"1","Carol":"0.15"}
+drag DIMMED Eve (+40,+25): [1044,593] -> [1084,618] ; focal="Current focal point: Dave." tab=["GRAPH"] opacities={"Bob":"0.15","Eve":"0.15","Dave":"1","Alice":"1","Carol":"0.15"}
+drag DIMMED Carol (+40,+25): [1043,468] -> [1083,493] ; focal="Current focal point: Dave." tab=["GRAPH"] opacities={"Bob":"0.15","Eve":"0.15","Dave":"1","Alice":"1","Carol":"0.15"}
+hover a dimmed edge (0): "Bob and Alice share 1 resource" ; element there=line|entity-graph-edge-hit-target|
+hover dimmed node Bob: tooltip="Kind: character — default color diamond"
+plain click on dimmed Bob: tab=["EDIT"] sidebar="BOB"
+back on the Graph tab after navigating to a document: focal="No focal point set." opacities={"Bob":"1","Eve":"1","Dave":"1","Alice":"1","Carol":"1"}
+stop: recorded 22882(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

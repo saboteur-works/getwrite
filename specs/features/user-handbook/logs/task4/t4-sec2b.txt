@@ -1,0 +1,11 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 96078 port 53278 (throwaway projects dir; templates repo read-only)
+start: editorConfig keys=["headings","body"]; headings keys=["h1","h2","h3"]; h1={"size":"40px","weight":"700"}
+after headings Save (H1 size 60): headings keys=["h1","h2","h3"] h1.fontSize=60px; body={"fontFamily":"IBM Plex Serif","fontSize":"15px","lineHeight":"1.8","paragraphSpacing":"16px"}; editor h1={"size":"60px","weight":"700"}
+after Body Text Styles Save (font size 18px): headings={}; body={"fontSize":"18px"}; editor h1={"size":"40px","weight":"700"}
+Heading input in the open dialog now: H1 Font Size="60"
+after reload: editor h1={"size":"40px","weight":"700"}
+after reload, dialog: H1 Font Size="40"
+stop: recorded 96078(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

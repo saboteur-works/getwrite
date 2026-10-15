@@ -1,0 +1,12 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 42543 port 64306 (throwaway projects dir; templates repo read-only)
+Scene A createdAt=2026-10-15T01:57:36.045Z; updatedAt=2026-10-15T01:57:53.047Z; Mara updatedAt=undefined; now=2026-10-15T01:57:56.541Z
+Q-21 Created At is before 2099-01-01: result=["Scene A","Mara"]; definition={"op":"lt","field":"createdAt","value":"2099-01-01"}
+Q-21 Created At is after 2099-01-01: result=[]; definition={"op":"gt","field":"createdAt","value":"2099-01-01"}
+Q-21 Created At is on the creation date: result=[]; definition={"op":"eq","field":"createdAt","value":"2026-10-15"}
+Q-22 Updated At in the last 1 days (Scene A was edited minutes ago): result=[]; definition={"op":"gte","field":"updatedAt","value":{"amount":1,"unit":"days"}}
+Q-27 meta/backlinks.json: {"4dcecde9-2549-425a-9238-e1e9c31768ea":["75d66c44-a3d7-4086-8592-a5c0de3fe43b"],"75d66c44-a3d7-4086-8592-a5c0de3fe43b":[]}; ids: Scene A=4dcecde9-2549-425a-9238-e1e9c31768ea, Mara=75d66c44-a3d7-4086-8592-a5c0de3fe43b
+Q-27 "Links To includes Mara" (Scene A has Mara as its POV reference, no [[link]] in its text): result=["Scene A"]
+stop: recorded 42543(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+D add button state: ["Add:enabled","Close:enabled"]
+D after add + 3 s: ["Get\nWrite\nLOCAL-FIRST WRITING STUDIO\nGetWrite\n\nShape books, "]; input value now ""
+D app log lines mentioning noise/error/workspace: ["[2026-10-14T21:59:06.864Z] Failed to save the global noise-word list: ENOENT: no such file or directory, mkdir ''"]
+D userData folder entries (throwaway): []
+D reopened: ["Get\nWrite\nLOCAL-FIRST WRITING STUDIO\nGetWrite\n\nShape books, "]
+D after window reload, reopened: ["Get\nWrite\nLOCAL-FIRST WRITING STUDIO\nGetWrite\n\nShape books, "]
+stop: recorded 95361(Electron),95362(Electron Helper (GPU)),95363(Electron Helper),95364(sh),95368(node),95387(node),95465(next-server (v16.2.6)),95469(Electron Helper (Renderer)),95560(node); after SIGTERM: none alive; listener 7340 after: none; log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

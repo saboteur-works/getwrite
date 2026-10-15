@@ -1,0 +1,22 @@
+$ getwrite-cli prune --help  -> exit 0
+  | Usage: getwrite-cli prune [options] [projectRoot]
+  | Prune old revisions under a project root
+  | Options:
+  |   -m, --max <number>  maximum revisions to keep (default: "50")
+  |   -h, --help          display help for command
+$ getwrite-cli --help  -> exit 0
+  | Usage: getwrite-cli [options] [command]
+  | Options:
+  |   -V, --version                             output the version number
+  |   -h, --help                                display help for command
+  | Commands:
+  |   prune [options] [projectRoot]             Prune old revisions under a project root
+  |   templates                                 Manage resource templates
+  |   screenshots                               Screenshot related commands
+  |   project                                   Project related commands
+  |   reindex [projectRoot]                     Rebuild the inverted index and backlinks for a project from scratch
+  |   doctor [projectRoot]                      Check a project for broken folder associations (orphaned resources/folders)
+  |   repair-revisions [options] [projectRoot]  Give text resources that have no revision their initial canonical revision
+  |   qa                                        Agentic QA harness for driving disposable QA workspaces
+  |   help [command]                            display help for command
+removed: true

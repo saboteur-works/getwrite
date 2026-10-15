@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+electron pid 38781; isPackaged=false; userData is throwaway: true
+W-36 scrivener import opened project "sample"; day entries [{"file":"2026-10-14.json","added":84,"deleted":0,"net":84,"timestamp":"2026-10-14T22:55:00.327Z","source":"scrivener"}]
+   tree text ["Chapter One","Chapter One","Chapter Two","Chapter Two","Scene One","Research","Character Notes","Backslash Newline Paragraphs","Mixed Par And Backslash Newline","Hex Escapes And Layout Words","Archive","Old Draft"]
+W-36 scrivener import project: dialog ["No daily goal set","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 84"]; footer ["Today's writing","Today: 0"]
+stop: recorded 38781(Electron),38783(Electron Helper (GPU)),38784(Electron Helper),38785(sh),38789(node),38808(node),38814(next-server (v16.2.6)),38819(Electron Helper (Renderer)); after SIGTERM: none alive
+listener on 7340 after stop: none; throwaway log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

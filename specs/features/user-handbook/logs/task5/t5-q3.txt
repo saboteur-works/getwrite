@@ -1,0 +1,54 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 63569 port 62835 (throwaway projects dir; templates repo read-only)
+tag creation: dialog lines=["FLASHBACK"]; project.json config.tags=[{"id":"7f596792-c82f-4d6c-a8f3-cb626726a5a7","name":"flashback"}]
+sidebar Tags section right after creating the tag in Project Settings (dialog closed, no reload): ["No tags yet. Create some in Project Settings."]
+data Scene A: wordCount=50 userMetadata={"pov":"Mara","status":"Draft","storyDate":"2026-01-05","fsel":"Red","fmulti":["Alpha","Beta"]}
+data Scene B: wordCount=600 userMetadata={"pov":"Mara","status":"In review","storyDate":"2026-03-01","fsel":"Green","fmulti":["Alpha"]}
+data Scene C: wordCount=40 userMetadata={"pov":"Elena","status":"Draft","storyDate":"2026-02-01","fmulti":["Beta"]}
+data Scene D: wordCount=5 userMetadata={}
+config.tags=[{"id":"7f596792-c82f-4d6c-a8f3-cb626726a5a7","name":"flashback"}]; tagAssignments={"69f1f331-9bdb-4a00-b474-c5f6e80382d4":["7f596792-c82f-4d6c-a8f3-cb626726a5a7"],"ffe353d2-a18a-42da-b813-13d334b8abcf":["7f596792-c82f-4d6c-a8f3-cb626726a5a7"]}
+meta/backlinks.json (id -> ids it links to): {"05bc9e47-8506-4c9f-abff-7593e4496f01":["bee04caa-fe27-41f2-a717-26c884e90af2"],"69f1f331-9bdb-4a00-b474-c5f6e80382d4":["7af0e066-e74a-492b-8973-71011380e960"],"7298aba7-8beb-4a8e-9725-ee0e3e95568c":["69f1f331-9bdb-4a00-b474-c5f6e80382d4"],"7af0e066-e74a-492b-8973-71011380e960":[],"bee04caa-fe27-41f2-a717-26c884e90af2":[],"ffe353d2-a18a-42da-b813-13d334b8abcf":["7af0e066-e74a-492b-8973-71011380e960"]}; ids: {"Scene A":"69f1f331","Scene B":"ffe353d2","Scene C":"05bc9e47","Scene D":"7298aba7","Mara":"7af0e066","Elena":"bee04caa"}
+Q-04 Cmd+K: focused element="Search resources..."
+Q-04 typing "Scene" in search: ["Scene A","Scene B","Scene C","Scene D","Scene D","Scene C","Scene A","Scene D"]
+Q-23 Statuses value control: "<select  aria-label=\"Value\"><option value=\"\">select...</option><option value=\"Draft\">Draft</option><option value=\"In review\">In review</option><option value=\"Published\">Published</option></select>"
+Q-24 Tags chip: typing "flashback": suggestions=[]
+Q-24 Tags chip: typing "Scene": suggestions=["Scene C","Scene A","Scene D","Scene B"]
+Q-45 "POV is Mara AND Word Count is less than 500": result=["Scene A"] (data: A=50 words, B=600 words, both POV Mara)
+Q-45 saved file: {"op":"and","children":[{"op":"eq","field":"pov","value":{"id":"7af0e066-e74a-492b-8973-71011380e960","name":"Mara"}},{"op":"lt","field":"wordCount","value":500}]}
+BUILTIN "Type is text": result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; saved definition={"op":"eq","field":"type","value":"text"}
+Q-18 Folder suggestions for "Work": ["Workspace"]
+BUILTIN "Folder is Workspace": result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; saved definition={"op":"eq","field":"folderId","value":{"id":"6223a03e-a375-45e4-91d5-6cc7d4c01499","name":"Workspace"}}
+BUILTIN "Character Count above 1000": result=["Scene B"]; saved definition={"op":"gt","field":"charCount","value":1000}
+Q-21 in-the-last unit options: ["days","weeks","months"]
+BUILTIN "Created in last 1 day": result=[]; saved definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"days"}}
+BUILTIN "Updated before 2020": result=[]; saved definition={"op":"lt","field":"updatedAt","value":"2020-01-01"}
+BUILTIN "Updated before 2099": result=["Scene D","Scene C","Scene A","Scene B"]; saved definition={"op":"lt","field":"updatedAt","value":"2099-01-01"}
+Q-25 "Linked From includes Scene D" (D's text holds [[Scene A]]): result=["Scene A"]; saved definition={"op":"in","field":"linkedFrom","value":{"id":"7298aba7-8beb-4a8e-9725-ee0e3e95568c","name":"Scene D"}}
+Q-26 "Links To includes Scene A": result=["Scene D"]; saved definition={"op":"in","field":"linksTo","value":{"id":"69f1f331-9bdb-4a00-b474-c5f6e80382d4","name":"Scene A"}}
+Q-50 value control: "<select  aria-label=\"Values\" multiple=\"\"><option value=\"Alpha\">Alpha</option><option value=\"Beta\">Beta</option></select>"
+Q-50 "F Multi includes all of Alpha, Beta": result=["Scene C","Scene A","Scene B"] (data: A=[Alpha,Beta], B=[Alpha], C=[Beta])
+Q-50 saved definition={"op":"and","children":[{"op":"in","field":"fmulti","value":["Alpha","Beta"]}]}
+Q-23 "Statuses includes Draft" (Scenes A and C have the sidebar Status Draft): result=[]; definition={"op":"in","field":"statuses","value":"Draft"}
+Q-23 "Status is Draft" for comparison: result=["Scene C","Scene A"]
+Q-35/Q-50 F Multi includes ["Alpha"]: result=["Scene A","Scene B"]; definition={"op":"in","field":"fmulti","value":"Alpha"} (data: A=[Alpha,Beta], B=[Alpha], C=[Beta], D none)
+Q-35/Q-50 F Multi includes any of ["Alpha","Beta"]: result=["Scene C","Scene A","Scene B"]; definition={"op":"or","children":[{"op":"in","field":"fmulti","value":["Alpha","Beta"]}]} (data: A=[Alpha,Beta], B=[Alpha], C=[Beta], D none)
+Q-35/Q-50 F Multi includes none of ["Alpha"]: result=["Scene D","Scene C","Elena","Mara"]; definition={"op":"not","child":{"op":"or","children":[{"op":"in","field":"fmulti","value":["Alpha"]}]}} (data: A=[Alpha,Beta], B=[Alpha], C=[Beta], D none)
+Q-35/Q-50 F Multi does not include ["Alpha"]: result=["Scene D","Scene C","Elena","Mara"]; definition={"op":"not","child":{"op":"in","field":"fmulti","value":"Alpha"}} (data: A=[Alpha,Beta], B=[Alpha], C=[Beta], D none)
+Q-35/Q-50 F Multi includes all of ["Alpha","Beta"]: result=["Scene C","Scene A","Scene B"]; definition={"op":"and","children":[{"op":"in","field":"fmulti","value":["Alpha","Beta"]}]} (data: A=[Alpha,Beta], B=[Alpha], C=[Beta], D none)
+Q-21/Q-32 Created At in the last 1 days (all resources were created in this run, minutes ago): result=[]; definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"days"}}
+Q-21/Q-32 Created At in the last 7 days (all resources were created in this run, minutes ago): result=[]; definition={"op":"gte","field":"createdAt","value":{"amount":7,"unit":"days"}}
+Q-21/Q-32 Created At in the last 1 weeks (all resources were created in this run, minutes ago): result=[]; definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"weeks"}}
+Q-21/Q-32 Created At in the last 1 months (all resources were created in this run, minutes ago): result=[]; definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"months"}}
+Q-36 smart folder row icon classes: [["lucide lucide-search w-3.5 h-3.5 flex-shrink-0"]]
+Q-38 "Needs a POV 2" first run: ["Scene D","Elena","Mara"]
+Q-38 after selecting Scene D in the tree: heading/work area lines=["Scene D","Needs a POV 2","Scene D"]
+Q-38 Scene D POV now: "Mara"; work area still on the smart folder? true; list shown right now (before clicking the folder again)=["Scene D","Elena","Mara"]
+Q-38 list shown 5 s later, still without clicking the folder again: ["Scene D","Elena","Mara"]
+Q-38 "Needs a POV 2" after clicking it again: ["Elena","Mara"]
+Q-39 buttons on hover: ["Edit Needs a POV 2","Delete Needs a POV 2"]
+Q-40 builder after Edit: chips=1; field trigger="Field: Point of View"; operator="is-empty"; save button text=["Updated before 2020","Updated before 2099","Save query","Elenatext0 wordsUpdated 4m ago","Maratext0 wordsUpdated 4m ago"]
+Q-39 after Delete: dialogs=[]
+Q-39 after delete: smart folder still listed=false; files=21
+stop: recorded 63569(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

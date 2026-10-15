@@ -1,0 +1,8 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 51055 port 60587 (throwaway projects dir; templates repo read-only)
+PC-09 new project (no features key=true) sidebar headings: ["DOC ONE","PROSE DIAGNOSTICS","SUBTYPE","SUBTYPE","DOCUMENT","STATUS","TAGS","WORD COUNT GOAL","WORD COUNT GOAL"]
+PC-09 features {synopsis:true, pov:false} written by hand (timeline, notes absent): sidebar headings: ["DOC ONE","PROSE DIAGNOSTICS","SUBTYPE","SUBTYPE","DOCUMENT","SYNOPSIS","STATUS","TAGS","WORD COUNT GOAL","WORD COUNT GOAL"]
+PC-03 project.json without a name: Start Page lines ["0 ACTIVE PROJECTS","Projects ready to open and continue.","START A NEW PROJECT","Projects","Create your first project to begin writing.","No projects yet","Create a project to scaffold your workspace, organize folders, and start drafting in GetWrite.","CREATE THE FIRST PROJECT"]
+stop: recorded 51055(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

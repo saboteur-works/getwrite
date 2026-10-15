@@ -1,0 +1,49 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 80392 port 59105 (throwaway projects dir; templates repo read-only)
+PC-08 config.subtypes after adding Scene, Chapter, Act in the Metadata tab: ["Scene","Chapter","Act"]
+PC-08 config.subtypes after Move Scene down: ["Chapter","Scene","Act"]
+PC-08 sidebar Subtype choices: [["No subtype","Chapter","Scene","Act"]]
+PC-13 organizerCardBody in a new project: false
+PC-13 Organizer tab options: ["none=None","text-excerpt=Text excerpt","field:synopsis=Synopsis","field:notes=Notes","field:status=Status","field:pov=Point of View","field:storyDate=Story Date","field:storyDuration=Duration (minutes)","field:storyEndDate=Story End Date"]
+PC-13 after choosing None: config.organizerCardBody={"source":"none"}
+PC-13 after choosing Text excerpt: config.organizerCardBody={"source":"text-excerpt","excerptLength":200}
+PC-13 after choosing Status: config.organizerCardBody={"source":"field","fieldKey":"status"}
+PC-13 excerpt length box value: "200"
+PC-13 after excerpt length 120: {"source":"text-excerpt","excerptLength":120}
+PC-14 config.dailyWordGoal/wordCountGoal in a new project: [["dailyWordGoal",false],["wordCountGoal",false]]
+PC-14 after saving 500 as the daily goal: config.dailyWordGoal=500 ; status line=["Daily goal saved."]
+PC-16 after saving 20000 as the total goal: config.wordCountGoal=20000 dailyWordGoal=500 ; status=["Daily goal saved.","Project word-count goal saved."]
+PC-14 daily goal input "-5": config.dailyWordGoal=500 ; lines=["Enter a whole number of words, 0 or greater.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Project word-count goal saved."]
+PC-14 daily goal input "1.5": config.dailyWordGoal=500 ; lines=["Enter a whole number of words, 0 or greater.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Project word-count goal saved."]
+PC-14 daily goal input "abc": config.dailyWordGoal=500 ; lines=["Enter a whole number of words, 0 or greater.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Project word-count goal saved."]
+PC-14 daily goal input "0": config.dailyWordGoal=0 ; lines=["Daily goal saved.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Project word-count goal saved."]
+PC-16 total goal input "-5": config.wordCountGoal=20000 ; lines=["Daily goal saved.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Enter a whole number of words, 0 or greater."]
+PC-16 total goal input "1.5": config.wordCountGoal=20000 ; lines=["Daily goal saved.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Enter a whole number of words, 0 or greater."]
+PC-16 total goal input "0": config.wordCountGoal=0 ; lines=["Daily goal saved.","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Project word-count goal saved."]
+PC-18 reopened Project Settings without a reload: daily field="" total field="" ; on disk daily=500 total=20000
+PC-18 after reload + reopen: daily field="500" total field="20000"
+PC-14/16 after clearing both fields and saving: config keys [] ; lines=["Daily goal cleared.","Project word-count goal cleared."]
+PC-19 sidebar goal input present: 1 ; value=""
+PC-19 sidecar wordCountGoal after typing 100: 100
+PC-20 progress bars on the page with the resource goal set: [{"now":"48","max":"100","label":"Writing goal progress","bg":"rgb(236, 234, 227)","fillBg":"rgb(10, 10, 10)","where":"ASIDE"}]
+PC-20 sidebar text near the goal: ["Act","DOCUMENT","STATUS","Draft","In review","Published","TAGS","No tags yet. Create some in Project Settings.","WORD COUNT GOAL","WORD COUNT GOAL","48 / 100 words · 48%","+ ADD FIELD"]
+PC-19 sidecar wordCountGoal after clearing the field: false bars=0
+PC-21 Data view text with a resource goal (100) and a project goal (200) set: ["ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH","⌘K","Cfg Two Overview","RESOURCES","1","TOTAL WORDS","48","By status","Text resources only, across the whole project. Not affected by the selected smart folder.","No statuses are configured for this project, so every resource shows under No status.","Resources and words by status","STATUS\tRESOURCES\tWORDS","No status\t1\t48","Word counts for some older resources may read low.","Writing Goal","48 / 200 words · 24%","Resources","LAST EDITED","NAME","NEEDS CONTENT","Doc One","text","48 words","Updated 1m ago","METADATA","DOC ONE","PROSE DIAGNOSTICS","Dialogue ratio: 0%","Average sentence length: 8.0","Top repeated words: some (6), words (6), card (6), goal (6)","Show detail","SUBTYPE","SUBTYPE","No subtype","Chapter","Scene","Act","DOCUMENT","STATUS","Draft","In review","Published","TAGS","No tags yet. Create some in Project Settings.","WORD COUNT GOAL","WORD COUNT GOAL"]
+PC-17 Data view progress bars: [{"now":"48","max":"200","label":"Writing goal progress","bg":"rgb(236, 234, 227)","fillBg":"rgb(10, 10, 10)"},{"now":"48","max":"100","label":"Writing goal progress","bg":"rgb(236, 234, 227)","fillBg":"rgb(10, 10, 10)","where":"ASIDE"}]
+PC-21 Data view mentions 'goal'? ["Writing Goal","Top repeated words: some (6), words (6), card (6), goal (6)","WORD COUNT GOAL","WORD COUNT GOAL"]
+PC-17 footer/editor text with project goal set: ["Some words for the card and the goal. Some words for the card and the goal. Some words for the card and the goal. Some words for the card and the goal. Some words for the card and the goal. Some words for the card and the goal. ","Words: 48","Today's writing","Today: 48","Top repeated words: some (6), words (6), card (6), goal (6)","WORD COUNT GOAL","WORD COUNT GOAL"]
+PC-22 config.customNoiseWords after adding 'gloom' in Project Settings > Noise Words: ["gloom"]
+PC-23 App Settings dialog: ["App Settings","","Settings here apply across every project on this device, not to a single project. No login is required.","","Global noise words","","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.",""]
+PC-23 App Settings after adding 'mirth': ["mirth"]
+PC-23 Noise Words tab with 'mirth' on the global list: ["Noise Words","Entities","Project Encryption","Noise Words","","Words flagged as noise when mentioned as entities in this project. Add your own custom words below, and choose which words from your cross-project global list should not apply to this project.","","Custom noise words","gloom","Add a custom noise word","ADD WORD","Global noise words","","Words from your cross-project global list. Check a word to exclude it from applying within this project only.","","mirth","Excluded in this project"]
+PC-22/23 noise words STEP ERROR locator.check: Clicking the checkbox did not change its state | Call log: | [2m  - waiting for locator('#exclude-global-noise-word-mirth')[22m
+PC-32 config.tags after creating 'flashback' in Manage Tags: [{"id":"9beb095f-11d5-4781-a5b2-387d1cb07b13","name":"flashback"}] ; tagAssignments=undefined
+PC-32 config.tags / tagAssignments after assigning it to Doc One in the sidebar: [{"id":"9beb095f-11d5-4781-a5b2-387d1cb07b13","name":"flashback"}] / {"b82b46c0-84b6-4e54-b890-a5e3a784c4dd":["9beb095f-11d5-4781-a5b2-387d1cb07b13"]} ; Doc One id="b82b46c0-84b6-4e54-b890-a5e3a784c4dd"
+PC-33 Manage Tags after a tag was added to config.tags by hand and the project reopened: ["Create and delete project-scoped tags. Assign them to resources from the metadata sidebar.","FLASHBACK","ADDED-BY-HAND"]
+PC-30 project.json top-level keys now: ["id","name","slug","createdAt","projectType","rootPath","config","updatedAt"] ; config keys: ["maxRevisions","statuses","customNoiseWords","excludedGlobalNoiseWords","autoPrune","editorConfig","metadataRevision","subtypes","organizerCardBody","features","wordCountGoal","tags","tagAssignments"] ; any 'meta' key anywhere in project.json: false
+PC-34 jq version: jq-1.8.1 ; after jq edit name="Edited With jq" statuses=["Idea","Done"]
+PC-34 Start Page after reload: ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Edited With jq or open a clean slate for your next draft.","Edited With jq"]
+PC-34 Status options after reopening: ["Idea","Done"]
+stop: recorded 80392(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

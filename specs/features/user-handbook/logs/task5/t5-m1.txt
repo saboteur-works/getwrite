@@ -1,0 +1,39 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 27283 port 63978 (throwaway projects dir; templates repo read-only)
+M-02 sidebar box: {"x":1080,"w":320,"viewport":1400} (resource selected: Scene One). Text: "SCENE ONE\nPROSE DIAGNOSTICS\n\nDialogue ratio: 0%\n\nAverage sentence length: 0.0\n\nTop repeated words: None\n\nShow detail\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Add them in Project Settings, Metadata tab.\n\nDOCUMENT\nSTATUS\nDraft\nIn review\nPublished\nTAGS\n\nNo tags yet. Create some in Project Settings.\n\nWORD COUNT GOAL\nWORD COUNT GOAL\n+ ADD FIELD"
+M-17 form controls in the sidebar of a new Blank project: ["SELECT:Font Family","SELECT:Subtype","SELECT:status","INPUT:word-count-goal-input"]
+M-04 sidecar keys: ["id","name","type","createdAt","orderIndex","folderId","slug","userMetadata","wordCount"]; sidecar: {"id":"1603eade-3692-4d76-af44-ffc3d85797d2","name":"Scene One","type":"text","createdAt":"2026-10-15T01:52:02.445Z","orderIndex":0,"folderId":"06473823-a278-4c39-bf2e-3db72b3358b4","slug":"scene-one","userMetadata":{},"wordCount":0}
+M-04 does the sidebar text contain the resource id, createdAt date, file location or a word count line? id:false createdAt:false slug/path:false wordcount-line:true
+M-04 footer: ["Words: 0"]
+M-04 after typing 3 words: sidecar wordCount=3 updatedAt=2026-10-15T01:52:13.886Z; footer ["Words: 3"]
+M-05 sidebar inputs that edit id/createdAt/location/wordCount: none among ["Subtype","status","word-count-goal-input"]
+M-11 project.json config.statuses=[]; sidebar Status select options=["Draft","In review","Published"]; current value="Draft"
+M-11 after choosing In review: sidecar userMetadata={"status":"In review"}
+M-11 files under meta/: ["/meta/backlinks.json","/meta/index/diagnostics.json","/meta/index/inverted.json","/meta/index/mentions.json","/meta/resource-1603eade-3692-4d76-af44-ffc3d85797d2.meta.json","/meta/resource-828b4498-832b-43e7-ac91-60f7e7592239.meta.json","/meta/writing-log/2026-10-15.json"]
+M-11 manager Status options textarea: ""
+M-11 after adding Final in the manager: sidebar Status options=["Draft","In review","Published"]; project.json config.statuses=[]
+M-11 after setting config.statuses=["Alpha","Beta"] in project.json by hand and reloading: sidebar Status options=["Alpha","Beta"]; current value="Alpha"
+M-18 toggles (dialog Metadata tab): ["Color=false","Timeline=false","Point of View=false","Synopsis=false","Notes=false","Enable Timeline view=false","Entities=false"]
+M-12/13 sidebar after turning Synopsis and Notes on: "SCENE ONE\nPROSE DIAGNOSTICS\n\nDialogue ratio: 0%\n\nAverage sentence length: 3.0\n\nTop repeated words: None\n\nShow detail\nSUBTYPE\nSUBTYPE\nNo subtype\n\nNo subtypes yet. Add them in Project Settings, Metadata tab.\n\nDOCUMENT\nSYNOPSIS\nNOTES\nSTATUS\nAlpha\nBeta\nTAGS\n\nNo tags yet. Create some in Project Settings.\n\nWORD COUNT GOAL\nWORD COUNT GOAL\n+ ADD FIELD\nNotes enabled\nSynopsis enabled"
+M-12/13 controls: ["INPUT:resource-search","TEXTAREA:synopsis","TEXTAREA:notes","INPUT:word-count-goal-input"]
+M-12 textareas in sidebar: 2
+M-12/13 sidecar userMetadata after typing: {"status":"In review","synopsis":"A short summary of scene one.","notes":"Remember to add the storm."}
+M-19 Synopsis switched off: sidebar=false; sidecar userMetadata={"status":"In review","synopsis":"A short summary of scene one.","notes":"Remember to add the storm."}
+M-19 Synopsis switched back on: sidebar textarea values=["A short summary of scene one.","Remember to add the storm."]
+M-20 manager controls per field: ["Remove Synopsis","Rename key of Synopsis","Remove Notes","Rename key of Notes","Remove Point of View","Rename key of Point of View","Remove Story Date","Rename key of Story Date","Remove Duration (minutes)","Rename key of Duration (minutes)","Remove Story End Date","Rename key of Story End Date"]
+M-20 label buttons: ["Rename Synopsis","Rename key of Synopsis","Rename Notes","Rename key of Notes","Rename Point of View","Rename key of Point of View","Rename Story Date","Rename key of Story Date","Rename Duration (minutes)","Rename key of Duration (minutes)","Rename Story End Date","Rename key of Story End Date"]; locked-field label buttons: ["Move Document group up","Move Synopsis up","Status","Move Point of View down","Move Timeline group down","Move Story Date up","Move Story End Date down"]
+M-20 after renaming Synopsis label to Summary: sidebar=["SYNOPSIS"]
+M-20 Remove Notes button present: 1; Remove Status present: 0; Remove Point of View present: 1; Remove Summary: 1
+M-20 Remove Notes dialog: {"text":"Remove field: Notes\n\nChoose how to handle existing sidecar values for this field.\n\nDEPRECATE\nKeep values in sidecars; hide field from sidebar; mark as deprecated in chip UI (queryable but flagged).\nCLEAR\nRemove the field key from all sidecars (cannot undo). All stored values for this field are permanently deleted.\nCANCEL\nDEPRECATE","buttons":["Cancel","Deprecate"]}
+M-20 confirm button labels after choosing Clear: ["Cancel","Cancel","Cancel","Cancel","Clear"]
+M-20 after clicking Remove Notes then Clear: dialog still lists a Notes field=false; dialog lists label "Summary"=true; any extra dialog/confirm text=["Project Settings","Heading Styles","H1","H2","H3","Body Text Styles","Default Revision Name","Manage Tags","Subtypes","Metadata Fields","Built-in features","Timeline view","Organizer Card Body","Daily writing goal","Project word-count goal","Noise Words","Custom noise words","Global noise words","Entities","Mention-jump highlight duration","Encryption"]
+M-20 sidebar after rename (Summary) and remove (Notes): ["SYNOPSIS"]; sidecar userMetadata={"status":"In review","synopsis":"A short summary of scene one."}
+M-20 after reload, sidebar lines: ["SYNOPSIS"]
+M-20 after reload, Synopsis toggle checked=true, Notes toggle checked=true; toggles listed: ["Color","Timeline","Point of View","Synopsis","Notes","Enable Timeline view","Entities"]
+M-20 Notes switched on again after removal: manager lists notes field=false
+M-20 sidebar after switching Notes on again: ["SYNOPSIS","Notes disabled"]; textarea values=["A short summary of scene one."]
+M-08 after editing userMetadata.synopsis in the resource's metadata file by hand (throwaway project) and reloading: sidebar Synopsis text="Edited in a text editor."
+M-08 after editing it in the sidebar: file userMetadata.synopsis="Edited in the sidebar."
+stop: recorded 27283(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

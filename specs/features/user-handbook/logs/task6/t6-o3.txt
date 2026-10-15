@@ -1,0 +1,25 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 57251 port 50052 (throwaway projects dir; templates repo read-only)
+start: cards=["R1","R2","R3","R4"] tree=["[folder] Workspace","[resource] R1","[resource] R2","[resource] R3","[resource] R4"] orderIndex=["R1=0","R2=1","R3=2","R4=3"]
+O-18 handle attrs: ["type=button","class=flex items-center justify-center p-0.5 -m-0.5 rounded text-g","aria-disabled=false","tabindex=0","aria-describedby=DndDescribedBy-0","aria-label=Drag to reorder","role=button","aria-roledescription=sortable"]
+O-18 after dragging R3's handle onto R1: cards=["R3","R1","R2","R4"] orderIndex=["R1=1","R2=2","R3=0","R4=3"]
+O-19 tree now (no reload): ["[folder] Workspace","[resource] R3","[resource] R1","[resource] R2","[resource] R4"]
+O-19 tree after reload: ["[folder] Workspace","  [resource] R3","  [resource] R1","  [resource] R2","  [resource] R4"]
+O-18 cards after reload: ["R3","R1","R2","R4"]
+O-18 after dragging R1's handle to the right of R4: cards=["R3","R2","R4","R1"] orderIndex=["R1=3","R2=1","R3=0","R4=2"]
+O-20 focused element: "Drag to reorder"
+O-20 live region after Space: ["R1 moved to position 4 of 4"]
+O-20 live region after ArrowLeft: ["R1 moved to position 4 of 4"]
+O-20 live region after dropping with Space: ["R2 moved to position 1 of 4"]
+O-20 cards before=["R3","R2","R4","R1"] after=["R2","R3","R4","R1"] orderIndex=["R1=3","R2=0","R3=1","R4=2"]
+O-20 Space, ArrowRight, Escape: cards=["R2","R3","R4","R1"] live=["R2 moved to position 1 of 4"]
+O-21 filter active: cards=["R2","R3","R4","R1"]
+O-22 handle attrs while filtered: ["type=button","class=flex items-center justify-center p-0.5 -m-0.5 rounded text-gw-secondary hover:te","aria-disabled=true","tabindex=-1","aria-describedby=res-9a8e9d61-5842-4ae8-9be3-6133987e2c12-drag-hint","aria-label=Drag to reorder","title=Clear filters to reorder cards"]
+O-22 text near handle: "(no element with id containing reorder/disabled)"
+O-21 pointer drag while filtered: before=["R2","R3","R4","R1"] after=["R2","R3","R4","R1"] orderIndex=["R1=3","R2=0","R3=1","R4=2"]
+O-21 focus on the handle while filtered -> active element: "Drag to reorder"
+O-21 keyboard attempt while filtered: cards=["R2","R3","R4","R1"]
+O-22 on hover: []
+stop: recorded 57251(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

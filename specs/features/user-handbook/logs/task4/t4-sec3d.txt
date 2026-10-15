@@ -1,0 +1,21 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 20859 port 54110 (throwaway projects dir; templates repo read-only)
+W-30 setup: paragraphs ["P1 one two","P2 three four","P3 five six"]; entries ["+9/-0/net9"]
+   selection: "P1 one two"
+W-30 after dragging P1 below P3: paragraphs ["P1 one two","P2 three four","P3 five six"]
+W-30 new entries []; content.bin hashes ["c43af3ba2b"] -> ["c43af3ba2b"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+W-30b after Meta+X: paragraphs ["","P2 three four","P3 five six"]
+W-30b after End, Enter, Meta+V: paragraphs ["","P1 one two","P2 three four","P3 five six"]
+W-30b new entries []; content.bin hashes ["16956ad8c1"] -> ["4dd42b934f"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+W-39b entries before: ["+3/-0/net3"]
+W-39b revision content.bin removed, doc opened: editor text "some words here"
+W-39b after typing: footer ["Words: 5","Node: Body","Today's writing","Today: 3","Today's count may be incomplete","All changes saved · just now"]; entries ["+3/-0/net3","skipped"]; status elements []; content.bin exists now: true
+W-36 CLI import-plaintext exit=0
+W-36 tree text: ["Get","Write","Imported Notes","RESOURCES","Imported Notes","SMART FOLDERS","EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH"]
+W-36 opened resource: editor text "Seven words of imported plain text.\n\nTwo more."; editing line ["EDITING CANONICAL REVISION"]
+W-36/W-37 imported project, no goal: dialog ["No daily goal set","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 8"]; footer ["Today's writing","Today: 0"]
+W-37 imported project with daily goal 5: footer ["Today's writing","Today: 0 / 5"]; dialog ["Daily goal: 5","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 8"]
+W-38 same project, meta/writing-log removed; document text "Seven words of imported plain text.\n": dialog ["Daily goal: 5","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 0"]; footer ["Today's writing","Today: 0 / 5"]
+stop: recorded 20859(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

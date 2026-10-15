@@ -1,0 +1,15 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 35893 port 55941 (throwaway projects dir; templates repo read-only)
+Linker controls: ["INPUT|friend|text"]
+Linker2 has friend control: 1
+before: Linker {"friend":{"id":"17ac36c6-cc7e-4a96-996f-19231360ecc4","name":"Target"}} ; Linker2 {"friend":{"id":"17ac36c6-cc7e-4a96-996f-19231360ecc4","name":"Target"}} ; Target id 17ac36c6-cc7e-4a96-996f-19231360ecc4
+TR-10 after Target deleted: Linker {"friend":{"id":null,"name":"Target"}} ; Linker2 {"friend":{"id":null,"name":"Target"}}
+TR-10 Linker sidebar friend input: "Target"
+TR-10 refs record: {"resourceId":"17ac36c6-cc7e-4a96-996f-19231360ecc4","entries":[{"referencingResourceId":"4d944654-a874-4d8b-b45f-a71703fd8323","fieldKey":"friend","priorValue":{"id":"17ac36c6-cc7e-4a96-996f-19231360ecc4","name":"Target"}},{"referencingResourceId":"bf7a4464-bcfd-4c1c-869e-9f4dbe3e8e00","fieldKey":"friend","priorValue":{"id":"17ac36c6-cc7e-4a96-996f-19231360ecc4","name":"Target"}}]}
+TR-10 Linker2 repointed to Other: {"friend":{"id":"7927022a-0705-4b78-96fa-5aeac6dc15e9","name":"Other"}}
+TR-10 notices: {"report":"1 of 1 restored.","notices":["\"Target\": these references could not be restored automatically — \"friend\" on resource 4d944654-a874-4d8b-b45f-a71703fd8323."]}
+TR-10 after restore: Linker {"friend":{"id":"17ac36c6-cc7e-4a96-996f-19231360ecc4","name":"Target"}} ; Linker2 {"friend":{"id":"7927022a-0705-4b78-96fa-5aeac6dc15e9","name":"Other"}} ; Target id 17ac36c6-cc7e-4a96-996f-19231360ecc4
+TR-10 Linker sidebar friend input after restore + reload: "Target"
+stop: recorded 35893(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

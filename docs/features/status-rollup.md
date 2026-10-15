@@ -1,6 +1,6 @@
 # Status Roll-up
 
-The "By status" section of the Data view (Feature 60). User-facing description: [Data View](../user/views/data.md). The `status` field and `config.statuses` are documented in [metadata](data/metadata.md).
+The "By status" section of the Data view (Feature 60). User-facing description: [Data View](../user/handbook/views/data.md). The `status` field and `config.statuses` are documented in [metadata](data/metadata.md).
 
 ## Files
 

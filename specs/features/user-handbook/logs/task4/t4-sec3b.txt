@@ -1,0 +1,47 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 8604 port 53733 (throwaway projects dir; templates repo read-only)
+W-04 footer with no goal, before typing: ["Today's writing","Today: 0"]
+W-04 footer with no goal after saving 5 words: ["Words: 5","Node: Body","Today's writing","Today: 5","All changes saved · just now"]
+W-02 'Today's writing' sits in the editor footer next to the figure: footer text ["Words: 5","Node: Body","Today's writing","Today: 5"]
+W-06 tooltip after hover: ["Show today's writing details"]
+W-05/07/08 details window text: ["Today's writing","No daily goal set","Added: 5","Deleted: 0","Net: 5","Imported (not counted toward goal): 0","Set the daily goal in Project Settings.","CLOSE"]
+W-10 form controls inside the window: inputs/textarea/select=0; buttons: ["Close"]
+W-11/12 after Escape: dialogs=0; focused element text="Today's writing"
+W-11/12 after clicking Close: dialogs=0; focused element text="Today's writing"
+W-09 'Today's count may be incomplete' visible in a normal state: false
+W-17/22 Writing Goals tab text: ["Daily writing goal","Words to write each day. Separate from the project's overall word count goal. Leave empty for no daily goal.","Daily word goal","SAVE DAILY GOAL","Project word-count goal","Total words you're aiming for across the whole project. Separate from the daily writing goal above. Leave empty for no goal.","Total word-count goal","SAVE WORD-COUNT GOAL"]
+W-22 field order (labels in the tab): ["Daily word goal","Total word-count goal"]
+W-18 daily goal input "20" -> message ["Daily goal saved."]; project.json dailyWordGoal=20
+W-18 daily goal input "0" -> message ["Daily goal saved."]; project.json dailyWordGoal=0
+W-18 daily goal input "-5" -> message ["Enter a whole number of words, 0 or greater."]; project.json dailyWordGoal=0
+W-18 daily goal input "2.5" -> message ["Enter a whole number of words, 0 or greater."]; project.json dailyWordGoal=0
+W-18 daily goal input "abc" -> message ["Enter a whole number of words, 0 or greater."]; project.json dailyWordGoal=0
+W-18 daily goal input "1,000" -> message ["Enter a whole number of words, 0 or greater."]; project.json dailyWordGoal=0
+W-18 daily goal input " 12 " -> message ["Daily goal saved."]; project.json dailyWordGoal=12
+W-18 daily goal input "" -> message ["Daily goal cleared."]; project.json dailyWordGoal=undefined
+W-03 project.json dailyWordGoal=20; footer behind the dialog: ["Today's writing","Today: 5 / 20"]
+W-03 footer with goal 20 after closing, no reload: ["Today's writing","Today: 5 / 20"]
+W-19 reopened Project Settings without reload: Daily word goal field value="" (saved value 20)
+W-20/22/23 after Save word-count goal 1000: messages ["Project word-count goal saved."]; project.json wordCountGoal=1000, dailyWordGoal=20
+W-20 footer after total goal 1000: ["Today's writing","Today: 5 / 20"]
+W-23 reopened without reload: Total word-count goal field="" (saved 1000); Daily=""
+W-23 clearing the total goal: messages ["Project word-count goal cleared."]; project.json wordCountGoal=undefined
+W-24 sidebar for the text resource: lines ["WORD COUNT GOAL","WORD COUNT GOAL"]
+W-24 progress bar before any resource goal: 0
+W-25 after typing 10 in the Word count goal field: progressbars=1; aria=[["5","10"]]; text ["5 / 10 words · 50%"]
+W-24 sidecar wordCountGoal on disk: [10]
+W-26 footer unchanged by the resource goal: ["Today's writing","Today: 5 / 20"]; footer contains the string 'goal 10' or '/ 10': false
+W-24 image resource selected: sidebar lines with 'WORD COUNT GOAL': []; imgs=1
+W-14 footer past the daily goal (22 words written, goal 20): ["Words: 22","Node: Body","Today's writing","Today: 22 / 20","All changes saved · just now"]
+W-14/26 progress bar past the resource goal: ["22 / 10 words · Goal reached"]
+W-14 red scan footer area: {"elements":1,"colorValuesChecked":21,"redish":[]}
+W-26 red scan progress bar section: {"elements":2,"colorValuesChecked":21,"redish":[]}
+W-26 red scan of the whole right sidebar goal field: {"elements":1,"colorValuesChecked":7,"redish":[]}
+W-14 red scan details window: {"elements":1,"colorValuesChecked":77,"redish":[]}
+scanner positive control (a synthetic div with #D44040): 1 -> {"elements":1,"colorValuesChecked":7,"redish":["DIV.:rgb(212, 64, 64)"]}
+W-15 day file replaced by invalid JSON, reloaded: footer ["Today's writing","Today's count is unavailable"]
+W-15 details window with the unreadable day file: ["Today's writing","Today's writing details","Today's count is unavailable","Set the daily goal in Project Settings.","CLOSE"]
+W-15 file restored, reloaded: footer ["Today's writing","Today: 22 / 20"]
+stop: recorded 8604(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

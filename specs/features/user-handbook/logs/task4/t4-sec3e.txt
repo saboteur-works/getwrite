@@ -1,0 +1,15 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 30021 port 54334 (throwaway projects dir; templates repo read-only)
+W-30 setup: paragraphs ["P1 one two","P2 three four","P3 five six"]; entries ["+9/-0/net9"]
+W-30 after cut and Delete: paragraphs ["P2 three four","P3 five six"]; selection {"text":"","anchor":"P2 three four","off":0}
+W-30 after Meta+ArrowDown: selection {"text":"","anchor":"P3 five six","off":11}
+W-30 after Enter: paragraphs ["P2 three four","P3 five six",""]; selection {"text":"","anchor":"","off":0}
+W-30 after moving to the end: paragraphs ["P2 three four","P3 five six","P1 one two"]
+W-30 new entries []; content.bin hashes ["8582ec501f"] -> ["4cdc226b2f"]; footer ["Today's writing","Today: 9","All changes saved · just now"]
+W-28 canonical saved again; entries ["+9/-0/net9","+4/-0/net4"]
+W-28 viewing the named revision: editing line ["VIEWING A PREVIOUS REVISION","REVISION CONTROL","SAVE, BROWSE, AND RESTORE DOCUMENT REVISIONS.","SAVE EXPLICIT REVISION","EXISTING REVISIONS"]; editor text "P2 three four\n\nP3 five six\n\nP1 one two"
+W-28 typed in the older revision, waited 6 s: new entries []; footer ["Words: 14","Today's writing","Today: 13","Unsaved edits — save as a new revision to keep your changes.","Autosave unavailable for non-canonical revisions","Top repeated words: None"]
+W-28 revision files: [["v-1",547],["v-2",897]]
+stop: recorded 30021(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
