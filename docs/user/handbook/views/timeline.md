@@ -12,6 +12,8 @@ The Timeline View places each scene as a chip along a horizontal date axis accor
 
 The Timeline View is enabled per project. Open **Project Settings**, select the **Timeline** tab and turn on **Enable Timeline view**. Turning it on also turned on the **Timeline** built-in fields (story date, duration and end date) in the **Metadata** tab, and turning those fields off turned the view off. Once enabled, open the view with the **Timeline** tab in the Work Area (with a document selected); it shows the story dates entered in the metadata sidebar, and a Story Date set in the sidebar added the scene to the open view. While the view is off, its tab is greyed out; hovering it shows "The Timeline view is off. Turn it on in User Preferences → Timeline view." The **User Preferences** window (Theme, Density, Motion) has no Timeline setting; the setting is in **Project Settings**.
 
+Not yet in a release (merged after 2.2.0).
+
 ### Setting story dates
 
 A scene appears on the timeline only after a Story Date has been set in its metadata. The date can be a calendar day alone or a date and a time. Set a **Duration** (a number and a unit: min, hr, day or yr) or an **End date / time** (select **Override**) and the scene is drawn as a span rather than a point; a scene with only a date is drawn as a thin bar.

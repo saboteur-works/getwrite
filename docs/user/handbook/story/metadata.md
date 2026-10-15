@@ -27,6 +27,8 @@ Every project has a **Status** field. Four optional built-in fields can be switc
 - **Point of View** — the POV character: type a name and pick a resource, such as a character document. The Timeline view uses it to colour-code scenes: it shows a legend with a coloured dot per POV and a filter button for each. _(optional)_
 - **Story Date / Time**, **Duration** and **End Date / Time** — the in-story timing of the resource, grouped under the **Timeline** section of the sidebar (the settings list them as Story Date, Duration (minutes) and Story End Date). With the Timeline view switched on (Project Settings → **Timeline** tab → **Enable Timeline view**), adding a Story Date places the resource on the [Timeline](../views/timeline.md): the view showed "0 scenes" and "No dated scenes" before any story date was set, and "2 scenes" after two were. _(optional)_
 
+  Not yet in a release (merged after 2.2.0).
+
 The optional fields are off by default: a new project shows only Status among the metadata fields until you turn on the ones you want. Toggle them per project from the **Built-in features** section at the top of the Metadata Fields manager (gear menu → **Project Settings** → **Metadata** tab): the toggles are Timeline, Point of View, Synopsis and Notes. Hiding a field keeps every value you have already saved: switching Synopsis off hid the box and kept its text, which showed again when it was switched back on.
 
 In the Metadata Fields manager, a built-in field other than Status can have its label renamed (renaming Synopsis to Summary changed the manager but not the sidebar's SYNOPSIS heading) and can be removed. Removing asks you to **Deprecate** or **Clear** the field. Choosing Clear took the field out of the manager and the sidebar and deleted its stored value.
@@ -92,6 +94,8 @@ Tags are project-scoped labels you can assign to any resource: a second new proj
 A Multi Ref field can take its choices from one folder — a collection like Characters, Locations, or Items — through its **Folder scope** setting (see above). Instead of retyping "Elena" on every scene she appears in, you point those scenes at the Elena document: a POV chosen by name from the resource list was stored as a reference to that resource.
 
 For an entity — a resource with an Entity Kind, which needs Entities switched on in Project Settings → **Entities** tab — the sidebar's **Entity Mentions** section lists the resources that mention it (two scenes naming Elena showed under Elena, each marked "Mentioned"). The button **Compile this entity's resources** opens a Compile window (`2 resources to compile`, formats txt, md, pdf, docx); compiling as txt downloaded one file holding both scenes, each under its title (see [Compiling Projects](../protect-and-finish/compiling.md)).
+
+Not yet in a release (merged after 2.2.0).
 
 ## Project-level preferences
 

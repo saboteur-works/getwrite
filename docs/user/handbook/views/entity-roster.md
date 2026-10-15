@@ -29,9 +29,14 @@ Click (or press Enter or Space on) a row to jump straight to that entity's docum
 
 The Entities tab depends on the **Entities** setting being turned on for the project: open **Project Settings**, select the **Entities** tab and turn on **Entities**. While it's off, the tab is greyed out; hovering it shows "Entities are off. Turn them on in User Preferences → Entities."
 
+Not yet in a release (merged after 2.2.0).
+
 ## Warnings and limits
 
 - A word added to the project's custom noise-word list (Project Settings, **Noise Words** tab) did not flag an entity in the Entities view straight away; the entity was flagged after the project was closed and opened again.
+
+  Not yet in a release (merged after 2.2.0).
+
 - The tooltip on the greyed tab says "User Preferences"; the setting is in Project Settings.
 
 Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit c3f768ee.

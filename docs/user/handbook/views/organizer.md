@@ -18,6 +18,8 @@ A text document's card shows a preview of its content only when the card body is
 
 Each card can show a line of context beneath its title. Until you choose a source, cards show no body line. To choose one, open **Project Settings**, select the **Organizer** tab (**Organizer Card Body**) and pick a **Card body source**: **None**, **Text excerpt**, or a metadata field. The list offered Synopsis, Notes, Status, Point of View, Story Date, Duration (minutes), Story End Date and any custom field you added; Status and a custom text field were checked, and each showed its value on the card. With **Text excerpt** an **Excerpt length (characters)** setting appears, and the card shows the start of the text, cut off.
 
+Not yet in a release (merged after 2.2.0).
+
 The **Hide bodies** button in the view header hides the body line; it then reads **Show bodies**, and selecting it shows the body again.
 
 ## Filtering

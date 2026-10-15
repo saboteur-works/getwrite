@@ -61,6 +61,8 @@ Alongside the canvas, the same nodes and connections are also presented as a pla
 
 Like the Entities view, the Graph tab depends on the **Entities** setting being turned on for the project: open **Project Settings**, select the **Entities** tab and turn on **Entities**. While it's off, the tab is greyed out; hovering it shows "Entities are off. Turn them on in User Preferences → Entities."
 
+Not yet in a release (merged after 2.2.0).
+
 ## What it doesn't do
 
 The Relationship Graph does not let you author or remove a relationship: its controls are the settings, reset-view and focal-point controls, and a double-click on an authored line did nothing. To author a new relationship between two entities, or remove one, open the entity's own document and use the **Relationships** section there.

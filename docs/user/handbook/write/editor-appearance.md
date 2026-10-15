@@ -14,6 +14,8 @@ This guide covers what controls the look of the writing surface and what you can
 
 **Body text** is set in the same tab, in the **Body Text Styles** section. It has **Font Family**, **Font Size**, **Line Height** and **Paragraph Spacing** fields and a **Save Changes** button. Saving 20px, Lato and a 30px paragraph spacing changed the paragraphs to 20px Lato with a 30px gap between them, and the values were the same after a reload.
 
+Not yet in a release (merged after 2.2.0).
+
 The editor toolbar also has a **Line Height** field. It accepted 1.2 and 0.5 and the paragraph's line height changed to match.
 
 ## Body text defaults

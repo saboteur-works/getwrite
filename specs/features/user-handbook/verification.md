@@ -930,8 +930,17 @@ Starting list for Features 84 and 85. Entries are the sections of the old pages 
 | 25 | `protect-and-finish/project-configuration.md` | `config.features` (the note line is under the bullet; it covers where the toggles are: the Timeline tab and the Entities tab, which the 2.2.0 tag did not have) | PC-10, PC-12 (location parts) | `9dc3b1b8` / #260; `10792afe2` / #257; `7ec5a054e` / #260 | exit 1 (RC-84, RC-86, RC-87) |
 | 26 | `protect-and-finish/project-configuration.md` | `config.organizerCardBody` (the note line is under the bullet; it covers the Organizer tab) | PC-13 (location part) | `e184b85f` / #260 | exit 1 (RC-85) |
 | 27 | `protect-and-finish/project-configuration.md` | Per-resource word-count goal (the note line is under the bullet) | PC-19 to PC-21 | `28a94c7c8` / #238 | exit 1 (RC-08) |
+| 28 | `write/headings.md` | Customizing heading styles (the note sits directly under the paragraph that says "select the **Editor** tab"; the Cancel warning that names the Editor tab is not given a separate note) | location statement in the paragraph (Editor tab holding Heading Styles and Body Text Styles) | `b29078aa8` / #260 | exit 1 (RC-88) |
+| 29 | `write/editor-appearance.md` | What you can change (one note under the second paragraph; it covers the first paragraph, "Editor tab of Project Settings", and "the same tab") | location statements for Heading styles and Body text | `b29078aa8` / #260 | exit 1 (RC-88) |
+| 30 | `views/timeline.md` | Purpose and user interaction (the note sits directly under the paragraph "The Timeline View is enabled per project", which names the Timeline tab; the warning about the greyed tabs is not given a separate note) | location statement (Project Settings, Timeline tab, Enable Timeline view) | `9dc3b1b8a` / #260 | exit 1 (RC-84) |
+| 31 | `views/organizer.md` | Card body (the note sits directly under the paragraph that names the Organizer tab) | location statement (Project Settings, Organizer tab, Card body source) | `e184b85f0` / #260 | exit 1 (RC-85) |
+| 32 | `views/entity-roster.md` | Turning it on (the note sits directly under the paragraph that names the Entities tab) | location statement (Project Settings, Entities tab, turn on Entities) | `10792afe2` / #257; `7ec5a054e` / #260 | exit 1 (RC-86, RC-87) |
+| 33 | `views/entity-roster.md` | Warnings and limits, first bullet (the note line is under that bullet; it covers the Noise Words tab) | location statement (Project Settings, Noise Words tab) | `075fae063` / #256 | exit 1 (RC-89) |
+| 34 | `views/entity-relationship-graph.md` | Turning it on (the note sits directly under the paragraph that names the Entities tab) | location statement (Project Settings, Entities tab, turn on Entities) | `10792afe2` / #257; `7ec5a054e` / #260 | exit 1 (RC-86, RC-87) |
+| 35 | `story/metadata.md` | Fields, the Story Date / Time bullet (the note line is under the bullet; it covers "Project Settings → Timeline tab → Enable Timeline view") | location statement (Timeline tab) | `9dc3b1b8a` / #260 | exit 1 (RC-84) |
+| 36 | `story/metadata.md` | Linking resources, the paragraph on entities (the note sits directly under the paragraph that names "Project Settings → Entities tab") | location statement (Entities tab) | `10792afe2` / #257; `7ec5a054e` / #260 | exit 1 (RC-86, RC-87) |
 
-The count of entries is 27 (entries 25 to 27 added in Task 8; entry 23 narrowed to the project goal). Statements in the inventory with release exit 0 are not entered. Release rows with `-` name no feature the probes cover; Tasks 3 to 8 may enter a further row here if a run shows a statement came from a post-tag change, and they must update this table when they do.
+The count of entries is 36 (entries 25 to 27 added in Task 8; entry 23 narrowed to the project goal; entries 28 to 36 added in Task 8b, section 15). Statements in the inventory with release exit 0 are not entered. Release rows with `-` name no feature the probes cover; Tasks 3 to 8 may enter a further row here if a run shows a statement came from a post-tag change, and they must update this table when they do.
 
 Features the spec's PR list names that no old-page statement depends on: #252 (editor context menu), #257 (mention navigation), #253/#255 beyond the rows above, #259, #262 (repair-revisions, not on any old page), #263 to #268 (sharing and related, excluded under FR-9).
 
@@ -1242,3 +1251,40 @@ F-50: all three parts disposed (see its row); `features.md` is not carried. Conf
 - The CLI ran only against copies and a `--help` call under `/tmp/getwrite-handbook/<run-id>/`.
 - No Storybook, no Playwright test runner. Playwright was used only as a library through the harness. Helper scripts for filling this record live in the session scratchpad.
 - `~/Library/Application Support/getwrite-electron/`, `~/Documents/GetWrite`, `~/Library/Logs/getwrite-electron` and the repo's `projects/` were not read, listed or written.
+
+## 15. Task 8b record (cross-page repair: notes for settings tabs that came after 2.2.0)
+
+Follow-up to the Task 8 cross-page finding (section 14). Git, grep and edits only; no app, no process started (nothing in or out of the sandbox beyond git and file tools). Base commit of the checkout: `bf1264e0`.
+
+### 15.1 Probes
+
+At the tag, `git show getwrite-v2.2.0:frontend/components/Layout/ProjectSettingsDialog.tsx` listed `TAB_OPTIONS` with five entries (Heading Styles, Body Text Styles, Default Revision Name, Manage Tags, Metadata); a grep of that file at the tag for the tab values `editor`, `timeline`, `organizer`, `writing-goals`, `noise-words`, `entities` found 0 matches (`grep` exit 1). The same file on the checkout lists Editor, Default Revision Name, Manage Tags, Metadata, Timeline, Organizer, Writing Goals, Noise Words, Entities and Project Encryption. At the tag, `frontend/components/preferences/UserPreferencesPage.tsx` rendered `<TimelineViewToggle />` and `<OrganizerCardBodySettings />`. The introducing commit of each tab is the first commit whose diff adds the tab's `value:` line to that file (`git log --reverse -S`), and the PR is the first merge commit on the ancestry path from it to `main`.
+
+| RC | Commit | Date | PR | Statement or tab | Probe and result |
+| --- | --- | --- | --- | --- | --- |
+| RC-88 | `b29078aa8` | 2026-10-08 | #260 | Editor tab ("merge Heading/Body Text Styles tabs into one Editor tab") | `git merge-base --is-ancestor b29078aa8 getwrite-v2.2.0` -> exit 1 |
+| RC-89 | `075fae063` | 2026-10-05 | #256 | Noise Words tab ("Project Settings Noise Words tab") | `git merge-base --is-ancestor 075fae063 getwrite-v2.2.0` -> exit 1 |
+| RC-90 | `d9625fe2d` | 2026-09-26 | #236 | Writing Goals tab ("move daily word goal into Writing Goals tab") | `git merge-base --is-ancestor d9625fe2d getwrite-v2.2.0` -> exit 1 |
+| RC-91 | `9dc3b1b8a` | 2026-10-08 | #260 | Timeline tab (same as RC-84, re-run) | exit 1 |
+| RC-92 | `e184b85f0` | 2026-10-08 | #260 | Organizer tab (same as RC-85, re-run) | exit 1 |
+| RC-93 | `10792afe2` | 2026-10-05 | #257 | Entities tab (same as RC-86, re-run) | exit 1 |
+
+Task 8's finding is confirmed for all six tabs. Writing Goals notes already existed on `write/writing-log.md` and `project-configuration.md` (table entries 3, 4, 22, 23), so RC-90 adds no page edit.
+
+### 15.2 Grep for other pages
+
+`grep -rnE` over `docs/user/handbook` for the six tab names near "tab", "Project Settings" or "settings" found the sentences below. Sentences already under an existing note: `write/writing-log.md` (daily and total goal, under notes 3 and 4), `protect-and-finish/project-configuration.md` (entries 22 to 26 and 27), `organize/start-page.md` (App Settings). Not changed: `Metadata` and `Manage Tags` tab sentences (tabs present at the tag), `protect-and-finish/trash.md` and `resources.md` and `compiling.md` (name Work Area tabs or no Project Settings tab), tooltip text "User Preferences" in warnings (left as run-verified; the notes below cover the location statement).
+
+### 15.3 Page edits (nine notes, table entries 28 to 36 in section 7)
+
+Each edit adds only the line `Not yet in a release (merged after 2.2.0).` directly under the named sentence; no verified text or verified-against line was changed.
+
+- `docs/user/handbook/write/headings.md`: under the paragraph "Open the gear menu ... select the **Editor** tab" (entry 28).
+- `docs/user/handbook/write/editor-appearance.md`: under the "**Body text** is set in the same tab" paragraph (entry 29).
+- `docs/user/handbook/views/timeline.md`: under "The Timeline View is enabled per project" (entry 30).
+- `docs/user/handbook/views/organizer.md`: under "Each card can show a line of context" (entry 31).
+- `docs/user/handbook/views/entity-roster.md`: under "The Entities tab depends on" (entry 32) and under the first Warnings bullet naming the Noise Words tab (entry 33, indented as a list note).
+- `docs/user/handbook/views/entity-relationship-graph.md`: under "Like the Entities view, the Graph tab depends" (entry 34).
+- `docs/user/handbook/story/metadata.md`: under the Story Date / Time bullet (entry 35, indented) and under the entity-mentions paragraph naming the Entities tab (entry 36).
+
+Where the page text is wrong for the tag (for example the roster tooltip "Turn them on in User Preferences" versus the tag's User Preferences page) the run-verified text stays and the note applies. The "Not yet in a release" table now has 36 entries; the notes on the pages count 36 (`grep -rc` over `docs/user/handbook`, see the report).

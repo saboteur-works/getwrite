@@ -16,6 +16,8 @@ The editor's toolbar has buttons **Heading 1** to **Heading 6**. Put the cursor 
 
 Open the gear menu in the app shell, choose **Project Settings**, and select the **Editor** tab. The **Heading Styles** section is at the top of that tab, above **Body Text Styles**. Heading styles are saved per project and appear in the editor right after you click **Save Changes**.
 
+Not yet in a release (merged after 2.2.0).
+
 For each heading level you can set:
 
 - **Font Size** — the size of the heading, in pixels.
