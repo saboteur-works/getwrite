@@ -1379,3 +1379,70 @@ No match for `sharing`, `paired`, `pairing`, `home network` or `7340` (case-inse
 | Total | 36 | 36 |
 
 Table entries counted from lines 906 to 941 of this file (36 rows). Every page with a note has the same number of table entries, and no page without a note has an entry. No mismatch found; no edit made to any note or to the table.
+
+## 20. Pre-merge re-check (Task 13)
+
+Run inside the sandbox, 2026-10-14, git inspection only. No app, no process started; no page edited; no app code touched.
+
+**State at the check.** `git rev-parse --short HEAD` = `958db8b6`; `git merge-base HEAD main` = `f06a7c3b474c66f6167bb0073bee9a687dc4925e`, the commit the baseline (section 1) names for `origin/main`. `main` therefore has not moved past the commit the branch was cut from.
+
+**Base commits named in the 22 page lines exist.** Command: `git cat-file -t <sha>` for each distinct sha found by `grep -rn "^base commit\|Verified against" docs/user/handbook`. Output:
+
+```
+0343e19a: commit
+b9ddb83c: commit
+3a3ea9f7: commit
+a07e14cc: commit
+c3f768ee: commit
+78c47ac6: commit
+```
+
+**Path list used (writer-visible).** `frontend/ electron/ cli/ getwrite-config/ android/ package.json pnpm-workspace.yaml`. Why: `frontend/` holds the app, its labels and defaults; `electron/` the desktop shell; `cli/` the commands the pages quote; `getwrite-config/` the project-type specs and templates; `android/` a shell a writer could see; root `package.json` carries the version the page lines cite; `pnpm-workspace.yaml` is included for completeness. `docs/`, `specs/` and `README.md` are excluded from the filter: `docs/user/` is the thing being checked, `specs/` is not shown to a writer, and `README.md` was repointed by Task 11 (changes links only). As a second, path-independent check the full list of files changed since each sha was taken (`git diff --name-only <sha>..HEAD | grep -vE '^(docs/|specs/)'`); it returned only `README.md` for every sha.
+
+**Command and output, per distinct base sha** (`git log --oneline <sha>..HEAD -- frontend electron cli getwrite-config android package.json pnpm-workspace.yaml`):
+
+```
+=== 0343e19a..HEAD writer-visible paths
+(end, count=0)
+=== b9ddb83c..HEAD writer-visible paths
+(end, count=0)
+=== 3a3ea9f7..HEAD writer-visible paths
+(end, count=0)
+=== a07e14cc..HEAD writer-visible paths
+(end, count=0)
+=== c3f768ee..HEAD writer-visible paths
+(end, count=0)
+=== 78c47ac6..HEAD writer-visible paths
+(end, count=0)
+```
+
+Total commits in each range (all docs or spec commits on this branch): `0343e19a` 10, `b9ddb83c` 11, `3a3ea9f7` 7, `a07e14cc` 6, `c3f768ee` 8, `78c47ac6` 9. `git diff --stat f06a7c3b..HEAD -- frontend electron cli getwrite-config` printed nothing.
+
+**Per page.** Every row's list is empty, so the judgement for each is the same: no commit in the range touches a writer-visible path; the page is not touched. Commits in the range do edit handbook pages, stubs, README and spec files (Tasks 3 to 12 and the follow-up `774d7d87`); those are the handbook work itself, were covered by Task 12's search and note/table check, and change no app behaviour.
+
+| Page | Base sha on line | `git log --oneline <sha>..HEAD -- <paths>` | Judgement | Sha kept |
+| --- | --- | --- | --- | --- |
+| `getting-started/installing.md` | `b9ddb83c` | empty | not touched | yes |
+| `organize/start-page.md` | `b9ddb83c` | empty | not touched | yes |
+| `organize/project-types.md` | `b9ddb83c` | empty | not touched | yes |
+| `organize/resource-tree.md` | `b9ddb83c` | empty | not touched | yes |
+| `write/editor.md` | `0343e19a` | empty | not touched | yes |
+| `write/writing-log.md` | `0343e19a` | empty | not touched | yes |
+| `write/headings.md` | `0343e19a` | empty | not touched | yes |
+| `write/editor-appearance.md` | `0343e19a` | empty | not touched | yes |
+| `write/search.md` | `0343e19a` | empty | not touched | yes |
+| `story/metadata.md` | `78c47ac6` | empty | not touched | yes |
+| `story/metadata-queries.md` | `78c47ac6` | empty | not touched | yes |
+| `views/organizer.md` | `c3f768ee` | empty | not touched | yes |
+| `views/data.md` | `c3f768ee` | empty | not touched | yes |
+| `views/timeline.md` | `c3f768ee` | empty | not touched | yes |
+| `views/diff.md` | `c3f768ee` | empty | not touched | yes |
+| `views/entity-roster.md` | `c3f768ee` | empty | not touched | yes |
+| `views/entity-relationship-graph.md` | `c3f768ee` | empty | not touched | yes |
+| `protect-and-finish/revisions.md` | `3a3ea9f7` | empty | not touched | yes |
+| `protect-and-finish/trash.md` | `3a3ea9f7` | empty | not touched | yes |
+| `protect-and-finish/resources.md` | `a07e14cc` | empty | not touched | yes |
+| `protect-and-finish/compiling.md` | `a07e14cc` | empty | not touched | yes |
+| `protect-and-finish/project-configuration.md` | `a07e14cc` | empty | not touched | yes |
+
+**Result.** No commit since any page's base commit touches a writer-visible path, so no statement was re-run and no verified-against line changed. Recorded as measured: the check covers the commits between each page's base sha and `958db8b6`; if `main` moves before merge, this section must be repeated from the same command.

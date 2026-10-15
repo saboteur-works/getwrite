@@ -128,7 +128,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 9, 10, 11, 12
 **Estimate:** 3
 **Notes:** Satisfies FR-10, OQ-6. A re-check that needs the app runs outside the sandbox under the safety rules; git inspection runs inside. If a re-checked page's text changes, rerun Task 12's search and Task 14's link check on it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: One-off link check
 **What:** Run a link and anchor check over the handbook, stubs, README and the five repointed developer docs and record it.
