@@ -1,6 +1,6 @@
 # Project Types (developer reference)
 
-This is the developer reference for the project-type JSON format, validation, and scaffolding. For the writer-facing guide to choosing and managing project types in the app, see [docs/user/project-types.md](../user/project-types.md).
+This is the developer reference for the project-type JSON format, validation, and scaffolding. For the writer-facing guide to choosing and managing project types in the app, see [docs/user/handbook/organize/project-types.md](../user/handbook/organize/project-types.md).
 
 **Purpose:** Define reusable templates that describe a project's folder structure and initial placeholder resources. Project types let users scaffold a new project with a consistent set of folders, placeholder documents, and metadata.
 

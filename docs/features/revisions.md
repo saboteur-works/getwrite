@@ -1,6 +1,6 @@
 # Revisions (developer reference)
 
-This document covers the GetWrite revision system: on-disk layout, version numbering, the canonical invariant, pruning, the `preserve` flag, and soft-delete (trash). For the writer-facing guide to revisions in the app, see [docs/user/revisions.md](../user/revisions.md).
+This document covers the GetWrite revision system: on-disk layout, version numbering, the canonical invariant, pruning, the `preserve` flag, and soft-delete (trash). For the writer-facing guide to revisions in the app, see [docs/user/handbook/protect-and-finish/revisions.md](../user/handbook/protect-and-finish/revisions.md).
 
 ---
 
