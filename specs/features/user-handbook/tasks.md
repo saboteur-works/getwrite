@@ -65,7 +65,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 1, 2
 **Estimate:** 8
 **Notes:** Needs the app running; the largest verification unit (timeline is 88 lines, graph 50). If it overruns one session, split by pages and record which pages are done in `verification.md`; do not tick the task until all six pages are complete. Out of the sandbox. Drag and pointer statements are run through the real UI (Playwright against the throwaway build is acceptable as the observation method, named in the row).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Verify and write revisions, trash and the CLI commands
 **What:** Run every statement on `revisions.md` (including its Trash section) and every `prune`, `reindex` and `repair-revisions` command statement that occurs on the old pages, and write `revisions.md` and `trash.md`.

@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 51858 port 51984 (throwaway projects dir; templates repo read-only)
+T-41 100%: ticks(10)=["Oct 20","Apr 15","Oct 11","Apr 7","Oct 3","Mar 30","Sep 25","Mar 22","Sep 17","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 150%: ticks(10)=["Oct 20","Apr 15","Oct 11","Apr 7","Oct 3","Mar 30","Sep 25","Mar 22","Sep 17","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 200%: ticks(10)=["Oct 20","Apr 15","Oct 11","Apr 7","Oct 3","Mar 30","Sep 25","Mar 22","Sep 17","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 300%: ticks(10)=["Oct 20","Apr 15","Oct 11","Apr 7","Oct 3","Mar 30","Sep 25","Mar 22","Sep 17","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 400%: ticks(20)=["Oct 20","Jan 12","Apr 6","Jun 30","Sep 22","Dec 15","Mar 10","Jun 3","Aug 26","Nov 18","Feb 10","May 7","Jul 30","Oct 23","Jan 14","Apr 10","Jul 3","Sep 26","Dec 18","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 600%: ticks(20)=["Oct 20","Jan 12","Apr 6","Jun 30","Sep 22","Dec 15","Mar 10","Jun 3","Aug 26","Nov 18","Feb 10","May 7","Jul 30","Oct 23","Jan 14","Apr 10","Jul 3","Sep 26","Dec 18","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 800%: ticks(20)=["Oct 20","Jan 12","Apr 6","Jun 30","Sep 22","Dec 15","Mar 10","Jun 3","Aug 26","Nov 18","Feb 10","May 7","Jul 30","Oct 23","Jan 14","Apr 10","Jul 3","Sep 26","Dec 18","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+T-41 1000%: ticks(20)=["Oct 20","Jan 12","Apr 6","Jun 30","Sep 22","Dec 15","Mar 10","Jun 3","Aug 26","Nov 18","Feb 10","May 7","Jul 30","Oct 23","Jan 14","Apr 10","Jul 3","Sep 26","Dec 18","Mar 13"] gaps=["· 13w ·","· 196w ·"]
+stop: recorded 51858(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

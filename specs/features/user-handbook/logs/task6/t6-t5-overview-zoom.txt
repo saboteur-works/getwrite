@@ -1,0 +1,27 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 42996 port 51760 (throwaway projects dir; templates repo read-only)
+T-41/T-42/T-28 timeline text at 200%: ["6 SCENES","ALL","MARA","ELENA","−","200%","+","POV","Mara","Elena","Outline","MAY 1","MAY 2","MAY 2","MAY 3","MAY 3","MAY 4","ACT ONE","4 scenes","Morning","Evening","Night","· 6h ·","· 4h ·","ACT TWO","2 scenes","· 3d ·"]
+T-28 gap labels: ["· 6h ·","· 4h ·","· 3d ·"]
+T-43..T-47 chips: ["Morning|text=\"Morning\"|65x28@466,260","Noon|text=\"\"|2x28@596,266","Evening|text=\"Evening\"|32.5x28@726,260","Night|text=\"Night\"|10.8x28@845,260","D1|text=\"\"|2x28@466,322","D2|text=\"\"|2x28@2026,322"]
+T-18/T-53 row heights: ["ACT ONE / 4 scenes / Morning /|h=56","ACT TWO / 2 scenes / · 3d ·|h=56"]
+T-47 pin vs row: {"pinH":28,"pinW":2,"rowH":56,"pinTop":266,"rowTop":252}
+T-13/T-26/T-28/T-44..47 per zoom level:
+100%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":30.9x28","Noon:\"\":2x28","Evening:\"Evening\":15.5x28","Night:\"Night\":10x28","D1:\"\":2x28","D2:\"\":2x28"]
+150%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":48x28","Noon:\"\":2x28","Evening:\"Evening\":24x28","Night:\"Night\":10x28","D1:\"\":2x28","D2:\"\":2x28"]
+200%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":65x28","Noon:\"\":2x28","Evening:\"Evening\":32.5x28","Night:\"Night\":10.8x28","D1:\"\":2x28","D2:\"\":2x28"]
+300%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":99.1x28","Noon:\"\":2x28","Evening:\"Evening\":49.5x28","Night:\"Night\":16.5x28","D1:\"\":2x28","D2:\"\":2x28"]
+400%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":133.2x28","Noon:\"\":2x28","Evening:\"Evening\":66.6x28","Night:\"Night\":22.2x28","D1:\"\":2x28","D2:\"\":2x28"]
+600%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":201.4x28","Noon:\"\":2x28","Evening:\"Evening\":100.7x28","Night:\"Night\":33.5x28","D1:\"\":2x28","D2:\"\":2x28"]
+800%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":269.5x28","Noon:\"\":2x28","Evening:\"Evening\":134.8x28","Night:\"Night\":44.9x28","D1:\"\":2x28","D2:\"\":2x28"]
+1000%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":337.7x28","Noon:\"\":2x28","Evening:\"Evening\":168.9x28","Night:\"Night\":56.3x28","D1:\"\":2x28","D2:\"\":2x28"]
+zoom for tooltips: 200%
+T-50 tooltip for Morning: chipRect=[466,260,65,28] tips=[]
+T-50 tooltip for Noon: chipRect=[596,266,2,28] tips=[]
+T-50 tooltip for Evening: chipRect=[726,260,32,28] tips=[]
+T-50 tooltip for Night: chipRect=[845,260,11,28] tips=[]
+T-50 tooltip for D1: chipRect=[466,322,2,28] tips=[]
+T-50 tooltip for D2: chipRect=[978,322,2,28] tips=[]
+T-14 after clicking the Evening chip: tab=["TIMELINE"] sidebar="EVENING"
+stop: recorded 42996(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

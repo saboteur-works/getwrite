@@ -1,0 +1,24 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 73213 port 52421 (throwaway projects dir; templates repo read-only)
+ER-12 Enter on the Bob row button: tab=["EDIT"] sidebar heading="BOB"
+ER-12 Space on the Alice row button: tab=["EDIT"] sidebar heading="ALICE"
+ER-13 Alice sidebar: alias input present=1 ; alias/kind values=["entity-kind-input=character","new-alias-input="]
+ER-13 Alice sidebar entity part: "ENTITY\nENTITY KIND\nALIASES\nAl\n\n\"Al\" also reads as a common English word or name, so this alias may produce detected matches that aren't about this entity.\n\nDISMISS\nADD\nREMOVE ENTITY\nRELATIONSHIPS\nRELATED ENTITY\nChoose an entity…\nWill\nZed\nBob\nMary\nRELATIONSHIP TYPE\nChoose a type…\nally of\nrival of\nparent of\nchild of\nsibling of\nmentor of\nmember of\nADD\nENTITIES MENTIONED\nENTITY MENTIONS\nS1\nMENTIONED\nAlso appears with: Bob (1), Mary (1)\nCOMPILE THIS ENTITY'S RESOURCES\n+ ADD FIELD"
+ER-12 click on the Mary row button: tab=["EDIT"] sidebar heading="MARY"
+ER-08 flagged now: {"Alice":"Needs attention Needs attention: ambiguous claim and noise-prone alias. ","Mary":"Needs attention Needs attention: ambiguous claim and noise-prone alias. ","Will":"Needs attention Needs attention: noise-prone alias. "}
+ER-09 dismiss button for Will: count=1 text="DISMISS"
+ER-10 after dismissing Will: flagged={"Alice":"Needs attention Needs attention: ambiguous claim and noise-prone alias. ","Mary":"Needs attention Needs attention: ambiguous claim and noise-prone alias. "} ; Alice 'Al' dismiss still there=2
+ER-10 sidecar Will: ["will"]
+ER-10 after reload: flagged={"Alice":"Needs attention Needs attention: ambiguous claim and noise-prone alias. ","Mary":"Needs attention Needs attention: ambiguous claim and noise-prone alias. "}
+ER-10 dismissed 'Al' on the first row that shows it: flagged={"Alice":"Needs attention Needs attention: ambiguous claim. ","Mary":"Needs attention Needs attention: ambiguous claim and noise-prone alias. "} ; sidecars: ["Alice:[\"al\"]","Will:[\"will\"]"]
+Zed alias controls: ["Dismiss noise observation for \"Al\"","Dismiss noise observation for \"It\"","Remove It","Dismiss noise observation for It","add-alias"]
+Zed 'It' sidebar dismiss count=1
+Zed dismissed list: ["it"]
+ER-10 after replacing the dismissed alias 'It' with 'Is': flagged={"Alice":"Needs attention Needs attention: ambiguous claim. ","Mary":"Needs attention Needs attention: ambiguous claim and noise-prone alias. ","Zed":"Needs attention Needs attention: noise-prone alias. "} ; Zed row text=["Zed","place","Is","No mentions yet","Needs attention","Needs attention: noise-prone alias.","\"Is\" also reads as a common English word or name, so this alias may produce detected matches that aren't about this entity.","DISMISS"]
+Noise Words tab: "Project Settings\n\nConfigure editor typography, tags, and metadata for this project.\n\nClose\nEditor\nDefault Revision Name\nManage Tags\nMetadata\nTimeline\nOrganizer\nWriting Goals\nNoise Words\nEntities\nProject Encryption\nNoise Words\n\nWords flagged as noise when mentioned as entities in this project. Add your own custom words below, and choose which words from your cross-project global list should not apply to this project.\n\nCustom noise words\n\nNo custom noise words yet. Add one below.\n\nAdd a custom noise word\nADD WORD\nGlobal noise words\n\nWords from your cross-project global list. Check a word to exclude it from applying within this project only.\n\nNo global noise words yet."
+controls: ["BUTTON||Noise Words","BUTTON||Add H4","BUTTON||Add Tag","BUTTON||Add","BUTTON|Add field to Document|Add field","BUTTON|Add field to Timeline|Add field","BUTTON|Add schema group|Add Group","BUTTON||ADD WORD","BUTTON||Add"]
+after adding Zed: ["","Custom noise words","","No custom noise words yet. Add one below.","","Add a custom noise word","ADD WORD","Global noise words","","Words from your cross-project global list. Check a word to exclude it from applying within this project only.","","No global noise words yet."] ; project.json custom="n/a"
+ER-08 after custom noise word Zed: flagged={"Alice":"Needs attention Needs attention: ambiguous claim. ","Mary":"Needs attention Needs attention: ambiguous claim and noise-prone alias. ","Zed":"Needs attention Needs attention: noise-prone alias. "}
+stop: recorded 73213(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

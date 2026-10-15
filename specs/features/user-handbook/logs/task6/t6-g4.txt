@@ -1,0 +1,36 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 13731 port 53228 (throwaway projects dir; templates repo read-only)
+node Dave: center [721,529] element at center: text|entity-graph-node|Dave
+  plain click on Dave: tab=["EDIT"] sidebar="DAVE"
+node Eve: center [739,587] element at center: text|entity-graph-node|Eve
+  plain click on Eve: tab=["EDIT"] sidebar="EVE"
+node Bob: center [644,637] element at center: text|entity-graph-node|Bob
+  plain click on Bob: tab=["EDIT"] sidebar="BOB"
+node Alice: center [597,531] element at center: text|entity-graph-node|Alice
+  plain click on Alice: tab=["EDIT"] sidebar="ALICE"
+node Carol: center [699,473] element at center: text|entity-graph-node|Carol
+  plain click on Carol: tab=["EDIT"] sidebar="CAROL"
+focal="Current focal point: Dave." opacities={"Dave":"1","Eve":"0.15","Bob":"0.15","Alice":"1","Carol":"0.15"} positions={"Dave":[680,552],"Eve":[698,610],"Bob":[603,660],"Alice":[555,553],"Carol":[658,496]}
+dimmed=["Eve","Bob","Carol"] not dimmed (besides Dave)=["Alice"]
+G-27 undimmed Alice: element at center=text|entity-graph-node|Alice pointer-events=auto
+G-27   drag Alice (+50,+30): [555,553] -> [607,582] ; tab=["GRAPH"] ; focal="Current focal point: Dave."
+G-27   plain click on Alice: tab=["EDIT"] sidebar="ALICE"
+G-27 DIMMED Eve: element at center=text|entity-graph-node|Eve pointer-events=auto
+G-27   drag Eve (+50,+30): [739,587] -> [792,616] ; tab=["GRAPH"] ; focal="No focal point set."
+G-27   plain click on Eve: tab=["EDIT"] sidebar="EVE"
+G-27 DIMMED Bob: element at center=text|entity-graph-node|Bob pointer-events=auto
+G-27   drag Bob (+50,+30): [644,637] -> [695,666] ; tab=["GRAPH"] ; focal="No focal point set."
+G-27   plain click on Bob: tab=["EDIT"] sidebar="BOB"
+G-27 DIMMED Carol: element at center=text|entity-graph-node|Carol pointer-events=auto
+G-27   drag Carol (+50,+30): [699,473] -> [750,502] ; tab=["GRAPH"] ; focal="No focal point set."
+G-27   plain click on Carol: tab=["EDIT"] sidebar="CAROL"
+list items mentioning the shared field: ["Dave and Carol share field House"]
+edge 9 (sharedMetadata) hover at [750,540]: tooltip=null inList=false
+drag Alice [647,561] -> [738,619] ; positions file=[{"x":501,"y":414,"snap":["authored","cooccurrence"]},{"x":406,"y":464,"snap":["authored","cooccurrence"]},{"x":461,"y":300,"snap":["authored","cooccurrence"]},{"x":449,"y":418,"snap":["authored","cooccurrence"]}] ; config types=["authored","cooccurrence"]
+Backlinks on: config types=["authored","cooccurrence","backlinks"] ; Alice immediately [737,621] ; file=[{"x":501,"y":414,"snap":["authored","cooccurrence"]},{"x":406,"y":464,"snap":["authored","cooccurrence"]},{"x":461,"y":300,"snap":["authored","cooccurrence"]},{"x":449,"y":418,"snap":["authored","cooccurrence"]}]
+Alice after leaving the Graph tab and returning: [737,621] ; all nodes {"Dave":[721,529],"Eve":[789,617],"Bob":[694,667],"Alice":[737,621],"Carol":[749,503]}
+Alice after a page reload: [737,621] ; all nodes {"Dave":[721,529],"Eve":[789,617],"Bob":[694,667],"Alice":[737,621],"Carol":[749,503]} ; file=[{"x":501,"y":414,"snap":["authored","cooccurrence"]},{"x":406,"y":464,"snap":["authored","cooccurrence"]},{"x":461,"y":300,"snap":["authored","cooccurrence"]},{"x":449,"y":418,"snap":["authored","cooccurrence"]}]
+Backlinks off again: Alice [737,621] ; config types=["authored","cooccurrence"]
+stop: recorded 13731(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

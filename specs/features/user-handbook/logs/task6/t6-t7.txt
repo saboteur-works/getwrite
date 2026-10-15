@@ -1,0 +1,11 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 56448 port 52083 (throwaway projects dir; templates repo read-only)
+E3 sidebar timeline part: "\nSTORY DATE / TIME\nDURATION\nmin\nhr\nday\nyr\nEND DATE / TIME\n—\nOverride\nTAGS\n\nNo tags yet. Create some in Project Settings.\n\nWORD COUNT GOAL\nWORD COUNT GOAL\n+ ADD FIELD"
+E3 buttons: ["Override|end-date-override-toggle"]
+after Override: inputs=["story-date-input|date|2026-04-20","story-date-input-time|time|","story-duration-quantity|number|","story-duration-unit|select-one|minutes","story-end-date-input|datetime-local|"]
+E3 stored: {"storyDate":"2026-04-20","storyEndDate":"2026-05-20T12:00"}
+chips: ["E1|\"\"|2x28@466","E2|\"E2\"|62.7x28@748","E3|\"E3\"|964.2x28@1062"]
+text: ["3 SCENES"]
+stop: recorded 56448(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

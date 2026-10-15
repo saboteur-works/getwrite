@@ -1,0 +1,34 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 20768 port 51303 (throwaway projects dir; templates repo read-only)
+gear menu items: ["User Preferences","Project Settings","Project Type Manager","Switch to dark mode","Help","Close Project"]
+T-03 tabs in a new project: ["EDIT:disabled","ORGANIZER:disabled","DATA:on","DIFF:disabled","TIMELINE:disabled","ENTITIES:disabled","GRAPH:disabled","TRASH:on"]
+T-07 tooltip on the greyed Timeline tab: ["The Timeline view is off. Turn it on in User Preferences → Timeline view."]
+T-04 after enabling the view: Metadata tab 'Timeline' checkbox -> ["Color=false","Timeline=true","Point of View=false","Synopsis=false","Notes=false","Enable Timeline view=true","Entities=false"]
+T-22 Timeline tab, no scenes yet (new project): ["0 SCENES","−","200%","+","SEP 15","SEP 18","SEP 21","SEP 25","SEP 28","OCT 1","OCT 4","OCT 8","OCT 11","OCT 14","NO DATED SCENES","Add story dates in the metadata sidebar"]
+T-01 timeline text: ["6 SCENES","ALL","MARA","ELENA","−","200%","+","POV","Mara","Elena","Outline","DEC 25","JAN 23","FEB 21","MAR 22","APR 20","MAY 20","JUN 18","JUL 17","AUG 15","SEP 13","ACT ONE","3 scenes","Dawn","Midday","Midday","ACT TWO","2 scenes","· 26w ·","WORKSPACE","1 scene","Long"]
+T-01/T-11/T-24 chips: [{"text":"Dawn","x":466,"y":260,"w":10,"h":28,"label":"Dawn"},{"text":"Midday","x":467,"y":260,"w":10,"h":28,"label":"Midday"},{"text":"Midday","x":467,"y":300,"w":10,"h":28,"label":"Midday Two"},{"text":"","x":821,"y":362,"w":2,"h":28,"label":"Spring"},{"text":"","x":2026,"y":362,"w":2,"h":28,"label":"Late"},{"text":"Long","x":638,"y":412,"w":124,"h":28,"label":"Long"}] ; track: left=388 width=1716 ; fractions of track: ["Dawn@0.045..0.051","Midday@0.046..0.052","Midday@0.046..0.052","(pin)@0.252..0.253","(pin)@0.955..0.956","Long@0.146..0.218"]
+T-26 ticks at 200%: [{"text":"Dec 25","x":392},{"text":"Jan 23","x":581},{"text":"Feb 21","x":771},{"text":"Mar 22","x":960},{"text":"Apr 20","x":1149},{"text":"May 20","x":1345},{"text":"Jun 18","x":1534},{"text":"Jul 17","x":1723},{"text":"Aug 15","x":1913},{"text":"Sep 13","x":2102}]
+T-33 scrollable: scrollWidth=1816 clientWidth=752 min-width style=1800px
+T-18/T-29/T-30/T-53 rows: ["ACT ONE / 3 scenes / Dawn / Midday / Mid|h=96|borderBottom=1px solid rgb(216, 213, 206)|bg=rgba(0, 0, 0, 0)","ACT TWO / 2 scenes / · 26w ·|h=56|borderBottom=1px solid rgb(216, 213, 206)|bg=rgba(0, 0, 0, 0)","WORKSPACE / 1 scene / Long|h=56|borderBottom=1px solid rgb(216, 213, 206)|bg=rgba(0, 0, 0, 0)"]
+T-27 zoom in presses: ["start 200%","300%","400%","600%","800%","1000%","zoom in disabled at 1000%"]
+T-39 at max zoom: zoom-in disabled=true attrs={"opacity":"1","disabled":true,"ariaDisabled":null,"cls":"timeline-zoom-btn"} zoom-out disabled=false
+T-25/T-26 at max zoom: min-width=9000px scrollWidth=9008 tick count=20 labels=["Dec 25","Jan 8","Jan 22","Feb 4","Feb 18","Mar 4","Mar 18","Apr 1","Apr 14","Apr 28","May 12","May 26","Jun 8","Jun 22","Jul 6","Jul 20","Aug 3","Aug 16","Aug 30","Sep 13"]
+T-27 zoom out presses: ["800%","600%","400%","300%","200%","150%","100%","zoom out disabled at 100%"]
+T-39 at min zoom: zoom-out disabled=true opacity=1 min-width=900px scrollWidth=917 clientWidth=752 ticks=10
+T-13 chips at min zoom: [{"text":"Dawn","x":425,"y":260,"w":10,"h":28,"label":"Dawn"},{"text":"Midday","x":426,"y":260,"w":10,"h":28,"label":"Midday"},{"text":"Midday","x":426,"y":300,"w":10,"h":28,"label":"Midday Two"},{"text":"","x":594,"y":362,"w":2,"h":28,"label":"Spring"},{"text":"","x":1167,"y":362,"w":2,"h":28,"label":"Late"},{"text":"Long","x":507,"y":412,"w":59,"h":28,"label":"Long"}]
+T-25/T-26/T-13/T-31/T-44 per zoom level:
+100%: trackW=816 scrollW=917 ticks=10 sampleLabels=["Dec 25","Jan 23"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:59x28@y412"]
+150%: trackW=1266 scrollW=1367 ticks=10 sampleLabels=["Dec 25","Jan 23"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:91.5x28@y412"]
+200%: trackW=1716 scrollW=1816 ticks=10 sampleLabels=["Dec 25","Jan 23"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:124x28@y412"]
+300%: trackW=2616 scrollW=2715 ticks=10 sampleLabels=["Dec 25","Jan 23"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:189x28@y412"]
+400%: trackW=3516 scrollW=3614 ticks=20 sampleLabels=["Dec 25","Jan 8"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:254.1x28@y412"]
+600%: trackW=5316 scrollW=5412 ticks=20 sampleLabels=["Dec 25","Jan 8"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:384.2x28@y412"]
+800%: trackW=7116 scrollW=7210 ticks=20 sampleLabels=["Dec 25","Jan 8"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:514.2x28@y412"]
+1000%: trackW=8916 scrollW=9008 ticks=20 sampleLabels=["Dec 25","Jan 8"] chips=["Dawn:10x28@y260","Midday:10x28@y260","Midday:10x28@y300","pin:2x28@y362","pin:2x28@y362","Long:644.3x28@y412"]
+T-12 zoom label: start 1000%; after Ctrl+scroll up 1000%; after Cmd+scroll up 1000%; after plain scroll up 1000%; after Ctrl+scroll down 1000%; platform=MacIntel
+T-08 before: scene count text=["6 SCENES","3 scenes","2 scenes","1 scene"]
+T-06/T-08 after setting Undated's Story Date in the sidebar: ["7 SCENES","3 scenes","2 scenes","2 scenes"] chips=["Dawn","Midday","Midday","pin","pin","Long","pin"]
+T-04 after unchecking built-in feature Timeline: checkboxes=["Color=false","Timeline=false","Point of View=true","Synopsis=false","Notes=true","Enable Timeline view=false","Entities=false"] tabs=["EDIT:on","ORGANIZER:disabled","DATA:on","DIFF:on","TIMELINE:disabled","ENTITIES:disabled","GRAPH:disabled","TRASH:on"]
+stop: recorded 20768(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

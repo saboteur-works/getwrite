@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 89705 port 50646 (throwaway projects dir; templates repo read-only)
+after typing: X wordCount=10 keys=id,name,type,createdAt,orderIndex,folderId,slug,userMetadata,wordCount,updatedAt ; Y wordCount=4 keys=id,name,type,createdAt,orderIndex,folderId,slug,userMetadata,wordCount,updatedAt
+Data after typing: table=["STATUS | RESOURCES | WORDS","No status | 2 | 14"] rows=["4 words","10 words"]
+after choosing a Status on X: wordCount=0 keys=id,name,type,createdAt,orderIndex,folderId,slug,userMetadata,wordCount,updatedAt,plainText,charCount,paragraphCount ; footer=["Words: 10"]
+Data after choosing a Status on X (no reload): table=["STATUS | RESOURCES | WORDS","In review (not in the current list) | 1 | 0","No status | 1 | 4"] rows=["4 words","0 words"]
+Data after reload: table=["STATUS | RESOURCES | WORDS","In review (not in the current list) | 1 | 10","No status | 1 | 4"] rows=["4 words","10 words"] ; wordCount=0 keys=id,name,type,createdAt,orderIndex,folderId,slug,userMetadata,wordCount,updatedAt,plainText,charCount,paragraphCount
+hand edit: Y sidecar wordCount set to 777; file now says 777
+Data after reload with Y wordCount=777 on disk: table=["STATUS | RESOURCES | WORDS","In review (not in the current list) | 1 | 10","No status | 1 | 4"] rows=["4 words","10 words"] ; sidecar now wordCount=777 keys=id,name,type,createdAt,orderIndex,folderId,slug,userMetadata,wordCount,updatedAt
+overview head: ["RESOURCES","Workspace","X","Y"]
+stop: recorded 89705(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
