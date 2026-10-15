@@ -1,0 +1,14 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+electron pid 27691; isPackaged=false; userData is throwaway: true
+desktop windows hooked: 1
+desktop Compile Project dialog: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Doc B","Doc A","2 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (2)"]
+desktop will-download events: []
+desktop dialog after compile: null
+desktop page text lines mentioning compile/download/saved: []
+desktop console messages: ["warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","log: [Fast Refresh] rebuilding","log: [Fast Refresh] done in 144ms"]
+desktop session is default session: true
+desktop app log lines (compile/download/error): ["[2026-10-15T05:13:29.379Z] POST /api/compile/text 200 in 198ms (next.js: 192ms, proxy.ts: 1455µs, application-code: 5ms)"]
+stop: recorded 27691(Electron),27694(Electron Helper (GPU)),27695(Electron Helper),27696(sh),27700(node),27719(node),27725(next-server (v16.2.6)),27743(Electron Helper (Renderer)); after SIGTERM: none alive
+listener on 7340 after stop: none; throwaway log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

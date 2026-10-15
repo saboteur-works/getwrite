@@ -1,0 +1,32 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 59445 port 58622 (throwaway projects dir; templates repo read-only)
+parent folder choices: [["Document","Image","Audio","Folder"]]
+no Project Root choice
+tree: ["Workspace","Beta Doc","Pic X","Alpha Doc","Part","Inner Doc","Gamma Doc","Root Doc"]
+C-03 in-project dialog text: "Compile Project\n\nSelect which resources to include in the compiled output.\n\nSELECT ALL\nSELECT NONE\nWorkspace\nBeta Doc\nPic X\nAlpha Doc\nPart\nInner Doc\nGamma Doc\nRoot Doc\n6 resource(s) selected\nInclude section headers\nCOMPILE AS\ntxt\nmd\npdf\ndocx\nCLOSE\nCOMPILE (6)"
+C-05 dialog controls: ["SELECT ALL","SELECT NONE","Collapse Workspace","Workspace","Beta Doc","Pic X","Alpha Doc","Collapse Part","Part","Inner Doc","Gamma Doc","Root Doc","Include section headers","text","CLOSE","COMPILE (6)"]
+C-05 after SELECT ALL: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Beta Doc","Pic X","Alpha Doc","Part","Inner Doc","Gamma Doc","Root Doc","6 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (6)"]
+C-05/06 txt: cmp-one.txt 191 bytes content="Beta Doc\n========\n\nBeta text here.\n\n\nAlpha Doc\n=========\n\nAlpha text here.\n\n\nInner Doc\n=========\n\nInner text here.\n\n\nGamma Doc\n=========\n\nGamma text here.\n\n\nRoot Doc\n========\n\nRoot text here."
+C-05 after txt compile: dialog still open=false
+C-05/06 md: cmp-one.md 153 bytes content="# Beta Doc\n\nBeta text here.\n\n\n# Alpha Doc\n\nAlpha text here.\n\n\n# Inner Doc\n\nInner text here.\n\n\n# Gamma Doc\n\nGamma text here.\n\n\n# Root Doc\n\nRoot text here."
+C-05 after md compile: dialog still open=false
+C-05 pdf: cmp-one.pdf 2102 bytes header="%PDF-1.3" pages(/Type /Page)=1
+C-05 after pdf compile: dialog still open=false
+C-05 docx: cmp-one.docx 8759 bytes zip="PK" text="Beta Doc\\nBeta text here.\\nAlpha Doc\\nAlpha text here.\\nInner Doc\\nInner text here.\\nGamma Doc\\nGamma text here.\\nRoot Doc\\nRoot text here.\\n"
+C-05 after docx compile: dialog still open=false
+C-12 project folder before/after compiling in-project (files, digest): {"files":35,"digest":"3ce6a4d7601b"} -> {"files":35,"digest":"3ce6a4d7601b"}
+tree before drag: ["Workspace","Beta Doc","Pic X","Alpha Doc","Part","Inner Doc","Gamma Doc","Root Doc"]
+tree after dragging Gamma Doc above Beta Doc and a reload: ["Workspace","Gamma Doc","Beta Doc","Pic X","Alpha Doc","Part","Inner Doc","Root Doc"]
+C-06 dialog list order: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Gamma Doc","Beta Doc","Pic X","Alpha Doc","Part","Inner Doc","Root Doc","6 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (6)"]
+C-06 txt after reorder: "Gamma Doc\n=========\n\nGamma text here.\n\n\nBeta Doc\n========\n\nBeta text here.\n\n\nAlpha Doc\n=========\n\nAlpha text here.\n\n\nInner Doc\n=========\n\nInner text here.\n\n\nRoot Doc\n========\n\nRoot text here."
+C-02 Start Page Package dialog: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Gamma Doc","Beta Doc","Pic X","Alpha Doc","Part","Inner Doc","Root Doc","6 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (6)"]
+C-02 Start Page compile (default format) cmp-one.txt: "Gamma Doc\n=========\n\nGamma text here.\n\n\nBeta Doc\n========\n\nBeta text here.\n\n\nAlpha Doc\n=========\n\nAlpha text here.\n\n\nInner Doc\n=========\n\nInner text here.\n\n\nRoot Doc\n========\n\nRoot text here."
+C-08 Elena sidebar ENTITY MENTIONS: "ENTITY MENTIONS\nInner Doc\nMENTIONED\nBeta Doc\nMENTIONED\nPic X\nLINKED\nCOMPILE THIS ENTITY'S RESOURCES\n+ ADD FIELD"
+C-09/10/11 entity compile dialog: "Compile Entity Resources\n\nEvery resource associated with this entity, in resource-tree order.\n\n3 resources to compile\nBeta Doc\nPic X\nEXCLUDED — NOT A TEXT RESOURCE\nInner Doc\nInclude section headers\nCOMPILE AS\ntxt\nmd\npdf\ndocx\nCLOSE\nCOMPILE (3)"
+C-09 entity dialog controls: ["Include section headers[x]","text","CLOSE","COMPILE (3)"]
+C-09 entity txt: cmp-one.txt 136 bytes "Beta Doc\n========\n\nBeta text here.Beta text here, Elena again.\n\n\nInner Doc\n=========\n\nInner text here.Inner text here, with Elena in it."
+C-09 entity pdf: cmp-one.pdf 2012 bytes "%PDF-1.3"
+C-12 entity compile project folder before/after (files, digest): {"files":40,"digest":"03aa79d35342"} -> {"files":40,"digest":"03aa79d35342"}
+stop: recorded 59445(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,35 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 5048 port 59597 (throwaway projects dir; templates repo read-only)
+PC-06 live project (autoPrune true, config.maxRevisions 50) after 52 named saves: revisions per resource {"Many":53}
+PC-06 same project after more typing and a reload: {"Many":53} ; autoPrune/maxRevisions still [true,50]
+before prune, revisions in each copy: [{"Many":53},{"Many":53},{"Many":53},{"Many":53},{"Many":53}]
+$ getwrite-cli prune --help  -> exit 0
+  | Usage: getwrite-cli prune [options] [projectRoot]
+  | Prune old revisions under a project root
+  | Options:
+  |   -m, --max <number>  maximum revisions to keep (default: "50")
+  |   -h, --help          display help for command
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t8-p7-mv92sg57-603899/c1  -> exit 0
+  | Prune results:
+  | 22893c97-e05e-456e-8304-5a3c3f633531: pruned 3
+PC-05/28 C1 unmodified, no --max: exit 0; revisions after: {"Many":50}; project.json maxRevisions/autoPrune now: [null,null,50,true]
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t8-p7-mv92sg57-603899/c2  -> exit 0
+  | Prune results:
+  | 22893c97-e05e-456e-8304-5a3c3f633531: pruned 3
+PC-05/28 C2 config.maxRevisions=3, no --max: exit 0; revisions after: {"Many":50}; project.json maxRevisions/autoPrune now: [null,null,3,true]
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t8-p7-mv92sg57-603899/c3  -> exit 0
+  | Prune results:
+  | 22893c97-e05e-456e-8304-5a3c3f633531: pruned 3
+PC-05/28 C3 top-level maxRevisions=3 and autoPrune=false, no --max: exit 0; revisions after: {"Many":50}; project.json maxRevisions/autoPrune now: [3,false,50,true]
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t8-p7-mv92sg57-603899/c4 --max 5  -> exit 0
+  | Prune results:
+  | 22893c97-e05e-456e-8304-5a3c3f633531: pruned 48
+PC-05/28 C4 unmodified, --max 5: exit 0; revisions after: {"Many":5}; project.json maxRevisions/autoPrune now: [null,null,50,true]
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t8-p7-mv92sg57-603899/c5  -> exit 0
+  | Prune results:
+  | 22893c97-e05e-456e-8304-5a3c3f633531: pruned 3
+PC-05/28 C5 config.maxRevisions=3 and config.autoPrune=false, no --max: exit 0; revisions after: {"Many":50}; project.json maxRevisions/autoPrune now: [null,null,3,false]
+PC-05 live project untouched by the copies' prune runs: {"Many":53}
+stop: recorded 5048(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

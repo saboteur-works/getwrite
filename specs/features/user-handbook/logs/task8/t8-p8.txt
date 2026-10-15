@@ -1,0 +1,12 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 32458 port 60195 (throwaway projects dir; templates repo read-only)
+PC-11 features.timelineView=true by hand (no timeline key): sidebar has TIMELINE group=false ; Timeline tab: [{"disabled":"false","title":null}] ; config.features now {"timelineView":true}
+PC-11 Metadata tab Timeline switch checked=false
+PC-13 default (no organizerCardBody): cards="Doc One | text file | 10/14/2026 | Words: 30 | Status: Published | Open" ; config=undefined
+PC-13 None: config={"source":"none"} ; cards="Doc One | text file | 10/14/2026 | Words: 30 | Status: Published | Open"
+PC-13 Text excerpt: config={"source":"text-excerpt","excerptLength":200} ; cards="Doc One | text file | 10/14/2026 | 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 01… | Words: 30 | Status: Published | Open"
+PC-13 Status: config={"source":"field","fieldKey":"status"} ; cards="Doc One | text file | 10/14/2026 | Published | Words: 30 | Status: Published | Open"
+PC-13 Text excerpt, length 40: config={"source":"text-excerpt","excerptLength":40} ; cards="Doc One | text file | 10/14/2026 | 0123456789 0123456789 0123456789 0123456… | Words: 30 | Status: Published | Open"
+stop: recorded 32458(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

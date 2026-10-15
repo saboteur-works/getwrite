@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 48348 port 60525 (throwaway projects dir; templates repo read-only)
+dialog buttons textContent: ["Select All","Select None","","Close","Compile (1)"]
+dialog labels textContent: ["Workspace","One Doc","Include section headers","Compile as"]
+dialog headings textContent: ["Compile Project"]
+project menu items textContent: ["Compile Project"]
+stop: recorded 48348(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

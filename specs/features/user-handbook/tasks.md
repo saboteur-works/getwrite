@@ -83,7 +83,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 1, 2
 **Estimate:** 5
 **Notes:** Needs the app running (web build; desktop method for the workspace folder and any desktop-only setting, otherwise dropped). Out of the sandbox. Compile and export checks use throwaway content only. The CLI commands on `project-configuration.md` follow the Task 7 method and the executable name found in Task 1.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Write index.md
 **What:** Write the handbook contents page and the intro statements kept from `features.md`.

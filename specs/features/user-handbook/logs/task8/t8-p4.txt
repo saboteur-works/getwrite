@@ -1,0 +1,17 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 97758 port 59466 (throwaway projects dir; templates repo read-only)
+PC-25 folder holding only {name, maxRevisions}: Start Page lines ["0 ACTIVE PROJECTS"]
+PC-25 + id: ["0 ACTIVE PROJECTS"]
+PC-25 + id + createdAt: ["1 ACTIVE PROJECT","VC plus id and createdAt"]
+PC-25 id different from the folder name, + createdAt: ["2 ACTIVE PROJECTS","VC plus id and createdAt","VD id differs from folder"]
+PC-25 after opening VC: folder ["project.json"] ; project.json {"id":"bbbbbbbb-0000-4000-8000-000000000003","name":"VC plus id and createdAt","createdAt":"2026-10-14T10:00:00.000Z","maxRevisions":50}
+PC-24 created project folder: ["folders","project.json","resources"] ; top-level keys ["id","name","slug","createdAt","projectType","rootPath","config"]
+PC-24 Status options after merging the 'custom statuses' example: ["Outline","First Draft","Revised","Final"]
+PC-24 project.json after the app wrote: top-level maxRevisions=100 config.maxRevisions=50 name="My Novel" statuses=["Outline","First Draft","Revised","Final"]
+PC-26 after merging the 'recommended' example and reopening: name="Novel Draft" description="Work-in-progress novel" top-level maxRevisions/autoPrune=[200,true] config.maxRevisions/autoPrune=[50,true]
+PC-29 Start Page with config.maxRevisions='abc', statuses='oops', features.timeline='yes': ["0 ACTIVE PROJECTS"]
+PC-29 Open button count: 0
+PC-29 server log lines matching valid|schema|zod|invalid|Error|issues: []
+stop: recorded 97758(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

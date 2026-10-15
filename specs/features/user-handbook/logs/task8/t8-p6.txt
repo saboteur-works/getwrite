@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 2931 port 59559 (throwaway projects dir; templates repo read-only)
+PC-29 visible text with Broken One config.statuses='oops': ["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in your next manuscript or open a clean slate for your next draft.","0 ACTIVE PROJECTS","0 WRITING ASSETS","0 FOLDERS ORGANIZED","WRITING AT A GLANCE","0","Projects ready to open and continue.","RESOURCES","0","FOLDERS","0","START A NEW PROJECT","APP SETTINGS","LIBRARY","Projects","Create your first project to begin writing.","EMPTY SHELF","No projects yet","Create a project to scaffold your workspace, organize folders, and start drafting in GetWrite.","CREATE THE FIRST PROJECT","Some data couldn't be loaded correctly."]
+PC-29 console error/warn messages: ["error: Failed to load resource: the server responded with a status of 404 (Not Found)","warning: [transport-validation] projects.list: response validation failed [Object]","error: Error fetching projects: Error: projects.list: response failed validation\n    at Object.list (http://127.0.0.1:59559/_next/static/chunks/0g13gwk2x.9kd.js:159:266686)\n    at async http://127.0.0.1:5955"]
+PC-29 toasts/alerts in the page: ["Some data couldn't be loaded correctly.",""]
+PC-29 after restoring the file: ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Good One or open a clean slate for your next draft.","2 ACTIVE PROJECTS","Broken One","Good One"]
+PC-29 server log (lines mentioning projects/error, throwaway paths replaced): []
+stop: recorded 2931(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

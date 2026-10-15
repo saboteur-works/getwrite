@@ -1,0 +1,37 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 71214 port 58865 (throwaway projects dir; templates repo read-only)
+PC-04 New project dialog: "Create Project\nNAME\nPROJECT TYPE\nArticle — Short-form article project type with drafts and references.\nBlank — Minimal project type with only a Workspace folder.\nGame Writing — Project type optimized for game writing (video game or tabletop RPG). Includes folders for lore, characters, quests, and dialogue.\nNovel — Project type optimized for long-form fiction. Includes drafts, research, and assets.\nPoetry and Lyrics — Project type optimized for poetry and song lyrics. Includes drafts, research, and assets.\nSerial — Serialized fiction project type for episodes or installments.\nProject type optimized for long-form fiction. Includes drafts, research, and assets.\nCANCEL\nCREATE"
+PC-04 New project dialog inputs: ["INPUT||text","INPUT|Filter project types|search"]
+PC-01 projects folder entries: ["87a6a9fd-c1d2-4d5a-97c5-22775c8e51ed"]; project folder entries: ["folders","project.json","resources"]
+PC-01 project.json top-level keys: ["id","name","slug","createdAt","projectType","rootPath","config"]; name="Cfg One"
+PC-05/06 config keys and defaults in a new Blank project: {"maxRevisions":50,"statuses":[],"customNoiseWords":[],"excludedGlobalNoiseWords":[],"autoPrune":true}; top-level maxRevisions/autoPrune present: [["maxRevisions",false],["autoPrune",false],["description",false]]
+PC-09 features key present in a new project: false
+PC-03/04 Start Page after editing name+description by hand and reloading: ["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Cfg Renamed or open a clean slate for your next draft.","1 ACTIVE PROJECT","0 WRITING ASSETS","1 FOLDERS ORGANIZED","WRITING AT A GLANCE","1","Project ready to open and continue.","RESOURCES","0","FOLDERS","1","START A NEW PROJECT","APP SETTINGS","LIBRARY","Projects","Open a project or manage its packaging and metadata.","PROJECT","Cfg Renamed","0 resources · 1 folder","LAST EDITED JUST NOW","blank"]
+PC-04 after opening: project.json keys ["id","name","slug","createdAt","projectType","rootPath","config","description"] description="A hand-written description" name="Cfg Renamed"
+PC-03 header shows name: ["Get","Write","Cfg Renamed","RESOURCES"]
+PC-27 header 2.5 s after editing project.json with the project open: ["Get","Write","Cfg Renamed","RESOURCES"]
+PC-27 Start Page after reload: ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Cfg Edited While Open or open a clean slate for your next draft.","Cfg Edited While Open"]
+PC-27 header after reopening: ["Get","Write","Cfg Edited While Open","RESOURCES"]
+PC-07 sidebar Status options before: ["Draft","In review","Published"]
+PC-07 sidebar Status options after config.statuses edited by hand + reopen: ["Outline","First Draft","Revised","Final"]
+PC-07 chosen status stored: "Revised"; config.statuses after the app wrote: ["Outline","First Draft","Revised","Final"]
+PC-08 subtypes STEP ERROR page.fill: Timeout 12000ms exceeded. | Call log: | [2m  - waiting for locator('input[aria-label=subtype-new]')[22m
+PC-09 after switching Timeline on in Metadata tab: config.features={"timeline":true}
+PC-09 after switching Point of View on in Metadata tab: config.features={"timeline":true,"pov":true}
+PC-09 after switching Synopsis on in Metadata tab: config.features={"timeline":true,"pov":true,"synopsis":true}
+PC-09 after switching Notes on in Metadata tab: config.features={"timeline":true,"pov":true,"synopsis":true,"notes":true}
+PC-09 after switching all four back off: {"timeline":false,"pov":false,"synopsis":false,"notes":false}
+PC-10/11 Timeline tab: ["Noise Words","Entities","Project Encryption","Timeline view","","Show the chronological Timeline view for this project. It reads the Timeline date fields, so turning the view on also enables those fields.","","Enable Timeline view"]
+PC-11 after Enable Timeline view only: config.features={"timeline":true,"timelineView":true,"pov":false,"synopsis":false,"notes":false}
+PC-11 after switching Timeline view off again: config.features={"timeline":true,"timelineView":false,"pov":false,"synopsis":false,"notes":false}
+PC-12 Entities tab before enabling Entities: ["Noise Words","Entities","Project Encryption","Entities","","Turn entity tracking on or off for this project. Disabling it hides the Entity, Entities Mentioned, and Entity Mentions sections, but keeps any values you’ve already saved.","","Entities","","The Entity, Entities Mentioned, and Entity Mentions sections in the sidebar.","","Mention-jump highlight duration"] checkboxes=["Set tag color:false",":true",":false",":false",":false",":false",":false"]
+PC-12 after Entities on: config.features={"timeline":true,"timelineView":false,"pov":false,"synopsis":false,"notes":false,"entities":true} ; tab text: ["Noise Words","Entities","Project Encryption","Entities","","Turn entity tracking on or off for this project. Disabling it hides the Entity, Entities Mentioned, and Entity Mentions sections, but keeps any values you’ve already saved.","","Entities","","The Entity, Entities Mentioned, and Entity Mentions sections in the sidebar.","","Entity highlighting","","Highlights entity names and aliases inline in the editor."]
+PC-12 after Entity highlighting on: config.features={"timeline":true,"timelineView":false,"pov":false,"synopsis":false,"notes":false,"entities":true,"entityHighlighting":true}
+PC-12 highlighted matches in Scene Text with entities + highlighting on: 1
+PC-12 after switching Entities off: config.features={"timeline":true,"timelineView":false,"pov":false,"synopsis":false,"notes":false,"entities":false,"entityHighlighting":true} ; tab text: ["Noise Words","Entities","Project Encryption","Entities","","Turn entity tracking on or off for this project. Disabling it hides the Entity, Entities Mentioned, and Entity Mentions sections, but keeps any values you’ve already saved.","","Entities","","The Entity, Entities Mentioned, and Entity Mentions sections in the sidebar.","","Mention-jump highlight duration"]
+PC-12 highlighted matches with entities off: 0
+PC-12 with features.entities=false, entityHighlighting=true edited by hand: matches=0 config.features={"timeline":true,"timelineView":false,"pov":false,"synopsis":false,"notes":false,"entities":false,"entityHighlighting":true}
+PC-12 Entities tab with entities off and entityHighlighting true: ["Noise Words","Entities","Project Encryption","Entities","","Turn entity tracking on or off for this project. Disabling it hides the Entity, Entities Mentioned, and Entity Mentions sections, but keeps any values you’ve already saved.","","Entities","","The Entity, Entities Mentioned, and Entity Mentions sections in the sidebar.","","Mention-jump highlight duration"]
+stop: recorded 71214(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
