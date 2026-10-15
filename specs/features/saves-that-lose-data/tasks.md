@@ -31,7 +31,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Satisfies FR-2, FR-3, FR-4. D-9 is CONFIRMED (handbook run `logs/task4/t4-sec2b.txt` showed `headings: {}`; the existing unit test asserts the reset), so no experiment is needed and no halt rule applies to this part. Read `frontend/src/lib/models/editor-config-core.ts` (the `headings` handling and the body branch near lines 106-109) before writing the assertions. Native parity is the same core; no separate native fix.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: D-9 fix: preserve stored headings when a save omits the `headings` key
 **What:** Make `updateEditorConfigCore` leave `config.editorConfig.headings` unchanged when the request has no `headings` key, and correct the comment above it.

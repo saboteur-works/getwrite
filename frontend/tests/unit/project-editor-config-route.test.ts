@@ -111,6 +111,86 @@ describe("POST /api/project/editor-config", () => {
     expect(saved.config.editorConfig.headings.h1.fontSize).toBe("42px");
   });
 
+  it("keeps stored headings when a later save sends only body", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+
+    await withProjectsDir(projectsDir, () =>
+      POST(
+        editorConfigRequest({
+          projectId,
+          headings: { h1: { fontSize: "42px" } },
+        }) as never,
+      ),
+    );
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        editorConfigRequest({ projectId, body: { fontSize: "18px" } }) as never,
+      ),
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.editorConfig.headings.h1.fontSize).toBe("42px");
+    const saved = JSON.parse(
+      await fs.readFile(path.join(projectPath, PROJECT_FILENAME), "utf8"),
+    );
+    expect(saved.config.editorConfig.headings.h1.fontSize).toBe("42px");
+    expect(saved.config.editorConfig.body.fontSize).toBe("18px");
+  });
+
+  it("leaves body unchanged when a later save sends only headings", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+
+    await withProjectsDir(projectsDir, () =>
+      POST(
+        editorConfigRequest({ projectId, body: { fontSize: "18px" } }) as never,
+      ),
+    );
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        editorConfigRequest({
+          projectId,
+          headings: { h1: { fontSize: "42px" } },
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    const saved = JSON.parse(
+      await fs.readFile(path.join(projectPath, PROJECT_FILENAME), "utf8"),
+    );
+    expect(saved.config.editorConfig.body.fontSize).toBe("18px");
+    expect(saved.config.editorConfig.headings.h1.fontSize).toBe("42px");
+  });
+
+  it("replaces stored headings when a save sends an explicit empty headings object", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+
+    await withProjectsDir(projectsDir, () =>
+      POST(
+        editorConfigRequest({
+          projectId,
+          headings: { h1: { fontSize: "42px" } },
+        }) as never,
+      ),
+    );
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(editorConfigRequest({ projectId, headings: {} }) as never),
+    );
+
+    expect(res.status).toBe(200);
+    const saved = JSON.parse(
+      await fs.readFile(path.join(projectPath, PROJECT_FILENAME), "utf8"),
+    );
+    expect(saved.config.editorConfig.headings).toEqual({});
+  });
+
   it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
     const projectsDir = await makeProjectsDir();
 
