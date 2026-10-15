@@ -146,7 +146,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 14
 **Estimate:** 3
 **Notes:** Satisfies FR-18, FR-19. `pnpm test:e2e`, `pnpm storybook` and `lsof` run OUTSIDE the sandbox in the main checkout; unit suites, knip and git inside. If the baseline at `main` cannot be run in the time, compare against the figures reported by Feature 78 and label them "reported, not re-run".
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Owner's final look at the paths (stop)
 **What:** Stop for the owner to take the final look at the six folders, file names and `order` values before merge.

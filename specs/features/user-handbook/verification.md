@@ -1482,3 +1482,111 @@ unresolved or failing assertions: 0
 ```
 
 No defect found in the tree; no page edited.
+
+## 22. Final suites (Task 15)
+
+Run on 2026-10-14 in the main checkout, branch `docs/user-handbook`, nothing committed by the implementor. Node/pnpm as installed (frontend `getwrite-frontend@2.2.0`, vitest v4.1.6). Inside the sandbox: git, `pnpm test:ci`, `pnpm typecheck`, `pnpm lint`, `pnpm knip`. Outside the sandbox: `lsof`, `ps`, `pnpm storybook`, `pnpm test:e2e`. Logs: `specs/features/user-handbook/logs/final-*.log` (the sandbox could not write under `/tmp/getwrite-handbook/logs/`, "operation not permitted", so the repo logs folder was used; `*.log` is gitignored) and `logs/final-diffstat.txt`.
+
+**What these suites can and cannot show.** The branch changes Markdown (and verification scripts) only, which none of these suites exercise. They confirm that no app code changed and the app's own checks still give the same results; they say nothing about whether the handbook is correct. The evidence for handbook correctness is the verification record (sections 1 to 19) and the link check (section 21).
+
+### 22.1 Changed paths
+
+`git status --short`: empty output (0 lines; tree clean at the time of the run, apart from the ignored log files).
+
+`git diff --stat main..HEAD` (full output saved to `logs/final-diffstat.txt`; the 168 lines for `specs/features/user-handbook/scripts/` and `specs/features/user-handbook/logs/` are omitted here, everything else is pasted):
+
+```
+ README.md                                          |    6 +-
+ docs/user/compiling.md                             |   16 +-
+ docs/user/editor/headings.md                       |   26 +-
+ docs/user/editor/settings.md                       |   21 +-
+ docs/user/features.md                              |  148 +-
+ docs/user/handbook/getting-started/installing.md   |   27 +
+ docs/user/handbook/index.md                        |   47 +
+ docs/user/handbook/organize/project-types.md       |   39 +
+ docs/user/handbook/organize/resource-tree.md       |   32 +
+ docs/user/handbook/organize/start-page.md          |   35 +
+ docs/user/handbook/protect-and-finish/compiling.md |   38 +
+ .../protect-and-finish/project-configuration.md    |  108 ++
+ docs/user/handbook/protect-and-finish/resources.md |   29 +
+ docs/user/handbook/protect-and-finish/revisions.md |   57 +
+ docs/user/handbook/protect-and-finish/trash.md     |   27 +
+ docs/user/handbook/story/metadata-queries.md       |  111 ++
+ docs/user/handbook/story/metadata.md               |  113 ++
+ docs/user/handbook/views/data.md                   |   36 +
+ docs/user/handbook/views/diff.md                   |   19 +
+ .../handbook/views/entity-relationship-graph.md    |   76 +
+ docs/user/handbook/views/entity-roster.md          |   42 +
+ docs/user/handbook/views/organizer.md              |   57 +
+ docs/user/handbook/views/timeline.md               |  104 ++
+ docs/user/handbook/write/editor-appearance.md      |   40 +
+ docs/user/handbook/write/editor.md                 |   26 +
+ docs/user/handbook/write/headings.md               |   44 +
+ docs/user/handbook/write/search.md                 |   17 +
+ docs/user/handbook/write/writing-log.md            |   71 +
+ docs/user/installing.md                            |   88 +-
+ docs/user/metadata-queries.md                      |   93 +-
+ docs/user/metadata.md                              |   92 +-
+ docs/user/project-configuration.md                 |   69 +-
+ docs/user/project-types.md                         |   27 +-
+ docs/user/resource-tree.md                         |   16 +-
+ docs/user/resources.md                             |   17 +-
+ docs/user/revisions.md                             |   40 +-
+ docs/user/search.md                                |    4 +-
+ docs/user/start-page.md                            |   23 +-
+ docs/user/views/data.md                            |   28 +-
+ docs/user/views/diff.md                            |    6 +-
+ docs/user/views/entity-relationship-graph.md       |   51 +-
+ docs/user/views/entity-roster.md                   |   23 +-
+ docs/user/views/organizer.md                       |   36 +-
+ docs/user/views/timeline.md                        |   89 +-
+ docs/user/writing-log.md                           |   43 +-
+ specs/features/user-handbook.md                    |  105 ++
+ specs/features/user-handbook/runs.md               |   61 +
+ specs/features/user-handbook/tasks.md              |  164 +++
+ specs/features/user-handbook/verification.md       | 1484 ++++++++++++++++++++
+ specs/product/getwrite.features.md                 |   60 +-
+ specs/product/getwrite.md                          |  121 ++
+ 220 files changed, 11988 insertions(+), 924 deletions(-)
+```
+
+Top-level split of `git diff --name-only main..HEAD`: `docs/user` 44 files, `README.md` 1, `specs/features` 173 (all under `specs/features/user-handbook/` plus `specs/features/user-handbook.md`), `specs/product` 2 (`getwrite.features.md`, `getwrite.md`). A grep of the name list against the allowed set (`docs/user/`, `README.md`, the five developer docs, `specs/features/user-handbook/`, `specs/product/getwrite.features.md`, `specs/product/getwrite.md`, `specs/features/user-handbook.md`) printed nothing: no path outside the allowed set. Observation, not a finding: none of the five developer docs (`docs/features/project-types.md`, `docs/features/revisions.md`, `docs/features/editor/headings.md`, `docs/features/editor/settings.md`, `docs/features/data/metadata.md`) appears in the diff against `main`.
+
+```
+$ git diff --stat main..HEAD -- frontend electron cli
+(empty)
+$ git diff main..HEAD -- frontend electron cli | wc -c
+       0
+$ git diff main..HEAD -- frontend/components/help/help-content.ts | wc -c
+       0
+```
+
+`frontend/components/help/help-content.ts` is unchanged. Electron and CLI suites were not run: those packages are untouched (empty `git diff --stat` above).
+
+### 22.2 Processes, ports, folders
+
+- Before the suites: `lsof -nP -iTCP:<port> -sTCP:LISTEN` on 7340, 3000 and 6006 printed nothing (no owner listener, nothing to leave alone). A listing of all TCP listeners filtered to node/Electron/chrom lines was empty. The ports earlier tasks recorded using (7340, 3000, 6006 in `runs.md`) are the same three.
+- Storybook (`pnpm storybook --ci`, port 6006, started after confirming 6006 free): shell pid 13534; descendants walked with `ps -axo pid=,ppid=`: 13536, 13540, 13559 (the listener, `storybook dev -p 6006`), 13577, 13748, 13749. `pnpm test:e2e` ran against it (`reuseExistingServer: true`). Stopped with `kill` on exactly those seven pids; afterwards `ps -p` showed none of them, and `lsof` on 6006, 7340 and 3000 printed nothing.
+- Throwaway folders: `/tmp/getwrite-handbook` contains only `logs/`; `ls -d ~/Library/Logs/gw-handbook*` reported "no matches found". `~/Library/Logs/getwrite-electron`, `~/Library/Application Support/getwrite-electron/`, `~/Documents/GetWrite` and the repo's `projects/` were not read.
+
+### 22.3 Suite results
+
+| Suite | Where | Result |
+|---|---|---|
+| `pnpm test:ci` (frontend) | sandbox | exit 0. 608 test files passed (608); 6468 tests passed, 1 skipped (6469). Duration 57.64 s. One stderr line "Not implemented: navigation to another Document" |
+| `pnpm typecheck` (frontend) | sandbox | exit 0, no output from `tsc --noEmit` |
+| `pnpm lint` (frontend) | sandbox | exit 0. 395 problems: 0 errors, 395 warnings (7 potentially fixable with `--fix`) |
+| `pnpm knip` (repo root) | sandbox | exit 1. Unused files 177; unused dependencies 1; unused devDependencies 4; unlisted dependencies 6; unlisted binaries 4; unused exports 166; unused exported types 170; duplicate exports 14; configuration hints 6 |
+| `pnpm test:e2e` (frontend) | outside sandbox, Storybook on 6006 | exit 0. 214 passed, 1 skipped (1.3 m) |
+
+`pnpm knip` exit 1 is recorded as a result, not fixed. Of the 177 unused files, 91 are under `specs/features/user-handbook/` (this feature's own verification scripts, as Feature 78 reported for its own scripts); the other 86 are not under that folder (for example `frontend/src/store/transport` 23, `specs/features/two-client-save-measurement/scripts` 20, `specs/features/desktop-server-port/scripts` 9, `specs/features/paired-device-limits/scripts` 7, `android/harness/shims` 5, `frontend/src/native-shims` 4, `demo` 4). Whether the other categories differ from `main` was not measured (see baseline).
+
+### 22.4 Baseline
+
+A genuine baseline run was not made: the app code at `main` equals the code at HEAD (section 22.1, empty diff for `frontend electron cli`), so a run at `main` would execute the same code, and switching branches is not permitted here. Figures reported by Feature 78 for the same frontend code, from `docs/features/home-network-sharing.md` (suites on the branch tip before the merge, 2026-10-11, node v24.15.0), labelled **reported, not re-run**: frontend 608 files, 6468 passed, 1 skipped; both typechecks clean; lint 0 errors; e2e 214 passed, 1 skipped. The counts above equal those reported figures (608 files, 6468 passed, 1 skipped; lint 0 errors; e2e 214 passed, 1 skipped). Knip: that document reports only "four more unused files than the baseline, all this feature's own verification scripts" (Feature 78), no absolute counts; there is no reported knip baseline to compare the 177 against.
+
+### 22.5 Deviations
+
+- Logs went to `specs/features/user-handbook/logs/` instead of `/tmp/getwrite-handbook/logs/` for the in-sandbox suites (sandbox write denied at the `/tmp` path).
+- `pnpm storybook` was started with `--ci`; Playwright's configured `webServer` is a static build plus server on the same port, and it reused the running Storybook.
+- No failing suite; nothing fixed.
