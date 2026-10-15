@@ -49,7 +49,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-5, FR-6. Halt rule: if the experiment shows the payload carries the correct `wordCount` and the stored value is still 0, or any result inconsistent with the hypothesis, stop; do not implement the OQ-1 option 2 fix or any other. Observing the stored value is the point; do not mock `updateSidecar`. Leave `page-stale-sidecar-save.test.tsx` untouched (OQ-6).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: D-26 failing tests: a Status choice after a canonical save leaves the stored wordCount
 **What:** Add a failing test that a Status choice after a canonical save leaves the stored `wordCount` at the saved value, plus the narrow D-26-named Status-change test.
