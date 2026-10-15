@@ -119,7 +119,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 9, 10
 **Estimate:** 1
 **Notes:** Satisfies FR-9, FR-11, FR-19(d), FR-19(f). Inside the sandbox.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Pre-merge re-check of pages touched by writer-visible commits
 **What:** List the writer-visible commits since each page's base commit and re-check only the pages those commits touch.

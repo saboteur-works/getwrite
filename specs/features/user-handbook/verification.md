@@ -1345,3 +1345,37 @@ Resolve check output: 19 relative links across the six files, 0 failing (includi
 `git diff --stat` (tracked files, before this section and the script): `README.md | 6 +++---`, 1 file changed.
 
 References to the old `docs/user` paths outside the allowed set, reported and NOT edited: `docs/roadmap.md` lines 47-49 (links to `user/views/organizer.md`, `user/revisions.md`), 55 (`user/metadata-queries.md`), 56 (`user/compiling.md`) — all resolve through stubs; `docs/features/status-rollup.md:3` (`../user/views/data.md`, resolves through the stub); `.claude/settings.local.json:99` (a permission string, not a link); and prose mentions in `specs/` (protect-revision, daily-writing-log, word-count-goals, prose-diagnostics, project-status-rollup tasks files, `specs/product/getwrite.md`, `getwrite.features.md`, `home-network-sharing` files). `CLAUDE.md`, `frontend/`, `cli/`, `electron/`: no match.
+
+## 19. Task 12 record (sharing-text search and release-note/table check)
+
+Run inside the sandbox, 2026-10-14. No page was edited.
+
+**Search (FR-9).** Command and output:
+
+```
+$ grep -rniE "sharing|paired|pairing|home network|7340" docs/user/handbook/
+(no output)
+exit=1
+```
+
+No match for `sharing`, `paired`, `pairing`, `home network` or `7340` (case-insensitive) in `docs/user/handbook/`. No row needed correcting to `dropped`; no page's verified-against line changed. Decision per FR-9 for an unrelated-sense match: not applicable, there was no match.
+
+**Note count per page.** Command: `grep -rcF "Not yet in a release (merged after 2.2.0)." docs/user/handbook/ | grep -v ':0$'`. A second grep for any line containing `Not yet in a release` that is not the exact note text returned nothing (exit 1).
+
+| Page | Notes on page | Entries in section 7 table |
+| --- | ---: | ---: |
+| `organize/start-page.md` | 1 | 1 |
+| `write/writing-log.md` | 6 | 6 |
+| `write/headings.md` | 1 | 1 |
+| `write/editor-appearance.md` | 1 | 1 |
+| `story/metadata.md` | 4 | 4 |
+| `views/organizer.md` | 3 | 3 |
+| `views/data.md` | 1 | 1 |
+| `views/timeline.md` | 1 | 1 |
+| `views/entity-roster.md` | 3 | 3 |
+| `views/entity-relationship-graph.md` | 5 | 5 |
+| `protect-and-finish/revisions.md` | 3 | 3 |
+| `protect-and-finish/project-configuration.md` | 7 | 7 |
+| Total | 36 | 36 |
+
+Table entries counted from lines 906 to 941 of this file (36 rows). Every page with a note has the same number of table entries, and no page without a note has an entry. No mismatch found; no edit made to any note or to the table.
