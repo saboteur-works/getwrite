@@ -92,7 +92,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 3, 4, 5, 6, 7, 8
 **Estimate:** 2
 **Notes:** Satisfies FR-2, FR-4. No app needed unless an intro statement requires a run, in which case use the harness outside the sandbox.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Replace the 21 old pages with stubs
 **What:** Turn each old `docs/user/` page into a stub of at most five lines linking to its new page(s).
