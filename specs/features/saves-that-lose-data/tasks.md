@@ -58,7 +58,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-26. Runs only if Task 3 left the hypothesis not disproved. The test description for the narrow test must not say the family is understood or closed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: D-26 fix: updateSidecarCore ignores client-sent derived keys
 **What:** Make `updateSidecarCore` drop `wordCount` (and `updatedAt` only if Task 3 recorded it as server-derived and client-sent) from a client sidecar update before the merge.

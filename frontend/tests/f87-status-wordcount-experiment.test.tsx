@@ -214,3 +214,58 @@ describe("F87 Task 3 experiment: Status choice after a 10-word canonical save", 
     );
   });
 });
+
+describe("D-26: Status choice after a 10-word canonical save", () => {
+  // Covers the Status-change path only. It does not close, and says nothing
+  // about the cause of, the wider stale-save family measured in
+  // page-stale-sidecar-save.test.tsx.
+  it("sends and stores the saved wordCount (10) when Status is chosen", async () => {
+    const { default: Page } = await import("../app/(app)/page");
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <Page />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(store.getState().resources.resources.length).toBe(1),
+    );
+    store.dispatch(setResourceId(RESOURCE_ID));
+    const statusSelect = (await screen.findByLabelText(
+      "status",
+    )) as HTMLSelectElement;
+
+    const revisions = await listRevisions(PROJECT_ROOT, RESOURCE_ID);
+    const canonical = revisions.find((r) => r.isCanonical);
+    expect(canonical).toBeDefined();
+    await updateRevisionInPlace(
+      PROJECT_ROOT,
+      RESOURCE_ID,
+      canonical!.id,
+      JSON.stringify(
+        plainTextToTipTapDocument(
+          "one two three four five six seven eight nine ten",
+        ),
+      ),
+    );
+    expect((await readSidecar(PROJECT_ROOT, RESOURCE_ID))?.wordCount).toBe(10);
+
+    fireEvent.change(statusSelect, { target: { value: "Published" } });
+    await waitFor(() => expect(updateSidecarMock).toHaveBeenCalledTimes(1));
+    const payload = updateSidecarMock.mock.calls[0][2] as Record<
+      string,
+      unknown
+    >;
+    await waitFor(async () => {
+      const s = await readSidecar(PROJECT_ROOT, RESOURCE_ID);
+      expect(
+        (s?.userMetadata as Record<string, unknown> | undefined)?.status,
+      ).toBe("Published");
+    });
+    const stored = await readSidecar(PROJECT_ROOT, RESOURCE_ID);
+    expect(payload.wordCount).toBe(10);
+    expect(stored?.wordCount).toBe(10);
+  });
+});
