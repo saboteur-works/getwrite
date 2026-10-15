@@ -40,7 +40,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 1
 **Estimate:** 1
 **Notes:** Satisfies FR-1, FR-3, FR-4 (comment), FR-22 (one fix for HTTP and native). Do not change body-key behaviour.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: D-26/D-29 experiment: what the Status change sends and what the sidecar stores
 **What:** Reproduce D-26 and record the sidecar `wordCount` after typing, the `wordCount` in the payload `updateResource` sends for a Status change, and the sidecar `wordCount` after it, then decide whether the hypothesis is confirmed or the part halts.
