@@ -101,7 +101,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 3, 4, 5, 6, 7, 8, 9
 **Estimate:** 2
 **Notes:** Satisfies FR-6, FR-7. Inside the sandbox. If `#why-desktop-not-web` is not a heading on the stub, either keep a heading with that anchor on the `installing.md` stub or repoint README (Task 11) to the handbook page; record which.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Repair links in README and the five developer docs
 **What:** Make every `docs/user/` link in `README.md` and the five developer docs resolve, pointing README at handbook pages.

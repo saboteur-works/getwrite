@@ -1319,3 +1319,13 @@ orders unique: true index order sequence ascending: true
 ```
 
 Search of `index.md` for `sharing|paired|pairing|home network|7340|Feature 8[2-5]` (case-insensitive): no match (grep exit 1). Front matter of `index.md`: `title`, `order: 0`, `summary`; no verified-against line.
+
+## 17. Task 10 record (stubs at the 21 old paths)
+
+Inside the sandbox. Each of the 21 old files under `docs/user/` (everything except `docs/user/handbook/`) now holds three lines: a heading naming the page, a blank line, and one sentence "This page moved to [name](relative path)." (two links for `features.md` and `revisions.md`). No front matter, no other content. `wc -l`: 3 for every one of the 21 files (63 total). Targets: `features.md` to `handbook/index.md` and `handbook/write/editor.md`; `revisions.md` to `handbook/protect-and-finish/revisions.md` and `handbook/protect-and-finish/trash.md`; `editor/settings.md` to `../handbook/write/editor-appearance.md`; the rest to the one page named in section 3.
+
+Link check (relative links in the 21 stubs, resolved against the filesystem): 23 links, 23 existing, 0 missing. All 21 old paths still exist. No stub has front matter (grep for a leading `---` over the stubs: no match).
+
+### `#why-desktop-not-web` decision
+
+`README.md` links to `docs/user/installing.md#why-desktop-not-web` (lines 12 and 21). The old heading "Why desktop, not web" was a section of the old page; the new installing page has no such anchor (its sections are "Where your work is stored", "No database", "Warnings and limits"). Option chosen: repoint README to the handbook page in Task 11, not keep the anchor on the stub. Reason: a stub heading of "Why desktop, not web" would not name the page truthfully (the heading must name the page, "Installing GetWrite"), and a second heading would break the three-content-line stub shape of FR-7. The stub heading stays "Installing GetWrite". Task 11 must also repoint the README text to an anchor that exists on the handbook page, or drop the fragment. README was not edited in this task.
