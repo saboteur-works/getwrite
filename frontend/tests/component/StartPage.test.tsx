@@ -30,6 +30,17 @@ vi.mock("../../src/store/sharing-limits-transport-service", () => ({
   fetchSharingLimits: () => fetchSharingLimits(),
 }));
 
+const compileTextMock = vi.fn();
+vi.mock("../../src/lib/api/compile", () => ({
+  compilePdf: vi.fn(),
+  compileDocx: vi.fn(),
+  compileMarkdown: vi.fn(),
+  compileText: (...args: unknown[]) => compileTextMock(...args),
+}));
+vi.mock("../../src/lib/compile/download-file", () => ({
+  downloadFile: vi.fn(),
+}));
+
 import SharingLimitsProvider from "../../components/Sharing/SharingLimitsContext";
 import {
   UNLOCK_AT_DESKTOP_MESSAGE,
@@ -730,6 +741,31 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
     const scoped = within(dialog);
     expect(scoped.getByText("Scene In Folder")).toBeInTheDocument();
     expect(scoped.getByText("Scene Other")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["no folderId", undefined],
+    ["a folderId naming a missing folder", "folder-missing"],
+  ])("compile input names both resources (%s)", async (_label, folderId) => {
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    const dialog = await openCompileDialog(entryFor(folderId));
+    const user = userEvent.setup();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    expect(compileTextMock).toHaveBeenCalledTimes(1);
+    const body = compileTextMock.mock.calls[0][0] as {
+      resourceIds: string[];
+      resources: { id: string }[];
+    };
+    expect([...body.resourceIds].sort()).toEqual([
+      "res-in-folder",
+      "res-other",
+    ]);
+    expect(body.resources.map((r) => r.id)).toEqual(
+      expect.arrayContaining(["res-in-folder", "res-other"]),
+    );
   });
 
   it("the project card shows 2 resources for the same project (no folderId case)", () => {

@@ -312,6 +312,29 @@ export default function StartPage({
     );
     if (!entry) return [];
     const result: AnyResource[] = [];
+    const idsInFolders = new Set<string>();
+    for (const folder of entry.folders as any[]) {
+      for (const r of (folder.resources as any[]) ?? []) {
+        idsInFolders.add(r.id);
+      }
+    }
+    // Resources held by no listed folder (no folderId, or one naming a missing
+    // folder) sit at the root of the compile tree.
+    for (const r of entry.resources as any[]) {
+      if (r.type === "folder" || idsInFolders.has(r.id)) continue;
+      result.push({
+        id: r.id,
+        name: r.title ?? r.name ?? "",
+        slug: r.slug ?? r.id,
+        type: r.type ?? "text",
+        folderId: null,
+        orderIndex: r._orderIndex ?? r.orderIndex ?? 0,
+        createdAt: r.createdAt ?? "",
+        updatedAt: r.updatedAt ?? "",
+        userMetadata: r.userMetadata ?? {},
+        plainText: r.content ?? "",
+      } as AnyResource);
+    }
     for (const folder of entry.folders as any[]) {
       result.push({
         id: folder.id,

@@ -139,7 +139,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 12
 **Estimate:** 2
 **Notes:** Satisfies FR-20, FR-22 (shared client code, covers native). Runs only if Task 12 produced a red test.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Final suites (FR-25) and acceptance record
 **What:** Run the final suites, record each result as run or not run against the baseline, and record which parts landed or halted.
