@@ -67,7 +67,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 4
 **Estimate:** 2
 **Notes:** Satisfies FR-24, FR-28 (server half), FR-22 (shared core covers HTTP and native). The canonical save still writes `wordCount` through its own path (`revision-core.ts`); confirm that path does not go through the ignore.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: D-26/D-29 fix: update the page/Redux wordCount from the canonical save so By status agrees without a reload
 **What:** Make the page/Redux copy of the resource's `wordCount` follow the canonical save so the Data view's By status figure matches the footer without a reload.
