@@ -103,7 +103,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-12, FR-13, FR-14, FR-16. Runs only if Task 8 left the hypothesis not disproved. FR-16 expects restore to work from the ref record once deletion records `pov`; the test is what establishes it, so a restore case may only turn green after Task 10.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: D-36 fix: one shared helper for reference-field keys used by deleteResourceCore and softDeleteFolder
 **What:** Add one helper computing the effective reference-field keys (`DEFAULT_METADATA_SCHEMA` merged with any persisted schema) and use it at the `deleteResourceCore` and `softDeleteFolder` sites.

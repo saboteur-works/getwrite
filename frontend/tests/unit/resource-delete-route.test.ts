@@ -12,6 +12,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
+import {
+  makeRefFixture,
+  readOtherUserMetadata,
+  type SchemaState,
+} from "./helpers/f87-reference-delete-fixture";
 
 const tmpDirs: string[] = [];
 
@@ -101,5 +106,49 @@ describe("POST /api/resource/[resource-id]/delete (projectId-based)", () => {
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
     });
+  });
+});
+
+describe("F87 D-36: POST /api/resource/[resource-id]/delete against a referencing Point of View", () => {
+  async function run(
+    schema: SchemaState,
+    withMultiRefField = false,
+  ): Promise<Record<string, unknown>> {
+    const f = await makeRefFixture("gw-f87-route-", {
+      schema,
+      withMultiRefField,
+    });
+    tmpDirs.push(f.projectsDir);
+    return withProjectsDirEnv(f.projectsDir, async () => {
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/delete/route");
+      const res = await POST(
+        deleteRequest(f.targetId, { projectId: f.projectId }) as never,
+        { params: Promise.resolve({ "resource-id": f.targetId }) },
+      );
+      expect(res.status).toBe(200);
+      return readOtherUserMetadata(f);
+    });
+  }
+
+  it("never-edited schema: pov of the referencing resource reads {id: null, name} after the target is deleted", async () => {
+    expect((await run("never-edited"))["pov"]).toEqual({
+      id: null,
+      name: "Mara",
+    });
+  });
+
+  it("schema-edited project: pov of the referencing resource reads {id: null, name} after the target is deleted", async () => {
+    expect((await run("schema-edited"))["pov"]).toEqual({
+      id: null,
+      name: "Mara",
+    });
+  });
+
+  it("multi-resource-ref field: the entry naming the target is cleared and the other entry is kept", async () => {
+    expect((await run("schema-edited", true))["characters"]).toEqual([
+      { id: null, name: "Mara" },
+      { id: "11111111-1111-4111-8111-111111111111", name: "Keep" },
+    ]);
   });
 });

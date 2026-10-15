@@ -13,6 +13,13 @@ import { deleteResourceCore } from "../../src/lib/models/resource-crud-core";
 import { createTextResource } from "../../src/lib/models/resource-factory";
 import { writeResourceToFile } from "../../src/lib/models/resource-persistence";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { restoreResource } from "../../src/lib/models/trash";
+import {
+  makeRefFixture,
+  readOtherUserMetadata,
+  type RefFixture,
+  type SchemaState,
+} from "./helpers/f87-reference-delete-fixture";
 
 async function makeProjectDir(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-trash-ref-record-"));
@@ -240,5 +247,91 @@ describe("deleteResourceCore — always writes a ref record (Task 23, FR-8 clari
     };
     expect(parsed.resourceId).toBe(resource.id);
     expect(parsed.entries).toEqual([]);
+  });
+});
+
+describe("F87 D-36: deleteResourceCore and restore against a referencing Point of View", () => {
+  const roots: string[] = [];
+
+  afterEach(async () => {
+    while (roots.length > 0) {
+      const dir = roots.pop();
+      if (dir) await removeDirRetry(dir);
+    }
+  });
+
+  async function setup(
+    schema: SchemaState,
+    withMultiRefField = false,
+  ): Promise<RefFixture> {
+    const f = await makeRefFixture("gw-f87-core-", {
+      schema,
+      withMultiRefField,
+    });
+    roots.push(f.projectsDir);
+    return f;
+  }
+
+  async function deleteTarget(f: RefFixture): Promise<void> {
+    const original = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = f.projectsDir;
+    try {
+      await deleteResourceCore(f.projectId, f.targetId);
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = original;
+    }
+  }
+
+  it("never-edited schema: pov of the referencing resource reads {id: null, name} after the target is deleted", async () => {
+    const f = await setup("never-edited");
+    await deleteTarget(f);
+    expect((await readOtherUserMetadata(f))["pov"]).toEqual({
+      id: null,
+      name: "Mara",
+    });
+  });
+
+  it("schema-edited project: pov of the referencing resource reads {id: null, name} after the target is deleted", async () => {
+    const f = await setup("schema-edited");
+    await deleteTarget(f);
+    expect((await readOtherUserMetadata(f))["pov"]).toEqual({
+      id: null,
+      name: "Mara",
+    });
+  });
+
+  it("multi-resource-ref field: the entry naming the target is cleared and the other entry is kept", async () => {
+    const f = await setup("schema-edited", true);
+    await deleteTarget(f);
+    expect((await readOtherUserMetadata(f))["characters"]).toEqual([
+      { id: null, name: "Mara" },
+      { id: "11111111-1111-4111-8111-111111111111", name: "Keep" },
+    ]);
+  });
+
+  it("never-edited schema: restoring the target leaves pov pointing at it again", async () => {
+    const f = await setup("never-edited");
+    await deleteTarget(f);
+    const result = await restoreResource(f.root, f.targetId);
+    expect(result.referencesRestored).toEqual([
+      { referencingResourceId: f.otherId, fieldKey: "pov" },
+    ]);
+    expect((await readOtherUserMetadata(f))["pov"]).toEqual({
+      id: f.targetId,
+      name: "Mara",
+    });
+  });
+
+  it("schema-edited project: restoring the target leaves pov pointing at it again", async () => {
+    const f = await setup("schema-edited");
+    await deleteTarget(f);
+    const result = await restoreResource(f.root, f.targetId);
+    expect(result.referencesRestored).toEqual([
+      { referencingResourceId: f.otherId, fieldKey: "pov" },
+    ]);
+    expect((await readOtherUserMetadata(f))["pov"]).toEqual({
+      id: f.targetId,
+      name: "Mara",
+    });
   });
 });
