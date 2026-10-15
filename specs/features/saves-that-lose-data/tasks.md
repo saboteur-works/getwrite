@@ -121,7 +121,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 10
 **Estimate:** 2
 **Notes:** Satisfies FR-13, FR-14, FR-15. The route has no native counterpart (HTTP-only, FR-22). Do not remove the route (OQ-3).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: D-3/D-39 failing test: Start Page Package lists one of two
 **What:** Add a test that renders `StartPage` with one resource in a folder and one with no `folderId`, opens Manage > Package > Compile Project, and shows the dialog listing one of two; also pin the Start Page resource count.
