@@ -17,8 +17,7 @@ GetWrite ships as a desktop app for macOS, Windows, and Linux. Download the
 latest build from the [Releases page](https://github.com/saboteur-works/getwrite/releases/latest).
 
 The current builds are **not yet signed by Apple/Microsoft**, so the OS will warn
-before the first launch — see **[docs/user/handbook/getting-started/installing.md](docs/user/handbook/getting-started/installing.md)**
-for the one-time steps to open it (and a note on [where GetWrite keeps your work](docs/user/handbook/getting-started/installing.md#where-your-work-is-stored)).
+before the first launch. See [where GetWrite keeps your work](docs/user/handbook/getting-started/installing.md#where-your-work-is-stored).
 
 The rest of this README is for developing GetWrite from source.
 
