@@ -41,3 +41,38 @@ The Redux/page copy of the resource was not re-read in this experiment; (b) is t
 ### Verdict
 
 Hypothesis not disproved: payload carried a stale wordCount and the stored value followed it. Specifically: (a) shows the sidecar held 10 after the canonical save; (b) shows the Status payload carried 0; (c) shows the sidecar held 0 after the Status change. (a)-(c) together separate "the payload carried 0 and the stored value became 0" from "the payload carried 10 and the stored value was still 0"; they do not separate why the page's copy held 0.
+
+## Part C: D-36 (Task 8)
+
+### Environment record
+
+Command run before any process start: `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` (outside the sandbox).
+Output: empty (no listener on 7340, 3000 or 6006; exit status 1). This experiment started no server and no other process; it is a vitest run.
+
+### Method
+
+Test file: `frontend/tests/unit/f87-pov-delete-experiment.test.ts`, describe "F87 Task 8 experiment: pov in the reference-key list". Run with
+`pnpm --filter getwrite-frontend exec vitest run tests/unit/f87-pov-delete-experiment.test.ts --silent=false --reporter=verbose` (6 passed; the test asserts nothing about the values, it prints `F87C ...` lines).
+
+- Storage: a throwaway folder per case under `os.tmpdir()` with prefix `gw-f87c-`; each path is asserted to start with that prefix before use; removed in `afterAll`. The real filesystem adapter is used, not the memory adapter. Nothing under `projects/` or the app data folders was touched.
+- Each case: a `project.json` with `config: {}` (no `metadataSchema`); a target text resource named "Mara"; another text resource whose sidecar `userMetadata.pov` is `{id: <target id>, name: "Mara"}`. Resources are written with `createTextResource`/`writeResourceToFile`, then the other sidecar is rewritten with the `pov` value. For the folder site the target sits in a folder.
+- Phase "never-edited": `project.json` untouched. Phase "after-one-schema-edit": one `addGroup` call (group id `custom-group`, one text field `extra`) which persists `config.metadataSchema`; `pov` was not named in that edit.
+- Sites run: `deleteResourceCore` (resource-crud-core.ts), `softDeleteFolder` (trash.ts, folder containing the target), and the `POST /api/resource/[resource-id]/delete` route handler.
+- "Key list" is observed by applying, to the output of `getSchema(projectRoot)`, the same filter each site applies in its source (`resource-ref` + `multi-resource-ref` for the first two; `resource-ref` only for the route); the test file reproduces that filter, it does not read the sites' internal variable. The outcome (the other resource's `userMetadata.pov` read from its sidecar on disk after the deletion) comes from the real site call. Redux was not involved.
+
+### Observed values
+
+| phase | site | `config.metadataSchema` in project.json | key list | `pov` in key list | other resource `userMetadata.pov` on disk after delete |
+|---|---|---|---|---|---|
+| never-edited | deleteResourceCore | absent (false) | `[]` | false | `{"id":"<target id>","name":"Mara"}` |
+| never-edited | softDeleteFolder | absent (false) | `[]` | false | `{"id":"<target id>","name":"Mara"}` |
+| never-edited | delete route | absent (false) | `[]` | false | `{"id":"<target id>","name":"Mara"}` |
+| after one schema edit | deleteResourceCore | present (true) | `["pov"]` | true | `{"id":null,"name":"Mara"}` |
+| after one schema edit | softDeleteFolder | present (true) | `["pov"]` | true | `{"id":null,"name":"Mara"}` |
+| after one schema edit | delete route | present (true) | `["pov"]` | true | `{"id":null,"name":"Mara"}` |
+
+Not measured here: why the persisted schema after the edit contains `pov` (the observation is only that `getSchema` returned it after `addGroup` and not before); `multi-resource-ref` behaviour; restore.
+
+### Verdict
+
+Hypothesis not disproved: for a never-edited project, `getSchema` returned no `resource-ref` keys at all (key list `[]`, `pov` absent) at all three sites and the other resource's `pov` was left as `{"id":<target id>,"name":"Mara"}`; after one schema edit that persisted `config.metadataSchema`, `pov` was in the key list at all three sites and was cleared to `{"id":null,"name":"Mara"}`. The earlier sidecar read was not contradicted.

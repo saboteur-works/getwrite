@@ -94,7 +94,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-10, FR-11. Halt rule: if `pov` is in the key list and is still not cleared, or it is cleared and the earlier sidecar read was wrong, stop. The sidecar is read from disk, not from Redux. The hypothesis to test is that `getSchema` returns no `resource-ref` keys for a never-edited project.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: D-36 failing tests: three delete paths, multi-resource-ref and restore
 **What:** Add failing tests that deleting a resource clears the built-in Point of View reference at each of the three sites in a never-edited-schema project, that all three treat `multi-resource-ref` alike, and that restore re-links `pov`.
