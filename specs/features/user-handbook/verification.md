@@ -1446,3 +1446,39 @@ Total commits in each range (all docs or spec commits on this branch): `0343e19a
 | `protect-and-finish/project-configuration.md` | `a07e14cc` | empty | not touched | yes |
 
 **Result.** No commit since any page's base commit touches a writer-visible path, so no statement was re-run and no verified-against line changed. Recorded as measured: the check covers the commits between each page's base sha and `958db8b6`; if `main` moves before merge, this section must be repeated from the same command.
+
+## 21. Link check (Task 14)
+
+Script: `specs/features/user-handbook/scripts/check-links.mjs` (one-off; Feature 85 owns the committed check). Run inside the sandbox, 2026-10-14. No app, no process started; no page edited. Assertions: every relative link and `#anchor` (anchor slugs computed GitHub-style from heading text, fenced code skipped) in the 23 handbook files, the 21 stubs, `README.md` and the five repointed developer docs; no handbook page links outside `docs/user/handbook/`; every page linked from `index.md`; every page except `index.md` ends with a line starting `Verified against GetWrite`; front matter keys exactly `title,order,summary`, `order` unique, `index.md` = 0; every stub at most five lines with no front matter.
+
+**Failure shown first.** The sandbox refused `mkdir` under `/tmp/getwrite-handbook/` (`Operation not permitted`), so the scratch copy was made under the session scratchpad directory instead (`.../scratchpad/getwrite-handbook/run-1`), with the script's path assertion pointed at that prefix through `GW_SCRATCH_PREFIX`; without the variable the script refused the path (`exit=2`). The copy held `docs/user/`, the five developer docs, and `README.md` only, so links from README and the developer docs to files not copied also failed there (copy artefacts, not defects in the tree). One deliberate break was appended to the copy of `docs/user/handbook/write/editor.md`: `see [x](write/nonexistent.md)`. Output (exit 1):
+
+```
+FAIL docs/user/handbook/write/editor.md -> write/nonexistent.md (target missing)
+FAIL README.md -> docs/architecture/ADRs/adr-018-tenant-resolution-per-user-data-root.md (target missing)
+FAIL README.md -> docs/features/home-network-sharing.md (target missing)
+FAIL README.md -> docs/architecture/ADRs/adr-020-hybrid-auth-postgres-better-auth.md (target missing)
+FAIL docs/features/revisions.md -> cli.md#templates-duplicate (target missing)
+FAIL docs/features/revisions.md -> ./cli.md (target missing)
+FAIL docs/features/revisions.md -> ../api/openapi.yaml (target missing)
+FAIL docs/features/data/metadata.md -> ../resource-subtype.md (target missing)
+FAIL docs/features/data/metadata.md -> ../resource-subtype.md (target missing)
+FAIL docs/user/handbook/write/editor.md does not end with a "Verified against GetWrite" line
+files checked: 50 (23 handbook, 21 stubs, README, 5 developer docs)
+relative links and anchors resolved: 98
+pages linked from index.md: 22 of 22
+unresolved or failing assertions: 10
+```
+
+The scratch copy was removed (`rm -rf` of the `getwrite-handbook` directory in the scratchpad; `ls` then reported "No such file or directory").
+
+**Real check.** Command: `node specs/features/user-handbook/scripts/check-links.mjs` from the repo root. Output (exit 0):
+
+```
+files checked: 50 (23 handbook, 21 stubs, README, 5 developer docs)
+relative links and anchors resolved: 97
+pages linked from index.md: 22 of 22
+unresolved or failing assertions: 0
+```
+
+No defect found in the tree; no page edited.

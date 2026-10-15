@@ -137,7 +137,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 13
 **Estimate:** 3
 **Notes:** Satisfies FR-19(a), FR-19(b), FR-19(c). Inside the sandbox. If the script finds a defect, repair that specific defect; do not rewrite pages.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Final suites and no-change confirmation
 **What:** Confirm the change touched only docs and the allowed files, and run the final suites as a no-change confirmation.
