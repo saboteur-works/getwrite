@@ -1,0 +1,103 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 86046 port 54907 (throwaway projects dir; templates repo read-only)
+built 59 explicit revisions for Many in 26 s
+RV-20 Many cards in the panel after building: 60
+built Other: 6 revisions: v1C v2 v3 v4 v5 v6
+built Many: 60 revisions: v1C v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+built Prot: 8 revisions: v1C v2 v3 v4 v5 v6 v7 v8
+built Third: 5 revisions: v1C v2 v3 v4 v5
+after Protect clicks Other: 6 revisions: v1C v2 v3P v4 v5P v6
+after Protect clicks Many: 60 revisions: v1C v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+after Protect clicks Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+after Protect clicks Third: 5 revisions: v1CP v2 v3 v4 v5
+RV-20 Many after editing: 60
+RV-20 Many after switching away and back: 60 ; cards 60
+RV-20 Many after Set as Canonical on v30: ["v30C"] count 60
+RV-20 Many after reload: 60
+RV-06 v30 content mentions EDITED-IN-V30: true; v60 content mentions it: false; revision count 60; canonical: ["v30C"]
+state before copies Other: 6 revisions: v1C v2 v3P v4 v5P v6
+state before copies Many: 60 revisions: v1C v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+state before copies Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+state before copies Third: 5 revisions: v1CP v2 v3 v4 v5
+project.json config: {"maxRevisions":50,"autoPrune":true}
+C1 before Other: 6 revisions: v1C v2 v3P v4 v5P v6
+C1 before Many: 60 revisions: v1C v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+C1 before Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+C1 before Third: 5 revisions: v1CP v2 v3 v4 v5
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c1  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 0
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 10
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 0
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 0
+C1 after `prune` (no --max) Other: 6 revisions: v1C v2 v3P v4 v5P v6
+C1 after `prune` (no --max) Many: 50 revisions: v1C v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+C1 after `prune` (no --max) Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+C1 after `prune` (no --max) Third: 5 revisions: v1CP v2 v3 v4 v5
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c2 --max 3  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 1
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 57
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 0
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 2
+C2 after `prune --max 3` Other: 5 revisions: v1C v3P v4 v5P v6
+C2 after `prune --max 3` Many: 3 revisions: v1C v59 v60
+C2 after `prune --max 3` Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+C2 after `prune --max 3` Third: 3 revisions: v1CP v4 v5
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c3 -m 1  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 3
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 59
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 2
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 4
+C3 after `prune -m 1` Other: 3 revisions: v1C v3P v5P
+C3 after `prune -m 1` Many: 1 revisions: v1C
+C3 after `prune -m 1` Prot: 6 revisions: v1C v2P v3P v4P v5P v6P
+C3 after `prune -m 1` Third: 1 revisions: v1CP
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c4  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 0
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 10
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 0
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 0
+C4 (maxRevisions=2, autoPrune=false in project.json) after `prune` Other: 6 revisions: v1C v2 v3P v4 v5P v6
+C4 (maxRevisions=2, autoPrune=false in project.json) after `prune` Many: 50 revisions: v1C v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+C4 (maxRevisions=2, autoPrune=false in project.json) after `prune` Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+C4 (maxRevisions=2, autoPrune=false in project.json) after `prune` Third: 5 revisions: v1CP v2 v3 v4 v5
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c5  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 0
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 10
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 0
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 0
+C5 (maxRevisions=2, autoPrune=true) after `prune` Other: 6 revisions: v1C v2 v3P v4 v5P v6
+C5 (maxRevisions=2, autoPrune=true) after `prune` Many: 50 revisions: v1C v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+C5 (maxRevisions=2, autoPrune=true) after `prune` Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+C5 (maxRevisions=2, autoPrune=true) after `prune` Third: 5 revisions: v1CP v2 v3 v4 v5
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c6 --max 2  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 2
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 58
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 1
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 3
+C6 first `prune --max 2` Other: 4 revisions: v1C v3P v5P v6
+C6 first `prune --max 2` Many: 2 revisions: v1C v60
+C6 first `prune --max 2` Prot: 7 revisions: v1C v2P v3P v4P v5P v6P v8
+C6 first `prune --max 2` Third: 2 revisions: v1CP v5
+$ getwrite-cli prune /private/tmp/getwrite-handbook/t7-rv2-mv90akjz-889bcd/c6 --max 2  -> exit 0
+  | Prune results:
+  | 21adbc50-3e36-478b-b7d4-5759b74b6641: pruned 0
+  | 4296c0c8-1e03-4905-b6f6-75de4d14e786: pruned 0
+  | 80d18805-09a4-41a0-bfe2-1bfc7c724d95: pruned 0
+  | b517f672-9f0f-419a-84ae-985aa5cf3640: pruned 0
+C6 second `prune --max 2` Other: 4 revisions: v1C v3P v5P v6
+C6 second `prune --max 2` Many: 2 revisions: v1C v60
+C6 second `prune --max 2` Prot: 7 revisions: v1C v2P v3P v4P v5P v6P v8
+C6 second `prune --max 2` Third: 2 revisions: v1CP v5
+live project after all copies Other: 6 revisions: v1C v2 v3P v4 v5P v6
+live project after all copies Many: 60 revisions: v1C v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60
+live project after all copies Prot: 8 revisions: v1C v2P v3P v4P v5P v6P v7 v8
+live project after all copies Third: 5 revisions: v1CP v2 v3 v4 v5
+stop: recorded 86046(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

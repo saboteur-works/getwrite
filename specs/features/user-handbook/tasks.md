@@ -74,7 +74,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 1, 2
 **Estimate:** 5
 **Notes:** Needs the app running (web build) and the built CLI. App runs out of the sandbox; CLI runs inside. Use throwaway projects only; a CLI command run against anything other than a path asserted under `/tmp/getwrite-handbook/` is a defect in the run.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Verify and write resources, compiling and project-configuration
 **What:** Run every statement on `resources.md`, `compiling.md` and `project-configuration.md` and write the three pages.
