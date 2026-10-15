@@ -12,6 +12,7 @@ async function readMetadataRevision(dir: string): Promise<number | undefined> {
 }
 import {
   getSchema,
+  getEffectiveResourceRefFieldKeys,
   addField,
   removeField,
   clearField,
@@ -856,5 +857,39 @@ describe("appliesTo is preserved by existing schema operations (FR-17)", () => {
     expect(mood(schema)?.options).toEqual(["Calm", "Tense"]);
     expect(mood(schema)?.appliesTo).toEqual(["Scene", "Chapter"]);
     expect((await storedMood(dir))?.appliesTo).toEqual(["Scene", "Chapter"]);
+  });
+});
+
+describe("getEffectiveResourceRefFieldKeys", () => {
+  it("includes built-in pov for a project with no persisted schema, and leaves project.json byte-identical", async () => {
+    const { dir } = await makeTmpProject();
+    const file = path.join(dir, PROJECT_FILENAME);
+    const before = await fs.readFile(file, "utf8");
+    const keys = await getEffectiveResourceRefFieldKeys(dir);
+    expect(keys).toContain("pov");
+    expect(await fs.readFile(file, "utf8")).toBe(before);
+  });
+
+  it("merges a persisted custom ref field with built-ins and lets a persisted definition win", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [
+        {
+          id: "g",
+          label: "G",
+          fields: [
+            { key: "ref", label: "Ref", type: "resource-ref" },
+            { key: "pov", label: "POV", type: "text" },
+          ],
+        },
+      ],
+    });
+    const keys = await getEffectiveResourceRefFieldKeys(dir);
+    expect(keys).toContain("ref");
+    expect(keys).not.toContain("pov");
+  });
+
+  it("rejects when project.json is unreadable", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-mschema-"));
+    await expect(getEffectiveResourceRefFieldKeys(dir)).rejects.toThrow();
   });
 });

@@ -19,7 +19,7 @@ import { removeResourceFromIndex } from "./inverted-index";
 import { removeResourceFromBacklinks } from "./backlinks";
 import { removeResourceFromMentionIndex } from "./mention-index";
 import { getLocalResources, writeResourceToFile } from "./resource-persistence";
-import { getSchema } from "./metadata-schema";
+import { getEffectiveResourceRefFieldKeys } from "./metadata-schema";
 import { enqueueIndex } from "./indexer-queue";
 import { removeEntityRelationshipsForEntity } from "./entity-relationships";
 import { isLockedAccessError } from "./locked-access";
@@ -517,13 +517,7 @@ export async function softDeleteFolder(
   // (resource-crud-core.ts's deleteResourceCore) rather than duplicating it.
   let resourceRefKeys: string[] = [];
   try {
-    const schema = await getSchema(projectRoot);
-    resourceRefKeys = schema.groups
-      .flatMap((g) => g.fields)
-      .filter(
-        (f) => f.type === "resource-ref" || f.type === "multi-resource-ref",
-      )
-      .map((f) => f.key);
+    resourceRefKeys = await getEffectiveResourceRefFieldKeys(projectRoot);
   } catch {
     // Schema unreadable — proceed without nullification
   }

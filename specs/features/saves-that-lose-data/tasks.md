@@ -112,7 +112,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 9
 **Estimate:** 3
 **Notes:** Satisfies FR-13, FR-14, FR-16, FR-17, FR-22 (native uses the same core), FR-23. Keep the `catch { /* Schema unreadable */ }` as-is; the pipeline lead files a POS note about it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: D-36: make the `/delete` route a thin call to deleteResourceCore
 **What:** Replace the copy of the delete logic in the `/delete` route with a call to `deleteResourceCore`, keeping its path, `withStorageContext` wrapping, sharing-limits behaviour and response shape.

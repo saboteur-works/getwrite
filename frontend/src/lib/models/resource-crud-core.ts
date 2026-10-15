@@ -63,7 +63,7 @@ import { readSidecar, writeSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
-import { getSchema } from "./metadata-schema";
+import { getEffectiveResourceRefFieldKeys } from "./metadata-schema";
 import {
   nullifyResourceRefs,
   softDeleteFolder,
@@ -311,13 +311,7 @@ export async function deleteResourceCore(
 
   let resourceRefKeys: string[] = [];
   try {
-    const schema = await getSchema(projectRoot);
-    resourceRefKeys = schema.groups
-      .flatMap((g) => g.fields)
-      .filter(
-        (f) => f.type === "resource-ref" || f.type === "multi-resource-ref",
-      )
-      .map((f) => f.key);
+    resourceRefKeys = await getEffectiveResourceRefFieldKeys(projectRoot);
   } catch {
     // Schema unreadable — proceed without nullification
   }
