@@ -1,9 +1,19 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
-import { setSelectedResourceId as setResourceId } from "../src/store/resourcesSlice";
+import {
+  setSelectedResourceId as setResourceId,
+  updateResource as updateResourceInSlice,
+} from "../src/store/resourcesSlice";
+import { computeStatusRollup } from "../src/lib/status-rollup";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import * as io from "../src/lib/models/io";
@@ -251,6 +261,17 @@ describe("D-26: Status choice after a 10-word canonical save", () => {
       ),
     );
     expect((await readSidecar(PROJECT_ROOT, RESOURCE_ID))?.wordCount).toBe(10);
+    // The editor is mocked, so the dispatch `useCanonicalAutosave` makes after
+    // a successful canonical save is made here with the same payload shape.
+    act(() => {
+      store.dispatch(
+        updateResourceInSlice({
+          id: RESOURCE_ID,
+          updatedAt: "2026-10-15T00:00:00.000Z",
+          wordCount: 10,
+        }),
+      );
+    });
 
     fireEvent.change(statusSelect, { target: { value: "Published" } });
     await waitFor(() => expect(updateSidecarMock).toHaveBeenCalledTimes(1));
@@ -267,5 +288,48 @@ describe("D-26: Status choice after a 10-word canonical save", () => {
     const stored = await readSidecar(PROJECT_ROOT, RESOURCE_ID);
     expect(payload.wordCount).toBe(10);
     expect(stored?.wordCount).toBe(10);
+  });
+});
+
+describe("D-26/D-29: By status over the Redux resource list", () => {
+  it("reports the 10 saved words for the resource after a canonical save and a Status choice", async () => {
+    const { default: Page } = await import("../app/(app)/page");
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <Page />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(store.getState().resources.resources.length).toBe(1),
+    );
+    store.dispatch(setResourceId(RESOURCE_ID));
+    const statusSelect = (await screen.findByLabelText(
+      "status",
+    )) as HTMLSelectElement;
+
+    // The editor is mocked, so the dispatch `useCanonicalAutosave` makes after
+    // a successful canonical save is made here with the same payload shape.
+    act(() => {
+      store.dispatch(
+        updateResourceInSlice({
+          id: RESOURCE_ID,
+          updatedAt: "2026-10-15T00:00:00.000Z",
+          wordCount: 10,
+        }),
+      );
+    });
+
+    fireEvent.change(statusSelect, { target: { value: "Published" } });
+    await waitFor(() => expect(updateSidecarMock).toHaveBeenCalledTimes(1));
+
+    const rows = computeStatusRollup(store.getState().resources.resources, [
+      "Published",
+    ]);
+    const published = rows.find((row) => row.label === "Published");
+    expect(published?.resourceCount).toBe(1);
+    expect(published?.words).toBe(10);
   });
 });

@@ -76,7 +76,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Satisfies FR-8, FR-28 (page/Redux half), FR-24. Do not change the `applyUpdate` overlay semantics for `resourceSubtype`. If the saved count is not available at the page, record what was found rather than guessing a route; no new route or transport is allowed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Pin the loader recount (D-29 part 2 is not a defect)
 **What:** Add a test pinning that a sidecar `wordCount` of 777 with an N-word `content.txt` loads as N.
