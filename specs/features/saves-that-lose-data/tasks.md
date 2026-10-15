@@ -130,7 +130,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-18, FR-19, FR-21. The cause stays a reading until the test is red for that reason; write the test's name and any comment as what is observed (dialog lists 1 of 2), not as a cause. No experiment file entry is required, but record the result in `experiments.md` Part D with one line if the part halts.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: D-3/D-39 fix: Start Page compile lists and compiles every non-folder resource
 **What:** Make `compileResources` in `StartPage.tsx` include resources with no `folderId` and resources whose `folderId` names a missing folder, at the project root of the compile tree.

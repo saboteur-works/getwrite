@@ -13,13 +13,14 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server.node";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import StartPage, {
   type StartPageProjectEntry,
 } from "../../components/Start/StartPage";
+import { buildProjectView } from "../../src/lib/models/project-view";
 import { makeStore } from "../../src/store/store";
 import { setProjects } from "../../src/store/projectsSlice";
 import type { SharingLimitsAnswer } from "../../src/store/sharing-limits-transport-service";
@@ -632,5 +633,114 @@ describe("StartPage — project deletion waits for the server (Feature 77, FR-25
         screen.queryByRole("button", { name: "Manage Doomed Novel" }),
       ).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("StartPage — Package > Compile Project dialog and resource count (Feature 87, D-3/D-39)", () => {
+  const DIR_ID = "44444444-dddd-4ddd-8ddd-dddddddddddd";
+  const STAMP = "2026-01-01T00:00:00.000Z";
+
+  /**
+   * Builds an entry the way the page's data path does: canonical folders and
+   * text resources passed through `buildProjectView`, whose `resources` and
+   * `folders` become the entry's.
+   */
+  function entryFor(
+    rootResourceFolderId: string | undefined,
+  ): StartPageProjectEntry {
+    const project = {
+      id: "p-pkg",
+      name: "Two Resource Novel",
+      rootPath: `/tmp/projects/${DIR_ID}`,
+      createdAt: STAMP,
+    };
+    const folder = {
+      id: "folder-1",
+      name: "Part One",
+      type: "folder",
+      slug: "part-one",
+      parentId: null,
+      orderIndex: 0,
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    };
+    const base = {
+      type: "text",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+      userMetadata: {},
+      plainText: "body",
+    };
+    const inFolder = {
+      ...base,
+      id: "res-in-folder",
+      name: "Scene In Folder",
+      slug: "scene-in-folder",
+      folderId: "folder-1",
+      orderIndex: 0,
+    };
+    const other = {
+      ...base,
+      id: "res-other",
+      name: "Scene Other",
+      slug: "scene-other",
+      orderIndex: 1,
+      ...(rootResourceFolderId === undefined
+        ? {}
+        : { folderId: rootResourceFolderId }),
+    };
+    const view = buildProjectView({
+      project,
+      folders: [folder],
+      resources: [inFolder, other],
+    } as unknown as Parameters<typeof buildProjectView>[0]);
+    return {
+      project,
+      folders: view.folders,
+      resources: view.resources,
+    } as unknown as StartPageProjectEntry;
+  }
+
+  async function openCompileDialog(entry: StartPageProjectEntry) {
+    const store = makeStore();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entry]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Two Resource Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Package" }));
+    return screen.findByRole("dialog", { name: /Compile Project/i });
+  }
+
+  it("dialog lists both resources when one has no folderId", async () => {
+    const dialog = await openCompileDialog(entryFor(undefined));
+    const scoped = within(dialog);
+    expect(scoped.getByText("Scene In Folder")).toBeInTheDocument();
+    expect(scoped.getByText("Scene Other")).toBeInTheDocument();
+  });
+
+  it("dialog lists both resources when one has a folderId naming a missing folder", async () => {
+    const dialog = await openCompileDialog(entryFor("folder-missing"));
+    const scoped = within(dialog);
+    expect(scoped.getByText("Scene In Folder")).toBeInTheDocument();
+    expect(scoped.getByText("Scene Other")).toBeInTheDocument();
+  });
+
+  it("the project card shows 2 resources for the same project (no folderId case)", () => {
+    const store = makeStore();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entryFor(undefined)]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    expect(screen.getByText(/2 resources/)).toBeInTheDocument();
   });
 });
