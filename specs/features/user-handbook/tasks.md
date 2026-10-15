@@ -110,7 +110,7 @@ Shape of the work: a run harness and CLI build; a baseline inventory of every st
 **Depends on:** 10
 **Estimate:** 2
 **Notes:** Satisfies FR-8, FR-18. Inside the sandbox. Before editing, grep for any other file referencing the old paths (including `CLAUDE.md`, `specs/`, `frontend/`); any outside the allowed set is reported to the orchestrator, not edited.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Sharing-text search
 **What:** Run FR-9's search over the handbook and fix any match.

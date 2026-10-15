@@ -9,7 +9,7 @@ GetWrite is a local-first writing workspace for structured, long-form projects �
 - **Metadata & smart folders.** Per-resource sidecar metadata, a typed query language, and saved queries rendered as smart folders in the resource tree.
 - **Revisions built in.** Every resource keeps a versioned snapshot history with a single canonical revision the editor autosaves to.
 - **Backlinks & search.** A materialized inverted index and backlinks graph computed on save, powering cross-resource search and reference previews.
-- **Desktop app.** Ships as a signed-soon Electron desktop build that bundles the Next.js server — see [why desktop, not web](docs/user/installing.md#why-desktop-not-web).
+- **Desktop app.** Ships as a signed-soon Electron desktop build that bundles the Next.js server — see [where GetWrite keeps your work](docs/user/handbook/getting-started/installing.md#where-your-work-is-stored).
 
 ## Install (desktop app)
 
@@ -17,8 +17,8 @@ GetWrite ships as a desktop app for macOS, Windows, and Linux. Download the
 latest build from the [Releases page](https://github.com/saboteur-works/getwrite/releases/latest).
 
 The current builds are **not yet signed by Apple/Microsoft**, so the OS will warn
-before the first launch — see **[docs/user/installing.md](docs/user/installing.md)**
-for the one-time steps to open it (and a note on [why GetWrite is desktop, not web](docs/user/installing.md#why-desktop-not-web)).
+before the first launch — see **[docs/user/handbook/getting-started/installing.md](docs/user/handbook/getting-started/installing.md)**
+for the one-time steps to open it (and a note on [where GetWrite keeps your work](docs/user/handbook/getting-started/installing.md#where-your-work-is-stored)).
 
 The rest of this README is for developing GetWrite from source.
 

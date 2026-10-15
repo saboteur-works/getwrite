@@ -1329,3 +1329,19 @@ Link check (relative links in the 21 stubs, resolved against the filesystem): 23
 ### `#why-desktop-not-web` decision
 
 `README.md` links to `docs/user/installing.md#why-desktop-not-web` (lines 12 and 21). The old heading "Why desktop, not web" was a section of the old page; the new installing page has no such anchor (its sections are "Where your work is stored", "No database", "Warnings and limits"). Option chosen: repoint README to the handbook page in Task 11, not keep the anchor on the stub. Reason: a stub heading of "Why desktop, not web" would not name the page truthfully (the heading must name the page, "Installing GetWrite"), and a second heading would break the three-content-line stub shape of FR-7. The stub heading stays "Installing GetWrite". Task 11 must also repoint the README text to an anchor that exists on the handbook page, or drop the fragment. README was not edited in this task.
+
+## 18. Task 11 record (links in README and the five developer docs)
+
+Inside the sandbox, no app started. Script: `specs/features/user-handbook/scripts/task11-links.mjs` (reads every relative markdown link in the six files, checks the target file exists and, for `#anchor`, that a heading of the target slugs to it).
+
+Grep `grep -n "docs/user\|\.\./user\|user/"` over the six files, before: README.md lines 12, 20, 21 (three links to `docs/user/installing.md`, two with `#why-desktop-not-web`); `docs/features/project-types.md:3`, `docs/features/revisions.md:3`, `docs/features/editor/headings.md:3` and `:49`, `docs/features/editor/settings.md:3`, `docs/features/data/metadata.md:3` and `:94` (relative `../user/...` links, all to stubs). After: the same line numbers; README now links to `docs/user/handbook/getting-started/installing.md`; the developer-doc lines are unchanged.
+
+README edits (only these three lines): line 12 link text "why desktop, not web" became "where GetWrite keeps your work", target `docs/user/handbook/getting-started/installing.md#where-your-work-is-stored`; line 20 target and visible path became the handbook page; line 21 link text and target as line 12. Link text was changed because the handbook installing page has no heading or text on why GetWrite is desktop rather than web (headings: "Where your work is stored", "No database", "Warnings and limits"); the old anchor therefore could not be kept truthfully. Observation, not edited: README line 21 still says the link gives "the one-time steps to open it" (the unsigned-build warning); the handbook installing page, as verified in Task 3, carries no such steps. Decision for the orchestrator.
+
+Developer docs: the five still resolve through the 3-line stubs (their `../user/...` links are unchanged, 7 links), so no edit was needed.
+
+Resolve check output: 19 relative links across the six files, 0 failing (including the three README links to the handbook page and the anchor `#where-your-work-is-stored`).
+
+`git diff --stat` (tracked files, before this section and the script): `README.md | 6 +++---`, 1 file changed.
+
+References to the old `docs/user` paths outside the allowed set, reported and NOT edited: `docs/roadmap.md` lines 47-49 (links to `user/views/organizer.md`, `user/revisions.md`), 55 (`user/metadata-queries.md`), 56 (`user/compiling.md`) — all resolve through stubs; `docs/features/status-rollup.md:3` (`../user/views/data.md`, resolves through the stub); `.claude/settings.local.json:99` (a permission string, not a link); and prose mentions in `specs/` (protect-revision, daily-writing-log, word-count-goals, prose-diagnostics, project-status-rollup tasks files, `specs/product/getwrite.md`, `getwrite.features.md`, `home-network-sharing` files). `CLAUDE.md`, `frontend/`, `cli/`, `electron/`: no match.
