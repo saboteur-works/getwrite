@@ -1,0 +1,41 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/operator-utils.test.ts (32 tests | 1 failed) 8ms
+     × the 'in the last' stub carries the displayed default, not an empty value 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/operator-utils.test.ts > operator-utils — the relative-date default (FR-9) > the 'in the last' stub carries the displayed default, not an empty value
+AssertionError: expected { op: 'gte', field: 'createdAt', …(1) } to deeply equal { op: 'gte', field: 'createdAt', …(1) }
+
+- Expected
++ Received
+
+  {
+    "field": "createdAt",
+    "op": "gte",
+-   "value": {
+-     "amount": 7,
+-     "unit": "days",
+-   },
++   "value": "",
+  }
+
+ ❯ tests/unit/operator-utils.test.ts:289:67
+    287| describe("operator-utils — the relative-date default (FR-9)", () => {
+    288|   it("the 'in the last' stub carries the displayed default, not an emp…
+    289|     expect(buildOperatorStub("date", "in-the-last", "createdAt")).toEq…
+       |                                                                   ^
+    290|       op: "gte",
+    291|       field: "createdAt",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 397 passed | 2 expected fail (400)
+   Start at  16:47:50
+   Duration  257ms (transform 200ms, setup 238ms, import 154ms, tests 36ms, environment 0ms)
+

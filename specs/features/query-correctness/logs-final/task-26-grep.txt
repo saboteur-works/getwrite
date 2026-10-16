@@ -1,0 +1,3 @@
+components/QueryBuilder/ValuePicker.tsx:62:function isRelativeDate(v: ValuePickerValue): v is ValuePickerRelativeDate {
+components/QueryBuilder/operator-utils.ts:235:export function isRelativeDateValue(
+src/lib/models/query-evaluator.ts:313:function isRelativeDateValue(v: unknown): v is Record<string, unknown> {

@@ -282,7 +282,7 @@ A code review after Task 23 found defects; the owner chose to fix them on this b
 **Depends on:** 25
 **Estimate:** 2
 **Notes:** Satisfies FR-9 (agreement), FR-12 (evaluator keeps throwing), FR-27, FR-28. Sequenced after Task 25 because both edit `operator-utils.ts`. A comment change has no test; the diff review is the record.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Re-run the final suites and the FR-1 check after the review follow-ups (FR-30, FR-1)
 **What:** Re-run the FR-1 check and the final suites after Tasks 24-26, and record each result against the Task 1 baselines and the Task 23 results.

@@ -6,6 +6,7 @@ import {
 } from "../../components/QueryBuilder/ast-chip-bridge";
 import type { QueryAST } from "../../src/lib/models/query-ast";
 import { evaluate } from "../../src/lib/models/query-evaluator";
+import { isRelativeDateValue } from "../../components/QueryBuilder/operator-utils";
 import type { QueryContext } from "../../src/lib/models/query-intrinsics";
 import type { ResourceBase, MetadataValue } from "../../src/lib/models/types";
 import type { QueryGroup } from "../../components/QueryBuilder/QueryBuilder";
@@ -1179,5 +1180,73 @@ describe('"starts with" on a text field (Feature 86 FR-32)', () => {
         ),
       ).toEqual(["alpha", "the alpha"]);
     });
+  });
+});
+
+describe("the bridge and the operator utilities classify a relative date alike (FR-9, FR-12)", () => {
+  const DATE_FIELDS: FilterChipField[] = [
+    { key: "createdAt", label: "Created At", type: "date" },
+  ];
+  const operatorFor = (value: object): string | null | undefined =>
+    astToGroups(
+      {
+        op: "gte",
+        field: "createdAt",
+        value: value as unknown as MetadataValue,
+      },
+      DATE_FIELDS,
+    )?.groups[0].chips[0].operator;
+
+  for (const value of [
+    { amount: 3 },
+    { unit: "days" },
+    { amount: 3, unit: "days" },
+  ]) {
+    it(`${JSON.stringify(value)}`, () => {
+      const isInTheLast = operatorFor(value) === "in-the-last";
+      expect(isInTheLast).toBe(isRelativeDateValue(value as never));
+    });
+  }
+
+  it("the evaluator throws on a partial object that the UI does not treat as a relative date", async () => {
+    const resource: ResourceBase = {
+      id: "cccccccc-0000-4000-a000-000000000001",
+      slug: "r",
+      name: "R",
+      type: "text",
+      folderId: null,
+      orderIndex: 0,
+      statuses: [],
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    };
+    const input = {
+      resources: [resource],
+      sidecars: { [resource.id]: {} },
+      context: {
+        config: {
+          editorConfig: {},
+          tags: [],
+          tagAssignments: {},
+          statuses: [],
+        },
+        backlinks: {},
+        mentions: {},
+      } as QueryContext,
+      evaluationTime: new Date("2024-06-15T12:00:00.000Z"),
+    };
+    for (const value of [{ amount: 3 }, { unit: "days" }]) {
+      expect(isRelativeDateValue(value as never)).toBe(false);
+      await expect(
+        evaluate(
+          {
+            op: "gte",
+            field: "createdAt",
+            value: value as unknown as MetadataValue,
+          },
+          input,
+        ),
+      ).rejects.toThrow();
+    }
   });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOperatorStub,
+  DEFAULT_RELATIVE_DATE,
+  isRelativeDateValue,
   getDefaultOperator,
   getOperatorOption,
   getOperators,
@@ -170,9 +172,13 @@ describe("operator-utils — buildOperatorStub", () => {
     });
   });
 
-  it("date: in-the-last → gte stub (value picker provides computed date)", () => {
+  it("date: in-the-last → gte stub carrying the displayed default", () => {
     const stub = buildOperatorStub("date", "in-the-last", "updatedAt");
-    expect(stub).toEqual({ op: "gte", field: "updatedAt", value: "" });
+    expect(stub).toEqual({
+      op: "gte",
+      field: "updatedAt",
+      value: { amount: 7, unit: "days" },
+    });
   });
 
   it("boolean: is-true → eq(field, true)", () => {
@@ -279,5 +285,21 @@ describe("operator-utils — buildOperatorStub", () => {
         ).not.toBeNull();
       }
     }
+  });
+});
+
+describe("operator-utils — the relative-date default (FR-9)", () => {
+  it("the 'in the last' stub carries the displayed default, not an empty value", () => {
+    expect(buildOperatorStub("date", "in-the-last", "createdAt")).toEqual({
+      op: "gte",
+      field: "createdAt",
+      value: DEFAULT_RELATIVE_DATE,
+    });
+  });
+
+  it("an object with only one of amount/unit is not a relative-date value", () => {
+    expect(isRelativeDateValue({ amount: 3 } as never)).toBe(false);
+    expect(isRelativeDateValue({ unit: "days" } as never)).toBe(false);
+    expect(isRelativeDateValue({ amount: 3, unit: "days" })).toBe(true);
   });
 });

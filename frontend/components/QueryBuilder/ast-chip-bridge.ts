@@ -8,6 +8,7 @@ import type {
 } from "../../src/lib/models/query-ast";
 import type { MetadataValue } from "../../src/lib/models/types";
 import { escapeRegExp } from "../../src/lib/models/entity-detection";
+import { isRelativeDateValue } from "./operator-utils";
 import type { FilterChipField, FilterChipValue } from "./FilterChip";
 import type { GroupChip, GroupCombinator } from "./FilterGroup";
 import type { GlobalCombinator, QueryGroup } from "./QueryBuilder";
@@ -234,17 +235,6 @@ function fieldFor(
   return fields.find((f) => f.key === key) ?? null;
 }
 
-/** A relative-date value as written by an "in the last" chip. */
-function isRelativeDate(value: MetadataValue): boolean {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    "amount" in value &&
-    "unit" in value
-  );
-}
-
 function comparisonToOperator(
   astOp: "eq" | "ne" | "lt" | "lte" | "gt" | "gte",
   fieldType: string | undefined,
@@ -266,7 +256,8 @@ function comparisonToOperator(
   if (astOp === "gt")
     return fieldType === "date" ? "is-after" : "is-greater-than";
   if (astOp === "gte") {
-    if (fieldType === "date" && isRelativeDate(value)) return "in-the-last";
+    if (fieldType === "date" && isRelativeDateValue(value))
+      return "in-the-last";
     return fieldType === "number" ? "is-at-least" : "is-after";
   }
   return "is";

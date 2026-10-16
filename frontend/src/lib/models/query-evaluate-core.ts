@@ -189,8 +189,8 @@ async function loadEvaluationInput(
 /**
  * Evaluate a query AST against all resources in `projectRoot` and return the
  * UUIDs of matching resources. `evaluationTime` is optional (default: the
- * current time) and is carried into the evaluation input; no caller sends it
- * and nothing reads it yet.
+ * current time) and is carried into the evaluation input, where the evaluator
+ * reads it for relative-date spans ("in the last") and calendar-day comparisons.
  */
 export async function executeEvaluate(
   projectRoot: string,

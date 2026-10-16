@@ -1,5 +1,8 @@
 import type { QueryAST } from "../../src/lib/models/query-ast";
-import type { MetadataFieldType } from "../../src/lib/models/types";
+import type {
+  MetadataFieldType,
+  MetadataValue,
+} from "../../src/lib/models/types";
 import type { FilterChipValue, RelativeDateValue } from "./FilterChip";
 
 export interface OperatorOption {
@@ -162,7 +165,11 @@ const STUB_BUILDERS: Partial<Record<string, StubBuilder>> = {
   "is-on": (f) => ({ op: "eq", field: f, value: "" }),
   "is-before": (f) => ({ op: "lt", field: f, value: "" }),
   "is-after": (f) => ({ op: "gt", field: f, value: "" }),
-  "in-the-last": (f) => ({ op: "gte", field: f, value: "" }),
+  "in-the-last": (f) => ({
+    op: "gte",
+    field: f,
+    value: { ...DEFAULT_RELATIVE_DATE },
+  }),
   // boolean
   "is-true": (f) => ({ op: "eq", field: f, value: true }),
   "is-false": (f) => ({ op: "eq", field: f, value: false }),
@@ -226,7 +233,7 @@ export const DEFAULT_RELATIVE_DATE: RelativeDateValue = {
 };
 
 export function isRelativeDateValue(
-  v: FilterChipValue,
+  v: FilterChipValue | MetadataValue,
 ): v is RelativeDateValue {
   return (
     v !== null &&
