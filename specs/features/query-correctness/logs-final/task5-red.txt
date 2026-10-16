@@ -1,0 +1,39 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/query-evaluator.test.ts (102 tests | 1 failed) 13ms
+     × returns B and C for the saved all-of shape [expected failure: D-16] 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > and[in(field, [Alpha, Beta])] over a multiselect field > returns B and C for the saved all-of shape [expected failure: D-16]
+AssertionError: expected [ …(3) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    "bbbbbbbb-0000-4000-a000-00000000000a",
++   "bbbbbbbb-0000-4000-a000-00000000000b",
++   "bbbbbbbb-0000-4000-a000-00000000000c",
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1025:22
+    1023|         { resources: sceneResources, sidecars: sceneSidecars },
+    1024|       );
+    1025|       expect(result).toEqual([SCENE_A]);
+       |                      ^
+    1026|     },
+    1027|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 101 passed (102)
+   Start at  13:29:03
+   Duration  167ms (transform 40ms, setup 53ms, import 29ms, tests 13ms, environment 0ms)
+
+undefined
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run tests/unit/query-evaluator.test.ts

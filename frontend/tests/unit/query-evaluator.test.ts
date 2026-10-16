@@ -973,6 +973,60 @@ describe("multi-resource-ref: includes-all-of / includes-any-of / includes-none-
   });
 });
 
+// ── saved all-of shape over a multiselect field (Feature 86, D-16) ────────
+
+describe("and[in(field, [Alpha, Beta])] over a multiselect field", () => {
+  const SCENE_A = "bbbbbbbb-0000-4000-a000-00000000000a";
+  const SCENE_B = "bbbbbbbb-0000-4000-a000-00000000000b";
+  const SCENE_C = "bbbbbbbb-0000-4000-a000-00000000000c";
+  const SCENE_D = "bbbbbbbb-0000-4000-a000-00000000000d";
+
+  function scene(id: string, name: string, orderIndex: number): ResourceBase {
+    return {
+      id,
+      slug: name.toLowerCase().replace(/ /g, "-"),
+      name,
+      type: "text",
+      folderId: null,
+      orderIndex,
+      statuses: [],
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    };
+  }
+
+  const sceneResources: ResourceBase[] = [
+    scene(SCENE_A, "Scene A", 0),
+    scene(SCENE_B, "Scene B", 1),
+    scene(SCENE_C, "Scene C", 2),
+    scene(SCENE_D, "Scene D", 3),
+  ];
+
+  const sceneSidecars: Record<string, Record<string, MetadataValue>> = {
+    [SCENE_A]: { characters: ["Alpha", "Beta"] },
+    [SCENE_B]: { characters: ["Alpha"] },
+    [SCENE_C]: { characters: ["Beta"] },
+    [SCENE_D]: {},
+  };
+
+  // [expected failure: D-16] — returns A, B and C today; the intended result is A only.
+  it.fails(
+    "returns B and C for the saved all-of shape [expected failure: D-16]",
+    async () => {
+      const result = await ids(
+        {
+          op: "and",
+          children: [
+            { op: "in", field: "characters", value: ["Alpha", "Beta"] },
+          ],
+        },
+        { resources: sceneResources, sidecars: sceneSidecars },
+      );
+      expect(result).toEqual([SCENE_A]);
+    },
+  );
+});
+
 // ── ResourceRef with id: null (deleted target) ────────────────────────────
 
 describe("ResourceRef with id: null — deleted reference edge cases", () => {

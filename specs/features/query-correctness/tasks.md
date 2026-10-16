@@ -89,7 +89,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 4
 **Estimate:** 2
 **Notes:** Satisfies FR-5. Write the test name as what is observed ("returns B and C for the saved all-of shape"), not as a cause. `evalIn` matching on any element is the READ hypothesis; the red result is what supports it.
-**Done:** [ ]
+**Done:** [x] (committed with Task 5 commit; test carried as it.fails D-16 until Task 6)
 
 ### Task 6: D-16 fix: evaluator reads and-of-one-in on an array field as "every listed value" (FR-6, FR-7)
 **What:** Make the evaluator treat an `and` with exactly one `in` child carrying an array, on a field whose resolved value is an array, as "holds every listed value", and pin every other shape unchanged.
