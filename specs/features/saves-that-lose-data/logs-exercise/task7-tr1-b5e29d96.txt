@@ -1,0 +1,59 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 75519 port 55560 (throwaway projects dir; templates repo read-only)
+A before delete, files of Solo: ["meta/resource-ae57.meta.json","resources/ae57/content.tiptap.json","resources/ae57/content.txt","revisions/ae57/v-1/content.bin","revisions/ae57/v-1/metadata.json","revisions/ae57/v-2/content.bin","revisions/ae57/v-2/metadata.json","revisions/ae57/v-3/content.bin","revisions/ae57/v-3/metadata.json"]
+A cards before: ["S2 v3 •…","S1 v2 •…","Initial Draft v1 •… [CANONICAL]"]
+A tree before: ["[folder] Workspace","  [resource] Solo"]
+TR-01 confirm dialog: "Delete Solo\n\nThis will remove the resource. Proceed?\n\nCANCEL\nDELETE"
+TR-01 tree after delete: ["[folder] Workspace"]
+TR-01/02 files of Solo in the project outside .trash: []
+TR-01/02 .trash files: ["meta/refs-ae57.json","meta/resource-ae57.meta.json","resources/ae57-ae57/content.tiptap.json","resources/ae57-ae57/content.txt","revisions/ae57/v-1/content.bin","revisions/ae57/v-1/metadata.json","revisions/ae57/v-2/content.bin","revisions/ae57/v-2/metadata.json","revisions/ae57/v-3/content.bin","revisions/ae57/v-3/metadata.json"]
+TR-04 Trash tab: "Trash\n0 of 1 item selected\nRESTORE SELECTED\nDELETE SELECTED PERMANENTLY\nEMPTY TRASH\nSolo"
+TR-04 rows: ["Solo"]
+TR-05 restore dialog: "Restore items\n\nRestore 1 item from Trash?\n\nCANCEL\nRESTORE"
+TR-07 notices: {"report":"1 of 1 restored.","notices":[],"error":null,"empty":"Trash is empty."}
+TR-07 tree after restore (no reload): ["[folder] Workspace","  [resource] Solo"]
+TR-02 .trash files after restore: []
+TR-02 files of Solo restored: ["meta/resource-ae57.meta.json","resources/ae57/content.tiptap.json","resources/ae57/content.txt","revisions/ae57/v-1/content.bin","revisions/ae57/v-1/metadata.json","revisions/ae57/v-2/content.bin","revisions/ae57/v-2/metadata.json","revisions/ae57/v-3/content.bin","revisions/ae57/v-3/metadata.json"]
+TR-02 after restore: editor "Solo words here." ; cards ["S2 v3 •…","S1 v2 •…","Initial Draft v1 •… [CANONICAL]"]
+B tree before: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3"]
+B tree after deleting A2: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A3"]
+TR-07 B notices: {"report":"1 of 1 restored.","notices":[],"error":null,"empty":"Trash is empty."}
+TR-07 B tree after restore (no reload): ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3"]
+TR-07 B tree after restore + reload: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3"]
+C tree before: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep"]
+TR-03 folder delete dialog: "Delete Fold\n\nThis will move the folder and everything in it to Trash. Proceed?\n\nCANCEL\nDELETE"
+TR-03 tree after: ["[folder] Workspace","  [resource] Solo"]
+TR-03/04 Trash tab: "Trash\n0 of 1 item selected\nRESTORE SELECTED\nDELETE SELECTED PERMANENTLY\nEMPTY TRASH\nFold\nfolder: Sub\nresource: Deep\nresource: A3\nresource: A1\nresource: A2"
+TR-03 .trash files: ["folders/fold/folder.json","folders/sub/folder.json","meta/folder-82cd.json","meta/refs-00c9.json","meta/refs-456f.json","meta/refs-b6f4.json","meta/refs-be18.json","meta/resource-00c9.meta.json","meta/resource-456f.meta.json","meta/resource-b6f4.meta.json","meta/resource-be18.meta.json","resources/00c9-00c9/content.tiptap.json","resources/00c9-00c9/content.txt","resources/456f-456f/content.tiptap.json","resources/456f-456f/content.txt","resources/b6f4-b6f4/content.tiptap.json","resources/b6f4-b6f4/content.txt","resources/be18-be18/content.tiptap.json","resources/be18-be18/content.txt","revisions/00c9/v-1/content.bin","revisions/00c9/v-1/metadata.json","revisions/456f/v-1/content.bin","revisions/456f/v-1/metadata.json","revisions/b6f4/v-1/content.bin","revisions/b6f4/v-1/metadata.json","revisions/be18/v-1/content.bin","revisions/be18/v-1/metadata.json"]
+TR-03 restore notices: {"report":"1 of 1 restored.","notices":[],"error":null,"empty":"Trash is empty."}
+TR-03 tree after restoring the folder + reload: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep"]
+TR-08 Trash tab rows: ["Orphan","Gone"]
+TR-08 notices: {"report":"1 of 1 restored.","notices":["\"Orphan\" was moved to project root because its original folder no longer exists."],"error":null,"empty":null}
+TR-08 tree after restoring Orphan only: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep","[resource] Orphan"]
+TR-08 Orphan sidecar folderId: null
+TR-08 Trash still holds: []
+TR-09 tree with a new Dup: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep","  [resource] Dup","[resource] Orphan"]
+TR-09 notices: {"report":"1 of 1 restored.","notices":["\"Dup\" was restored as \"Dup (restored)\" because another item already has that name."],"error":null,"empty":null}
+TR-09 tree after restore: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep","  [resource] Dup","  [resource] Dup (restored)","[resource] Orphan"]
+TR-10 Scene R pov before: {"id":"9c97427c-5529-4b38-a2fc-a3faf08cb47b","name":"Mara"} ; Mara id 9c97427c-5529-4b38-a2fc-a3faf08cb47b
+TR-10 pov after Mara deleted (disk): {"id":null,"name":"Mara"}
+TR-10 sidebar POV input after delete: "Mara"
+TR-10 .trash files: ["meta/refs-9c97.json"]
+TR-10 notices: {"report":"1 of 1 restored.","notices":[],"error":null,"empty":null}
+TR-10 pov after restore (disk): {"id":"9c97427c-5529-4b38-a2fc-a3faf08cb47b","name":"Mara"} ; Mara id 9c97427c-5529-4b38-a2fc-a3faf08cb47b
+TR-10 sidebar POV input after restore and reload: "Mara"
+TR-05 Trash rows: ["G2","G3","G1","Gone"]
+TR-05 toolbar: ["RESTORE SELECTED(disabled)","DELETE SELECTED PERMANENTLY(disabled)","EMPTY TRASH"]
+TR-05 batch restore dialog: "Restore items\n\nRestore 2 items from Trash?\n\nCANCEL\nRESTORE" ; report {"report":"2 of 2 restored.","notices":[],"error":null,"empty":null}
+TR-05 Trash rows after: ["G3","Gone"]
+TR-11 permanent delete dialog: "Delete items permanently\n\nPermanently delete 1 item? This cannot be undone.\n\nCANCEL\nDELETE PERMANENTLY" ; report {"report":"1 of 1 permanently deleted.","notices":[],"error":null,"empty":null}
+TR-11 Trash rows after: ["Gone"]
+TR-11 .trash files before: 8 after: 2 ; G3 files left anywhere: []
+TR-11 G3 sidecar anywhere: 0; tree: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep","  [resource] Dup","  [resource] Dup (restored)","  [resource] Mara","  [resource] Scene R","  [resource] G1","  [resource] G2","[resource] Orphan"]
+TR-06 Trash rows before Empty trash: ["G2","G1","Gone"]
+TR-06 Empty trash dialog: "Empty trash\n\nPermanently delete all 3 items in Trash? This cannot be undone.\n\nCANCEL\nDELETE PERMANENTLY"
+TR-06 after: {"report":"3 of 3 permanently deleted.","notices":[],"error":null,"empty":"Trash is empty."} ; .trash files: []
+TR-06 tree after: ["[folder] Workspace","  [resource] Solo","  [folder] Fold","    [resource] A1","    [resource] A2","    [resource] A3","    [folder] Sub","      [resource] Deep","  [resource] Dup","  [resource] Dup (restored)","  [resource] Mara","  [resource] Scene R","[resource] Orphan"]
+stop: recorded 75519(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

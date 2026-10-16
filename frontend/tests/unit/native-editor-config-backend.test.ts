@@ -61,10 +61,9 @@ describe("native editor-config transport — in-process backend reuses the share
       fontSize: "18px",
     });
     expect(bodyResult.editorConfig?.body?.fontSize).toBe("18px");
-    // Matches the pre-lift route's exact behavior: `headings` is always
-    // resanitized from the request body (defaulting to `{}` when omitted),
-    // so a body-only save resets `headings` rather than preserving them.
-    expect(bodyResult.editorConfig?.headings).toEqual({});
+    // A body-only save omits the `headings` key, so the headings saved
+    // earlier in this test are expected to survive it.
+    expect(bodyResult.editorConfig?.headings?.h1?.fontSize).toBe("42px");
 
     fetchMock.restore();
   });

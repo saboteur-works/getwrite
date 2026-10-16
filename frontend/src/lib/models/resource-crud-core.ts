@@ -63,7 +63,7 @@ import { readSidecar, writeSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
-import { getSchema } from "./metadata-schema";
+import { getEffectiveResourceRefFieldKeys } from "./metadata-schema";
 import {
   nullifyResourceRefs,
   softDeleteFolder,
@@ -311,13 +311,7 @@ export async function deleteResourceCore(
 
   let resourceRefKeys: string[] = [];
   try {
-    const schema = await getSchema(projectRoot);
-    resourceRefKeys = schema.groups
-      .flatMap((g) => g.fields)
-      .filter(
-        (f) => f.type === "resource-ref" || f.type === "multi-resource-ref",
-      )
-      .map((f) => f.key);
+    resourceRefKeys = await getEffectiveResourceRefFieldKeys(projectRoot);
   } catch {
     // Schema unreadable — proceed without nullification
   }
@@ -342,6 +336,16 @@ export async function deleteResourceCore(
 // ---------------------------------------------------------------------------
 // 5. Update sidecar
 // ---------------------------------------------------------------------------
+
+/**
+ * Sidecar keys derived by the server (the canonical save in
+ * `revision-core.ts` writes `wordCount`). A client sidecar update never
+ * supplies them: they are dropped from the update before the merge, so the
+ * stored value is left as the canonical save wrote it. `updatedAt` is not
+ * listed: a client-sent `updatedAt` was read in the code path but not
+ * observed (experiments.md, Part B).
+ */
+const SERVER_DERIVED_SIDECAR_KEYS: readonly string[] = ["wordCount"];
 
 /**
  * Allowlist of sidecar keys {@link updateSidecarCore}'s `clearKeys` parameter
@@ -424,6 +428,16 @@ function validateClearKeys(clearKeys: string[] | undefined): void {
   }
 }
 
+function omitServerDerivedKeys(
+  update: Record<string, unknown>,
+): Record<string, unknown> {
+  const kept: Record<string, unknown> = { ...update };
+  for (const key of SERVER_DERIVED_SIDECAR_KEYS) {
+    delete kept[key];
+  }
+  return kept;
+}
+
 /**
  * Merges an incoming sidecar update with the existing sidecar, preserving
  * structural fields (`orderIndex`, `folderId`) that only the reorder route
@@ -448,7 +462,9 @@ export async function updateSidecarCore(
   clearKeys?: string[],
 ): Promise<void> {
   validateClearKeys(clearKeys);
-  const update = normalizeResourceSubtype(updatedResource);
+  const update = omitServerDerivedKeys(
+    normalizeResourceSubtype(updatedResource),
+  );
 
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 

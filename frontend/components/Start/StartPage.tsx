@@ -96,6 +96,54 @@ export interface StartPageCreateResult {
   resources: AnyResource[];
 }
 
+/**
+ * Fields the compile block reads from a resource entry. The entries reaching
+ * the start page may be API-shaped (`title`, `_orderIndex`, `content`) rather
+ * than canonical `AnyResource`, so every field is optional except `id`.
+ */
+interface CompileSourceResource {
+  id: string;
+  type?: string;
+  title?: string;
+  name?: string;
+  slug?: string;
+  _orderIndex?: number;
+  orderIndex?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  userMetadata?: Record<string, unknown>;
+  content?: string;
+  plainText?: string;
+  folderId?: string | null;
+}
+
+/** A folder entry as the compile block reads it, with its nested resources. */
+type CompileSourceFolder = Folder & { resources?: CompileSourceResource[] };
+
+/**
+ * Builds the canonical compile-tree resource for a source entry under the given
+ * parent folder id, reading the body from `plainText` or, for API-shaped
+ * entries, `content`.
+ */
+function toCompileResource(
+  r: CompileSourceResource,
+  folderId: string | null,
+): AnyResource {
+  return {
+    id: r.id,
+    // UIResource has title instead of name
+    name: r.title ?? r.name ?? "",
+    slug: r.slug ?? r.id,
+    type: r.type ?? "text",
+    folderId,
+    orderIndex: r._orderIndex ?? r.orderIndex ?? 0,
+    createdAt: r.createdAt ?? "",
+    updatedAt: r.updatedAt ?? "",
+    userMetadata: r.userMetadata ?? {},
+    plainText: r.plainText ?? r.content ?? "",
+  } as AnyResource;
+}
+
 /** Non-folder resources summarized on start-page cards and package actions. */
 type StartPageRenderableResource = Exclude<AnyResource, Folder>;
 
@@ -312,7 +360,22 @@ export default function StartPage({
     );
     if (!entry) return [];
     const result: AnyResource[] = [];
-    for (const folder of entry.folders as any[]) {
+    const idsInFolders = new Set<string>();
+    for (const folder of entry.folders as CompileSourceFolder[]) {
+      for (const r of folder.resources ?? []) {
+        idsInFolders.add(r.id);
+      }
+    }
+    const folderIds = new Set<string>(entry.folders.map((f) => f.id));
+    // A resource is at the root when its folderId is null/undefined or names no
+    // listed folder; one already nested under a folder is emitted there only.
+    for (const r of entry.resources as unknown as CompileSourceResource[]) {
+      if (r.type === "folder" || idsInFolders.has(r.id)) continue;
+      const parentId =
+        r.folderId != null && folderIds.has(r.folderId) ? r.folderId : null;
+      result.push(toCompileResource(r, parentId));
+    }
+    for (const folder of entry.folders as CompileSourceFolder[]) {
       result.push({
         id: folder.id,
         name: folder.name ?? "",
@@ -326,20 +389,8 @@ export default function StartPage({
         updatedAt: folder.updatedAt ?? "",
         userMetadata: folder.userMetadata ?? {},
       } as AnyResource);
-      for (const r of (folder.resources as any[]) ?? []) {
-        result.push({
-          id: r.id,
-          // UIResource has title instead of name
-          name: r.title ?? r.name ?? "",
-          slug: r.slug ?? r.id,
-          type: r.type ?? "text",
-          folderId: folder.id,
-          orderIndex: r._orderIndex ?? r.orderIndex ?? 0,
-          createdAt: r.createdAt ?? "",
-          updatedAt: r.updatedAt ?? "",
-          userMetadata: r.userMetadata ?? {},
-          plainText: r.content ?? "",
-        } as AnyResource);
+      for (const r of folder.resources ?? []) {
+        result.push(toCompileResource(r, folder.id));
       }
     }
     return result;

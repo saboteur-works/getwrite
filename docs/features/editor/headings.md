@@ -50,6 +50,6 @@ Heading styles are configured through the **Heading Styles** tab of the **Projec
 
 ### API
 
-`POST /api/project/editor-config` accepts `{ projectPath, headings }` and writes the sanitized heading map to `config.editorConfig` in the project's `project.json`. The endpoint returns the updated `editorConfig` on success.
+`POST /api/project/editor-config` accepts `{ projectPath, headings }` and writes the sanitized heading map to `config.editorConfig` in the project's `project.json`. The endpoint returns the updated `editorConfig` on success. `headings` and `body` are each replaced only when the request carries that key; an omitted key leaves the stored value unchanged (Feature 87, `updateEditorConfigCore`; shown by unit tests), while an explicit `headings` value, including `{}`, still replaces it.
 
 Heading styles are also refreshed in Redux state immediately after a successful save so the editor reflects the new config without requiring a page reload.

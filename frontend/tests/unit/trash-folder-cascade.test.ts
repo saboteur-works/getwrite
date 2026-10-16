@@ -11,6 +11,11 @@ import {
 import { softDeleteFolder } from "../../src/lib/models/trash";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
+import {
+  makeRefFixture,
+  readOtherUserMetadata,
+  type SchemaState,
+} from "./helpers/f87-reference-delete-fixture";
 import type { TrashFolderManifest } from "../../src/lib/models/schemas";
 
 async function pathExists(p: string): Promise<boolean> {
@@ -221,5 +226,51 @@ describe("models/trash — softDeleteFolder cascade (Task 6, FR-3, FR-20)", () =
     } finally {
       await removeDirRetry(tmp);
     }
+  });
+});
+
+describe("F87 D-36: softDeleteFolder against a referencing Point of View", () => {
+  async function run(
+    schema: SchemaState,
+    withMultiRefField = false,
+  ): Promise<Record<string, unknown>> {
+    const f = await makeRefFixture("gw-f87-folder-", {
+      schema,
+      withMultiRefField,
+      targetInFolder: true,
+    });
+    try {
+      await softDeleteFolder(f.root, f.folderId as string);
+      return await readOtherUserMetadata(f);
+    } finally {
+      await removeDirRetry(f.projectsDir);
+    }
+  }
+
+  it("never-edited schema: pov of a resource outside the folder reads {id: null, name} after the folder is deleted", async () => {
+    expect((await run("never-edited"))["pov"]).toEqual({
+      id: null,
+      name: "Mara",
+    });
+  });
+
+  it("schema-edited project: pov of a resource outside the folder reads {id: null, name} after the folder is deleted", async () => {
+    expect((await run("schema-edited"))["pov"]).toEqual({
+      id: null,
+      name: "Mara",
+    });
+  });
+
+  it("persisted schema without a pov field: pov of a resource outside the folder is left unchanged after the folder is deleted", async () => {
+    const pov = (await run("schema-without-pov"))["pov"] as { id: unknown };
+    expect(pov.id).not.toBeNull();
+    expect(typeof pov.id).toBe("string");
+  });
+
+  it("multi-resource-ref field: the entry naming a resource in the folder is cleared and the other entry is kept", async () => {
+    expect((await run("schema-edited", true))["characters"]).toEqual([
+      { id: null, name: "Mara" },
+      { id: "11111111-1111-4111-8111-111111111111", name: "Keep" },
+    ]);
   });
 });

@@ -487,6 +487,18 @@ export default function Home(): JSX.Element {
       } else {
         next.resourceSubtype = selectedResource.resourceSubtype;
       }
+      // Feature 87 (D-26/D-29), word count only. A canonical save updates the
+      // word count in Redux (`useCanonicalAutosave`), not in this page's local
+      // resource copies. Carrying the Redux value here keeps the request
+      // payload and the copy written back to Redux consistent with Redux's
+      // value (tests/f87-status-wordcount-experiment.test.tsx fails on both
+      // without it). The server drops a client-sent `wordCount` regardless
+      // (`updateSidecarCore`), so this does not decide the stored value.
+      const savedWordCount = (selectedResource as { wordCount?: number })
+        .wordCount;
+      if (typeof savedWordCount === "number") {
+        next.wordCount = savedWordCount;
+      }
       return next as unknown as AnyResource;
     };
 

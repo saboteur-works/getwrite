@@ -22,6 +22,6 @@ Trash is available on web and desktop.
 
 - Permanent deletion cannot be undone ("Permanently delete 1 item? This cannot be undone.").
 - The confirmation for deleting a single resource reads "This will remove the resource. Proceed?" and does not mention Trash; the one for a folder reads "This will move the folder and everything in it to Trash. Proceed?".
-- In a run, deleting a resource did not change the built-in **Point of View** field of another resource that pointed at it (the field kept its link and its name, before and after the restore); a custom **Ref** field was cleared and re-linked as described above.
+- In the run this page was verified from, deleting a resource did not change the built-in **Point of View** field of another resource that pointed at it (the field kept its link and its name, before and after the restore); a custom **Ref** field was cleared and re-linked as described above. A later change (unreleased) makes delete clear the built-in Point of View reference in a project whose metadata fields were never edited; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked.
 
 Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 3a3ea9f7.

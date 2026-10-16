@@ -17,6 +17,7 @@ import {
   loadEntityGraphPositions,
   saveEntityGraphPosition,
 } from "../../src/lib/models/entity-graph-positions";
+import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
@@ -131,6 +132,35 @@ describe("updateSidecarCore — entity-graph position cleanup on entity removal"
 
       const positions = await loadEntityGraphPositions(projectPath);
       expect(positions).toEqual([]);
+    });
+  });
+});
+
+describe("updateSidecarCore — client-sent wordCount (Feature 87, FR-7, FR-24)", () => {
+  it("leaves the stored wordCount at the saved value when an update carries a different wordCount", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Chapter One",
+        type: "text",
+        folderId: null,
+        orderIndex: 0,
+        userMetadata: {},
+        wordCount: 10,
+      });
+
+      await updateSidecarCore(projectId, resourceId, {
+        userMetadata: { status: "Published" },
+        wordCount: 0,
+      });
+
+      const stored = await readSidecar(projectPath, resourceId);
+      expect((stored?.userMetadata as Record<string, unknown>).status).toBe(
+        "Published",
+      );
+      expect(stored?.wordCount).toBe(10);
     });
   });
 });

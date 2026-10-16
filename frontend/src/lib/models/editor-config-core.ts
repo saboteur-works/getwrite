@@ -83,11 +83,10 @@ export interface UpdateEditorConfigResult {
  * Merges `headings`/`body` typography settings into `project.json`'s
  * `config.editorConfig` and persists the result.
  *
- * Lifted verbatim from `POST /api/project/editor-config`'s `handlePost`
- * body — `headings` is always sanitized (defaulting to an empty map when
- * omitted, via `sanitizeEditorHeadingMap`); `body` is only replaced when
- * explicitly provided (`body !== undefined`), otherwise the existing
- * `config.editorConfig.body` is preserved.
+ * Each of `headings` and `body` is replaced only when the request carries
+ * that key (`!== undefined`), after sanitizing; when the key is omitted the
+ * stored `config.editorConfig` value for it is left unchanged. An explicit
+ * value, including `{}` for `headings`, is still sanitized and replaces.
  *
  * @throws {InvalidProjectIdCoreError} When `projectId` is not a well-formed UUID.
  */
@@ -102,7 +101,10 @@ export async function updateEditorConfigCore(
 
   const nextEditorConfig: ProjectConfig["editorConfig"] = {
     ...(parsedProject.config?.editorConfig ?? {}),
-    headings: sanitizeEditorHeadingMap(input.headings),
+    headings:
+      input.headings !== undefined
+        ? sanitizeEditorHeadingMap(input.headings)
+        : parsedProject.config?.editorConfig?.headings,
     body:
       input.body !== undefined
         ? sanitizeEditorBody(input.body)

@@ -13,13 +13,14 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server.node";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import StartPage, {
   type StartPageProjectEntry,
 } from "../../components/Start/StartPage";
+import { buildProjectView } from "../../src/lib/models/project-view";
 import { makeStore } from "../../src/store/store";
 import { setProjects } from "../../src/store/projectsSlice";
 import type { SharingLimitsAnswer } from "../../src/store/sharing-limits-transport-service";
@@ -27,6 +28,17 @@ import type { SharingLimitsAnswer } from "../../src/store/sharing-limits-transpo
 const fetchSharingLimits = vi.fn<() => Promise<SharingLimitsAnswer>>();
 vi.mock("../../src/store/sharing-limits-transport-service", () => ({
   fetchSharingLimits: () => fetchSharingLimits(),
+}));
+
+const compileTextMock = vi.fn();
+vi.mock("../../src/lib/api/compile", () => ({
+  compilePdf: vi.fn(),
+  compileDocx: vi.fn(),
+  compileMarkdown: vi.fn(),
+  compileText: (...args: unknown[]) => compileTextMock(...args),
+}));
+vi.mock("../../src/lib/compile/download-file", () => ({
+  downloadFile: vi.fn(),
 }));
 
 import SharingLimitsProvider from "../../components/Sharing/SharingLimitsContext";
@@ -632,5 +644,228 @@ describe("StartPage — project deletion waits for the server (Feature 77, FR-25
         screen.queryByRole("button", { name: "Manage Doomed Novel" }),
       ).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("StartPage — Package > Compile Project dialog and resource count (Feature 87, D-3/D-39)", () => {
+  const DIR_ID = "44444444-dddd-4ddd-8ddd-dddddddddddd";
+  const STAMP = "2026-01-01T00:00:00.000Z";
+
+  /**
+   * Builds an entry the way the page's data path does: canonical folders and
+   * text resources passed through `buildProjectView`, whose `resources` and
+   * `folders` become the entry's.
+   */
+  function entryFor(
+    rootResourceFolderId: string | undefined,
+  ): StartPageProjectEntry {
+    const project = {
+      id: "p-pkg",
+      name: "Two Resource Novel",
+      rootPath: `/tmp/projects/${DIR_ID}`,
+      createdAt: STAMP,
+    };
+    const folder = {
+      id: "folder-1",
+      name: "Part One",
+      type: "folder",
+      slug: "part-one",
+      parentId: null,
+      orderIndex: 0,
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    };
+    const base = {
+      type: "text",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+      userMetadata: {},
+      plainText: "body",
+    };
+    const inFolder = {
+      ...base,
+      id: "res-in-folder",
+      name: "Scene In Folder",
+      slug: "scene-in-folder",
+      folderId: "folder-1",
+      orderIndex: 0,
+    };
+    const other = {
+      ...base,
+      id: "res-other",
+      name: "Scene Other",
+      slug: "scene-other",
+      orderIndex: 1,
+      ...(rootResourceFolderId === undefined
+        ? {}
+        : { folderId: rootResourceFolderId }),
+    };
+    const view = buildProjectView({
+      project,
+      folders: [folder],
+      resources: [inFolder, other],
+    } as unknown as Parameters<typeof buildProjectView>[0]);
+    return {
+      project,
+      folders: view.folders,
+      resources: view.resources,
+    } as unknown as StartPageProjectEntry;
+  }
+
+  async function openCompileDialog(entry: StartPageProjectEntry) {
+    const store = makeStore();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entry]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Two Resource Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Package" }));
+    return screen.findByRole("dialog", { name: /Compile Project/i });
+  }
+
+  it("dialog lists both resources when one has no folderId", async () => {
+    const dialog = await openCompileDialog(entryFor(undefined));
+    const scoped = within(dialog);
+    expect(scoped.getByText("Scene In Folder")).toBeInTheDocument();
+    expect(scoped.getByText("Scene Other")).toBeInTheDocument();
+  });
+
+  it("dialog lists both resources when one has a folderId naming a missing folder", async () => {
+    const dialog = await openCompileDialog(entryFor("folder-missing"));
+    const scoped = within(dialog);
+    expect(scoped.getByText("Scene In Folder")).toBeInTheDocument();
+    expect(scoped.getByText("Scene Other")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["no folderId", undefined],
+    ["a folderId naming a missing folder", "folder-missing"],
+  ])("compile input names both resources (%s)", async (_label, folderId) => {
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    const dialog = await openCompileDialog(entryFor(folderId));
+    const user = userEvent.setup();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    expect(compileTextMock).toHaveBeenCalledTimes(1);
+    const body = compileTextMock.mock.calls[0][0] as {
+      resourceIds: string[];
+      resources: { id: string }[];
+    };
+    expect([...body.resourceIds].sort()).toEqual([
+      "res-in-folder",
+      "res-other",
+    ]);
+    expect(body.resources.map((r) => r.id)).toEqual(
+      expect.arrayContaining(["res-in-folder", "res-other"]),
+    );
+  });
+
+  it("a create-result-shaped entry (folders without nested resources, resources with folderId and plainText) is listed under its folder with its body", async () => {
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    const project = {
+      id: "p-created",
+      name: "Two Resource Novel",
+      rootPath: `/tmp/projects/${DIR_ID}`,
+      createdAt: STAMP,
+    };
+    const folder = {
+      id: "folder-1",
+      name: "Part One",
+      type: "folder",
+      slug: "part-one",
+      parentId: null,
+      orderIndex: 0,
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    };
+    const base = {
+      type: "text",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+      userMetadata: {},
+    };
+    const entry = {
+      project,
+      folders: [folder],
+      resources: [
+        {
+          ...base,
+          id: "res-in-folder",
+          name: "Scene In Folder",
+          slug: "scene-in-folder",
+          folderId: "folder-1",
+          orderIndex: 0,
+          plainText: "folder body",
+        },
+        {
+          ...base,
+          id: "res-root",
+          name: "Scene Root",
+          slug: "scene-root",
+          folderId: null,
+          orderIndex: 1,
+          plainText: "root body",
+        },
+      ],
+    } as unknown as StartPageProjectEntry;
+    const store = makeStore();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entry]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Two Resource Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Package" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: /Compile Project/i,
+    });
+    expect(within(dialog).getByText("Scene In Folder")).toBeInTheDocument();
+    expect(within(dialog).getByText("Scene Root")).toBeInTheDocument();
+    // Row indentation is the tree depth: 8px at the root, 28px inside a folder.
+    const rowPadding = (name: string): string | undefined =>
+      within(dialog).getByRole("checkbox", { name }).closest("div[style]")
+        ?.style.paddingLeft;
+    expect(rowPadding("Scene In Folder")).toBe("28px");
+    expect(rowPadding("Scene Root")).toBe("8px");
+    expect(
+      within(dialog).getByRole("checkbox", { name: "Part One" }),
+    ).toBeEnabled();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    const body = compileTextMock.mock.calls[0][0] as {
+      resourceIds: string[];
+      resources: { id: string }[];
+    };
+    expect([...body.resourceIds].sort()).toEqual(["res-in-folder", "res-root"]);
+    expect(body.resources.filter((r) => r.id === "res-in-folder")).toHaveLength(
+      1,
+    );
+  });
+
+  it("the project card shows 2 resources for the same project (no folderId case)", () => {
+    const store = makeStore();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entryFor(undefined)]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    expect(screen.getByText(/2 resources/)).toBeInTheDocument();
   });
 });

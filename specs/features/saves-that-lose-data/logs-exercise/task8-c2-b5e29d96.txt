@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 86399 port 55749 (throwaway projects dir; templates repo read-only)
+Root Doc folderId=null ; Inner Doc folderId="dded618c-5dc6-4120-b608-60f7cb5d82df"
+tree: ["Workspace","Inner Doc","Root Doc"]
+C-02 in-project Compile Project list: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Inner Doc","Root Doc","2 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (2)"]
+C-02 Start Page Package list: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Inner Doc","Root Doc","2 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (2)"]
+C-02 Start Page compile cmp-two.txt: "Inner Doc\n=========\n\nInner text here.\n\n\nRoot Doc\n========\n\nRoot text here."
+stop: recorded 86399(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

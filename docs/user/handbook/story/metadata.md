@@ -103,7 +103,7 @@ Two settings that apply beyond a single resource live in different places. The w
 
 ## Warnings and limits
 
-- A Status chosen after typing set the resource's stored `wordCount` to 0 while the footer still read the real count (two resources, ten and five words). The footer shows the live count.
+- In the runs this page was verified from, a Status chosen after typing set the resource's stored `wordCount` to 0 while the footer still read the real count (two resources, ten and five words). A later change (unreleased) stops the sidebar write from storing that 0; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked. The footer shows the live count.
 - A custom Date field's sidebar label read "Story Date / Time", not the field's own label.
 - Renaming a built-in field in the Metadata Fields manager did not change the sidebar heading.
 - Tags created or deleted in Project Settings did not show in the open sidebar until the page was reloaded.
