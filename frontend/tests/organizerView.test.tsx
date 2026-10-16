@@ -331,11 +331,13 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
         folders: [],
         resources: [],
         statuses: [],
-      } as any),
+      }),
     );
     store.dispatch(setSelectedProjectId(PROJECT_ID));
-    store.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
-    store.dispatch(setResources(resources as any));
+    store.dispatch(
+      setFolders([{ ...makeFolder(FOLDER_ID, "Folder A"), slug: "folder-a" }]),
+    );
+    store.dispatch(setResources(resources));
     store.dispatch(setSelectedResourceId(FOLDER_ID));
     render(
       <Provider store={store}>

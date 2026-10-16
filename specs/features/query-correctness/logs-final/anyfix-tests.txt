@@ -1,0 +1,10 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+
+ Test Files  5 passed (5)
+      Tests  195 passed | 1 skipped (196)
+   Start at  15:25:04
+   Duration  2.51s (transform 794ms, setup 214ms, import 1.71s, tests 3.00s, environment 1.59s)
+

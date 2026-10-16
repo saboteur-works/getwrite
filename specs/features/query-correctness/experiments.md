@@ -369,3 +369,114 @@ Writers and carriers (not readers of the effective value; unchanged):
 - Project Settings: no read of `config.statuses` was found in `frontend/components` by this grep (no `ProjectSettingsDialog` hit); stated as a grep result, not as proof no editor exists elsewhere (the scrivener/docx importers were excluded from the grep and write `config.statuses` only at project creation).
 
 Every reader above stays reading the configured list unless the owner decides otherwise, except the three consumers that change: Task 17 (`StatusSelector.tsx`, defines the effective list once), Task 18 (sidebar Status control in `MetadataSidebar.tsx` and the `status` chip via `AppShell.tsx`/`FieldPicker.tsx:106-109`), Task 19 (the Organizer filter bar's options, not the card display or filter resolution).
+
+## Final suites
+
+Date 2026-10-16. Branch `fix/query-correctness`, main checkout, `git rev-parse HEAD` at the start: `6627c51c82f4da58126c805f74f7512dca87aa2e`. Logs are under `specs/features/query-correctness/logs-final/` (`final-*.txt`). No source change by this task. The feature range used below is `1effb065..HEAD` (18 commits, Tasks 5-22; the Task 1-4 commits precede `1effb065`, so the Task 2 evaluation-time parameter in `query-evaluate-core.ts`/`query-evaluator.ts` is not in that diff). Baselines are the Task 1 figures in "Baselines" above.
+
+### Listeners and processes
+
+- `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before `pnpm test:e2e`: no output, exit 1 (`final-lsof-before-e2e.txt`, empty). Nothing to reuse or leave alone.
+- During the e2e run a 1-second sampler of `lsof -iTCP:6006 -sTCP:LISTEN` saw one pid, 10157 (`final-e2e-6006-pids.txt`); it appeared after the run started and the listener was not present before, so it is the Storybook server Playwright's webServer config started. I did not stop it: it exited on its own. After the run `lsof` on all three ports returned no output, exit 1 (`final-lsof-after-e2e.txt`), and `ps -p 10157` showed it gone. Nothing was stopped by this task.
+
+### Results against the Task 1 baselines
+
+| Check | Baseline (Task 1) | Final | Log |
+|---|---|---|---|
+| `pnpm test:ci` (frontend) | 610 files; 6505 passed, 1 skipped, 0 failed | exit 0; 611 files passed (611); Tests 6934 passed, 2 expected fail, 1 skipped (6937); 0 failed | `final-test-ci.txt` |
+| `pnpm typecheck` (frontend) | exit 0 | exit 0 | `final-typecheck.txt` |
+| `pnpm lint` (frontend) | 0 errors, 393 warnings | exit 0; 0 errors, 397 warnings | `final-lint.txt` |
+| `pnpm knip` (root) | exit 1, 435 lines | exit 1, 434 lines | `final-knip.txt` |
+| `pnpm test:e2e` (frontend, outside sandbox) | 214 passed, 1 skipped, 0 failed | exit 0; 214 passed, 1 skipped, 0 failed (56.8 s) | `final-e2e.txt` |
+
+All five were run. No suite failed.
+
+Unit delta: +1 test file (611 vs 610) and +429 test results (6934 + 2 expected fail = 6936 non-skipped versus 6505). The 2 expected fails are the two known-failure cases listed below; at baseline there were none. The added tests are those added by Tasks 2-22 in `frontend/tests/` (query-builder-evaluator-check.test.ts is the one new file; the rest extend `query-evaluator.test.ts`, `ast-chip-bridge.test.ts`, `operator-utils.test.ts`, `saved-queries.test.ts`, `fieldPicker.test.tsx`, `filterChip.test.tsx`, `metadataSidebar.test.tsx`, `organizerView.test.tsx`, `projects-slice-features.test.ts`). The baseline numbers were taken at Task 1 before the Task 2 check file existed, so the delta is not split per task here.
+
+e2e: same passed/skipped/failed counts as the baseline; no difference to name. (The skipped test was not identified by name in either run.)
+
+### Lint: 397 versus 393 (+4), by file
+
+Comparing `logs-baseline/lint.log` with `logs-final/final-lint.txt` by file, rule and message (line numbers ignored), the differences are:
+- `frontend/src/store/projectsSlice.ts`: `@typescript-eslint/no-explicit-any` 23 -> 24 (+1).
+- `frontend/tests/organizerView.test.tsx`: `@typescript-eslint/no-explicit-any` 40 -> 43 (+3).
+- `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`: the same `react-hooks/exhaustive-deps` warning, text differs only in its line reference (301 -> 308); no count change.
+- Every other warning is unchanged apart from line-number shifts. No new errors.
+
+So the increase is four `no-explicit-any` warnings in two files this feature touched (Tasks 17-19 touched both). I did not identify which line in each file is new; the rule list is by count. The instruction "no new `any`" (testing/TypeScript standards) means these four are a finding against the feature, recorded here and not fixed (no-source-change task). To settle which lines they are, diff the two lint logs' `any` lines for those two files against `git diff 1effb065..HEAD -- <file>`.
+
+### Knip: findings against the baseline
+
+Category counts (final / baseline): Unused files 49 / 49; Unused dependencies 1 / 1; Unlisted dependencies 6 / 6; Unlisted binaries 4 / 4; Unused exports 166 / 166; Unused exported types 169 / 170; Duplicate exports 14 / 14; Configuration hints 6 / 6. With line:column numbers stripped, the single difference between the two files is one line removed: `RelativeDateValue  interface  …/components/QueryBuilder/FilterChip.tsx` (an unused exported type at baseline, absent in the final). No new knip finding.
+
+Findings that name files this feature touched (all present in the baseline too, only line numbers moved): `frontend/src/lib/models/query-ast.ts` (`ComparisonOpSchema`, `TextOpSchema` unused exports; unused exported types `ComparisonOp`, `TextOp`, `ComparisonNode`, `InNode`, `ExistsNode`, `TextNode`, `LinksToNode`, `LinkedFromNode`, `ParamNode`, `CombinatorNode`, `SpliceNode`); `frontend/src/store/projectsSlice.ts` (`changeMetadataFieldType`, `selectActiveProjectRootPath`); `frontend/components/Layout/AppShell.tsx` (`AppShellResourceActionOptions`); `frontend/components/QueryBuilder/FilterChip.tsx` (`RangeValue`); `…/WorkArea/Views/OrganizerView/organizerFilters.ts` is in the list as `OrganizerFilterKey` (the file is not in the touched list; `OrganizerView.tsx` is). New exports added by this feature (`selectEffectiveProjectStatuses`, `effectiveStatuses`, `BUILT_IN_STATUSES`, `valueForOperatorChange`) do not appear in knip's output. The run printed the same `.npmrc` EPERM warning as the baseline.
+
+### Task 2 check re-run, per case
+
+Command: `pnpm --filter getwrite-frontend exec vitest run tests/unit/query-builder-evaluator-check.test.ts --reporter=verbose` (zone `America/New_York` set by the file, evaluation time 2026-03-10 15:00 local). Exit 0. Test Files 1 passed (1); Tests 281 passed | 2 expected fail (283). Per-case list: `logs-final/final-fr1-check-run.txt`.
+
+At baseline-with-markers the same file was 252 passed / 31 expected fail (283). The case count is unchanged (283); 29 cases moved from expected fail to ordinary pass. The only expected-failure markers left are these two, KNOWN FAILURE by owner decision at the FR-4 stop (F-2, F-3; not fixed in Feature 86):
+1. `builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is › typed name Tom › edited` [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-2].
+2. `builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-not › typed name Tom › edited` [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-3].
+
+The full-suite "2 expected fail" in `pnpm test:ci` is these two; no other `it.fails` result is reported by the full run (the D-19 and D-20 markers added at Tasks 14 and 16 were flipped at Tasks 15, 18 and 19; I did not grep the test tree for other `it.fails`, only the run's count).
+
+### Parts: landed or halted
+
+- Part A, D-16: LANDED. Red record `logs-final/task5-red.txt` (Task 5; the halt condition of FR-5 did not apply, test was red). Fix Task 6 (`152a69d5`, pinning before/after in `task6-pinning-before.txt`, `task6-all-after.txt`), reopen Task 7 (`1b8d2459`, `task7-red.txt` then `task7-green.txt`).
+- Part B, D-17 and FR-16: LANDED. Red record `logs-final/task8-red.txt` (FR-10 halt did not apply), `task9-red.txt`/`task9-green.txt`, Task 10 (`00e8ebfc`, eq of a day), Task 11 (`14785b2d`, FR-16 (b) on `createdAt`/`updatedAt` only, red `task11-red.txt`, green `task11-green.txt`), Task 12 (`40c51bed`, reopen as "in the last"), Task 22 (`7164d3cc`, F-4). Date-boundary measurement: section "Date boundary (FR-16)" above.
+- Part C, D-19: LANDED. Experiment record: section "D-19 (FR-18)" above (`task13-as-is.txt`, `task13-scratch-multiselect.txt`); failing test Task 14 (`task14-red.txt`, FR-19 halt did not apply); fix Task 15 (`c880a4ea`, section "D-19 fix (Task 15, FR-21)" above). Task 15 notes the multi-value operators (any/all/none) on the Tags chip still use a plain Values text input; the single-value branch is the tag-aware one.
+- Part D, D-20: LANDED. Red record: section "D-20 (FR-22, FR-24)" above and `task16-red.txt` (FR-22 halt did not apply); Task 17 (`bb9400f5`, effective-statuses value and selector), Task 18 (`43106b4e`, sidebar Status control and Status chip), Task 19 (`6627c51c`, Organizer status filter reads the effective statuses; card display and `organizerFilters.ts` untouched, `task19-diff-review.txt`). The intrinsic "Statuses" field stays configured-only (FR-26).
+
+### Disposition of FR-4 findings
+
+- F-1 "starts with": owner FIX. Tasks 20 (red) and 21 (`d52bcf40`) landed. Saved shape `{op:"matches", field, value:"^"+escaped, caseInsensitive:true}`; optional `caseInsensitive` boolean added to the text node schema; saved folders not migrated.
+- F-2 resource-ref typed name "is": owner KNOWN FAILURE, not fixed. Marker remains (listed above).
+- F-3 resource-ref typed name "is not": owner KNOWN FAILURE, not fixed. Marker remains (listed above).
+- F-4 never-edited "in the last": owner FIX. Task 22 (`7164d3cc`) landed.
+- F-5 intrinsic-timestamp before/after/between: owner CONFIRMED and FIX via Task 11 (`14785b2d`), `createdAt`/`updatedAt` only.
+- F-6 `createdAt` "is before" r1: covered by F-5 / Task 11.
+
+### Assertions changed in existing tests (FR-28), from the commit messages
+
+1. Task 18 (`43106b4e`): `fieldPicker.test.tsx` "leaves the builtin Status field without options when none are configured" replaced by "offers the effective statuses for the builtin Status field when none are configured". Reason: the task deliberately changes that behaviour (D-20).
+2. Task 21 (`d52bcf40`): `operator-utils.test.ts` "text: starts-with -> matches" now expects `value: "^"` and `caseInsensitive: true` (was `value: ""`). Reason: the stub must agree with `chipToAst` for an empty value (FR-9).
+3. Task 22 (`7164d3cc`), in the Task 2 check file: the expected-failure count test changed from 5 to the exact two resource-ref titles; the untouched-chip builder now uses `valueForOperatorChange` instead of a literal `null` (same result for every operator except "in the last"). Reason: F-4 fix and the markers' removal.
+4. Task 9 (`2fa1c3fa`), in the Task 2 check file: describe title now "read only by the relative-date gte"; the `gte createdAt 1 days` probe removed from the omitting-evaluation-time probes; the "mentions it once" source-line test now expects two lines; the expected-failure count 29 -> 20. Reason: the evaluation time is now read (Task 9 is the task that reads it). The Task 8 `gte` `it.fails` was flipped to `it`.
+5. Task 10 (`00e8ebfc`): the Task 8 `eq` `it.fails` flipped to `it` (marker and name only).
+6. Marker removals (not assertion changes): Task 6 (KNOWN_FAILURES 31 -> 29), Task 10 (20 -> 16), Task 11 (10 finding-FR-16 markers removed, 16 -> 6), Task 15, Task 18, Task 19, Task 21 (12 F-1 markers, 6 -> 5), Task 22 (5 -> 2).
+7. Commit messages for Tasks 6, 7, 12, 17 and 19 state "No existing assertion changed" (Task 11: "No existing evaluator assertion changed"); Task 15's message is cut in my grep output, "No existing assertion" begins its last sentence. I did not re-derive these from the diffs.
+
+Existing query tests named by the rule (`query-evaluator.test.ts`, `ast-chip-bridge.test.ts`, `operator-utils.test.ts`, saved-query tests) all pass in the full run.
+
+### No saved query, `project.json` or sidecar written
+
+What I checked, and what I did not:
+- `query-evaluator.ts` imports only types, `query-intrinsics` and `query-ast` types (no fs, no storage adapter); `ast-chip-bridge.ts` imports only types and `escapeRegExp`; `default-statuses.ts` is a leaf module. So evaluation, reopening (`astToGroups`) and `effectiveStatuses` have no write path in their imports. This is a read of the imports, not a test.
+- Tests: `projects-slice-features.test.ts` "selectEffectiveProjectStatuses is a pure read: state is unchanged and the configured list is not mutated" (and the stable-reference test); `metadataSidebar.test.tsx` "shows the first option and writes nothing on mount for a resource with no stored status" (the sidebar's effective-statuses read does not call `onChangeField`); `saved-queries.test.ts` "an old file without the marker parses and stays without it" and "a node with caseInsensitive true parses and keeps the marker through write and read" (both use a `mkdtemp` throwaway directory); `query-builder-evaluator-check.test.ts` and the evaluator and bridge tests run on in-memory fixtures.
+- Not found: a single test asserting that no file is written during evaluation or reopening on a real storage adapter. The statement above rests on the imports and the tests named, not on a write-spy test. The Task 21 commit states no saved folder is migrated; no code path was added that rewrites saved queries.
+
+### Electron and cli suites
+
+Not run. `git diff --stat 1effb065..HEAD -- electron cli` printed nothing (empty). Touched files outside `specs/` (`git diff --name-only 1effb065..HEAD`, 92 files in total, 22 outside `specs/`), all under `frontend/`:
+`components/Layout/AppShell.tsx`, `components/QueryBuilder/FieldPicker.tsx`, `FilterChip.tsx`, `ast-chip-bridge.ts`, `operator-utils.ts`, `components/Sidebar/MetadataSidebar.tsx`, `components/Sidebar/controls/StatusSelector.tsx`, `components/WorkArea/Views/OrganizerView/OrganizerView.tsx`, `src/lib/models/default-statuses.ts` (new), `src/lib/models/query-ast.ts`, `src/lib/models/query-evaluator.ts`, `src/store/projectsSlice.ts`, and tests `fieldPicker.test.tsx`, `filterChip.test.tsx`, `metadataSidebar.test.tsx`, `organizerView.test.tsx`, `unit/ast-chip-bridge.test.ts`, `unit/operator-utils.test.ts`, `unit/projects-slice-features.test.ts`, `unit/query-builder-evaluator-check.test.ts`, `unit/query-evaluator.test.ts`, `unit/saved-queries.test.ts`. Shared-code note (FR-29): `query-evaluate-core.ts` (touched at Task 2, before the range) is shared with the native backend; no new route, transport or native backend was added in the range. Whether `cli/` or `electron/` import any of the touched frontend models (for example `query-ast.ts` through the `@gw/core` alias) was not checked, so "not run" rests on the empty diff only.
+
+### Tree state
+
+- `git diff --name-only 1effb065..HEAD | grep docs/user`: empty. No edit under `docs/user/`.
+- `git status --short` at the end of the runs (before this section was written): only untracked files under `specs/features/query-correctness/logs-final/` (`final-*.txt`). No change outside `frontend/` and `specs/features/query-correctness/` (nothing under `frontend/` is modified in the working tree either).
+
+### Handbook warnings made stale (pointer only, not edited; for the scribe)
+
+`docs/user/handbook/story/metadata-queries.md`: lines ~71-76 (operator table: "starts with", "in the last", "includes all of"), ~95-108 (Warnings and limits: "includes all of" returned the same as "includes any of"; "is on" and "in the last" returned no resources; the Tags chip suggesting resources not tags; Statuses versus Status; the Status chip's empty list in a new Blank project; Status is empty on a never-changed status; the "is before"/"is after"/"is between" day-boundary notes, line ~97 and any "starts with" note). `docs/user/handbook/views/organizer.md` lines ~31 and ~54 (Status filter list and the Draft/never-statused note). `docs/user/handbook/views/data.md` lines ~24 and ~34 (no-statuses hint and "Draft" versus No status; the roll-up itself was not changed by this feature, so these may stay accurate). `docs/user/handbook/story/metadata.md` line ~24 and ~102 (Status and `config.statuses`). Which of these are actually stale was judged from a grep of the lines, not by reading each page in full.
+
+### Not run
+
+- FR-31 (real-app re-check): the pipeline lead's, Stage 6.5.
+- electron and cli test suites (see above).
+- Per-test-name identification of the one skipped unit test and the one skipped e2e test.
+
+### Lint follow-up (any warnings)
+
+- The +4 `no-explicit-any` warnings were four new `any`: `frontend/src/store/projectsSlice.ts` (`selectEffectiveProjectStatuses = (state: any)`, 1) and `frontend/tests/organizerView.test.tsx` (three `as any` in `renderNoStatusesProject`: the `setProject` payload, `setFolders`, `setResources`, 3); removed in a follow-up (structural `EffectiveStatusesState` parameter type; typed payloads). Logs: `logs-final/anyfix-*.txt`.
+- `pnpm lint` from `frontend/` now reports 393 warnings, 0 errors (`logs-final/anyfix-lint.txt`); `pnpm typecheck` exit 0; organizerView, metadataSidebar, projects-slice-features, fieldPicker and controls tests: 5 files, 195 passed, 1 skipped.

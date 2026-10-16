@@ -251,7 +251,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 7, 11, 12, 15, 19, 21, 22
 **Estimate:** 3
 **Notes:** Satisfies FR-30, FR-28, FR-29. `pnpm test:e2e` and `lsof` run OUTSIDE the sandbox in the main checkout; the others inside. If a part halted, its later tasks are unticked and this task records that; the dependency on a halted part's tasks is then treated as satisfied by the halt report. The FR-31 real-app re-check is NOT done here: the pipeline lead does it at Stage 6.5 and reports it separately. Tasks 20-22 (the owner-approved findings F-1 and F-4) are in this task's dependencies. The handbook warnings these fixes make stale go to the scribe as a follow-up; list them as a pointer only.
-**Done:** [ ]
+**Done:** [x] (committed in Task 23 commit)
 
 ## Summary
 - Total tasks: 23

@@ -889,15 +889,24 @@ export const selectActiveProjectStatuses = (state: any): string[] => {
   return state?.projects?.projects?.[id]?.statuses ?? EMPTY_STATUSES;
 };
 
+/** The slice of root state `selectEffectiveProjectStatuses` reads. */
+type EffectiveStatusesState = {
+  projects?: {
+    selectedProjectId?: string | null;
+    projects?: Record<string, { statuses?: string[] } | undefined>;
+  };
+};
+
 /**
  * Selects the effective statuses for the active project: its configured list
  * when non-empty, else the shared built-in list (stable reference). A pure
  * read; nothing is written (FR-23).
  *
- * @param state - Redux root state (typed as `any` like its sibling selector).
+ * @param state - Redux root state (structural subset, see `EffectiveStatusesState`).
  */
-export const selectEffectiveProjectStatuses = (state: any): string[] =>
-  effectiveStatuses(selectActiveProjectStatuses(state));
+export const selectEffectiveProjectStatuses = (
+  state: EffectiveStatusesState,
+): string[] => effectiveStatuses(selectActiveProjectStatuses(state));
 
 /**
  * Selects the ordered relationship-types array for the currently active
