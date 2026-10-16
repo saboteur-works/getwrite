@@ -1382,17 +1382,14 @@ describe("createdAt predicates on a resource created 3 minutes before the evalua
       evaluationTime: EVALUATION_TIME,
     });
 
-  it.fails(
-    "omits a resource created 3 minutes ago for gte 1 days on createdAt [expected failure: D-17]",
-    async () => {
-      const result = await run({
-        op: "gte",
-        field: "createdAt",
-        value: { amount: 1, unit: "days" },
-      });
-      expect(result).toEqual([FRESH]);
-    },
-  );
+  it("returns a resource created 3 minutes ago for gte 1 days on createdAt", async () => {
+    const result = await run({
+      op: "gte",
+      field: "createdAt",
+      value: { amount: 1, unit: "days" },
+    });
+    expect(result).toEqual([FRESH]);
+  });
 
   it.fails(
     "omits a resource created 3 minutes ago for eq of its creation day on createdAt [expected failure: D-17]",
@@ -1405,4 +1402,299 @@ describe("createdAt predicates on a resource created 3 minutes before the evalua
       expect(result).toEqual([FRESH]);
     },
   );
+});
+
+// ── Feature 86 D-17: relative-date gte ("in the last") ────────────────────
+
+describe("gte with a relative-date object (D-17, FR-11..FR-14)", () => {
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  const INSIDE = "eeeeeeee-0000-4000-a000-0000000000a1";
+  const OUTSIDE = "eeeeeeee-0000-4000-a000-0000000000a2";
+
+  function stamped(id: string, when: Date | string | undefined): ResourceBase {
+    return {
+      id,
+      slug: id,
+      name: id,
+      type: "text",
+      folderId: null,
+      orderIndex: 0,
+      statuses: [],
+      createdAt: when instanceof Date ? when.toISOString() : (when ?? ""),
+      updatedAt: when instanceof Date ? when.toISOString() : when,
+    };
+  }
+
+  /** Evaluates `gte createdAt {amount, unit}`; returns [inside?, outside?]. */
+  async function insideOutside(
+    now: Date,
+    amount: number,
+    unit: string,
+    inside: Date,
+    outside: Date,
+  ): Promise<[boolean, boolean]> {
+    const result = await evaluate(
+      {
+        op: "gte",
+        field: "createdAt",
+        value: { amount, unit } as unknown as MetadataValue,
+      },
+      {
+        resources: [stamped(INSIDE, inside), stamped(OUTSIDE, outside)],
+        sidecars: {},
+        context: ctx,
+        evaluationTime: now,
+      },
+    );
+    return [result.includes(INSIDE), result.includes(OUTSIDE)];
+  }
+
+  const MIN = 60 * 1000;
+  const NOW = new Date("2026-03-10T15:00:00.000Z");
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+  const before = (ms: number): Date => new Date(NOW.getTime() - ms);
+
+  it("1 day: 24 hours back is the boundary", async () => {
+    expect(
+      await insideOutside(NOW, 1, "days", before(DAY - MIN), before(DAY + MIN)),
+    ).toEqual([true, false]);
+  });
+
+  it("7 days: 7 x 24 hours back is the boundary", async () => {
+    expect(
+      await insideOutside(
+        NOW,
+        7,
+        "days",
+        before(7 * DAY - MIN),
+        before(7 * DAY + MIN),
+      ),
+    ).toEqual([true, false]);
+  });
+
+  it("1 week: 7 x 24 hours back is the boundary", async () => {
+    expect(
+      await insideOutside(
+        NOW,
+        1,
+        "weeks",
+        before(7 * DAY - MIN),
+        before(7 * DAY + MIN),
+      ),
+    ).toEqual([true, false]);
+  });
+
+  it("1 month: the same local time one calendar month earlier is the boundary", async () => {
+    const now = new Date(2026, 2, 10, 11, 0);
+    expect(
+      await insideOutside(
+        now,
+        1,
+        "months",
+        new Date(2026, 1, 10, 11, 1),
+        new Date(2026, 1, 10, 10, 59),
+      ),
+    ).toEqual([true, false]);
+  });
+
+  it("the evaluation instant itself matches (upper bound inclusive)", async () => {
+    expect(await insideOutside(NOW, 1, "days", NOW, NOW)).toEqual([true, true]);
+  });
+
+  describe("a month span is clamped to the end of the earlier month", () => {
+    const cases: Array<[string, Date, Date]> = [
+      [
+        "31 March 2026 -> 28 February",
+        new Date(2026, 2, 31, 12, 0),
+        new Date(2026, 1, 28, 12, 0),
+      ],
+      [
+        "30 March 2026 -> 28 February",
+        new Date(2026, 2, 30, 12, 0),
+        new Date(2026, 1, 28, 12, 0),
+      ],
+      [
+        "29 March 2026 -> 28 February",
+        new Date(2026, 2, 29, 12, 0),
+        new Date(2026, 1, 28, 12, 0),
+      ],
+      [
+        "31 March 2028 -> 29 February (leap)",
+        new Date(2028, 2, 31, 12, 0),
+        new Date(2028, 1, 29, 12, 0),
+      ],
+      [
+        "30 March 2028 -> 29 February (leap)",
+        new Date(2028, 2, 30, 12, 0),
+        new Date(2028, 1, 29, 12, 0),
+      ],
+      [
+        "29 March 2028 -> 29 February (leap)",
+        new Date(2028, 2, 29, 12, 0),
+        new Date(2028, 1, 29, 12, 0),
+      ],
+      [
+        "31 May 2026 -> 30 April",
+        new Date(2026, 4, 31, 12, 0),
+        new Date(2026, 3, 30, 12, 0),
+      ],
+      [
+        "31 January 2026 -> 31 December 2025",
+        new Date(2026, 0, 31, 12, 0),
+        new Date(2025, 11, 31, 12, 0),
+      ],
+    ];
+    for (const [name, now, boundary] of cases) {
+      it(name, async () => {
+        expect(
+          await insideOutside(
+            now,
+            1,
+            "months",
+            new Date(boundary.getTime() + MIN),
+            new Date(boundary.getTime() - MIN),
+          ),
+        ).toEqual([true, false]);
+      });
+    }
+  });
+
+  it("does not match a date after the evaluation time (2099)", async () => {
+    expect(
+      await insideOutside(
+        NOW,
+        1,
+        "months",
+        new Date("2099-01-01T00:00:00.000Z"),
+        new Date(NOW.getTime() + MIN),
+      ),
+    ).toEqual([false, false]);
+  });
+
+  it("reads a date-only custom field as local midnight", async () => {
+    const result = await evaluate(
+      {
+        op: "gte",
+        field: "dt",
+        value: { amount: 7, unit: "days" } as unknown as MetadataValue,
+      },
+      {
+        resources: [stamped(INSIDE, undefined), stamped(OUTSIDE, undefined)],
+        sidecars: {
+          [INSIDE]: { dt: "2026-03-09" },
+          [OUTSIDE]: { dt: "2026-03-11" },
+        },
+        context: ctx,
+        evaluationTime: NOW,
+      },
+    );
+    expect(result).toEqual([INSIDE]);
+  });
+
+  describe("a field that is absent, null or unparseable does not match and does not throw", () => {
+    const value = { amount: 7, unit: "days" } as unknown as MetadataValue;
+    const run = (sidecar: Record<string, MetadataValue>): Promise<string[]> =>
+      evaluate(
+        { op: "gte", field: "dt", value },
+        {
+          resources: [stamped(INSIDE, undefined)],
+          sidecars: { [INSIDE]: sidecar },
+          context: ctx,
+          evaluationTime: NOW,
+        },
+      );
+
+    it("absent", async () => expect(await run({})).toEqual([]));
+    it("null", async () => expect(await run({ dt: null })).toEqual([]));
+    it("unparseable string", async () =>
+      expect(await run({ dt: "not a date" })).toEqual([]));
+    it("a number", async () => expect(await run({ dt: 5 })).toEqual([]));
+    it("absent updatedAt", async () => {
+      const result = await evaluate(
+        { op: "gte", field: "updatedAt", value },
+        {
+          resources: [stamped(INSIDE, undefined)],
+          sidecars: {},
+          context: ctx,
+          evaluationTime: NOW,
+        },
+      );
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("a malformed relative-date object throws an error naming the problem", () => {
+    const attempt = (value: unknown): Promise<string[]> =>
+      evaluate(
+        { op: "gte", field: "createdAt", value: value as MetadataValue },
+        input({ evaluationTime: NOW }),
+      );
+
+    it("unit years", async () => {
+      await expect(attempt({ amount: 1, unit: "years" })).rejects.toThrow(
+        /unit must be days, weeks or months/,
+      );
+    });
+    it("unit missing", async () => {
+      await expect(attempt({ amount: 1 })).rejects.toThrow(/unit must be/);
+    });
+    it("amount 0", async () => {
+      await expect(attempt({ amount: 0, unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount negative", async () => {
+      await expect(attempt({ amount: -3, unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount fractional", async () => {
+      await expect(attempt({ amount: 1.5, unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount a string", async () => {
+      await expect(attempt({ amount: "7", unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount missing", async () => {
+      await expect(attempt({ unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+  });
+
+  describe("ordinary gte is unchanged", () => {
+    it("on numbers", async () => {
+      expect(await ids({ op: "gte", field: "score", value: 6 })).toEqual([
+        R1,
+        R3,
+      ]);
+    });
+    it("on strings", async () => {
+      expect(
+        await ids({
+          op: "gte",
+          field: "createdAt",
+          value: "2024-03-01T00:00:00.000Z",
+        }),
+      ).toEqual([R2, R3]);
+    });
+    it("a ResourceRef-valued gte does not read as a relative date", async () => {
+      expect(
+        await ids({ op: "gte", field: "score", value: { id: R1, name: "x" } }),
+      ).toEqual([]);
+    });
+  });
 });

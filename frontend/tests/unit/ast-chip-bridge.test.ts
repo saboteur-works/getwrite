@@ -852,3 +852,30 @@ describe("and-of-one-in reopen (D-16)", () => {
     expect(r!.groups[0].chips[0].operator).toBe("is-any-of");
   });
 });
+
+describe("chipToAst for 'in the last' (Feature 86 FR-11)", () => {
+  it("writes gte on the field with the {amount, unit} value unchanged", () => {
+    const ast = groupsToAst(
+      [
+        {
+          id: "g",
+          combinator: "and",
+          chips: [
+            {
+              id: "c",
+              field: FIELDS.find((f) => f.key === "createdAt")!,
+              operator: "in-the-last",
+              value: { amount: 7, unit: "days" },
+            },
+          ],
+        },
+      ],
+      "and",
+    );
+    expect(ast).toEqual({
+      op: "gte",
+      field: "createdAt",
+      value: { amount: 7, unit: "days" },
+    });
+  });
+});

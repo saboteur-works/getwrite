@@ -1,0 +1,14 @@
+app/api/project/query/evaluate/route.ts:22: * (`store/transport/native-query-backend.ts`). `executeEvaluate` is
+app/api/project/query/evaluate/route.ts:33:import { executeEvaluate } from "../../../../../src/lib/models/query-evaluate-core";
+app/api/project/query/evaluate/route.ts:38:export { executeEvaluate };
+app/api/project/query/evaluate/route.ts:83:    const ids = await executeEvaluate(
+src/store/transport/native-query-backend.ts:31:import { executeEvaluate } from "../../lib/models/query-evaluate-core";
+src/store/transport/native-query-backend.ts:98:        const ids = await executeEvaluate(projectRoot, definition);
+src/lib/models/query-evaluate-core.ts:13: * constructs a `Response`. {@link executeEvaluate} throws the same
+src/lib/models/query-evaluate-core.ts:195:export async function executeEvaluate(
+src/lib/models/query-evaluate-core.ts:201:  return evaluate(ast, input);
+app/api/project/query/evaluate/route.ts:32:} from "../../../../../src/lib/models/query-evaluator";
+app/api/project/query/evaluate/route.ts:33:import { executeEvaluate } from "../../../../../src/lib/models/query-evaluate-core";
+src/store/transport/native-query-backend.ts:31:import { executeEvaluate } from "../../lib/models/query-evaluate-core";
+src/lib/models/query-evaluate-core.ts:21:import { evaluate } from "./query-evaluator";
+src/lib/models/query-evaluate-core.ts:22:import type { EvaluationInput } from "./query-evaluator";

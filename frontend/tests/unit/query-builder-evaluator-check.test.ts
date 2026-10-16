@@ -524,7 +524,6 @@ async function idsFor(
  * "finding": anything else.
  */
 const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
-  ["date (custom field) › in-the-last › 7 days › edited", "D-17"],
   [
     "date (custom field) › in-the-last › untouched › returns what the input displays",
     "D-17 + FR-3",
@@ -535,10 +534,6 @@ const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
   ...["createdAt", "updatedAt"].flatMap((f): [string, string][] => [
     [`date (${f}) › is-on › 2026-03-10 › edited`, "D-17"],
     [`date (${f}) › is-on › 2026-03-09 › edited`, "D-17"],
-    [`date (${f}) › in-the-last › 1 days › edited`, "D-17"],
-    [`date (${f}) › in-the-last › 7 days › edited`, "D-17"],
-    [`date (${f}) › in-the-last › 1 weeks › edited`, "D-17"],
-    [`date (${f}) › in-the-last › 1 months › edited`, "D-17"],
     [
       `date (${f}) › in-the-last › untouched › returns what the input displays`,
       "D-17 + FR-3",
@@ -676,12 +671,12 @@ describe("expected-failure list", () => {
     expect(stale).toEqual([]);
   });
 
-  it("lists the 29 cases still failing after the D-16 evaluator fix", () => {
-    expect(KNOWN_FAILURES.size).toBe(29);
+  it("lists the 20 cases still failing after the D-17 relative-date evaluator fix", () => {
+    expect(KNOWN_FAILURES.size).toBe(20);
   });
 });
 
-describe("evaluation time is optional and not read yet (FR-13)", () => {
+describe("evaluation time is optional and read only by the relative-date gte (FR-13)", () => {
   const PROBES: QueryAST[] = [
     { op: "eq", field: "num", value: 5 },
     { op: "gte", field: "num", value: 5 },
@@ -691,11 +686,10 @@ describe("evaluation time is optional and not read yet (FR-13)", () => {
       children: [{ op: "in", field: "multi", value: ["Alpha", "Beta"] }],
     },
     { op: "lt", field: "createdAt", value: "2026-03-10" },
-    { op: "gte", field: "createdAt", value: { amount: 1, unit: "days" } },
     { op: "contains", field: "txt", value: "beta" },
   ];
 
-  it("omitting it leaves every probe result unchanged", async () => {
+  it("omitting it leaves every non-relative-date probe result unchanged", async () => {
     for (const probe of PROBES) {
       const omitted = await evaluate(probe, {
         resources: RESOURCES,
@@ -719,11 +713,14 @@ describe("evaluation time is optional and not read yet (FR-13)", () => {
       .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line));
   }
 
-  it("query-evaluator.ts mentions it once in code, in the EvaluationInput declaration", () => {
+  it("query-evaluator.ts mentions it twice in code: the declaration and the one read defaulting to now", () => {
     const hits = codeLines("../../src/lib/models/query-evaluator.ts").filter(
       (line) => line.includes("evaluationTime"),
     );
-    expect(hits).toEqual(["  evaluationTime?: Date;"]);
+    expect(hits).toEqual([
+      "  evaluationTime?: Date;",
+      "  const now = input.evaluationTime ?? new Date();",
+    ]);
   });
 
   it("the evaluate request carries no evaluation time or time zone", () => {

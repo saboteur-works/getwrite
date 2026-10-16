@@ -125,7 +125,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-11, FR-12, FR-13 (use), FR-14, FR-27, FR-28, FR-29. Spans are rolling (OQ-3 (a)): day 24 hours, week 7 days, month a calendar month counted back with the day clamped. Follow `docs/standards/failure-visibility.md` (a malformed value throws, not silently matches nothing). No client time zone is sent.
-**Done:** [ ]
+**Done:** [x] (committed in Task 9 commit)
 
 ### Task 10: D-17 fix: "is on" on the intrinsic timestamp fields compares by local calendar day (FR-15)
 **What:** Make `eq` of a `YYYY-MM-DD` value on `createdAt` and `updatedAt` return the resources whose timestamp falls on that calendar day in the evaluating process's local zone, leaving every other `eq` unchanged.

@@ -42,8 +42,8 @@ export interface EvaluationInput {
   resolveRef?: (id: string) => Promise<QueryAST | null>;
   /**
    * The instant a query is evaluated at. Optional; when omitted the current
-   * time applies. Reserved for time-relative predicates so tests can fix the
-   * clock (Feature 86 FR-13). Nothing reads it yet: it changes no result.
+   * time applies. Read by the relative-date `gte` ("in the last N days, weeks
+   * or months", Feature 86 FR-12/FR-13) so tests can fix the clock.
    */
   evaluationTime?: Date;
 }
@@ -132,13 +132,14 @@ export async function evaluate(
   input: EvaluationInput,
 ): Promise<string[]> {
   const { resources, sidecars, context, resolveRef } = input;
+  const now = input.evaluationTime ?? new Date();
 
   const resolvedAst = resolveRef ? await expandRefs(ast, resolveRef, []) : ast;
 
   const results: string[] = [];
   for (const resource of resources) {
     const sidecar = sidecars[resource.id] ?? {};
-    if (matchNode(resolvedAst, resource, sidecar, context)) {
+    if (matchNode(resolvedAst, resource, sidecar, context, now)) {
       results.push(resource.id);
     }
   }
@@ -303,6 +304,71 @@ function compareValues(
   return null;
 }
 
+// ─── Relative dates ("in the last") ────────────────────────────────────────
+
+const RELATIVE_UNITS: readonly string[] = ["days", "weeks", "months"];
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** True for a `{amount, unit}`-shaped value: the builder's "in the last". */
+function isRelativeDateValue(v: unknown): v is Record<string, unknown> {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  return "amount" in v || "unit" in v;
+}
+
+/**
+ * The start of a rolling span ending at `now` (Feature 86 FR-14): a day is 24
+ * hours, a week 7 days of 24 hours, a month a calendar month counted back in
+ * the evaluating process's local zone with the day clamped to the month's end.
+ * Throws an Error naming the problem for a unit outside days/weeks/months or
+ * an amount that is not an integer of at least 1 (failure-visibility).
+ */
+function relativeSpanStart(span: Record<string, unknown>, now: Date): Date {
+  const { amount, unit } = span;
+  if (typeof unit !== "string" || !RELATIVE_UNITS.includes(unit)) {
+    throw new Error(
+      `Relative date unit must be days, weeks or months; got ${JSON.stringify(unit)}`,
+    );
+  }
+  if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 1) {
+    throw new Error(
+      `Relative date amount must be an integer of at least 1; got ${JSON.stringify(amount)}`,
+    );
+  }
+  if (unit === "days") return new Date(now.getTime() - amount * MS_PER_DAY);
+  if (unit === "weeks") {
+    return new Date(now.getTime() - amount * 7 * MS_PER_DAY);
+  }
+  const start = new Date(now.getTime());
+  const dayOfMonth = start.getDate();
+  start.setDate(1);
+  start.setMonth(start.getMonth() - amount);
+  const monthEnd = new Date(
+    start.getFullYear(),
+    start.getMonth() + 1,
+    0,
+  ).getDate();
+  start.setDate(Math.min(dayOfMonth, monthEnd));
+  return start;
+}
+
+/**
+ * Parse a field value as an instant. A date-only `YYYY-MM-DD` string is local
+ * midnight of that day; any other string goes through `Date.parse`. Anything
+ * that is not a parseable date string yields `null`.
+ */
+function parseDateValue(v: MetadataValue | undefined): Date | null {
+  if (typeof v !== "string") return null;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  const parsed = dateOnly
+    ? new Date(
+        Number(dateOnly[1]),
+        Number(dateOnly[2]) - 1,
+        Number(dateOnly[3]),
+      )
+    : new Date(v);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /** Evaluate `contains` on a string field value (case-insensitive substring). */
 function evalContains(
   v: MetadataValue | undefined,
@@ -354,6 +420,7 @@ function matchNode(
   resource: ResourceBase,
   sidecar: Record<string, MetadataValue>,
   context: QueryContext,
+  now: Date,
 ): boolean {
   switch (ast.op) {
     // ── Boolean combinators ───────────────────────────────────────────
@@ -366,15 +433,17 @@ function matchNode(
       );
       if (shouldHoldEvery !== null) return shouldHoldEvery;
       return ast.children.every((c) =>
-        matchNode(c, resource, sidecar, context),
+        matchNode(c, resource, sidecar, context, now),
       );
     }
 
     case "or":
-      return ast.children.some((c) => matchNode(c, resource, sidecar, context));
+      return ast.children.some((c) =>
+        matchNode(c, resource, sidecar, context, now),
+      );
 
     case "not":
-      return !matchNode(ast.child, resource, sidecar, context);
+      return !matchNode(ast.child, resource, sidecar, context, now);
 
     // ── Splice nodes — not implemented in task 5 ──────────────────────
     case "ref":
@@ -429,6 +498,13 @@ function matchNode(
     }
 
     case "gte": {
+      if (isRelativeDateValue(ast.value)) {
+        const start = relativeSpanStart(ast.value, now);
+        const when = parseDateValue(
+          resolveFieldValue(ast.field, resource, sidecar, context),
+        );
+        return when !== null && when >= start && when <= now;
+      }
       const cmp = compareValues(
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
