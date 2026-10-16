@@ -252,3 +252,60 @@ Design choice (owner decision): "starts with" saves
 - Schema effect: one optional field on the `matches` node in `query-ast.ts` (stated again in Task 21). No new operator, control, route or transport.
 
 Task 20 writes its tests against this shape; they are committed as expected failures tagged F-1 until Task 21.
+
+## D-19 (FR-18)
+
+Date 2026-10-16. Branch `fix/query-correctness`, unfixed tree at start. No process was started (component test only, no app run, no `lsof` needed). Command: `TASK13_OUT=<log> TASK13_VARIANT=<name> pnpm --filter getwrite-frontend exec vitest run tests/task13-d19-experiment.test.tsx` from the repo root (6 tests passed in each of the two runs; the test records observations and asserts no intended behaviour). The test file is kept as a record at `specs/features/query-correctness/scripts/task13-d19-experiment.test.tsx` (it was run from `frontend/tests/` and removed from there; copy it back to re-run). Logs: `logs-final/task13-as-is.txt`, `logs-final/task13-scratch-multiselect.txt`. Fixture: a project holding resources "Chapter One", "Scene Two", "Epilogue" and tags "alpha" (`tag-alpha`), "beta" (`tag-beta`). The chip is rendered with `buildFieldPickerFields()`'s `tags` entry (the same function `AppShell.tsx` uses) and a resource resolver built with `filterResourceOptionsByScope` like `AppShell.tsx:315-329`.
+
+### (a) Branch taken and option source, as-is
+
+- `query-intrinsics.ts:123-124` types the `tags` intrinsic `multi-resource-ref`. `FieldPicker.tsx:124-137` copies `f.type` into the picker field and sets no `options`, `refFolder` or `isFolderField` for it (observed: `type: "multi-resource-ref"`, `options: null`, `refFolder: null`, `isFolderField: false`).
+- `FilterChip.tsx` `ValueInput`, operator "includes" (single-value shape): `case "multi-resource-ref"` at `FilterChip.tsx:355-382`. Because `isFolderField` is false, `resourceOptions` is `resolveResourceOptions?.(field.refFolder, field.includeSubfolders) ?? []` (`FilterChip.tsx:357-360`). In the app that prop is `AppShell.tsx:315-329`, which maps `liveResources` (names of resources, scoped by folder) and reads no tags. A non-empty list renders `SingleRefInput` (`FilterChip.tsx:375-380`, defined at `ValuePicker.tsx:445`); an empty list renders a plain text input (`FilterChip.tsx:361-373`).
+- `ValuePicker.tsx:641` (multiValues, `MultiRefInput` at 528) and `ValuePicker.tsx:676-684` (single, `SingleRefInput`) are the same resource-option branch inside `ValuePicker`'s default export; `FilterChip.tsx` imports only `SingleRefInput` from that file (`FilterChip.tsx:22`) and does not render `ValuePicker`. Whether any other component renders `ValuePicker` was not grepped.
+- Observed, "includes", resource resolver: value box = one input `aria-label="Search resource"` placeholder "search…". Typing "a" offered ["Chapter One"]; "e" offered ["Chapter One","Scene Two","Epilogue"]; "alpha" offered []; "beta" offered []. The offered options are the project's resources; neither tag was offered.
+- Observed, "includes any of" / other multiValues operators (as-is): `FilterChip.tsx:270-306` is taken, not the resource branch: the field has no `options`, so the value box is a plain text input `aria-label="Values"` placeholder "values…" with no suggestions; typing "alpha" left the chip value the string `"alpha"`.
+
+### (b) Value box with the type or option source changed (scratch)
+
+Observations, "includes" unless noted; variant A = resource resolver, B = resolver returning the two tags (type unchanged), C = field `options: ["alpha","beta"]` set in the test (type unchanged in the as-is run).
+
+- As-is type, option source changed (B): input "Search resource"; typing "a" offered ["alpha","beta"]; "e" offered ["beta"]; "alpha" offered ["alpha"]; "beta" offered ["beta"]; no resource offered.
+- As-is type, `options` set (C): the single-value box is unchanged from A (same input, same resource suggestions: "a" → ["Chapter One"], "alpha" → []); the `options` are ignored on this branch. For "includes any of" the box became a multi `<select aria-label="Values">` with options ["alpha","beta"].
+- Scratch copy: `query-intrinsics.ts:125` changed `"multi-resource-ref"` to `"multiselect"` (single-line diff, shown during the run, reverted with `git checkout -- frontend/src/lib/models/query-intrinsics.ts`), run logged in `task13-scratch-multiselect.txt`:
+  - A and B ("includes"): value box = a `<select aria-label="Value">` with the single option "select..."; no text input, no tags, no resources offered (the option source is not consulted on this branch).
+  - C ("includes", options set): `<select>` with ["select...","alpha","beta"].
+  - "includes any of": A and B = text input "Values" (same as as-is); C = `<select multiple>` with ["alpha","beta"].
+
+### (c) Typing "alpha" and pressing Enter (`userEvent` type, then `{Enter}`), chip value afterwards
+
+| Case | onValueChange calls | Chip value |
+| --- | --- | --- |
+| as-is, A resource resolver, "includes" | 0 | null |
+| as-is, B tag resolver, "includes" | 0 | null |
+| as-is, C options set, "includes" | 0 | null |
+| as-is, A and B, "includes any of" | 5 (one per character) | string "alpha" |
+| as-is, C, "includes any of" (a `<select>`) | 0 | null |
+| scratch multiselect, A, B, C, "includes" (a `<select>`) | 0 | null |
+| scratch multiselect, A, B, "includes any of" | 5 | string "alpha" |
+| scratch multiselect, C, "includes any of" (a `<select>`) | 0 | null |
+
+- Clicking the offered suggestion after typing "alpha" (as-is, B tag resolver, "includes"): one `onValueChange` call, value `{ "id": "tag-alpha", "name": "alpha" }`. With the resource resolver (A) no suggestion is offered, so nothing can be clicked (0 calls, null).
+- Separately recorded (not explained by the type change): "Enter left the value empty". In the as-is run with B, where "alpha" was offered as a suggestion, typing "alpha" and pressing Enter still gave 0 calls and null, while clicking the same suggestion gave `{id, name}`. `grep -c "onKeyDown\|onKeyPress\|onKeyUp\|Enter"` returns 0 for both `ValuePicker.tsx` and `FilterChip.tsx`; the observation separated is that, in these components as rendered in this test, Enter commits nothing in any variant where the box is a typeahead. For the `<select>` boxes (scratch type change) the typed text selected nothing under jsdom; choosing an option by selection was not measured.
+
+### (d) Other readers of the `tags` intrinsic's type (to be shown unaffected or updated in Task 15)
+
+Commands: `/usr/bin/grep -rn "getIntrinsicField\|INTRINSIC_FIELDS\|INTRINSIC_FIELD_KEYS\|query-intrinsics"` and `/usr/bin/grep -rn "multi-resource-ref"` over `frontend/src`, `frontend/components`, `frontend/app`, `cli/src`, `electron/src`, and the tests.
+
+- `frontend/src/lib/models/query-intrinsics.ts:123-124` (definition), `:181-182` (`getIntrinsicField`), `:186-188` (`INTRINSIC_FIELD_KEYS`; keys only, not type).
+- `frontend/components/QueryBuilder/FieldPicker.tsx:124-137` (copies `f.type` into the picker field for every intrinsic).
+- `frontend/components/QueryBuilder/operator-utils.ts:97-106` (`OPERATORS_BY_TYPE["multi-resource-ref"]`), `:175-189` (stub builders for multiselect / multi-resource-ref).
+- `frontend/components/QueryBuilder/ast-chip-bridge.ts:315`, `:365`, `:413` (`field?.type === "multiselect" || "multi-resource-ref"` decides multi-value handling).
+- `frontend/components/QueryBuilder/FilterChip.tsx:270-306` (multiValues, reads `field.options`), `:355-382` (the resource branch).
+- `frontend/components/QueryBuilder/ValuePicker.tsx:641`, `:676-684`.
+- `frontend/src/lib/models/query-evaluator.ts:162-165` reads `intrinsic.read`, not `.type` (grep for `.type` on the intrinsic was not run beyond this function).
+- Tests that name the type: `frontend/tests/unit/query-intrinsics.test.ts:130` (asserts `"multi-resource-ref"` in an expected-type list); `frontend/tests/unit/query-builder-evaluator-check.test.ts:463-465` (its own `mref` chip field, not the intrinsic); `frontend/tests/unit/ast-chip-bridge.test.ts:35,758` (a custom `cast` field, not the intrinsic).
+- Readers of metadata-schema fields of type `multi-resource-ref` that are not readers of the `tags` intrinsic (listed so Task 15 need not re-find them): `MetadataSidebar.tsx:461`, `OrganizerView.tsx:263-272`, `organizerFilters.ts:159-181`, `SchemaManager.tsx:855,1108`.
+
+### Result
+
+Hypothesis not disproved: the `tags` intrinsic typed `multi-resource-ref` (`query-intrinsics.ts:123`) takes the resource-option branch at `FilterChip.tsx:355-382` with options from `AppShell.tsx:315-329`'s resource list (typing "alpha" offered nothing; supplying the tags as the option source offered "alpha" and "beta" only), changing the type to `multiselect` removed the typeahead (a `<select>` listing no tags), and Enter committed nothing in every typeahead variant including the one that offered "alpha", which the type change does not explain.

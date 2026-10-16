@@ -161,7 +161,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Satisfies FR-18. "Enter left the value empty" (`t5-q3.txt`) may not be explained by the type change; record it separately. If the experiment is run in the app rather than a component test, use a throwaway projects folder with an asserted path.
-**Done:** [ ]
+**Done:** [x] (committed in Task 13 commit; hypothesis not disproved)
 
 ### Task 14: D-19 failing test: Tags chip offers the project's tags (FR-19, FR-20)
 **What:** Add the failing component test that a Tags chip in a project with tags "alpha" and "beta" offers those two tags, offers no resource, and keeps "alpha" selected after typing it and committing.

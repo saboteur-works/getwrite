@@ -1,0 +1,36 @@
+OBS as-is/A-resource-resolver/includes field {"type":"multi-resource-ref","options":null,"refFolder":null,"isFolderField":false}
+OBS as-is/A-resource-resolver/includes valueBox {"inputs":[{"aria":"Search resource","placeholder":"search…"}],"select":null}
+OBS as-is/A-resource-resolver/includes suggestions "a" ["Chapter One"]
+OBS as-is/A-resource-resolver/includes suggestions "e" ["Chapter One","Scene Two","Epilogue"]
+OBS as-is/A-resource-resolver/includes suggestions "alpha" []
+OBS as-is/A-resource-resolver/includes suggestions "beta" []
+OBS as-is/A-resource-resolver/includes afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS as-is/A-resource-resolver/includes afterTypeAlphaThenClickSuggestion {"suggestions":[],"onValueChangeCalls":0,"value":null}
+OBS as-is/B-tag-resolver/includes field {"type":"multi-resource-ref","options":null,"refFolder":null,"isFolderField":false}
+OBS as-is/B-tag-resolver/includes valueBox {"inputs":[{"aria":"Search resource","placeholder":"search…"}],"select":null}
+OBS as-is/B-tag-resolver/includes suggestions "a" ["alpha","beta"]
+OBS as-is/B-tag-resolver/includes suggestions "e" ["beta"]
+OBS as-is/B-tag-resolver/includes suggestions "alpha" ["alpha"]
+OBS as-is/B-tag-resolver/includes suggestions "beta" ["beta"]
+OBS as-is/B-tag-resolver/includes afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS as-is/B-tag-resolver/includes afterTypeAlphaThenClickSuggestion {"suggestions":["alpha"],"onValueChangeCalls":1,"value":{"id":"tag-alpha","name":"alpha"}}
+OBS as-is/C-options-tag-names/includes field {"type":"multi-resource-ref","options":["alpha","beta"],"refFolder":null,"isFolderField":false}
+OBS as-is/C-options-tag-names/includes valueBox {"inputs":[{"aria":"Search resource","placeholder":"search…"}],"select":null}
+OBS as-is/C-options-tag-names/includes suggestions "a" ["Chapter One"]
+OBS as-is/C-options-tag-names/includes suggestions "e" ["Chapter One","Scene Two","Epilogue"]
+OBS as-is/C-options-tag-names/includes suggestions "alpha" []
+OBS as-is/C-options-tag-names/includes suggestions "beta" []
+OBS as-is/C-options-tag-names/includes afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS as-is/C-options-tag-names/includes afterTypeAlphaThenClickSuggestion {"suggestions":[],"onValueChangeCalls":0,"value":null}
+OBS as-is/A-resource-resolver/includes-any-of field {"type":"multi-resource-ref","options":null,"refFolder":null,"isFolderField":false}
+OBS as-is/A-resource-resolver/includes-any-of valueBox {"inputs":[{"aria":"Values","placeholder":"values..."}],"select":null}
+OBS as-is/A-resource-resolver/includes-any-of afterTypeAlphaEnter {"onValueChangeCalls":5,"value":"alpha"}
+OBS as-is/A-resource-resolver/includes-any-of afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS as-is/B-tag-resolver/includes-any-of field {"type":"multi-resource-ref","options":null,"refFolder":null,"isFolderField":false}
+OBS as-is/B-tag-resolver/includes-any-of valueBox {"inputs":[{"aria":"Values","placeholder":"values..."}],"select":null}
+OBS as-is/B-tag-resolver/includes-any-of afterTypeAlphaEnter {"onValueChangeCalls":5,"value":"alpha"}
+OBS as-is/B-tag-resolver/includes-any-of afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS as-is/C-options-tag-names/includes-any-of field {"type":"multi-resource-ref","options":["alpha","beta"],"refFolder":null,"isFolderField":false}
+OBS as-is/C-options-tag-names/includes-any-of valueBox {"inputs":[],"select":["alpha","beta"]}
+OBS as-is/C-options-tag-names/includes-any-of afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS as-is/C-options-tag-names/includes-any-of afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
