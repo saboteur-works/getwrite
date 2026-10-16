@@ -7,6 +7,8 @@ import FilterChip, {
 } from "../components/QueryBuilder/FilterChip";
 import { groupsToAst } from "../components/QueryBuilder/ast-chip-bridge";
 import { valueForOperatorChange } from "../components/QueryBuilder/operator-utils";
+import { buildFieldPickerFields } from "../components/QueryBuilder/FieldPicker";
+import { filterResourceOptionsByScope } from "../components/Sidebar/folderScope";
 
 const FIELD_TEXT: FilterChipField = {
   key: "synopsis",
@@ -357,4 +359,96 @@ describe("FilterChip — choosing 'in the last' on a date field (FR-33)", () => 
       value: { amount: 2, unit: "months" },
     });
   });
+});
+
+// ─── Tags chip option source (Feature 86 D-19, FR-19/FR-20) ──────────────────
+// Assumption: the real host (AppShell.tsx) passes a Tags chip only
+// `resolveResourceOptions`, built from the project's resources with
+// filterResourceOptionsByScope; no prop carries tags yet (Task 15 decides where
+// they reach the builder). The project's tags below are therefore fixture data
+// the test cannot hand to the chip, and the test enters through the production
+// props. Committing = clicking the offered suggestion (no Enter handler exists
+// in FilterChip/ValuePicker, so Enter is not asserted).
+describe("FilterChip — Tags chip in a project with tags alpha and beta", () => {
+  const PROJECT_RESOURCES = [
+    { id: "res-1", name: "Chapter One", folderId: undefined },
+    { id: "res-2", name: "Scene Two", folderId: undefined },
+    { id: "res-3", name: "Epilogue", folderId: undefined },
+  ];
+  const TAG_ALPHA = { id: "tag-alpha", name: "alpha" };
+
+  function renderTagsChip(): { values: FilterChipValue[] } {
+    const tagsField = buildFieldPickerFields().find((f) => f.key === "tags");
+    if (!tagsField) throw new Error("tags field missing");
+    const seen: FilterChipValue[] = [];
+    function Harness(): JSX.Element {
+      const [value, setValue] = React.useState<FilterChipValue>(null);
+      return (
+        <FilterChip
+          field={tagsField as FilterChipField}
+          operator="includes"
+          value={value}
+          resolveResourceOptions={(refFolder, includeSubfolders) =>
+            filterResourceOptionsByScope(
+              PROJECT_RESOURCES,
+              [],
+              refFolder,
+              includeSubfolders,
+            )
+          }
+          onValueChange={(v) => {
+            seen.push(v);
+            setValue(v);
+          }}
+        />
+      );
+    }
+    render(<Harness />);
+    return { values: seen };
+  }
+
+  function suggestionElements(): HTMLElement[] {
+    return screen
+      .queryAllByRole("option")
+      .filter((o: HTMLElement) => o.closest("select") === null);
+  }
+
+  function typeAndListOptions(text: string): string[] {
+    const input = document.querySelector<HTMLInputElement>(
+      ".picker-typeahead__input",
+    );
+    if (!input) throw new Error("no typeahead input");
+    fireEvent.change(input, { target: { value: text } });
+    return suggestionElements().map((o: HTMLElement) => o.textContent ?? "");
+  }
+
+  it.fails(
+    "lists the project's resources, not its tags, when typing 'a' [expected failure: D-19]",
+    () => {
+      renderTagsChip();
+      const offered = typeAndListOptions("a");
+      expect(offered).toEqual(expect.arrayContaining(["alpha", "beta"]));
+    },
+  );
+
+  it.fails(
+    "offers resource names in the value box [expected failure: D-19]",
+    () => {
+      renderTagsChip();
+      const offered = typeAndListOptions("e");
+      const resourceNames = PROJECT_RESOURCES.map((r) => r.name);
+      expect(offered.filter((o) => resourceNames.includes(o))).toEqual([]);
+    },
+  );
+
+  it.fails(
+    "leaves the chip value empty after typing 'alpha' and choosing the offered suggestion [expected failure: D-19]",
+    () => {
+      const { values } = renderTagsChip();
+      typeAndListOptions("alpha");
+      const option = suggestionElements()[0];
+      if (option) fireEvent.click(option);
+      expect(values[values.length - 1]).toEqual(TAG_ALPHA);
+    },
+  );
 });

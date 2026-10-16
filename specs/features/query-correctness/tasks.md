@@ -170,7 +170,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 13
 **Estimate:** 2
 **Notes:** Satisfies FR-19, FR-20. The halt is judged from the Task 13 closing line. Write the test name as what is observed (the value box lists resources / commit leaves the value empty).
-**Done:** [ ]
+**Done:** [x] (committed in Task 14 commit; tests carried as it.fails D-19)
 
 ### Task 15: D-19 fix: tag-aware option branch for the Tags value box (FR-21)
 **What:** Add a tag-aware option branch in `ValuePicker` and `FilterChip` so a Tags chip offers `config.tags` and stores `{ id, name }` references, without changing the field's type or the operators offered.
