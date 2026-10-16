@@ -32,8 +32,13 @@ import projectsReducer, {
   selectEntitiesEnabled,
   selectEntityHighlightingEnabled,
   selectActiveProjectRelationshipTypes,
+  selectEffectiveProjectStatuses,
   buildStoredProject,
 } from "../../src/store/projectsSlice";
+import {
+  BUILT_IN_STATUSES,
+  effectiveStatuses,
+} from "../../src/lib/models/default-statuses";
 import type { Project } from "../../src/lib/models/types";
 
 function makeStore() {
@@ -566,6 +571,57 @@ describe("projectsSlice — subtypes (Feature 72, FR-1/FR-3/FR-4)", () => {
       }),
     );
     expect(selectActiveProjectSubtypes(store.getState())).toEqual(["Scene"]);
+  });
+});
+
+describe("effective statuses (FR-23, FR-27)", () => {
+  const BUILT_IN = ["Draft", "In review", "Published"];
+
+  it("effectiveStatuses returns configured statuses as they are", () => {
+    const configured = ["Idea", "Done"];
+    expect(effectiveStatuses(configured)).toBe(configured);
+  });
+
+  it("effectiveStatuses returns the built-in list for an empty or absent list", () => {
+    expect(effectiveStatuses([])).toEqual(BUILT_IN);
+    expect(effectiveStatuses(undefined)).toEqual(BUILT_IN);
+    expect(BUILT_IN_STATUSES).toEqual(BUILT_IN);
+  });
+
+  it("selectEffectiveProjectStatuses returns the configured list as it is", () => {
+    const store = makeStore();
+    seedProject(store, { statuses: ["Idea", "Done"] });
+    expect(selectEffectiveProjectStatuses(store.getState())).toEqual([
+      "Idea",
+      "Done",
+    ]);
+  });
+
+  it("selectEffectiveProjectStatuses returns the built-in list for an empty or absent list and with no project selected", () => {
+    const store = makeStore();
+    expect(selectEffectiveProjectStatuses(store.getState())).toEqual(BUILT_IN);
+    seedProject(store, { statuses: [] });
+    expect(selectEffectiveProjectStatuses(store.getState())).toEqual(BUILT_IN);
+  });
+
+  it("selectEffectiveProjectStatuses keeps one reference across calls when no statuses are configured", () => {
+    const store = makeStore();
+    seedProject(store, {});
+    const first = selectEffectiveProjectStatuses(store.getState());
+    store.dispatch(setSelectedProjectId("project-1"));
+    expect(selectEffectiveProjectStatuses(store.getState())).toBe(first);
+  });
+
+  it("selectEffectiveProjectStatuses is a pure read: state is unchanged and the configured list is not mutated", () => {
+    const store = makeStore();
+    seedProject(store, {});
+    const before = store.getState();
+    const snapshot = JSON.stringify(before);
+    selectEffectiveProjectStatuses(before);
+    expect(store.getState()).toBe(before);
+    expect(JSON.stringify(before)).toBe(snapshot);
+    const configured = Object.freeze(["Idea"]) as string[];
+    expect(() => effectiveStatuses(configured)).not.toThrow();
   });
 });
 

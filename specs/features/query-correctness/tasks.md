@@ -197,7 +197,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 16
 **Estimate:** 3
 **Notes:** Satisfies FR-23, FR-27. `selectActiveProjectStatuses` takes `state: any` today; leave that signature, add no new `any`. Subject to the Part D halt.
-**Done:** [ ]
+**Done:** [x] (committed in Task 17 commit)
 
 ### Task 18: D-20: sidebar Status control and query builder Status chip read the effective list (FR-23, FR-24, FR-26)
 **What:** Make the sidebar Status control and the query builder's `status` chip value list read the effective statuses, leaving the intrinsic "Statuses" field configured-only.

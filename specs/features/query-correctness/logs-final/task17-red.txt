@@ -1,0 +1,26 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/projects-slice-features.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/projects-slice-features.test.ts [ tests/unit/projects-slice-features.test.ts ]
+Error: Cannot find module '../../src/lib/models/default-statuses' imported from /Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/projects-slice-features.test.ts
+ ❯ tests/unit/projects-slice-features.test.ts:38:1
+     36|   buildStoredProject,
+     37| } from "../../src/store/projectsSlice";
+     38| import {
+       | ^
+     39|   BUILT_IN_STATUSES,
+     40|   effectiveStatuses,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  15:00:59
+   Duration  315ms (transform 97ms, setup 68ms, import 0ms, tests 0ms, environment 0ms)
+

@@ -1,0 +1,30 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/projectsSlice.ts
+   183:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   224:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   278:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   491:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   824:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   841:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   869:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   887:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   899:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   915:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   964:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   986:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   992:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1036:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1056:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1070:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1077:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1081:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1085:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1089:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1093:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1097:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1101:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1111:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 24 problems (0 errors, 24 warnings)
+
