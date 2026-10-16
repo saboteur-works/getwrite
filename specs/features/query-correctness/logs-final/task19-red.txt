@@ -1,0 +1,64 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |jsdom| tests/organizerView.test.tsx (39 tests | 2 failed) 1478ms
+     × offers the effective statuses in the Status select with no configured statuses 25ms
+     × recorded known behaviour (OQ-8): with no configured statuses, filtering by Draft hides never-statused cards while No status shows them 23ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |jsdom| tests/organizerView.test.tsx > OrganizerView card filtering (FR-1 through FR-11) > offers the effective statuses in the Status select with no configured statuses
+AssertionError: expected [ 'All statuses', 'No status' ] to deeply equal [ 'All statuses', 'Draft', …(3) ]
+
+- Expected
++ Received
+
+  [
+    "All statuses",
+-   "Draft",
+-   "In review",
+-   "Published",
+    "No status",
+  ]
+
+ ❯ tests/organizerView.test.tsx:361:20
+    359|     ) as HTMLSelectElement;
+    360|     const labels = Array.from(select.options).map((o) => o.textContent…
+    361|     expect(labels).toEqual([
+       |                    ^
+    362|       "All statuses",
+    363|       "Draft",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |jsdom| tests/organizerView.test.tsx > OrganizerView card filtering (FR-1 through FR-11) > recorded known behaviour (OQ-8): with no configured statuses, filtering by Draft hides never-statused cards while No status shows them
+AssertionError: expected <button type="button" …(1)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  class="text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+  type="button"
+>
+  Unset Status Scene
+</button>
+
+ ❯ tests/organizerView.test.tsx:399:54
+    397|       target: { value: "Draft" },
+    398|     });
+    399|     expect(screen.queryByText("Unset Status Scene")).toBeNull();
+       |                                                      ^
+    400|
+    401|     fireEvent.change(screen.getByLabelText("Filter by status"), {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 37 passed (39)
+   Start at  15:10:50
+   Duration  2.40s (transform 233ms, setup 54ms, import 419ms, tests 1.48s, environment 378ms)
+

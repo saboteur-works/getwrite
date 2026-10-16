@@ -215,7 +215,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 18
 **Estimate:** 5
 **Notes:** Satisfies FR-23, FR-24, FR-25, FR-30. D-28 is out of scope and untouched; the display question goes with that follow-up. If a Storybook story needs a Redux or context provider to render, add it as a decorator and record it. Subject to the Part D halt.
-**Done:** [ ]
+**Done:** [x] (committed in Task 19 commit)
 
 ### Task 20: F-1 "starts with" failing tests; relabel the F-2/F-3 known failures (FR-32, FR-34)
 **What:** Add the failing tests for "starts with" (anchored, escaped, case-insensitive, reopens as "starts with") and relabel the F-2 and F-3 expected-failure cases as known failures.
