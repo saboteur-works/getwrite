@@ -96,6 +96,28 @@ export interface StartPageCreateResult {
   resources: AnyResource[];
 }
 
+/**
+ * Fields the compile block reads from a resource entry. The entries reaching
+ * the start page may be API-shaped (`title`, `_orderIndex`, `content`) rather
+ * than canonical `AnyResource`, so every field is optional except `id`.
+ */
+interface CompileSourceResource {
+  id: string;
+  type?: string;
+  title?: string;
+  name?: string;
+  slug?: string;
+  _orderIndex?: number;
+  orderIndex?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  userMetadata?: Record<string, unknown>;
+  content?: string;
+}
+
+/** A folder entry as the compile block reads it, with its nested resources. */
+type CompileSourceFolder = Folder & { resources?: CompileSourceResource[] };
+
 /** Non-folder resources summarized on start-page cards and package actions. */
 type StartPageRenderableResource = Exclude<AnyResource, Folder>;
 
@@ -313,14 +335,14 @@ export default function StartPage({
     if (!entry) return [];
     const result: AnyResource[] = [];
     const idsInFolders = new Set<string>();
-    for (const folder of entry.folders as any[]) {
-      for (const r of (folder.resources as any[]) ?? []) {
+    for (const folder of entry.folders as CompileSourceFolder[]) {
+      for (const r of folder.resources ?? []) {
         idsInFolders.add(r.id);
       }
     }
     // Resources held by no listed folder (no folderId, or one naming a missing
     // folder) sit at the root of the compile tree.
-    for (const r of entry.resources as any[]) {
+    for (const r of entry.resources as unknown as CompileSourceResource[]) {
       if (r.type === "folder" || idsInFolders.has(r.id)) continue;
       result.push({
         id: r.id,
@@ -335,7 +357,7 @@ export default function StartPage({
         plainText: r.content ?? "",
       } as AnyResource);
     }
-    for (const folder of entry.folders as any[]) {
+    for (const folder of entry.folders as CompileSourceFolder[]) {
       result.push({
         id: folder.id,
         name: folder.name ?? "",
@@ -349,7 +371,7 @@ export default function StartPage({
         updatedAt: folder.updatedAt ?? "",
         userMetadata: folder.userMetadata ?? {},
       } as AnyResource);
-      for (const r of (folder.resources as any[]) ?? []) {
+      for (const r of folder.resources ?? []) {
         result.push({
           id: r.id,
           // UIResource has title instead of name

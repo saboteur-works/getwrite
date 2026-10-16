@@ -103,7 +103,7 @@ Storybook started with `pnpm storybook` (background job). Process tree recorded 
 |---|---|---|---|
 | `pnpm test:ci` (frontend) | run | exit 0; 610 files passed; 6501 passed / 1 skipped (6502) | 6468 passed / 1 skipped |
 | `pnpm typecheck` (frontend) | run | exit 0 | not stated |
-| `pnpm lint` (frontend) | run | exit 1; 400 problems: 2 errors, 398 warnings (initial run); after the two lint fixes, 0 errors, 398 warnings | 0 errors / 395 warnings |
+| `pnpm lint` (frontend) | run | exit 1; 400 problems: 2 errors, 398 warnings (initial run); after the two lint fixes, 0 errors, 398 warnings; after replacing the three `as any[]` casts in `StartPage.tsx`, 0 errors, 393 warnings (`eslint components/Start/StartPage.tsx` reports 0 warnings, was 5) | 0 errors / 395 warnings |
 | `pnpm knip` (repo root) | run | exit 1; output recorded below | no clean baseline |
 | `pnpm test:e2e` (Storybook on 6006) | run | exit 0; 212 passed, 2 flaky (passed on retry), 1 skipped | 214 passed / 1 skipped |
 
