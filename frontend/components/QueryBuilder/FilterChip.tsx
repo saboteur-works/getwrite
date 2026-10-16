@@ -58,6 +58,8 @@ export interface FilterChipField {
   includeSubfolders?: boolean;
   /** When true, the ref value resolves to folders rather than resources. */
   isFolderField?: boolean;
+  /** When set (the Tags field), the project's tags are the value box's options, not its resources. */
+  tagOptions?: ResourceOption[];
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -354,6 +356,29 @@ function ValueInput({
     }
     case "resource-ref":
     case "multi-resource-ref": {
+      if (field.tagOptions) {
+        if (field.tagOptions.length === 0) {
+          return (
+            <EditContextMenu>
+              <input
+                type="text"
+                className="filter-chip__value-input"
+                value={typeof value === "string" ? value : ""}
+                placeholder="tag..."
+                aria-label="Tag"
+                onChange={(e) => onChange(e.target.value)}
+              />
+            </EditContextMenu>
+          );
+        }
+        return (
+          <SingleRefInput
+            value={value}
+            resourceOptions={field.tagOptions}
+            onChange={(v) => onChange(v as FilterChipValue)}
+          />
+        );
+      }
       const resourceOptions = field.isFolderField
         ? (resolveFolderOptions?.() ?? [])
         : (resolveResourceOptions?.(field.refFolder, field.includeSubfolders) ??

@@ -140,7 +140,8 @@ import {
   saveGlobalAppearancePreferences,
   saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
-import type { MetadataValue } from "../../src/lib/models/types";
+import type { MetadataValue, Tag } from "../../src/lib/models/types";
+import { listTags } from "../../src/lib/api/tags";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import {
   selectEditorConfig,
@@ -308,9 +309,27 @@ export default function AppShell({
     selectActiveProjectStatuses,
     shallowEqual,
   );
+  // The project's tags (`config.tags`) for the Tags chip's value box. Read
+  // through the existing tags transport (no new route) each time the builder
+  // opens, since tags are managed outside Redux.
+  const [projectTags, setProjectTags] = useState<Tag[]>([]);
+  React.useEffect(() => {
+    if (!isQueryBuilderOpen || !activeProjectDirectoryId) return;
+    let isCancelled = false;
+    listTags(activeProjectDirectoryId)
+      .then((tags) => {
+        if (!isCancelled) setProjectTags(tags);
+      })
+      .catch(() => {
+        if (!isCancelled) setProjectTags([]);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [isQueryBuilderOpen, activeProjectDirectoryId]);
   const availableFields = React.useMemo(
-    () => buildFieldPickerFields(metadataSchema, projectStatuses),
-    [metadataSchema, projectStatuses],
+    () => buildFieldPickerFields(metadataSchema, projectStatuses, projectTags),
+    [metadataSchema, projectStatuses, projectTags],
   );
   const resolveResourceOptions = React.useCallback(
     (refFolder: string | undefined, includeSubfolders?: boolean) => {

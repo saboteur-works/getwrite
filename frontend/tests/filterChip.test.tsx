@@ -6,7 +6,10 @@ import FilterChip, {
   type FilterChipValue,
 } from "../components/QueryBuilder/FilterChip";
 import { groupsToAst } from "../components/QueryBuilder/ast-chip-bridge";
-import { valueForOperatorChange } from "../components/QueryBuilder/operator-utils";
+import {
+  OPERATORS_BY_TYPE,
+  valueForOperatorChange,
+} from "../components/QueryBuilder/operator-utils";
 import { buildFieldPickerFields } from "../components/QueryBuilder/FieldPicker";
 import { filterResourceOptionsByScope } from "../components/Sidebar/folderScope";
 
@@ -362,12 +365,9 @@ describe("FilterChip — choosing 'in the last' on a date field (FR-33)", () => 
 });
 
 // ─── Tags chip option source (Feature 86 D-19, FR-19/FR-20) ──────────────────
-// Assumption: the real host (AppShell.tsx) passes a Tags chip only
-// `resolveResourceOptions`, built from the project's resources with
-// filterResourceOptionsByScope; no prop carries tags yet (Task 15 decides where
-// they reach the builder). The project's tags below are therefore fixture data
-// the test cannot hand to the chip, and the test enters through the production
-// props. Committing = clicking the offered suggestion (no Enter handler exists
+// The host (AppShell.tsx) hands the project's tags to buildFieldPickerFields,
+// which sets `tagOptions` on the Tags field; the resource resolver is still
+// passed, as in the app, and must not be consulted. Committing = clicking the offered suggestion (no Enter handler exists
 // in FilterChip/ValuePicker, so Enter is not asserted).
 describe("FilterChip — Tags chip in a project with tags alpha and beta", () => {
   const PROJECT_RESOURCES = [
@@ -376,9 +376,13 @@ describe("FilterChip — Tags chip in a project with tags alpha and beta", () =>
     { id: "res-3", name: "Epilogue", folderId: undefined },
   ];
   const TAG_ALPHA = { id: "tag-alpha", name: "alpha" };
+  const TAG_BETA = { id: "tag-beta", name: "beta" };
 
   function renderTagsChip(): { values: FilterChipValue[] } {
-    const tagsField = buildFieldPickerFields().find((f) => f.key === "tags");
+    const tagsField = buildFieldPickerFields(undefined, undefined, [
+      TAG_ALPHA,
+      TAG_BETA,
+    ]).find((f) => f.key === "tags");
     if (!tagsField) throw new Error("tags field missing");
     const seen: FilterChipValue[] = [];
     function Harness(): JSX.Element {
@@ -422,33 +426,72 @@ describe("FilterChip — Tags chip in a project with tags alpha and beta", () =>
     return suggestionElements().map((o: HTMLElement) => o.textContent ?? "");
   }
 
-  it.fails(
-    "lists the project's resources, not its tags, when typing 'a' [expected failure: D-19]",
-    () => {
-      renderTagsChip();
-      const offered = typeAndListOptions("a");
-      expect(offered).toEqual(expect.arrayContaining(["alpha", "beta"]));
-    },
-  );
+  it("lists the project's tags when typing 'a'", () => {
+    renderTagsChip();
+    const offered = typeAndListOptions("a");
+    expect(offered).toEqual(expect.arrayContaining(["alpha", "beta"]));
+  });
 
-  it.fails(
-    "offers resource names in the value box [expected failure: D-19]",
-    () => {
-      renderTagsChip();
-      const offered = typeAndListOptions("e");
-      const resourceNames = PROJECT_RESOURCES.map((r) => r.name);
-      expect(offered.filter((o) => resourceNames.includes(o))).toEqual([]);
-    },
-  );
+  it("offers no resource names in the value box", () => {
+    renderTagsChip();
+    const offered = typeAndListOptions("e");
+    const resourceNames = PROJECT_RESOURCES.map((r) => r.name);
+    expect(offered.filter((o) => resourceNames.includes(o))).toEqual([]);
+  });
 
-  it.fails(
-    "leaves the chip value empty after typing 'alpha' and choosing the offered suggestion [expected failure: D-19]",
-    () => {
-      const { values } = renderTagsChip();
-      typeAndListOptions("alpha");
-      const option = suggestionElements()[0];
-      if (option) fireEvent.click(option);
-      expect(values[values.length - 1]).toEqual(TAG_ALPHA);
-    },
-  );
+  it("stores an { id, name } tag reference after typing 'alpha' and choosing the offered suggestion", () => {
+    const { values } = renderTagsChip();
+    typeAndListOptions("alpha");
+    const option = suggestionElements()[0];
+    if (option) fireEvent.click(option);
+    expect(values[values.length - 1]).toEqual(TAG_ALPHA);
+  });
+});
+
+describe("Tags field operators and condition form (Feature 86 D-19)", () => {
+  it("offers the same operators as before: those of multi-resource-ref", () => {
+    const tags = buildFieldPickerFields().find((f) => f.key === "tags");
+    expect(tags?.type).toBe("multi-resource-ref");
+    const ids = OPERATORS_BY_TYPE[tags?.type ?? "text"].flatMap((e) =>
+      e === "divider" ? [] : [e.value],
+    );
+    expect(ids).toEqual([
+      "includes",
+      "does-not-include",
+      "includes-all-of",
+      "includes-any-of",
+      "includes-none-of",
+      "is-empty",
+      "has-any-value",
+    ]);
+  });
+
+  it("a Tags condition built from a chosen tag stores an { id, name } reference", () => {
+    const tagsField = buildFieldPickerFields(undefined, undefined, [
+      { id: "tag-alpha", name: "alpha" },
+    ]).find((f) => f.key === "tags") as FilterChipField;
+    const onValueChange = vi.fn();
+    render(
+      <FilterChip
+        field={tagsField}
+        operator="includes"
+        value={null}
+        onValueChange={onValueChange}
+      />,
+    );
+    const input = document.querySelector<HTMLInputElement>(
+      ".picker-typeahead__input",
+    );
+    if (!input) throw new Error("no typeahead input");
+    fireEvent.change(input, { target: { value: "alp" } });
+    const option = screen
+      .queryAllByRole("option")
+      .find((o: HTMLElement) => o.textContent === "alpha");
+    if (!option) throw new Error("tag not offered");
+    fireEvent.click(option);
+    expect(onValueChange).toHaveBeenCalledWith({
+      id: "tag-alpha",
+      name: "alpha",
+    });
+  });
 });

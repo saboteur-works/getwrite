@@ -5,7 +5,9 @@ import { ChevronDown } from "lucide-react";
 import type {
   MetadataFieldType,
   MetadataSchema,
+  Tag,
 } from "../../src/lib/models/types";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import { INTRINSIC_FIELDS } from "../../src/lib/models/query-intrinsics";
 import { fuzzyMatch } from "../../src/lib/models/field-dedup";
@@ -34,6 +36,12 @@ export interface FieldPickerField {
   includeSubfolders?: boolean;
   /** When true, the ref value for this field resolves to folders rather than resources. */
   isFolderField?: boolean;
+  /**
+   * Set only on the `tags` intrinsic: the project's tags as `{ id, name }`
+   * references, the value box's option source in place of the project's
+   * resources (Feature 86 D-19). Empty when the project has no tags.
+   */
+  tagOptions?: ResourceOption[];
 }
 
 export interface FieldPickerProps {
@@ -86,6 +94,7 @@ export interface FieldPickerProps {
 export function buildFieldPickerFields(
   schema?: MetadataSchema,
   projectStatuses?: string[],
+  projectTags?: Tag[],
 ): FieldPickerField[] {
   const fields: FieldPickerField[] = [];
   const effectiveSchema = schema ?? DEFAULT_METADATA_SCHEMA;
@@ -135,6 +144,16 @@ export function buildFieldPickerFields(
       options,
       source: "system",
       isFolderField: f.key === "folderId",
+      // The tags intrinsic keeps its `multi-resource-ref` type (and so its
+      // operators); only its value box's option source is the project's tags.
+      ...(f.key === "tags"
+        ? {
+            tagOptions: (projectTags ?? []).map((t) => ({
+              id: t.id,
+              name: t.name,
+            })),
+          }
+        : {}),
     });
   }
 

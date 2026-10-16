@@ -309,3 +309,26 @@ Commands: `/usr/bin/grep -rn "getIntrinsicField\|INTRINSIC_FIELDS\|INTRINSIC_FIE
 ### Result
 
 Hypothesis not disproved: the `tags` intrinsic typed `multi-resource-ref` (`query-intrinsics.ts:123`) takes the resource-option branch at `FilterChip.tsx:355-382` with options from `AppShell.tsx:315-329`'s resource list (typing "alpha" offered nothing; supplying the tags as the option source offered "alpha" and "beta" only), changing the type to `multiselect` removed the typeahead (a `<select>` listing no tags), and Enter committed nothing in every typeahead variant including the one that offered "alpha", which the type change does not explain.
+
+## D-19 fix (Task 15, FR-21)
+
+Date 2026-10-16. Choice stated: tags reach the builder through the existing tags transport, not Redux and not a new route. `projectsSlice.ts` holds no tags (`buildStoredProject` copies `statuses`, `subtypes`, etc., not `config.tags`), and tags are created and deleted outside Redux (`TagsManagerModal.tsx`), so a store copy would go stale. `AppShell.tsx` calls the existing `listTags(activeProjectDirectoryId)` (`lib/api/tags.ts`, which reads `config.tags`) each time the query builder opens, and passes the result as a third argument to `buildFieldPickerFields(schema, statuses, tags)`, as it already does for statuses. That function sets `tagOptions` (`{id, name}[]`, empty when the project has no tags) on the `tags` intrinsic's picker field only; the field's `type` stays `multi-resource-ref`. `FilterChip.tsx`'s `multi-resource-ref` single-value branch uses `field.tagOptions` when it is set (via the existing `SingleRefInput`, which stores `{ id, name }`) and never consults the resource resolver for it; with zero tags it renders a text input `aria-label="Tag"` placeholder "tag...". `ValuePicker.tsx` was not changed: `FilterChip.tsx` imports only `SingleRefInput` from it and no component outside `QueryBuilder/` imports `ValuePicker` (grep over components, src, app).
+
+Value box per operator after the change (tags field):
+- includes, does not include (single value): tag typeahead over `config.tags`, stores `{ id, name }` (changed; was the project's resources).
+- includes all of / any of / none of (multiValues): unchanged, plain text input "Values" (no `options` on the field), stores a string; not covered by the tag branch, left as is.
+- is empty, has any value: no value box (unchanged).
+
+### D-19 other readers of the tags intrinsic type
+
+- `query-intrinsics.ts:123-124` (definition), `:181-182` (`getIntrinsicField`), `:186-188` (`INTRINSIC_FIELD_KEYS`): unaffected; the type is unchanged and the file was not edited.
+- `FieldPicker.tsx` `buildFieldPickerFields` (copies `f.type`): updated, only to add `tagOptions` on the `tags` entry; `type` still copied unchanged.
+- `operator-utils.ts:97-106` (`OPERATORS_BY_TYPE["multi-resource-ref"]`) and `:175-189` (stub builders): unaffected; file not edited; a test pins the Tags operator values.
+- `ast-chip-bridge.ts:315,365,413` (type decides multi-value handling): unaffected; type unchanged, file not edited.
+- `FilterChip.tsx:270-306` (multiValues): unaffected; the resource branch (`:355-382`): updated, a `tagOptions` check added ahead of the resource resolver.
+- `ValuePicker.tsx:641,676-684`: unaffected; not rendered for the Tags chip (only `SingleRefInput` is imported by `FilterChip.tsx`).
+- `query-evaluator.ts:162-165` (reads `intrinsic.read`): unaffected; two new pinning tests show an array of `{ id, name }` references and an array of plain strings (`"Drama"`) evaluate to the same resource set after as before (both pass on the unchanged evaluator; before-run `logs-final/task15-pinning-before.txt`, run before any source edit).
+- Tests naming the type: `query-intrinsics.test.ts:130`, `query-builder-evaluator-check.test.ts:463-465`, `ast-chip-bridge.test.ts:35,758`: unaffected, pass unchanged.
+- Metadata-schema `multi-resource-ref` readers (`MetadataSidebar.tsx:461`, `OrganizerView.tsx:263-272`, `organizerFilters.ts:159-181`, `SchemaManager.tsx:855,1108`): unaffected; they read schema fields, not the intrinsic, and the edited code applies only where `tagOptions` is set.
+
+Storybook check (FR-30): no new store, context or required prop was added. `tagOptions` is an optional field property; `buildFieldPickerFields`'s new parameter is optional. Stories in `frontend/stories/QueryBuilder/` (QueryBuilder, FilterGroup, FilterChip, ValuePicker, FieldPicker, plus OperatorMenu): `FilterChip.stories.tsx:38` defines its own `tags` field without `tagOptions`, so it keeps the resource-typeahead path as before; `FieldPicker.stories.tsx` calls `buildFieldPickerFields()` / `(PROJECT_SCHEMA)`, which now yields `tagOptions: []` on Tags and renders as before. Stories were read, not rendered (Storybook was not started).

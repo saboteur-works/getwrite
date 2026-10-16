@@ -387,6 +387,27 @@ describe("in predicate", () => {
   });
 });
 
+// ── Tags conditions saved before the Tags chip offered tags (Feature 86 D-19, FR-21) ──
+// Pinning tests: a stored condition in either older value form must keep
+// evaluating to the same resources after the chip's option source changed.
+// The evaluator was not changed by the fix.
+
+describe("tags condition saved in an earlier value form", () => {
+  it("an array of { id, name } references matches the resources holding those tags", async () => {
+    const result = await ids({
+      op: "in",
+      field: "tags",
+      value: [{ id: TAG_2, name: "Drama" }],
+    });
+    expect(result).toEqual([R3]);
+  });
+
+  it("an array of plain strings matches the resources holding those tags", async () => {
+    const result = await ids({ op: "in", field: "tags", value: ["Drama"] });
+    expect(result).toEqual([R3]);
+  });
+});
+
 // ── exists predicate ──────────────────────────────────────────────────────
 
 describe("exists predicate", () => {

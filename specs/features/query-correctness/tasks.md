@@ -179,7 +179,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 14
 **Estimate:** 5
 **Notes:** Satisfies FR-21, FR-27, FR-28, FR-30 (decorators). OQ-6 (c): a tag-aware branch rather than a type change. Take the tag source from `config.tags`; do not add a route. Subject to the Part C halt.
-**Done:** [ ]
+**Done:** [x] (committed in Task 15 commit)
 
 ### Task 16: D-20 failing tests and the config.statuses reader list (FR-22, FR-24)
 **What:** Add failing tests that with `config.statuses` equal to `[]` the Status chip's value list and the Organizer's status filter options are empty, and list every other reader of `config.statuses`.
