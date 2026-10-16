@@ -879,3 +879,71 @@ describe("chipToAst for 'in the last' (Feature 86 FR-11)", () => {
     });
   });
 });
+
+describe("astToGroups reopening a relative-date gte (Feature 86 FR-17)", () => {
+  const dateField = FIELDS.find((f) => f.key === "createdAt")!;
+
+  it("reopens gte {amount, unit} on a date field as 'in the last'", () => {
+    const r = astToGroups(
+      {
+        op: "gte",
+        field: "createdAt",
+        value: { amount: 7, unit: "days" },
+      } as QueryAST,
+      FIELDS,
+    );
+    const chip = r!.groups[0].chips[0];
+    expect(chip.operator).toBe("in-the-last");
+    expect(chip.value).toEqual({ amount: 7, unit: "days" });
+  });
+
+  it.each(["days", "weeks", "months"] as const)(
+    "round trips chip -> AST -> chip for %s",
+    (unit) => {
+      const groups: QueryGroup[] = [
+        {
+          id: "g",
+          combinator: "and",
+          chips: [
+            {
+              id: "c",
+              field: dateField,
+              operator: "in-the-last",
+              value: { amount: 3, unit },
+            },
+          ],
+        },
+      ];
+      const ast = groupsToAst(groups, "and")!;
+      const back = astToGroups(ast, FIELDS)!;
+      const chip = back.groups[0].chips[0];
+      expect(chip.operator).toBe("in-the-last");
+      expect(chip.value).toEqual({ amount: 3, unit });
+      expect(groupsToAst(back.groups, "and")).toEqual(ast);
+    },
+  );
+
+  it("reopens gte with a string value on a date field as it does today", () => {
+    const r = astToGroups(
+      { op: "gte", field: "createdAt", value: "2026-01-01" },
+      FIELDS,
+    );
+    expect(r!.groups[0].chips[0].operator).toBe("is-after");
+  });
+
+  it("reopens other comparisons as it does today", () => {
+    const op = (a: QueryAST): string | undefined =>
+      astToGroups(a, FIELDS)!.groups[0].chips[0].operator ?? undefined;
+    expect(op({ op: "gte", field: "wordCount", value: 5 })).toBe("is-at-least");
+    expect(op({ op: "lt", field: "createdAt", value: "2026-01-01" })).toBe(
+      "is-before",
+    );
+    expect(op({ op: "gt", field: "createdAt", value: "2026-01-01" })).toBe(
+      "is-after",
+    );
+    expect(op({ op: "eq", field: "createdAt", value: "2026-01-01" })).toBe(
+      "is-on",
+    );
+    expect(op({ op: "lte", field: "wordCount", value: 5 })).toBe("is-at-most");
+  });
+});

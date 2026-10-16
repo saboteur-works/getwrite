@@ -1,0 +1,5 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+> getwrite-frontend@2.2.0 typecheck /Users/jedaisaboteur/Repositories/getwrite/frontend
+> tsc --noEmit
+

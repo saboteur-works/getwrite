@@ -152,7 +152,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 7, 9
 **Estimate:** 3
 **Notes:** Satisfies FR-17, FR-11. Sequenced after Task 7 because both edit `ast-chip-bridge.ts`. Subject to the Part B halt. The FR-3 never-edited-value case, if the Task 3 run showed it saves something the input does not display, is a finding for the owner at the Task 4 stop (Gate 4 answer 3), not fixed here.
-**Done:** [ ]
+**Done:** [x] (committed in Task 12 commit)
 
 ### Task 13: D-19 experiment: what a Tags chip's value box does and where its options come from (FR-18)
 **What:** Record which branch a Tags chip takes in `FilterChip.tsx` and `ValuePicker.tsx`, what its value box shows when the `tags` field type or the option source is changed in a scratch copy, and what typing an existing tag's name and pressing Enter does in each case.

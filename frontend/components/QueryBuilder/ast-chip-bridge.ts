@@ -213,6 +213,17 @@ function fieldFor(
   return fields.find((f) => f.key === key) ?? null;
 }
 
+/** A relative-date value as written by an "in the last" chip. */
+function isRelativeDate(value: MetadataValue): boolean {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "amount" in value &&
+    "unit" in value
+  );
+}
+
 function comparisonToOperator(
   astOp: "eq" | "ne" | "lt" | "lte" | "gt" | "gte",
   fieldType: string | undefined,
@@ -233,8 +244,10 @@ function comparisonToOperator(
   if (astOp === "lte") return "is-at-most";
   if (astOp === "gt")
     return fieldType === "date" ? "is-after" : "is-greater-than";
-  if (astOp === "gte")
+  if (astOp === "gte") {
+    if (fieldType === "date" && isRelativeDate(value)) return "in-the-last";
     return fieldType === "number" ? "is-at-least" : "is-after";
+  }
   return "is";
 }
 
