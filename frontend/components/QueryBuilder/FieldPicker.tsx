@@ -43,6 +43,8 @@ export interface FieldPickerField {
    * resources (Feature 86 D-19). Empty when the project has no tags.
    */
   tagOptions?: ResourceOption[];
+  /** Set only on the `tags` intrinsic when reading the project's tags failed. */
+  tagsReadFailed?: boolean;
 }
 
 export interface FieldPickerProps {
@@ -96,6 +98,7 @@ export function buildFieldPickerFields(
   schema?: MetadataSchema,
   projectStatuses?: string[],
   projectTags?: Tag[],
+  tagsReadFailed?: boolean,
 ): FieldPickerField[] {
   const fields: FieldPickerField[] = [];
   const effectiveSchema = schema ?? DEFAULT_METADATA_SCHEMA;
@@ -156,6 +159,7 @@ export function buildFieldPickerFields(
               id: t.id,
               name: t.name,
             })),
+            ...(tagsReadFailed ? { tagsReadFailed: true } : {}),
           }
         : {}),
     });

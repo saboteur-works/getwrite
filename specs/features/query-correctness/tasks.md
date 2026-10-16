@@ -264,7 +264,7 @@ A code review after Task 23 found defects; the owner chose to fix them on this b
 **Depends on:** 15, 23
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-17 (reopen shows the saved value), FR-21 (Tags value box), FR-27 (failure visible, locked-access not swallowed), FR-28, FR-30 (decorators). Name tests as observed ("shows FLASHBACK when tags load after the chip is restored"), not as a cause; the ordering explanation (chip fields built before `isQueryBuilderOpen` triggers the fetch) is the lead's reading of the code, not an experiment result, and the red test is what separates it. The not-cleared-on-project-switch point is the same hypothesis class and is covered by (b). Do not change the saved `{id, name}` shape (OQ-6).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: "In the last" amount is a whole number; switching away from "in the last" resets the value (FR-12, FR-9, FR-17)
 **What:** Make the "in the last" amount input store only a whole number of at least 1, and make a change from "in the last" to another date operator reset the chip's value instead of carrying the `{amount, unit}` object.

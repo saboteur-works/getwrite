@@ -36,6 +36,14 @@ const TagsListResponseSchema = z.object({
 export interface TagsTransport {
   /** Lists every project-level tag. Degrades to `[]` on failure. */
   list(projectId: string): Promise<Tag[]>;
+  /**
+   * Lists every project-level tag, REJECTING on any failure (network error,
+   * non-2xx, malformed body, and on native any error the core throws,
+   * a locked-access error included). For the caller that must tell "this
+   * project has no tags" from "the read failed"
+   * (`docs/standards/failure-visibility.md`); `list` is unchanged.
+   */
+  listOrThrow(projectId: string): Promise<Tag[]>;
   /** Lists the tag ids assigned to a resource. Degrades to `[]` on failure. */
   listAssignments(projectId: string, resourceId: string): Promise<string[]>;
   /**
@@ -93,6 +101,26 @@ export const httpTagsTransport: TagsTransport = {
     if (!result.success) {
       reportTransportValidationFailure("tags.list", result.error.issues);
       return [];
+    }
+    return result.data.tags ?? [];
+  },
+
+  async listOrThrow(projectId) {
+    const response = await fetch("/api/project/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list", projectId }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Could not load the project's tags (${response.status}).`,
+      );
+    }
+    const data = (await response.json()) as unknown;
+    const result = TagsListResponseSchema.safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure("tags.listOrThrow", result.error.issues);
+      throw new Error("Malformed tags response.");
     }
     return result.data.tags ?? [];
   },
@@ -170,6 +198,19 @@ export const resolveTagsTransport: () => Promise<TagsTransport> =
 export async function listTags(projectId: string): Promise<Tag[]> {
   const transport = await resolveTagsTransport();
   return transport.list(projectId);
+}
+
+/**
+ * Fetches all project-level tags, rejecting on any failure instead of
+ * degrading to `[]` like {@link listTags}. A locked or keyless encrypted
+ * project fails here too (HTTP 401/409, or the thrown locked-access error on
+ * native), so a caller can show a failure rather than "no tags".
+ *
+ * @param projectId - The project's on-disk directory basename.
+ */
+export async function listTagsOrThrow(projectId: string): Promise<Tag[]> {
+  const transport = await resolveTagsTransport();
+  return transport.listOrThrow(projectId);
 }
 
 /**

@@ -60,6 +60,8 @@ export interface FilterChipField {
   isFolderField?: boolean;
   /** When set (the Tags field), the project's tags are the value box's options, not its resources. */
   tagOptions?: ResourceOption[];
+  /** Set on the Tags field when reading the project's tags failed (not "no tags"). */
+  tagsReadFailed?: boolean;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -357,7 +359,19 @@ function ValueInput({
     case "resource-ref":
     case "multi-resource-ref": {
       if (field.tagOptions) {
-        if (field.tagOptions.length === 0) {
+        const hasSavedRef =
+          value !== null &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          "name" in value;
+        if (field.tagsReadFailed && !hasSavedRef) {
+          return (
+            <span className="filter-chip__value-input" role="alert">
+              Could not load tags.
+            </span>
+          );
+        }
+        if (field.tagOptions.length === 0 && !hasSavedRef) {
           return (
             <EditContextMenu>
               <input
@@ -435,7 +449,7 @@ function toPickerFields(fields: FilterChipField[]): FieldPickerField[] {
 // ─── FilterChip ───────────────────────────────────────────────────────────────
 
 export default function FilterChip({
-  field,
+  field: chipField,
   operator,
   value,
   availableFields,
@@ -453,6 +467,14 @@ export default function FilterChip({
   onDelete,
   onMove,
 }: FilterChipProps): JSX.Element {
+  // A chip stores the field it was built with; a restored chip is built before
+  // the project's tags have loaded. Resolving the field against the current
+  // field list at render time lets the Tags value box see tags that arrive
+  // (or fail to load) after the chip exists.
+  const field =
+    (chipField
+      ? availableFields?.find((f) => f.key === chipField.key)
+      : undefined) ?? chipField;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuWrapperRef = useRef<HTMLDivElement>(null);
 

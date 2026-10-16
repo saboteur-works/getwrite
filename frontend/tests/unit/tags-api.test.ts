@@ -448,3 +448,39 @@ describe("POST /api/project/tags/delete (projectId-based)", () => {
     });
   });
 });
+
+describe("httpTagsTransport.listOrThrow (Feature 86 Task 24)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("resolves the tags on a 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ tags: [{ id: "t1", name: "alpha" }] })),
+    );
+    await expect(httpTagsTransport.listOrThrow("p")).resolves.toEqual([
+      { id: "t1", name: "alpha" },
+    ]);
+  });
+
+  it.each([401, 409, 500])(
+    "rejects on a %i, where list() resolves []",
+    async (status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({ ok: false, status, json: async () => ({}) })),
+      );
+      await expect(httpTagsTransport.listOrThrow("p")).rejects.toThrow();
+      await expect(httpTagsTransport.list("p")).resolves.toEqual([]);
+    },
+  );
+
+  it("rejects on a malformed body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ tags: "nope" })),
+    );
+    await expect(httpTagsTransport.listOrThrow("p")).rejects.toThrow();
+  });
+});
