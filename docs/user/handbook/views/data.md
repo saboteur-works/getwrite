@@ -30,7 +30,7 @@ The section also says: "Word counts for some older resources may read low."
 
 ## Warnings and limits
 
-- In the runs this page was verified from, after choosing a **Status** on a resource in a test project, the By status table showed 0 words for that resource (the resource's word count in its metadata file was 0); after a reload it showed 10, the number of words in the document. A later change (unreleased) stops the Status choice from storing that 0; this is shown by tests and has not been re-checked in the running app.
+- In the runs this page was verified from, after choosing a **Status** on a resource in a test project, the By status table showed 0 words for that resource (the resource's word count in its metadata file was 0); after a reload it showed 10, the number of words in the document. A later change (unreleased) stops the Status choice from storing that 0; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked.
 - The sidebar shows "Draft" for a resource that was never given a status; the By status table counted such resources under **No status**.
 
 Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit c3f768ee.
