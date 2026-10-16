@@ -1,0 +1,17 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 58133 port 53040 (throwaway projects dir; templates repo read-only)
+tag creation: dialog lines=["FLASHBACK"]; project.json config.tags=[{"id":"90dfeba1-efd5-4fcc-b13e-40201ef41fe4","name":"flashback"}]
+sidebar Tags section right after creating the tag in Project Settings (dialog closed, no reload): ["No tags yet. Create some in Project Settings."]
+data Scene A: wordCount=50 userMetadata={"pov":"Mara","status":"Draft","storyDate":"2026-01-05","fsel":"Red","fmulti":["Alpha","Beta"]}
+data Scene B: wordCount=600 userMetadata={"pov":"Mara","status":"In review","storyDate":"2026-03-01","fsel":"Green","fmulti":["Alpha"]}
+data Scene C: wordCount=40 userMetadata={"pov":"Elena","status":"Draft","storyDate":"2026-02-01","fmulti":["Beta"]}
+data Scene D: wordCount=5 userMetadata={}
+config.tags=[{"id":"90dfeba1-efd5-4fcc-b13e-40201ef41fe4","name":"flashback"}]; tagAssignments={"67487b02-57a1-462c-b20b-bd42640571b0":["90dfeba1-efd5-4fcc-b13e-40201ef41fe4"],"eef49b3a-0fbe-46b4-84dd-ce800e25df1d":["90dfeba1-efd5-4fcc-b13e-40201ef41fe4"]}
+meta/backlinks.json (id -> ids it links to): {"67487b02-57a1-462c-b20b-bd42640571b0":["991bf3e9-97d5-440a-86cf-b4c94aade22e"],"991bf3e9-97d5-440a-86cf-b4c94aade22e":[],"c1f64bf0-4887-4a36-8ea6-19960849ff83":["67487b02-57a1-462c-b20b-bd42640571b0"],"ebeed7da-1f51-4f9d-a763-1647e43ca6c5":[],"eef49b3a-0fbe-46b4-84dd-ce800e25df1d":["991bf3e9-97d5-440a-86cf-b4c94aade22e"],"fca9230c-2ae6-430d-9ad0-78ab7a053597":["ebeed7da-1f51-4f9d-a763-1647e43ca6c5"]}; ids: {"Scene A":"67487b02","Scene B":"eef49b3a","Scene C":"fca9230c","Scene D":"c1f64bf0","Mara":"991bf3e9","Elena":"ebeed7da"}
+before save, value box: {"inputs":[],"text":"FLASHBACK"}
+reopen (no reload): {"inputs":[],"text":"FLASHBACK"}
+reopen (first builder open after reload): {"inputs":[{"label":"Tag","placeholder":"tag...","value":""}],"text":""}
+same chip 2 s later: {"inputs":[{"label":"Tag","placeholder":"tag...","value":""}],"text":""}
+stop: recorded 58133(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
