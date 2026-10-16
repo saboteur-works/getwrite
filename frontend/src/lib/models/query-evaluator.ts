@@ -394,6 +394,43 @@ function sameLocalDay(v: MetadataValue | undefined, day: string): boolean {
   );
 }
 
+/**
+ * Order the timestamp `v` against the calendar day `day` (`YYYY-MM-DD`) in the
+ * evaluating process's local zone: negative when `v` falls on an earlier day,
+ * zero on the same day, positive on a later day. Null when either side does
+ * not parse.
+ */
+function compareLocalDay(
+  v: MetadataValue | undefined,
+  day: string,
+): number | null {
+  const stamp = parseDateValue(v);
+  const target = parseDateValue(day);
+  if (stamp === null || target === null) return null;
+  const stampDay = new Date(
+    stamp.getFullYear(),
+    stamp.getMonth(),
+    stamp.getDate(),
+  ).getTime();
+  return stampDay - target.getTime();
+}
+
+/**
+ * Ordered comparison of a resolved field value with a predicate value. On the
+ * intrinsic timestamp fields a `YYYY-MM-DD` value compares by local calendar
+ * day (FR-16); everything else keeps `compareValues`.
+ */
+function compareForPredicate(
+  field: string,
+  v: MetadataValue | undefined,
+  value: MetadataValue,
+): number | null {
+  if (isTimestampField(field) && isDateOnly(value)) {
+    return compareLocalDay(v, value);
+  }
+  return compareValues(v, value);
+}
+
 /** Evaluate `contains` on a string field value (case-insensitive substring). */
 function evalContains(
   v: MetadataValue | undefined,
@@ -510,7 +547,8 @@ function matchNode(
 
     // ── Ordered comparison predicates ────────────────────────────────
     case "lt": {
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -518,7 +556,8 @@ function matchNode(
     }
 
     case "gt": {
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -533,7 +572,8 @@ function matchNode(
         );
         return when !== null && when >= start && when <= now;
       }
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -541,7 +581,8 @@ function matchNode(
     }
 
     case "lte": {
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );

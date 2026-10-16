@@ -520,7 +520,6 @@ async function idsFor(
  * defect ID. Measured by the unfixed-tree run (FR-4); each fix task removes its
  * entries. D-17: "in the last" on dates (the
  * untouched "in the last" case is also the FR-3 never-edited-value finding).
- * "finding-FR-16": date before/after/between on the intrinsic timestamps.
  * "finding": anything else.
  */
 const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
@@ -535,17 +534,6 @@ const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
     [
       `date (${f}) › in-the-last › untouched › returns what the input displays`,
       "D-17 + FR-3",
-    ],
-    [`date (${f}) › is-before › 2026-03-10 › edited`, "finding-FR-16"],
-    [`date (${f}) › is-after › 2026-03-10 › edited`, "finding-FR-16"],
-    [`date (${f}) › is-after › 2026-03-09 › edited`, "finding-FR-16"],
-    [
-      `date (${f}) › is-between › 2026-03-10 to 2026-03-10 › edited`,
-      "finding-FR-16",
-    ],
-    [
-      `date (${f}) › is-between › 2026-03-09 to 2026-03-10 › edited`,
-      "finding-FR-16",
     ],
   ]),
 ]);
@@ -669,8 +657,8 @@ describe("expected-failure list", () => {
     expect(stale).toEqual([]);
   });
 
-  it("lists the 16 cases still failing after the D-17 is-on evaluator fix", () => {
-    expect(KNOWN_FAILURES.size).toBe(16);
+  it("lists the 6 cases still failing after the FR-16 day-comparison fix", () => {
+    expect(KNOWN_FAILURES.size).toBe(6);
   });
 });
 

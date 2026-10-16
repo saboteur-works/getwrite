@@ -143,7 +143,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 3, 4, 10
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-35. OQ-4 (d): the decision followed the measurement (confirmed on `createdAt`/`updatedAt`, not on custom date fields). Changes what an existing saved "is after D" folder returns on day D; that is the accepted effect of (b) and is stated in the commit.
-**Done:** [ ]
+**Done:** [x] (committed in Task 11 commit)
 
 ### Task 12: D-17: reopen a saved relative-date `gte` as "in the last" (FR-17)
 **What:** Make `comparisonToOperator` reopen a `gte` on a date field whose value is a relative-date object as an "in the last" chip carrying that amount and unit.

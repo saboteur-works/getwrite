@@ -1496,6 +1496,113 @@ describe("eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local 
   });
 });
 
+// ── Feature 86 FR-16 (b): before / after / between on createdAt, updatedAt ──
+
+describe("lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35)", () => {
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  // America/New_York is UTC-4 from 2026-03-08. Local days around 2026-03-10.
+  const A = "eeeeeeee-0000-4000-a000-0000000000c1"; // 03-09 23:59 local
+  const B = "eeeeeeee-0000-4000-a000-0000000000c2"; // 03-10 00:01 local
+  const C = "eeeeeeee-0000-4000-a000-0000000000c3"; // 03-10 23:59 local
+  const D = "eeeeeeee-0000-4000-a000-0000000000c4"; // 03-11 00:01 local
+  const E = "eeeeeeee-0000-4000-a000-0000000000c5"; // 03-08 00:01 local
+  const STAMPS: Record<string, string> = {
+    [A]: "2026-03-10T03:59:00.000Z",
+    [B]: "2026-03-10T04:01:00.000Z",
+    [C]: "2026-03-11T03:59:00.000Z",
+    [D]: "2026-03-11T04:01:00.000Z",
+    [E]: "2026-03-08T05:01:00.000Z",
+  };
+  const resources: ResourceBase[] = Object.keys(STAMPS).map((id) => ({
+    id,
+    slug: id,
+    name: id,
+    type: "text",
+    folderId: null,
+    orderIndex: 0,
+    statuses: [],
+    createdAt: STAMPS[id],
+    updatedAt: STAMPS[id],
+  }));
+  const run = (ast: QueryAST): Promise<string[]> =>
+    ids(ast, { resources, sidecars: {} });
+  const between = (field: string, x: string, y: string): QueryAST => ({
+    op: "and",
+    children: [
+      { op: "gte", field, value: x },
+      { op: "lte", field, value: y },
+    ],
+  });
+
+  for (const field of ["createdAt", "updatedAt"]) {
+    it(`${field}: is before 2026-03-10 returns earlier days including 23:59 the day before, not day D`, async () => {
+      expect(await run({ op: "lt", field, value: "2026-03-10" })).toEqual(
+        [A, E].sort(),
+      );
+    });
+    it(`${field}: is after 2026-03-10 returns later days only, not day D and not the day before`, async () => {
+      expect(await run({ op: "gt", field, value: "2026-03-10" })).toEqual([D]);
+    });
+    it(`${field}: is between 2026-03-09 and 2026-03-10 includes both end days`, async () => {
+      expect(await run(between(field, "2026-03-09", "2026-03-10"))).toEqual(
+        [A, B, C].sort(),
+      );
+    });
+    it(`${field}: is between 2026-03-10 and 2026-03-10 returns the whole of that day`, async () => {
+      expect(await run(between(field, "2026-03-10", "2026-03-10"))).toEqual(
+        [B, C].sort(),
+      );
+    });
+    it(`${field}: gte and lte of the same day include that day at both ends`, async () => {
+      expect(await run({ op: "gte", field, value: "2026-03-10" })).toEqual(
+        [B, C, D].sort(),
+      );
+      expect(await run({ op: "lte", field, value: "2026-03-10" })).toEqual(
+        [A, B, C, E].sort(),
+      );
+    });
+    it(`${field}: a full-timestamp comparison value keeps exact comparison`, async () => {
+      expect(
+        await run({ op: "lt", field, value: "2026-03-10T04:01:00.000Z" }),
+      ).toEqual([A, E].sort());
+      expect(
+        await run({ op: "gt", field, value: "2026-03-10T04:01:00.000Z" }),
+      ).toEqual([C, D].sort());
+    });
+  }
+
+  it("a custom date field holding date-only strings keeps string comparison", async () => {
+    const result = await ids(
+      {
+        op: "and",
+        children: [
+          { op: "gte", field: "due", value: "2026-03-09" },
+          { op: "lte", field: "due", value: "2026-03-10" },
+        ],
+      },
+      {
+        resources,
+        sidecars: {
+          [A]: { due: "2026-03-09" },
+          [B]: { due: "2026-03-10" },
+          [C]: { due: "2026-03-11" },
+          [D]: { due: "2026-03-08" },
+        },
+      },
+    );
+    expect(result).toEqual([A, B].sort());
+  });
+});
+
 // ── Feature 86 D-17: relative-date gte ("in the last") ────────────────────
 
 describe("gte with a relative-date object (D-17, FR-11..FR-14)", () => {
