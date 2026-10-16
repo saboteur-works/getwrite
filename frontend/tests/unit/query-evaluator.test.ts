@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   evaluate,
   EvaluatorNotImplementedError,
@@ -1342,4 +1342,67 @@ describe("exists semantics across value types", () => {
     expect(result).toContain(R3);
     expect(result).not.toContain(R1);
   });
+});
+
+// ── Feature 86 D-17: a resource created minutes ago, date predicates on createdAt ─
+
+describe("createdAt predicates on a resource created 3 minutes before the evaluation time (D-17)", () => {
+  const FRESH = "eeeeeeee-0000-4000-a000-0000000000f1";
+  // 2026-03-10 11:00 in America/New_York; evaluated 3 minutes later.
+  const CREATED_AT = "2026-03-10T15:00:00.000Z";
+  const EVALUATION_TIME = new Date("2026-03-10T15:03:00.000Z");
+  const CREATION_DAY = "2026-03-10";
+
+  const fresh: ResourceBase = {
+    id: FRESH,
+    slug: "fresh",
+    name: "Fresh",
+    type: "text",
+    folderId: null,
+    orderIndex: 0,
+    statuses: [],
+    createdAt: CREATED_AT,
+    updatedAt: CREATED_AT,
+  };
+
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  const run = (ast: QueryAST): Promise<string[]> =>
+    ids(ast, {
+      resources: [fresh],
+      sidecars: {},
+      evaluationTime: EVALUATION_TIME,
+    });
+
+  it.fails(
+    "omits a resource created 3 minutes ago for gte 1 days on createdAt [expected failure: D-17]",
+    async () => {
+      const result = await run({
+        op: "gte",
+        field: "createdAt",
+        value: { amount: 1, unit: "days" },
+      });
+      expect(result).toEqual([FRESH]);
+    },
+  );
+
+  it.fails(
+    "omits a resource created 3 minutes ago for eq of its creation day on createdAt [expected failure: D-17]",
+    async () => {
+      const result = await run({
+        op: "eq",
+        field: "createdAt",
+        value: CREATION_DAY,
+      });
+      expect(result).toEqual([FRESH]);
+    },
+  );
 });

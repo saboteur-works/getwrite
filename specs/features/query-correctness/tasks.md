@@ -116,7 +116,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 4
 **Estimate:** 2
 **Notes:** Satisfies FR-10. The optional evaluation time exists from Task 2; the tests pass a fixed evaluation time and zone through it, so the red reason is the result alone. They are left red as the failing tests this part starts with, then are green in Tasks 9 and 10; if committing between tasks requires green, mark them as expected failures naming D-17 under the expected-failure rule.
-**Done:** [ ]
+**Done:** [x] (committed in Task 8 commit; tests carried as it.fails D-17)
 
 ### Task 9: D-17 fix: relative-date `gte` and the evaluation time (FR-11, FR-12, FR-13, FR-14)
 **What:** Make the evaluator evaluate a `gte` with a relative-date object as "the field's date falls from (evaluation time minus the span) to the evaluation time", using the optional evaluation time Task 2 added to `EvaluationInput`.
