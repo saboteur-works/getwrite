@@ -768,6 +768,95 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
     );
   });
 
+  it("a create-result-shaped entry (folders without nested resources, resources with folderId and plainText) is listed under its folder with its body", async () => {
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    const project = {
+      id: "p-created",
+      name: "Two Resource Novel",
+      rootPath: `/tmp/projects/${DIR_ID}`,
+      createdAt: STAMP,
+    };
+    const folder = {
+      id: "folder-1",
+      name: "Part One",
+      type: "folder",
+      slug: "part-one",
+      parentId: null,
+      orderIndex: 0,
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    };
+    const base = {
+      type: "text",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+      userMetadata: {},
+    };
+    const entry = {
+      project,
+      folders: [folder],
+      resources: [
+        {
+          ...base,
+          id: "res-in-folder",
+          name: "Scene In Folder",
+          slug: "scene-in-folder",
+          folderId: "folder-1",
+          orderIndex: 0,
+          plainText: "folder body",
+        },
+        {
+          ...base,
+          id: "res-root",
+          name: "Scene Root",
+          slug: "scene-root",
+          folderId: null,
+          orderIndex: 1,
+          plainText: "root body",
+        },
+      ],
+    } as unknown as StartPageProjectEntry;
+    const store = makeStore();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[entry]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Two Resource Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Package" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: /Compile Project/i,
+    });
+    expect(within(dialog).getByText("Scene In Folder")).toBeInTheDocument();
+    expect(within(dialog).getByText("Scene Root")).toBeInTheDocument();
+    // Row indentation is the tree depth: 8px at the root, 28px inside a folder.
+    const rowPadding = (name: string): string | undefined =>
+      within(dialog).getByRole("checkbox", { name }).closest("div[style]")
+        ?.style.paddingLeft;
+    expect(rowPadding("Scene In Folder")).toBe("28px");
+    expect(rowPadding("Scene Root")).toBe("8px");
+    expect(
+      within(dialog).getByRole("checkbox", { name: "Part One" }),
+    ).toBeEnabled();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    const body = compileTextMock.mock.calls[0][0] as {
+      resourceIds: string[];
+      resources: { id: string }[];
+    };
+    expect([...body.resourceIds].sort()).toEqual(["res-in-folder", "res-root"]);
+    expect(body.resources.filter((r) => r.id === "res-in-folder")).toHaveLength(
+      1,
+    );
+  });
+
   it("the project card shows 2 resources for the same project (no folderId case)", () => {
     const store = makeStore();
     render(
