@@ -323,6 +323,29 @@ function evalMatches(v: MetadataValue | undefined, regexStr: string): boolean {
 }
 
 /**
+ * Read an `and` with exactly one `in` child as "holds every listed value"
+ * (Feature 86 FR-6): the shape "includes all of" saves. Applies only when the
+ * child carries a non-empty array and the field resolves to an array; returns
+ * `null` for every other shape so the caller evaluates it as before.
+ */
+function matchAllOfSingleIn(
+  children: readonly QueryAST[],
+  resource: ResourceBase,
+  sidecar: Record<string, MetadataValue>,
+  context: QueryContext,
+): boolean | null {
+  if (children.length !== 1) return null;
+  const child = children[0];
+  if (child.op !== "in") return null;
+  if (!Array.isArray(child.value) || child.value.length === 0) return null;
+  const v = resolveFieldValue(child.field, resource, sidecar, context);
+  if (!Array.isArray(v)) return null;
+  const listedValues = child.value as MetadataValue[];
+  // evalIn wraps a non-array predicate as a one-value list: one value at a time.
+  return listedValues.every((listed) => evalIn(v, listed));
+}
+
+/**
  * Recursively evaluate a QueryAST node for a single resource.
  * Throws EvaluatorNotImplementedError for `ref` and `param` splice nodes.
  */
@@ -334,10 +357,18 @@ function matchNode(
 ): boolean {
   switch (ast.op) {
     // ── Boolean combinators ───────────────────────────────────────────
-    case "and":
+    case "and": {
+      const shouldHoldEvery = matchAllOfSingleIn(
+        ast.children,
+        resource,
+        sidecar,
+        context,
+      );
+      if (shouldHoldEvery !== null) return shouldHoldEvery;
       return ast.children.every((c) =>
         matchNode(c, resource, sidecar, context),
       );
+    }
 
     case "or":
       return ast.children.some((c) => matchNode(c, resource, sidecar, context));

@@ -1009,22 +1009,179 @@ describe("and[in(field, [Alpha, Beta])] over a multiselect field", () => {
     [SCENE_D]: {},
   };
 
-  // [expected failure: D-16] — returns A, B and C today; the intended result is A only.
-  it.fails(
-    "returns B and C for the saved all-of shape [expected failure: D-16]",
-    async () => {
-      const result = await ids(
-        {
-          op: "and",
-          children: [
-            { op: "in", field: "characters", value: ["Alpha", "Beta"] },
-          ],
-        },
-        { resources: sceneResources, sidecars: sceneSidecars },
-      );
-      expect(result).toEqual([SCENE_A]);
-    },
-  );
+  it("returns only Scene A for the saved all-of shape", async () => {
+    const result = await ids(
+      {
+        op: "and",
+        children: [{ op: "in", field: "characters", value: ["Alpha", "Beta"] }],
+      },
+      { resources: sceneResources, sidecars: sceneSidecars },
+    );
+    expect(result).toEqual([SCENE_A]);
+  });
+});
+
+// ── Feature 86 FR-7: shapes the and-of-one-in reading must leave unchanged ─
+
+describe("in / and / or / not shapes around the and-of-one-in reading (FR-7 pinning)", () => {
+  const XID = "cccccccc-0000-4000-a000-0000000000a1";
+  const YID = "cccccccc-0000-4000-a000-0000000000a2";
+  const ids6 = [
+    "dddddddd-0000-4000-a000-00000000000a",
+    "dddddddd-0000-4000-a000-00000000000b",
+    "dddddddd-0000-4000-a000-00000000000c",
+    "dddddddd-0000-4000-a000-00000000000d",
+    "dddddddd-0000-4000-a000-00000000000e",
+    "dddddddd-0000-4000-a000-00000000000f",
+  ];
+  const [PA, PB, PC, PD, PE, PF] = ids6;
+  const xena = { id: XID, name: "Xena" };
+  const yara = { id: YID, name: "Yara" };
+
+  const pinResources: ResourceBase[] = ids6.map((id, i) => ({
+    id,
+    slug: `pin-${i}`,
+    name: `Pin ${i}`,
+    type: "text" as const,
+    folderId: null,
+    orderIndex: i,
+    statuses: [],
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+  }));
+
+  const pinSidecars: Record<string, Record<string, MetadataValue>> = {
+    [PA]: { characters: ["Alpha", "Beta"], kind: "x", allies: [xena, yara] },
+    [PB]: { characters: ["Alpha"], kind: "y", allies: [xena] },
+    [PC]: { characters: ["Beta"], kind: "z", allies: [yara] },
+    [PD]: {},
+    [PE]: { characters: [], allies: [] },
+    [PF]: { characters: ["Alpha", "Beta", "Gamma"], kind: "x" },
+  };
+
+  const run = (ast: QueryAST): Promise<string[]> =>
+    ids(ast, { resources: pinResources, sidecars: pinSidecars });
+
+  const inChars = (value: MetadataValue): QueryAST => ({
+    op: "in",
+    field: "characters",
+    value,
+  });
+
+  it("bare in is any-of", async () => {
+    expect(await run(inChars(["Alpha", "Beta"]))).toEqual([PA, PB, PC, PF]);
+  });
+
+  it("or of one in is any-of", async () => {
+    expect(
+      await run({ op: "or", children: [inChars(["Alpha", "Beta"])] }),
+    ).toEqual([PA, PB, PC, PF]);
+  });
+
+  it("and of two ins reads each child as it does today", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [inChars(["Alpha"]), inChars(["Beta"])],
+      }),
+    ).toEqual([PA, PF]);
+  });
+
+  it("and of two ins, one carrying two values, reads each child as any-of", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [inChars(["Alpha", "Gamma"]), inChars(["Beta"])],
+      }),
+    ).toEqual([PA, PF]);
+  });
+
+  it("and of one non-in child is that child", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "exists", field: "characters" }],
+      }),
+    ).toEqual([PA, PB, PC, PF]);
+  });
+
+  it("not of an in excludes any-of matches", async () => {
+    expect(await run({ op: "not", child: inChars(["Alpha", "Beta"]) })).toEqual(
+      [PD, PE],
+    );
+  });
+
+  it("not of an or of in excludes any-of matches", async () => {
+    expect(
+      await run({
+        op: "not",
+        child: { op: "or", children: [inChars(["Alpha", "Beta"])] },
+      }),
+    ).toEqual([PD, PE]);
+  });
+
+  it("and of one in over a scalar-resolved select field is any-of", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "in", field: "kind", value: ["x", "y"] }],
+      }),
+    ).toEqual([PA, PB, PF]);
+  });
+
+  it("and of one in over the intrinsic type field is any-of", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "in", field: "type", value: ["text", "image"] }],
+      }),
+    ).toEqual(ids6);
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "in", field: "type", value: ["image", "audio"] }],
+      }),
+    ).toEqual([]);
+  });
+
+  it("and of one in with a single-element list matches resources holding it", async () => {
+    expect(await run({ op: "and", children: [inChars(["Alpha"])] })).toEqual([
+      PA,
+      PB,
+      PF,
+    ]);
+  });
+
+  it("and of one in with an empty list matches nothing", async () => {
+    expect(await run({ op: "and", children: [inChars([])] })).toEqual([]);
+  });
+
+  it("and of one in with a non-array value reads as a single value", async () => {
+    expect(await run({ op: "and", children: [inChars("Alpha")] })).toEqual([
+      PA,
+      PB,
+      PF,
+    ]);
+  });
+
+  it("a resource with the field absent or an empty array does not match and[in]", async () => {
+    const result = await run({
+      op: "and",
+      children: [inChars(["Alpha", "Beta"])],
+    });
+    expect(result).not.toContain(PD);
+    expect(result).not.toContain(PE);
+  });
+
+  it("single-value matching against a resource-ref element uses id or case-insensitive name", async () => {
+    const field = (value: MetadataValue): QueryAST => ({
+      op: "and",
+      children: [{ op: "in", field: "allies", value }],
+    });
+    expect(await run(field([XID]))).toEqual([PA, PB]);
+    expect(await run(field(["xena"]))).toEqual([PA, PB]);
+    expect(await run(field(["YARA"]))).toEqual([PA, PC]);
+  });
 });
 
 // ── ResourceRef with id: null (deleted target) ────────────────────────────

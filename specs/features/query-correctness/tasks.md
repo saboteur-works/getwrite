@@ -98,7 +98,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Satisfies FR-6, FR-7, FR-27, FR-28. The reading lives in the evaluator, not the builder, because saved smart folders are not rewritten (OQ-94); a hand-written query of that shape also gets it (accepted cost). Do not add a node to `query-ast.ts` (OQ-1).
-**Done:** [ ]
+**Done:** [x] (committed in Task 6 commit)
 
 ### Task 7: D-16: reopen a saved "includes all of" as "includes all of", keep the saved shape (FR-8, FR-9)
 **What:** Make `astToGroups` reopen an `and` with exactly one `in` child on a `multiselect` or `multi-resource-ref` field as an "includes all of" chip at every chip position, and keep `chipToAst` writing the current shape.
