@@ -183,7 +183,7 @@ Task 11 branch input (FR-16 (b)): CONFIRMED on `createdAt` and `updatedAt` (not 
 
 ## FR-4 stop
 
-Date 2026-10-16. Status: AWAITING OWNER PER-FINDING DECISIONS. No task of 5 or higher has been started. Task 4 is not ticked (no Done box ticked). Everything below is copied from "FR-1 check on the unfixed tree" and "Date boundary (FR-16)" above; no new measurement was made and no cause is named beyond what those sections record.
+Date 2026-10-16. Status: CLEARED by the owner's per-finding decisions below (2026-10-16). No task of 5 or higher had been started when the stop was reached. Everything below is copied from "FR-1 check on the unfixed tree" and "Date boundary (FR-16)" above; no new measurement was made and no cause is named beyond what those sections record.
 
 Findings outside D-16, D-17, D-19 and D-20. For each, the owner chooses one of three options: (1) fix, (2) hide (remove the condition from the builder), (3) record as known failure.
 
@@ -192,44 +192,46 @@ Findings outside D-16, D-17, D-19 and D-20. For each, the owner chooses one of t
 - Condition: text field, operator "starts with", value `alpha`.
 - Measurement: saved AST `{"op":"matches","field":"txt","value":"alpha"}`. Returned r1,r3,r5,r7; expected r1,r3,r7. The extra id is r5, text "the alpha", which contains "alpha" but does not start with it. The check includes no value with a regex metacharacter, so escaping is not measured here.
 - Owner options: fix / hide / record as known failure.
-- Decision: pending.
+- Decision: Owner decision, FR-4 stop, 2026-10-16: FIX (Task 21 red tests, Task 22 fix). "Starts with" anchors at the start of the typed text, escapes the typed text so no regex metacharacter is interpreted, and matches case-insensitively like "contains". A saved "starts with" reopens as "starts with" (today it reopens as "matches regex"). Saved folders holding the old unanchored `matches` shape are not migrated (OQ-94 stance) and keep their current behaviour, including reopening as "matches regex". The new saved shape must be distinguishable from a hand-written "matches regex" for reopen; the spec author's reading is that the evaluator's `matches` runs `new RegExp(value)` with no flags (case-sensitive), so case-insensitivity needs an optional marker on the `matches` node (absent means today's behaviour); Task 22 states the shape and its schema effect.
 
 ### F-2: resource-ref typed name, "is"
 
 - Condition: resource-ref field, operator "is", value a typed string (`Tom`), reached when `resolveResourceOptions` returns no candidates (plain text input stores the typed string).
 - Measurement: saved AST `{"op":"eq","field":"ref","value":"Tom"}`; the picked value saves `{"op":"eq","field":"ref","value":{"id":"t1","name":"Tom"}}` and passed. Typed name returned none; expected r1,r3. Reachability in practice (a field with an empty scope that still has stored refs) is not measured; the scenario was not exercised in a running app.
 - Owner options: fix / hide / record as known failure.
-- Decision: pending.
+- Decision: Owner decision, FR-4 stop, 2026-10-16: RECORD AS KNOWN FAILURE, not fixed in Feature 86. Its expected-failure markers stay, labelled known failure (owner decision). Reachability in the app was not measured; the pipeline lead files a POS note.
 
 ### F-3: resource-ref typed name, "is not"
 
 - Condition: as F-2, operator "is not".
 - Measurement: returned r1,r2,r3,r4,r5,r6,r7; expected r2,r4,r5,r6,r7. Same reachability note as F-2.
 - Owner options: fix / hide / record as known failure.
-- Decision: pending.
+- Decision: Owner decision, FR-4 stop, 2026-10-16: RECORD AS KNOWN FAILURE, not fixed in Feature 86 (decided together with F-2). Its expected-failure markers stay, labelled known failure (owner decision). Reachability in the app was not measured; the pipeline lead files a POS note.
 
 ### F-4: never-edited "in the last" chip (FR-3)
 
 - Condition: "in the last" chip on a date field (custom field, createdAt, updatedAt) right after the operator is chosen, value never edited.
 - Measurement: saved AST `{"op":"gte","field":"createdAt","value":null}` (same shape with `dt` and `updatedAt`); the input displays 7 days. Evaluated: returned none for all three fields; the displayed 7 days would give r1,r2,r6 (custom) and r1,r2,r3,r5 (createdAt, updatedAt). Saved value null versus displayed 7 days. Whether D-17's fix changes what the untouched chip saves is not established. The edited "in the last" cases fail with the same empty result, so untouched and edited states are not separated by this measurement.
 - Owner options: fix / hide / record as known failure.
-- Decision: pending.
+- Decision: Owner decision, FR-4 stop, 2026-10-16: FIX, in the D-17 part (Task 23). Choosing "in the last" sets the chip's value to the displayed default `{amount: 7, unit: "days"}`, so what is saved matches what is shown. Tested at the component/bridge level; its expected-failure cases flip.
 
 ### F-5: intrinsic-timestamp "is before", "is after", "is between" (FR-16)
 
 - Condition: createdAt and updatedAt with date operators is before, is after, is between (10 expected-failure cases, marked finding-FR-16). "Is on" on these fields is covered by D-17.
 - Measurement (day D = 2026-03-10, X = 2026-03-09, zone America/New_York): is before D returned none, label expects a; is after D returned a,b,c,d, label expects d; is between X and D returned none, label expects a,b,c. In the FR-1 check: `is-before 2026-03-10` createdAt returned r4,r5,r7 (expected r1,r4,r5,r7), updatedAt returned r4,r5 (expected r1,r4,r5); `is-after 2026-03-10` both fields returned r1,r2,r3,r6 (expected r6); `is-after 2026-03-09` both returned r1,r2,r3,r5,r6 (expected r2,r3,r6); `is-between 03-10 to 03-10` both returned none (expected r2,r3); `is-between 03-09 to 03-10` both returned r5 (expected r1,r2,r3,r5). The custom date field holding date-only strings behaved as labelled in all four conditions.
 - Owner options: fix / hide / record as known failure.
-- Decision: pending.
+- Decision: Owner decision, FR-4 stop, 2026-10-16: CONFIRMED by measurement; Task 11 implements FR-16 option (b) on the intrinsic timestamp fields (`createdAt`, `updatedAt`) only. Custom date fields were measured correct and stay unchanged. Its expected-failure cases flip.
 
 ### F-6: createdAt "is before" r1 observation (part of F-5)
 
 - Measurement: `createdAt` "is before 2026-03-10" returned r4,r5,r7 where the label expects r1,r4,r5,r7. r1 is 2026-03-09 23:59 local, stored `2026-03-10T03:59:00.000Z`, a string beginning with `2026-03-10`. The same fixture (a) is absent from "is before D" in the boundary run. The measurement separates only this: the resource missing from the result is the one whose stored UTC string begins with the compared date, while r4, r5 (stored `2026-03-09T19:30:00.000Z`) and r7 were returned. No further experiment was run; no cause is named.
 - Owner options: fix / hide / record as known failure (decided together with F-5 unless the owner splits them).
-- Decision: pending.
+- Decision: Owner decision, FR-4 stop, 2026-10-16: covered by the F-5 decision: the same local-calendar-day comparison (FR-16 (b)); its expected-failure case flips with Task 11.
 
 ### FR-16 result and Task 11 branch input
 
 FR-16 (b) read misbehaviour: CONFIRMED on createdAt and updatedAt (is before, is after, is between, is on all misbehaved); not confirmed on custom date fields (none of the four conditions misbehaved).
 
 Task 11 branch input (FR-16 (b)): CONFIRMED on `createdAt` and `updatedAt`.
+
+Decision summary (2026-10-16): F-1 fix; F-2 and F-3 known failure; F-4 fix; F-5 and F-6 fix via Task 11 (FR-16 (b), intrinsic timestamp fields only). Tasks added to tasks.md: 21, 22, 23.
