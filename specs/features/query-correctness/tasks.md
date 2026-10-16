@@ -233,7 +233,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 20, 12
 **Estimate:** 3
 **Notes:** Satisfies FR-32, FR-27, FR-28. Sequenced after Task 12 because both edit `ast-chip-bridge.ts`. Owner decision, 2026-10-16: add the optional marker on the `matches` node (absent means today's behaviour) and key reopen on it, so a hand-written `^foo` regex still reopens as "matches regex". Saved folders are not migrated and not rewritten (OQ-94, FR-28). The `docs/user/` handbook is not edited.
-**Done:** [ ]
+**Done:** [x] (committed in Task 21 commit)
 
 ### Task 22: F-4 D-17 part: choosing "in the last" saves the displayed 7 days (FR-33)
 **What:** Make choosing "in the last" on a date field set the chip's value to `{amount: 7, unit: "days"}`, the value the input displays, so a never-edited chip saves what it shows.

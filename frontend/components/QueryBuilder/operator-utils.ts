@@ -143,7 +143,12 @@ const STUB_BUILDERS: Partial<Record<string, StubBuilder>> = {
     op: "not",
     child: { op: "contains", field: f, value: "" },
   }),
-  "starts-with": (f) => ({ op: "matches", field: f, value: "" }),
+  "starts-with": (f) => ({
+    op: "matches",
+    field: f,
+    value: "^",
+    caseInsensitive: true,
+  }),
   "matches-regex": (f) => ({ op: "matches", field: f, value: "" }),
   // number
   equals: (f) => ({ op: "eq", field: f, value: 0 }),

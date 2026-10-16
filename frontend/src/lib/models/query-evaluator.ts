@@ -441,10 +441,14 @@ function evalContains(
 }
 
 /** Evaluate `matches` on a string field value (regular expression test). */
-function evalMatches(v: MetadataValue | undefined, regexStr: string): boolean {
+function evalMatches(
+  v: MetadataValue | undefined,
+  regexStr: string,
+  caseInsensitive?: boolean,
+): boolean {
   if (typeof v !== "string") return false;
   try {
-    return new RegExp(regexStr).test(v);
+    return new RegExp(regexStr, caseInsensitive === true ? "i" : "").test(v);
   } catch {
     return false;
   }
@@ -603,7 +607,7 @@ function matchNode(
 
     case "matches": {
       const v = resolveFieldValue(ast.field, resource, sidecar, context);
-      return evalMatches(v, ast.value);
+      return evalMatches(v, ast.value, ast.caseInsensitive);
     }
   }
 }

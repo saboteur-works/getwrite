@@ -260,3 +260,42 @@ describe("deleteQuery", () => {
     await removeDirRetry(tmp);
   });
 });
+
+// ─── matches node with the optional caseInsensitive marker (Feature 86 FR-32) ──
+
+describe("saved query with a matches node", () => {
+  const ID = "550e8400-e29b-41d4-a716-446655440000";
+
+  it("an old file without the marker parses and stays without it", async () => {
+    const tmp = await makeTmp();
+    const old = {
+      id: ID,
+      name: "old",
+      definition: { op: "matches", field: "title", value: "^foo" },
+    };
+    await fs.mkdir(path.join(tmp, "meta", "queries"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, "meta", "queries", `${ID}.query.json`),
+      JSON.stringify(old),
+    );
+    expect(await readQuery(tmp, ID)).toStrictEqual(old);
+    await removeDirRetry(tmp);
+  });
+
+  it("a node with caseInsensitive true parses and keeps the marker through write and read", async () => {
+    const tmp = await makeTmp();
+    const query: SavedQuery = {
+      id: ID,
+      name: "starts with",
+      definition: {
+        op: "matches",
+        field: "title",
+        value: "^foo",
+        caseInsensitive: true,
+      },
+    };
+    await writeQuery(tmp, query);
+    expect(await readQuery(tmp, ID)).toStrictEqual(query);
+    await removeDirRetry(tmp);
+  });
+});

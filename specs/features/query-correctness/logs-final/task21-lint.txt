@@ -1,0 +1,7 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/saved-queries.test.ts
+  71:25  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+

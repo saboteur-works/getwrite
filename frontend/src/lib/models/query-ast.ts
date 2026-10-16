@@ -63,6 +63,12 @@ export const TextNodeSchema = z.object({
   op: TextOpSchema,
   field: nonEmptyString,
   value: z.string(),
+  /**
+   * Optional (Feature 86 FR-32). `true` makes a `matches` pattern case-insensitive
+   * (the evaluator adds the `i` flag); absent or `false` is today's behaviour.
+   * Not read for `contains`, which is always case-insensitive.
+   */
+  caseInsensitive: z.boolean().optional(),
 });
 
 export const LinksToNodeSchema = z.object({
@@ -124,7 +130,12 @@ export type ComparisonNode = {
 };
 export type InNode = { op: "in"; field: string; value: MetadataValue };
 export type ExistsNode = { op: "exists"; field: string };
-export type TextNode = { op: TextOp; field: string; value: string };
+export type TextNode = {
+  op: TextOp;
+  field: string;
+  value: string;
+  caseInsensitive?: boolean;
+};
 export type LinksToNode = { op: "linksTo"; id: string };
 export type LinkedFromNode = { op: "linkedFrom"; id: string };
 

@@ -7,9 +7,25 @@ import type {
   RefNode,
 } from "../../src/lib/models/query-ast";
 import type { MetadataValue } from "../../src/lib/models/types";
+import { escapeRegExp } from "../../src/lib/models/entity-detection";
 import type { FilterChipField, FilterChipValue } from "./FilterChip";
 import type { GroupChip, GroupCombinator } from "./FilterGroup";
 import type { GlobalCombinator, QueryGroup } from "./QueryBuilder";
+
+/**
+ * The typed text of a saved "starts with" (Feature 86 FR-32): the node carries
+ * `caseInsensitive: true` and a value of `^` plus a regex-escaped literal.
+ * Returns `null` for anything else, which reopens as "matches regex".
+ */
+function startsWithTypedText(node: {
+  value: string;
+  caseInsensitive?: boolean;
+}): string | null {
+  if (node.caseInsensitive !== true || !node.value.startsWith("^")) return null;
+  const rest = node.value.slice(1);
+  const typed = rest.replace(/\\(.)/g, "$1");
+  return escapeRegExp(typed) === rest ? typed : null;
+}
 
 // ─── Node classification ──────────────────────────────────────────────────────
 
@@ -90,7 +106,12 @@ function chipToAst(chip: GroupChip): QueryAST | null {
         child: { op: "contains", field: f, value: String(v ?? "") },
       };
     case "starts-with":
-      return { op: "matches", field: f, value: String(v ?? "") };
+      return {
+        op: "matches",
+        field: f,
+        value: `^${escapeRegExp(String(v ?? ""))}`,
+        caseInsensitive: true,
+      };
     case "matches-regex":
       return { op: "matches", field: f, value: String(v ?? "") };
     // number
@@ -321,6 +342,15 @@ function astNodeToChip(
   }
 
   if (node.op === "matches") {
+    const typed = startsWithTypedText(node);
+    if (typed !== null) {
+      return {
+        id,
+        field: fieldFor(node.field, fields),
+        operator: "starts-with",
+        value: typed as FilterChipValue,
+      };
+    }
     return {
       id,
       field: fieldFor(node.field, fields),

@@ -120,7 +120,12 @@ describe("operator-utils — buildOperatorStub", () => {
 
   it("text: starts-with → matches", () => {
     const stub = buildOperatorStub("text", "starts-with", "title");
-    expect(stub).toEqual({ op: "matches", field: "title", value: "" });
+    expect(stub).toEqual({
+      op: "matches",
+      field: "title",
+      value: "^",
+      caseInsensitive: true,
+    });
   });
 
   it("text: matches-regex → matches", () => {

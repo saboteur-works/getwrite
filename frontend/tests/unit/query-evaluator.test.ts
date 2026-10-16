@@ -1930,28 +1930,22 @@ describe("matches predicate with the optional caseInsensitive marker (F-1)", () 
     return values.filter((_, i) => found.has(rs[i].id));
   }
 
-  it.fails(
-    "caseInsensitive true compares without regard to case [expected failure: F-1]",
-    async () => {
-      expect(await returned(matchesNode("^alpha", true))).toEqual([
-        "Alpha one",
-        "alpha two",
-        "ALPHA three",
-      ]);
-    },
-  );
+  it("caseInsensitive true compares without regard to case", async () => {
+    expect(await returned(matchesNode("^alpha", true))).toEqual([
+      "Alpha one",
+      "alpha two",
+      "ALPHA three",
+    ]);
+  });
 
-  it.fails(
-    "caseInsensitive true on an unanchored value still ignores case [expected failure: F-1]",
-    async () => {
-      expect(await returned(matchesNode("alpha", true))).toEqual([
-        "Alpha one",
-        "alpha two",
-        "the alpha",
-        "ALPHA three",
-      ]);
-    },
-  );
+  it("caseInsensitive true on an unanchored value still ignores case", async () => {
+    expect(await returned(matchesNode("alpha", true))).toEqual([
+      "Alpha one",
+      "alpha two",
+      "the alpha",
+      "ALPHA three",
+    ]);
+  });
 
   it("absent marker: case-sensitive, unanchored (today)", async () => {
     expect(await returned(matchesNode("alpha"))).toEqual([
@@ -1982,17 +1976,14 @@ describe("matches predicate with the optional caseInsensitive marker (F-1)", () 
       expect(QueryASTSchema.parse(node)).toStrictEqual(node);
     });
 
-    it.fails(
-      "a matches node with caseInsensitive true parses and keeps the marker [expected failure: F-1]",
-      () => {
-        const node = {
-          op: "matches",
-          field: "title",
-          value: "^foo",
-          caseInsensitive: true,
-        };
-        expect(QueryASTSchema.parse(node)).toStrictEqual(node);
-      },
-    );
+    it("a matches node with caseInsensitive true parses and keeps the marker", () => {
+      const node = {
+        op: "matches",
+        field: "title",
+        value: "^foo",
+        caseInsensitive: true,
+      };
+      expect(QueryASTSchema.parse(node)).toStrictEqual(node);
+    });
   });
 });
