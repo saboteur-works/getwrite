@@ -31,7 +31,7 @@ In the web build, each compile downloaded one file named after the project (for 
 
 ## Warnings and limits
 
-- The **Package** dialog opened from the Start Page listed one of two resources in a test project; the resource at the project's root was missing from the list and from the compiled file. The **Compile Project** dialog opened from inside the same project listed both.
+- In the run this page was verified from, the **Package** dialog opened from the Start Page listed one of two resources in a test project; the resource at the project's root was missing from the list and from the compiled file. The **Compile Project** dialog opened from inside the same project listed both. A later change (unreleased) makes the Start Page dialog list and compile resources held by no folder; this is shown by component tests and has not been re-checked in the running app.
 - The count in "n resource(s) selected" and in **Compile (n)** includes a selected image, although its content is not in the output; the project dialogs showed no mark on the image.
 - In the desktop app run unpackaged (Electron dev run), choosing **Compile** closed the dialog and the compile request returned 200, but no download was seen; what happened to the file was not established. This was not tried in a packaged build.
 

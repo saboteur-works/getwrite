@@ -34,7 +34,7 @@ A heading with a custom color kept that color when the theme was switched to dar
 
 ## Warnings and limits
 
-- Saving **Body Text Styles** after saving **Heading Styles** left project.json with an empty `headings` set (two runs). In one of them the editor's H1 was 40px again and the dialog read 40 after a reload.
+- In the runs this page was verified from, saving **Body Text Styles** after saving **Heading Styles** left project.json with an empty `headings` set (two runs). In one of them the editor's H1 was 40px again and the dialog read 40 after a reload. A later change (unreleased) makes a Body Text Styles save keep the stored headings; this is shown by unit tests and has not been re-checked in the running app.
 - **Cancel** closes the whole Project Settings dialog, not only the Editor tab.
 - **Save Changes** left the dialog open.
 - Clicking the pipette button changed nothing visible in the browser used for this check; the color was set through the color control itself.
