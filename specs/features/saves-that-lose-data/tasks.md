@@ -111,6 +111,7 @@ Experiment results go in `specs/features/saves-that-lose-data/experiments.md`. E
 **Done when:** the `deleteResourceCore`, `softDeleteFolder` and restore tests from Task 9 are green; a test shows the helper does not write `project.json` (file unchanged after a read-only call); the Schema Manager and sidebar tests that use `getSchema` pass unchanged; the schema-edited cases pass; `pnpm typecheck` exits 0; the two sites call the helper (grep result recorded, only the helper builds the key list apart from the `/delete` route handled in Task 11).
 **Depends on:** 9
 **Estimate:** 3
+**Revision note:** the "merged with any persisted schema" rule above was revised by the owner on 2026-10-15 (OQ-4 and FR-17 in the spec): defaults only when no persisted schema, otherwise the persisted fields alone. This completed task is not rewritten.
 **Notes:** Satisfies FR-13, FR-14, FR-16, FR-17, FR-22 (native uses the same core), FR-23. Keep the `catch { /* Schema unreadable */ }` as-is; the pipeline lead files a POS note about it.
 **Done:** [x]
 
