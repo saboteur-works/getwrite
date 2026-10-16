@@ -40,6 +40,12 @@ export interface EvaluationInput {
    * If absent, `ref` nodes throw `EvaluatorNotImplementedError`.
    */
   resolveRef?: (id: string) => Promise<QueryAST | null>;
+  /**
+   * The instant a query is evaluated at. Optional; when omitted the current
+   * time applies. Reserved for time-relative predicates so tests can fix the
+   * clock (Feature 86 FR-13). Nothing reads it yet: it changes no result.
+   */
+  evaluationTime?: Date;
 }
 
 /**

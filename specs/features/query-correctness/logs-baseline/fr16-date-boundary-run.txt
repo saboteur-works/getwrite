@@ -1,0 +1,30 @@
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"stored":{"a":"2026-03-10T03:59:00.000Z","b":"2026-03-10T04:01:00.000Z","c":"2026-03-11T03:59:00.000Z","d":"2026-03-11T04:01:00.000Z"},"customDates":{"a":"2026-03-09","b":"2026-03-10","c":"2026-03-10","d":"2026-03-11"}}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"createdAt","op":"is-before","value":"2026-03-10","ast":{"op":"lt","field":"createdAt","value":"2026-03-10"},"returned":"","label":"a"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"createdAt","op":"is-after","value":"2026-03-10","ast":{"op":"gt","field":"createdAt","value":"2026-03-10"},"returned":"a,b,c,d","label":"d"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"createdAt","op":"is-between","value":{"from":"2026-03-09","to":"2026-03-10"},"ast":{"op":"and","children":[{"op":"gte","field":"createdAt","value":"2026-03-09"},{"op":"lte","field":"createdAt","value":"2026-03-10"}]},"returned":"","label":"a,b,c"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"createdAt","op":"is-on","value":"2026-03-10","ast":{"op":"eq","field":"createdAt","value":"2026-03-10"},"returned":"","label":"b,c"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"updatedAt","op":"is-before","value":"2026-03-10","ast":{"op":"lt","field":"updatedAt","value":"2026-03-10"},"returned":"","label":"a"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"updatedAt","op":"is-after","value":"2026-03-10","ast":{"op":"gt","field":"updatedAt","value":"2026-03-10"},"returned":"a,b,c,d","label":"d"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"updatedAt","op":"is-between","value":{"from":"2026-03-09","to":"2026-03-10"},"ast":{"op":"and","children":[{"op":"gte","field":"updatedAt","value":"2026-03-09"},{"op":"lte","field":"updatedAt","value":"2026-03-10"}]},"returned":"","label":"a,b,c"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"updatedAt","op":"is-on","value":"2026-03-10","ast":{"op":"eq","field":"updatedAt","value":"2026-03-10"},"returned":"","label":"b,c"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"dt","op":"is-before","value":"2026-03-10","ast":{"op":"lt","field":"dt","value":"2026-03-10"},"returned":"a","label":"a"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"dt","op":"is-after","value":"2026-03-10","ast":{"op":"gt","field":"dt","value":"2026-03-10"},"returned":"d","label":"d"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"dt","op":"is-between","value":{"from":"2026-03-09","to":"2026-03-10"},"ast":{"op":"and","children":[{"op":"gte","field":"dt","value":"2026-03-09"},{"op":"lte","field":"dt","value":"2026-03-10"}]},"returned":"a,b,c","label":"a,b,c"}
+stdout | tests/unit/zz-fr16-measure.test.ts > measure > prints
+MEASURE {"key":"dt","op":"is-on","value":"2026-03-10","ast":{"op":"eq","field":"dt","value":"2026-03-10"},"returned":"b,c","label":"b,c"}
+MEASURE {"untouchedInTheLast":{"op":"gte","field":"createdAt","value":null},"displayed":{"amount":7,"unit":"days"}}
+MEASURE {"typedRef":{"op":"eq","field":"ref","value":"Tom"},"pickedRef":{"op":"eq","field":"ref","value":{"id":"t1","name":"Tom"}}}
+MEASURE {"startsWith":{"op":"matches","field":"txt","value":"alpha"}}
+ ✓ |node| tests/unit/zz-fr16-measure.test.ts > measure > prints 2ms
