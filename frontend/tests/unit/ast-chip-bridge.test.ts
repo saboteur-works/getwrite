@@ -5,6 +5,9 @@ import {
   astToGroups,
 } from "../../components/QueryBuilder/ast-chip-bridge";
 import type { QueryAST } from "../../src/lib/models/query-ast";
+import { evaluate } from "../../src/lib/models/query-evaluator";
+import type { QueryContext } from "../../src/lib/models/query-intrinsics";
+import type { ResourceBase, MetadataValue } from "../../src/lib/models/types";
 import type { QueryGroup } from "../../components/QueryBuilder/QueryBuilder";
 import type { FilterChipField } from "../../components/QueryBuilder/FilterChip";
 
@@ -945,5 +948,263 @@ describe("astToGroups reopening a relative-date gte (Feature 86 FR-17)", () => {
       "is-on",
     );
     expect(op({ op: "lte", field: "wordCount", value: 5 })).toBe("is-at-most");
+  });
+});
+
+// ─── "starts with" (Feature 86 FR-32, F-1) ───────────────────────────────────
+
+describe('"starts with" on a text field (Feature 86 FR-32)', () => {
+  const textField = FIELDS.find((f) => f.key === "synopsis")!;
+
+  /** The saved "starts with" shape (experiments.md, "F-1 intended saved shape"). */
+  const startsWithNode = (escapedLiteral: string): QueryAST => {
+    const node = {
+      op: "matches" as const,
+      field: "synopsis",
+      value: `^${escapedLiteral}`,
+      caseInsensitive: true,
+    };
+    return node;
+  };
+
+  const chipGroups = (operator: string, value: string): QueryGroup[] => [
+    {
+      id: "g",
+      combinator: "and",
+      chips: [{ id: "c", field: textField, operator, value }],
+    },
+  ];
+
+  const typedToAst = (typed: string): QueryAST =>
+    groupsToAst(chipGroups("starts-with", typed), "and")!;
+
+  const CTX: QueryContext = {
+    config: { editorConfig: {}, tags: [], tagAssignments: {}, statuses: [] },
+    backlinks: {},
+    mentions: {},
+  };
+
+  /** Resource ids (values by position) the AST returns over these synopsis values. */
+  async function returnedValues(
+    ast: QueryAST,
+    values: readonly string[],
+  ): Promise<string[]> {
+    const resources: ResourceBase[] = values.map((_, i) => ({
+      id: `bbbbbbbb-0000-4000-a000-0000000000${String(i).padStart(2, "0")}`,
+      slug: `r${i}`,
+      name: `R${i}`,
+      type: "text",
+      folderId: null,
+      orderIndex: i,
+      statuses: [],
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    }));
+    const sidecars: Record<string, Record<string, MetadataValue>> = {};
+    resources.forEach((r, i) => {
+      sidecars[r.id] = { synopsis: values[i] };
+    });
+    const found = new Set(
+      await evaluate(ast, { resources, sidecars, context: CTX }),
+    );
+    return values.filter((_, i) => found.has(resources[i].id));
+  }
+
+  describe("evaluated through the chip's saved query", () => {
+    it.fails(
+      "returns the values beginning with alpha and not 'the alpha' [expected failure: F-1]",
+      async () => {
+        const values = ["alpha", "alpha two", "the alpha", "beta alpha"];
+        expect(await returnedValues(typedToAst("alpha"), values)).toEqual([
+          "alpha",
+          "alpha two",
+        ]);
+      },
+    );
+
+    it.fails(
+      "matches a value regardless of case, like contains [expected failure: F-1]",
+      async () => {
+        const values = ["Alpha one", "ALPHA two", "alpha three", "the Alpha"];
+        expect(await returnedValues(typedToAst("alpha"), values)).toEqual([
+          "Alpha one",
+          "ALPHA two",
+          "alpha three",
+        ]);
+        expect(await returnedValues(typedToAst("ALPHA"), values)).toEqual([
+          "Alpha one",
+          "ALPHA two",
+          "alpha three",
+        ]);
+      },
+    );
+
+    const VALUES = [
+      "a.c rest",
+      "abc",
+      "xa.c",
+      "A.C upper",
+      "a+b plus",
+      "aab",
+      "(x group",
+      "x",
+      "[y class",
+      "y",
+      "^zed caret",
+      "zed",
+      "$ dollar",
+      "$cash",
+      "plain",
+    ];
+
+    for (const typed of ["a.c", "a+b", "(x", "[y", "^z", "$"]) {
+      it.fails(
+        `typed ${JSON.stringify(typed)} returns only values that begin with that literal text [expected failure: F-1]`,
+        async () => {
+          const expected = VALUES.filter((v) =>
+            v.toLowerCase().startsWith(typed.toLowerCase()),
+          );
+          expect(expected.length).toBeGreaterThan(0);
+          expect(await returnedValues(typedToAst(typed), VALUES)).toEqual(
+            expected,
+          );
+        },
+      );
+    }
+
+    it.fails(
+      "an unbalanced pattern character does not make the condition match nothing or throw [expected failure: F-1]",
+      async () => {
+        const result = await returnedValues(typedToAst("(x"), VALUES);
+        expect(result).toEqual(["(x group"]);
+      },
+    );
+  });
+
+  describe("reopening a saved 'starts with'", () => {
+    it.fails(
+      "single chip reopens as 'starts with' carrying the typed text [expected failure: F-1]",
+      () => {
+        const r = astToGroups(startsWithNode("alpha"), FIELDS)!;
+        expect(r.groups).toHaveLength(1);
+        expect(r.groups[0].chips).toHaveLength(1);
+        expect(r.groups[0].chips[0].operator).toBe("starts-with");
+        expect(r.groups[0].chips[0].value).toBe("alpha");
+        expect(r.groups[0].chips[0].field?.key).toBe("synopsis");
+      },
+    );
+
+    it.fails(
+      "reopens typed text with metacharacters as the typed text, not the escaped form [expected failure: F-1]",
+      () => {
+        const r = astToGroups(startsWithNode("a\\.c\\+\\(\\$"), FIELDS)!;
+        expect(r.groups[0].chips[0].operator).toBe("starts-with");
+        expect(r.groups[0].chips[0].value).toBe("a.c+($");
+      },
+    );
+
+    it.fails(
+      "single group of an and reopens its starts-with chip as 'starts with' [expected failure: F-1]",
+      () => {
+        const r = astToGroups(
+          {
+            op: "and",
+            children: [
+              startsWithNode("alpha"),
+              { op: "gt", field: "wordCount", value: 100 },
+            ],
+          },
+          FIELDS,
+        )!;
+        expect(r.groups).toHaveLength(1);
+        expect(r.groups[0].chips).toHaveLength(2);
+        expect(r.groups[0].chips[0].operator).toBe("starts-with");
+        expect(r.groups[0].chips[0].value).toBe("alpha");
+      },
+    );
+
+    it.fails(
+      "child group of an or reopens its starts-with chip as 'starts with' [expected failure: F-1]",
+      () => {
+        const r = astToGroups(
+          {
+            op: "or",
+            children: [
+              {
+                op: "and",
+                children: [
+                  startsWithNode("alpha"),
+                  { op: "gt", field: "wordCount", value: 100 },
+                ],
+              },
+              { op: "or", children: [startsWithNode("beta")] },
+            ],
+          },
+          FIELDS,
+        )!;
+        expect(r.globalCombinator).toBe("or");
+        expect(r.groups[0].chips[0].operator).toBe("starts-with");
+        expect(r.groups[0].chips[0].value).toBe("alpha");
+        expect(r.groups[1].chips[0].operator).toBe("starts-with");
+        expect(r.groups[1].chips[0].value).toBe("beta");
+      },
+    );
+
+    it.fails(
+      "round trip chip -> AST -> chip -> AST is stable [expected failure: F-1]",
+      () => {
+        const groups = chipGroups("starts-with", "a.c+b");
+        const ast = groupsToAst(groups, "and")!;
+        const back = astToGroups(ast, FIELDS)!;
+        expect(back.groups[0].chips[0].operator).toBe("starts-with");
+        expect(back.groups[0].chips[0].value).toBe("a.c+b");
+        expect(groupsToAst(back.groups, back.globalCombinator)).toEqual(ast);
+      },
+    );
+  });
+
+  describe("pinning: the old unanchored matches shape and 'matches regex' (pass before and after)", () => {
+    it("the old unanchored node reopens as 'matches regex' with its value unchanged", () => {
+      const r = astToGroups(
+        { op: "matches", field: "synopsis", value: "alpha" },
+        FIELDS,
+      )!;
+      expect(r.groups[0].chips[0].operator).toBe("matches-regex");
+      expect(r.groups[0].chips[0].value).toBe("alpha");
+    });
+
+    it("a hand-written ^foo without the marker reopens as 'matches regex'", () => {
+      const r = astToGroups(
+        { op: "matches", field: "synopsis", value: "^foo" },
+        FIELDS,
+      )!;
+      expect(r.groups[0].chips[0].operator).toBe("matches-regex");
+      expect(r.groups[0].chips[0].value).toBe("^foo");
+    });
+
+    it("a 'matches regex' chip writes the same node as today", () => {
+      expect(
+        groupsToAst(chipGroups("matches-regex", "^foo.*"), "and"),
+      ).toStrictEqual({ op: "matches", field: "synopsis", value: "^foo.*" });
+    });
+
+    it("a 'matches regex' chip round trips as 'matches regex'", () => {
+      const ast = groupsToAst(chipGroups("matches-regex", "^foo"), "and")!;
+      const back = astToGroups(ast, FIELDS)!;
+      expect(back.groups[0].chips[0].operator).toBe("matches-regex");
+      expect(groupsToAst(back.groups, back.globalCombinator)).toStrictEqual(
+        ast,
+      );
+    });
+
+    it("the old unanchored node still evaluates case-sensitively and unanchored", async () => {
+      const values = ["alpha", "the alpha", "Alpha", "beta"];
+      expect(
+        await returnedValues(
+          { op: "matches", field: "synopsis", value: "alpha" },
+          values,
+        ),
+      ).toEqual(["alpha", "the alpha"]);
+    });
   });
 });

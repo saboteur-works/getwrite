@@ -1,0 +1,514 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/ast-chip-bridge.red.test.ts (81 tests | 14 failed) 26ms
+       × returns the values beginning with alpha and not 'the alpha' [expected failure: F-1] 5ms
+       × matches a value regardless of case, like contains [expected failure: F-1] 1ms
+       × typed "a.c" returns only values that begin with that literal text [expected failure: F-1] 1ms
+       × typed "a+b" returns only values that begin with that literal text [expected failure: F-1] 0ms
+       × typed "(x" returns only values that begin with that literal text [expected failure: F-1] 0ms
+       × typed "[y" returns only values that begin with that literal text [expected failure: F-1] 0ms
+       × typed "^z" returns only values that begin with that literal text [expected failure: F-1] 0ms
+       × typed "$" returns only values that begin with that literal text [expected failure: F-1] 0ms
+       × an unbalanced pattern character does not make the condition match nothing or throw [expected failure: F-1] 1ms
+       × single chip reopens as 'starts with' carrying the typed text [expected failure: F-1] 1ms
+       × reopens typed text with metacharacters as the typed text, not the escaped form [expected failure: F-1] 0ms
+       × single group of an and reopens its starts-with chip as 'starts with' [expected failure: F-1] 0ms
+       × child group of an or reopens its starts-with chip as 'starts with' [expected failure: F-1] 0ms
+       × round trip chip -> AST -> chip -> AST is stable [expected failure: F-1] 0ms
+ ❯ |node| tests/unit/query-evaluator.red.test.ts (178 tests | 3 failed) 20ms
+     × caseInsensitive true compares without regard to case [expected failure: F-1] 5ms
+     × caseInsensitive true on an unanchored value still ignores case [expected failure: F-1] 0ms
+       × a matches node with caseInsensitive true parses and keeps the marker [expected failure: F-1] 1ms
+ ❯ |node| tests/unit/query-builder-evaluator-check.red.test.ts (283 tests | 6 failed) 24ms
+     × text › starts-with › alpha › edited [expected failure: F-1] 3ms
+     × resource-ref › is › typed name Tom › edited [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-2] 1ms
+     × resource-ref › is-not › typed name Tom › edited [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-3] 0ms
+     × date (custom field) › in-the-last › untouched › returns what the input displays [expected failure: D-17 + FR-3] 0ms
+     × date (createdAt) › in-the-last › untouched › returns what the input displays [expected failure: D-17 + FR-3] 0ms
+     × date (updatedAt) › in-the-last › untouched › returns what the input displays [expected failure: D-17 + FR-3] 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 23 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > returns the values beginning with alpha and not 'the alpha' [expected failure: F-1]
+AssertionError: expected [ 'alpha', 'alpha two', …(2) ] to deeply equal [ 'alpha', 'alpha two' ]
+
+- Expected
++ Received
+
+  [
+    "alpha",
+    "alpha two",
++   "the alpha",
++   "beta alpha",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1018:67
+    1016|       async () => {
+    1017|         const values = ["alpha", "alpha two", "the alpha", "beta alpha…
+    1018|         expect(await returnedValues(typedToAst("alpha"), values)).toEq…
+       |                                                                   ^
+    1019|           "alpha",
+    1020|           "alpha two",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > matches a value regardless of case, like contains [expected failure: F-1]
+AssertionError: expected [ 'alpha three' ] to deeply equal [ 'Alpha one', 'ALPHA two', …(1) ]
+
+- Expected
++ Received
+
+  [
+-   "Alpha one",
+-   "ALPHA two",
+    "alpha three",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1029:67
+    1027|       async () => {
+    1028|         const values = ["Alpha one", "ALPHA two", "alpha three", "the …
+    1029|         expect(await returnedValues(typedToAst("alpha"), values)).toEq…
+       |                                                                   ^
+    1030|           "Alpha one",
+    1031|           "ALPHA two",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > typed "a.c" returns only values that begin with that literal text [expected failure: F-1]
+AssertionError: expected [ 'a.c rest', 'abc', 'xa.c' ] to deeply equal [ 'a.c rest', 'A.C upper' ]
+
+- Expected
++ Received
+
+  [
+    "a.c rest",
+-   "A.C upper",
++   "abc",
++   "xa.c",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1068:67
+    1066|           );
+    1067|           expect(expected.length).toBeGreaterThan(0);
+    1068|           expect(await returnedValues(typedToAst(typed), VALUES)).toEq…
+       |                                                                   ^
+    1069|             expected,
+    1070|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > typed "a+b" returns only values that begin with that literal text [expected failure: F-1]
+AssertionError: expected [ 'abc', 'aab' ] to deeply equal [ 'a+b plus' ]
+
+- Expected
++ Received
+
+  [
+-   "a+b plus",
++   "abc",
++   "aab",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1068:67
+    1066|           );
+    1067|           expect(expected.length).toBeGreaterThan(0);
+    1068|           expect(await returnedValues(typedToAst(typed), VALUES)).toEq…
+       |                                                                   ^
+    1069|             expected,
+    1070|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > typed "(x" returns only values that begin with that literal text [expected failure: F-1]
+AssertionError: expected [] to deeply equal [ '(x group' ]
+
+- Expected
++ Received
+
+- [
+-   "(x group",
+- ]
++ []
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1068:67
+    1066|           );
+    1067|           expect(expected.length).toBeGreaterThan(0);
+    1068|           expect(await returnedValues(typedToAst(typed), VALUES)).toEq…
+       |                                                                   ^
+    1069|             expected,
+    1070|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > typed "[y" returns only values that begin with that literal text [expected failure: F-1]
+AssertionError: expected [] to deeply equal [ '[y class' ]
+
+- Expected
++ Received
+
+- [
+-   "[y class",
+- ]
++ []
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1068:67
+    1066|           );
+    1067|           expect(expected.length).toBeGreaterThan(0);
+    1068|           expect(await returnedValues(typedToAst(typed), VALUES)).toEq…
+       |                                                                   ^
+    1069|             expected,
+    1070|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > typed "^z" returns only values that begin with that literal text [expected failure: F-1]
+AssertionError: expected [ 'zed' ] to deeply equal [ '^zed caret' ]
+
+- Expected
++ Received
+
+  [
+-   "^zed caret",
++   "zed",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1068:67
+    1066|           );
+    1067|           expect(expected.length).toBeGreaterThan(0);
+    1068|           expect(await returnedValues(typedToAst(typed), VALUES)).toEq…
+       |                                                                   ^
+    1069|             expected,
+    1070|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > typed "$" returns only values that begin with that literal text [expected failure: F-1]
+AssertionError: expected [ 'a.c rest', 'abc', 'xa.c', …(12) ] to deeply equal [ '$ dollar', '$cash' ]
+
+- Expected
++ Received
+
+  [
++   "a.c rest",
++   "abc",
++   "xa.c",
++   "A.C upper",
++   "a+b plus",
++   "aab",
++   "(x group",
++   "x",
++   "[y class",
++   "y",
++   "^zed caret",
++   "zed",
+    "$ dollar",
+    "$cash",
++   "plain",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1068:67
+    1066|           );
+    1067|           expect(expected.length).toBeGreaterThan(0);
+    1068|           expect(await returnedValues(typedToAst(typed), VALUES)).toEq…
+       |                                                                   ^
+    1069|             expected,
+    1070|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > evaluated through the chip's saved query > an unbalanced pattern character does not make the condition match nothing or throw [expected failure: F-1]
+AssertionError: expected [] to deeply equal [ '(x group' ]
+
+- Expected
++ Received
+
+- [
+-   "(x group",
+- ]
++ []
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1079:24
+    1077|       async () => {
+    1078|         const result = await returnedValues(typedToAst("(x"), VALUES);
+    1079|         expect(result).toEqual(["(x group"]);
+       |                        ^
+    1080|       },
+    1081|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > reopening a saved 'starts with' > single chip reopens as 'starts with' carrying the typed text [expected failure: F-1]
+AssertionError: expected 'matches-regex' to be 'starts-with' // Object.is equality
+
+Expected: "starts-with"
+Received: "matches-regex"
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1091:47
+    1089|         expect(r.groups).toHaveLength(1);
+    1090|         expect(r.groups[0].chips).toHaveLength(1);
+    1091|         expect(r.groups[0].chips[0].operator).toBe("starts-with");
+       |                                               ^
+    1092|         expect(r.groups[0].chips[0].value).toBe("alpha");
+    1093|         expect(r.groups[0].chips[0].field?.key).toBe("synopsis");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > reopening a saved 'starts with' > reopens typed text with metacharacters as the typed text, not the escaped form [expected failure: F-1]
+AssertionError: expected 'matches-regex' to be 'starts-with' // Object.is equality
+
+Expected: "starts-with"
+Received: "matches-regex"
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1101:47
+    1099|       () => {
+    1100|         const r = astToGroups(startsWithNode("a\\.c\\+\\(\\$"), FIELDS…
+    1101|         expect(r.groups[0].chips[0].operator).toBe("starts-with");
+       |                                               ^
+    1102|         expect(r.groups[0].chips[0].value).toBe("a.c+($");
+    1103|       },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > reopening a saved 'starts with' > single group of an and reopens its starts-with chip as 'starts with' [expected failure: F-1]
+AssertionError: expected 'matches-regex' to be 'starts-with' // Object.is equality
+
+Expected: "starts-with"
+Received: "matches-regex"
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1121:47
+    1119|         expect(r.groups).toHaveLength(1);
+    1120|         expect(r.groups[0].chips).toHaveLength(2);
+    1121|         expect(r.groups[0].chips[0].operator).toBe("starts-with");
+       |                                               ^
+    1122|         expect(r.groups[0].chips[0].value).toBe("alpha");
+    1123|       },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > reopening a saved 'starts with' > child group of an or reopens its starts-with chip as 'starts with' [expected failure: F-1]
+AssertionError: expected 'matches-regex' to be 'starts-with' // Object.is equality
+
+Expected: "starts-with"
+Received: "matches-regex"
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1146:47
+    1144|         )!;
+    1145|         expect(r.globalCombinator).toBe("or");
+    1146|         expect(r.groups[0].chips[0].operator).toBe("starts-with");
+       |                                               ^
+    1147|         expect(r.groups[0].chips[0].value).toBe("alpha");
+    1148|         expect(r.groups[1].chips[0].operator).toBe("starts-with");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/23]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.red.test.ts > "starts with" on a text field (Feature 86 FR-32) > reopening a saved 'starts with' > round trip chip -> AST -> chip -> AST is stable [expected failure: F-1]
+AssertionError: expected 'matches-regex' to be 'starts-with' // Object.is equality
+
+Expected: "starts-with"
+Received: "matches-regex"
+
+ ❯ tests/unit/ast-chip-bridge.red.test.ts:1159:50
+    1157|         const ast = groupsToAst(groups, "and")!;
+    1158|         const back = astToGroups(ast, FIELDS)!;
+    1159|         expect(back.groups[0].chips[0].operator).toBe("starts-with");
+       |                                                  ^
+    1160|         expect(back.groups[0].chips[0].value).toBe("a.c+b");
+    1161|         expect(groupsToAst(back.groups, back.globalCombinator)).toEqua…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/23]⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.red.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › starts-with › alpha › edited [expected failure: F-1]
+AssertionError: expected [ 'r1', 'r3', 'r5', 'r7' ] to deeply equal [ 'r1', 'r3', 'r7' ]
+
+- Expected
++ Received
+
+  [
+    "r1",
+    "r3",
++   "r5",
+    "r7",
+  ]
+
+ ❯ tests/unit/query-builder-evaluator-check.red.test.ts:599:30
+    597|               scenario.value,
+    598|             );
+    599|             expect(returned).toEqual([...scenario.expected].sort());
+       |                              ^
+    600|           },
+    601|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/23]⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.red.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is › typed name Tom › edited [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-2]
+AssertionError: expected [] to deeply equal [ 'r1', 'r3' ]
+
+- Expected
++ Received
+
+- [
+-   "r1",
+-   "r3",
+- ]
++ []
+
+ ❯ tests/unit/query-builder-evaluator-check.red.test.ts:599:30
+    597|               scenario.value,
+    598|             );
+    599|             expect(returned).toEqual([...scenario.expected].sort());
+       |                              ^
+    600|           },
+    601|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/23]⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.red.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-not › typed name Tom › edited [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-3]
+AssertionError: expected [ 'r1', 'r2', 'r3', 'r4', 'r5', …(2) ] to deeply equal [ 'r2', 'r4', 'r5', 'r6', 'r7' ]
+
+- Expected
++ Received
+
+  [
++   "r1",
+    "r2",
++   "r3",
+    "r4",
+    "r5",
+    "r6",
+    "r7",
+  ]
+
+ ❯ tests/unit/query-builder-evaluator-check.red.test.ts:599:30
+    597|               scenario.value,
+    598|             );
+    599|             expect(returned).toEqual([...scenario.expected].sort());
+       |                              ^
+    600|           },
+    601|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/23]⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.red.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › in-the-last › untouched › returns what the input displays [expected failure: D-17 + FR-3]
+AssertionError: expected [] to deeply equal [ 'r1', 'r2', 'r6' ]
+
+- Expected
++ Received
+
+- [
+-   "r1",
+-   "r2",
+-   "r6",
+- ]
++ []
+
+ ❯ tests/unit/query-builder-evaluator-check.red.test.ts:630:30
+    628|           async () => {
+    629|             const returned = await idsFor(subject.field, operator, nul…
+    630|             expect(returned).toEqual([...expected].sort());
+       |                              ^
+    631|           },
+    632|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/23]⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.red.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › in-the-last › untouched › returns what the input displays [expected failure: D-17 + FR-3]
+ FAIL  |node| tests/unit/query-builder-evaluator-check.red.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › in-the-last › untouched › returns what the input displays [expected failure: D-17 + FR-3]
+AssertionError: expected [] to deeply equal [ 'r1', 'r2', 'r3', 'r5' ]
+
+- Expected
++ Received
+
+- [
+-   "r1",
+-   "r2",
+-   "r3",
+-   "r5",
+- ]
++ []
+
+ ❯ tests/unit/query-builder-evaluator-check.red.test.ts:630:30
+    628|           async () => {
+    629|             const returned = await idsFor(subject.field, operator, nul…
+    630|             expect(returned).toEqual([...expected].sort());
+       |                              ^
+    631|           },
+    632|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/23]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.red.test.ts > matches predicate with the optional caseInsensitive marker (F-1) > caseInsensitive true compares without regard to case [expected failure: F-1]
+AssertionError: expected [ 'alpha two' ] to deeply equal [ 'Alpha one', 'alpha two', …(1) ]
+
+- Expected
++ Received
+
+  [
+-   "Alpha one",
+    "alpha two",
+-   "ALPHA three",
+  ]
+
+ ❯ tests/unit/query-evaluator.red.test.ts:1936:59
+    1934|     "caseInsensitive true compares without regard to case [expected fa…
+    1935|     async () => {
+    1936|       expect(await returned(matchesNode("^alpha", true))).toEqual([
+       |                                                           ^
+    1937|         "Alpha one",
+    1938|         "alpha two",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/23]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.red.test.ts > matches predicate with the optional caseInsensitive marker (F-1) > caseInsensitive true on an unanchored value still ignores case [expected failure: F-1]
+AssertionError: expected [ 'alpha two', 'the alpha' ] to deeply equal [ 'Alpha one', 'alpha two', …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "Alpha one",
+    "alpha two",
+    "the alpha",
+-   "ALPHA three",
+  ]
+
+ ❯ tests/unit/query-evaluator.red.test.ts:1947:58
+    1945|     "caseInsensitive true on an unanchored value still ignores case [e…
+    1946|     async () => {
+    1947|       expect(await returned(matchesNode("alpha", true))).toEqual([
+       |                                                          ^
+    1948|         "Alpha one",
+    1949|         "alpha two",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/23]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.red.test.ts > matches predicate with the optional caseInsensitive marker (F-1) > QueryAST schema > a matches node with caseInsensitive true parses and keeps the marker [expected failure: F-1]
+AssertionError: expected { op: 'matches', field: 'title', …(1) } to strictly equal { op: 'matches', field: 'title', …(2) }
+
+- Expected
++ Received
+
+  {
+-   "caseInsensitive": true,
+    "field": "title",
+    "op": "matches",
+    "value": "^foo",
+  }
+
+ ❯ tests/unit/query-evaluator.red.test.ts:1994:44
+    1992|           caseInsensitive: true,
+    1993|         };
+    1994|         expect(QueryASTSchema.parse(node)).toStrictEqual(node);
+       |                                            ^
+    1995|       },
+    1996|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/23]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  23 failed | 519 passed (542)
+   Start at  14:08:48
+   Duration  273ms (transform 247ms, setup 140ms, import 308ms, tests 71ms, environment 0ms)
+

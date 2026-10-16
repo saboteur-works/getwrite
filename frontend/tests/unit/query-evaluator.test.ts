@@ -7,6 +7,7 @@ import {
 import type { EvaluationInput } from "../../src/lib/models/query-evaluator";
 import type { QueryContext } from "../../src/lib/models/query-intrinsics";
 import type { ResourceBase, MetadataValue } from "../../src/lib/models/types";
+import { QueryASTSchema } from "../../src/lib/models/query-ast";
 import type { QueryAST } from "../../src/lib/models/query-ast";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────
@@ -1895,5 +1896,103 @@ describe("gte with a relative-date object (D-17, FR-11..FR-14)", () => {
         await ids({ op: "gte", field: "score", value: { id: R1, name: "x" } }),
       ).toEqual([]);
     });
+  });
+});
+
+// ── matches with the optional caseInsensitive marker (Feature 86 FR-32, F-1) ──
+
+describe("matches predicate with the optional caseInsensitive marker (F-1)", () => {
+  const matchesNode = (value: string, caseInsensitive?: boolean): QueryAST => {
+    const node = {
+      op: "matches" as const,
+      field: "title",
+      value,
+      ...(caseInsensitive === undefined ? {} : { caseInsensitive }),
+    };
+    return node;
+  };
+
+  const values = ["Alpha one", "alpha two", "the alpha", "ALPHA three", "beta"];
+  const rs: ResourceBase[] = values.map((_, i) => ({
+    ...r1,
+    id: `cccccccc-0000-4000-a000-0000000000${String(i).padStart(2, "0")}`,
+    slug: `m${i}`,
+    orderIndex: i,
+  }));
+  const scs: Record<string, Record<string, MetadataValue>> = {};
+  rs.forEach((r, i) => {
+    scs[r.id] = { title: values[i] };
+  });
+  async function returned(ast: QueryAST): Promise<string[]> {
+    const found = new Set(
+      await evaluate(ast, { resources: rs, sidecars: scs, context: ctx }),
+    );
+    return values.filter((_, i) => found.has(rs[i].id));
+  }
+
+  it.fails(
+    "caseInsensitive true compares without regard to case [expected failure: F-1]",
+    async () => {
+      expect(await returned(matchesNode("^alpha", true))).toEqual([
+        "Alpha one",
+        "alpha two",
+        "ALPHA three",
+      ]);
+    },
+  );
+
+  it.fails(
+    "caseInsensitive true on an unanchored value still ignores case [expected failure: F-1]",
+    async () => {
+      expect(await returned(matchesNode("alpha", true))).toEqual([
+        "Alpha one",
+        "alpha two",
+        "the alpha",
+        "ALPHA three",
+      ]);
+    },
+  );
+
+  it("absent marker: case-sensitive, unanchored (today)", async () => {
+    expect(await returned(matchesNode("alpha"))).toEqual([
+      "alpha two",
+      "the alpha",
+    ]);
+  });
+
+  it("absent marker with ^: case-sensitive and anchored (today)", async () => {
+    expect(await returned(matchesNode("^alpha"))).toEqual(["alpha two"]);
+  });
+
+  it("caseInsensitive false behaves as the absent marker", async () => {
+    expect(await returned(matchesNode("alpha", false))).toEqual([
+      "alpha two",
+      "the alpha",
+    ]);
+  });
+
+  it("an invalid pattern still returns nothing without throwing, marker or not", async () => {
+    expect(await returned(matchesNode("[invalid"))).toEqual([]);
+    expect(await returned(matchesNode("[invalid", true))).toEqual([]);
+  });
+
+  describe("QueryAST schema", () => {
+    it("a matches node without the marker parses unchanged (saved queries from before)", () => {
+      const node = { op: "matches", field: "title", value: "^foo" };
+      expect(QueryASTSchema.parse(node)).toStrictEqual(node);
+    });
+
+    it.fails(
+      "a matches node with caseInsensitive true parses and keeps the marker [expected failure: F-1]",
+      () => {
+        const node = {
+          op: "matches",
+          field: "title",
+          value: "^foo",
+          caseInsensitive: true,
+        };
+        expect(QueryASTSchema.parse(node)).toStrictEqual(node);
+      },
+    );
   });
 });

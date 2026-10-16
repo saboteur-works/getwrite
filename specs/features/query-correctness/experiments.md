@@ -235,3 +235,20 @@ FR-16 (b) read misbehaviour: CONFIRMED on createdAt and updatedAt (is before, is
 Task 11 branch input (FR-16 (b)): CONFIRMED on `createdAt` and `updatedAt`.
 
 Decision summary (2026-10-16): F-1 fix; F-2 and F-3 known failure; F-4 fix; F-5 and F-6 fix via Task 11 (FR-16 (b), intrinsic timestamp fields only). Tasks added to tasks.md: 21, 22, 23.
+
+## F-1 intended saved shape (Task 20)
+
+Date 2026-10-16. This section states a reading and a design choice made by the owner (2026-10-16); it is not a measured cause and no experiment is claimed for it.
+
+Reading, from the source: `query-evaluator.ts` `evalMatches` runs `new RegExp(value).test(v)` with no flags, and `ast-chip-bridge.ts` `chipToAst` writes `{op:"matches", field, value}` for both "starts with" and "matches regex" with the typed text unmodified, so the saved nodes of the two operators are identical and reopen (`astNodeToChip`) returns "matches regex" for either. What the F-1 measurement shows is only the returned ids (r1,r3,r5,r7 against r1,r3,r7).
+
+Design choice (owner decision): "starts with" saves
+
+`{op: "matches", field, value: "^<regex-escaped typed text>", caseInsensitive: true}`
+
+- `caseInsensitive` is a new OPTIONAL boolean on the `matches` node. Absent means today's behaviour: `new RegExp(value)` with no flags, case-sensitive, unanchored unless the value says so.
+- The evaluator adds the `i` flag when `caseInsensitive` is `true`.
+- Reopen as "starts with" is keyed on the marker: `caseInsensitive === true` AND `value` equal to `^` plus the regex-escaped literal. A hand-written `^foo` regex (no marker) still reopens as "matches regex", and so does any marker node whose value is not `^` + escaped literal.
+- Schema effect: one optional field on the `matches` node in `query-ast.ts` (stated again in Task 21). No new operator, control, route or transport.
+
+Task 20 writes its tests against this shape; they are committed as expected failures tagged F-1 until Task 21.

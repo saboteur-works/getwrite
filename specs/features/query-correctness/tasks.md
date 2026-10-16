@@ -224,7 +224,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Satisfies FR-32 (tests), FR-34. The saved shape must be distinguishable from a hand-written "matches regex" for reopen; this task writes the reopen and pinning tests against the shape Task 21 chooses, so Task 20 first states the intended shape in `experiments.md` as a reading: the evaluator's `matches` runs `new RegExp(value)` with no flags, so a case-insensitive "starts with" needs an optional marker on the `matches` node (absent means today's behaviour) unless case-insensitivity is reached another way; the task records which. Name tests as observed ("returns r5 for starts with alpha"), not as a cause. Reachability of F-2/F-3 in the app is not measured and is not claimed.
-**Done:** [ ]
+**Done:** [x] (committed in Task 20 commit; F-1 tests carried as it.fails until Task 21)
 
 ### Task 21: F-1 fix: anchored, escaped, case-insensitive "starts with" that reopens as "starts with" (FR-32)
 **What:** Make `chipToAst` write an anchored, escaped, case-insensitive match for "starts with", make the evaluator honour it, and make `astNodeToChip` reopen it as "starts with" while the old unanchored `matches` shape and "matches regex" stay unchanged.

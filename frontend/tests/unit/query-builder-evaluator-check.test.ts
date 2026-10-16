@@ -520,16 +520,24 @@ async function idsFor(
  * defect ID. Measured by the unfixed-tree run (FR-4); each fix task removes its
  * entries. D-17: "in the last" on dates (the
  * untouched "in the last" case is also the FR-3 never-edited-value finding).
- * "finding": anything else.
+ * "F-1": "starts with" (fixed by Feature 86 Task 21). "known failure (owner
+ * decision, FR-4 stop 2026-10-16) F-2/F-3": resource-ref typed name, recorded
+ * and not fixed in this feature (FR-34).
  */
 const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
   [
     "date (custom field) › in-the-last › untouched › returns what the input displays",
     "D-17 + FR-3",
   ],
-  ["text › starts-with › alpha › edited", "finding"],
-  ["resource-ref › is › typed name Tom › edited", "finding"],
-  ["resource-ref › is-not › typed name Tom › edited", "finding"],
+  ["text › starts-with › alpha › edited", "F-1"],
+  [
+    "resource-ref › is › typed name Tom › edited",
+    "known failure (owner decision, FR-4 stop 2026-10-16) F-2",
+  ],
+  [
+    "resource-ref › is-not › typed name Tom › edited",
+    "known failure (owner decision, FR-4 stop 2026-10-16) F-3",
+  ],
   ...["createdAt", "updatedAt"].flatMap((f): [string, string][] => [
     [
       `date (${f}) › in-the-last › untouched › returns what the input displays`,
