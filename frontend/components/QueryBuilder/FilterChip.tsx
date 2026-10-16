@@ -8,9 +8,12 @@ import type {
 } from "../../src/lib/models/types";
 import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import {
+  DEFAULT_RELATIVE_DATE,
   getDefaultOperator,
   getOperatorOption,
   getOperators,
+  isRelativeDateValue,
+  valueForOperatorChange,
 } from "./operator-utils";
 import FieldPicker, {
   type FieldPickerField,
@@ -98,16 +101,6 @@ export interface FilterChipProps {
 
 // ─── Type guards ──────────────────────────────────────────────────────────────
 
-function isRelativeDateValue(v: FilterChipValue): v is RelativeDateValue {
-  return (
-    v !== null &&
-    typeof v === "object" &&
-    !Array.isArray(v) &&
-    "amount" in v &&
-    "unit" in v
-  );
-}
-
 function isRangeValue(v: FilterChipValue): v is RangeValue {
   return (
     v !== null &&
@@ -182,9 +175,7 @@ function ValueInput({
   const { valueShape } = opOption;
 
   if (valueShape === "relativeDate") {
-    const rel = isRelativeDateValue(value)
-      ? value
-      : { amount: 7, unit: "days" as const };
+    const rel = isRelativeDateValue(value) ? value : DEFAULT_RELATIVE_DATE;
     return (
       <span className="filter-chip__value-relative">
         <EditContextMenu>
@@ -460,8 +451,9 @@ export default function FilterChip({
     if (!onOperatorChange || !field) return;
     const nextOption = getOperatorOption(field.type, next);
     onOperatorChange(next);
-    if (nextOption?.noValue && onValueChange) {
-      onValueChange(null);
+    if (!onValueChange) return;
+    if (nextOption?.noValue || nextOption?.valueShape === "relativeDate") {
+      onValueChange(valueForOperatorChange(field.type, next, value));
     }
   }
 

@@ -40,6 +40,7 @@ import {
   buildOperatorStub,
   getOperatorOption,
   OPERATORS_BY_TYPE,
+  valueForOperatorChange,
 } from "../../components/QueryBuilder/operator-utils";
 import type {
   FilterChipField,
@@ -518,17 +519,12 @@ async function idsFor(
 /**
  * Cases that fail on the unfixed tree, keyed by the case title, valued with the
  * defect ID. Measured by the unfixed-tree run (FR-4); each fix task removes its
- * entries. D-17: "in the last" on dates (the
- * untouched "in the last" case is also the FR-3 never-edited-value finding).
+ * entries. Task 22 removed the D-17 / F-4 "in the last" untouched entries.
  * "known failure (owner
  * decision, FR-4 stop 2026-10-16) F-2/F-3": resource-ref typed name, recorded
  * and not fixed in this feature (FR-34).
  */
 const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
-  [
-    "date (custom field) › in-the-last › untouched › returns what the input displays",
-    "D-17 + FR-3",
-  ],
   [
     "resource-ref › is › typed name Tom › edited",
     "known failure (owner decision, FR-4 stop 2026-10-16) F-2",
@@ -537,12 +533,6 @@ const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
     "resource-ref › is-not › typed name Tom › edited",
     "known failure (owner decision, FR-4 stop 2026-10-16) F-3",
   ],
-  ...["createdAt", "updatedAt"].flatMap((f): [string, string][] => [
-    [
-      `date (${f}) › in-the-last › untouched › returns what the input displays`,
-      "D-17 + FR-3",
-    ],
-  ]),
 ]);
 
 const GENERATED_TITLES = new Set<string>();
@@ -614,7 +604,8 @@ describe("chip right after the operator is chosen, value never edited (FR-3)", (
         (isNoValue ? operatorCase.scenarios[0].expected : undefined);
 
       it(`${subject.name} › ${operator} › untouched › saves a schema-valid query that evaluates`, async () => {
-        const ast = savedAst(subject.field, operator, null);
+        const untouched = valueForOperatorChange(subject.type, operator, null);
+        const ast = savedAst(subject.field, operator, untouched);
         assertSchemaValid(ast);
         await expect(evaluate(ast, evaluationInput())).resolves.toBeInstanceOf(
           Array,
@@ -625,7 +616,12 @@ describe("chip right after the operator is chosen, value never edited (FR-3)", (
         checkCase(
           `${subject.name} › ${operator} › untouched › returns what the input displays`,
           async () => {
-            const returned = await idsFor(subject.field, operator, null);
+            const untouched = valueForOperatorChange(
+              subject.type,
+              operator,
+              null,
+            );
+            const returned = await idsFor(subject.field, operator, untouched);
             expect(returned).toEqual([...expected].sort());
           },
         );
@@ -664,8 +660,13 @@ describe("expected-failure list", () => {
     expect(stale).toEqual([]);
   });
 
-  it("lists the 5 cases still failing after the FR-16 day-comparison fix", () => {
-    expect(KNOWN_FAILURES.size).toBe(5);
+  it("lists only the 2 resource-ref known failures (F-2, F-3)", () => {
+    expect([...KNOWN_FAILURES.keys()].sort()).toEqual(
+      [
+        "resource-ref › is › typed name Tom › edited",
+        "resource-ref › is-not › typed name Tom › edited",
+      ].sort(),
+    );
   });
 });
 

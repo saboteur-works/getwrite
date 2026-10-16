@@ -3,7 +3,10 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import FilterChip, {
   type FilterChipField,
+  type FilterChipValue,
 } from "../components/QueryBuilder/FilterChip";
+import { groupsToAst } from "../components/QueryBuilder/ast-chip-bridge";
+import { valueForOperatorChange } from "../components/QueryBuilder/operator-utils";
 
 const FIELD_TEXT: FilterChipField = {
   key: "synopsis",
@@ -252,5 +255,106 @@ describe("FilterChip — saved queries in FieldPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: /Select a field/i }));
     fireEvent.click(screen.getByText("@Act 2 Scenes"));
     expect(onRefChange).toHaveBeenCalledWith("q-1", "Act 2 Scenes");
+  });
+});
+
+// ─── "in the last" default value (Feature 86 Task 22, FR-33) ──────────────────
+
+describe("FilterChip — choosing 'in the last' on a date field (FR-33)", () => {
+  const SEVEN_DAYS: FilterChipValue = { amount: 7, unit: "days" };
+  const DATE_FIELDS: FilterChipField[] = [
+    { key: "dt", label: "Due", type: "date" },
+    { key: "createdAt", label: "Created", type: "date" },
+    { key: "updatedAt", label: "Updated", type: "date" },
+  ];
+
+  function chooseOperator(
+    field: FilterChipField,
+    from: string,
+    value: FilterChipValue,
+    to: string,
+  ): ReturnType<typeof vi.fn> {
+    const onValueChange = vi.fn();
+    render(
+      <FilterChip
+        field={field}
+        operator={from}
+        value={value}
+        onOperatorChange={vi.fn()}
+        onValueChange={onValueChange}
+      />,
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Operator" }), {
+      target: { value: to },
+    });
+    return onValueChange;
+  }
+
+  function savedAst(field: FilterChipField, value: FilterChipValue): unknown {
+    return groupsToAst(
+      [
+        {
+          id: "g",
+          combinator: "and",
+          chips: [{ id: "c", field, operator: "in-the-last", value }],
+        },
+      ],
+      "and",
+    );
+  }
+
+  for (const field of DATE_FIELDS) {
+    it(`sets {amount: 7, unit: "days"} on ${field.key} and saves it`, () => {
+      const onValueChange = chooseOperator(field, "is-on", null, "in-the-last");
+      expect(onValueChange).toHaveBeenCalledWith(SEVEN_DAYS);
+      expect(savedAst(field, SEVEN_DAYS)).toEqual({
+        op: "gte",
+        field: field.key,
+        value: SEVEN_DAYS,
+      });
+    });
+  }
+
+  it("replaces a stale value of another shape", () => {
+    const onValueChange = chooseOperator(
+      DATE_FIELDS[0],
+      "is-before",
+      "2026-03-01",
+      "in-the-last",
+    );
+    expect(onValueChange).toHaveBeenCalledWith(SEVEN_DAYS);
+  });
+
+  it("keeps an existing relative-date value", () => {
+    const kept = { amount: 3, unit: "weeks" } as const;
+    expect(valueForOperatorChange("date", "in-the-last", kept)).toBe(kept);
+  });
+
+  it("changing away from 'in the last' to a value operator leaves the value alone", () => {
+    const onValueChange = chooseOperator(
+      DATE_FIELDS[0],
+      "in-the-last",
+      SEVEN_DAYS,
+      "is-on",
+    );
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it("changing away from 'in the last' to a no-value operator resets to null", () => {
+    const onValueChange = chooseOperator(
+      DATE_FIELDS[0],
+      "in-the-last",
+      SEVEN_DAYS,
+      "is-empty",
+    );
+    expect(onValueChange).toHaveBeenCalledWith(null);
+  });
+
+  it("an edited 'in the last' chip saves the same output form", () => {
+    expect(savedAst(DATE_FIELDS[1], { amount: 2, unit: "months" })).toEqual({
+      op: "gte",
+      field: "createdAt",
+      value: { amount: 2, unit: "months" },
+    });
   });
 });

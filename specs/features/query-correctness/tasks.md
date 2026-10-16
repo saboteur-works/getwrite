@@ -242,7 +242,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 9, 12
 **Estimate:** 2
 **Notes:** Satisfies FR-33, FR-3, FR-11, FR-27, FR-28. This is the owner's F-4 decision (FR-4 stop, 2026-10-16). The measurement did not separate whether Task 9 alone changes what the untouched chip saves (it does not: Task 9 changes the evaluator, not the saved value); this task changes the saved value. Subject to the Part B halt.
-**Done:** [ ]
+**Done:** [x] (committed in Task 22 commit)
 
 ### Task 23: Final suites (FR-30) and acceptance record
 **What:** Re-run the FR-1 check, run the final suites, record each result as run or not run against the Task 1 baselines, and record which parts landed or halted and the disposition of every finding.

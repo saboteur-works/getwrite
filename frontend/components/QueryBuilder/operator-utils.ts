@@ -1,5 +1,6 @@
 import type { QueryAST } from "../../src/lib/models/query-ast";
 import type { MetadataFieldType } from "../../src/lib/models/types";
+import type { FilterChipValue, RelativeDateValue } from "./FilterChip";
 
 export interface OperatorOption {
   value: string;
@@ -216,4 +217,44 @@ export function buildOperatorStub(
   }
   const builder = STUB_BUILDERS[operatorValue];
   return builder ? builder(fieldKey) : null;
+}
+
+/** The value the "in the last" input displays, and so the value it saves. */
+export const DEFAULT_RELATIVE_DATE: RelativeDateValue = {
+  amount: 7,
+  unit: "days",
+};
+
+export function isRelativeDateValue(
+  v: FilterChipValue,
+): v is RelativeDateValue {
+  return (
+    v !== null &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    "amount" in v &&
+    "unit" in v
+  );
+}
+
+/**
+ * The chip value right after the operator is changed to `next`.
+ * - A no-value operator resets the value to null.
+ * - A relative-date operator ("in the last") keeps a relative-date value and
+ *   otherwise takes the displayed default, replacing a value of another shape.
+ * - Any other operator leaves the value as it is.
+ */
+export function valueForOperatorChange(
+  type: MetadataFieldType,
+  next: string,
+  current: FilterChipValue,
+): FilterChipValue {
+  const option = getOperatorOption(type, next);
+  if (option?.noValue) return null;
+  if (option?.valueShape === "relativeDate") {
+    return isRelativeDateValue(current)
+      ? current
+      : { ...DEFAULT_RELATIVE_DATE };
+  }
+  return current;
 }
