@@ -273,7 +273,7 @@ A code review after Task 23 found defects; the owner chose to fix them on this b
 **Depends on:** 22, 23
 **Estimate:** 3
 **Notes:** Satisfies FR-12 (the UI cannot produce the input the evaluator rejects), FR-9, FR-17, FR-27, FR-28. Both defects were read in the code by the lead and are not measured; the red tests are the measurement. Name tests as observed ("amount holds 1 after typing 1.5").
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: One relative-date predicate in the UI, stub default agrees, stale comment fixed (FR-9, FR-12, FR-27)
 **What:** Replace the two UI copies of the relative-date predicate with one, make the "in the last" stub builder emit the same default the chip displays and saves, and correct the stale `evaluationTime` comment.

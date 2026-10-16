@@ -238,11 +238,25 @@ export function isRelativeDateValue(
 }
 
 /**
+ * The amount an "in the last" input holds after the writer types `raw`:
+ * the floor of the typed number, at least 1. An empty or non-numeric entry
+ * is ignored (null), so the previous amount stays.
+ */
+export function wholeAmountFromInput(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(1, Math.floor(n));
+}
+
+/**
  * The chip value right after the operator is changed to `next`.
  * - A no-value operator resets the value to null.
  * - A relative-date operator ("in the last") keeps a relative-date value and
  *   otherwise takes the displayed default, replacing a value of another shape.
- * - Any other operator leaves the value as it is.
+ * - Any other operator leaves the value as it is, except that a relative-date
+ *   value ({amount, unit}) is replaced by the operator's empty value, since
+ *   no other operator can hold it.
  */
 export function valueForOperatorChange(
   type: MetadataFieldType,
@@ -255,6 +269,9 @@ export function valueForOperatorChange(
     return isRelativeDateValue(current)
       ? current
       : { ...DEFAULT_RELATIVE_DATE };
+  }
+  if (isRelativeDateValue(current)) {
+    return option?.valueShape === "twoValues" ? { from: "", to: "" } : "";
   }
   return current;
 }

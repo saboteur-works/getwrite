@@ -14,6 +14,7 @@ import {
   getOperators,
   isRelativeDateValue,
   valueForOperatorChange,
+  wholeAmountFromInput,
 } from "./operator-utils";
 import FieldPicker, {
   type FieldPickerField,
@@ -189,12 +190,11 @@ function ValueInput({
             value={rel.amount}
             min={1}
             aria-label="Amount"
-            onChange={(e) =>
-              onChange({
-                amount: Math.max(1, Number(e.target.value)),
-                unit: rel.unit,
-              })
-            }
+            onChange={(e) => {
+              const amount = wholeAmountFromInput(e.target.value);
+              if (amount === null) return;
+              onChange({ amount, unit: rel.unit });
+            }}
           />
         </EditContextMenu>
         <select
@@ -499,8 +499,13 @@ export default function FilterChip({
     const nextOption = getOperatorOption(field.type, next);
     onOperatorChange(next);
     if (!onValueChange) return;
-    if (nextOption?.noValue || nextOption?.valueShape === "relativeDate") {
-      onValueChange(valueForOperatorChange(field.type, next, value));
+    const nextValue = valueForOperatorChange(field.type, next, value);
+    if (
+      nextOption?.noValue ||
+      nextOption?.valueShape === "relativeDate" ||
+      nextValue !== value
+    ) {
+      onValueChange(nextValue);
     }
   }
 

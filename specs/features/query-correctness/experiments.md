@@ -501,3 +501,15 @@ Reopening writes nothing: test "writes no saved query, project or sidecar when a
 Real-app re-run (`scripts/lead-review-tags-reopen.mjs`, outside the sandbox after `pnpm build` and the static copy; `lsof` before showed no listener on 7340, 3000 or 6006, `logs-final/task-24-lsof.txt`; server pid 60046 stopped by the harness, no listener after): output `logs-final/lead-review-tags-reopen-after-task-24.txt`. The reopened chip shows "FLASHBACK" on the first builder open after the reload (`inputs: []`, `text: "FLASHBACK"`), and the same chip 2 s later. Before: an empty "tag..." input in both. The "build" step recorded `task-24-build.txt` (exit 0).
 
 Checks: `pnpm typecheck` exit 0 (`task-24-typecheck.txt`); eslint on the touched files exit 0 with no output; green run `task-24-green.txt` (6 files, 363 passed, 2 expected fail already marked); wider name-filtered run (QueryBuilder, FilterChip, FieldPicker, ast-chip, AppShell, query-correct, tags) 23 files, 238 passed.
+
+## Task 25 ("in the last" amount is a whole number; leaving it resets the value)
+
+Rule used: the amount is the floor of the typed number, minimum 1; an empty or non-numeric entry is ignored and the previous amount stays (`wholeAmountFromInput`, `operator-utils.ts`). Evaluator unchanged.
+
+Red (`logs-final/task-25-red.txt`, `tests/filterChip.test.tsx`, 11 failed / 30 passed), each for the stated reason: typing "1.5" and "3.9" called `onValueChange` with a non-whole amount (the expected `{amount: 1}` / `{amount: 3}` call absent); an empty entry called `onValueChange` once (clamped to 1) instead of not at all; `valueForOperatorChange` from "in the last" to is-before, is-after, is-on returned `{amount: 7, unit: "days"}` instead of `""`, and to is-between instead of `{from: "", to: ""}`; the chip-level operator change to those four did not call `onValueChange` with the empty value (it left the object in place). Cases that already passed before the fix: "0" gives 1, "12" stays 12, and the date-string pinning case (d).
+
+Green (`logs-final/task-25-green.txt`): full vitest run of `tests/` (382 files, 4609 passed, 2 expected fail already marked); Task 9 evaluator tests and the Task 2 `query-builder-evaluator-check` run unchanged and pass. `pnpm typecheck` exit 0; eslint on `FilterChip.tsx`, `operator-utils.ts`, `tests/filterChip.test.tsx` exit 0, no output. (c) from-another-operator-to-"in the last" is covered by the existing Task 22 cases, which still pass.
+
+Existing assertion changed (FR-28): `tests/filterChip.test.tsx` "changing away from 'in the last' to a value operator leaves the value alone" asserted `onValueChange` not called when going to "is on"; it recorded the object being carried over as intended. It now asserts `onValueChange` is called with `""`.
+
+Chip-level change: `handleOperatorChange` in `FilterChip.tsx` now also calls `onValueChange` when `valueForOperatorChange` returns a different value, not only for no-value and relative-date operators. No saved query is rewritten (no persistence code touched).

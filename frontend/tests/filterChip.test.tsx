@@ -335,14 +335,16 @@ describe("FilterChip — choosing 'in the last' on a date field (FR-33)", () => 
     expect(valueForOperatorChange("date", "in-the-last", kept)).toBe(kept);
   });
 
-  it("changing away from 'in the last' to a value operator leaves the value alone", () => {
+  // Task 25 changed this assertion (FR-28): it recorded the {amount, unit}
+  // object being carried into "is on" as intended; Task 25 b resets it.
+  it("changing away from 'in the last' to a value operator resets the value to empty", () => {
     const onValueChange = chooseOperator(
       DATE_FIELDS[0],
       "in-the-last",
       SEVEN_DAYS,
       "is-on",
     );
-    expect(onValueChange).not.toHaveBeenCalled();
+    expect(onValueChange).toHaveBeenCalledWith("");
   });
 
   it("changing away from 'in the last' to a no-value operator resets to null", () => {
@@ -353,6 +355,117 @@ describe("FilterChip — choosing 'in the last' on a date field (FR-33)", () => 
       "is-empty",
     );
     expect(onValueChange).toHaveBeenCalledWith(null);
+  });
+
+  // Feature 86 Task 25 (FR-12, FR-9, FR-17).
+  describe("amount input holds a whole number (Task 25 a)", () => {
+    function typeAmount(
+      raw: string,
+      value: FilterChipValue = SEVEN_DAYS,
+    ): ReturnType<typeof vi.fn> {
+      const onValueChange = vi.fn();
+      render(
+        <FilterChip
+          field={DATE_FIELDS[0]}
+          operator="in-the-last"
+          value={value}
+          onOperatorChange={vi.fn()}
+          onValueChange={onValueChange}
+        />,
+      );
+      fireEvent.change(screen.getByRole("spinbutton", { name: "Amount" }), {
+        target: { value: raw },
+      });
+      return onValueChange;
+    }
+
+    it("amount holds 1 after typing 1.5, and the saved AST carries a whole amount", () => {
+      const onValueChange = typeAmount("1.5");
+      expect(onValueChange).toHaveBeenCalledWith({ amount: 1, unit: "days" });
+      const saved = onValueChange.mock.calls[0][0] as FilterChipValue;
+      expect(savedAst(DATE_FIELDS[0], saved)).toEqual({
+        op: "gte",
+        field: "dt",
+        value: { amount: 1, unit: "days" },
+      });
+    });
+
+    it("amount holds 3 after typing 3.9", () => {
+      expect(typeAmount("3.9")).toHaveBeenCalledWith({
+        amount: 3,
+        unit: "days",
+      });
+    });
+
+    it("amount holds 1 after typing 0", () => {
+      expect(typeAmount("0")).toHaveBeenCalledWith({ amount: 1, unit: "days" });
+    });
+
+    it("an empty entry is ignored and the previous amount stays", () => {
+      expect(typeAmount("")).not.toHaveBeenCalled();
+    });
+
+    it("a whole number typed is kept as typed", () => {
+      expect(typeAmount("12")).toHaveBeenCalledWith({
+        amount: 12,
+        unit: "days",
+      });
+    });
+  });
+
+  describe("leaving 'in the last' resets the value (Task 25 b, d)", () => {
+    const NEXT_EMPTY: Array<[string, FilterChipValue]> = [
+      ["is-before", ""],
+      ["is-after", ""],
+      ["is-on", ""],
+      ["is-between", { from: "", to: "" }],
+    ];
+    for (const [next, empty] of NEXT_EMPTY) {
+      it(`valueForOperatorChange to ${next} returns the empty value, not the amount object`, () => {
+        expect(valueForOperatorChange("date", next, SEVEN_DAYS)).toEqual(empty);
+      });
+
+      it(`choosing ${next} from 'in the last' sets the empty value and the saved AST holds no object`, () => {
+        const onValueChange = chooseOperator(
+          DATE_FIELDS[0],
+          "in-the-last",
+          SEVEN_DAYS,
+          next,
+        );
+        expect(onValueChange).toHaveBeenCalledWith(empty);
+        const ast = groupsToAst(
+          [
+            {
+              id: "g",
+              combinator: "and",
+              chips: [
+                {
+                  id: "c",
+                  field: DATE_FIELDS[0],
+                  operator: next,
+                  value: empty,
+                },
+              ],
+            },
+          ],
+          "and",
+        );
+        expect(JSON.stringify(ast)).not.toContain("amount");
+      });
+    }
+
+    it("a switch between two non-relative date operators keeps the date string", () => {
+      expect(valueForOperatorChange("date", "is-after", "2026-03-01")).toBe(
+        "2026-03-01",
+      );
+      const onValueChange = chooseOperator(
+        DATE_FIELDS[0],
+        "is-before",
+        "2026-03-01",
+        "is-on",
+      );
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
   });
 
   it("an edited 'in the last' chip saves the same output form", () => {
