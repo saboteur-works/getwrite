@@ -152,3 +152,18 @@ Build: `pnpm build` in `frontend/` at `bb54c2ce`, `.next/static` copied into the
 | D-3/D-39 | `task8-c2.mjs` | Start Page dialog listed 1 of 2 | both dialogs list Inner Doc and Root Doc, "COMPILE (2)"; the compiled file holds both |
 
 `task7-tr2.mjs` (custom Ref re-link and the not-restored notice) gave the same kind of results as in Feature 81.
+
+## Review follow-ups
+
+### Item 2: the Task 6 `savedWordCount` overlay in `page.tsx` `applyUpdate`
+
+Measurement (2026-10-15): the `savedWordCount` block (the `typeof savedWordCount === "number"` assignment of `next.wordCount`) was removed temporarily, then restored exactly. With it removed, `tests/f87-status-wordcount-experiment.test.tsx` and `tests/page-stale-sidecar-save.test.tsx` gave 2 failed, 6 passed (the Task 4 recording test and `page-stale-sidecar-save.test.tsx` passed):
+
+- `D-26: Status choice after a 10-word canonical save > sends and stores the saved wordCount (10) when Status is chosen` failed at `expect(payload.wordCount).toBe(10)` (received 0). This asserts the `updateSidecar` request payload. The next assertion, on the stored sidecar (`stored?.wordCount`), was not reached, so it was not measured in this run.
+- `D-26/D-29: By status over the Redux resource list > reports the 10 saved words for the resource after a canonical save and a Status choice` failed at `expect(published?.words).toBe(10)` (received 0). This asserts the roll-up computed from the Redux resource list after the Status choice (Redux state).
+
+Not separated by an experiment: whether the stored sidecar value changes with the overlay removed, since the test stopped at the payload assertion first. `updateSidecarCore` drops a client-sent `wordCount` (Task 5). The `page.tsx` comment was reworded to state only the above.
+
+### Start Page compile placement
+
+Start Page compile placement: compile request body (`compileBody` in StartPage.tsx) carries only id, name and type per resource, so no test asserts `folderId` or `plainText` on the compile input; placement is asserted by dialog row indentation.
