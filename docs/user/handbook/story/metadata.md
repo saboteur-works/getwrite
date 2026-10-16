@@ -21,7 +21,7 @@ Each resource's user metadata is kept in its own metadata file. A synopsis edite
 
 Every project has a **Status** field. Four optional built-in fields can be switched on as needed, and all are edited from the Metadata sidebar:
 
-- **Status** — where the resource is in your workflow (for example Draft, In review, Published). Always available; it cannot be renamed or removed. A new project offers Draft, In review and Published. When the project's `config.statuses` list in `project.json` has entries, the sidebar offers those instead.
+- **Status** — where the resource is in your workflow (for example Draft, In review, Published). Always available; it cannot be renamed or removed. A new project offers Draft, In review and Published. When the project's `config.statuses` list in `project.json` has entries, the sidebar offers those instead. A later change (unreleased) makes the query builder's Status chip and the Organizer's status filter offer the same list; the list is only read, not written to `project.json`. The sidebar and query-chip parts were re-checked on the web app in a new Blank project (both offered Draft, In review and Published; `config.statuses` stayed empty); the Organizer part is shown by tests and was not re-checked in the app.
 - **Synopsis** — a text box for a short summary. _(optional)_
 - **Notes** — a text box for free-text notes. _(optional)_
 - **Point of View** — the POV character: type a name and pick a resource, such as a character document. The Timeline view uses it to colour-code scenes: it shows a legend with a coloured dot per POV and a filter button for each. _(optional)_
