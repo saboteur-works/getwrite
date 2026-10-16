@@ -354,6 +354,30 @@ function astNodeToChip(
   return null;
 }
 
+/**
+ * `and` with exactly one `in` child on a multiselect or multi-resource-ref
+ * field is the saved shape of an "includes all of" chip (`chipToAst`). Any
+ * other field type, or an unknown field, is not reinterpreted.
+ */
+function allOfChip(
+  node: QueryAST,
+  fields: FilterChipField[],
+): GroupChip | null {
+  if (node.op !== "and" || node.children.length !== 1) return null;
+  const inner = node.children[0];
+  if (inner.op !== "in") return null;
+  const field = fieldFor(inner.field, fields);
+  if (field?.type !== "multiselect" && field?.type !== "multi-resource-ref") {
+    return null;
+  }
+  return {
+    id: nextChipId(),
+    field,
+    operator: "includes-all-of",
+    value: inner.value as FilterChipValue,
+  };
+}
+
 function astNodeToGroup(
   node: LeafNode | NotNode | AndNode | OrNode | RefNode,
   fields: FilterChipField[],
@@ -365,6 +389,8 @@ function astNodeToGroup(
     if (!chip) return null;
     return { id, combinator: "and", chips: [chip] };
   }
+  const allOf = allOfChip(node, fields);
+  if (allOf) return { id, combinator: "and", chips: [allOf] };
   if (node.op === "and" || node.op === "or") {
     const chips = node.children
       .filter(isChipNode)
@@ -400,6 +426,14 @@ export function astToGroups(
   }
 
   if (ast.op !== "and" && ast.op !== "or") return null;
+
+  const allOf = allOfChip(ast, fields);
+  if (allOf) {
+    return {
+      groups: [{ id: nextGroupId(), combinator: "and", chips: [allOf] }],
+      globalCombinator: "and",
+    };
+  }
 
   const hasOnlyChipChildren = ast.children.every(isChipNode);
 

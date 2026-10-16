@@ -107,7 +107,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** Satisfies FR-8, FR-9, FR-27, FR-28. Reopening "includes any of"/"includes none of" is out of scope and stays as read (an "includes" chip). Subject to the Part A halt.
-**Done:** [ ]
+**Done:** [x] (committed in Task 7 commit)
 
 ### Task 8: D-17 failing evaluator tests (FR-10)
 **What:** Add failing evaluator tests that a resource created 3 minutes before a fixed evaluation time is not returned by `gte {amount: 1, unit: "days"}` on `createdAt` and not returned by `eq` of its creation day on `createdAt`.

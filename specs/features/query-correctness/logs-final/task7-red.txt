@@ -1,0 +1,140 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/ast-chip-bridge.test.ts (55 tests | 8 failed) 10ms
+       × top level: one group, one includes-all-of chip carrying the array 3ms
+       × child group of an and multi-group query 0ms
+       × child group of an or multi-group query 1ms
+       × round trip chip -> AST -> chip is stable 1ms
+       × top level: one group, one includes-all-of chip carrying the array 0ms
+       × child group of an and multi-group query 0ms
+       × child group of an or multi-group query 0ms
+       × round trip chip -> AST -> chip is stable 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multiselect > top level: one group, one includes-all-of chip carrying the array
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multi-resource-ref > top level: one group, one includes-all-of chip carrying the array
+AssertionError: expected 'includes' to be 'includes-all-of' // Object.is equality
+
+Expected: "includes-all-of"
+Received: "includes"
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:762:48
+    760|         expect(r!.groups).toHaveLength(1);
+    761|         expect(r!.groups[0].chips).toHaveLength(1);
+    762|         expect(r!.groups[0].chips[0].operator).toBe("includes-all-of");
+       |                                                ^
+    763|         expect(r!.groups[0].chips[0].value).toEqual(["A", "B"]);
+    764|         expect(r!.groups[0].chips[0].field?.key).toBe(fieldKey);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multiselect > child group of an and multi-group query
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multi-resource-ref > child group of an and multi-group query
+AssertionError: expected 'includes' to be 'includes-all-of' // Object.is equality
+
+Expected: "includes-all-of"
+Received: "includes"
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:780:48
+    778|         expect(r!.globalCombinator).toBe("and");
+    779|         expect(r!.groups[0].chips).toHaveLength(1);
+    780|         expect(r!.groups[0].chips[0].operator).toBe("includes-all-of");
+       |                                                ^
+    781|         expect(r!.groups[0].chips[0].value).toEqual(["A", "B"]);
+    782|         expect(r!.groups[1].chips[0].operator).toBe("is");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multiselect > child group of an or multi-group query
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multi-resource-ref > child group of an or multi-group query
+AssertionError: expected [ 'includes', 'includes' ] to deeply equal [ Array(2) ]
+
+- Expected
++ Received
+
+  [
+-   "includes-all-of",
+-   "includes-all-of",
++   "includes",
++   "includes",
+  ]
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:794:59
+    792|         );
+    793|         expect(r!.globalCombinator).toBe("or");
+    794|         expect(r!.groups.map((g) => g.chips[0].operator)).toEqual([
+       |                                                           ^
+    795|           "includes-all-of",
+    796|           "includes-all-of",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multiselect > round trip chip -> AST -> chip is stable
+AssertionError: expected { op: 'in', field: 'tags2', …(1) } to deeply equal { op: 'and', children: [ { …(3) } ] }
+
+- Expected
++ Received
+
+  {
+-   "children": [
+-     {
+    "field": "tags2",
+    "op": "in",
+    "value": [
+      "A",
+      "B",
+    ],
+-     },
+-   ],
+-   "op": "and",
+  }
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:804:22
+    802|         const first = astToGroups(ast, FIELDS)!;
+    803|         const back = groupsToAst(first.groups, first.globalCombinator);
+    804|         expect(back).toEqual(ast);
+       |                      ^
+    805|         const second = astToGroups(back!, FIELDS)!;
+    806|         expect(second.groups[0].chips[0].operator).toBe("includes-all-…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > and-of-one-in reopen (D-16) > multi-resource-ref > round trip chip -> AST -> chip is stable
+AssertionError: expected { op: 'in', field: 'cast', …(1) } to deeply equal { op: 'and', children: [ { …(3) } ] }
+
+- Expected
++ Received
+
+  {
+-   "children": [
+-     {
+    "field": "cast",
+    "op": "in",
+    "value": [
+      "A",
+      "B",
+    ],
+-     },
+-   ],
+-   "op": "and",
+  }
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:804:22
+    802|         const first = astToGroups(ast, FIELDS)!;
+    803|         const back = groupsToAst(first.groups, first.globalCombinator);
+    804|         expect(back).toEqual(ast);
+       |                      ^
+    805|         const second = astToGroups(back!, FIELDS)!;
+    806|         expect(second.groups[0].chips[0].operator).toBe("includes-all-…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 47 passed (55)
+   Start at  13:39:40
+   Duration  173ms (transform 39ms, setup 60ms, import 28ms, tests 10ms, environment 0ms)
+

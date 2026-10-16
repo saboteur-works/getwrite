@@ -4,6 +4,7 @@ import {
   groupsToAst,
   astToGroups,
 } from "../../components/QueryBuilder/ast-chip-bridge";
+import type { QueryAST } from "../../src/lib/models/query-ast";
 import type { QueryGroup } from "../../components/QueryBuilder/QueryBuilder";
 import type { FilterChipField } from "../../components/QueryBuilder/FilterChip";
 
@@ -27,6 +28,8 @@ const FIELDS: FilterChipField[] = [
   },
   { key: "published", label: "Published", type: "boolean" },
   { key: "pov", label: "POV", type: "resource-ref" },
+  { key: "tags2", label: "Tags 2", type: "multiselect", options: ["A", "B"] },
+  { key: "cast", label: "Cast", type: "multi-resource-ref" },
 ];
 
 // ─── isTwoLevelCompatible ──────────────────────────────────────────────────────
@@ -736,5 +739,116 @@ describe("ref nodes in astToGroups", () => {
     expect(result!.groups[0].chips).toHaveLength(2);
     expect(result!.groups[0].chips[0].refId).toBe("q-1");
     expect(result!.groups[0].chips[1].operator).toBe("is");
+  });
+});
+
+// ─── D-16: "includes all of" reopens as "includes all of" (FR-8, FR-9) ───────
+
+describe("and-of-one-in reopen (D-16)", () => {
+  const allOf = (field: string, value: string[]): QueryAST => ({
+    op: "and",
+    children: [{ op: "in", field, value }],
+  });
+
+  for (const [fieldKey, label] of [
+    ["tags2", "multiselect"],
+    ["cast", "multi-resource-ref"],
+  ] as const) {
+    describe(label, () => {
+      it("top level: one group, one includes-all-of chip carrying the array", () => {
+        const r = astToGroups(allOf(fieldKey, ["A", "B"]), FIELDS);
+        expect(r!.groups).toHaveLength(1);
+        expect(r!.groups[0].chips).toHaveLength(1);
+        expect(r!.groups[0].chips[0].operator).toBe("includes-all-of");
+        expect(r!.groups[0].chips[0].value).toEqual(["A", "B"]);
+        expect(r!.groups[0].chips[0].field?.key).toBe(fieldKey);
+      });
+
+      it("child group of an and multi-group query", () => {
+        const r = astToGroups(
+          {
+            op: "and",
+            children: [
+              allOf(fieldKey, ["A", "B"]),
+              { op: "eq", field: "synopsis", value: "x" },
+            ],
+          },
+          FIELDS,
+        );
+        expect(r!.globalCombinator).toBe("and");
+        expect(r!.groups[0].chips).toHaveLength(1);
+        expect(r!.groups[0].chips[0].operator).toBe("includes-all-of");
+        expect(r!.groups[0].chips[0].value).toEqual(["A", "B"]);
+        expect(r!.groups[1].chips[0].operator).toBe("is");
+      });
+
+      it("child group of an or multi-group query", () => {
+        const r = astToGroups(
+          {
+            op: "or",
+            children: [allOf(fieldKey, ["A"]), allOf(fieldKey, ["B"])],
+          },
+          FIELDS,
+        );
+        expect(r!.globalCombinator).toBe("or");
+        expect(r!.groups.map((g) => g.chips[0].operator)).toEqual([
+          "includes-all-of",
+          "includes-all-of",
+        ]);
+      });
+
+      it("round trip chip -> AST -> chip is stable", () => {
+        const ast = allOf(fieldKey, ["A", "B"]);
+        const first = astToGroups(ast, FIELDS)!;
+        const back = groupsToAst(first.groups, first.globalCombinator);
+        expect(back).toEqual(ast);
+        const second = astToGroups(back!, FIELDS)!;
+        expect(second.groups[0].chips[0].operator).toBe("includes-all-of");
+        expect(second.groups[0].chips[0].value).toEqual(["A", "B"]);
+      });
+
+      it("chipToAst writes and of one in carrying the array", () => {
+        const ast = groupsToAst(
+          [
+            {
+              id: "g",
+              combinator: "and",
+              chips: [
+                {
+                  id: "c",
+                  field: FIELDS.find((f) => f.key === fieldKey)!,
+                  operator: "includes-all-of",
+                  value: ["A", "B"],
+                },
+              ],
+            },
+          ],
+          "and",
+        );
+        expect(ast).toEqual(allOf(fieldKey, ["A", "B"]));
+      });
+    });
+  }
+
+  it("other field type reopens as before (and group, includes-any chip)", () => {
+    const r = astToGroups(
+      {
+        op: "and",
+        children: [{ op: "in", field: "status", value: ["draft"] }],
+      },
+      FIELDS,
+    );
+    expect(r!.groups[0].combinator).toBe("and");
+    expect(r!.groups[0].chips[0].operator).toBe("is-any-of");
+  });
+
+  it("unknown field reopens as before", () => {
+    const r = astToGroups(
+      { op: "and", children: [{ op: "in", field: "nope", value: ["a"] }] },
+      FIELDS,
+    );
+    expect(r!.groups[0].combinator).toBe("and");
+    expect(r!.groups[0].chips[0].field).toBeNull();
+    expect(r!.groups[0].chips[0].operator).toBe("is-any-of");
   });
 });
