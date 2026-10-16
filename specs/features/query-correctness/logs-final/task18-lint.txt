@@ -1,0 +1,6 @@
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/metadataSidebar.test.tsx
+  631:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 1 problem (0 errors, 1 warning)
+

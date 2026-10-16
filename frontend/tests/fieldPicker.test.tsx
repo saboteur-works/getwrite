@@ -176,22 +176,42 @@ describe("buildFieldPickerFields — intrinsic options", () => {
     ]);
   });
 
-  it("leaves the builtin Status field without options when none are configured", () => {
+  // Changed in Task 18 (FR-28, D-20): this test used to assert that the
+  // builtin Status field has no options when none are configured. The `status`
+  // chip now offers the effective list (FR-23), so it asserts that instead.
+  it("offers the effective statuses for the builtin Status field when none are configured", () => {
     const statusField = FIELDS.find((f) => f.key === "status");
-    expect(statusField?.options).toBeUndefined();
+    expect(statusField?.options).toEqual(["Draft", "In review", "Published"]);
   });
 
-  // D-20 (FR-22): with no configured statuses the Status chip's value list
-  // is empty. The expectation asserted is the effective list (FR-23).
-  it.fails(
-    "offers an empty list for the Status chip with no configured statuses [expected failure: D-20]",
-    () => {
-      const expected = ["Draft", "In review", "Published"];
-      for (const projectStatuses of [[], undefined]) {
-        const fields = buildFieldPickerFields(undefined, projectStatuses);
-        const statusField = fields.find((f) => f.key === "status");
-        expect(statusField?.options ?? []).toEqual(expected);
-      }
-    },
-  );
+  it("leaves the intrinsic Statuses field with its empty configured-only list when none are configured", () => {
+    for (const projectStatuses of [[], undefined]) {
+      const fields = buildFieldPickerFields(undefined, projectStatuses);
+      const statusesField = fields.find((f) => f.key === "statuses");
+      expect(statusesField?.options).toBeUndefined();
+    }
+  });
+
+  it("keeps the configured list for the Status chip and the intrinsic Statuses field", () => {
+    const fields = buildFieldPickerFields(undefined, ["Outline", "Final"]);
+    expect(fields.find((f) => f.key === "status")?.options).toEqual([
+      "Outline",
+      "Final",
+    ]);
+    expect(fields.find((f) => f.key === "statuses")?.options).toEqual([
+      "Outline",
+      "Final",
+    ]);
+  });
+
+  // D-20 (FR-22, FR-23): with no configured statuses the Status chip's value
+  // list is the effective list.
+  it("offers the effective list for the Status chip with no configured statuses", () => {
+    const expected = ["Draft", "In review", "Published"];
+    for (const projectStatuses of [[], undefined]) {
+      const fields = buildFieldPickerFields(undefined, projectStatuses);
+      const statusField = fields.find((f) => f.key === "status");
+      expect(statusField?.options ?? []).toEqual(expected);
+    }
+  });
 });

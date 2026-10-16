@@ -1,0 +1,9 @@
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+
+ Test Files  7 passed (7)
+      Tests  411 passed | 2 expected fail | 1 skipped (414)
+   Start at  15:06:13
+   Duration  2.39s (transform 2.11s, setup 343ms, import 3.80s, tests 2.66s, environment 2.69s)
+

@@ -39,7 +39,7 @@ import { shallowEqual } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
-  selectActiveProjectStatuses,
+  selectEffectiveProjectStatuses,
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
   selectSynopsisEnabled,
@@ -240,7 +240,7 @@ export default function MetadataSidebar({
   );
 
   const projectStatuses = useAppSelector(
-    (state) => selectActiveProjectStatuses(state),
+    (state) => selectEffectiveProjectStatuses(state),
     shallowEqual,
   );
 
@@ -343,7 +343,7 @@ export default function MetadataSidebar({
             ariaLabel="status"
             className="mb-4"
             value={(rawValue as string) ?? ""}
-            options={projectStatuses.length > 0 ? projectStatuses : undefined}
+            options={projectStatuses}
             onChange={(v) => onChangeField?.(key, v)}
           />
         );

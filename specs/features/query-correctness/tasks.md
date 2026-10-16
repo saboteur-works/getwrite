@@ -206,7 +206,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 17
 **Estimate:** 3
 **Notes:** Satisfies FR-23, FR-24, FR-26, FR-30 (decorators), FR-28. Do not edit `config.statuses` or write the effective list to disk. Subject to the Part D halt.
-**Done:** [ ]
+**Done:** [x] (committed in Task 18 commit)
 
 ### Task 19: D-20: Organizer status filter reads the effective list, card display unchanged (FR-23, FR-24, FR-25, FR-30)
 **What:** Make the Organizer filter bar's Status select offer the effective statuses while the card default stays `""` when no statuses are configured, and give the filter bar a Storybook decorator or provider for any new requirement.
