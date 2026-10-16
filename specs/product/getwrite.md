@@ -292,7 +292,42 @@ with the app without hand-rewriting it (see OQ-90).
   such as characters, locations, or items are NOT built-ins — they are
   user-defined schema fields (FR-20), optionally folder-scoped (FR-8). [US-3]
 - FR-10: Users MUST be able to save a metadata query and have it appear in
-  the resource tree as a smart folder. [US-7]
+  the resource tree as a smart folder. Every condition the query builder
+  offers MUST return the resources its label says, and MUST NOT be offered
+  if it cannot be evaluated. In particular: "includes all of" a set of values
+  on a multi-value field returns only resources holding every listed value,
+  and "includes any of" returns resources holding at least one; "is on" a
+  date returns resources whose date falls on that calendar day; "in the last"
+  an amount of time returns resources whose date falls within that span
+  ending at the time of evaluation (resolved: OQ-92): a saved "in the last"
+  condition stores the amount and unit (for example 1 day) and the span is
+  computed each time the query or smart folder is evaluated, and a saved
+  condition reopened in the builder MUST show the condition the writer chose
+  (a saved "in the last" reopens as "in the last", not "is after"); the value
+  box of a condition on Tags offers the project's tags, not resources; and the
+  value list of a condition on Status offers the same statuses the sidebar's
+  Status control offers for that project, so the two share one notion of the
+  project's statuses (resolved: OQ-93): when a project has no statuses
+  configured, the built-in list "Draft", "In review", "Published" is offered
+  everywhere a status list is offered (the sidebar Status control, the query
+  builder's Status value list and the Organizer status filter), is not written
+  into the project's config, and needs no migration; a resource with no status
+  keeps today's display (the sidebar shows the first option; the Organizer
+  resolves it to the default status). A smart folder already saved with
+  "includes all of" is not migrated or rewritten: the evaluation reads the
+  existing saved shape (`and` with a single `in` child carrying several
+  values) as "every listed value", so existing folders return the corrected
+  result on next evaluation with no notice, and reopening one shows "includes
+  all of" (resolved: OQ-94). Observed in the handbook verification run (web
+  build, 2026-10, defects D-16, D-17, D-19, D-20,
+  `specs/features/user-handbook/verification.md`): "includes all of" returned
+  the same resources as "includes any of" (D-16); "in the last" and "is on"
+  date conditions returned no resource for resources created or edited
+  minutes earlier (D-17); the Tags value box searched resources, and typing
+  an existing tag's name offered nothing (D-19); and the Status chip's value
+  list was empty in a project with no statuses configured while the sidebar
+  offered the built-in list (D-20). The causes were read in code, not run or
+  tested, and are not stated here. [US-7]
 - FR-11: Users MUST be able to search full text across all resources in a
   project and filter results by folder, Status, and Tags. [US-7]
 - FR-12: The product MUST maintain a backlinks index between resources that
@@ -3030,6 +3065,27 @@ The question as asked, not decided at the time: whether a handbook update is req
 **Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "6b", audience only).
 The owner's request says "users"; this spec reads that as writers. Whether self-hosters (hosted web mode, environment configuration) and CLI users are also an audience is not decided, nor is the milestone for FR-69, which is placed under Later Requirements only because that is the last group in this document.
 **Impact:** FR-69 scope and milestone; US-28, US-29.
+**Owner:** Product owner.
+
+**OQ-92 (resolved): Is a saved relative date ("in the last 7 days") resolved when the query is saved, or each time it is evaluated?**
+**Options:** (a) store the amount and unit and compute the span each time the smart folder or query is evaluated, so a folder opened days later shows the last 7 days from that day; (b) store a fixed date computed at save time, so the folder keeps showing the same window.
+**Resolution:** Resolved (2026-10-16): option (a). A saved "in the last" condition stores the amount and unit (what the builder already saves, for example `{amount:1, unit:"days"}`; read in `ValuePicker.tsx:243-283` and `ast-chip-bridge.ts:129-130` and in `specs/features/user-handbook/logs/task5/t5-q3.txt:39-41`, not run), and the span is computed each time the query or smart folder is evaluated, ending at the time of evaluation. A saved condition reopened in the builder shows the condition the writer chose; triage read that a saved "in the last" reopens as "is after" (`ast-chip-bridge.ts:236-237`, read not run), which FR-10 now requires not to happen.
+**Evidence:** Owner decision, Gate 1, 2026-10-16.
+**Impact:** FR-10 (relative-date condition); Feature 86's D-17 part.
+**Owner:** Product owner.
+
+**OQ-93 (resolved): When a project has no statuses configured, which statuses do the sidebar and the query and filter value lists offer?**
+**Options:** (a) the built-in list the sidebar uses today ("Draft", "In review", "Published"), offered everywhere; (b) none anywhere, with the writer prompted to define statuses first; (c) the built-in list is written into the project's config at creation so there is one stored list. Observed (D-20, D-28): with `config.statuses` empty, the sidebar offers the built-in list while the query Status chip's list is empty, and the Organizer Status filter's "Draft" returned cards never given a status; causes read in code, not run.
+**Resolution:** Resolved (2026-10-16): option (a). With no statuses configured, the built-in list "Draft", "In review", "Published" (the sidebar's existing fallback, `StatusSelector.tsx:14`) is offered everywhere a status list is offered: the sidebar Status control, the query builder's Status value list and the Organizer status filter. It is not written into config; no migration. Sub-decision: a resource with no status keeps today's display (the sidebar shows the first option; the Organizer resolves it to the default status per `specs/features/organizer-card-filtering.md`). D-28 is not addressed by Feature 86 and stays as recorded.
+**Evidence:** Owner decision, Gate 1, 2026-10-16.
+**Impact:** FR-9 (Status options), FR-10, FR-26.
+**Owner:** Product owner.
+
+**OQ-94 (resolved): Should a smart folder already saved with "includes all of" be migrated or re-evaluated under the corrected meaning?**
+**Options:** (a) leave saved definitions untouched, so they return the corrected result on next evaluation (the saved shape was `and[in field [A,B]]`, which is indistinguishable from an intended "any of" in stored form); (b) rewrite saved definitions of that shape, which cannot tell the two intents apart; (c) tell the writer which smart folders are affected.
+**Resolution:** Resolved (2026-10-16): option (a). Saved smart-folder definitions are not migrated or rewritten; the corrected evaluation reads the existing saved "includes all of" shape (`and` with a single `in` child carrying several values, `ast-chip-bridge.ts:146-150`) as "every listed value", so existing folders return the corrected result on next evaluation with no notice, and reopening one shows "includes all of". No one-time notice.
+**Evidence:** Owner decision, Gate 1, 2026-10-16.
+**Impact:** FR-10; Feature 86's D-16 part.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)
