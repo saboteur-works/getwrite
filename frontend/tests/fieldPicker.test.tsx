@@ -180,4 +180,18 @@ describe("buildFieldPickerFields — intrinsic options", () => {
     const statusField = FIELDS.find((f) => f.key === "status");
     expect(statusField?.options).toBeUndefined();
   });
+
+  // D-20 (FR-22): with no configured statuses the Status chip's value list
+  // is empty. The expectation asserted is the effective list (FR-23).
+  it.fails(
+    "offers an empty list for the Status chip with no configured statuses [expected failure: D-20]",
+    () => {
+      const expected = ["Draft", "In review", "Published"];
+      for (const projectStatuses of [[], undefined]) {
+        const fields = buildFieldPickerFields(undefined, projectStatuses);
+        const statusField = fields.find((f) => f.key === "status");
+        expect(statusField?.options ?? []).toEqual(expected);
+      }
+    },
+  );
 });

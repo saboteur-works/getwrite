@@ -317,6 +317,55 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(screen.queryByText("Explicit Status Scene")).toBeNull();
   });
 
+  // D-20 (FR-22): with no configured statuses the Status select lists only
+  // "All statuses" and "No status". The expectation asserted is the effective
+  // list (FR-23).
+  it.fails(
+    "offers an empty list of status options with no configured statuses [expected failure: D-20]",
+    () => {
+      const store = makeStore();
+      const rNoStatus = createTextResource({
+        name: "Unset Status Scene",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+      });
+      store.dispatch(
+        setProject({
+          id: PROJECT_ID,
+          name: "Proj",
+          rootPath: "",
+          folders: [],
+          resources: [],
+          statuses: [],
+        } as any),
+      );
+      store.dispatch(setSelectedProjectId(PROJECT_ID));
+      store.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+      store.dispatch(setResources([rNoStatus] as any));
+      store.dispatch(setSelectedResourceId(FOLDER_ID));
+
+      render(
+        <Provider store={store}>
+          <OrganizerView showBody={false} />
+        </Provider>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+      const select = screen.getByLabelText(
+        "Filter by status",
+      ) as HTMLSelectElement;
+      const labels = Array.from(select.options).map((o) => o.textContent);
+      expect(labels).toEqual([
+        "All statuses",
+        "Draft",
+        "In review",
+        "Published",
+        "No status",
+      ]);
+    },
+  );
+
   it("excludes a non-text resource and narrows text resources by word-count range (FR-3, FR-4)", () => {
     const { store } = makeFilterableStore();
 

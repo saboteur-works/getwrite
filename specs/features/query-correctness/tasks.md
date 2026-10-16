@@ -188,7 +188,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Satisfies FR-22, FR-24 (reader list). The cause is a reading until the tests are red for that reason; name tests as observed (list is empty).
-**Done:** [ ]
+**Done:** [x] (committed in Task 16 commit; tests carried as it.fails D-20)
 
 ### Task 17: D-20: define the effective-statuses value once and add its selector (FR-23)
 **What:** Define the built-in list `["Draft", "In review", "Published"]` once, add a pure function and a selector returning the project's `config.statuses` when it has at least one entry, else the built-in list, and make `StatusSelector.tsx` stop carrying its own copy.

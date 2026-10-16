@@ -1,0 +1,64 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |jsdom| tests/fieldPicker.test.tsx (14 tests | 1 failed) 149ms
+     × offers an empty list for the Status chip with no configured statuses 3ms
+ ❯ |jsdom| tests/organizerView.test.tsx (37 tests | 1 failed) 1413ms
+     × offers an empty list of status options with no configured statuses 25ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |jsdom| tests/fieldPicker.test.tsx > buildFieldPickerFields — intrinsic options > offers an empty list for the Status chip with no configured statuses
+AssertionError: expected [] to deeply equal [ 'Draft', 'In review', 'Published' ]
+
+- Expected
++ Received
+
+- [
+-   "Draft",
+-   "In review",
+-   "Published",
+- ]
++ []
+
+ ❯ tests/fieldPicker.test.tsx:191:42
+    189|       const fields = buildFieldPickerFields(undefined, projectStatuses…
+    190|       const statusField = fields.find((f) => f.key === "status");
+    191|       expect(statusField?.options ?? []).toEqual(expected);
+       |                                          ^
+    192|     }
+    193|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |jsdom| tests/organizerView.test.tsx > OrganizerView card filtering (FR-1 through FR-11) > offers an empty list of status options with no configured statuses
+AssertionError: expected [ 'All statuses', 'No status' ] to deeply equal [ 'All statuses', 'Draft', …(3) ]
+
+- Expected
++ Received
+
+  [
+    "All statuses",
+-   "Draft",
+-   "In review",
+-   "Published",
+    "No status",
+  ]
+
+ ❯ tests/organizerView.test.tsx:355:20
+    353|     const select = screen.getByLabelText("Filter by status") as HTMLSe…
+    354|     const labels = Array.from(select.options).map((o) => o.textContent…
+    355|     expect(labels).toEqual([
+       |                    ^
+    356|       "All statuses",
+    357|       "Draft",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 49 passed (51)
+   Start at  14:56:18
+   Duration  2.14s (transform 299ms, setup 81ms, import 609ms, tests 1.56s, environment 439ms)
+

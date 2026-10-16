@@ -332,3 +332,40 @@ Value box per operator after the change (tags field):
 - Metadata-schema `multi-resource-ref` readers (`MetadataSidebar.tsx:461`, `OrganizerView.tsx:263-272`, `organizerFilters.ts:159-181`, `SchemaManager.tsx:855,1108`): unaffected; they read schema fields, not the intrinsic, and the edited code applies only where `tagOptions` is set.
 
 Storybook check (FR-30): no new store, context or required prop was added. `tagOptions` is an optional field property; `buildFieldPickerFields`'s new parameter is optional. Stories in `frontend/stories/QueryBuilder/` (QueryBuilder, FilterGroup, FilterChip, ValuePicker, FieldPicker, plus OperatorMenu): `FilterChip.stories.tsx:38` defines its own `tags` field without `tagOptions`, so it keeps the resource-typeahead path as before; `FieldPicker.stories.tsx` calls `buildFieldPickerFields()` / `(PROJECT_SCHEMA)`, which now yields `tagOptions: []` on Tags and renders as before. Stories were read, not rendered (Storybook was not started).
+
+## D-20 (FR-22, FR-24)
+
+Date 2026-10-16. No process was started (unit tests only), so no `lsof` output is recorded.
+
+### Red run (Task 16)
+
+Two tests were added to existing files and run as ordinary tests first (`logs-final/task16-red.txt`):
+- `frontend/tests/fieldPicker.test.tsx`, "offers an empty list for the Status chip with no configured statuses": `buildFieldPickerFields(undefined, [])` and `(undefined, undefined)` returned a `status` field with `options` empty; expected the effective list `["Draft", "In review", "Published"]` (FR-23). Failure: `expected [] to deeply equal [ 'Draft', 'In review', 'Published' ]`.
+- `frontend/tests/organizerView.test.tsx`, "offers an empty list of status options with no configured statuses": with `statuses: []` the Filter bar's "Filter by status" select held `["All statuses", "No status"]`; expected `["All statuses", "Draft", "In review", "Published", "No status"]`. Failure shows the three effective statuses missing.
+
+The Status chip's list was empty, so the FR-22 halt does not apply. Both tests are now carried as `it.fails` tagged `[expected failure: D-20]`; the two files pass (49 passed, 2 expected fail). The existing test "leaves the builtin Status field without options when none are configured" (`fieldPicker.test.tsx`) records the same current behaviour as intended and was not changed; Task 18 must change or replace it with the reason named (FR-28). No cause is stated beyond the reading in the spec (`FieldPicker.tsx:106-109`); the red runs show the lists are empty, not why.
+
+### Readers of `config.statuses` (grep `statuses|EMPTY_STATUSES` over `frontend/components`, `frontend/src`, `frontend/app`, `cli/src`, `electron/src`; importers and project-creation writers listed last)
+
+Readers of the active project's list (all through the Redux copy `projects[id].statuses`, built at `projectsSlice.ts:152` from `config.statuses ?? []`, via `selectActiveProjectStatuses`, `projectsSlice.ts:886-889`; `EMPTY_STATUSES` at `:878` is the stable empty reference):
+1. `frontend/components/QueryBuilder/FieldPicker.tsx:106-109` (the `status` chip's options; fed `projectStatuses` from `AppShell.tsx:308-312, 331`). WILL CHANGE in Task 18 (effective list).
+2. `frontend/components/QueryBuilder/FieldPicker.tsx:126-130` (the intrinsic "Statuses" field options). Unchanged: stays configured-only (FR-26).
+3. `frontend/components/Sidebar/controls/StatusSelector.tsx:14, 21` (its own `DEFAULT_OPTIONS`, used when `options` is undefined). WILL CHANGE in Task 17 (stops being a second copy).
+4. `frontend/components/Sidebar/MetadataSidebar.tsx:242-244, 346` (`options={projectStatuses.length > 0 ? projectStatuses : undefined}`). WILL CHANGE in Task 18 (reads the effective list).
+5. `frontend/components/Layout/AppShell.tsx:308-312` (selector read) and `:331-332` (into `buildFieldPickerFields`). WILL CHANGE in Task 18 (supplies the effective list to the `status` chip only).
+6. `frontend/components/Layout/AppShell.tsx:1425` (`statuses={projectStatuses}` passed to DataView / the status roll-up). Unchanged: stays the configured list unless the owner decides otherwise.
+7. `frontend/components/WorkArea/DataView.tsx:44, 69, 189` (`statuses ?? project?.config?.statuses ?? []` into `StatusRollup`; reads `project.config.statuses` directly as its fallback). Unchanged.
+8. `frontend/components/WorkArea/StatusRollup.tsx:14, 25, 37, 47` and `frontend/src/lib/status-rollup.ts:15, 51-74` (roll-up rows in configured order; the no-statuses hint says so). Unchanged: configured list.
+9. `frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx:172-176` (selector read; `defaultStatus = statuses[0] ?? ""`) and `:485` (`statuses={statuses}` to the filter bar). Task 19 changes only the filter's option source (`:485`); the `defaultStatus` at `:176` stays `""` with no configured statuses (FR-25).
+10. `frontend/components/WorkArea/Views/OrganizerView/OrganizerFilterBar.tsx:46, 89, 201` (`statuses.map` options). WILL CHANGE in Task 19 only through what it is given.
+11. `frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx:54, 149, 163` (`userMetadata.status || defaultStatus`). Unchanged (FR-25).
+12. `frontend/components/WorkArea/Views/OrganizerView/organizerFilters.ts:103-104, 114-116, 188-198` (`resolveStatus`, `matchesStatus`). Unchanged (FR-25).
+13. `frontend/components/SearchBar/SearchBar.tsx:65, 175` and `SearchFilterPanel.tsx:13, 22, 87-91` (status filter checkboxes, rendered only when the list is non-empty). Unchanged: configured list; not one of the three surfaces named in OQ-93.
+
+Writers and carriers (not readers of the effective value; unchanged):
+- `frontend/src/lib/models/project.ts:15`, `schemas.ts:277, 450, 694`, `lib/api/schemas.ts:172, 222`, `types.ts:101, 271`, `projectsSlice.ts:93, 152` (shape and load of `config.statuses`).
+- `frontend/src/lib/models/project-creator.ts:144, 233`, `plaintext/import-plaintext-project.ts:221, 235, 402`, `src/types/project-types.ts:125`, `components/project-types/ProjectTypeDraftService.ts:66, 106, 279-293`, `ProjectTypeEditorForm.tsx:179-185` (project-type spec statuses seeded into a new project's config, and the project-type viewer; "Resources will use no status" is its own text).
+- `frontend/src/lib/adapters/placeholderAdapter.ts:47`, `query-evaluate-core.ts:72`, `query-intrinsics.ts:116-120` (these carry the per-resource `statuses` array, a different field from `config.statuses`).
+- Project Settings: no read of `config.statuses` was found in `frontend/components` by this grep (no `ProjectSettingsDialog` hit); stated as a grep result, not as proof no editor exists elsewhere (the scrivener/docx importers were excluded from the grep and write `config.statuses` only at project creation).
+
+Every reader above stays reading the configured list unless the owner decides otherwise, except the three consumers that change: Task 17 (`StatusSelector.tsx`, defines the effective list once), Task 18 (sidebar Status control in `MetadataSidebar.tsx` and the `status` chip via `AppShell.tsx`/`FieldPicker.tsx:106-109`), Task 19 (the Organizer filter bar's options, not the card display or filter resolution).
