@@ -525,3 +525,66 @@ Chip-level change: `handleOperatorChange` in `FilterChip.tsx` now also calls `on
 (d) `query-evaluate-core.ts` doc comment diff reviewed: the sentence "no caller sends it and nothing reads it yet" is replaced by "...where the evaluator reads it for relative-date spans ("in the last") and calendar-day comparisons." Comment only; parameter and signature unchanged (`evaluationTime` is read at `query-evaluator.ts:135`).
 
 Checks: `pnpm typecheck` exit 0 (`task-26-typecheck.txt`; an earlier run failed on the widened bridge call and on two test casts, fixed); eslint on the five touched files no output; four-file run (operator-utils, ast-chip-bridge, builder-evaluator-check, query-evaluator) 578 passed, 2 expected fail (`task-26-green.txt`); `tests/unit` 381 files, 4574 passed, 2 expected fail; full `tests` run 612 files, 6967 passed, 1 skipped, 2 expected fail (run before prettier reformatting, not repeated). `pnpm knip` (root, sandbox) exit 1 as at baseline; its output with the change is identical to the output with the change stashed (`task-26-knip.txt`), so no new finding, and none names the touched files.
+
+## Final suites after review follow-ups (Task 27)
+
+Date 2026-10-16. Branch `fix/query-correctness`, main checkout, `git rev-parse HEAD` at the start: `075eb98f3c5b9202fcb1e8ba1495add6677167a8`; `git status --short` at the start: empty. No source change by this task. Range used below: `845df1d2..HEAD` (Tasks 24-26: `2c40e9cb`, `b434a3bf`, `075eb98f`). Baselines are the Task 1 figures ("Baselines"), the Task 23 figures are those in "Final suites". Logs: `specs/features/query-correctness/logs-final/task-27-*.txt`.
+
+### Listeners and processes
+
+- `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before `pnpm test:e2e`, outside the sandbox: no output, exit 1 (`task-27-lsof-before-e2e.txt`). Nothing to reuse or leave alone.
+- During the e2e run a 1-second sampler of `lsof -iTCP:6006 -sTCP:LISTEN -t` saw one pid, 71553 (`task-27-e2e-6006-pids.txt`, first seen 16:58:48); it was not listening before the run, so it is the Storybook server Playwright's webServer config started. I did not stop it: it exited on its own (`ps -p 71553` exit 1 afterwards). After the run `lsof` on all three ports returned no output, exit 1 (`task-27-lsof-after-e2e.txt`). The sampler subshell was stopped by its pid. Nothing else was stopped.
+
+### Results
+
+| Check | Task 1 baseline | Task 23 final | Task 27 | Log |
+|---|---|---|---|---|
+| `pnpm test:ci` (frontend) | 610 files; 6505 passed, 1 skipped, 0 failed | 611 files; 6934 passed, 2 expected fail, 1 skipped | exit 0; 612 files passed (612); Tests 6967 passed, 2 expected fail, 1 skipped (6970); 0 failed | `task-27-test-ci.txt` |
+| `pnpm typecheck` (frontend) | exit 0 | exit 0 | exit 0 | `task-27-typecheck.txt` |
+| `pnpm lint` (frontend) | 0 errors, 393 warnings | 397 (then 393 after the `any` follow-up) | exit 0; 0 errors, 393 warnings (7 potentially fixable) | `task-27-lint.txt` |
+| `pnpm knip` (root, sandbox) | exit 1, 435 lines | exit 1, 434 lines | exit 1, 434 lines | `task-27-knip.txt` |
+| `pnpm test:e2e` (frontend, outside sandbox) | 214 passed, 1 skipped, 0 failed | 214 passed, 1 skipped, 0 failed | exit 0; 214 passed, 1 skipped, 0 failed (50.6 s) | `task-27-e2e.txt` |
+
+All five were run. No suite failed.
+
+Unit delta against Task 23: +1 test file (612 vs 611, `tests/appShellTagsChipReopen.test.tsx`, 7 tests) and +33 passed (6967 vs 6934); expected fail (2) and skipped (1) unchanged. Against Task 1: +2 files, +462 passed. Literal `it(`/`test(` lines added in `845df1d2..HEAD` by file: `appShellTagsChipReopen.test.tsx` 7, `filterChip.test.tsx` 9, `ast-chip-bridge.test.ts` 2, `native-tags-backend.test.ts` 1, `operator-utils.test.ts` 3, `tags-api.test.ts` 3 = 25 added, 2 removed lines that are the two renamed tests below (net 23). The observed +33 is more than 23; the difference is not accounted for by this count (parameterised `it.each` cases were not counted; I did not check that is the reason).
+
+e2e: same passed/skipped/failed counts as the Task 1 baseline; no difference to name. The skipped test is not identified by name.
+
+### Lint: 393 versus 393 (baseline), by file
+
+Compared `logs-baseline/lint.log` with `task-27-lint.txt` by rule and message with line numbers stripped: the only difference is the `OrganizerView.tsx` `react-hooks/exhaustive-deps` message's line reference (301 -> 308), same as at Task 23; no count change. No increase by file. Relative to Task 23's 397, the four `no-explicit-any` warnings were removed by the follow-up (`anyfix-*`), and Tasks 24-26 added no warning.
+
+### Knip
+
+Category counts (Task 27 / baseline): Unused files 49 / 49; Unused dependencies 1 / 1; Unused devDependencies 4 / 4; Unlisted dependencies 6 / 6; Unlisted binaries 4 / 4; Unused exports 166 / 166; Unused exported types 169 / 170; Duplicate exports 14 / 14; Configuration hints 6 / 6. With line:column stripped, the only difference from the baseline is `RelativeDateValue interface …/components/QueryBuilder/FilterChip.tsx` absent (same as at Task 23); the Task 23 file and this one are identical after stripping. No new knip finding.
+
+Findings that name files Tasks 24-26 touched (all also in the baseline): `frontend/src/lib/api/tags.ts` (`resolveTagsTransport`, unused export), `frontend/components/QueryBuilder/FilterChip.tsx` (`RangeValue`, unused exported type). `AppShell.tsx` (`AppShellResourceActionOptions`) is also listed. The other knip lines containing "tags" (`native-tags-backend.web-stub.ts`, `tags.ts` models `default`, `tests/helpers/appShellFetchStub.ts`) are files Tasks 24-26 did not touch. New exports from Task 24 (`listTagsOrThrow`, `TagsTransport.listOrThrow`) and Task 25/26 (`wholeAmountFromInput`) do not appear in the output. Same `.npmrc` EPERM warning as the baseline.
+
+### Task 2 check re-run, per case
+
+Command: `pnpm --filter getwrite-frontend exec vitest run tests/unit/query-builder-evaluator-check.test.ts --reporter=verbose`, from `frontend/` (zone `America/New_York` set by the file, evaluation time 2026-03-10 15:00 local). Exit 0. Test Files 1 passed (1); Tests 281 passed | 2 expected fail (283); identical to Task 23. Per-case list: `logs-final/task-27-fr1-check-run.txt`. The only expected-failure markers are the two resource-ref typed-name cases, KNOWN FAILURE by owner decision at the FR-4 stop (F-2, F-3):
+1. `builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is › typed name Tom › edited` [known failure F-2].
+2. `builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-not › typed name Tom › edited` [known failure F-3].
+
+A grep of `tests/` for `it.fails` / `.fails(` outside that file found no other hit; the full run's "2 expected fail" is these two.
+
+### Assertions changed in existing tests (FR-28)
+
+Checked by listing every removed line in `git diff 845df1d2..HEAD -- frontend/tests`: three removed lines, in two tests, no others.
+1. `tests/filterChip.test.tsx`: "changing away from 'in the last' to a value operator leaves the value alone" (asserted `onValueChange` not called) is renamed and now expects `onValueChange` called with `""`. Reason (Task 25): the old assertion recorded the `{amount, unit}` object being carried to "is on" as intended; the task changes that.
+2. `tests/unit/operator-utils.test.ts`: "date: in-the-last → gte stub (value picker provides computed date)" expected `{ op: "gte", field: "updatedAt", value: "" }`; now expects `{amount: 7, unit: "days"}` (renamed "...carrying the displayed default"). Reason (Task 26): the stub must emit the default the chip displays and saves (FR-9).
+
+### Electron and cli suites
+
+Not run. `git diff --stat 845df1d2..HEAD -- electron cli` printed nothing (empty). Files changed outside `specs/` in the range, all under `frontend/`: `components/Layout/AppShell.tsx`, `components/QueryBuilder/FieldPicker.tsx`, `FilterChip.tsx`, `ast-chip-bridge.ts`, `operator-utils.ts`, `src/lib/api/tags.ts`, `src/lib/models/query-evaluate-core.ts` (comment only), `src/store/transport/native-tags-backend.ts`, and tests `appShellTagsChipReopen.test.tsx` (new), `filterChip.test.tsx`, `unit/ast-chip-bridge.test.ts`, `unit/native-tags-backend.test.ts`, `unit/operator-utils.test.ts`, `unit/tags-api.test.ts`. Whether `cli/` or `electron/` import any of these (for example through the `@gw/core` alias) was not checked, so "not run" rests on the empty diff only.
+
+### Tree state
+
+- `git status --short` after the runs (before this section was written): only untracked `specs/features/query-correctness/logs-final/task-27-*.txt`. No change outside `frontend/` and `specs/features/query-correctness/`; nothing under `frontend/` modified in the working tree; no line mentioning `docs/user`.
+
+### Not run
+
+- FR-31 real-app re-check: the pipeline lead's.
+- electron and cli test suites (above).
+- Per-test-name identification of the skipped unit test and the skipped e2e test.

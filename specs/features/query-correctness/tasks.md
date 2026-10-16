@@ -291,7 +291,7 @@ A code review after Task 23 found defects; the owner chose to fix them on this b
 **Depends on:** 24, 25, 26
 **Estimate:** 2
 **Notes:** Satisfies FR-30, FR-1, FR-28. `pnpm test:e2e` and `lsof` run OUTSIDE the sandbox in the main checkout; the others inside. The FR-31 real-app re-check remains the pipeline lead's, not a task here.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 27
