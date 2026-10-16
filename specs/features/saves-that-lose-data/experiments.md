@@ -138,3 +138,17 @@ Not run. `git diff --stat -- electron cli` is empty (working tree) and no commit
 ### Pointer (OQ-7)
 
 The handbook warnings these fixes may make stale go to the scribe as a follow-up; not reviewed here.
+
+## Stage 6.5: the Feature 81 scripts re-run on this branch (lead, 2026-10-15)
+
+Build: `pnpm build` in `frontend/` at `bb54c2ce`, `.next/static` copied into the standalone tree. Each script is the one that recorded the defect in `specs/features/user-handbook/verification.md`, run unchanged from `specs/features/user-handbook/scripts/` against the built standalone server, with a throwaway projects folder and a free port. Ports 7340, 3000 and 6006 had no listener before and after every run; each script stopped only its own server pid. Logs: `logs-exercise/`. Web build only; the desktop app was not run.
+
+| Defect | Script | Feature 81 observation | Observed now |
+|---|---|---|---|
+| D-9 | `task4-sec2b.mjs` | after a Body Text Styles save, `headings` was `{}` | `headings` kept h1 60px; editor H1 60px and dialog 60 after reload |
+| D-26 | `task5-q6.mjs` | stored `wordCount` 0 after a Status choice | Scene A 10 and Scene B 5 after the Status choice |
+| D-29 | `task6-d2.mjs` | By status showed 0 words until a reload | 10 words before and after reload; a hand-set sidecar `wordCount` of 777 still loads as 4 |
+| D-36 | `task7-tr1.mjs` | built-in Point of View kept its link after the target was deleted | `pov` on disk `{"id":null,"name":"Mara"}` after delete; re-linked on restore |
+| D-3/D-39 | `task8-c2.mjs` | Start Page dialog listed 1 of 2 | both dialogs list Inner Doc and Root Doc, "COMPILE (2)"; the compiled file holds both |
+
+`task7-tr2.mjs` (custom Ref re-link and the not-restored notice) gave the same kind of results as in Feature 81.
