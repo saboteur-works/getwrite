@@ -1,0 +1,28 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 89888 port 51893 (throwaway projects dir; templates repo read-only)
+tag creation: dialog lines=["FLASHBACK"]; project.json config.tags=[{"id":"435f1a6a-eab1-4422-8697-b6f2452bed81","name":"flashback"}]
+sidebar Tags section right after creating the tag in Project Settings (dialog closed, no reload): ["No tags yet. Create some in Project Settings."]
+data Scene A: wordCount=50 userMetadata={"pov":"Mara","status":"Draft","storyDate":"2026-01-05","fsel":"Red","fmulti":["Alpha","Beta"]}
+data Scene B: wordCount=600 userMetadata={"pov":"Mara","status":"In review","storyDate":"2026-03-01","fsel":"Green","fmulti":["Alpha"]}
+data Scene C: wordCount=40 userMetadata={"pov":"Elena","status":"Draft","storyDate":"2026-02-01","fmulti":["Beta"]}
+data Scene D: wordCount=5 userMetadata={}
+config.tags=[{"id":"435f1a6a-eab1-4422-8697-b6f2452bed81","name":"flashback"}]; tagAssignments={"a937760b-0f08-4b91-ae38-7fa2190f9916":["435f1a6a-eab1-4422-8697-b6f2452bed81"],"fb6a393d-34a7-48fb-b425-0f8000555796":["435f1a6a-eab1-4422-8697-b6f2452bed81"]}
+meta/backlinks.json (id -> ids it links to): {"1a326ec2-b0e5-453c-adbe-003274ac5713":["a937760b-0f08-4b91-ae38-7fa2190f9916"],"3f51ab4a-6dfd-4c49-a1d7-c9b967dba117":["ec8b5b5b-4d11-4ab7-a1bd-09b7731cad49"],"a937760b-0f08-4b91-ae38-7fa2190f9916":["ade37bbe-700f-42e3-86eb-e458c1190ba3"],"ade37bbe-700f-42e3-86eb-e458c1190ba3":[],"ec8b5b5b-4d11-4ab7-a1bd-09b7731cad49":[],"fb6a393d-34a7-48fb-b425-0f8000555796":["ade37bbe-700f-42e3-86eb-e458c1190ba3"]}; ids: {"Scene A":"a937760b","Scene B":"fb6a393d","Scene C":"3f51ab4a","Scene D":"1a326ec2","Mara":"ade37bbe","Elena":"ec8b5b5b"}
+Q-24 Tags value input: aria-label="Search resource"; placeholder="search…"
+Q-24 typing "flash": suggestions=["flashback"]
+Q-24 typing "Scene": suggestions=[]
+Q-24 typing "Mara": suggestions=[]
+Q-24 "Tags includes flashback" (data: A and B tagged): result=["Scene A","Scene B"]; definition={"op":"in","field":"tags","value":{"id":"435f1a6a-eab1-4422-8697-b6f2452bed81","name":"flashback"}}
+D-19 note: Tags "includes any of" value control: [["INPUT","Values","values..."]]
+stop: recorded 89888(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 96755 port 52012 (throwaway projects dir; templates repo read-only)
+D-20 project.json config.statuses=[]
+D-20 Organizer tab: count=1; disabled=true
+D-20 Organizer filter STEP ERROR locator.click: Timeout 10000ms exceeded. | Call log: | [2m  - waiting for locator('[aria-label=\'Work area views\'] button:has-text(\'Organizer\')').first()[22m
+after: project.json config.statuses=[]
+stop: recorded 96755(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,44 @@
+process zone=America/Denver; local today=2026-10-16
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 72101 port 51625 (throwaway projects dir; templates repo read-only)
+tag creation: dialog lines=["FLASHBACK"]; project.json config.tags=[{"id":"10fb0a15-95e7-42d1-b91c-df98050b5e64","name":"flashback"}]
+sidebar Tags section right after creating the tag in Project Settings (dialog closed, no reload): ["No tags yet. Create some in Project Settings."]
+data Scene A: wordCount=50 userMetadata={"pov":"Mara","status":"Draft","storyDate":"2026-01-05","fsel":"Red","fmulti":["Alpha","Beta"]}
+data Scene B: wordCount=600 userMetadata={"pov":"Mara","status":"In review","storyDate":"2026-03-01","fsel":"Green","fmulti":["Alpha"]}
+data Scene C: wordCount=40 userMetadata={"pov":"Elena","status":"Draft","storyDate":"2026-02-01","fmulti":["Beta"]}
+data Scene D: wordCount=5 userMetadata={}
+config.tags=[{"id":"10fb0a15-95e7-42d1-b91c-df98050b5e64","name":"flashback"}]; tagAssignments={"3f1ed420-3c0d-43fe-96ec-bd0fa240b3c3":["10fb0a15-95e7-42d1-b91c-df98050b5e64"],"90eb0329-47ac-4a84-b206-7d2015867c4d":["10fb0a15-95e7-42d1-b91c-df98050b5e64"]}
+meta/backlinks.json (id -> ids it links to): {"3f1ed420-3c0d-43fe-96ec-bd0fa240b3c3":["81933a75-6485-475b-af95-a992e9299542"],"81933a75-6485-475b-af95-a992e9299542":[],"90eb0329-47ac-4a84-b206-7d2015867c4d":["81933a75-6485-475b-af95-a992e9299542"],"a1e8227d-37b1-4f04-8357-a9d11662d4d1":["d2d7a38e-1229-4807-be5c-433c4bfeff1e"],"d2d7a38e-1229-4807-be5c-433c4bfeff1e":[],"d9f72d46-5f7c-4bbf-968e-626a44d0502c":["3f1ed420-3c0d-43fe-96ec-bd0fa240b3c3"]}; ids: {"Scene A":"3f1ed420","Scene B":"90eb0329","Scene C":"a1e8227d","Scene D":"d9f72d46","Mara":"81933a75","Elena":"d2d7a38e"}
+Q-50 "F Multi includes all of Alpha, Beta": result=["Scene A"] (data: A=[Alpha,Beta], B=[Alpha], C=[Beta]); definition={"op":"and","children":[{"op":"in","field":"fmulti","value":["Alpha","Beta"]}]}
+Q-50 reopened: {"operator":"includes all of"}
+Q-50 comparison "includes any of Alpha, Beta": result=["Scene C","Scene A","Scene B"]
+Q-21/Q-22 Created At last 1 days (all resources created minutes ago): result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"days"}}
+Q-21/Q-22 Created At last 7 days (all resources created minutes ago): result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"gte","field":"createdAt","value":{"amount":7,"unit":"days"}}
+Q-21/Q-22 Created At last 1 weeks (all resources created minutes ago): result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"weeks"}}
+Q-21/Q-22 Created At last 1 months (all resources created minutes ago): result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"gte","field":"createdAt","value":{"amount":1,"unit":"months"}}
+Q-21/Q-22 Updated At last 1 days (all resources created minutes ago): result=["Scene D","Scene C","Scene A","Scene B"]; definition={"op":"gte","field":"updatedAt","value":{"amount":1,"unit":"days"}}
+Q-21 reopened "Created At last 7 days": {"operator":"in the last","amount":"7","unit":"days"}
+Q-21/F-5 Created At is on 2026-10-16 (today=2026-10-16): result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"eq","field":"createdAt","value":"2026-10-16"}
+Q-21/F-5 Created At is after 2026-10-16 (today=2026-10-16): result=[]; definition={"op":"gt","field":"createdAt","value":"2026-10-16"}
+Q-21/F-5 Created At is before 2026-10-16 (today=2026-10-16): result=[]; definition={"op":"lt","field":"createdAt","value":"2026-10-16"}
+Q-21/F-5 Created At is before 2026-10-17 (today=2026-10-16): result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"lt","field":"createdAt","value":"2026-10-17"}
+F-4 untouched "in the last": shown={"amount":"7","unit":"days"}; result=["Scene D","Scene C","Scene A","Elena","Mara","Scene B"]; definition={"op":"gte","field":"createdAt","value":{"amount":7,"unit":"days"}}
+Q-24 Tags value inputs: ["Search resource"]
+Q-24 Tags value box STEP ERROR locator.fill: Timeout 10000ms exceeded. | Call log: | [2m  - waiting for locator('[role=group][aria-label=\'Filter condition\']').first().locator('.filter-chip__slot--value').locator('input[aria-label=\'Tag\']').first()[22m
+F-1 "F Text starts with alpha" (data: A="Alpha one", B="the alpha", C="ALPHA.x"): result=["Scene C","Scene A"]; definition={"op":"matches","field":"ftext","value":"^alpha","caseInsensitive":true}
+F-1 "F Text starts with alpha." (data: A="Alpha one", B="the alpha", C="ALPHA.x"): result=["Scene C"]; definition={"op":"matches","field":"ftext","value":"^alpha\\.","caseInsensitive":true}
+F-1 reopened "starts alpha": {"operator":"starts with"}
+stop: recorded 72101(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 85928 port 51828 (throwaway projects dir; templates repo read-only)
+Q-08 project.json config.statuses=[]
+Q-08 Status chip value options: ["select...","Draft","In review","Published"]
+OQ-7 Statuses chip value control: "select..."; options=["select..."]
+Q-08 sidebar status options: ["Draft","In review","Published"]
+D-20 Organizer filter STEP ERROR locator.click: Timeout 10000ms exceeded. | Call log: | [2m  - waiting for locator('button:has-text(\'Organizer\'), [role=tab]:has-text(\'Organizer\')').first()[22m
+after: project.json config.statuses=[]
+stop: recorded 85928(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
