@@ -1391,17 +1391,109 @@ describe("createdAt predicates on a resource created 3 minutes before the evalua
     expect(result).toEqual([FRESH]);
   });
 
-  it.fails(
-    "omits a resource created 3 minutes ago for eq of its creation day on createdAt [expected failure: D-17]",
-    async () => {
-      const result = await run({
-        op: "eq",
-        field: "createdAt",
-        value: CREATION_DAY,
-      });
-      expect(result).toEqual([FRESH]);
-    },
-  );
+  it("returns a resource created 3 minutes ago for eq of its creation day on createdAt", async () => {
+    const result = await run({
+      op: "eq",
+      field: "createdAt",
+      value: CREATION_DAY,
+    });
+    expect(result).toEqual([FRESH]);
+  });
+});
+
+// ── Feature 86 D-17 / FR-15: eq of a day on the intrinsic timestamps ───────
+
+describe("eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15)", () => {
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  // America/New_York is UTC-4 on 2026-03-10 (DST began 2026-03-08).
+  // Local midnight starting 2026-03-10 is 2026-03-10T04:00:00.000Z.
+  const BEFORE_MIDNIGHT = "eeeeeeee-0000-4000-a000-0000000000b1"; // 03-09 23:59 local
+  const AFTER_MIDNIGHT = "eeeeeeee-0000-4000-a000-0000000000b2"; // 03-10 00:01 local
+  const END_OF_DAY = "eeeeeeee-0000-4000-a000-0000000000b3"; // 03-10 23:59 local
+  const NEXT_DAY = "eeeeeeee-0000-4000-a000-0000000000b4"; // 03-11 00:01 local
+  const STAMPS: Record<string, string> = {
+    [BEFORE_MIDNIGHT]: "2026-03-10T03:59:00.000Z",
+    [AFTER_MIDNIGHT]: "2026-03-10T04:01:00.000Z",
+    [END_OF_DAY]: "2026-03-11T03:59:00.000Z",
+    [NEXT_DAY]: "2026-03-11T04:01:00.000Z",
+  };
+
+  function at(id: string): ResourceBase {
+    return {
+      id,
+      slug: id,
+      name: id,
+      type: "text",
+      folderId: null,
+      orderIndex: 0,
+      statuses: [],
+      createdAt: STAMPS[id],
+      updatedAt: STAMPS[id],
+    };
+  }
+  const resources = Object.keys(STAMPS).map(at);
+
+  const day = (field: string, value: string): Promise<string[]> =>
+    ids({ op: "eq", field, value }, { resources, sidecars: {} });
+
+  for (const field of ["createdAt", "updatedAt"]) {
+    it(`${field}: 2026-03-10 returns the minute after local midnight through 23:59, not the minute before or the next day`, async () => {
+      expect(await day(field, "2026-03-10")).toEqual([
+        AFTER_MIDNIGHT,
+        END_OF_DAY,
+      ]);
+    });
+    it(`${field}: 2026-03-09 returns the minute before local midnight on the neighbouring day only`, async () => {
+      expect(await day(field, "2026-03-09")).toEqual([BEFORE_MIDNIGHT]);
+    });
+    it(`${field}: 2026-03-11 returns the minute after local midnight on the next day only`, async () => {
+      expect(await day(field, "2026-03-11")).toEqual([NEXT_DAY]);
+    });
+  }
+
+  it("a custom date field holding a date-only string keeps string equality", async () => {
+    const r = at(AFTER_MIDNIGHT);
+    const result = await ids(
+      { op: "eq", field: "due", value: "2026-03-10" },
+      {
+        resources: [r, at(NEXT_DAY)],
+        sidecars: {
+          [AFTER_MIDNIGHT]: { due: "2026-03-10" },
+          [NEXT_DAY]: { due: "2026-03-10T04:01:00.000Z" },
+        },
+      },
+    );
+    expect(result).toEqual([AFTER_MIDNIGHT]);
+  });
+
+  it("a text field holding a timestamp-shaped string keeps string equality", async () => {
+    const result = await ids(
+      { op: "eq", field: "note", value: "2026-03-10" },
+      {
+        resources: [at(AFTER_MIDNIGHT), at(NEXT_DAY)],
+        sidecars: {
+          [AFTER_MIDNIGHT]: { note: "2026-03-10T04:01:00.000Z" },
+          [NEXT_DAY]: { note: "2026-03-10" },
+        },
+      },
+    );
+    expect(result).toEqual([NEXT_DAY]);
+  });
+
+  it("eq of a full timestamp on createdAt stays exact string equality", async () => {
+    expect(await day("createdAt", STAMPS[AFTER_MIDNIGHT])).toEqual([
+      AFTER_MIDNIGHT,
+    ]);
+  });
 });
 
 // ── Feature 86 D-17: relative-date gte ("in the last") ────────────────────

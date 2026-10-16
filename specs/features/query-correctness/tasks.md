@@ -134,7 +134,7 @@ FR coverage (every FR is delivered by a task; FR-27, FR-28 and FR-29 are also in
 **Depends on:** 9
 **Estimate:** 3
 **Notes:** Satisfies FR-15, FR-13 (zone), FR-27, FR-28. Known limit, recorded: on a hosted deployment or a paired device in another zone the day is the server's (OQ-2 (d)).
-**Done:** [ ]
+**Done:** [x] (committed in Task 10 commit)
 
 ### Task 11: FR-16 (b): calendar-day comparison for before/after/between on the intrinsic timestamp fields
 **What:** Make "is before", "is after" and "is between" on `createdAt` and `updatedAt` compare by local calendar day (FR-16 option (b)); the Task 3 measurement confirmed the misbehaviour and the owner decided at the FR-4 stop (2026-10-16, F-5 and F-6) to implement it on the intrinsic timestamp fields only.

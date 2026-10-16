@@ -369,6 +369,31 @@ function parseDateValue(v: MetadataValue | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/** The intrinsic timestamp fields, whose "is on" compares by calendar day. */
+function isTimestampField(field: string): boolean {
+  return field === "createdAt" || field === "updatedAt";
+}
+
+/** True for a `YYYY-MM-DD` string. */
+function isDateOnly(v: MetadataValue): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+}
+
+/**
+ * True when the timestamp `v` falls on the calendar day `day` (`YYYY-MM-DD`)
+ * in the evaluating process's local zone. An absent or unparseable `v` is false.
+ */
+function sameLocalDay(v: MetadataValue | undefined, day: string): boolean {
+  const stamp = parseDateValue(v);
+  const target = parseDateValue(day);
+  if (stamp === null || target === null) return false;
+  return (
+    stamp.getFullYear() === target.getFullYear() &&
+    stamp.getMonth() === target.getMonth() &&
+    stamp.getDate() === target.getDate()
+  );
+}
+
 /** Evaluate `contains` on a string field value (case-insensitive substring). */
 function evalContains(
   v: MetadataValue | undefined,
@@ -472,6 +497,9 @@ function matchNode(
     // ── Equality predicates ───────────────────────────────────────────
     case "eq": {
       const v = resolveFieldValue(ast.field, resource, sidecar, context);
+      if (isTimestampField(ast.field) && isDateOnly(ast.value)) {
+        return sameLocalDay(v, ast.value);
+      }
       return valuesEqual(v, ast.value);
     }
 

@@ -518,7 +518,7 @@ async function idsFor(
 /**
  * Cases that fail on the unfixed tree, keyed by the case title, valued with the
  * defect ID. Measured by the unfixed-tree run (FR-4); each fix task removes its
- * entries. D-17: "in the last" and "is on" on dates (the
+ * entries. D-17: "in the last" on dates (the
  * untouched "in the last" case is also the FR-3 never-edited-value finding).
  * "finding-FR-16": date before/after/between on the intrinsic timestamps.
  * "finding": anything else.
@@ -532,8 +532,6 @@ const KNOWN_FAILURES: ReadonlyMap<string, string> = new Map<string, string>([
   ["resource-ref › is › typed name Tom › edited", "finding"],
   ["resource-ref › is-not › typed name Tom › edited", "finding"],
   ...["createdAt", "updatedAt"].flatMap((f): [string, string][] => [
-    [`date (${f}) › is-on › 2026-03-10 › edited`, "D-17"],
-    [`date (${f}) › is-on › 2026-03-09 › edited`, "D-17"],
     [
       `date (${f}) › in-the-last › untouched › returns what the input displays`,
       "D-17 + FR-3",
@@ -671,8 +669,8 @@ describe("expected-failure list", () => {
     expect(stale).toEqual([]);
   });
 
-  it("lists the 20 cases still failing after the D-17 relative-date evaluator fix", () => {
-    expect(KNOWN_FAILURES.size).toBe(20);
+  it("lists the 16 cases still failing after the D-17 is-on evaluator fix", () => {
+    expect(KNOWN_FAILURES.size).toBe(16);
   });
 });
 
