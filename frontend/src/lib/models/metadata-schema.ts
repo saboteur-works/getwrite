@@ -436,9 +436,11 @@ export async function migrateProjectOnLoad(
 
 /**
  * Returns the keys of every `resource-ref` / `multi-resource-ref` field in
- * effect for a project: the persisted schema's fields, plus any
- * `DEFAULT_METADATA_SCHEMA` field whose key the persisted schema does not
- * define. A persisted definition of a key wins over the built-in one.
+ * effect for a project. All-or-nothing, matching the client's
+ * `metadataSchema ?? DEFAULT_METADATA_SCHEMA`: when the project has no
+ * persisted `config.metadataSchema`, the fields of `DEFAULT_METADATA_SCHEMA`
+ * are used; when one is persisted, its fields alone are used, so a persisted
+ * schema lacking a built-in reference field such as `pov` yields no key for it.
  *
  * Read-only: it never writes `project.json` (migrations are applied in
  * memory only). Throws if `project.json` cannot be read, so callers keep
@@ -448,15 +450,12 @@ export async function getEffectiveResourceRefFieldKeys(
   projectRoot: string,
 ): Promise<string[]> {
   const project = await readProject(projectRoot);
-  const persisted = project.config?.metadataSchema
-    ? applySchemaMigrations(project.config.metadataSchema).schema
-    : { groups: [] };
-  const persistedFields = persisted.groups.flatMap((g) => g.fields);
-  const persistedKeys = new Set(persistedFields.map((f) => f.key));
-  const builtInFields = DEFAULT_METADATA_SCHEMA.groups
+  const persistedSchema = project.config?.metadataSchema;
+  const effective = persistedSchema
+    ? applySchemaMigrations(persistedSchema).schema
+    : DEFAULT_METADATA_SCHEMA;
+  return effective.groups
     .flatMap((g) => g.fields)
-    .filter((f) => !persistedKeys.has(f.key));
-  return [...persistedFields, ...builtInFields]
     .filter((f) => f.type === "resource-ref" || f.type === "multi-resource-ref")
     .map((f) => f.key);
 }

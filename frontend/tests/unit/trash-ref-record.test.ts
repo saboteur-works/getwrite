@@ -300,6 +300,14 @@ describe("F87 D-36: deleteResourceCore and restore against a referencing Point o
     });
   });
 
+  it("persisted schema without a pov field: pov of the referencing resource is left unchanged after the target is deleted", async () => {
+    const f = await setup("schema-without-pov");
+    const before = await readOtherUserMetadata(f);
+    await deleteTarget(f);
+    expect(before["pov"]).toEqual({ id: f.targetId, name: "Mara" });
+    expect((await readOtherUserMetadata(f))["pov"]).toEqual(before["pov"]);
+  });
+
   it("multi-resource-ref field: the entry naming the target is cleared and the other entry is kept", async () => {
     const f = await setup("schema-edited", true);
     await deleteTarget(f);

@@ -261,6 +261,12 @@ describe("F87 D-36: softDeleteFolder against a referencing Point of View", () =>
     });
   });
 
+  it("persisted schema without a pov field: pov of a resource outside the folder is left unchanged after the folder is deleted", async () => {
+    const pov = (await run("schema-without-pov"))["pov"] as { id: unknown };
+    expect(pov.id).not.toBeNull();
+    expect(typeof pov.id).toBe("string");
+  });
+
   it("multi-resource-ref field: the entry naming a resource in the folder is cleared and the other entry is kept", async () => {
     expect((await run("schema-edited", true))["characters"]).toEqual([
       { id: null, name: "Mara" },

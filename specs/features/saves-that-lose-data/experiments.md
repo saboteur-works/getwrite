@@ -167,3 +167,7 @@ Not separated by an experiment: whether the stored sidecar value changes with th
 ### Start Page compile placement
 
 Start Page compile placement: compile request body (`compileBody` in StartPage.tsx) carries only id, name and type per resource, so no test asserts `folderId` or `plainText` on the compile input; placement is asserted by dialog row indentation.
+
+### FR-17 / OQ-4 revision: all-or-nothing reference-key helper
+
+Measurement (2026-10-15): three tests were added before the change (`metadata-schema.test.ts` "a persisted schema lacking pov yields no pov key"; `trash-ref-record.test.ts` and `trash-folder-cascade.test.ts` "persisted schema without a pov field ... left unchanged", using a new `schema-without-pov` fixture state that writes a persisted schema with no `pov` field). Against the per-key merge all three failed: keys were `['ref','pov']` instead of `['ref']`; `deleteResourceCore` left `pov` as `{ id: null, name: 'Mara' }` instead of unchanged; `softDeleteFolder` left `pov.id` null. After `getEffectiveResourceRefFieldKeys` was changed to use `DEFAULT_METADATA_SCHEMA` only when no schema is persisted, otherwise the persisted fields alone, all three passed. `f87-pov-delete-experiment.test.ts` F87C lines: never-edited `keys=[]`/`povInKeys=false` in the printed project state with `otherPovAfterDelete={"id":null,"name":"Mara"}` at all three sites; after-one-schema-edit `keys=["pov"]` with the same cleared result at all three sites. Full suite 6505 passed / 1 skipped.

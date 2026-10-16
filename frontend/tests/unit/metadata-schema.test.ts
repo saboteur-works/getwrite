@@ -870,7 +870,21 @@ describe("getEffectiveResourceRefFieldKeys", () => {
     expect(await fs.readFile(file, "utf8")).toBe(before);
   });
 
-  it("merges a persisted custom ref field with built-ins and lets a persisted definition win", async () => {
+  it("uses a persisted schema's fields alone: a persisted schema lacking pov yields no pov key", async () => {
+    const { dir } = await makeTmpProject({
+      groups: [
+        {
+          id: "g",
+          label: "G",
+          fields: [{ key: "ref", label: "Ref", type: "resource-ref" }],
+        },
+      ],
+    });
+    const keys = await getEffectiveResourceRefFieldKeys(dir);
+    expect(keys).toEqual(["ref"]);
+  });
+
+  it("uses a persisted custom ref field and lets a persisted definition win over the built-in", async () => {
     const { dir } = await makeTmpProject({
       groups: [
         {

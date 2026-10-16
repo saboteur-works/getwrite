@@ -2,6 +2,7 @@
  * Shared fixture for the Feature 87 (D-36) reference-clearing tests: a
  * throwaway project whose `config.metadataSchema` is either never edited or
  * has been edited once (one custom group added, which persists the schema),
+ * or persists a schema with no `pov` field (`schema-without-pov`),
  * plus one "target" text resource named "Mara" and one "other" text resource
  * whose `userMetadata` points at the target.
  */
@@ -18,7 +19,11 @@ import {
   writeResourceToFile,
 } from "../../../src/lib/models/resource";
 
-export type SchemaState = "never-edited" | "schema-edited";
+export type SchemaState =
+  | "never-edited"
+  | "schema-edited"
+  /** A persisted schema that defines no `pov` field (as if the writer removed it). */
+  | "schema-without-pov";
 
 export interface RefFixture {
   projectsDir: string;
@@ -52,7 +57,20 @@ export async function makeRefFixture(
       id: projectId,
       name: "F87",
       createdAt: new Date().toISOString(),
-      config: {},
+      config:
+        options.schema === "schema-without-pov"
+          ? {
+              metadataSchema: {
+                groups: [
+                  {
+                    id: "custom-group",
+                    label: "Custom",
+                    fields: [{ key: "extra", label: "Extra", type: "text" }],
+                  },
+                ],
+              },
+            }
+          : {},
     }),
     "utf8",
   );
