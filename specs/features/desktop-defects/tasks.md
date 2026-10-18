@@ -116,7 +116,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 9
 **Estimate:** 2
 **Notes:** Satisfies FR-12, FR-13, FR-14, FR-15, FR-24 (OQ-4 (b)). Do not change how a damaged file is read, and do not add locking or a backup.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: D-40 manual compile in the development app and FR-17 classification
 **What:** Run a compile of a project with at least two text resources in a Playwright-launched development app with a `require`-free download hook and a throwaway download path, record the observations, and classify the result.

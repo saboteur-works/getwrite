@@ -266,10 +266,37 @@ function writeWorkspaceConfig(
   config: WorkspaceConfigFile,
 ): void {
   fs.mkdirSync(userDataDir, { recursive: true });
-  fs.writeFileSync(
+  writeFileViaTemporary(
     workspaceConfigPath(userDataDir),
     `${JSON.stringify(config, null, 2)}\n`,
   );
+}
+
+/**
+ * Writes `contents` to `target` by writing a temporary file in the same
+ * directory and renaming it over `target`, so a write that fails part-way
+ * leaves the previous `target` bytes in place. The temporary file is removed
+ * if the write or the rename fails.
+ *
+ * @param target - Absolute path of the file to replace.
+ * @param contents - The complete new file contents.
+ */
+function writeFileViaTemporary(target: string, contents: string): void {
+  const temporary = path.join(
+    path.dirname(target),
+    `.${path.basename(target)}.${process.pid}.${Date.now()}.tmp`,
+  );
+  try {
+    fs.writeFileSync(temporary, contents);
+    fs.renameSync(temporary, target);
+  } catch (error) {
+    try {
+      fs.rmSync(temporary, { force: true });
+    } catch {
+      // The original failure is the one worth reporting.
+    }
+    throw error;
+  }
 }
 
 /**

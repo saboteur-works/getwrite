@@ -146,3 +146,11 @@ Full suite: 1 failed, 501 passed (502); 31 files passed, 1 failed. Existing case
 - (5) setting one field preserves the others: the existing cases at ~183, 193, 251 and 267 already cover noise words/projectsDir/sharing pairs; added one more case with all three fields on disk (`writeGlobalNoiseWords` keeps `projectsDir` and `sharingEnabled`): GREEN, pin. Also added a format pin (two-space JSON, trailing newline): GREEN.
 
 What this shows: the old content survives an injected write failure only once Task 10 is in. It does not show that a real crash or power loss is survived.
+
+### Task 10: temporary-file-and-rename write of `workspace.json` (`electron/src/projects-dir.ts`, run from `electron/`, sandbox, 2026-10-18)
+
+Change: `writeWorkspaceConfig` still creates the directory, then calls a new local helper `writeFileViaTemporary`, which writes the same body (two-space JSON, trailing newline, default mode) with `fs.writeFileSync` to a dot-prefixed `.workspace.json.<pid>.<time>.tmp` in the same directory and `fs.renameSync`s it over `workspace.json`; on any failure it removes the temporary file (`fs.rmSync`, force) and rethrows the original error. All four setters go through `writeWorkspaceConfig`. The read path is unchanged (a damaged file still reads as `{}`); no locking, no backup.
+
+Results (exit codes captured directly): `pnpm typecheck` 0; `pnpm test` 0 (32 files, 502 tests passed, the Task 9 cases now green including the one that was red); `pnpm build:worker` 0. `grep -n "sharing/" electron/src/projects-dir.ts`: no output; `git diff --stat -- electron/src/sharing`: empty. Only `electron/src/projects-dir.ts` has a source diff.
+
+What this shows: the old content survives an injected `fs.writeFileSync` failure, and no temporary file is left after a failed or successful write. It does not show survival of a real crash or power loss (no fsync was added; not tested).
