@@ -1,0 +1,19 @@
+# cli/ (getwrite-cli)
+
+Paths relative to `cli/` unless prefixed `frontend/` or `docs/`. Full reference: `docs/features/cli.md`.
+
+Built on `commander`; bundled with esbuild by `pnpm cli:build` to `dist/bin/getwrite-cli.cjs`. Set `GETWRITE_CLI_TESTING=1` to suppress `process.exit` when invoking commands from tests. Most commands delegate to `frontend/src/lib/models/`; `doctor` lives in `cli/src/commands/doctor.ts` and the QA harness in `cli/src/qa/`.
+
+Commands (`[projectRoot]` optional):
+
+- `project create [projectRoot] --spec <specPath> [-n <name>]` — scaffold from a project-type JSON spec (`project-creator.ts`).
+- `project import-scrivener <scrivPath> [projectRoot] [-n <name>]` — Scrivener 3 Mac `.scriv` into a new project (`models/scrivener/`). Refuses, before writing, a `.scrivx` `Creator` not starting `SCRMAC-3` and a non-empty `projectRoot`. Skips and reports (never aborts on) unconvertible RTF, malformed fragments, Trash, non-text Research, `Type="Other"`. Writes `scrivener-import-report.txt` (8 fixed sections). Also driven from the desktop UI.
+- `project import-docx <source> [projectRoot] [-n <name>] [-s, --split-level <1-6|none>] [-t, --project-type <id>]` — `.docx` file or folder into a new project (`models/docx/`). Source auto-detected. `--split-level` (default `1`) is refused against a folder source. `--project-type` (default `blank`) is a spec `id` under `getwrite-config/templates/project-types/`; unknown id refused. Refuses non-empty `projectRoot` and a directory with no `.docx`, before writing. Comments and images are not imported; tracked changes are imported as shown. Writes `docx-import-report.txt` (8 sections). Also driven from the desktop UI.
+- `project import-plaintext <source> [projectRoot] [-n, --name <name>]` — `.txt` file or folder (`models/plaintext/`); CLI-only. Refuses non-empty `projectRoot` and a directory with no `.txt`, before writing. Blank line = paragraph, lone `\n` = `hardBreak`. Writes `plaintext-import-report.txt` (3 sections) and logs one writing-log entry with `source: "plaintext"`.
+- `prune [projectRoot] [--max <n>]` — delete oldest non-canonical, unprotected revisions down to `--max` (default 50) per resource; logic in `pruneExecutor.ts`.
+- `reindex [projectRoot]` — rebuild inverted index, backlinks and mention index from scratch; use after bulk filesystem changes. Does not touch `meta/writing-log/`.
+- `templates save|save-from-resource|create|duplicate|list <projectRoot> ...` — manage `meta/templates/`. `save-from-resource <projectRoot> <resourceId> <templateId> [--name <name>]` (overwrites without prompting; refused on an encrypted project). A resource made from the CLI is searchable at once but needs `reindex` to appear in entity mentions.
+- `screenshots capture [-b <storybook-url>] [-o <out-dir>] [-l <limit>]` — Playwright full-page screenshots of every story.
+- `doctor [projectRoot]` — report broken folder associations (`src/commands/doctor.ts`).
+- `repair-revisions [projectRoot] [--dry-run]` — write `v-1` for each text resource that has content files and no revision; never overwrites; writes only under `revisions/`. Exit `1` if a revision-less resource has no content files, `3` on an encrypted project (`revision-repair.ts`).
+- `qa start|verify|record|report|finish` — developer-only agentic QA harness (not in CI; code in `src/qa/`): `start` makes a disposable workspace and dev server; `verify <kind>` (`project-manifest`, `resource-content`, `resource-sidecar`, `revision`) checks UI outcomes against disk; `record <status>` never records `pass`; `report` writes `specs/features/agentic-qa/run-report.md`; `finish` stops the server. See `specs/features/agentic-qa.md`.
