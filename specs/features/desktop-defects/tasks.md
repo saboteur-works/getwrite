@@ -35,7 +35,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-21 (process listing), FR-25, FR-26 (baseline half). `pnpm test:e2e` and `lsof` run OUTSIDE the sandbox; Playwright's webServer config serves Storybook on 6006 with `reuseExistingServer`, so record the 6006 listener first, record the pid of anything this task starts and stop only that, by pid, confirming the listener is gone. Earlier figures (Feature 87: frontend 6468 passed / 1 skipped, e2e 214 passed / 1 skipped) are reported, not current; measure. The uncommitted edits to `specs/product/getwrite.features.md`, `specs/product/getwrite.md` and `specs/features/desktop-defects.md` are the pipeline's; leave them alone.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: D-8 extract the DOCX fork-options function and show the FR-2 test red
 **What:** Move the options built for the DOCX worker fork (`electron/src/main.ts:661`) into a pure function that returns exactly what main passes today, and add the test that the options carry `GETWRITE_PROJECT_TYPES_DIR` and a `cwd`, red against it.
