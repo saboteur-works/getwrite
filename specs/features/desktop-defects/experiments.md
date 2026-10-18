@@ -111,3 +111,11 @@ Full-suite result: 2 files failed, 30 passed; 1 test failed, 491 passed (492). T
 - `tests/noise-words-ipc.test.ts`: suite fails to load, `Error: Cannot find module '../src/noise-words-ipc' imported from .../electron/tests/noise-words-ipc.test.ts`; 0 tests ran (the three cases are not individually red/green yet).
 
 Handler cases written: get reads the list from the given directory; set writes `workspace.json` in the given directory and returns `{ ok: true }` without logging; a write that throws (user-data path beneath a regular file) returns `{ ok: false, message }` and logs `Failed to save the global noise-word list: <message>` once.
+
+### Task 7: handlers use `app.getPath("userData")` (run from `electron/`, sandbox, 2026-10-18)
+
+Changed: new `electron/src/noise-words-ipc.ts` (`createGlobalNoiseWordsHandlers({ userDataDir, log })` -> `get()`, `set(words)`; result `{ ok: true } | { ok: false, message }`; failure line `Failed to save the global noise-word list: <message>` unchanged); `electron/src/main.ts` `getwrite:global-noise-words-get` and `-set` now call the handlers built with `app.getPath("userData")` (both builds); `writeGlobalNoiseWords`, `readGlobalNoiseWords` and `projectsDirEnvironment()` unchanged (FR-10). The FR-8 reproduction case was removed from `projects-dir.test.ts`; `noise-words-ipc.test.ts` gained a fourth case pinning that, with a directory given and cwd an empty throwaway directory, set/get round-trip, `workspace.json` is created in the given directory and nothing is written to the cwd.
+
+Results: `pnpm typecheck` exit 0; `pnpm test` 32 files passed, 495 tests passed (the 3 Task 6 handler cases green); `pnpm build:worker` completed (built `dist/docx-import-worker.cjs`). This is unit-level only; the running app was not exercised (Task 8).
+
+Not done: no test asserts `projectsDirEnvironment()` still returns `userDataDir: ""` unpackaged, because it lives in `main.ts`, which imports `electron`; the function body is unchanged by this task (verified by diff reading, not by a test).

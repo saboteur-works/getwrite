@@ -89,7 +89,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** Satisfies FR-9, FR-10, FR-24. Do not touch the workspace-folder chooser at `main.ts:298`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: D-2 measurement: add a global noise word in the development app
 **What:** In the development app with a throwaway user-data directory, add a global noise word in App Settings, restart the app, and record what is listed and stored.

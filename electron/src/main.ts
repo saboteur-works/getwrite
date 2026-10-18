@@ -43,15 +43,17 @@ import {
   ensureProjectsDir,
   legacyProjectsDirs,
   migrateLegacyProjectsDir,
-  readGlobalNoiseWords,
   readSharingEnabled,
   writeSharingEnabled,
   resolveProjectsDir,
   validateWorkspaceDir,
   writeConfiguredProjectsDir,
-  writeGlobalNoiseWords,
   type ProjectsDirEnvironment,
 } from "./projects-dir";
+import {
+  createGlobalNoiseWordsHandlers,
+  type GlobalNoiseWordsSetResult,
+} from "./noise-words-ipc";
 import { createSelectionHandleRegistry } from "./scrivener-import/selection-handles";
 import { createImportGuard } from "./scrivener-import/import-guard";
 import {
@@ -416,12 +418,6 @@ function registerSharingHandlers(): void {
   );
 }
 
-/** What persisting a new global noise-word list can result in. */
-interface GlobalNoiseWordsSetResult {
-  ok: boolean;
-  message?: string;
-}
-
 /**
  * Wires the two global noise-word-list channels the preload bridge calls
  * (FR-5b).
@@ -435,22 +431,20 @@ interface GlobalNoiseWordsSetResult {
  * pair itself.
  */
 function registerGlobalNoiseWordsHandlers(): void {
+  // `app.getPath("userData")` in both builds: `projectsDirEnvironment()`
+  // returns "" for userDataDir unpackaged, which is not a usable directory.
+  const handlers = createGlobalNoiseWordsHandlers({
+    userDataDir: app.getPath("userData"),
+    log,
+  });
+
   ipcMain.handle("getwrite:global-noise-words-get", (): string[] =>
-    readGlobalNoiseWords(projectsDirEnvironment().userDataDir),
+    handlers.get(),
   );
 
   ipcMain.handle(
     "getwrite:global-noise-words-set",
-    (_event, words: string[]): GlobalNoiseWordsSetResult => {
-      try {
-        writeGlobalNoiseWords(projectsDirEnvironment().userDataDir, words);
-        return { ok: true };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        log(`Failed to save the global noise-word list: ${message}`);
-        return { ok: false, message };
-      }
-    },
+    (_event, words: string[]): GlobalNoiseWordsSetResult => handlers.set(words),
   );
 }
 

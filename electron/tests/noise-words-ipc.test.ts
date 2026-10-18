@@ -58,4 +58,28 @@ describe("createGlobalNoiseWordsHandlers", () => {
       `Failed to save the global noise-word list: ${result.message}`,
     );
   });
+
+  it("never passes an empty path: with the directory given, nothing is written to the working directory (FR-8, FR-9)", () => {
+    // Pins the handler-level fix: the handlers use the directory they are
+    // given. The model's mkdir('') failure is unchanged (FR-10).
+    const emptyCwd = path.join(dir, "empty-cwd");
+    const userData = path.join(dir, "user-data");
+    fs.mkdirSync(emptyCwd);
+    fs.mkdirSync(userData);
+    const originalCwd = process.cwd();
+    process.chdir(emptyCwd);
+    try {
+      expect(process.cwd()).toBe(fs.realpathSync(emptyCwd));
+      const handlers = createGlobalNoiseWordsHandlers({
+        userDataDir: userData,
+        log,
+      });
+      expect(handlers.set(["said"])).toEqual({ ok: true });
+      expect(handlers.get()).toEqual(["said"]);
+      expect(fs.readdirSync(emptyCwd)).toEqual([]);
+      expect(fs.existsSync(path.join(userData, "workspace.json"))).toBe(true);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
 });
