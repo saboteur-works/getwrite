@@ -125,7 +125,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Satisfies FR-16, FR-17, FR-21, FR-22, FR-25 (OQ-5, OQ-6). May HALT for an owner decision: class (c) means nothing is built; the experiments file records what was measured and the size of what a separate feature would need, the part stops, and the lead takes it to the owner (FR-20). Class (d): record, nothing built. Tasks 13-15 run only for the matching class. Needs the desktop app: OUTSIDE the sandbox, main checkout. Not run if 7340 is held or a protected path is reported.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: D-40 manual compile in the unpacked build
 **What:** Repeat the Task 11 compile in the unpacked build from Task 5, if Task 5 showed it is safe to run, and record whether the result differs from the development app.
