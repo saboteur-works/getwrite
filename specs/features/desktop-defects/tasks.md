@@ -107,7 +107,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-13, FR-14, FR-24. The test shows that old content survives an injected failure; it does not show a real crash or power loss is survived, and no note or report may say it does. How the write is stubbed (injectable `fs` argument or module mock) is decided by reading the existing test style.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: D-2 fix: temporary-file-and-rename write of `workspace.json`
 **What:** Make `writeWorkspaceConfig` create the parent directory, write the complete JSON to a temporary file in the same directory and rename it over `workspace.json`, using a local helper in `projects-dir.ts`.

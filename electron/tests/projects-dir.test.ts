@@ -8,7 +8,7 @@
  * user had, silently, on a routine drag-to-Applications update — so the
  * migration is exercised against a real filesystem rather than a mock.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -272,6 +272,108 @@ describe("the sharing setting", () => {
 
     clearConfiguredProjectsDir(userDataDir);
     expect(readSharingEnabled(userDataDir)).toBe(true);
+  });
+});
+
+describe("writing workspace.json atomically (Feature 88, FR-12 to FR-15)", () => {
+  const configFile = (): string => path.join(userDataDir, "workspace.json");
+  const known = `${JSON.stringify({ projectsDir: "/known/place", sharingEnabled: true }, null, 2)}\n`;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Lists userData, ignoring the `projects` directory the fixture creates. */
+  function entriesBesidesProjects(): string[] {
+    return fs.readdirSync(userDataDir).filter((name) => name !== "projects");
+  }
+
+  /**
+   * Replaces the file write with one that writes the first half of the body
+   * to the path it was given and then throws.
+   */
+  function failPartWayThroughWrite(): void {
+    const realWrite = fs.writeFileSync.bind(fs);
+    vi.spyOn(fs, "writeFileSync").mockImplementation(((
+      target: fs.PathOrFileDescriptor,
+      data: string | NodeJS.ArrayBufferView,
+    ) => {
+      const body = String(data);
+      realWrite(target, body.slice(0, Math.floor(body.length / 2)));
+      throw new Error("injected write failure");
+    }) as typeof fs.writeFileSync);
+  }
+
+  it("leaves the existing bytes unchanged when the write fails part-way", () => {
+    write(configFile(), known);
+    failPartWayThroughWrite();
+
+    expect(() => writeGlobalNoiseWords(userDataDir, ["said", "look"])).toThrow(
+      "injected write failure",
+    );
+    vi.restoreAllMocks();
+
+    expect(fs.readFileSync(configFile(), "utf8")).toBe(known);
+  });
+
+  it("leaves no temporary file after a successful write", () => {
+    write(configFile(), known);
+
+    writeGlobalNoiseWords(userDataDir, ["said"]);
+
+    expect(entriesBesidesProjects()).toEqual(["workspace.json"]);
+  });
+
+  it("leaves no temporary file after a failed write", () => {
+    write(configFile(), known);
+    failPartWayThroughWrite();
+
+    expect(() => writeGlobalNoiseWords(userDataDir, ["said"])).toThrow();
+    vi.restoreAllMocks();
+
+    expect(entriesBesidesProjects()).toEqual(["workspace.json"]);
+  });
+
+  it("writes the file with the process default mode, not 0600", () => {
+    fs.mkdirSync(userDataDir, { recursive: true });
+    const baseline = path.join(userDataDir, "baseline.txt");
+    fs.writeFileSync(baseline, "x");
+    const defaultMode = fs.statSync(baseline).mode & 0o777;
+    fs.rmSync(baseline);
+
+    writeSharingEnabled(userDataDir, true);
+
+    expect(fs.statSync(configFile()).mode & 0o777).toBe(defaultMode);
+  });
+
+  it("keeps only the field being set after a damaged file reads as empty", () => {
+    write(configFile(), "{not json");
+
+    writeSharingEnabled(userDataDir, true);
+
+    expect(JSON.parse(fs.readFileSync(configFile(), "utf8"))).toEqual({
+      sharingEnabled: true,
+    });
+  });
+
+  it("keeps the two-space JSON format with a trailing newline", () => {
+    writeSharingEnabled(userDataDir, true);
+
+    expect(fs.readFileSync(configFile(), "utf8")).toBe(
+      `${JSON.stringify({ sharingEnabled: true }, null, 2)}\n`,
+    );
+  });
+
+  it("preserves the other fields when one is set", () => {
+    write(configFile(), known);
+
+    writeGlobalNoiseWords(userDataDir, ["said"]);
+
+    expect(JSON.parse(fs.readFileSync(configFile(), "utf8"))).toEqual({
+      projectsDir: "/known/place",
+      sharingEnabled: true,
+      globalNoiseWords: ["said"],
+    });
   });
 });
 
