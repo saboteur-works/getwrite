@@ -56,3 +56,8 @@ The failing assertion is the missing `GETWRITE_PROJECT_TYPES_DIR` key. The `cwd`
 ### Reading check: the Scrivener worker does not read project types (FR-5)
 
 Reading, not a run. `electron/worker/scrivener-import-worker.ts:15-30` imports only from `@gw/core` and `../src/scrivener-import/handle-import-request`. `frontend/src/lib/models/scrivener/import-scrivener-project.ts:110-160` imports no `projectTypes` module and no `GETWRITE_PROJECT_TYPES_DIR` reference. `grep -rn 'projectTypes"' frontend/src` lists importers of `getProjectType` as only `project-crud-core.ts:48`, `plaintext/import-plaintext-project.ts:120` and `docx/import-docx-project.ts:136`; `GETWRITE_PROJECT_TYPES_DIR` is read only at `frontend/src/lib/projectTypes.ts:68`. Not checked: whether `../project` (`createProject`) or other transitively imported modules reach `projectTypes` beyond the direct imports listed (the grep over all of `frontend/src` shows no other importer of it). Finding: the Scrivener worker does not read project types.
+
+### Task 3: fix (2026-10-18)
+
+Change: `buildDocxWorkerForkOptions({ templatesDir, workingDir, baseEnv })` now returns `{ env: { ...baseEnv, GETWRITE_PROJECT_TYPES_DIR: templatesDir }, cwd: workingDir }`; main passes `resolveDirectories().templatesDir`, `getRepoRoot()` and `process.env` (DOCX fork only; no `app.isPackaged` branch). Tests added for FR-3 (input variable preserved) and FR-4 (working dir passed unchanged). From `electron/`: `pnpm typecheck` exit 0; `pnpm test` exit 0 (31 files, 491 tests passed, fork-options test green); `pnpm build:worker` exit 0. This shows the function's output and that the build succeeds; it does not show a Word import works (Tasks 4 and 5).
+

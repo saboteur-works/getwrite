@@ -8,8 +8,8 @@
 
 /** The subset of `utilityProcess.fork` options this module produces. */
 export interface DocxWorkerForkOptions {
-  env?: Record<string, string | undefined>;
-  cwd?: string;
+  env: Record<string, string | undefined>;
+  cwd: string;
 }
 
 /** Inputs the fork options are derived from. */
@@ -18,14 +18,19 @@ export interface DocxWorkerForkInputs {
   templatesDir: string;
   /** Working directory the worker should start in. */
   workingDir: string;
+  /** Environment the worker inherits (passing `env` replaces it, so it is carried over). */
+  baseEnv: Record<string, string | undefined>;
 }
 
 /**
- * Returns the fork options for the DOCX worker. Today this is the empty object
- * main has always passed (no `env`, no `cwd`), so the worker inherits both.
+ * Returns the fork options for the DOCX worker: the base environment plus
+ * `GETWRITE_PROJECT_TYPES_DIR`, and the given working directory unchanged.
  */
 export function buildDocxWorkerForkOptions(
-  _inputs: DocxWorkerForkInputs,
+  inputs: DocxWorkerForkInputs,
 ): DocxWorkerForkOptions {
-  return {};
+  return {
+    env: { ...inputs.baseEnv, GETWRITE_PROJECT_TYPES_DIR: inputs.templatesDir },
+    cwd: inputs.workingDir,
+  };
 }

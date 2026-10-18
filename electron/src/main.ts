@@ -665,6 +665,7 @@ function registerDocxImportHandlers(): void {
           buildDocxWorkerForkOptions({
             templatesDir: resolveDirectories().templatesDir,
             workingDir: getRepoRoot(),
+            baseEnv: process.env,
           }),
         );
 

@@ -53,7 +53,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 2
 **Estimate:** 2
 **Notes:** Satisfies FR-3, FR-4, FR-5, FR-24 (OQ-3). Passing `env` replaces the inherited environment, hence the preservation test.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: D-8 measurement: development app Word import from another working directory
 **What:** Run a Word import of one `.docx` with project type Blank and with Novel in the development app launched from a working directory other than `<root>/electron`, and record the outcomes.
