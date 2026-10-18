@@ -1,0 +1,13 @@
+# Transport response validation
+
+HTTP transport response bodies in `frontend/src/lib/api/` are validated by schemas in `frontend/src/lib/api/schemas.ts` and reported through `reportTransportValidationFailure` (`frontend/src/lib/api/transport-validation.ts`). The persistence schemas (`frontend/src/lib/models/schemas.ts`) are deliberately separate. Feature records: `specs/features/transport-response-validation.md`, `specs/features/transport-validation-status-only-reject.md`, `specs/features/transport-validation-remaining-sites.md`. See also `docs/standards/security.md`.
+
+## Implementation record (moved from CLAUDE.md)
+
+- Feature 48 covered 9 `lib/api/` response sites across 5 modules (`projects.ts`, `resources.ts`, `project-types.ts`, `entity-alias-table.ts`, `entity-relationships.ts`).
+- Feature 50 covered 12 more across 7 modules (`resources.ts` `fetchContent`/`fetchRevisionContent`, `entity-relationships.ts` `create`/`remove`/`removeByEntity`, `tags.ts` `list`/`listAssignments`, `mentions.ts` `getResourceMentions`/`getEntityMentionedIn`, `entity-cooccurrence.ts`, `entity-mention-counts.ts`, `resource-excerpts.ts`).
+- Feature 51 covered the remaining 5 status-only-reject sites: `compile.ts` (`text`, `markdown`), `export.ts` (`text`, `markdown`), and `resources.ts`'s `patchRevisionContent`.
+- Features 52-53 (one implementation pass) covered `encryption.ts` (shared `request()` helper, error-path and success-path bodies), `editor-config.ts` (`saveHeadings`, `saveBody`) and `preferences.ts` (`saveRevisionSettings`).
+- Running totals as recorded: Features 48, 50 and 51 together validate 27 response sites across 12 distinct modules (a direct count of call sites; Feature 48's own per-module list sums to 10, not the 9 stated for it, a pre-existing discrepancy that was not resolved); with Features 52-53 the total is 31 response sites across 15 distinct modules.
+- `patchRevisionContent` previously backfilled a missing server timestamp with the client clock (`data.updatedAt ?? new Date().toISOString()`); Feature 51 removed that. A malformed body is now reported and resolved with `updatedAt: undefined`, because by the time the body is parsed the save has already succeeded server-side. `ResourcesTransport.patchRevisionContent`, the `patchRevisionContent` wrapper and `useCanonicalAutosave.ts`'s return type widened `updatedAt` to optional, with no caller behavior change since the one caller already guarded on it.
+- Feature 50 made `reportTransportValidationFailure` raise a generic, deduplicated user-visible toast via `toastService.error` (`lib/toast-service.ts`, whose signature gained an optional options parameter carrying a stable toast id), on top of its console reporting; the helper never receives or logs the raw response body.
