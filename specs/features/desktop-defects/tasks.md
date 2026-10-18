@@ -143,7 +143,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 11
 **Estimate:** 2
 **Notes:** Satisfies FR-18. Runs only if Task 11 classified (a); otherwise left unticked with "not applicable: class <x>". The re-run needs the app: OUTSIDE the sandbox, with the same throwaway-path assertion and `lsof` check.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: D-40 class (b): failing test for the measured cause
 **What:** Add a unit test that reproduces the measured cause at the unit level (for example that `downloadInBrowser` revokes the object URL only after the browser has taken it), red against current code.

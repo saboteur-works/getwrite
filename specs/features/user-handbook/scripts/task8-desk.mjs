@@ -1,7 +1,7 @@
 // Task 8, desktop (Electron dev, fake root): compiling.md rows C-05 and C-12 (what a compile does on desktop). Run OUTSIDE the sandbox.
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import { createRun, cleanupRun, say, preflight, protectedPortsState, repoProjectsStatus, errLine } from "./lib/safety.mjs";
+import { createRun, cleanupRun, assertThrowaway, say, preflight, protectedPortsState, repoProjectsStatus, errLine } from "./lib/safety.mjs";
 import { startDesktop, stopDesktop, appLogLines } from "./desktop-dev.mjs";
 import { createProject, createNode, treeClick, typeInto, tick, dlg } from "./task8-lib.mjs";
 const J = (x) => JSON.stringify(x);
@@ -15,12 +15,19 @@ try {
   const page = h.page; page.setDefaultTimeout(15000);
   say(`electron pid ${h.app.process().pid}; isPackaged=${h.info.packaged}; userData is throwaway: ${h.sameUd}`);
   await tick(page, 2000);
+  // Throwaway download folder, asserted like the rest of the run; setDownloadPath below means an unhooked save lands here too, never in ~/Downloads.
   const saveDir = path.join(run.dir, "downloads");
+  mkdirSync(saveDir);
+  assertThrowaway(saveDir);
+  // No `require` here: it is undefined in the app.evaluate context (Feature 88 Task 11), so the path is joined by string concatenation.
   await h.app.evaluate(({ BrowserWindow }, dir) => {
     globalThis.__dl = [];
     const wins = BrowserWindow.getAllWindows();
     globalThis.__nwin = wins.length;
-    for (const w of wins) w.webContents.session.on("will-download", (_e, item) => { const p = require("node:path").join(dir, item.getFilename()); globalThis.__dl.push({ name: item.getFilename(), p }); item.setSavePath(p); });
+    for (const w of wins) {
+      w.webContents.session.setDownloadPath(dir);
+      w.webContents.session.on("will-download", (_e, item) => { const p = dir + "/" + item.getFilename(); globalThis.__dl.push({ name: item.getFilename(), p }); item.setSavePath(p); });
+    }
   }, saveDir).catch((e) => say("hook failed " + String(e.message).slice(0, 200)));
   say("desktop windows hooked: " + J(await h.app.evaluate(() => globalThis.__nwin)));
   const cons = []; page.on("console", (m) => cons.push(m.type() + ": " + m.text().slice(0, 160)));
