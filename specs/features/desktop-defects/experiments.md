@@ -17,7 +17,7 @@ Date: 2026-10-18. Tree: branch `fix/desktop-defects`, unfixed (no source change 
 | frontend tests | `pnpm test:ci` (`frontend/`) | 612 files passed; 6967 passed, 2 expected fail, 1 skipped (6970 total), 0 failed |
 | frontend typecheck | `pnpm typecheck` (`frontend/`) | exit 0 |
 | frontend lint | `pnpm lint` (`frontend/`) | 393 problems: 0 errors, 393 warnings |
-| knip | `pnpm knip` (repo root), exit 1 | 413 findings across sections: unused files 49, unused dependencies 1, unused devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 166, unused exported types 169, duplicate exports 14 (plus 6 configuration hints, not counted). Saved output: `specs/features/desktop-defects/logs/knip-baseline.txt` |
+| knip | `pnpm knip` (repo root), exit 1 | 413 findings across sections: unused files 49, unused dependencies 1, unused devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 166, unused exported types 169, duplicate exports 14 (plus 6 configuration hints, not counted). The output was saved during the run and later removed from the repo by owner decision (2026-10-18); the counts above are the record. |
 | e2e | `pnpm test:e2e` (`frontend/`, outside sandbox) | exit 0; 214 passed, 1 skipped, 0 failed (no failure names; no retry or flaky line in output); Playwright duration 1.0m. Raw output kept at `/tmp/getwrite-f88/e2e.txt` (outside the repo) |
 | git status before this file was created | `git status --short` | only `?? specs/features/desktop-defects/logs/` (the knip output); no change outside `specs/` |
 
@@ -222,7 +222,7 @@ Finding of this part only: the script's hook was the fault shown in Task 11; wit
 
 ## Final suites (Task 16, 2026-10-18)
 
-Tree: branch `fix/desktop-defects`, main checkout, HEAD `465539ed21847181018912aef8359aae7d11949f` (all Tasks 1-13 committed; `git status --short` before this section was written showed only `?? specs/features/desktop-defects/logs/knip-final.txt`). Node v24.15.0, pnpm 10.28.0. No source change in this task. Raw suite output is outside the repo in `/tmp/getwrite-f88/f-*.txt`.
+Tree: branch `fix/desktop-defects`, main checkout, HEAD `465539ed21847181018912aef8359aae7d11949f` (all Tasks 1-13 committed; `git status --short` before this section was written showed only `?? specs/features/desktop-defects/logs/knip-final.txt` (file later removed, owner decision 2026-10-18)). Node v24.15.0, pnpm 10.28.0. No source change in this task. Raw suite output is outside the repo in `/tmp/getwrite-f88/f-*.txt`.
 
 ### Parts
 
@@ -249,10 +249,10 @@ Tree: branch `fix/desktop-defects`, main checkout, HEAD `465539ed21847181018912a
 | frontend tests | `pnpm test:ci` (`frontend/`) | 612 files; 6967 passed, 2 expected fail, 1 skipped | exit 0; 612 files; 6967 passed, 2 expected fail, 1 skipped (6970), 0 failed (identical) |
 | frontend typecheck | `pnpm typecheck` (`frontend/`) | exit 0 | exit 0 |
 | frontend lint | `pnpm lint` (`frontend/`) | 393 problems: 0 errors, 393 warnings | 393 problems: 0 errors, 393 warnings (identical) |
-| knip | `pnpm knip` (repo root) | exit 1; 413 findings | exit 1; 413 findings; `diff` of `logs/knip-final.txt` against `logs/knip-baseline.txt` reports no difference (434 lines each) |
+| knip | `pnpm knip` (repo root) | exit 1; 413 findings | exit 1; 413 findings; `diff` of the final output against the baseline output reported no difference, 434 lines each (both files were later removed from the repo by owner decision, 2026-10-18) |
 | e2e | `pnpm test:e2e` (`frontend/`, outside sandbox) | 214 passed, 1 skipped, 0 failed | exit 0; 214 passed, 1 skipped, 0 failed (48.2s); no failure names; raw output `/tmp/getwrite-f88/f-e2e.txt` |
 
-Knip findings naming the touched files (`electron/src/docx-import/fork-options.ts`, `electron/src/noise-words-ipc.ts`, `electron/src/projects-dir.ts`, `electron/src/main.ts`): `fork-options.ts`, `noise-words-ipc.ts` and `main.ts`: none. `projects-dir.ts`: two, `WORKSPACE_FOLDER_NAME` (unused export, line 30) and `WORKSPACE_CONFIG_FILENAME` (unused export, line 184), and one unused exported type `WorkspaceRejection` (line 187). All three also appear in `knip-baseline.txt` (the files are identical), so none is introduced by this feature.
+Knip findings naming the touched files (`electron/src/docx-import/fork-options.ts`, `electron/src/noise-words-ipc.ts`, `electron/src/projects-dir.ts`, `electron/src/main.ts`): `fork-options.ts`, `noise-words-ipc.ts` and `main.ts`: none. `projects-dir.ts`: two, `WORKSPACE_FOLDER_NAME` (unused export, line 30) and `WORKSPACE_CONFIG_FILENAME` (unused export, line 184), and one unused exported type `WorkspaceRejection` (line 187). All three also appeared in the baseline output (the two outputs were identical), so none is introduced by this feature.
 
 e2e process notes: `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before (also before the electron suites): empty, exit 1. Playwright's webServer (`reuseExistingServer`) started its own Storybook static server; this task started no separate Storybook, so no pid of its own was recorded to stop. After the run: `lsof` empty, exit 1 (no listener on 7340, 3000 or 6006). No desktop app was started in this task.
 
