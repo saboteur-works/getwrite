@@ -30,6 +30,6 @@ From the Start Page you can act on a project without opening it first:
 
 - After you confirm **Delete**, the project's card was still listed two seconds later; it was gone after a reload.
 - The **Package** dialog opened from the Start Page listed one of two resources in a test project; the resource at the project's root was missing from the list. The **Compile Project** dialog opened from inside the same project listed both.
-- In the desktop app run unpackaged (Electron dev run), adding a word in **App Settings** showed "Could not save the noise-word list." and the list stayed empty. This was not observed in the web build, and a packaged build was not run.
+- In the desktop app run unpackaged (Electron dev run), adding a word in **App Settings** showed "Could not save the noise-word list." and the list stayed empty. This was not observed in the web build, and a packaged build was not run. A later change (unreleased) makes the desktop noise-word handlers use the app's user-data folder in both builds; in the unpackaged desktop app, adding a word then succeeded, was listed, and was still listed after restarting the app. A packaged build was not re-checked for this.
 
 Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit b9ddb83c.
