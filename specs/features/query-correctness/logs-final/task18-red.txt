@@ -1,0 +1,61 @@
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |jsdom| tests/fieldPicker.test.tsx (16 tests | 2 failed) 164ms
+     × offers the effective statuses for the builtin Status field when none are configured 2ms
+     × offers the effective list for the Status chip with no configured statuses 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |jsdom| tests/fieldPicker.test.tsx > buildFieldPickerFields — intrinsic options > offers the effective statuses for the builtin Status field when none are configured
+AssertionError: expected undefined to deeply equal [ 'Draft', 'In review', 'Published' ]
+
+- Expected:
+[
+  "Draft",
+  "In review",
+  "Published",
+]
+
++ Received:
+undefined
+
+ ❯ tests/fieldPicker.test.tsx:184:34
+    182|   it("offers the effective statuses for the builtin Status field when …
+    183|     const statusField = FIELDS.find((f) => f.key === "status");
+    184|     expect(statusField?.options).toEqual(["Draft", "In review", "Publi…
+       |                                  ^
+    185|   });
+    186|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |jsdom| tests/fieldPicker.test.tsx > buildFieldPickerFields — intrinsic options > offers the effective list for the Status chip with no configured statuses
+AssertionError: expected [] to deeply equal [ 'Draft', 'In review', 'Published' ]
+
+- Expected
++ Received
+
+- [
+-   "Draft",
+-   "In review",
+-   "Published",
+- ]
++ []
+
+ ❯ tests/fieldPicker.test.tsx:214:42
+    212|       const fields = buildFieldPickerFields(undefined, projectStatuses…
+    213|       const statusField = fields.find((f) => f.key === "status");
+    214|       expect(statusField?.options ?? []).toEqual(expected);
+       |                                          ^
+    215|     }
+    216|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 78 passed (80)
+   Start at  15:05:46
+   Duration  2.20s (transform 461ms, setup 115ms, import 902ms, tests 1.15s, environment 854ms)
+

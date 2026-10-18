@@ -135,6 +135,7 @@ async function deriveTextCounts(
  */
 async function loadEvaluationInput(
   projectRoot: string,
+  evaluationTime?: Date,
 ): Promise<EvaluationInput> {
   const [config, backlinks, mentionIndex, resourceIds] = await Promise.all([
     loadProjectConfig(projectRoot),
@@ -179,6 +180,7 @@ async function loadEvaluationInput(
     sidecars,
     context: { config, backlinks, mentions: mentionsByEntity },
     resolveRef,
+    evaluationTime,
   };
 }
 
@@ -186,12 +188,15 @@ async function loadEvaluationInput(
 
 /**
  * Evaluate a query AST against all resources in `projectRoot` and return the
- * UUIDs of matching resources.
+ * UUIDs of matching resources. `evaluationTime` is optional (default: the
+ * current time) and is carried into the evaluation input, where the evaluator
+ * reads it for relative-date spans ("in the last") and calendar-day comparisons.
  */
 export async function executeEvaluate(
   projectRoot: string,
   ast: QueryAST,
+  evaluationTime?: Date,
 ): Promise<string[]> {
-  const input = await loadEvaluationInput(projectRoot);
+  const input = await loadEvaluationInput(projectRoot, evaluationTime);
   return evaluate(ast, input);
 }

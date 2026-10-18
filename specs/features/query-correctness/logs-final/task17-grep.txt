@@ -1,0 +1,4 @@
+frontend/src/lib/models/default-statuses.ts:7:export const BUILT_IN_STATUSES: string[] = ["Draft", "In review", "Published"];
+frontend/tests/unit/projects-slice-features.test.ts:578:  const BUILT_IN = ["Draft", "In review", "Published"];
+frontend/tests/organizerView.test.tsx:362:        "In review",
+frontend/tests/fieldPicker.test.tsx:189:      const expected = ["Draft", "In review", "Published"];

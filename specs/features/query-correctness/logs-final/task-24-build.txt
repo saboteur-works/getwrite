@@ -1,0 +1,138 @@
+
+> getwrite-frontend@2.2.0 build /Users/jedaisaboteur/Repositories/getwrite/frontend
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: 105906176
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./frontend/next.config.mjs
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./frontend/next.config.mjs
+    ./frontend/app/api/project-types/route.ts
+
+
+✓ Compiled successfully in 7.6s
+  Running TypeScript ...
+  Finished TypeScript in 8.4s ...
+  Collecting page data using 11 workers ...
+Couldn't load fs
+Couldn't load zlib
+Couldn't load fs
+Couldn't load zlib
+Couldn't load fs
+Couldn't load zlib
+Couldn't load fs
+Couldn't load zlib
+Couldn't load fs
+Couldn't load zlib
+Couldn't load fs
+Couldn't load zlib
+Couldn't load fs
+Couldn't load zlib
+  Generating static pages using 11 workers (0/36) ...
+Couldn't load fs
+Couldn't load zlib
+  Generating static pages using 11 workers (9/36) 
+  Generating static pages using 11 workers (18/36) 
+  Generating static pages using 11 workers (27/36) 
+Couldn't load fs
+Couldn't load zlib
+✓ Generating static pages using 11 workers (36/36) in 207ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth-status
+├ ƒ /api/auth/[...all]
+├ ƒ /api/compile/docx
+├ ƒ /api/compile/markdown
+├ ƒ /api/compile/pdf
+├ ƒ /api/compile/text
+├ ƒ /api/encryption
+├ ƒ /api/export/markdown
+├ ƒ /api/export/text
+├ ƒ /api/folder/[folder-id]/delete
+├ ƒ /api/global-noise-words
+├ ƒ /api/project
+├ ƒ /api/project-resources
+├ ƒ /api/project-resources/excerpts
+├ ƒ /api/project-types
+├ ƒ /api/project/[project-id]/entity-alias-table
+├ ƒ /api/project/[project-id]/entity-backlink-edges
+├ ƒ /api/project/[project-id]/entity-cooccurrence
+├ ƒ /api/project/[project-id]/entity-mention-counts
+├ ƒ /api/project/[project-id]/entity-proximity-mention-edges
+├ ƒ /api/project/[project-id]/entity-relationships
+├ ƒ /api/project/[project-id]/entity-relationships/remove
+├ ƒ /api/project/[project-id]/entity-relationships/remove-by-entity
+├ ƒ /api/project/[project-id]/entity-shared-metadata-edges
+├ ƒ /api/project/[project-id]/reindex
+├ ƒ /api/project/[project-id]/search
+├ ƒ /api/project/[project-id]/trash
+├ ƒ /api/project/[project-id]/trash/purge
+├ ƒ /api/project/[project-id]/trash/restore
+├ ƒ /api/project/delete
+├ ƒ /api/project/editor-config
+├ ƒ /api/project/entity-graph-kind-styles
+├ ƒ /api/project/entity-graph-positions
+├ ƒ /api/project/entity-graph-settings
+├ ƒ /api/project/features
+├ ƒ /api/project/mention-highlight-duration
+├ ƒ /api/project/metadata-schema
+├ ƒ /api/project/noise-words
+├ ƒ /api/project/preferences
+├ ƒ /api/project/query/evaluate
+├ ƒ /api/project/query/saved
+├ ƒ /api/project/rename
+├ ƒ /api/project/revision-settings
+├ ƒ /api/project/tags
+├ ƒ /api/project/tags/assign
+├ ƒ /api/project/tags/delete
+├ ƒ /api/project/word-count-goal
+├ ƒ /api/project/writing-log
+├ ƒ /api/projects
+├ ƒ /api/projects/[projectId]/reorder
+├ ƒ /api/resource
+├ ƒ /api/resource/[resource-id]
+├ ƒ /api/resource/[resource-id]/delete
+├ ƒ /api/resource/[resource-id]/diagnostics
+├ ƒ /api/resource/[resource-id]/diagnostics-detail
+├ ƒ /api/resource/[resource-id]/file
+├ ƒ /api/resource/[resource-id]/mentioned-in
+├ ƒ /api/resource/[resource-id]/mentions
+├ ƒ /api/resource/[resource-id]/rename
+├ ƒ /api/resource/[resource-id]/sidecar
+├ ƒ /api/resource/revision/[resource-id]
+├ ƒ /api/resource/upload
+├ ƒ /api/sharing/limits
+├ ƒ /api/sharing/pair
+├ ƒ /api/sharing/ready
+├ ƒ /api/version-check
+├ ○ /login
+├ ○ /pair
+├ ○ /preferences
+├ ○ /project-types
+├ ƒ /reset-password
+└ ƒ /verify-email
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

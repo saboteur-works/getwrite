@@ -1,0 +1,64 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+ ❯ |jsdom| tests/filterChip.test.tsx (25 tests | 3 failed) 247ms
+     × lists the project's resources, not its tags, when typing 'a' [expected failure: D-19] 21ms
+     × offers resource names in the value box [expected failure: D-19] 19ms
+     × leaves the chip value empty after typing 'alpha' and choosing the offered suggestion [expected failure: D-19] 13ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — Tags chip in a project with tags alpha and beta > lists the project's resources, not its tags, when typing 'a' [expected failure: D-19]
+AssertionError: expected [ 'Chapter One' ] to deeply equal ArrayContaining ["alpha", "beta"]
+- Expected
++ Received
+- ArrayContaining [
+-   "alpha",
+-   "beta",
++ [
++   "Chapter One",
+  ]
+ ❯ tests/filterChip.test.tsx:430:23
+    428|       renderTagsChip();
+    429|       const offered = typeAndListOptions("a");
+    430|       expect(offered).toEqual(expect.arrayContaining(["alpha", "beta"]…
+       |                       ^
+    431|     },
+    432|   );
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — Tags chip in a project with tags alpha and beta > offers resource names in the value box [expected failure: D-19]
+AssertionError: expected [ 'Chapter One', 'Scene Two', …(1) ] to deeply equal []
+- Expected
++ Received
+- []
++ [
++   "Chapter One",
++   "Scene Two",
++   "Epilogue",
++ ]
+ ❯ tests/filterChip.test.tsx:440:64
+    438|       const offered = typeAndListOptions("e");
+    439|       const resourceNames = PROJECT_RESOURCES.map((r) => r.name);
+    440|       expect(offered.filter((o) => resourceNames.includes(o))).toEqual…
+       |                                                                ^
+    441|     },
+    442|   );
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — Tags chip in a project with tags alpha and beta > leaves the chip value empty after typing 'alpha' and choosing the offered suggestion [expected failure: D-19]
+AssertionError: expected undefined to deeply equal { id: 'tag-alpha', name: 'alpha' }
+- Expected:
+{
+  "id": "tag-alpha",
+  "name": "alpha",
+}
++ Received:
+undefined
+ ❯ tests/filterChip.test.tsx:451:41
+    449|       const option = suggestionElements()[0];
+    450|       if (option) fireEvent.click(option);
+    451|       expect(values[values.length - 1]).toEqual(TAG_ALPHA);
+       |                                         ^
+    452|     },
+    453|   );
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  1 failed (1)
+      Tests  3 failed | 22 passed (25)
+   Start at  14:46:48
+   Duration  872ms (transform 97ms, setup 45ms, import 206ms, tests 247ms, environment 303ms)

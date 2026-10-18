@@ -1,0 +1,42 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+ ❯ |node| tests/unit/query-evaluator.test.ts (118 tests | 2 failed) 15ms
+     × omits a resource created 3 minutes ago for gte 1 days on createdAt 3ms
+     × omits a resource created 3 minutes ago for eq of its creation day on createdAt 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |node| tests/unit/query-evaluator.test.ts > createdAt predicates on a resource created 3 minutes before the evaluation time (D-17) > omits a resource created 3 minutes ago for gte 1 days on createdAt
+AssertionError: expected [] to deeply equal [ Array(1) ]
+- Expected
++ Received
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000f1",
+- ]
++ []
+ ❯ tests/unit/query-evaluator.test.ts:1391:20
+    1389|       value: { amount: 1, unit: "days" },
+    1390|     });
+    1391|     expect(result).toEqual([FRESH]);
+       |                    ^
+    1392|   });
+    1393|
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  |node| tests/unit/query-evaluator.test.ts > createdAt predicates on a resource created 3 minutes before the evaluation time (D-17) > omits a resource created 3 minutes ago for eq of its creation day on createdAt
+AssertionError: expected [] to deeply equal [ Array(1) ]
+- Expected
++ Received
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000f1",
+- ]
++ []
+ ❯ tests/unit/query-evaluator.test.ts:1400:20
+    1398|       value: CREATION_DAY,
+    1399|     });
+    1400|     expect(result).toEqual([FRESH]);
+       |                    ^
+    1401|   });
+    1402| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 116 passed (118)
+   Start at  13:44:51
+   Duration  162ms (transform 40ms, setup 42ms, import 31ms, tests 15ms, environment 0ms)

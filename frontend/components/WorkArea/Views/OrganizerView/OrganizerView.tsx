@@ -16,6 +16,7 @@ import {
 } from "../../../../src/store/resourcesSlice";
 import {
   selectActiveProjectStatuses,
+  selectEffectiveProjectStatuses,
   selectActiveProjectOrganizerCardBody,
   selectActiveProjectDirectoryId,
   selectActiveProjectMetadataSchema,
@@ -174,6 +175,12 @@ export default function OrganizerView({
     shallowEqual,
   );
   const defaultStatus = statuses[0] ?? "";
+  // The filter's Status select offers the effective list (FR-23); the card
+  // default above and the filter resolution stay on the configured list (FR-25).
+  const filterStatusOptions = useAppSelector(
+    (s) => selectEffectiveProjectStatuses(s),
+    shallowEqual,
+  );
   // Card body source is project-configured (field / text-excerpt / none); the
   // Notes flag only drives the back-compat default when no config is set.
   const cardBodyConfig = useAppSelector(selectActiveProjectOrganizerCardBody);
@@ -482,7 +489,7 @@ export default function OrganizerView({
         <OrganizerFilterBar
           filterState={filterState}
           dispatchFilter={dispatchFilter}
-          statuses={statuses}
+          statuses={filterStatusOptions}
           refFields={refFields}
           refFieldValues={refFieldValues}
           isFilterAreaOpen={isFilterAreaOpen}

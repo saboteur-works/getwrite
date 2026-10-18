@@ -5,10 +5,13 @@ import { ChevronDown } from "lucide-react";
 import type {
   MetadataFieldType,
   MetadataSchema,
+  Tag,
 } from "../../src/lib/models/types";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import { INTRINSIC_FIELDS } from "../../src/lib/models/query-intrinsics";
 import { fuzzyMatch } from "../../src/lib/models/field-dedup";
+import { effectiveStatuses } from "../../src/lib/models/default-statuses";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import "./field-picker.css";
 
@@ -34,6 +37,14 @@ export interface FieldPickerField {
   includeSubfolders?: boolean;
   /** When true, the ref value for this field resolves to folders rather than resources. */
   isFolderField?: boolean;
+  /**
+   * Set only on the `tags` intrinsic: the project's tags as `{ id, name }`
+   * references, the value box's option source in place of the project's
+   * resources (Feature 86 D-19). Empty when the project has no tags.
+   */
+  tagOptions?: ResourceOption[];
+  /** Set only on the `tags` intrinsic when reading the project's tags failed. */
+  tagsReadFailed?: boolean;
 }
 
 export interface FieldPickerProps {
@@ -86,6 +97,8 @@ export interface FieldPickerProps {
 export function buildFieldPickerFields(
   schema?: MetadataSchema,
   projectStatuses?: string[],
+  projectTags?: Tag[],
+  tagsReadFailed?: boolean,
 ): FieldPickerField[] {
   const fields: FieldPickerField[] = [];
   const effectiveSchema = schema ?? DEFAULT_METADATA_SCHEMA;
@@ -103,9 +116,12 @@ export function buildFieldPickerFields(
       // `options` array and rendered only "select…" (POS task_ee247eec).
       // Mirrors the "statuses" intrinsic override below, which does the same
       // for the separate resource.statuses multiselect field.
+      // The `status` chip offers the effective list (configured statuses, else
+      // the built-in vocabulary; FR-23). The intrinsic "statuses" branch
+      // below stays configured-only.
       const options =
-        field.key === "status" && projectStatuses && projectStatuses.length > 0
-          ? projectStatuses
+        field.key === "status"
+          ? effectiveStatuses(projectStatuses)
           : field.options;
       fields.push({
         key: field.key,
@@ -135,6 +151,17 @@ export function buildFieldPickerFields(
       options,
       source: "system",
       isFolderField: f.key === "folderId",
+      // The tags intrinsic keeps its `multi-resource-ref` type (and so its
+      // operators); only its value box's option source is the project's tags.
+      ...(f.key === "tags"
+        ? {
+            tagOptions: (projectTags ?? []).map((t) => ({
+              id: t.id,
+              name: t.name,
+            })),
+            ...(tagsReadFailed ? { tagsReadFailed: true } : {}),
+          }
+        : {}),
     });
   }
 

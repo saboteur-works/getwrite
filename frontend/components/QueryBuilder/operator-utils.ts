@@ -1,5 +1,9 @@
 import type { QueryAST } from "../../src/lib/models/query-ast";
-import type { MetadataFieldType } from "../../src/lib/models/types";
+import type {
+  MetadataFieldType,
+  MetadataValue,
+} from "../../src/lib/models/types";
+import type { FilterChipValue, RelativeDateValue } from "./FilterChip";
 
 export interface OperatorOption {
   value: string;
@@ -143,7 +147,12 @@ const STUB_BUILDERS: Partial<Record<string, StubBuilder>> = {
     op: "not",
     child: { op: "contains", field: f, value: "" },
   }),
-  "starts-with": (f) => ({ op: "matches", field: f, value: "" }),
+  "starts-with": (f) => ({
+    op: "matches",
+    field: f,
+    value: "^",
+    caseInsensitive: true,
+  }),
   "matches-regex": (f) => ({ op: "matches", field: f, value: "" }),
   // number
   equals: (f) => ({ op: "eq", field: f, value: 0 }),
@@ -156,7 +165,11 @@ const STUB_BUILDERS: Partial<Record<string, StubBuilder>> = {
   "is-on": (f) => ({ op: "eq", field: f, value: "" }),
   "is-before": (f) => ({ op: "lt", field: f, value: "" }),
   "is-after": (f) => ({ op: "gt", field: f, value: "" }),
-  "in-the-last": (f) => ({ op: "gte", field: f, value: "" }),
+  "in-the-last": (f) => ({
+    op: "gte",
+    field: f,
+    value: { ...DEFAULT_RELATIVE_DATE },
+  }),
   // boolean
   "is-true": (f) => ({ op: "eq", field: f, value: true }),
   "is-false": (f) => ({ op: "eq", field: f, value: false }),
@@ -211,4 +224,61 @@ export function buildOperatorStub(
   }
   const builder = STUB_BUILDERS[operatorValue];
   return builder ? builder(fieldKey) : null;
+}
+
+/** The value the "in the last" input displays, and so the value it saves. */
+export const DEFAULT_RELATIVE_DATE: RelativeDateValue = {
+  amount: 7,
+  unit: "days",
+};
+
+export function isRelativeDateValue(
+  v: FilterChipValue | MetadataValue,
+): v is RelativeDateValue {
+  return (
+    v !== null &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    "amount" in v &&
+    "unit" in v
+  );
+}
+
+/**
+ * The amount an "in the last" input holds after the writer types `raw`:
+ * the floor of the typed number, at least 1. An empty or non-numeric entry
+ * is ignored (null), so the previous amount stays.
+ */
+export function wholeAmountFromInput(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(1, Math.floor(n));
+}
+
+/**
+ * The chip value right after the operator is changed to `next`.
+ * - A no-value operator resets the value to null.
+ * - A relative-date operator ("in the last") keeps a relative-date value and
+ *   otherwise takes the displayed default, replacing a value of another shape.
+ * - Any other operator leaves the value as it is, except that a relative-date
+ *   value ({amount, unit}) is replaced by the operator's empty value, since
+ *   no other operator can hold it.
+ */
+export function valueForOperatorChange(
+  type: MetadataFieldType,
+  next: string,
+  current: FilterChipValue,
+): FilterChipValue {
+  const option = getOperatorOption(type, next);
+  if (option?.noValue) return null;
+  if (option?.valueShape === "relativeDate") {
+    return isRelativeDateValue(current)
+      ? current
+      : { ...DEFAULT_RELATIVE_DATE };
+  }
+  if (isRelativeDateValue(current)) {
+    return option?.valueShape === "twoValues" ? { from: "", to: "" } : "";
+  }
+  return current;
 }

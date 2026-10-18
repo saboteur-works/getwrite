@@ -40,6 +40,12 @@ export interface EvaluationInput {
    * If absent, `ref` nodes throw `EvaluatorNotImplementedError`.
    */
   resolveRef?: (id: string) => Promise<QueryAST | null>;
+  /**
+   * The instant a query is evaluated at. Optional; when omitted the current
+   * time applies. Read by the relative-date `gte` ("in the last N days, weeks
+   * or months", Feature 86 FR-12/FR-13) so tests can fix the clock.
+   */
+  evaluationTime?: Date;
 }
 
 /**
@@ -126,13 +132,14 @@ export async function evaluate(
   input: EvaluationInput,
 ): Promise<string[]> {
   const { resources, sidecars, context, resolveRef } = input;
+  const now = input.evaluationTime ?? new Date();
 
   const resolvedAst = resolveRef ? await expandRefs(ast, resolveRef, []) : ast;
 
   const results: string[] = [];
   for (const resource of resources) {
     const sidecar = sidecars[resource.id] ?? {};
-    if (matchNode(resolvedAst, resource, sidecar, context)) {
+    if (matchNode(resolvedAst, resource, sidecar, context, now)) {
       results.push(resource.id);
     }
   }
@@ -297,6 +304,133 @@ function compareValues(
   return null;
 }
 
+// ─── Relative dates ("in the last") ────────────────────────────────────────
+
+const RELATIVE_UNITS: readonly string[] = ["days", "weeks", "months"];
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** True for a `{amount, unit}`-shaped value: the builder's "in the last". */
+function isRelativeDateValue(v: unknown): v is Record<string, unknown> {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  return "amount" in v || "unit" in v;
+}
+
+/**
+ * The start of a rolling span ending at `now` (Feature 86 FR-14): a day is 24
+ * hours, a week 7 days of 24 hours, a month a calendar month counted back in
+ * the evaluating process's local zone with the day clamped to the month's end.
+ * Throws an Error naming the problem for a unit outside days/weeks/months or
+ * an amount that is not an integer of at least 1 (failure-visibility).
+ */
+function relativeSpanStart(span: Record<string, unknown>, now: Date): Date {
+  const { amount, unit } = span;
+  if (typeof unit !== "string" || !RELATIVE_UNITS.includes(unit)) {
+    throw new Error(
+      `Relative date unit must be days, weeks or months; got ${JSON.stringify(unit)}`,
+    );
+  }
+  if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 1) {
+    throw new Error(
+      `Relative date amount must be an integer of at least 1; got ${JSON.stringify(amount)}`,
+    );
+  }
+  if (unit === "days") return new Date(now.getTime() - amount * MS_PER_DAY);
+  if (unit === "weeks") {
+    return new Date(now.getTime() - amount * 7 * MS_PER_DAY);
+  }
+  const start = new Date(now.getTime());
+  const dayOfMonth = start.getDate();
+  start.setDate(1);
+  start.setMonth(start.getMonth() - amount);
+  const monthEnd = new Date(
+    start.getFullYear(),
+    start.getMonth() + 1,
+    0,
+  ).getDate();
+  start.setDate(Math.min(dayOfMonth, monthEnd));
+  return start;
+}
+
+/**
+ * Parse a field value as an instant. A date-only `YYYY-MM-DD` string is local
+ * midnight of that day; any other string goes through `Date.parse`. Anything
+ * that is not a parseable date string yields `null`.
+ */
+function parseDateValue(v: MetadataValue | undefined): Date | null {
+  if (typeof v !== "string") return null;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  const parsed = dateOnly
+    ? new Date(
+        Number(dateOnly[1]),
+        Number(dateOnly[2]) - 1,
+        Number(dateOnly[3]),
+      )
+    : new Date(v);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** The intrinsic timestamp fields, whose "is on" compares by calendar day. */
+function isTimestampField(field: string): boolean {
+  return field === "createdAt" || field === "updatedAt";
+}
+
+/** True for a `YYYY-MM-DD` string. */
+function isDateOnly(v: MetadataValue): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+}
+
+/**
+ * True when the timestamp `v` falls on the calendar day `day` (`YYYY-MM-DD`)
+ * in the evaluating process's local zone. An absent or unparseable `v` is false.
+ */
+function sameLocalDay(v: MetadataValue | undefined, day: string): boolean {
+  const stamp = parseDateValue(v);
+  const target = parseDateValue(day);
+  if (stamp === null || target === null) return false;
+  return (
+    stamp.getFullYear() === target.getFullYear() &&
+    stamp.getMonth() === target.getMonth() &&
+    stamp.getDate() === target.getDate()
+  );
+}
+
+/**
+ * Order the timestamp `v` against the calendar day `day` (`YYYY-MM-DD`) in the
+ * evaluating process's local zone: negative when `v` falls on an earlier day,
+ * zero on the same day, positive on a later day. Null when either side does
+ * not parse.
+ */
+function compareLocalDay(
+  v: MetadataValue | undefined,
+  day: string,
+): number | null {
+  const stamp = parseDateValue(v);
+  const target = parseDateValue(day);
+  if (stamp === null || target === null) return null;
+  const stampDay = new Date(
+    stamp.getFullYear(),
+    stamp.getMonth(),
+    stamp.getDate(),
+  ).getTime();
+  return stampDay - target.getTime();
+}
+
+/**
+ * Ordered comparison of a resolved field value with a predicate value. On the
+ * intrinsic timestamp fields a `YYYY-MM-DD` value compares by local calendar
+ * day (FR-16); everything else keeps `compareValues`.
+ */
+function compareForPredicate(
+  field: string,
+  v: MetadataValue | undefined,
+  value: MetadataValue,
+): number | null {
+  if (isTimestampField(field) && isDateOnly(value)) {
+    return compareLocalDay(v, value);
+  }
+  return compareValues(v, value);
+}
+
 /** Evaluate `contains` on a string field value (case-insensitive substring). */
 function evalContains(
   v: MetadataValue | undefined,
@@ -307,13 +441,40 @@ function evalContains(
 }
 
 /** Evaluate `matches` on a string field value (regular expression test). */
-function evalMatches(v: MetadataValue | undefined, regexStr: string): boolean {
+function evalMatches(
+  v: MetadataValue | undefined,
+  regexStr: string,
+  caseInsensitive?: boolean,
+): boolean {
   if (typeof v !== "string") return false;
   try {
-    return new RegExp(regexStr).test(v);
+    return new RegExp(regexStr, caseInsensitive === true ? "i" : "").test(v);
   } catch {
     return false;
   }
+}
+
+/**
+ * Read an `and` with exactly one `in` child as "holds every listed value"
+ * (Feature 86 FR-6): the shape "includes all of" saves. Applies only when the
+ * child carries a non-empty array and the field resolves to an array; returns
+ * `null` for every other shape so the caller evaluates it as before.
+ */
+function matchAllOfSingleIn(
+  children: readonly QueryAST[],
+  resource: ResourceBase,
+  sidecar: Record<string, MetadataValue>,
+  context: QueryContext,
+): boolean | null {
+  if (children.length !== 1) return null;
+  const child = children[0];
+  if (child.op !== "in") return null;
+  if (!Array.isArray(child.value) || child.value.length === 0) return null;
+  const v = resolveFieldValue(child.field, resource, sidecar, context);
+  if (!Array.isArray(v)) return null;
+  const listedValues = child.value as MetadataValue[];
+  // evalIn wraps a non-array predicate as a one-value list: one value at a time.
+  return listedValues.every((listed) => evalIn(v, listed));
 }
 
 /**
@@ -325,19 +486,30 @@ function matchNode(
   resource: ResourceBase,
   sidecar: Record<string, MetadataValue>,
   context: QueryContext,
+  now: Date,
 ): boolean {
   switch (ast.op) {
     // ── Boolean combinators ───────────────────────────────────────────
-    case "and":
-      return ast.children.every((c) =>
-        matchNode(c, resource, sidecar, context),
+    case "and": {
+      const shouldHoldEvery = matchAllOfSingleIn(
+        ast.children,
+        resource,
+        sidecar,
+        context,
       );
+      if (shouldHoldEvery !== null) return shouldHoldEvery;
+      return ast.children.every((c) =>
+        matchNode(c, resource, sidecar, context, now),
+      );
+    }
 
     case "or":
-      return ast.children.some((c) => matchNode(c, resource, sidecar, context));
+      return ast.children.some((c) =>
+        matchNode(c, resource, sidecar, context, now),
+      );
 
     case "not":
-      return !matchNode(ast.child, resource, sidecar, context);
+      return !matchNode(ast.child, resource, sidecar, context, now);
 
     // ── Splice nodes — not implemented in task 5 ──────────────────────
     case "ref":
@@ -366,6 +538,9 @@ function matchNode(
     // ── Equality predicates ───────────────────────────────────────────
     case "eq": {
       const v = resolveFieldValue(ast.field, resource, sidecar, context);
+      if (isTimestampField(ast.field) && isDateOnly(ast.value)) {
+        return sameLocalDay(v, ast.value);
+      }
       return valuesEqual(v, ast.value);
     }
 
@@ -376,7 +551,8 @@ function matchNode(
 
     // ── Ordered comparison predicates ────────────────────────────────
     case "lt": {
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -384,7 +560,8 @@ function matchNode(
     }
 
     case "gt": {
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -392,7 +569,15 @@ function matchNode(
     }
 
     case "gte": {
-      const cmp = compareValues(
+      if (isRelativeDateValue(ast.value)) {
+        const start = relativeSpanStart(ast.value, now);
+        const when = parseDateValue(
+          resolveFieldValue(ast.field, resource, sidecar, context),
+        );
+        return when !== null && when >= start && when <= now;
+      }
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -400,7 +585,8 @@ function matchNode(
     }
 
     case "lte": {
-      const cmp = compareValues(
+      const cmp = compareForPredicate(
+        ast.field,
         resolveFieldValue(ast.field, resource, sidecar, context),
         ast.value,
       );
@@ -421,7 +607,7 @@ function matchNode(
 
     case "matches": {
       const v = resolveFieldValue(ast.field, resource, sidecar, context);
-      return evalMatches(v, ast.value);
+      return evalMatches(v, ast.value, ast.caseInsensitive);
     }
   }
 }

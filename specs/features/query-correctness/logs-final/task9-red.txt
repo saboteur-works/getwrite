@@ -1,0 +1,364 @@
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/query-evaluator.test.ts (148 tests | 22 failed) 21ms
+     × returns a resource created 3 minutes ago for gte 1 days on createdAt 4ms
+     × 1 day: 24 hours back is the boundary 0ms
+     × 7 days: 7 x 24 hours back is the boundary 0ms
+     × 1 week: 7 x 24 hours back is the boundary 0ms
+     × 1 month: the same local time one calendar month earlier is the boundary 0ms
+     × the evaluation instant itself matches (upper bound inclusive) 0ms
+       × 31 March 2026 -> 28 February 0ms
+       × 30 March 2026 -> 28 February 0ms
+       × 29 March 2026 -> 28 February 0ms
+       × 31 March 2028 -> 29 February (leap) 0ms
+       × 30 March 2028 -> 29 February (leap) 0ms
+       × 29 March 2028 -> 29 February (leap) 0ms
+       × 31 May 2026 -> 30 April 0ms
+       × 31 January 2026 -> 31 December 2025 0ms
+     × reads a date-only custom field as local midnight 0ms
+       × unit years 0ms
+       × unit missing 0ms
+       × amount 0 0ms
+       × amount negative 0ms
+       × amount fractional 0ms
+       × amount a string 0ms
+       × amount missing 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 22 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > createdAt predicates on a resource created 3 minutes before the evaluation time (D-17) > returns a resource created 3 minutes ago for gte 1 days on createdAt
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000f1",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1391:20
+    1389|       value: { amount: 1, unit: "days" },
+    1390|     });
+    1391|     expect(result).toEqual([FRESH]);
+       |                    ^
+    1392|   });
+    1393|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > 1 day: 24 hours back is the boundary
+AssertionError: expected [ false, false ] to deeply equal [ true, false ]
+
+- Expected
++ Received
+
+  [
+-   true,
++   false,
+    false,
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1470:7
+    1468|     expect(
+    1469|       await insideOutside(NOW, 1, "days", before(DAY - MIN), before(DA…
+    1470|     ).toEqual([true, false]);
+       |       ^
+    1471|   });
+    1472|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > 7 days: 7 x 24 hours back is the boundary
+AssertionError: expected [ false, false ] to deeply equal [ true, false ]
+
+- Expected
++ Received
+
+  [
+-   true,
++   false,
+    false,
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1482:7
+    1480|         before(7 * DAY + MIN),
+    1481|       ),
+    1482|     ).toEqual([true, false]);
+       |       ^
+    1483|   });
+    1484|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > 1 week: 7 x 24 hours back is the boundary
+AssertionError: expected [ false, false ] to deeply equal [ true, false ]
+
+- Expected
++ Received
+
+  [
+-   true,
++   false,
+    false,
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1494:7
+    1492|         before(7 * DAY + MIN),
+    1493|       ),
+    1494|     ).toEqual([true, false]);
+       |       ^
+    1495|   });
+    1496|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > 1 month: the same local time one calendar month earlier is the boundary
+AssertionError: expected [ false, false ] to deeply equal [ true, false ]
+
+- Expected
++ Received
+
+  [
+-   true,
++   false,
+    false,
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1507:7
+    1505|         new Date(2026, 1, 10, 10, 59),
+    1506|       ),
+    1507|     ).toEqual([true, false]);
+       |       ^
+    1508|   });
+    1509|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > the evaluation instant itself matches (upper bound inclusive)
+AssertionError: expected [ false, false ] to deeply equal [ true, true ]
+
+- Expected
++ Received
+
+  [
+-   true,
+-   true,
++   false,
++   false,
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1511:59
+    1509|
+    1510|   it("the evaluation instant itself matches (upper bound inclusive)", …
+    1511|     expect(await insideOutside(NOW, 1, "days", NOW, NOW)).toEqual([tru…
+       |                                                           ^
+    1512|   });
+    1513|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 31 March 2026 -> 28 February
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 30 March 2026 -> 28 February
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 29 March 2026 -> 28 February
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 31 March 2028 -> 29 February (leap)
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 30 March 2028 -> 29 February (leap)
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 29 March 2028 -> 29 February (leap)
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 31 May 2026 -> 30 April
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a month span is clamped to the end of the earlier month > 31 January 2026 -> 31 December 2025
+AssertionError: expected [ false, false ] to deeply equal [ true, false ]
+
+- Expected
++ Received
+
+  [
+-   true,
++   false,
+    false,
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1567:11
+    1565|             new Date(boundary.getTime() - MIN),
+    1566|           ),
+    1567|         ).toEqual([true, false]);
+       |           ^
+    1568|       });
+    1569|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > reads a date-only custom field as local midnight
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000a1",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1601:20
+    1599|       },
+    1600|     );
+    1601|     expect(result).toEqual([INSIDE]);
+       |                    ^
+    1602|   });
+    1603|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > unit years
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1644:57
+    1642|
+    1643|     it("unit years", async () => {
+    1644|       await expect(attempt({ amount: 1, unit: "years" })).rejects.toTh…
+       |                                                         ^
+    1645|         /unit must be days, weeks or months/,
+    1646|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > unit missing
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1649:42
+    1647|     });
+    1648|     it("unit missing", async () => {
+    1649|       await expect(attempt({ amount: 1 })).rejects.toThrow(/unit must …
+       |                                          ^
+    1650|     });
+    1651|     it("amount 0", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > amount 0
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1652:56
+    1650|     });
+    1651|     it("amount 0", async () => {
+    1652|       await expect(attempt({ amount: 0, unit: "days" })).rejects.toThr…
+       |                                                        ^
+    1653|         /amount must be an integer of at least 1/,
+    1654|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > amount negative
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1657:57
+    1655|     });
+    1656|     it("amount negative", async () => {
+    1657|       await expect(attempt({ amount: -3, unit: "days" })).rejects.toTh…
+       |                                                         ^
+    1658|         /amount must be an integer of at least 1/,
+    1659|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > amount fractional
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1662:58
+    1660|     });
+    1661|     it("amount fractional", async () => {
+    1662|       await expect(attempt({ amount: 1.5, unit: "days" })).rejects.toT…
+       |                                                          ^
+    1663|         /amount must be an integer of at least 1/,
+    1664|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > amount a string
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1667:58
+    1665|     });
+    1666|     it("amount a string", async () => {
+    1667|       await expect(attempt({ amount: "7", unit: "days" })).rejects.toT…
+       |                                                          ^
+    1668|         /amount must be an integer of at least 1/,
+    1669|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/22]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > gte with a relative-date object (D-17, FR-11..FR-14) > a malformed relative-date object throws an error naming the problem > amount missing
+AssertionError: promise resolved "[]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[]
+
+ ❯ tests/unit/query-evaluator.test.ts:1672:45
+    1670|     });
+    1671|     it("amount missing", async () => {
+    1672|       await expect(attempt({ unit: "days" })).rejects.toThrow(
+       |                                             ^
+    1673|         /amount must be an integer of at least 1/,
+    1674|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/22]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  22 failed | 181 passed | 1 expected fail (204)
+   Start at  13:49:28
+   Duration  191ms (transform 92ms, setup 85ms, import 77ms, tests 27ms, environment 0ms)
+

@@ -1,0 +1,17 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 60046 port 54644 (throwaway projects dir; templates repo read-only)
+tag creation: dialog lines=["FLASHBACK"]; project.json config.tags=[{"id":"f6f46ffa-3008-4be9-b695-f4b1d30e779b","name":"flashback"}]
+sidebar Tags section right after creating the tag in Project Settings (dialog closed, no reload): ["No tags yet. Create some in Project Settings."]
+data Scene A: wordCount=50 userMetadata={"pov":"Mara","status":"Draft","storyDate":"2026-01-05","fsel":"Red","fmulti":["Alpha","Beta"]}
+data Scene B: wordCount=600 userMetadata={"pov":"Mara","status":"In review","storyDate":"2026-03-01","fsel":"Green","fmulti":["Alpha"]}
+data Scene C: wordCount=40 userMetadata={"pov":"Elena","status":"Draft","storyDate":"2026-02-01","fmulti":["Beta"]}
+data Scene D: wordCount=5 userMetadata={}
+config.tags=[{"id":"f6f46ffa-3008-4be9-b695-f4b1d30e779b","name":"flashback"}]; tagAssignments={"34e43fd3-6993-4073-8694-4de589aef7b4":["f6f46ffa-3008-4be9-b695-f4b1d30e779b"],"4617a4c3-e90b-4c72-968b-6c699fa00c8c":["f6f46ffa-3008-4be9-b695-f4b1d30e779b"]}
+meta/backlinks.json (id -> ids it links to): {"24f180d5-710d-41c0-826c-39f2f7019e35":[],"34e43fd3-6993-4073-8694-4de589aef7b4":["a64c2b32-2403-4562-b086-ccdca02024e9"],"4617a4c3-e90b-4c72-968b-6c699fa00c8c":["a64c2b32-2403-4562-b086-ccdca02024e9"],"78768f73-ad83-45fb-bc1d-62561605fa19":["24f180d5-710d-41c0-826c-39f2f7019e35"],"a64c2b32-2403-4562-b086-ccdca02024e9":[],"ef23d3c3-cb80-456f-90b9-58f35f5e7487":["34e43fd3-6993-4073-8694-4de589aef7b4"]}; ids: {"Scene A":"34e43fd3","Scene B":"4617a4c3","Scene C":"78768f73","Scene D":"ef23d3c3","Mara":"a64c2b32","Elena":"24f180d5"}
+before save, value box: {"inputs":[],"text":"FLASHBACK"}
+reopen (no reload): {"inputs":[],"text":"FLASHBACK"}
+reopen (first builder open after reload): {"inputs":[],"text":"FLASHBACK"}
+same chip 2 s later: {"inputs":[],"text":"FLASHBACK"}
+stop: recorded 60046(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

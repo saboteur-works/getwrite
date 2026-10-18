@@ -1,0 +1,648 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+> getwrite-frontend@2.2.0 lint /Users/jedaisaboteur/Repositories/getwrite/frontend
+> eslint .
+
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/.storybook/preview.tsx
+  24:7  warning  'project' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/app/(app)/page.tsx
+  269:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  270:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  281:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  282:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  706:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  727:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  963:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  989:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/app/api/project-types/route.ts
+  33:16  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/app/layout.tsx
+  40:9  warning  Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/Editor/MenuBar/ImagePickerSubmenu.tsx
+  119:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/Layout/ShellProjectTypeLoader.tsx
+  5:3  warning  'ProjectTypeDefinition' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/ResourceTree/CreateResourceModal.tsx
+  83:6  warning  React Hook useEffect has a missing dependency: 'parentId'. Either include it or remove the dependency array. If 'setSelectedParent' needs the current value of 'parentId', you can also switch to useReducer instead of useState and read 'parentId' in the reducer  react-hooks/exhaustive-deps
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/ResourceTree/ResourceTree.tsx
+  178:3  warning  'debug' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+  333:6  warning  React Hook useEffect has a missing dependency: 'tree'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  337:6  warning  React Hook useEffect has a missing dependency: 'tree'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/ResourceTree/ResourceTreeIcons.tsx
+  65:10  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/Start/CreateProjectModal.tsx
+   25:16  warning  Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+   26:18  warning  Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+   99:16  warning  '_' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  114:6   warning  React Hook useEffect has a missing dependency: 'loadTypes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  142:16  warning  '_' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/Start/ManageProjectMenu.tsx
+  16:8  warning  'Button' is defined but never used     @typescript-eslint/no-unused-vars
+  46:3  warning  'onPackage' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx
+  159:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx
+  257:9  warning  The 'allChildren' array makes the dependencies of useMemo Hook (at line 308) change on every render. To fix this, wrap the initialization of 'allChildren' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/components/common/TagsManagerModal.tsx
+  55:6  warning  React Hook useEffect has a missing dependency: 'loadTags'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/e2e/resourcetree-reorder.e2e.spec.ts
+  15:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/e2e/search-bar.e2e.spec.ts
+  51:9  warning  'queryProbe' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/adapters/placeholderAdapter.ts
+   36:38  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   76:37  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   94:29  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   98:27  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  109:1   warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/io.ts
+  166:51  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  169:41  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  171:31  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  174:37  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  571:1   warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/memoryAdapter.ts
+  181:30  warning  '_opts' is defined but never used                               @typescript-eslint/no-unused-vars
+  259:27  warning  '_opts' is defined but never used                               @typescript-eslint/no-unused-vars
+  293:42  warning  '_opts' is defined but never used                               @typescript-eslint/no-unused-vars
+  320:1   warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/previews.ts
+  87:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/project-config.ts
+  95:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/project-features.ts
+  143:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/project-view.ts
+  18:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/project.ts
+  78:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/resource-crud-core.ts
+  848:13  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  860:5   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  876:7   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/resource-templates.ts
+  138:14  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+  146:14  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+  199:12  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+  505:12  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+  545:1   warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+  688:12  warning  'err' is defined but never used                                 @typescript-eslint/no-unused-vars
+  764:12  warning  'err' is defined but never used                                 @typescript-eslint/no-unused-vars
+  849:16  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+  854:12  warning  'err' is defined but never used                                 @typescript-eslint/no-unused-vars
+  955:11  warning  'crc' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+  957:11  warning  'uncompSize' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/resource.ts
+  38:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/scrivener/apply-document-metadata.ts
+  173:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/scrivener/import-scrivener-project.ts
+  112:10  warning  'generateUUID' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/models/sidecar.ts
+  202:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/projectTypes.ts
+   74:12  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+   78:14  warning  '_' is defined but never used                                   @typescript-eslint/no-unused-vars
+  136:16  warning  'err' is defined but never used                                 @typescript-eslint/no-unused-vars
+  144:12  warning  'err' is defined but never used                                 @typescript-eslint/no-unused-vars
+  182:1   warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/tiptap-text.ts
+  5:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/lib/tiptap-utils.ts
+  71:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/native-shims/async-hooks.mjs
+  56:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/entityAliasTableSlice.ts
+   96:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/hooks.ts
+  5:3   warning  'useStore' is defined but never used  @typescript-eslint/no-unused-vars
+  7:44  warning  'AppStore' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/metadata-schema-transport-service.ts
+  37:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/projectsSlice.ts
+   183:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   224:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   278:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   491:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   824:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   841:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   869:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   887:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   924:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   973:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   995:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1001:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1045:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1065:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1079:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1086:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1090:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1094:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1098:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1102:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1106:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1110:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1120:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/resourcesSlice.ts
+  84:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/store/transport/native-trash-backend.ts
+  61:3  warning  'PurgeSelection' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/src/types/shims.d.ts
+   6:20  warning  'T' is defined but never used             @typescript-eslint/no-unused-vars
+   6:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:24  warning  'T' is defined but never used             @typescript-eslint/no-unused-vars
+   7:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Auth/AuthScreen.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Common/ResourceCommandPalette.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/CompilePreviewModal.stories.tsx
+  107:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  121:8   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Editor/MenuBar/EditorMenuIcon.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Editor/MenuBar/MenuBar.stories.tsx
+  268:11  warning  'previousActionCount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  282:34  warning  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Editor/RevisionControl/RevisionControl.stories.tsx
+  138:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Foundations/LayoutTokens.stories.tsx
+  42:7  warning  'COMPONENT_TOKENS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Help/HelpSectionCard.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Layout/SearchBar.stories.tsx
+  65:21  warning  'setQuery' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Layout/UpdateNoticeBanner.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/QueryBuilder/OperatorMenu.stories.tsx
+  16:15  warning  '_op' is defined but never used    @typescript-eslint/no-unused-vars
+  16:28  warning  '_stub' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/QueryBuilder/SaveQueryDialog.stories.tsx
+  1:17  warning  'useState' is defined but never used              @typescript-eslint/no-unused-vars
+  8:3   warning  'setProject' is defined but never used            @typescript-eslint/no-unused-vars
+  9:3   warning  'setSelectedProjectId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Routes/PreferencesRoutePage.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Routes/ProjectTypesRoutePage.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/SchemaManager/MigrationPreview.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/MetadataSidebar.stories.tsx
+  33:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:8   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  95:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/BooleanToggle.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/MultiSelectList.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/NotesInput.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/NumberInput.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/ResourceRefInput.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/SelectInput.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Sidebar/controls/StatusSelector.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Start/CreateProjectModal.stories.tsx
+  30:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  82:20  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Start/StartPage.stories.tsx
+  186:18  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+  187:14  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+  225:16  warning  '_e' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  342:16  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+  352:16  warning  '_e' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  540:7   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  561:10  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/Tree/ResourceTree.stories.tsx
+  59:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/WorkArea/NodeTypeIndicator.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/WorkArea/OrganizerView.stories.tsx
+  226:24  warning  'setSelectedId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/WorkArea/TimelineView.stories.tsx
+   38:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  194:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/stories/WorkArea/WordCountProgressBar.stories.tsx
+  1:8  warning  'React' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/a11y/create-project-modal.a11y.test.tsx
+  10:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/component/Timeline.test.tsx
+  106:11  warning  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/create-project-modal.test.tsx
+    4:8   warning  'StartPage' is defined but never used     @typescript-eslint/no-unused-vars
+   16:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  182:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/createProjectModal.error.test.tsx
+  17:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/dataView.test.tsx
+  25:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/fixtures/docx/generate-docx-fixtures.ts
+   55:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  310:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/flows.test.tsx
+   81:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  138:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  138:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/integration/trash-legacy-layout.test.ts
+  38:3  warning  'softDeleteFolder' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/metadataSidebar.test.tsx
+  631:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/multi-resource-ref-input.test.tsx
+  7:15  warning  'ResourceRef' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/organizerView.test.tsx
+    79:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   144:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   147:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   159:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   226:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   233:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   236:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   297:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   300:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   301:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   595:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   631:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   696:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   833:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   838:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   844:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   845:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   875:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   938:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   941:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   942:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   981:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   984:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   985:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1042:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1045:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1080:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1088:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1121:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1122:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1155:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1178:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1179:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1283:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1287:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1289:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1498:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1499:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1574:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1575:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/projectEncryptionPanel.test.tsx
+  12:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/reorder-persistence.test.tsx
+   39:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   44:13  warning  'url' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   59:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   76:20  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+   88:18  warning  '_e' is defined but never used            @typescript-eslint/no-unused-vars
+   93:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  215:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/resourceTree.order.test.tsx
+  39:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/resourceTreeContextMenu.test.tsx
+  29:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/saveQueryDialog.test.tsx
+  67:10  warning  'mockFetchSuccess' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/schemaManager.test.tsx
+  865:66  warning  'init' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/searchBar.test.tsx
+  9:10  warning  'setFolders' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/smartFolders.test.tsx
+  8:3  warning  'setProject' is defined but never used            @typescript-eslint/no-unused-vars
+  9:3  warning  'setSelectedProjectId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/start.test.tsx
+   38:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/tagsSection.test.tsx
+  63:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/timelineView.test.tsx
+   5:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/atomic-write-durable.test.ts
+  33:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/backlinks-wiki-edge.test.ts
+    6:29  warning  'writeFile' is defined but never used     @typescript-eslint/no-unused-vars
+    6:40  warning  'mkdir' is defined but never used         @typescript-eslint/no-unused-vars
+   37:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   47:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/backlinks-wiki.test.ts
+   47:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   54:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   90:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  156:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  172:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  197:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  198:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  215:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  216:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  234:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  235:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  236:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  258:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/backlinks.test.ts
+   50:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/diagnostics-index-rebuild.test.ts
+  16:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/entity-rescan.test.ts
+  14:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/helpers/fs-utils.ts
+  26:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  34:1   warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/helpers/project-creator.ts
+  132:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/indexer-queue-diagnostics.test.ts
+  13:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/indexer-queue.test.ts
+   29:5   warning  Unused eslint-disable directive (no problems were reported from 'no-await-in-loop')
+   61:36  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   64:33  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   64:42  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   65:33  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   67:32  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   67:60  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   68:42  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   69:27  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   72:40  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   99:34  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  102:31  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  102:40  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  103:31  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  105:30  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  105:58  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  106:40  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  107:25  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  112:40  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/mention-index.test.ts
+  147:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/nullify-resource-refs.test.ts
+  6:23  warning  'writeSidecar' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/previews.test.ts
+  33:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:23  warning  'r' is defined but never used             @typescript-eslint/no-unused-vars
+  46:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  81:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/query-intrinsics.test.ts
+  442:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  443:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/query-slice.test.ts
+  2:8  warning  'projectsReducer' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/resource-templates-export.test.ts
+  23:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:14  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/resource-templates-list.test.ts
+  43:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/resource-templates.test.ts
+  302:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  375:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  383:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  392:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/revision-manager.test.ts
+  12:3  warning  'revisionsBaseDir' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/revision-prune.test.ts
+  26:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/revision.test.ts
+  65:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  74:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  85:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  99:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/saved-queries.test.ts
+  71:25  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/scrivener-apply-document-metadata.test.ts
+  3:8  warning  'os' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/search-route.test.ts
+  230:11  warning  'idBody' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/sidecar.test.ts
+  70:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/timelineUtils.test.ts
+  206:9  warning  'week' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/trash.test.ts
+  28:28  warning  'folders' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/with-storage-context.test.ts
+   60:34  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  269:27  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/writing-log-schemas.test.ts
+  17:24  warning  '_t' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  40:18  warning  '_n' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/jedaisaboteur/Repositories/getwrite/frontend/tests/unit/writing-log-transport.test.ts
+  121:19  warning  '_goal' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 393 problems (0 errors, 393 warnings)
+  0 errors and 7 warnings potentially fixable with the `--fix` option.
+

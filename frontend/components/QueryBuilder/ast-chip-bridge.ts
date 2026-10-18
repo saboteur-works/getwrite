@@ -7,9 +7,26 @@ import type {
   RefNode,
 } from "../../src/lib/models/query-ast";
 import type { MetadataValue } from "../../src/lib/models/types";
+import { escapeRegExp } from "../../src/lib/models/entity-detection";
+import { isRelativeDateValue } from "./operator-utils";
 import type { FilterChipField, FilterChipValue } from "./FilterChip";
 import type { GroupChip, GroupCombinator } from "./FilterGroup";
 import type { GlobalCombinator, QueryGroup } from "./QueryBuilder";
+
+/**
+ * The typed text of a saved "starts with" (Feature 86 FR-32): the node carries
+ * `caseInsensitive: true` and a value of `^` plus a regex-escaped literal.
+ * Returns `null` for anything else, which reopens as "matches regex".
+ */
+function startsWithTypedText(node: {
+  value: string;
+  caseInsensitive?: boolean;
+}): string | null {
+  if (node.caseInsensitive !== true || !node.value.startsWith("^")) return null;
+  const rest = node.value.slice(1);
+  const typed = rest.replace(/\\(.)/g, "$1");
+  return escapeRegExp(typed) === rest ? typed : null;
+}
 
 // ─── Node classification ──────────────────────────────────────────────────────
 
@@ -90,7 +107,12 @@ function chipToAst(chip: GroupChip): QueryAST | null {
         child: { op: "contains", field: f, value: String(v ?? "") },
       };
     case "starts-with":
-      return { op: "matches", field: f, value: String(v ?? "") };
+      return {
+        op: "matches",
+        field: f,
+        value: `^${escapeRegExp(String(v ?? ""))}`,
+        caseInsensitive: true,
+      };
     case "matches-regex":
       return { op: "matches", field: f, value: String(v ?? "") };
     // number
@@ -233,8 +255,11 @@ function comparisonToOperator(
   if (astOp === "lte") return "is-at-most";
   if (astOp === "gt")
     return fieldType === "date" ? "is-after" : "is-greater-than";
-  if (astOp === "gte")
+  if (astOp === "gte") {
+    if (fieldType === "date" && isRelativeDateValue(value))
+      return "in-the-last";
     return fieldType === "number" ? "is-at-least" : "is-after";
+  }
   return "is";
 }
 
@@ -308,6 +333,15 @@ function astNodeToChip(
   }
 
   if (node.op === "matches") {
+    const typed = startsWithTypedText(node);
+    if (typed !== null) {
+      return {
+        id,
+        field: fieldFor(node.field, fields),
+        operator: "starts-with",
+        value: typed as FilterChipValue,
+      };
+    }
     return {
       id,
       field: fieldFor(node.field, fields),
@@ -354,6 +388,30 @@ function astNodeToChip(
   return null;
 }
 
+/**
+ * `and` with exactly one `in` child on a multiselect or multi-resource-ref
+ * field is the saved shape of an "includes all of" chip (`chipToAst`). Any
+ * other field type, or an unknown field, is not reinterpreted.
+ */
+function allOfChip(
+  node: QueryAST,
+  fields: FilterChipField[],
+): GroupChip | null {
+  if (node.op !== "and" || node.children.length !== 1) return null;
+  const inner = node.children[0];
+  if (inner.op !== "in") return null;
+  const field = fieldFor(inner.field, fields);
+  if (field?.type !== "multiselect" && field?.type !== "multi-resource-ref") {
+    return null;
+  }
+  return {
+    id: nextChipId(),
+    field,
+    operator: "includes-all-of",
+    value: inner.value as FilterChipValue,
+  };
+}
+
 function astNodeToGroup(
   node: LeafNode | NotNode | AndNode | OrNode | RefNode,
   fields: FilterChipField[],
@@ -365,6 +423,8 @@ function astNodeToGroup(
     if (!chip) return null;
     return { id, combinator: "and", chips: [chip] };
   }
+  const allOf = allOfChip(node, fields);
+  if (allOf) return { id, combinator: "and", chips: [allOf] };
   if (node.op === "and" || node.op === "or") {
     const chips = node.children
       .filter(isChipNode)
@@ -400,6 +460,14 @@ export function astToGroups(
   }
 
   if (ast.op !== "and" && ast.op !== "or") return null;
+
+  const allOf = allOfChip(ast, fields);
+  if (allOf) {
+    return {
+      groups: [{ id: nextGroupId(), combinator: "and", chips: [allOf] }],
+      globalCombinator: "and",
+    };
+  }
 
   const hasOnlyChipChildren = ast.children.every(isChipNode);
 

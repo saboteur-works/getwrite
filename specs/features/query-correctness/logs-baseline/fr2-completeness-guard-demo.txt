@@ -1,0 +1,12 @@
+ × |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > text: every operator has a fixture case 3ms
+   → operators with no fixture case: expected [ 'starts-with' ] to deeply equal []
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > text: every operator has a fixture case
+AssertionError: operators with no fixture case: expected [ 'starts-with' ] to deeply equal []
+- Expected
++ Received
++ [
++   "starts-with",
++ ]
+    532|       expect(missing, `operators with no fixture case`).toEqual([]);
+      Tests  1 failed | 10 passed | 268 skipped (279)

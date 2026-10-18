@@ -1,0 +1,24 @@
+OBS scratch-type-multiselect/A-resource-resolver/includes field {"type":"multiselect","options":null,"refFolder":null,"isFolderField":false}
+OBS scratch-type-multiselect/A-resource-resolver/includes valueBox {"inputs":[],"select":["select..."]}
+OBS scratch-type-multiselect/A-resource-resolver/includes afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/A-resource-resolver/includes afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/B-tag-resolver/includes field {"type":"multiselect","options":null,"refFolder":null,"isFolderField":false}
+OBS scratch-type-multiselect/B-tag-resolver/includes valueBox {"inputs":[],"select":["select..."]}
+OBS scratch-type-multiselect/B-tag-resolver/includes afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/B-tag-resolver/includes afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/C-options-tag-names/includes field {"type":"multiselect","options":["alpha","beta"],"refFolder":null,"isFolderField":false}
+OBS scratch-type-multiselect/C-options-tag-names/includes valueBox {"inputs":[],"select":["select...","alpha","beta"]}
+OBS scratch-type-multiselect/C-options-tag-names/includes afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/C-options-tag-names/includes afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/A-resource-resolver/includes-any-of field {"type":"multiselect","options":null,"refFolder":null,"isFolderField":false}
+OBS scratch-type-multiselect/A-resource-resolver/includes-any-of valueBox {"inputs":[{"aria":"Values","placeholder":"values..."}],"select":null}
+OBS scratch-type-multiselect/A-resource-resolver/includes-any-of afterTypeAlphaEnter {"onValueChangeCalls":5,"value":"alpha"}
+OBS scratch-type-multiselect/A-resource-resolver/includes-any-of afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/B-tag-resolver/includes-any-of field {"type":"multiselect","options":null,"refFolder":null,"isFolderField":false}
+OBS scratch-type-multiselect/B-tag-resolver/includes-any-of valueBox {"inputs":[{"aria":"Values","placeholder":"values..."}],"select":null}
+OBS scratch-type-multiselect/B-tag-resolver/includes-any-of afterTypeAlphaEnter {"onValueChangeCalls":5,"value":"alpha"}
+OBS scratch-type-multiselect/B-tag-resolver/includes-any-of afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/C-options-tag-names/includes-any-of field {"type":"multiselect","options":["alpha","beta"],"refFolder":null,"isFolderField":false}
+OBS scratch-type-multiselect/C-options-tag-names/includes-any-of valueBox {"inputs":[],"select":["alpha","beta"]}
+OBS scratch-type-multiselect/C-options-tag-names/includes-any-of afterTypeAlphaEnter {"onValueChangeCalls":0,"value":null}
+OBS scratch-type-multiselect/C-options-tag-names/includes-any-of afterTypeAlphaThenClickSuggestion {"suggestions":["<no typeahead input>"],"onValueChangeCalls":0,"value":null}

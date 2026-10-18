@@ -1,0 +1,51 @@
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/ast-chip-bridge.test.ts (62 tests | 4 failed) 9ms
+     × reopens gte {amount, unit} on a date field as 'in the last' 3ms
+     × round trips chip -> AST -> chip for days 0ms
+     × round trips chip -> AST -> chip for weeks 0ms
+     × round trips chip -> AST -> chip for months 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > astToGroups reopening a relative-date gte (Feature 86 FR-17) > reopens gte {amount, unit} on a date field as 'in the last'
+AssertionError: expected 'is-after' to be 'in-the-last' // Object.is equality
+
+Expected: "in-the-last"
+Received: "is-after"
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:896:27
+    894|     );
+    895|     const chip = r!.groups[0].chips[0];
+    896|     expect(chip.operator).toBe("in-the-last");
+       |                           ^
+    897|     expect(chip.value).toEqual({ amount: 7, unit: "days" });
+    898|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > astToGroups reopening a relative-date gte (Feature 86 FR-17) > round trips chip -> AST -> chip for days
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > astToGroups reopening a relative-date gte (Feature 86 FR-17) > round trips chip -> AST -> chip for weeks
+ FAIL  |node| tests/unit/ast-chip-bridge.test.ts > astToGroups reopening a relative-date gte (Feature 86 FR-17) > round trips chip -> AST -> chip for months
+AssertionError: expected 'is-after' to be 'in-the-last' // Object.is equality
+
+Expected: "in-the-last"
+Received: "is-after"
+
+ ❯ tests/unit/ast-chip-bridge.test.ts:920:29
+    918|       const back = astToGroups(ast, FIELDS)!;
+    919|       const chip = back.groups[0].chips[0];
+    920|       expect(chip.operator).toBe("in-the-last");
+       |                             ^
+    921|       expect(chip.value).toEqual({ amount: 3, unit });
+    922|       expect(groupsToAst(back.groups, "and")).toEqual(ast);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 58 passed (62)
+   Start at  14:03:24
+   Duration  166ms (transform 36ms, setup 61ms, import 24ms, tests 9ms, environment 0ms)
+

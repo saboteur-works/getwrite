@@ -1,0 +1,42 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/query-builder-evaluator-check.test.ts (283 tests | 2 failed) 28ms
+     × text › is › alpha › edited [expected failure: demo] 2ms
+     × lists the 31 cases measured on the unfixed tree 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › is › alpha › edited [expected failure: demo]
+Error: Expect test to fail
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |node| tests/unit/query-builder-evaluator-check.test.ts > expected-failure list > lists the 31 cases measured on the unfixed tree
+AssertionError: expected 32 to be 31 // Object.is equality
+
+- Expected
++ Received
+
+- 31
++ 32
+
+ ❯ tests/unit/query-builder-evaluator-check.test.ts:683:33
+    681|
+    682|   it("lists the 31 cases measured on the unfixed tree", () => {
+    683|     expect(KNOWN_FAILURES.size).toBe(31);
+       |                                 ^
+    684|   });
+    685| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 250 passed | 31 expected fail (283)
+   Start at  13:17:39
+   Duration  217ms (transform 49ms, setup 43ms, import 68ms, tests 28ms, environment 0ms)
+
+undefined
+/Users/jedaisaboteur/Repositories/getwrite/frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run tests/unit/query-builder-evaluator-check.test.ts

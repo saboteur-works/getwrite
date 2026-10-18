@@ -1,0 +1,63 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |jsdom| tests/filterChip.test.tsx (22 tests | 5 failed) 197ms
+     × sets {amount: 7, unit: "days"} on dt and saves it 8ms
+     × sets {amount: 7, unit: "days"} on createdAt and saves it 7ms
+     × sets {amount: 7, unit: "days"} on updatedAt and saves it 7ms
+     × replaces a stale value of another shape 6ms
+     × keeps an existing relative-date value 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > sets {amount: 7, unit: "days"} on dt and saves it
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > sets {amount: 7, unit: "days"} on createdAt and saves it
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > sets {amount: 7, unit: "days"} on updatedAt and saves it
+AssertionError: expected "vi.fn()" to be called with arguments: [ { amount: 7, unit: 'days' } ]
+
+Number of calls: 0
+
+ ❯ tests/filterChip.test.tsx:309:29
+    307|     it(`sets {amount: 7, unit: "days"} on ${field.key} and saves it`, …
+    308|       const onValueChange = chooseOperator(field, "is-on", null, "in-t…
+    309|       expect(onValueChange).toHaveBeenCalledWith(SEVEN_DAYS);
+       |                             ^
+    310|       expect(savedAst(field, SEVEN_DAYS)).toEqual({
+    311|         op: "gte",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > replaces a stale value of another shape
+AssertionError: expected "vi.fn()" to be called with arguments: [ { amount: 7, unit: 'days' } ]
+
+Number of calls: 0
+
+ ❯ tests/filterChip.test.tsx:325:27
+    323|       "in-the-last",
+    324|     );
+    325|     expect(onValueChange).toHaveBeenCalledWith(SEVEN_DAYS);
+       |                           ^
+    326|   });
+    327|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > keeps an existing relative-date value
+TypeError: valueForOperatorChange is not a function
+ ❯ tests/filterChip.test.tsx:331:7
+    329|     const kept = { amount: 3, unit: "weeks" } as const;
+    330|     expect(
+    331|       valueForOperatorChange("date", "in-the-last", kept),
+       |       ^
+    332|     ).toBe(kept);
+    333|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 17 passed (22)
+   Start at  14:18:08
+   Duration  939ms (transform 103ms, setup 53ms, import 255ms, tests 197ms, environment 360ms)
+

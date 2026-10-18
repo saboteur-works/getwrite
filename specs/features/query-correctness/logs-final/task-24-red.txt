@@ -1,0 +1,690 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+stderr | tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows flashback in the value box when the tags load after Edit is clicked
+[react-tooltip] Do not set `style.border`. Use `border` prop instead.
+
+stderr | tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows flashback in the value box when the tag read never resolves
+[react-tooltip] Do not set `style.border`. Use `border` prop instead.
+
+stderr | tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > writes no saved query, project or sidecar when a saved Tags folder is reopened
+[react-tooltip] Do not set `style.border`. Use `border` prop instead.
+
+stderr | tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > offers no previous project's tags in the Tags value box after switching project
+[react-tooltip] Do not set `style.border`. Use `border` prop instead.
+
+stderr | tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows a short failure message in the Tags value box when the tag read rejects
+[react-tooltip] Do not set `style.border`. Use `border` prop instead.
+
+stderr | tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows the same failure message when the tag read answers 409 (locked access)
+[react-tooltip] Do not set `style.border`. Use `border` prop instead.
+
+ ❯ |jsdom| tests/appShellTagsChipReopen.test.tsx (7 tests | 6 failed) 5835ms
+     × shows flashback in the value box when the tags load after Edit is clicked 1329ms
+     × shows flashback in the value box when the tag read never resolves 264ms
+     × writes no saved query, project or sidecar when a saved Tags folder is reopened 1190ms
+     × offers no previous project's tags in the Tags value box after switching project 304ms
+     × shows a short failure message in the Tags value box when the tag read rejects 1228ms
+     × shows the same failure message when the tag read answers 409 (locked access) 1256ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |jsdom| tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows flashback in the value box when the tags load after Edit is clicked
+AssertionError: expected '' to contain 'flashback'
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"appshell-shell "[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"appshell-topbar"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"appshell-topbar-left"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close resource sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 md:hidden"[39m
+              [33mtitle[39m=[32m"Resources"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-left"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M9 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33maria-label[39m=[32m"GetWrite"[39m
+              [33mclass[39m=[32m"appshell-topbar-wordmark"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-normal tracking-heading text-gw-secondary"[39m
+              [36m>[39m
+                [0mGet[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-bold tracking-wordmark text-gw-primary"[39m
+              [36m>[39m
+                [0mWrite[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"appshell-topbar-divider"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"appshell-topbar-project"[39m
+              [33mtitle[39m=[32m"A"[39m
+            [36m>[39m
+              [0mA[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-1"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close metadata sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 lg:hidden"[39m
+              [33mtitle[39m=[32m"Metadata"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-right"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"appshell-topbar-menu"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33maria-expanded[39m=[32m"false"[39m
+                [33maria-haspopup[39m=[32m"menu"[39m
+                [33maria-label[39m=[32m"Open project menu"[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide lucide-book-open"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 7v14"[39m
+               ...
+
+- Expected
++ Received
+
+- flashback
+
+ ❯ tests/appShellTagsChipReopen.test.tsx:205:57
+    203|     });
+    204|     await waitFor(() => expect(tagReads.length).toBeGreaterThan(0));
+    205|     await waitFor(() => expect(valueSlot().textContent).toContain("fla…
+       |                                                         ^
+    206|     expect(valueSlot().querySelector("input[aria-label='Tag']")).toBeN…
+    207|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |jsdom| tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows flashback in the value box when the tag read never resolves
+AssertionError: expected '' to contain 'flashback'
+
+- Expected
++ Received
+
+- flashback
+
+ ❯ tests/appShellTagsChipReopen.test.tsx:217:37
+    215|       await new Promise((r) => setTimeout(r, 50));
+    216|     });
+    217|     expect(valueSlot().textContent).toContain("flashback");
+       |                                     ^
+    218|     expect(valueSlot().querySelector("input[aria-label='Tag']")).toBeN…
+    219|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |jsdom| tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > writes no saved query, project or sidecar when a saved Tags folder is reopened
+AssertionError: expected '' to contain 'flashback'
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"appshell-shell "[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"appshell-topbar"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"appshell-topbar-left"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close resource sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 md:hidden"[39m
+              [33mtitle[39m=[32m"Resources"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-left"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M9 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33maria-label[39m=[32m"GetWrite"[39m
+              [33mclass[39m=[32m"appshell-topbar-wordmark"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-normal tracking-heading text-gw-secondary"[39m
+              [36m>[39m
+                [0mGet[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-bold tracking-wordmark text-gw-primary"[39m
+              [36m>[39m
+                [0mWrite[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"appshell-topbar-divider"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"appshell-topbar-project"[39m
+              [33mtitle[39m=[32m"A"[39m
+            [36m>[39m
+              [0mA[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-1"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close metadata sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 lg:hidden"[39m
+              [33mtitle[39m=[32m"Metadata"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-right"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"appshell-topbar-menu"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33maria-expanded[39m=[32m"false"[39m
+                [33maria-haspopup[39m=[32m"menu"[39m
+                [33maria-label[39m=[32m"Open project menu"[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide lucide-book-open"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 7v14"[39m
+               ...
+
+- Expected
++ Received
+
+- flashback
+
+ ❯ tests/appShellTagsChipReopen.test.tsx:225:57
+    223|     setup();
+    224|     await openSavedFolderForEdit();
+    225|     await waitFor(() => expect(valueSlot().textContent).toContain("fla…
+       |                                                         ^
+    226|     expect(writes).toEqual([]);
+    227|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |jsdom| tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > offers no previous project's tags in the Tags value box after switching project
+AssertionError: expected [ 'flashback' ] to not include 'flashback'
+ ❯ tests/appShellTagsChipReopen.test.tsx:268:25
+    266|       .filter((o: HTMLElement) => o.closest("select") === null)
+    267|       .map((o: HTMLElement) => o.textContent ?? "");
+    268|     expect(offered).not.toContain("flashback");
+       |                         ^
+    269|   });
+    270|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |jsdom| tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows a short failure message in the Tags value box when the tag read rejects
+AssertionError: expected '' to match /could not load tags/i
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"appshell-shell "[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"appshell-topbar"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"appshell-topbar-left"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close resource sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 md:hidden"[39m
+              [33mtitle[39m=[32m"Resources"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-left"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M9 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33maria-label[39m=[32m"GetWrite"[39m
+              [33mclass[39m=[32m"appshell-topbar-wordmark"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-normal tracking-heading text-gw-secondary"[39m
+              [36m>[39m
+                [0mGet[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-bold tracking-wordmark text-gw-primary"[39m
+              [36m>[39m
+                [0mWrite[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"appshell-topbar-divider"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"appshell-topbar-project"[39m
+              [33mtitle[39m=[32m"A"[39m
+            [36m>[39m
+              [0mA[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-1"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close metadata sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 lg:hidden"[39m
+              [33mtitle[39m=[32m"Metadata"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-right"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"appshell-topbar-menu"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33maria-expanded[39m=[32m"false"[39m
+                [33maria-haspopup[39m=[32m"menu"[39m
+                [33maria-label[39m=[32m"Open project menu"[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide lucide-book-open"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 7v14"[39m
+               ...
+
+- Expected:
+/could not load tags/i
+
++ Received:
+""
+
+ ❯ tests/appShellTagsChipReopen.test.tsx:277:39
+    275|     await startNewTagsChip();
+    276|     await waitFor(() =>
+    277|       expect(valueSlot().textContent).toMatch(/could not load tags/i),
+       |                                       ^
+    278|     );
+    279|     expect(valueSlot().querySelector("input[aria-label='Tag']")).toBeN…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |jsdom| tests/appShellTagsChipReopen.test.tsx > AppShell — reopening a saved Tags folder (Feature 86 Task 24) > shows the same failure message when the tag read answers 409 (locked access)
+AssertionError: expected '' to match /could not load tags/i
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"appshell-shell "[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"appshell-topbar"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"appshell-topbar-left"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close resource sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 md:hidden"[39m
+              [33mtitle[39m=[32m"Resources"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-left"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M9 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33maria-label[39m=[32m"GetWrite"[39m
+              [33mclass[39m=[32m"appshell-topbar-wordmark"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-normal tracking-heading text-gw-secondary"[39m
+              [36m>[39m
+                [0mGet[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-display font-bold tracking-wordmark text-gw-primary"[39m
+              [36m>[39m
+                [0mWrite[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"appshell-topbar-divider"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"appshell-topbar-project"[39m
+              [33mtitle[39m=[32m"A"[39m
+            [36m>[39m
+              [0mA[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-1"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Close metadata sidebar"[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0 lg:hidden"[39m
+              [33mtitle[39m=[32m"Metadata"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-panel-right"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"18"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"18"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mrx[39m=[32m"2"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15 3v18"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"appshell-topbar-menu"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33maria-expanded[39m=[32m"false"[39m
+                [33maria-haspopup[39m=[32m"menu"[39m
+                [33maria-label[39m=[32m"Open project menu"[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-label-wide transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-border disabled:opacity-50 disabled:pointer-events-none border-[0.5px] border-gw-border bg-transparent text-gw-secondary hover:bg-gw-chrome2 hover:border-gw-border-md hover:text-gw-primary w-9 h-9 p-0"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide lucide-book-open"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 7v14"[39m
+               ...
+
+- Expected:
+/could not load tags/i
+
++ Received:
+""
+
+ ❯ tests/appShellTagsChipReopen.test.tsx:288:39
+    286|     await startNewTagsChip();
+    287|     await waitFor(() =>
+    288|       expect(valueSlot().textContent).toMatch(/could not load tags/i),
+       |                                       ^
+    289|     );
+    290|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  16:21:12
+   Duration  7.41s (transform 776ms, setup 46ms, import 1.13s, tests 5.84s, environment 326ms)
+

@@ -140,7 +140,8 @@ import {
   saveGlobalAppearancePreferences,
   saveGlobalColorMode,
 } from "../../src/lib/user-preferences";
-import type { MetadataValue } from "../../src/lib/models/types";
+import type { MetadataValue, Tag } from "../../src/lib/models/types";
+import { listTagsOrThrow } from "../../src/lib/api/tags";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import {
   selectEditorConfig,
@@ -213,6 +214,9 @@ export interface AppShellProps {
     opts: { title: string; folderId?: string },
   ) => Promise<void>;
 }
+
+/** Stable empty tag list, so the field list is not rebuilt per render. */
+const EMPTY_TAGS: Tag[] = [];
 
 /**
  * Three-column app shell used in the main app and Storybook.
@@ -308,9 +312,53 @@ export default function AppShell({
     selectActiveProjectStatuses,
     shallowEqual,
   );
+  // The project's tags (`config.tags`) for the Tags chip's value box. Read
+  // through the existing tags transport (no new route) as soon as a project is
+  // active, independent of the builder, so a saved Tags chip restored before
+  // the builder opens still resolves. Tracks which project the result belongs
+  // to, so a previous project's tags are never offered; a failed read is its
+  // own state, not an empty list (`docs/standards/failure-visibility.md`).
+  const [tagRead, setTagRead] = useState<{
+    projectId: string;
+    tags: Tag[];
+    failed: boolean;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!activeProjectDirectoryId) return;
+    let isCancelled = false;
+    listTagsOrThrow(activeProjectDirectoryId)
+      .then((tags) => {
+        if (!isCancelled)
+          setTagRead({
+            projectId: activeProjectDirectoryId,
+            tags,
+            failed: false,
+          });
+      })
+      .catch(() => {
+        if (!isCancelled)
+          setTagRead({
+            projectId: activeProjectDirectoryId,
+            tags: [],
+            failed: true,
+          });
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeProjectDirectoryId, isQueryBuilderOpen]);
+  const currentTagRead =
+    tagRead && tagRead.projectId === activeProjectDirectoryId ? tagRead : null;
+  const projectTags: Tag[] = currentTagRead?.tags ?? EMPTY_TAGS;
   const availableFields = React.useMemo(
-    () => buildFieldPickerFields(metadataSchema, projectStatuses),
-    [metadataSchema, projectStatuses],
+    () =>
+      buildFieldPickerFields(
+        metadataSchema,
+        projectStatuses,
+        projectTags,
+        currentTagRead?.failed ?? false,
+      ),
+    [metadataSchema, projectStatuses, projectTags, currentTagRead?.failed],
   );
   const resolveResourceOptions = React.useCallback(
     (refFolder: string | undefined, includeSubfolders?: boolean) => {

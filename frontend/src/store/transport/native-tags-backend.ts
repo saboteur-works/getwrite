@@ -67,6 +67,12 @@ export function createNativeTagsTransport(
       });
     },
 
+    // Rejects on any core failure, locked-access errors included, so a caller
+    // can tell a failed read from a project with no tags.
+    async listOrThrow(projectId) {
+      return run(() => listTagsCore(projectId));
+    },
+
     async listAssignments(projectId, resourceId) {
       return run(async () => {
         try {

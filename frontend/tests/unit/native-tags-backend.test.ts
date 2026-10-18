@@ -125,4 +125,19 @@ describe("native tags transport — in-process backend reuses the shared tags CR
       transport.assign("not-a-uuid", "resource-1", generateUUID(), true),
     ).rejects.toThrow();
   });
+
+  // Feature 86 Task 24 (written after the method, which did not exist): the
+  // rejecting read lets the Tags chip tell a failed read from "no tags".
+  it("listOrThrow resolves the tags, and rejects (does not resolve []) on an invalid projectId", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeTagsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    await transport.create(projectId, "Draft");
+    await expect(transport.listOrThrow(projectId)).resolves.toHaveLength(1);
+    await expect(transport.listOrThrow("not-a-uuid")).rejects.toThrow();
+    await expect(transport.list("not-a-uuid")).resolves.toEqual([]);
+  });
 });

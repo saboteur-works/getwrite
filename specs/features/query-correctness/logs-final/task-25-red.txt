@@ -1,0 +1,187 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |jsdom| tests/filterChip.test.tsx (41 tests | 11 failed) 346ms
+       × amount holds 1 after typing 1.5, and the saved AST carries a whole amount 11ms
+       × amount holds 3 after typing 3.9 8ms
+       × an empty entry is ignored and the previous amount stays 8ms
+       × valueForOperatorChange to is-before returns the empty value, not the amount object 0ms
+       × choosing is-before from 'in the last' sets the empty value and the saved AST holds no object 8ms
+       × valueForOperatorChange to is-after returns the empty value, not the amount object 0ms
+       × choosing is-after from 'in the last' sets the empty value and the saved AST holds no object 8ms
+       × valueForOperatorChange to is-on returns the empty value, not the amount object 0ms
+       × choosing is-on from 'in the last' sets the empty value and the saved AST holds no object 8ms
+       × valueForOperatorChange to is-between returns the empty value, not the amount object 0ms
+       × choosing is-between from 'in the last' sets the empty value and the saved AST holds no object 9ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > amount input holds a whole number (Task 25 a) > amount holds 1 after typing 1.5, and the saved AST carries a whole amount
+AssertionError: expected "vi.fn()" to be called with arguments: [ { amount: 1, unit: 'days' } ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    {
+-     "amount": 1,
++     "amount": 1.5,
+      "unit": "days",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ tests/filterChip.test.tsx:382:29
+    380|     it("amount holds 1 after typing 1.5, and the saved AST carries a w…
+    381|       const onValueChange = typeAmount("1.5");
+    382|       expect(onValueChange).toHaveBeenCalledWith({ amount: 1, unit: "d…
+       |                             ^
+    383|       const saved = onValueChange.mock.calls[0][0] as FilterChipValue;
+    384|       expect(savedAst(DATE_FIELDS[0], saved)).toEqual({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > amount input holds a whole number (Task 25 a) > amount holds 3 after typing 3.9
+AssertionError: expected "vi.fn()" to be called with arguments: [ { amount: 3, unit: 'days' } ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    {
+-     "amount": 3,
++     "amount": 3.9,
+      "unit": "days",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ tests/filterChip.test.tsx:392:33
+    390|
+    391|     it("amount holds 3 after typing 3.9", () => {
+    392|       expect(typeAmount("3.9")).toHaveBeenCalledWith({
+       |                                 ^
+    393|         amount: 3,
+    394|         unit: "days",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > amount input holds a whole number (Task 25 a) > an empty entry is ignored and the previous amount stays
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      Object {
+        "amount": 1,
+        "unit": "days",
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ tests/filterChip.test.tsx:406:34
+    404|
+    405|     it("an empty entry is ignored and the previous amount stays", () =…
+    406|       expect(typeAmount("")).not.toHaveBeenCalled();
+       |                                  ^
+    407|     });
+    408|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > valueForOperatorChange to is-before returns the empty value, not the amount object
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > valueForOperatorChange to is-after returns the empty value, not the amount object
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > valueForOperatorChange to is-on returns the empty value, not the amount object
+AssertionError: expected { amount: 7, unit: 'days' } to deeply equal ''
+
+- Expected:
+""
+
++ Received:
+{
+  "amount": 7,
+  "unit": "days",
+}
+
+ ❯ tests/filterChip.test.tsx:426:66
+    424|     for (const [next, empty] of NEXT_EMPTY) {
+    425|       it(`valueForOperatorChange to ${next} returns the empty value, n…
+    426|         expect(valueForOperatorChange("date", next, SEVEN_DAYS)).toEqu…
+       |                                                                  ^
+    427|           empty,
+    428|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > choosing is-before from 'in the last' sets the empty value and the saved AST holds no object
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > choosing is-after from 'in the last' sets the empty value and the saved AST holds no object
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > choosing is-on from 'in the last' sets the empty value and the saved AST holds no object
+AssertionError: expected "vi.fn()" to be called with arguments: [ '' ]
+
+Number of calls: 0
+
+ ❯ tests/filterChip.test.tsx:438:31
+    436|           next,
+    437|         );
+    438|         expect(onValueChange).toHaveBeenCalledWith(empty);
+       |                               ^
+    439|         const ast = groupsToAst(
+    440|           [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > valueForOperatorChange to is-between returns the empty value, not the amount object
+AssertionError: expected { amount: 7, unit: 'days' } to deeply equal { from: '', to: '' }
+
+- Expected
++ Received
+
+  {
+-   "from": "",
+-   "to": "",
++   "amount": 7,
++   "unit": "days",
+  }
+
+ ❯ tests/filterChip.test.tsx:426:66
+    424|     for (const [next, empty] of NEXT_EMPTY) {
+    425|       it(`valueForOperatorChange to ${next} returns the empty value, n…
+    426|         expect(valueForOperatorChange("date", next, SEVEN_DAYS)).toEqu…
+       |                                                                  ^
+    427|           empty,
+    428|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  |jsdom| tests/filterChip.test.tsx > FilterChip — choosing 'in the last' on a date field (FR-33) > leaving 'in the last' resets the value (Task 25 b, d) > choosing is-between from 'in the last' sets the empty value and the saved AST holds no object
+AssertionError: expected "vi.fn()" to be called with arguments: [ { from: '', to: '' } ]
+
+Number of calls: 0
+
+ ❯ tests/filterChip.test.tsx:438:31
+    436|           next,
+    437|         );
+    438|         expect(onValueChange).toHaveBeenCalledWith(empty);
+       |                               ^
+    439|         const ast = groupsToAst(
+    440|           [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 30 passed (41)
+   Start at  16:38:13
+   Duration  1.06s (transform 104ms, setup 52ms, import 240ms, tests 346ms, environment 350ms)
+

@@ -1,0 +1,24 @@
+git diff --stat (task 19 working tree vs HEAD):
+ .../WorkArea/Views/OrganizerView/OrganizerView.tsx |   9 +-
+ frontend/tests/organizerView.test.tsx              | 126 ++++++++++++++-------
+ 2 files changed, 90 insertions(+), 45 deletions(-)
+
+Diff of protected lines (must be empty):
+(end; empty above = OrganizerCard.tsx, organizerFilters.ts, OrganizerFilterBar.tsx untouched)
+
+OrganizerView.tsx: only hunks are the import, a new filterStatusOptions selector after line 176 (defaultStatus = statuses[0] ?? "" unchanged), and the statuses prop to OrganizerFilterBar.
+--- a/frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx
++++ b/frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx
++  selectEffectiveProjectStatuses,
++  // The filter's Status select offers the effective list (FR-23); the card
++  // default above and the filter resolution stay on the configured list (FR-25).
++  const filterStatusOptions = useAppSelector(
++    (s) => selectEffectiveProjectStatuses(s),
++    shallowEqual,
++  );
+-          statuses={statuses}
++          statuses={filterStatusOptions}
+
+organizerFilters.ts lines 103-104 / OrganizerCard.tsx:163 not in diff:
+frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx
+frontend/tests/organizerView.test.tsx

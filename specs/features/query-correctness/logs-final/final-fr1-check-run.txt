@@ -1,0 +1,293 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > fixed clock and zone > runs in America/New_York with DST in force on the fixture days 1ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > covers every field type in OPERATORS_BY_TYPE with at least one subject 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > text: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > number: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > date (custom field): every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > date (createdAt): every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > date (updatedAt): every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > boolean: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > select: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > multiselect: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > resource-ref: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > completeness guard (FR-2) > multi-resource-ref: every operator has a fixture case 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › is › alpha › edited 2ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › is-not › alpha › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › contains › beta › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › does-not-contain › beta › edited 1ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › starts-with › alpha › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › matches-regex › ^b.ta$ › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > text › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › equals › 5 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › does-not-equal › 5 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › is-less-than › 5 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › is-at-most › 5 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › is-greater-than › 5 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › is-at-least › 5 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › is-between › 5 to 10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > number › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › is-on › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › is-before › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › is-after › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › is-between › 2026-03-10 to 2026-03-11 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › in-the-last › 7 days › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (custom field) › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-on › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-on › 2026-03-09 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-before › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-after › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-after › 2026-03-09 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-between › 2026-03-10 to 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-between › 2026-03-09 to 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › in-the-last › 1 days › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › in-the-last › 7 days › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › in-the-last › 1 weeks › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › in-the-last › 1 months › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (createdAt) › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-on › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-on › 2026-03-09 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-before › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-after › 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-after › 2026-03-09 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-between › 2026-03-10 to 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-between › 2026-03-09 to 2026-03-10 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › in-the-last › 1 days › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › in-the-last › 7 days › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › in-the-last › 1 weeks › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › in-the-last › 1 months › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > date (updatedAt) › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > boolean › is-true › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > boolean › is-false › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > boolean › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > boolean › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > select › is › red › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > select › is-not › red › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > select › is-any-of › red, green › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > select › is-none-of › red, green › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > select › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > select › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › includes › Alpha › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › does-not-include › Alpha › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › includes-all-of › Alpha, Beta › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › includes-any-of › Alpha, Beta › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › includes-none-of › Alpha, Beta › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multiselect › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is › picked Tom › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is › typed name Tom › edited [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-2] 3ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-not › picked Tom › edited 1ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-not › typed name Tom › edited [expected failure: known failure (owner decision, FR-4 stop 2026-10-16) F-3] 1ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-any-of › t1, t2 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-none-of › t1, t2 › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > resource-ref › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › includes › picked Alice › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › does-not-include › picked Alice › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › includes-all-of › a, b › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › includes-any-of › a, b › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › includes-none-of › a, b › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › is-empty › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > builder output evaluates as its label says (FR-1, FR-3: edited) > multi-resource-ref › has-any-value › none › edited 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › is › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › is-not › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › contains › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › does-not-contain › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › starts-with › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › matches-regex › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > text › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › equals › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › does-not-equal › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-less-than › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-at-most › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-greater-than › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-at-least › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-between › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > number › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › is-on › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › is-before › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › is-after › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › is-between › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › in-the-last › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › in-the-last › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (custom field) › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › is-on › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › is-before › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › is-after › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › is-between › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › in-the-last › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › in-the-last › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (createdAt) › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › is-on › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › is-before › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › is-after › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › is-between › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › in-the-last › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › in-the-last › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > date (updatedAt) › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › is-true › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › is-true › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › is-false › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › is-false › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > boolean › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › is › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › is-not › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › is-any-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › is-none-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > select › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › includes › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › does-not-include › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › includes-all-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › includes-any-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › includes-none-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multiselect › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › is › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › is-not › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › is-any-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › is-none-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > resource-ref › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › includes › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › does-not-include › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › includes-all-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › includes-any-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › includes-none-of › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › is-empty › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › is-empty › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › has-any-value › untouched › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip right after the operator is chosen, value never edited (FR-3) > multi-resource-ref › has-any-value › untouched › returns what the input displays 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > text › is-not › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > text › contains › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > text › does-not-contain › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > text › starts-with › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > text › matches-regex › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > number › does-not-equal › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > number › is-less-than › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > number › is-at-most › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > number › is-greater-than › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > number › is-at-least › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > number › is-between › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (custom field) › is-before › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (custom field) › is-after › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (custom field) › is-between › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (custom field) › in-the-last › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (createdAt) › is-before › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (createdAt) › is-after › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (createdAt) › is-between › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (createdAt) › in-the-last › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (updatedAt) › is-before › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (updatedAt) › is-after › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (updatedAt) › is-between › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > date (updatedAt) › in-the-last › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > select › is-not › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > select › is-any-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > select › is-none-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multiselect › does-not-include › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multiselect › includes-all-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multiselect › includes-any-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multiselect › includes-none-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > resource-ref › is-not › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > resource-ref › is-any-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > resource-ref › is-none-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multi-resource-ref › does-not-include › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multi-resource-ref › includes-all-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multi-resource-ref › includes-any-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > chip whose value was carried over from the previous operator (FR-3) > multi-resource-ref › includes-none-of › carried value › saves a schema-valid query that evaluates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > expected-failure list > names only cases this file generates 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > expected-failure list > lists only the 2 resource-ref known failures (F-2, F-3) 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > evaluation time is optional and read only by the relative-date gte (FR-13) > omitting it leaves every non-relative-date probe result unchanged 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > evaluation time is optional and read only by the relative-date gte (FR-13) > query-evaluator.ts mentions it twice in code: the declaration and the one read defaulting to now 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > evaluation time is optional and read only by the relative-date gte (FR-13) > the evaluate request carries no evaluation time or time zone 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › is 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › is-not 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › contains 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › does-not-contain 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › starts-with 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › matches-regex 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > text › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › equals 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › does-not-equal 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › is-less-than 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › is-at-most 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › is-greater-than 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › is-at-least 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › is-between 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > number › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › is-on 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › is-before 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › is-after 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › is-between 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › in-the-last 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > date › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > boolean › is-true 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > boolean › is-false 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > boolean › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > boolean › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > select › is 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > select › is-not 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > select › is-any-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > select › is-none-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > select › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > select › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › includes 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › does-not-include 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › includes-all-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › includes-any-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › includes-none-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multiselect › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > resource-ref › is 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > resource-ref › is-not 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > resource-ref › is-any-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > resource-ref › is-none-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > resource-ref › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > resource-ref › has-any-value 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › includes 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › does-not-include 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › includes-all-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › includes-any-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › includes-none-of 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › is-empty 0ms
+ ✓ |node| tests/unit/query-builder-evaluator-check.test.ts > stub and chipToAst agree on node structure with an empty value (FR-9) > multi-resource-ref › has-any-value 0ms
+
+ Test Files  1 passed (1)
+      Tests  281 passed | 2 expected fail (283)
+   Start at  15:16:23
+   Duration  198ms (transform 46ms, setup 46ms, import 57ms, tests 23ms, environment 0ms)
+

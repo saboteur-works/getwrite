@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   evaluate,
   EvaluatorNotImplementedError,
@@ -7,6 +7,7 @@ import {
 import type { EvaluationInput } from "../../src/lib/models/query-evaluator";
 import type { QueryContext } from "../../src/lib/models/query-intrinsics";
 import type { ResourceBase, MetadataValue } from "../../src/lib/models/types";
+import { QueryASTSchema } from "../../src/lib/models/query-ast";
 import type { QueryAST } from "../../src/lib/models/query-ast";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────
@@ -383,6 +384,27 @@ describe("in predicate", () => {
     const result = await ids({ op: "in", field: "tags", value: "Action" });
     expect(result).toContain(R1);
     expect(result).not.toContain(R2);
+  });
+});
+
+// ── Tags conditions saved before the Tags chip offered tags (Feature 86 D-19, FR-21) ──
+// Pinning tests: a stored condition in either older value form must keep
+// evaluating to the same resources after the chip's option source changed.
+// The evaluator was not changed by the fix.
+
+describe("tags condition saved in an earlier value form", () => {
+  it("an array of { id, name } references matches the resources holding those tags", async () => {
+    const result = await ids({
+      op: "in",
+      field: "tags",
+      value: [{ id: TAG_2, name: "Drama" }],
+    });
+    expect(result).toEqual([R3]);
+  });
+
+  it("an array of plain strings matches the resources holding those tags", async () => {
+    const result = await ids({ op: "in", field: "tags", value: ["Drama"] });
+    expect(result).toEqual([R3]);
   });
 });
 
@@ -973,6 +995,217 @@ describe("multi-resource-ref: includes-all-of / includes-any-of / includes-none-
   });
 });
 
+// ── saved all-of shape over a multiselect field (Feature 86, D-16) ────────
+
+describe("and[in(field, [Alpha, Beta])] over a multiselect field", () => {
+  const SCENE_A = "bbbbbbbb-0000-4000-a000-00000000000a";
+  const SCENE_B = "bbbbbbbb-0000-4000-a000-00000000000b";
+  const SCENE_C = "bbbbbbbb-0000-4000-a000-00000000000c";
+  const SCENE_D = "bbbbbbbb-0000-4000-a000-00000000000d";
+
+  function scene(id: string, name: string, orderIndex: number): ResourceBase {
+    return {
+      id,
+      slug: name.toLowerCase().replace(/ /g, "-"),
+      name,
+      type: "text",
+      folderId: null,
+      orderIndex,
+      statuses: [],
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    };
+  }
+
+  const sceneResources: ResourceBase[] = [
+    scene(SCENE_A, "Scene A", 0),
+    scene(SCENE_B, "Scene B", 1),
+    scene(SCENE_C, "Scene C", 2),
+    scene(SCENE_D, "Scene D", 3),
+  ];
+
+  const sceneSidecars: Record<string, Record<string, MetadataValue>> = {
+    [SCENE_A]: { characters: ["Alpha", "Beta"] },
+    [SCENE_B]: { characters: ["Alpha"] },
+    [SCENE_C]: { characters: ["Beta"] },
+    [SCENE_D]: {},
+  };
+
+  it("returns only Scene A for the saved all-of shape", async () => {
+    const result = await ids(
+      {
+        op: "and",
+        children: [{ op: "in", field: "characters", value: ["Alpha", "Beta"] }],
+      },
+      { resources: sceneResources, sidecars: sceneSidecars },
+    );
+    expect(result).toEqual([SCENE_A]);
+  });
+});
+
+// ── Feature 86 FR-7: shapes the and-of-one-in reading must leave unchanged ─
+
+describe("in / and / or / not shapes around the and-of-one-in reading (FR-7 pinning)", () => {
+  const XID = "cccccccc-0000-4000-a000-0000000000a1";
+  const YID = "cccccccc-0000-4000-a000-0000000000a2";
+  const ids6 = [
+    "dddddddd-0000-4000-a000-00000000000a",
+    "dddddddd-0000-4000-a000-00000000000b",
+    "dddddddd-0000-4000-a000-00000000000c",
+    "dddddddd-0000-4000-a000-00000000000d",
+    "dddddddd-0000-4000-a000-00000000000e",
+    "dddddddd-0000-4000-a000-00000000000f",
+  ];
+  const [PA, PB, PC, PD, PE, PF] = ids6;
+  const xena = { id: XID, name: "Xena" };
+  const yara = { id: YID, name: "Yara" };
+
+  const pinResources: ResourceBase[] = ids6.map((id, i) => ({
+    id,
+    slug: `pin-${i}`,
+    name: `Pin ${i}`,
+    type: "text" as const,
+    folderId: null,
+    orderIndex: i,
+    statuses: [],
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+  }));
+
+  const pinSidecars: Record<string, Record<string, MetadataValue>> = {
+    [PA]: { characters: ["Alpha", "Beta"], kind: "x", allies: [xena, yara] },
+    [PB]: { characters: ["Alpha"], kind: "y", allies: [xena] },
+    [PC]: { characters: ["Beta"], kind: "z", allies: [yara] },
+    [PD]: {},
+    [PE]: { characters: [], allies: [] },
+    [PF]: { characters: ["Alpha", "Beta", "Gamma"], kind: "x" },
+  };
+
+  const run = (ast: QueryAST): Promise<string[]> =>
+    ids(ast, { resources: pinResources, sidecars: pinSidecars });
+
+  const inChars = (value: MetadataValue): QueryAST => ({
+    op: "in",
+    field: "characters",
+    value,
+  });
+
+  it("bare in is any-of", async () => {
+    expect(await run(inChars(["Alpha", "Beta"]))).toEqual([PA, PB, PC, PF]);
+  });
+
+  it("or of one in is any-of", async () => {
+    expect(
+      await run({ op: "or", children: [inChars(["Alpha", "Beta"])] }),
+    ).toEqual([PA, PB, PC, PF]);
+  });
+
+  it("and of two ins reads each child as it does today", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [inChars(["Alpha"]), inChars(["Beta"])],
+      }),
+    ).toEqual([PA, PF]);
+  });
+
+  it("and of two ins, one carrying two values, reads each child as any-of", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [inChars(["Alpha", "Gamma"]), inChars(["Beta"])],
+      }),
+    ).toEqual([PA, PF]);
+  });
+
+  it("and of one non-in child is that child", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "exists", field: "characters" }],
+      }),
+    ).toEqual([PA, PB, PC, PF]);
+  });
+
+  it("not of an in excludes any-of matches", async () => {
+    expect(await run({ op: "not", child: inChars(["Alpha", "Beta"]) })).toEqual(
+      [PD, PE],
+    );
+  });
+
+  it("not of an or of in excludes any-of matches", async () => {
+    expect(
+      await run({
+        op: "not",
+        child: { op: "or", children: [inChars(["Alpha", "Beta"])] },
+      }),
+    ).toEqual([PD, PE]);
+  });
+
+  it("and of one in over a scalar-resolved select field is any-of", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "in", field: "kind", value: ["x", "y"] }],
+      }),
+    ).toEqual([PA, PB, PF]);
+  });
+
+  it("and of one in over the intrinsic type field is any-of", async () => {
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "in", field: "type", value: ["text", "image"] }],
+      }),
+    ).toEqual(ids6);
+    expect(
+      await run({
+        op: "and",
+        children: [{ op: "in", field: "type", value: ["image", "audio"] }],
+      }),
+    ).toEqual([]);
+  });
+
+  it("and of one in with a single-element list matches resources holding it", async () => {
+    expect(await run({ op: "and", children: [inChars(["Alpha"])] })).toEqual([
+      PA,
+      PB,
+      PF,
+    ]);
+  });
+
+  it("and of one in with an empty list matches nothing", async () => {
+    expect(await run({ op: "and", children: [inChars([])] })).toEqual([]);
+  });
+
+  it("and of one in with a non-array value reads as a single value", async () => {
+    expect(await run({ op: "and", children: [inChars("Alpha")] })).toEqual([
+      PA,
+      PB,
+      PF,
+    ]);
+  });
+
+  it("a resource with the field absent or an empty array does not match and[in]", async () => {
+    const result = await run({
+      op: "and",
+      children: [inChars(["Alpha", "Beta"])],
+    });
+    expect(result).not.toContain(PD);
+    expect(result).not.toContain(PE);
+  });
+
+  it("single-value matching against a resource-ref element uses id or case-insensitive name", async () => {
+    const field = (value: MetadataValue): QueryAST => ({
+      op: "and",
+      children: [{ op: "in", field: "allies", value }],
+    });
+    expect(await run(field([XID]))).toEqual([PA, PB]);
+    expect(await run(field(["xena"]))).toEqual([PA, PB]);
+    expect(await run(field(["YARA"]))).toEqual([PA, PC]);
+  });
+});
+
 // ── ResourceRef with id: null (deleted target) ────────────────────────────
 
 describe("ResourceRef with id: null — deleted reference edge cases", () => {
@@ -1130,5 +1363,652 @@ describe("exists semantics across value types", () => {
     expect(result).toContain(R2);
     expect(result).toContain(R3);
     expect(result).not.toContain(R1);
+  });
+});
+
+// ── Feature 86 D-17: a resource created minutes ago, date predicates on createdAt ─
+
+describe("createdAt predicates on a resource created 3 minutes before the evaluation time (D-17)", () => {
+  const FRESH = "eeeeeeee-0000-4000-a000-0000000000f1";
+  // 2026-03-10 11:00 in America/New_York; evaluated 3 minutes later.
+  const CREATED_AT = "2026-03-10T15:00:00.000Z";
+  const EVALUATION_TIME = new Date("2026-03-10T15:03:00.000Z");
+  const CREATION_DAY = "2026-03-10";
+
+  const fresh: ResourceBase = {
+    id: FRESH,
+    slug: "fresh",
+    name: "Fresh",
+    type: "text",
+    folderId: null,
+    orderIndex: 0,
+    statuses: [],
+    createdAt: CREATED_AT,
+    updatedAt: CREATED_AT,
+  };
+
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  const run = (ast: QueryAST): Promise<string[]> =>
+    ids(ast, {
+      resources: [fresh],
+      sidecars: {},
+      evaluationTime: EVALUATION_TIME,
+    });
+
+  it("returns a resource created 3 minutes ago for gte 1 days on createdAt", async () => {
+    const result = await run({
+      op: "gte",
+      field: "createdAt",
+      value: { amount: 1, unit: "days" },
+    });
+    expect(result).toEqual([FRESH]);
+  });
+
+  it("returns a resource created 3 minutes ago for eq of its creation day on createdAt", async () => {
+    const result = await run({
+      op: "eq",
+      field: "createdAt",
+      value: CREATION_DAY,
+    });
+    expect(result).toEqual([FRESH]);
+  });
+});
+
+// ── Feature 86 D-17 / FR-15: eq of a day on the intrinsic timestamps ───────
+
+describe("eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15)", () => {
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  // America/New_York is UTC-4 on 2026-03-10 (DST began 2026-03-08).
+  // Local midnight starting 2026-03-10 is 2026-03-10T04:00:00.000Z.
+  const BEFORE_MIDNIGHT = "eeeeeeee-0000-4000-a000-0000000000b1"; // 03-09 23:59 local
+  const AFTER_MIDNIGHT = "eeeeeeee-0000-4000-a000-0000000000b2"; // 03-10 00:01 local
+  const END_OF_DAY = "eeeeeeee-0000-4000-a000-0000000000b3"; // 03-10 23:59 local
+  const NEXT_DAY = "eeeeeeee-0000-4000-a000-0000000000b4"; // 03-11 00:01 local
+  const STAMPS: Record<string, string> = {
+    [BEFORE_MIDNIGHT]: "2026-03-10T03:59:00.000Z",
+    [AFTER_MIDNIGHT]: "2026-03-10T04:01:00.000Z",
+    [END_OF_DAY]: "2026-03-11T03:59:00.000Z",
+    [NEXT_DAY]: "2026-03-11T04:01:00.000Z",
+  };
+
+  function at(id: string): ResourceBase {
+    return {
+      id,
+      slug: id,
+      name: id,
+      type: "text",
+      folderId: null,
+      orderIndex: 0,
+      statuses: [],
+      createdAt: STAMPS[id],
+      updatedAt: STAMPS[id],
+    };
+  }
+  const resources = Object.keys(STAMPS).map(at);
+
+  const day = (field: string, value: string): Promise<string[]> =>
+    ids({ op: "eq", field, value }, { resources, sidecars: {} });
+
+  for (const field of ["createdAt", "updatedAt"]) {
+    it(`${field}: 2026-03-10 returns the minute after local midnight through 23:59, not the minute before or the next day`, async () => {
+      expect(await day(field, "2026-03-10")).toEqual([
+        AFTER_MIDNIGHT,
+        END_OF_DAY,
+      ]);
+    });
+    it(`${field}: 2026-03-09 returns the minute before local midnight on the neighbouring day only`, async () => {
+      expect(await day(field, "2026-03-09")).toEqual([BEFORE_MIDNIGHT]);
+    });
+    it(`${field}: 2026-03-11 returns the minute after local midnight on the next day only`, async () => {
+      expect(await day(field, "2026-03-11")).toEqual([NEXT_DAY]);
+    });
+  }
+
+  it("a custom date field holding a date-only string keeps string equality", async () => {
+    const r = at(AFTER_MIDNIGHT);
+    const result = await ids(
+      { op: "eq", field: "due", value: "2026-03-10" },
+      {
+        resources: [r, at(NEXT_DAY)],
+        sidecars: {
+          [AFTER_MIDNIGHT]: { due: "2026-03-10" },
+          [NEXT_DAY]: { due: "2026-03-10T04:01:00.000Z" },
+        },
+      },
+    );
+    expect(result).toEqual([AFTER_MIDNIGHT]);
+  });
+
+  it("a text field holding a timestamp-shaped string keeps string equality", async () => {
+    const result = await ids(
+      { op: "eq", field: "note", value: "2026-03-10" },
+      {
+        resources: [at(AFTER_MIDNIGHT), at(NEXT_DAY)],
+        sidecars: {
+          [AFTER_MIDNIGHT]: { note: "2026-03-10T04:01:00.000Z" },
+          [NEXT_DAY]: { note: "2026-03-10" },
+        },
+      },
+    );
+    expect(result).toEqual([NEXT_DAY]);
+  });
+
+  it("eq of a full timestamp on createdAt stays exact string equality", async () => {
+    expect(await day("createdAt", STAMPS[AFTER_MIDNIGHT])).toEqual([
+      AFTER_MIDNIGHT,
+    ]);
+  });
+});
+
+// ── Feature 86 FR-16 (b): before / after / between on createdAt, updatedAt ──
+
+describe("lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35)", () => {
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  // America/New_York is UTC-4 from 2026-03-08. Local days around 2026-03-10.
+  const A = "eeeeeeee-0000-4000-a000-0000000000c1"; // 03-09 23:59 local
+  const B = "eeeeeeee-0000-4000-a000-0000000000c2"; // 03-10 00:01 local
+  const C = "eeeeeeee-0000-4000-a000-0000000000c3"; // 03-10 23:59 local
+  const D = "eeeeeeee-0000-4000-a000-0000000000c4"; // 03-11 00:01 local
+  const E = "eeeeeeee-0000-4000-a000-0000000000c5"; // 03-08 00:01 local
+  const STAMPS: Record<string, string> = {
+    [A]: "2026-03-10T03:59:00.000Z",
+    [B]: "2026-03-10T04:01:00.000Z",
+    [C]: "2026-03-11T03:59:00.000Z",
+    [D]: "2026-03-11T04:01:00.000Z",
+    [E]: "2026-03-08T05:01:00.000Z",
+  };
+  const resources: ResourceBase[] = Object.keys(STAMPS).map((id) => ({
+    id,
+    slug: id,
+    name: id,
+    type: "text",
+    folderId: null,
+    orderIndex: 0,
+    statuses: [],
+    createdAt: STAMPS[id],
+    updatedAt: STAMPS[id],
+  }));
+  const run = (ast: QueryAST): Promise<string[]> =>
+    ids(ast, { resources, sidecars: {} });
+  const between = (field: string, x: string, y: string): QueryAST => ({
+    op: "and",
+    children: [
+      { op: "gte", field, value: x },
+      { op: "lte", field, value: y },
+    ],
+  });
+
+  for (const field of ["createdAt", "updatedAt"]) {
+    it(`${field}: is before 2026-03-10 returns earlier days including 23:59 the day before, not day D`, async () => {
+      expect(await run({ op: "lt", field, value: "2026-03-10" })).toEqual(
+        [A, E].sort(),
+      );
+    });
+    it(`${field}: is after 2026-03-10 returns later days only, not day D and not the day before`, async () => {
+      expect(await run({ op: "gt", field, value: "2026-03-10" })).toEqual([D]);
+    });
+    it(`${field}: is between 2026-03-09 and 2026-03-10 includes both end days`, async () => {
+      expect(await run(between(field, "2026-03-09", "2026-03-10"))).toEqual(
+        [A, B, C].sort(),
+      );
+    });
+    it(`${field}: is between 2026-03-10 and 2026-03-10 returns the whole of that day`, async () => {
+      expect(await run(between(field, "2026-03-10", "2026-03-10"))).toEqual(
+        [B, C].sort(),
+      );
+    });
+    it(`${field}: gte and lte of the same day include that day at both ends`, async () => {
+      expect(await run({ op: "gte", field, value: "2026-03-10" })).toEqual(
+        [B, C, D].sort(),
+      );
+      expect(await run({ op: "lte", field, value: "2026-03-10" })).toEqual(
+        [A, B, C, E].sort(),
+      );
+    });
+    it(`${field}: a full-timestamp comparison value keeps exact comparison`, async () => {
+      expect(
+        await run({ op: "lt", field, value: "2026-03-10T04:01:00.000Z" }),
+      ).toEqual([A, E].sort());
+      expect(
+        await run({ op: "gt", field, value: "2026-03-10T04:01:00.000Z" }),
+      ).toEqual([C, D].sort());
+    });
+  }
+
+  it("a custom date field holding date-only strings keeps string comparison", async () => {
+    const result = await ids(
+      {
+        op: "and",
+        children: [
+          { op: "gte", field: "due", value: "2026-03-09" },
+          { op: "lte", field: "due", value: "2026-03-10" },
+        ],
+      },
+      {
+        resources,
+        sidecars: {
+          [A]: { due: "2026-03-09" },
+          [B]: { due: "2026-03-10" },
+          [C]: { due: "2026-03-11" },
+          [D]: { due: "2026-03-08" },
+        },
+      },
+    );
+    expect(result).toEqual([A, B].sort());
+  });
+});
+
+// ── Feature 86 D-17: relative-date gte ("in the last") ────────────────────
+
+describe("gte with a relative-date object (D-17, FR-11..FR-14)", () => {
+  let previousTz: string | undefined;
+  beforeAll(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  const INSIDE = "eeeeeeee-0000-4000-a000-0000000000a1";
+  const OUTSIDE = "eeeeeeee-0000-4000-a000-0000000000a2";
+
+  function stamped(id: string, when: Date | string | undefined): ResourceBase {
+    return {
+      id,
+      slug: id,
+      name: id,
+      type: "text",
+      folderId: null,
+      orderIndex: 0,
+      statuses: [],
+      createdAt: when instanceof Date ? when.toISOString() : (when ?? ""),
+      updatedAt: when instanceof Date ? when.toISOString() : when,
+    };
+  }
+
+  /** Evaluates `gte createdAt {amount, unit}`; returns [inside?, outside?]. */
+  async function insideOutside(
+    now: Date,
+    amount: number,
+    unit: string,
+    inside: Date,
+    outside: Date,
+  ): Promise<[boolean, boolean]> {
+    const result = await evaluate(
+      {
+        op: "gte",
+        field: "createdAt",
+        value: { amount, unit } as unknown as MetadataValue,
+      },
+      {
+        resources: [stamped(INSIDE, inside), stamped(OUTSIDE, outside)],
+        sidecars: {},
+        context: ctx,
+        evaluationTime: now,
+      },
+    );
+    return [result.includes(INSIDE), result.includes(OUTSIDE)];
+  }
+
+  const MIN = 60 * 1000;
+  const NOW = new Date("2026-03-10T15:00:00.000Z");
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+  const before = (ms: number): Date => new Date(NOW.getTime() - ms);
+
+  it("1 day: 24 hours back is the boundary", async () => {
+    expect(
+      await insideOutside(NOW, 1, "days", before(DAY - MIN), before(DAY + MIN)),
+    ).toEqual([true, false]);
+  });
+
+  it("7 days: 7 x 24 hours back is the boundary", async () => {
+    expect(
+      await insideOutside(
+        NOW,
+        7,
+        "days",
+        before(7 * DAY - MIN),
+        before(7 * DAY + MIN),
+      ),
+    ).toEqual([true, false]);
+  });
+
+  it("1 week: 7 x 24 hours back is the boundary", async () => {
+    expect(
+      await insideOutside(
+        NOW,
+        1,
+        "weeks",
+        before(7 * DAY - MIN),
+        before(7 * DAY + MIN),
+      ),
+    ).toEqual([true, false]);
+  });
+
+  it("1 month: the same local time one calendar month earlier is the boundary", async () => {
+    const now = new Date(2026, 2, 10, 11, 0);
+    expect(
+      await insideOutside(
+        now,
+        1,
+        "months",
+        new Date(2026, 1, 10, 11, 1),
+        new Date(2026, 1, 10, 10, 59),
+      ),
+    ).toEqual([true, false]);
+  });
+
+  it("the evaluation instant itself matches (upper bound inclusive)", async () => {
+    expect(await insideOutside(NOW, 1, "days", NOW, NOW)).toEqual([true, true]);
+  });
+
+  describe("a month span is clamped to the end of the earlier month", () => {
+    // Built inside each test, after beforeAll has set TZ, so the local-time
+    // dates and the evaluator use the same zone whatever zone the runner has.
+    const cases: Array<[string, () => Date, () => Date]> = [
+      [
+        "31 March 2026 -> 28 February",
+        () => new Date(2026, 2, 31, 12, 0),
+        () => new Date(2026, 1, 28, 12, 0),
+      ],
+      [
+        "30 March 2026 -> 28 February",
+        () => new Date(2026, 2, 30, 12, 0),
+        () => new Date(2026, 1, 28, 12, 0),
+      ],
+      [
+        "29 March 2026 -> 28 February",
+        () => new Date(2026, 2, 29, 12, 0),
+        () => new Date(2026, 1, 28, 12, 0),
+      ],
+      [
+        "31 March 2028 -> 29 February (leap)",
+        () => new Date(2028, 2, 31, 12, 0),
+        () => new Date(2028, 1, 29, 12, 0),
+      ],
+      [
+        "30 March 2028 -> 29 February (leap)",
+        () => new Date(2028, 2, 30, 12, 0),
+        () => new Date(2028, 1, 29, 12, 0),
+      ],
+      [
+        "29 March 2028 -> 29 February (leap)",
+        () => new Date(2028, 2, 29, 12, 0),
+        () => new Date(2028, 1, 29, 12, 0),
+      ],
+      [
+        "31 May 2026 -> 30 April",
+        () => new Date(2026, 4, 31, 12, 0),
+        () => new Date(2026, 3, 30, 12, 0),
+      ],
+      [
+        "31 January 2026 -> 31 December 2025",
+        () => new Date(2026, 0, 31, 12, 0),
+        () => new Date(2025, 11, 31, 12, 0),
+      ],
+    ];
+    for (const [name, nowAt, boundaryAt] of cases) {
+      it(name, async () => {
+        const now = nowAt();
+        const boundary = boundaryAt();
+        expect(
+          await insideOutside(
+            now,
+            1,
+            "months",
+            new Date(boundary.getTime() + MIN),
+            new Date(boundary.getTime() - MIN),
+          ),
+        ).toEqual([true, false]);
+      });
+    }
+  });
+
+  it("does not match a date after the evaluation time (2099)", async () => {
+    expect(
+      await insideOutside(
+        NOW,
+        1,
+        "months",
+        new Date("2099-01-01T00:00:00.000Z"),
+        new Date(NOW.getTime() + MIN),
+      ),
+    ).toEqual([false, false]);
+  });
+
+  it("reads a date-only custom field as local midnight", async () => {
+    const result = await evaluate(
+      {
+        op: "gte",
+        field: "dt",
+        value: { amount: 7, unit: "days" } as unknown as MetadataValue,
+      },
+      {
+        resources: [stamped(INSIDE, undefined), stamped(OUTSIDE, undefined)],
+        sidecars: {
+          [INSIDE]: { dt: "2026-03-09" },
+          [OUTSIDE]: { dt: "2026-03-11" },
+        },
+        context: ctx,
+        evaluationTime: NOW,
+      },
+    );
+    expect(result).toEqual([INSIDE]);
+  });
+
+  describe("a field that is absent, null or unparseable does not match and does not throw", () => {
+    const value = { amount: 7, unit: "days" } as unknown as MetadataValue;
+    const run = (sidecar: Record<string, MetadataValue>): Promise<string[]> =>
+      evaluate(
+        { op: "gte", field: "dt", value },
+        {
+          resources: [stamped(INSIDE, undefined)],
+          sidecars: { [INSIDE]: sidecar },
+          context: ctx,
+          evaluationTime: NOW,
+        },
+      );
+
+    it("absent", async () => expect(await run({})).toEqual([]));
+    it("null", async () => expect(await run({ dt: null })).toEqual([]));
+    it("unparseable string", async () =>
+      expect(await run({ dt: "not a date" })).toEqual([]));
+    it("a number", async () => expect(await run({ dt: 5 })).toEqual([]));
+    it("absent updatedAt", async () => {
+      const result = await evaluate(
+        { op: "gte", field: "updatedAt", value },
+        {
+          resources: [stamped(INSIDE, undefined)],
+          sidecars: {},
+          context: ctx,
+          evaluationTime: NOW,
+        },
+      );
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("a malformed relative-date object throws an error naming the problem", () => {
+    const attempt = (value: unknown): Promise<string[]> =>
+      evaluate(
+        { op: "gte", field: "createdAt", value: value as MetadataValue },
+        input({ evaluationTime: NOW }),
+      );
+
+    it("unit years", async () => {
+      await expect(attempt({ amount: 1, unit: "years" })).rejects.toThrow(
+        /unit must be days, weeks or months/,
+      );
+    });
+    it("unit missing", async () => {
+      await expect(attempt({ amount: 1 })).rejects.toThrow(/unit must be/);
+    });
+    it("amount 0", async () => {
+      await expect(attempt({ amount: 0, unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount negative", async () => {
+      await expect(attempt({ amount: -3, unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount fractional", async () => {
+      await expect(attempt({ amount: 1.5, unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount a string", async () => {
+      await expect(attempt({ amount: "7", unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+    it("amount missing", async () => {
+      await expect(attempt({ unit: "days" })).rejects.toThrow(
+        /amount must be an integer of at least 1/,
+      );
+    });
+  });
+
+  describe("ordinary gte is unchanged", () => {
+    it("on numbers", async () => {
+      expect(await ids({ op: "gte", field: "score", value: 6 })).toEqual([
+        R1,
+        R3,
+      ]);
+    });
+    it("on strings", async () => {
+      expect(
+        await ids({
+          op: "gte",
+          field: "createdAt",
+          value: "2024-03-01T00:00:00.000Z",
+        }),
+      ).toEqual([R2, R3]);
+    });
+    it("a ResourceRef-valued gte does not read as a relative date", async () => {
+      expect(
+        await ids({ op: "gte", field: "score", value: { id: R1, name: "x" } }),
+      ).toEqual([]);
+    });
+  });
+});
+
+// ── matches with the optional caseInsensitive marker (Feature 86 FR-32, F-1) ──
+
+describe("matches predicate with the optional caseInsensitive marker (F-1)", () => {
+  const matchesNode = (value: string, caseInsensitive?: boolean): QueryAST => {
+    const node = {
+      op: "matches" as const,
+      field: "title",
+      value,
+      ...(caseInsensitive === undefined ? {} : { caseInsensitive }),
+    };
+    return node;
+  };
+
+  const values = ["Alpha one", "alpha two", "the alpha", "ALPHA three", "beta"];
+  const rs: ResourceBase[] = values.map((_, i) => ({
+    ...r1,
+    id: `cccccccc-0000-4000-a000-0000000000${String(i).padStart(2, "0")}`,
+    slug: `m${i}`,
+    orderIndex: i,
+  }));
+  const scs: Record<string, Record<string, MetadataValue>> = {};
+  rs.forEach((r, i) => {
+    scs[r.id] = { title: values[i] };
+  });
+  async function returned(ast: QueryAST): Promise<string[]> {
+    const found = new Set(
+      await evaluate(ast, { resources: rs, sidecars: scs, context: ctx }),
+    );
+    return values.filter((_, i) => found.has(rs[i].id));
+  }
+
+  it("caseInsensitive true compares without regard to case", async () => {
+    expect(await returned(matchesNode("^alpha", true))).toEqual([
+      "Alpha one",
+      "alpha two",
+      "ALPHA three",
+    ]);
+  });
+
+  it("caseInsensitive true on an unanchored value still ignores case", async () => {
+    expect(await returned(matchesNode("alpha", true))).toEqual([
+      "Alpha one",
+      "alpha two",
+      "the alpha",
+      "ALPHA three",
+    ]);
+  });
+
+  it("absent marker: case-sensitive, unanchored (today)", async () => {
+    expect(await returned(matchesNode("alpha"))).toEqual([
+      "alpha two",
+      "the alpha",
+    ]);
+  });
+
+  it("absent marker with ^: case-sensitive and anchored (today)", async () => {
+    expect(await returned(matchesNode("^alpha"))).toEqual(["alpha two"]);
+  });
+
+  it("caseInsensitive false behaves as the absent marker", async () => {
+    expect(await returned(matchesNode("alpha", false))).toEqual([
+      "alpha two",
+      "the alpha",
+    ]);
+  });
+
+  it("an invalid pattern still returns nothing without throwing, marker or not", async () => {
+    expect(await returned(matchesNode("[invalid"))).toEqual([]);
+    expect(await returned(matchesNode("[invalid", true))).toEqual([]);
+  });
+
+  describe("QueryAST schema", () => {
+    it("a matches node without the marker parses unchanged (saved queries from before)", () => {
+      const node = { op: "matches", field: "title", value: "^foo" };
+      expect(QueryASTSchema.parse(node)).toStrictEqual(node);
+    });
+
+    it("a matches node with caseInsensitive true parses and keeps the marker", () => {
+      const node = {
+        op: "matches",
+        field: "title",
+        value: "^foo",
+        caseInsensitive: true,
+      };
+      expect(QueryASTSchema.parse(node)).toStrictEqual(node);
+    });
   });
 });

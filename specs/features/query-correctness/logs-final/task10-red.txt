@@ -1,0 +1,112 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/query-evaluator.test.ts (157 tests | 7 failed) 16ms
+     × returns a resource created 3 minutes ago for eq of its creation day on createdAt 3ms
+     × createdAt: 2026-03-10 returns the minute after local midnight through 23:59, not the minute before or the next day 0ms
+     × createdAt: 2026-03-09 returns the minute before local midnight on the neighbouring day only 0ms
+     × createdAt: 2026-03-11 returns the minute after local midnight on the next day only 0ms
+     × updatedAt: 2026-03-10 returns the minute after local midnight through 23:59, not the minute before or the next day 0ms
+     × updatedAt: 2026-03-09 returns the minute before local midnight on the neighbouring day only 0ms
+     × updatedAt: 2026-03-11 returns the minute after local midnight on the next day only 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > createdAt predicates on a resource created 3 minutes before the evaluation time (D-17) > returns a resource created 3 minutes ago for eq of its creation day on createdAt
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000f1",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1400:20
+    1398|       value: CREATION_DAY,
+    1399|     });
+    1400|     expect(result).toEqual([FRESH]);
+       |                    ^
+    1401|   });
+    1402| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15) > createdAt: 2026-03-10 returns the minute after local midnight through 23:59, not the minute before or the next day
+ FAIL  |node| tests/unit/query-evaluator.test.ts > eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15) > updatedAt: 2026-03-10 returns the minute after local midnight through 23:59, not the minute before or the next day
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000b2",
+-   "eeeeeeee-0000-4000-a000-0000000000b3",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1450:46
+    1448|   for (const field of ["createdAt", "updatedAt"]) {
+    1449|     it(`${field}: 2026-03-10 returns the minute after local midnight t…
+    1450|       expect(await day(field, "2026-03-10")).toEqual([
+       |                                              ^
+    1451|         AFTER_MIDNIGHT,
+    1452|         END_OF_DAY,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15) > createdAt: 2026-03-09 returns the minute before local midnight on the neighbouring day only
+ FAIL  |node| tests/unit/query-evaluator.test.ts > eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15) > updatedAt: 2026-03-09 returns the minute before local midnight on the neighbouring day only
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000b1",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1456:46
+    1454|     });
+    1455|     it(`${field}: 2026-03-09 returns the minute before local midnight …
+    1456|       expect(await day(field, "2026-03-09")).toEqual([BEFORE_MIDNIGHT]…
+       |                                              ^
+    1457|     });
+    1458|     it(`${field}: 2026-03-11 returns the minute after local midnight o…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15) > createdAt: 2026-03-11 returns the minute after local midnight on the next day only
+ FAIL  |node| tests/unit/query-evaluator.test.ts > eq of a YYYY-MM-DD value on createdAt and updatedAt compares by local calendar day (FR-15) > updatedAt: 2026-03-11 returns the minute after local midnight on the next day only
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000b4",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1459:46
+    1457|     });
+    1458|     it(`${field}: 2026-03-11 returns the minute after local midnight o…
+    1459|       expect(await day(field, "2026-03-11")).toEqual([NEXT_DAY]);
+       |                                              ^
+    1460|     });
+    1461|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 150 passed (157)
+   Start at  13:53:28
+   Duration  185ms (transform 47ms, setup 55ms, import 37ms, tests 16ms, environment 0ms)
+
+undefined
+/Users/jedaisaboteur/Repositories/getwrite/frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run tests/unit/query-evaluator.test.ts

@@ -8,9 +8,13 @@ import type {
 } from "../../src/lib/models/types";
 import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import {
+  DEFAULT_RELATIVE_DATE,
   getDefaultOperator,
   getOperatorOption,
   getOperators,
+  isRelativeDateValue,
+  valueForOperatorChange,
+  wholeAmountFromInput,
 } from "./operator-utils";
 import FieldPicker, {
   type FieldPickerField,
@@ -55,6 +59,10 @@ export interface FilterChipField {
   includeSubfolders?: boolean;
   /** When true, the ref value resolves to folders rather than resources. */
   isFolderField?: boolean;
+  /** When set (the Tags field), the project's tags are the value box's options, not its resources. */
+  tagOptions?: ResourceOption[];
+  /** Set on the Tags field when reading the project's tags failed (not "no tags"). */
+  tagsReadFailed?: boolean;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -97,16 +105,6 @@ export interface FilterChipProps {
 }
 
 // ─── Type guards ──────────────────────────────────────────────────────────────
-
-function isRelativeDateValue(v: FilterChipValue): v is RelativeDateValue {
-  return (
-    v !== null &&
-    typeof v === "object" &&
-    !Array.isArray(v) &&
-    "amount" in v &&
-    "unit" in v
-  );
-}
 
 function isRangeValue(v: FilterChipValue): v is RangeValue {
   return (
@@ -182,9 +180,7 @@ function ValueInput({
   const { valueShape } = opOption;
 
   if (valueShape === "relativeDate") {
-    const rel = isRelativeDateValue(value)
-      ? value
-      : { amount: 7, unit: "days" as const };
+    const rel = isRelativeDateValue(value) ? value : DEFAULT_RELATIVE_DATE;
     return (
       <span className="filter-chip__value-relative">
         <EditContextMenu>
@@ -194,12 +190,11 @@ function ValueInput({
             value={rel.amount}
             min={1}
             aria-label="Amount"
-            onChange={(e) =>
-              onChange({
-                amount: Math.max(1, Number(e.target.value)),
-                unit: rel.unit,
-              })
-            }
+            onChange={(e) => {
+              const amount = wholeAmountFromInput(e.target.value);
+              if (amount === null) return;
+              onChange({ amount, unit: rel.unit });
+            }}
           />
         </EditContextMenu>
         <select
@@ -363,6 +358,41 @@ function ValueInput({
     }
     case "resource-ref":
     case "multi-resource-ref": {
+      if (field.tagOptions) {
+        const hasSavedRef =
+          value !== null &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          "name" in value;
+        if (field.tagsReadFailed && !hasSavedRef) {
+          return (
+            <span className="filter-chip__value-input" role="alert">
+              Could not load tags.
+            </span>
+          );
+        }
+        if (field.tagOptions.length === 0 && !hasSavedRef) {
+          return (
+            <EditContextMenu>
+              <input
+                type="text"
+                className="filter-chip__value-input"
+                value={typeof value === "string" ? value : ""}
+                placeholder="tag..."
+                aria-label="Tag"
+                onChange={(e) => onChange(e.target.value)}
+              />
+            </EditContextMenu>
+          );
+        }
+        return (
+          <SingleRefInput
+            value={value}
+            resourceOptions={field.tagOptions}
+            onChange={(v) => onChange(v as FilterChipValue)}
+          />
+        );
+      }
       const resourceOptions = field.isFolderField
         ? (resolveFolderOptions?.() ?? [])
         : (resolveResourceOptions?.(field.refFolder, field.includeSubfolders) ??
@@ -419,7 +449,7 @@ function toPickerFields(fields: FilterChipField[]): FieldPickerField[] {
 // ─── FilterChip ───────────────────────────────────────────────────────────────
 
 export default function FilterChip({
-  field,
+  field: chipField,
   operator,
   value,
   availableFields,
@@ -437,6 +467,14 @@ export default function FilterChip({
   onDelete,
   onMove,
 }: FilterChipProps): JSX.Element {
+  // A chip stores the field it was built with; a restored chip is built before
+  // the project's tags have loaded. Resolving the field against the current
+  // field list at render time lets the Tags value box see tags that arrive
+  // (or fail to load) after the chip exists.
+  const field =
+    (chipField
+      ? availableFields?.find((f) => f.key === chipField.key)
+      : undefined) ?? chipField;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -460,8 +498,14 @@ export default function FilterChip({
     if (!onOperatorChange || !field) return;
     const nextOption = getOperatorOption(field.type, next);
     onOperatorChange(next);
-    if (nextOption?.noValue && onValueChange) {
-      onValueChange(null);
+    if (!onValueChange) return;
+    const nextValue = valueForOperatorChange(field.type, next, value);
+    if (
+      nextOption?.noValue ||
+      nextOption?.valueShape === "relativeDate" ||
+      nextValue !== value
+    ) {
+      onValueChange(nextValue);
     }
   }
 

@@ -1,0 +1,15 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+> getwrite-frontend@2.2.0 test:ci /Users/jedaisaboteur/Repositories/getwrite/frontend
+> vitest run
+
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+Not implemented: navigation to another Document
+
+ Test Files  611 passed (611)
+      Tests  6934 passed | 2 expected fail | 1 skipped (6937)
+   Start at  15:15:16
+   Duration  45.10s (transform 19.56s, setup 27.43s, import 122.96s, tests 204.59s, environment 79.32s)
+

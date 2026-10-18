@@ -1,0 +1,6 @@
+
+ Test Files  381 passed (381)
+      Tests  4425 passed | 29 expected fail (4454)
+   Start at  13:35:13
+   Duration  13.78s (transform 7.47s, setup 15.82s, import 45.17s, tests 48.34s, environment 4.81s)
+

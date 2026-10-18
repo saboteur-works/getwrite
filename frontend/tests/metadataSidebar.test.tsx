@@ -429,6 +429,63 @@ describe("MetadataSidebar", () => {
     expect(onChangeField).toHaveBeenCalledWith("status", "review");
   });
 
+  describe("Status control (effective statuses, D-20)", () => {
+    async function renderStatus(
+      statuses: string[] | undefined,
+      userMetadata: Record<string, MetadataValue>,
+    ) {
+      const res = createTextResource({
+        name: "Doc",
+        plainText: "",
+        userMetadata,
+      });
+      const onChangeField = vi.fn();
+      const testStore = makeStore();
+      testStore.dispatch(
+        setProject({
+          id: "p-eff",
+          rootPath: "/test",
+          ...(statuses ? { statuses } : {}),
+        }),
+      );
+      testStore.dispatch(setSelectedProjectId("p-eff"));
+      testStore.dispatch(setResources([res]));
+      testStore.dispatch(setSelectedResourceId(res.id));
+      await renderAndFlush(
+        <Provider store={testStore}>
+          <MetadataSidebar onChangeField={onChangeField} />
+        </Provider>,
+      );
+      const status = screen.getByLabelText("status") as HTMLSelectElement;
+      return { status, onChangeField };
+    }
+
+    const optionTexts = (el: HTMLSelectElement): string[] =>
+      Array.from(el.options).map((o) => o.value);
+
+    it("offers the built-in statuses when none are configured", async () => {
+      const { status } = await renderStatus(undefined, {});
+      expect(optionTexts(status)).toEqual(["Draft", "In review", "Published"]);
+    });
+
+    it("offers the configured list unchanged when statuses are configured", async () => {
+      const { status } = await renderStatus(["Outline", "Final"], {});
+      expect(optionTexts(status)).toEqual(["Outline", "Final"]);
+    });
+
+    it("shows the first option and writes nothing on mount for a resource with no stored status", async () => {
+      const { status, onChangeField } = await renderStatus(undefined, {});
+      expect(status.selectedOptions[0]?.value).toBe("Draft");
+      expect(onChangeField).not.toHaveBeenCalled();
+    });
+
+    it("stores a selected status as before", async () => {
+      const { status, onChangeField } = await renderStatus(undefined, {});
+      fireEvent.change(status, { target: { value: "Published" } });
+      expect(onChangeField).toHaveBeenCalledWith("status", "Published");
+    });
+  });
+
   it("renders a custom text field when present in schema", async () => {
     const customSchema: MetadataSchema = {
       groups: [

@@ -317,6 +317,95 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(screen.queryByText("Explicit Status Scene")).toBeNull();
   });
 
+  // FR-23 / FR-25: with no configured statuses the filter's Status select
+  // offers the effective list (the built-in statuses).
+  function renderNoStatusesProject(
+    resources: ReturnType<typeof createTextResource>[],
+  ) {
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "",
+        folders: [],
+        resources: [],
+        statuses: [],
+      }),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_ID));
+    store.dispatch(
+      setFolders([{ ...makeFolder(FOLDER_ID, "Folder A"), slug: "folder-a" }]),
+    );
+    store.dispatch(setResources(resources));
+    store.dispatch(setSelectedResourceId(FOLDER_ID));
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  }
+
+  it("offers the effective statuses in the Status select with no configured statuses", () => {
+    renderNoStatusesProject([
+      createTextResource({
+        name: "Unset Status Scene",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+      }),
+    ]);
+
+    const select = screen.getByLabelText(
+      "Filter by status",
+    ) as HTMLSelectElement;
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toEqual([
+      "All statuses",
+      "Draft",
+      "In review",
+      "Published",
+      "No status",
+    ]);
+  });
+
+  it("card display unchanged: a never-statused card in a no-statuses project still shows an empty status", () => {
+    renderNoStatusesProject([
+      createTextResource({
+        name: "Unset Status Scene",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+      }),
+    ]);
+
+    expect(screen.getByText("Unset Status Scene")).toBeTruthy();
+    // The card's status select/badge carries the empty default, not "Draft".
+    const card = screen
+      .getByText("Unset Status Scene")
+      .closest("li, article, div");
+    expect(card?.textContent ?? "").not.toContain("Draft");
+  });
+
+  it("recorded known behaviour (OQ-8): with no configured statuses, filtering by Draft hides never-statused cards while No status shows them", () => {
+    renderNoStatusesProject([
+      createTextResource({
+        name: "Unset Status Scene",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+      }),
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: "Draft" },
+    });
+    expect(screen.queryByText("Unset Status Scene")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Filter by status"), {
+      target: { value: NO_STATUS_FILTER_VALUE },
+    });
+    expect(screen.getByText("Unset Status Scene")).toBeTruthy();
+  });
+
   it("excludes a non-text resource and narrows text resources by word-count range (FR-3, FR-4)", () => {
     const { store } = makeFilterableStore();
 

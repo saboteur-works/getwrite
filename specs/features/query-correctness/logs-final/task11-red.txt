@@ -1,0 +1,144 @@
+ WARN  Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted, open '/Users/jedaisaboteur/.npmrc'
+
+ RUN  v4.1.6 /Users/jedaisaboteur/Repositories/getwrite/frontend
+
+ ❯ |node| tests/unit/query-evaluator.test.ts (170 tests | 10 failed) 28ms
+     × createdAt: is before 2026-03-10 returns earlier days including 23:59 the day before, not day D 4ms
+     × createdAt: is after 2026-03-10 returns later days only, not day D and not the day before 0ms
+     × createdAt: is between 2026-03-09 and 2026-03-10 includes both end days 0ms
+     × createdAt: is between 2026-03-10 and 2026-03-10 returns the whole of that day 0ms
+     × createdAt: gte and lte of the same day include that day at both ends 0ms
+     × updatedAt: is before 2026-03-10 returns earlier days including 23:59 the day before, not day D 0ms
+     × updatedAt: is after 2026-03-10 returns later days only, not day D and not the day before 0ms
+     × updatedAt: is between 2026-03-09 and 2026-03-10 includes both end days 0ms
+     × updatedAt: is between 2026-03-10 and 2026-03-10 returns the whole of that day 0ms
+     × updatedAt: gte and lte of the same day include that day at both ends 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > createdAt: is before 2026-03-10 returns earlier days including 23:59 the day before, not day D
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > updatedAt: is before 2026-03-10 returns earlier days including 23:59 the day before, not day D
+AssertionError: expected [ Array(1) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "eeeeeeee-0000-4000-a000-0000000000c1",
+    "eeeeeeee-0000-4000-a000-0000000000c5",
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1548:67
+    1546|   for (const field of ["createdAt", "updatedAt"]) {
+    1547|     it(`${field}: is before 2026-03-10 returns earlier days including …
+    1548|       expect(await run({ op: "lt", field, value: "2026-03-10" })).toEq…
+       |                                                                   ^
+    1549|         [A, E].sort(),
+    1550|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > createdAt: is after 2026-03-10 returns later days only, not day D and not the day before
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > updatedAt: is after 2026-03-10 returns later days only, not day D and not the day before
+AssertionError: expected [ …(4) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
++   "eeeeeeee-0000-4000-a000-0000000000c1",
++   "eeeeeeee-0000-4000-a000-0000000000c2",
++   "eeeeeeee-0000-4000-a000-0000000000c3",
+    "eeeeeeee-0000-4000-a000-0000000000c4",
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1553:67
+    1551|     });
+    1552|     it(`${field}: is after 2026-03-10 returns later days only, not day…
+    1553|       expect(await run({ op: "gt", field, value: "2026-03-10" })).toEq…
+       |                                                                   ^
+    1554|     });
+    1555|     it(`${field}: is between 2026-03-09 and 2026-03-10 includes both e…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > createdAt: is between 2026-03-09 and 2026-03-10 includes both end days
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > updatedAt: is between 2026-03-09 and 2026-03-10 includes both end days
+AssertionError: expected [] to deeply equal [ …(3) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000c1",
+-   "eeeeeeee-0000-4000-a000-0000000000c2",
+-   "eeeeeeee-0000-4000-a000-0000000000c3",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1556:69
+    1554|     });
+    1555|     it(`${field}: is between 2026-03-09 and 2026-03-10 includes both e…
+    1556|       expect(await run(between(field, "2026-03-09", "2026-03-10"))).to…
+       |                                                                     ^
+    1557|         [A, B, C].sort(),
+    1558|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > createdAt: is between 2026-03-10 and 2026-03-10 returns the whole of that day
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > updatedAt: is between 2026-03-10 and 2026-03-10 returns the whole of that day
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "eeeeeeee-0000-4000-a000-0000000000c2",
+-   "eeeeeeee-0000-4000-a000-0000000000c3",
+- ]
++ []
+
+ ❯ tests/unit/query-evaluator.test.ts:1561:69
+    1559|     });
+    1560|     it(`${field}: is between 2026-03-10 and 2026-03-10 returns the who…
+    1561|       expect(await run(between(field, "2026-03-10", "2026-03-10"))).to…
+       |                                                                     ^
+    1562|         [B, C].sort(),
+    1563|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > createdAt: gte and lte of the same day include that day at both ends
+ FAIL  |node| tests/unit/query-evaluator.test.ts > lt, gt, gte, lte of a YYYY-MM-DD value on createdAt and updatedAt compare by local calendar day (FR-16, FR-35) > updatedAt: gte and lte of the same day include that day at both ends
+AssertionError: expected [ …(4) ] to deeply equal [ …(3) ]
+
+- Expected
++ Received
+
+  [
++   "eeeeeeee-0000-4000-a000-0000000000c1",
+    "eeeeeeee-0000-4000-a000-0000000000c2",
+    "eeeeeeee-0000-4000-a000-0000000000c3",
+    "eeeeeeee-0000-4000-a000-0000000000c4",
+  ]
+
+ ❯ tests/unit/query-evaluator.test.ts:1566:68
+    1564|     });
+    1565|     it(`${field}: gte and lte of the same day include that day at both…
+    1566|       expect(await run({ op: "gte", field, value: "2026-03-10" })).toE…
+       |                                                                    ^
+    1567|         [B, C, D].sort(),
+    1568|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  10 failed | 427 passed | 16 expected fail (453)
+   Start at  13:58:28
+   Duration  241ms (transform 116ms, setup 119ms, import 130ms, tests 51ms, environment 0ms)
+
+undefined
+/Users/jedaisaboteur/Repositories/getwrite/frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run tests/unit/query-evaluator.test.ts tests/unit/query-builder-evaluator-check.test.ts
