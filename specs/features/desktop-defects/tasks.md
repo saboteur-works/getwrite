@@ -98,7 +98,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 7
 **Estimate:** 3
 **Notes:** Satisfies FR-11, FR-21, FR-22, FR-25. Needs the desktop app: OUTSIDE the sandbox, main checkout. Not run if 7340 is held or a protected path is reported.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: D-2 failing tests: `workspace.json` is written atomically
 **What:** Add the red tests for an interrupted write, temporary-file cleanup, file mode, and the write after a damaged file.
