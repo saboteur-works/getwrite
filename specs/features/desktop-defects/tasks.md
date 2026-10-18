@@ -62,7 +62,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Satisfies FR-6, FR-21, FR-22, FR-25. Needs the desktop app: OUTSIDE the sandbox, main checkout. If a protected path is reported or 7340 is held, the run does not start and is reported as not run with the reason. A failure is recorded as observed; do not change code here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: D-8 verification: packaged (unpacked) build Word import
 **What:** Build the unpacked app with a throwaway `productName`, show by the path assertion that it is safe to run, and if so run a Word import from a terminal directory and from `/`.
