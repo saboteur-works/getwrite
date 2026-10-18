@@ -1733,50 +1733,54 @@ describe("gte with a relative-date object (D-17, FR-11..FR-14)", () => {
   });
 
   describe("a month span is clamped to the end of the earlier month", () => {
-    const cases: Array<[string, Date, Date]> = [
+    // Built inside each test, after beforeAll has set TZ, so the local-time
+    // dates and the evaluator use the same zone whatever zone the runner has.
+    const cases: Array<[string, () => Date, () => Date]> = [
       [
         "31 March 2026 -> 28 February",
-        new Date(2026, 2, 31, 12, 0),
-        new Date(2026, 1, 28, 12, 0),
+        () => new Date(2026, 2, 31, 12, 0),
+        () => new Date(2026, 1, 28, 12, 0),
       ],
       [
         "30 March 2026 -> 28 February",
-        new Date(2026, 2, 30, 12, 0),
-        new Date(2026, 1, 28, 12, 0),
+        () => new Date(2026, 2, 30, 12, 0),
+        () => new Date(2026, 1, 28, 12, 0),
       ],
       [
         "29 March 2026 -> 28 February",
-        new Date(2026, 2, 29, 12, 0),
-        new Date(2026, 1, 28, 12, 0),
+        () => new Date(2026, 2, 29, 12, 0),
+        () => new Date(2026, 1, 28, 12, 0),
       ],
       [
         "31 March 2028 -> 29 February (leap)",
-        new Date(2028, 2, 31, 12, 0),
-        new Date(2028, 1, 29, 12, 0),
+        () => new Date(2028, 2, 31, 12, 0),
+        () => new Date(2028, 1, 29, 12, 0),
       ],
       [
         "30 March 2028 -> 29 February (leap)",
-        new Date(2028, 2, 30, 12, 0),
-        new Date(2028, 1, 29, 12, 0),
+        () => new Date(2028, 2, 30, 12, 0),
+        () => new Date(2028, 1, 29, 12, 0),
       ],
       [
         "29 March 2028 -> 29 February (leap)",
-        new Date(2028, 2, 29, 12, 0),
-        new Date(2028, 1, 29, 12, 0),
+        () => new Date(2028, 2, 29, 12, 0),
+        () => new Date(2028, 1, 29, 12, 0),
       ],
       [
         "31 May 2026 -> 30 April",
-        new Date(2026, 4, 31, 12, 0),
-        new Date(2026, 3, 30, 12, 0),
+        () => new Date(2026, 4, 31, 12, 0),
+        () => new Date(2026, 3, 30, 12, 0),
       ],
       [
         "31 January 2026 -> 31 December 2025",
-        new Date(2026, 0, 31, 12, 0),
-        new Date(2025, 11, 31, 12, 0),
+        () => new Date(2026, 0, 31, 12, 0),
+        () => new Date(2025, 11, 31, 12, 0),
       ],
     ];
-    for (const [name, now, boundary] of cases) {
+    for (const [name, nowAt, boundaryAt] of cases) {
       it(name, async () => {
+        const now = nowAt();
+        const boundary = boundaryAt();
         expect(
           await insideOutside(
             now,
