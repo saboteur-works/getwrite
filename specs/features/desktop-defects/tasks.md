@@ -152,7 +152,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 11
 **Estimate:** 2
 **Notes:** Satisfies FR-19 (test half), FR-24. Runs only if Task 11 classified (b); otherwise left unticked with "not applicable: class <x>". The fix is one line; if the class (b) cause needs more than a one-line change, stop and report it as class (c) to the lead instead of building it.
-**Done:** [ ]
+**Done:** [ ] not applicable: class (a)
 
 ### Task 15: D-40 class (b): the one-line fix and the compile re-run
 **What:** Apply the one-line product fix and re-run the manual compile to show a file is written.
@@ -161,7 +161,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 14
 **Estimate:** 3
 **Notes:** Satisfies FR-19. Runs only if Task 14 ran. A main-process download handler or any decision about where compiled files go is not built here (OQ-95 decision 2). The re-run needs the app: OUTSIDE the sandbox.
-**Done:** [ ]
+**Done:** [ ] not applicable: class (a)
 
 ### Task 16: Final suites (FR-26) and acceptance record
 **What:** Run the final suites, record each as run or not run against the baseline, and record which parts landed, halted or were not run.
@@ -170,7 +170,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 4, 5, 8, 10, 12, 13, 15
 **Estimate:** 3
 **Notes:** Satisfies FR-25, FR-26, FR-27. `pnpm test:e2e`, `pnpm storybook` and `lsof` run OUTSIDE the sandbox in the main checkout; the others inside. If a part halted or a task was not applicable, its tasks are left unticked and this task records that; a dependency on a halted or not-applicable task is treated as satisfied by the halt report. Handbook warnings these fixes make stale go to the scribe as a follow-up; list them as a pointer only.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 16

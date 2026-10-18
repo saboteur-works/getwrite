@@ -219,3 +219,56 @@ Change: `specs/features/user-handbook/scripts/task8-desk.mjs` (~23). The `will-d
 Re-run (once, development app, outside the sandbox, stdout in `/tmp/getwrite-f88/task13-task8desk.txt`): `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before: empty, exit 1; after: empty, exit 1. Script's own port check before/after: no listener on 7340, 3000, 6006. Observed: `isPackaged=false`, userData is the throwaway folder: true; windows hooked: 1; Compile Project dialog opened, 2 resources, format `txt`; `will-download` events: `["desk-cmp.txt"]`; the compiled file was read from the throwaway folder: `"Doc B\n=====\n\nBee text.\n\n\nDoc A\n=====\n\nAy text."`; dialog after compile: none; session is the default session: true; app log: `POST /api/compile/text 200 in 207ms`. Pids: 88790 (Electron), 88863, 88864, 88865 (sh), 88869, 88888, 88898 (next-server, held 7340), 88901; all stopped by pid by the script ("none alive"); listener on 7340 after: none; throwaway log and run folders removed; `git status --short projects/` empty before and after.
 
 Finding of this part only: the script's hook was the fault shown in Task 11; with the `require`-free hook the script records a `will-download` event and a file in the throwaway folder. No product change was needed for D-40. The original D-40 run was not repeated, so that it failed for the same reason remains the hypothesis recorded under Task 11. Covers the development app and `txt` only.
+
+## Final suites (Task 16, 2026-10-18)
+
+Tree: branch `fix/desktop-defects`, main checkout, HEAD `465539ed21847181018912aef8359aae7d11949f` (all Tasks 1-13 committed; `git status --short` before this section was written showed only `?? specs/features/desktop-defects/logs/knip-final.txt`). Node v24.15.0, pnpm 10.28.0. No source change in this task. Raw suite output is outside the repo in `/tmp/getwrite-f88/f-*.txt`.
+
+### Parts
+
+- Part A (D-8, DOCX worker fork options): landed. Failing-test record: Task 2 (red run, missing `GETWRITE_PROJECT_TYPES_DIR`); fix: Task 3; measurements: Task 4 (development app) and Task 5 (unpacked build, end state (a)). See "Part A".
+- Part B (D-2): landed. Handlers use `app.getPath("userData")`: failing-test record Task 6 (FR-8 case red with `ENOENT ... mkdir ''`; handler tests red, module missing), fix Task 7, measurement Task 8. Atomic `workspace.json` write: failing-test record Task 9 (case 1 red with truncated bytes), fix Task 10. See "Part B".
+- Part C (D-40): landed as FR-17 class (a), a fault in the verification script, no product change. Tasks 11 (classification), 12 (unpacked build), 13 (script corrected and re-run). See "Part C".
+- Tasks 14 and 15 (class (b) only): not applicable: class (a). Left unticked in `tasks.md` with that note. No `frontend/` file changed.
+- No part halted. No part was not run. The dependency of Task 16 on Tasks 14 and 15 is treated as satisfied by this not-applicable record.
+
+### Measurements of FR-6, FR-7, FR-11, FR-16 (separate from the suites)
+
+- FR-6 (Task 4, development app Word import from a launch directory other than `<root>/electron`): run. Blank and Novel imports completed and created a project. Covers the development app and that working directory only; does not show the import failed before the Task 3 change in that run.
+- FR-7 (Task 5, unpacked `--dir` build with throwaway `productName`, launched from `/` and from the repo root): run. Blank and Novel imports completed and created a project in both launches. Covers that build (arm64, commit `66a3a9f8`) only; not a Finder launch, not a `.dmg`, not x64, not signed; does not show the build failed before the fix.
+- FR-11 (Task 8, global noise word added in the development app): run. Add succeeded, the word was listed after restarting with the same user-data directory and was stored in the throwaway `workspace.json` under `globalNoiseWords`. Covers the development build only; the unpacked build was not run for this, and the pre-fix behaviour in that setup was not run.
+- FR-16 (Task 11 development app, Task 12 unpacked build, Task 13 script re-run): run. With a `require`-free hook `will-download` fired and a 46-byte `txt` file was written to the throwaway folder in both builds; with the original hook shape the handler threw `require is not defined`. Covers `txt` on a two-document project, the development app and the unpacked build launched from `/` and the repo root; compile formats md, pdf, docx, a large compile and the cause of the original D-40 observation are not established (HYPOTHESIS, Task 11).
+
+### Suites against the Task 1 baseline
+
+| Item | Command (cwd) | Baseline | Final |
+| --- | --- | --- | --- |
+| electron typecheck | `pnpm typecheck` (`electron/`) | exit 0 | exit 0 |
+| electron tests | `pnpm test` (`electron/`) | 30 files, 488 passed, 0 failed | exit 0; 32 files, 502 passed, 0 failed (+14 tests, +2 files: `docx-import/fork-options.test.ts`, `noise-words-ipc.test.ts`, and added `projects-dir.test.ts` cases) |
+| electron worker build | `pnpm build:worker` (`electron/`) | exit 0 | exit 0 |
+| frontend tests | `pnpm test:ci` (`frontend/`) | 612 files; 6967 passed, 2 expected fail, 1 skipped | exit 0; 612 files; 6967 passed, 2 expected fail, 1 skipped (6970), 0 failed (identical) |
+| frontend typecheck | `pnpm typecheck` (`frontend/`) | exit 0 | exit 0 |
+| frontend lint | `pnpm lint` (`frontend/`) | 393 problems: 0 errors, 393 warnings | 393 problems: 0 errors, 393 warnings (identical) |
+| knip | `pnpm knip` (repo root) | exit 1; 413 findings | exit 1; 413 findings; `diff` of `logs/knip-final.txt` against `logs/knip-baseline.txt` reports no difference (434 lines each) |
+| e2e | `pnpm test:e2e` (`frontend/`, outside sandbox) | 214 passed, 1 skipped, 0 failed | exit 0; 214 passed, 1 skipped, 0 failed (48.2s); no failure names; raw output `/tmp/getwrite-f88/f-e2e.txt` |
+
+Knip findings naming the touched files (`electron/src/docx-import/fork-options.ts`, `electron/src/noise-words-ipc.ts`, `electron/src/projects-dir.ts`, `electron/src/main.ts`): `fork-options.ts`, `noise-words-ipc.ts` and `main.ts`: none. `projects-dir.ts`: two, `WORKSPACE_FOLDER_NAME` (unused export, line 30) and `WORKSPACE_CONFIG_FILENAME` (unused export, line 184), and one unused exported type `WorkspaceRejection` (line 187). All three also appear in `knip-baseline.txt` (the files are identical), so none is introduced by this feature.
+
+e2e process notes: `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before (also before the electron suites): empty, exit 1. Playwright's webServer (`reuseExistingServer`) started its own Storybook static server; this task started no separate Storybook, so no pid of its own was recorded to stop. After the run: `lsof` empty, exit 1 (no listener on 7340, 3000 or 6006). No desktop app was started in this task.
+
+`cli/`: not touched and no module it imports was changed, so the `cli/` tests were not run. `git diff --stat -- cli`: empty.
+
+`git diff --stat -- docs/user`: empty (no edit under `docs/user/`). `git status --short` at the end of the suites: only `?? specs/features/desktop-defects/logs/knip-final.txt` (before this section and the `tasks.md` edit). Nothing outside `specs/` changed in the working tree; the source changes of Parts A and B are already committed under `electron/`.
+
+### Not tested
+
+No real crash or power loss was tested. The atomic-write tests (Tasks 9-10) inject a `fs.writeFileSync` failure and show old content survives that; no fsync was added and survival of a real crash or power loss is not shown.
+
+Other limits: no Finder-launched installed app, `.dmg` build, x64 or signed build was run; the pre-fix behaviour was not re-run in Tasks 4, 5 or 8; the pipeline's e2e suite was run once.
+
+### Follow-up for the scribe (pointers only; `docs/user/` not edited here)
+
+These handbook statements describe behaviour the fixes in this feature may have made stale. Whether each is stale is for the scribe to decide against the measurements above.
+- `docs/user/handbook/organize/start-page.md:33` (D-2: desktop App Settings "Could not save the noise-word list."; verification record `specs/features/user-handbook/verification.md:978`, row S-15). Task 8 measured Add succeeding in the development app after the fix.
+- `docs/user/handbook/protect-and-finish/compiling.md:36` (D-40: desktop compile, no download seen; record `verification.md:1229`, row C-12). Tasks 11-13: the observation came from the script's hook; with a corrected hook a download occurred in both builds.
+- D-8 (desktop Word import fails from another working directory): record `verification.md:984`, row S-13; a grep of `docs/user` for "working directory" and "isn't recognized" found no handbook page stating it, so only the verification record is affected. Tasks 4-5 measured the import completing from another directory and from `/`.
