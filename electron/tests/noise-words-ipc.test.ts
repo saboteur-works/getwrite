@@ -59,7 +59,7 @@ describe("createGlobalNoiseWordsHandlers", () => {
     );
   });
 
-  it("never passes an empty path: with the directory given, nothing is written to the working directory (FR-8, FR-9)", () => {
+  it("uses exactly the directory it is given: nothing is written to the working directory (FR-8, FR-9)", () => {
     // Pins the handler-level fix: the handlers use the directory they are
     // given. The model's mkdir('') failure is unchanged (FR-10).
     const emptyCwd = path.join(dir, "empty-cwd");

@@ -272,3 +272,48 @@ These handbook statements describe behaviour the fixes in this feature may have 
 - `docs/user/handbook/organize/start-page.md:33` (D-2: desktop App Settings "Could not save the noise-word list."; verification record `specs/features/user-handbook/verification.md:978`, row S-15). Task 8 measured Add succeeding in the development app after the fix.
 - `docs/user/handbook/protect-and-finish/compiling.md:36` (D-40: desktop compile, no download seen; record `verification.md:1229`, row C-12). Tasks 11-13: the observation came from the script's hook; with a corrected hook a download occurred in both builds.
 - D-8 (desktop Word import fails from another working directory): record `verification.md:984`, row S-13; a grep of `docs/user` for "working directory" and "isn't recognized" found no handbook page stating it, so only the verification record is affected. Tasks 4-5 measured the import completing from another directory and from `/`.
+
+## Review follow-ups (Task 17)
+
+Scope: the helper behind `writeWorkspaceConfig` in `electron/src/projects-dir.ts` (`writeFileViaTemporary`), its tests, and one test rename. The missing fsync and the dropped file mode were READ in the code, not measured; the red tests below show the code change, and the order test shows fsync is called in that order. Nothing here shows that data survives a crash or power loss.
+
+### Red, before the change (`pnpm exec vitest run tests/projects-dir.test.ts tests/noise-words-ipc.test.ts`, `electron/`)
+
+4 failed, 53 passed (57):
+- order: `AssertionError: expected [ 'write', 'rename' ] to deeply equal [ 'write', 'fsync:tmp', 'close:tmp', 'rename', 'fsync:dir', 'close:dir' ]` (the missing fsync).
+- tmp-file fsync throws: `AssertionError: expected [Function] to throw an error` (no fsync was called, so the injected throw never happened).
+- mode 0600 kept: `AssertionError: expected 420 to be 384` (0644 came out; the dropped mode).
+- non-ENOENT stat failure: `AssertionError: expected [Function] to throw an error` (the file was never statted).
+The 0644 case, the new-file process-default-mode pin, and the directory open/fsync-throws cases passed against the old helper, as expected (the old helper did neither). The raw output was not saved to a file (a `tee` to `/tmp/getwrite-f88/` was refused inside the sandbox); the lines above are copied from the terminal.
+
+### Green, after the change
+
+`projects-dir.test.ts` and `noise-words-ipc.test.ts`: 57 passed. Behaviour pinned: call order write, fsync of the temporary file, close, rename, fsync of the directory, close; a directory open or fsync that throws leaves the write successful with the new content in place; a throwing fsync of the temporary file fails the write, leaves the old bytes and leaves no temporary file; an existing file's mode (0600, 0644) is kept; a new file gets the process default mode (pin, not 0600); a stat failure other than ENOENT fails the write with the old content. The directory fsync failure is swallowed deliberately because the rename already succeeded, and the code comment says so; it is the only swallowed failure.
+
+Rename: `noise-words-ipc.test.ts` case "never passes an empty path ..." is now "uses exactly the directory it is given: nothing is written to the working directory (FR-8, FR-9)"; assertion unchanged.
+
+### Suites (from `electron/`) against Task 16
+
+| Check | Task 16 | Now |
+| --- | --- | --- |
+| `pnpm typecheck` | exit 0 | exit 0 |
+| `pnpm test` | 32 files, 502 passed | 32 files, 510 passed, 0 failed (+8 tests, all in `projects-dir.test.ts`) |
+| `pnpm build:worker` | exit 0 | exit 0 |
+| `pnpm build` (tsc, rebuilds `electron/dist`) | not recorded | exit 0 |
+
+Frontend, knip and e2e results of Task 16 stand: nothing outside `electron/` and `specs/` changed and they were not re-run. `git diff --stat` (working tree): `electron/src/projects-dir.ts`, `electron/tests/noise-words-ipc.test.ts`, `electron/tests/projects-dir.test.ts`, plus `specs/` files; nothing else. `git diff --stat -- electron/src/sharing/device-store-writer.ts`: empty. `grep -n "sharing/" electron/src/projects-dir.ts`: one hit, line 283, a code comment naming `sharing/device-store-writer.ts`; no import.
+
+### Wiring not covered by a unit test
+
+`main.ts` passing `app.getPath("userData")` to these functions is covered only by the app measurements (Task 8 and the lead's Stage 6.5 run), not by a unit test.
+
+### Development-app re-run (development build only)
+
+Command, from the repo root, sandbox disabled: `node specs/features/desktop-defects/scripts/noise-words-dev.mjs` (output to `/tmp/getwrite-f88/t17-noise-dev.txt`, not in the repo). `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before: empty, exit 1; after: empty, exit 1. The FR-22 assertions printed true (userData and logs throwaway, not under a protected folder); `git status --short projects/` empty before and after. Result: the script exited 0; Add succeeded ("Could not save the noise-word list." not visible, word listed after Add); after the app was closed and relaunched with the same throwaway user-data directory the word was listed; the throwaway `workspace.json` had keys `["globalNoiseWords"]` and `globalNoiseWords = ["gwf88noiseword"]` (key and value only). This is a measurement of the development build only, against the rebuilt `electron/dist`; no packaged build was run. Pids started and stopped by pid (SIGTERM, none alive afterwards): first launch 64621, 64626, 64627, 64631, 64635, 64654, 64660, 64738; second launch 65482, 65483, 65484, 65485, 65489, 65508, 65514, 65588. Nothing else was stopped. The throwaway log and run folders were removed by the script.
+
+### Out of scope, recorded and not built
+
+- A symlinked `workspace.json` (the rename replaces the link, not its target).
+- Stale `.workspace.json.*.tmp` files left behind by a crash.
+- The development workspace-folder chooser passing `""` (`electron/src/main.ts:298`).
+- No sender check and no payload validation on `getwrite:global-noise-words-set`.
