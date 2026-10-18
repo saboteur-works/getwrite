@@ -218,6 +218,32 @@ describe("the global noise-word list", () => {
   });
 });
 
+describe("the global noise-word list with an empty user-data directory (Feature 88, FR-8)", () => {
+  it("reproduces the failure: writeGlobalNoiseWords('') throws ENOENT from mkdir ''", () => {
+    // projectsDirEnvironment() returns userDataDir "" unpackaged, and the
+    // handlers pass that through. Run from an empty throwaway cwd so a relative
+    // path could not touch anything real. This case is a recorded reproduction
+    // and is removed by Task 7 (FR-8, FR-10); it is not expected to turn green.
+    const emptyCwd = path.join(root, "empty-cwd");
+    fs.mkdirSync(emptyCwd);
+    const originalCwd = process.cwd();
+    process.chdir(emptyCwd);
+    try {
+      expect(process.cwd()).toBe(fs.realpathSync(emptyCwd));
+      let caught: NodeJS.ErrnoException | undefined;
+      try {
+        writeGlobalNoiseWords("", ["said"]);
+      } catch (error) {
+        caught = error as NodeJS.ErrnoException;
+      }
+      expect(caught).toBeUndefined();
+      expect(fs.readdirSync(emptyCwd)).toEqual([]);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+});
+
 describe("the sharing setting", () => {
   const configFile = (): string => path.join(userDataDir, "workspace.json");
 

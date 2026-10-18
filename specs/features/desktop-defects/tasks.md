@@ -80,7 +80,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-8, FR-9 (tests), FR-10, FR-24. The FR-8 case reproduces the READ mechanism at the model layer. The fix routes the handlers to a real directory and leaves `writeGlobalNoiseWords` and `projectsDirEnvironment()` as they are, so Task 7 replaces the FR-8 assertion with a handler-level one (the handler is never given `""`); the red run recorded here is the reproduction. FR-8 (amended) makes the red ENOENT run a recorded reproduction that is not expected to turn green, since FR-10 forbids changing the model.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: D-2 fix: noise-word IPC handlers use `app.getPath("userData")`
 **What:** Move the handler bodies to the new module and have main pass `app.getPath("userData")` to it in both builds.

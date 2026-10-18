@@ -98,3 +98,16 @@ Observed, unpacked build launched from `/` and, separately, from `/Users/jedaisa
 Processes (electron main plus descendants, recorded; run `/`): 41439, 41521, 41522, 41526 (next-server, held 7340), 41601, 41834, 42282. Run repo root: 43360, 43361, 43362, 43363 (next-server, held 7340), 43364, 43663, 44128. Stopped by pid by the harness after `app.close()`: "all exited after app.close" both runs; `lsof` on 7340 after stop: none; final `lsof` on 7340, 3000, 6006 empty (exit 1) after each run and again after both. Throwaway log folder and run folders were removed. `git status --short projects/` empty before and after.
 
 End state (a). Result: with the Task 3 change, Blank and Novel Word imports completed and created a project in the unpacked build launched from `/` and from the repo root. This shows the fix works in this build; it does not show that the build failed before the fix (the unfixed tree was not run). Not covered: a Finder launch of an installed `.app`, a `.dmg` build, x64, a launch directory other than the two named, a signed build, a folder source or split levels.
+
+## Part B: D-2 noise-word handlers (2026-10-18)
+
+### Task 6: failing tests (run from `electron/`, sandbox, `pnpm exec vitest run`)
+
+Added: `electron/tests/projects-dir.test.ts` new describe "the global noise-word list with an empty user-data directory (Feature 88, FR-8)" with one case; new `electron/tests/noise-words-ipc.test.ts` (3 cases) importing `createGlobalNoiseWordsHandlers` from `../src/noise-words-ipc` (`{ userDataDir, log }` -> `get()`, `set(words)`), a module that does not exist yet (Task 7). The FR-8 case chdirs into an empty throwaway directory under the test's tmp root, asserts `process.cwd()` is it, calls `writeGlobalNoiseWords("", ["said"])`, and restores cwd in `finally`. It is written to assert that the call does not throw, so it is red by design; it is a recorded reproduction and Task 7 removes it.
+
+Full-suite result: 2 files failed, 30 passed; 1 test failed, 491 passed (492). The 38 other `projects-dir.test.ts` cases pass unchanged.
+
+- FR-8 case, failing assertion `expect(caught).toBeUndefined()` (projects-dir.test.ts:239), received: `Error: ENOENT: no such file or directory, mkdir ''` with `errno: -2, code: 'ENOENT', syscall: 'mkdir', path: ''`.
+- `tests/noise-words-ipc.test.ts`: suite fails to load, `Error: Cannot find module '../src/noise-words-ipc' imported from .../electron/tests/noise-words-ipc.test.ts`; 0 tests ran (the three cases are not individually red/green yet).
+
+Handler cases written: get reads the list from the given directory; set writes `workspace.json` in the given directory and returns `{ ok: true }` without logging; a write that throws (user-data path beneath a regular file) returns `{ ok: false, message }` and logs `Failed to save the global noise-word list: <message>` once.
