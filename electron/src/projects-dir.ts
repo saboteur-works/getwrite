@@ -266,10 +266,77 @@ function writeWorkspaceConfig(
   config: WorkspaceConfigFile,
 ): void {
   fs.mkdirSync(userDataDir, { recursive: true });
-  fs.writeFileSync(
+  writeFileViaTemporary(
     workspaceConfigPath(userDataDir),
     `${JSON.stringify(config, null, 2)}\n`,
   );
+}
+
+/**
+ * Writes `contents` to `target` by writing a temporary file in the same
+ * directory and renaming it over `target`, so a write that fails part-way
+ * leaves the previous `target` bytes in place. The temporary file is removed
+ * if the write, its fsync or the rename fails.
+ *
+ * Order of calls: write, fsync of the temporary file's descriptor, close,
+ * rename, fsync of the directory. (Modelled on `writeAtomically` in
+ * `sharing/device-store-writer.ts`, which this module deliberately does not
+ * import.) This code calls fsync in that order; it is not a claim, and no test
+ * here shows, that the data survives a crash or power loss.
+ *
+ * An existing `target` keeps its permission bits (the replacement is a new
+ * inode, which would otherwise take the process default). A `target` that does
+ * not exist gets the process default mode. A stat failure other than
+ * not-found fails the write.
+ *
+ * A failure to open or fsync the directory is swallowed deliberately, and it
+ * is the only failure swallowed: the rename has already succeeded, so the new
+ * contents are in place and reporting an error would misreport a completed
+ * write.
+ *
+ * @param target - Absolute path of the file to replace.
+ * @param contents - The complete new file contents.
+ */
+function writeFileViaTemporary(target: string, contents: string): void {
+  const directory = path.dirname(target);
+  const temporary = path.join(
+    directory,
+    `.${path.basename(target)}.${process.pid}.${Date.now()}.tmp`,
+  );
+  let existingMode: number | null = null;
+  try {
+    existingMode = fs.statSync(target).mode & 0o777;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  try {
+    const fd = fs.openSync(temporary, "wx");
+    try {
+      fs.writeFileSync(fd, contents);
+      if (existingMode !== null) fs.fchmodSync(fd, existingMode);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(temporary, target);
+  } catch (error) {
+    try {
+      fs.rmSync(temporary, { force: true });
+    } catch {
+      // The original failure is the one worth reporting.
+    }
+    throw error;
+  }
+  try {
+    const directoryFd = fs.openSync(directory, "r");
+    try {
+      fs.fsyncSync(directoryFd);
+    } finally {
+      fs.closeSync(directoryFd);
+    }
+  } catch {
+    // Swallowed on purpose: the rename above already succeeded.
+  }
 }
 
 /**

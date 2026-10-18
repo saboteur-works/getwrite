@@ -347,7 +347,12 @@ with the app without hand-rewriting it (see OQ-90).
   NOT mutate revisions or project state. [US-2]
 - FR-15: The product MUST ship as an account-free desktop application
   (Electron) that runs against the local filesystem with no server
-  dependency. [US-5]
+  dependency. The desktop's own settings file (`workspace.json`, which
+  holds the workspace-folder override, the sharing setting and the global
+  noise-word list) MUST be written so that an interrupted write cannot
+  leave it partly written (owner decision 2026-10-18, Feature 88:
+  temp-file-and-rename write); a damaged file continues to read as empty,
+  unchanged. [US-5]
 - FR-16: The product MUST support dark and light mode with a per-project
   color-mode preference. [US-5]
 - FR-17: Users MUST be able to add image and audio resources through the UI
@@ -595,7 +600,18 @@ with the app without hand-rewriting it (see OQ-90).
   scope (resolved: OQ-23; see Out of Scope (Deferred)). The writer chooses
   the destination project's project type at import time — a CLI flag and a
   UI choice — from the existing project types, with a default (resolved:
-  OQ-23). [US-18]
+  OQ-23). The desktop import MUST recognize the same project types the
+  CLI import and the app's own project creation recognize, however and
+  from whichever directory the desktop app was launched. Added 2026-10-18
+  (Feature 88): measured in the Electron development app, desktop Word
+  import answered "That project type isn't recognized."; the worker is
+  forked with no environment or working directory and the project-types
+  lookup falls back to working-directory-relative paths (a dependence on
+  the working directory measured in development; whether a packaged build
+  is affected is a hypothesis, not established, see OQ-95). Owner decision
+  2026-10-18 (OQ-95): the import MUST work in both the development app and
+  a packaged build, so the fix applies to both and does not wait on a
+  packaged-build check. [US-18]
 - FR-28: Users MUST be able to browse, restore, and permanently purge
   soft-deleted resources through a dedicated Trash UI (the soft-delete,
   restore, and purge model existed in part beforehand; FR-28 extended it).
@@ -646,7 +662,11 @@ with the app without hand-rewriting it (see OQ-90).
   across all three runtimes — web/hosted, Electron desktop, and native
   Android — each persisting it independently with no merge, sync, or
   conflict-resolution mechanism between them, so a word added on one
-  device or build MUST NOT be expected to appear on another. This
+  device or build MUST NOT be expected to appear on another. Adding a
+  word to the global list MUST work in the Electron development app as
+  well as the packaged app (owner decision 2026-10-18, Feature 88: the
+  development app uses its own user-data directory; measured before the
+  fix, adding a global noise word failed in the development desktop app). This
   requirement MUST NOT change detection (`entity-detection.ts`), the
   mention index, or any mention count/list surface — every detected
   mention remains visible exactly as before; only the noise observation is
@@ -3086,6 +3106,13 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (2026-10-16): option (a). Saved smart-folder definitions are not migrated or rewritten; the corrected evaluation reads the existing saved "includes all of" shape (`and` with a single `in` child carrying several values, `ast-chip-bridge.ts:146-150`) as "every listed value", so existing folders return the corrected result on next evaluation with no notice, and reopening one shows "includes all of". No one-time notice.
 **Evidence:** Owner decision, Gate 1, 2026-10-16.
 **Impact:** FR-10; Feature 86's D-16 part.
+**Owner:** Product owner.
+
+**OQ-95 (resolved): Does the desktop Word import fail with "That project type isn't recognized." in a packaged build, and does desktop compile (D-40) produce no file because of the app or because of the verification script?**
+**Options:** (a) check a packaged build: if it fails, the FR-33 sentence added 2026-10-18 stands as a defect to fix there too; if it works, the failure is development-only and the sentence still holds; (b) re-run desktop compile by hand, outside the verification script, and record whether a file is written.
+**Resolution:** Resolved (2026-10-18), three decisions. (1) D-8 is fixed in both builds unconditionally: the DOCX worker fork is given `GETWRITE_PROJECT_TYPES_DIR` (the templates directory main already computes) and an explicit working directory; the packaged-build run happens afterwards as verification of the fix, not as a gate. (2) D-40 gets a manual desktop compile outside the verification script; if it shows a product defect, the size decides: a one-line change (for example deferring `revokeObjectURL`) is fixed inside Feature 88, while a main-process download handler or a decision about where compiled files go is scoped as a separate feature; if it shows a script fault, the script is fixed and it is recorded that no product change was needed. (3) Both checks are run (Word import in a packaged build, and the manual desktop compile); the packaged run must use a throwaway user-data directory and a throwaway workspace folder, never the owner's real ones, and if that cannot be arranged safely the packaged import is the owner's manual check.
+**Evidence:** Owner decision, Gate 1, 2026-10-18. Measured: development-app failure and the working-directory-dependent lookup (`specs/features/user-handbook/verification.md`, D-8). Read, not run: the DOCX worker is forked with no env or cwd (`electron/src/main.ts:661`); `GETWRITE_PROJECT_TYPES_DIR`, the only override `frontend/src/lib/projectTypes.ts:68` reads, is set nowhere in `electron/`; its fallbacks are cwd-relative while a packaged build ships the files under `process.resourcesPath/getwrite-config` (`electron/electron-builder.yml`); the Scrivener worker does not read project types. Hypothesis (medium confidence, not established): a packaged build launched from Finder fails the same way. D-40: not resolvable from code; candidate causes, none established, are a fault in the verification script's hook, the product revoking the object URL synchronously after `click()` (`frontend/src/lib/compile/download-file.ts:32-42`, read), or interception elsewhere; the manual compile is the experiment that discriminates them.
+**Impact:** FR-33, FR-14; Feature 88's D-8 and D-40 parts.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)
