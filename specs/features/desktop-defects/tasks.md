@@ -134,7 +134,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 5, 11
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-23 (OQ-5 (b)). May HALT for an owner decision: "not run" is a valid end state and is reported; the dependency on Task 5 is treated as satisfied by Task 5's halt report. Skipped if Task 11 classified (c) only in that nothing is built from it; the run itself may still be recorded as extra evidence. Needs the app: OUTSIDE the sandbox, main checkout.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: D-40 class (a): correct the verification script's hook
 **What:** Correct the download hook in `task8-desk.mjs` so it works without `require`, and re-run it once to show it records a download.
