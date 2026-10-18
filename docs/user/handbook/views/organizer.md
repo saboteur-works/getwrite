@@ -28,7 +28,7 @@ Not yet in a release (merged after 2.2.0).
 
 Select **Filters** at the top of the view to open the filter bar:
 
-- **Status** — a dropdown offering **All statuses**, each status in the project's status list, and **No status**. In a new Blank project, whose status list was empty, only **All statuses** and **No status** were offered. A later change (unreleased) makes the dropdown offer Draft, In review and Published when the project has no configured statuses (shown by tests, not re-checked in the running app).
+- **Status** — a dropdown offering **All statuses**, each status in the project's status list, and **No status**. In a new Blank project, whose status list was empty, only **All statuses** and **No status** were offered. A later change (unreleased) makes the dropdown offer Draft, In review and Published when the project has no configured statuses (re-checked in the running web app in a new Blank project with the Workspace folder selected: the dropdown offered All statuses, Draft, In review, Published and No status, and the project's status list stayed empty). How cards are shown or matched under that change was not re-checked in the app.
 - **Minimum words** and **Maximum words** — a word-count range. Only text documents have a word count, so while this filter is active the cards for images, audio files and folders are hidden.
 - **Advanced filters** — expands more dropdowns: one for Point of View and one for each resource-reference field the project defines (for example a "Pov Char" field), each listing the values present among the current folder's cards.
 

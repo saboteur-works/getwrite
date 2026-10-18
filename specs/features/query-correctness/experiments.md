@@ -95,6 +95,8 @@ Failed. Saved AST for chip value `alpha`: `{"op":"matches","field":"txt","value"
 
 ### The typed-name resource-ref scenario: is it a faithful representation of the UI?
 
+See "Pre-PR checks (2026-10-17, pipeline lead)" at the end of this file for the in-app route that reached this typed-string case (Multi Ref field with an empty folder scope).
+
 Read of the code (`FilterChip.tsx` ValueInput, `case "resource-ref" / "multi-resource-ref"`, lines 364-390; `AppShell.tsx` `resolveResourceOptions`, lines 315-329): the chip renders a plain `<input type="text" aria-label="Resource" placeholder="resource...">` whose `onChange` stores the typed string as the chip value ONLY when `resolveResourceOptions` returns no candidates (empty list). When candidates exist it renders `SingleRefInput`, whose `onChange` stores a `{ id, name }` `ResourceRef` (the picked case, which the check also covers and which passed). Measured saved AST for the typed string `Tom`: `{"op":"eq","field":"ref","value":"Tom"}`; for the picked value: `{"op":"eq","field":"ref","value":{"id":"t1","name":"Tom"}}`. So the typed-name path exists in the code, and it is reached only for a project with zero candidate resources in scope; with candidates the typed string is not stored as the value (the writer must pick). Observation: the scenario models a real code branch but a narrow one; it was not exercised in a running app. Judgement recorded: retained and marked "finding", because the branch exists and saves a string that the evaluator compares to a stored `{ id, name }` object; whether it is reachable in practice (a field with an empty scope that still has stored refs) is not measured.
 
 ### FR-3: chip whose value was never edited
@@ -588,3 +590,24 @@ Not run. `git diff --stat 845df1d2..HEAD -- electron cli` printed nothing (empty
 - FR-31 real-app re-check: the pipeline lead's.
 - electron and cli test suites (above).
 - Per-test-name identification of the skipped unit test and the skipped e2e test.
+
+## Pre-PR checks (2026-10-17, pipeline lead)
+
+Two checks on a fresh standalone web build of branch HEAD `1c8c9029`. Script: `specs/features/query-correctness/scripts/lead-check-organizer-and-ref.mjs`; log: `specs/features/query-correctness/logs-final/lead-check-organizer-and-ref.txt`. Each ran against a throwaway projects directory; the log records that ports 7340, 3000 and 6006 had no listener before and after, and the throwaway directory was removed.
+
+### D-20: Organizer status filter with `config.statuses` equal to `[]`
+
+New Blank project; `project.json` before: `config.statuses=[]`. A folder "Chapter 1" was created inside Workspace, the Workspace folder was selected and the Organizer tab enabled (log: `Organizer tab with the Workspace folder selected (Chapter 1 inside it): count=1; disabled=false`).
+
+Measured "Filter by status" options: `["All statuses","Draft","In review","Published","No status"]`. `project.json` after: `config.statuses=[]`.
+
+### Typed-name resource reference: reached in the app
+
+Route (script, log): a Multi Ref field "F Cast" (`fcast`, `multi-resource-ref`); Scene A given F Cast = Mara (sidecar `userMetadata.fcast=[{"id":"1512b7da-fa4d-43ee-b6e9-37e8c9392c78","name":"Mara"}]`); before scoping, the "includes" value control was a search input (label "Search resource", placeholder "search..."). The field's Folder scope (Project Settings > Metadata) was then set to an empty folder (picker entries: `["Any folder","","Workspace","Cast"]`; field definition after: `refFolder` set). Scene A's sidebar still showed `["F CAST","MARA"]`. The chip's value control became the plain text box (`label "Resource"`, placeholder `resource...`).
+
+Typed "Mara":
+
+- "includes": saved `{"op":"in","field":"fcast","value":"Mara"}`; result `["Scene A"]`.
+- "does not include": saved `{"op":"not","child":{"op":"in","field":"fcast","value":"Mara"}}`; result `["Elena","Mara"]`.
+
+On this route the typed string is saved and the two results match the labels. The F-2/F-3 known failure is single resource-ref `eq`. The UI's folder-scope picker exists only for Multi Ref fields (`SchemaManager.tsx`, `isMultiRef`), so the single-Ref case was not reached in the app. Not measured: whether a project-type spec can set `refFolder` on a single Ref field. Not run: Multi Ref any/all/none of with typed names.

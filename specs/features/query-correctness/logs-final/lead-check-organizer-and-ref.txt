@@ -1,0 +1,23 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 81116 port 63788 (throwaway projects dir; templates repo read-only)
+D-20 before: project.json config.statuses=[]
+D-20 Organizer tab with the Workspace folder selected (Chapter 1 inside it): count=1; disabled=false
+D-20 Organizer "Filter by status" options: ["All statuses","Draft","In review","Published","No status"]
+D-20 after: project.json config.statuses=[]
+stop: recorded 81116(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 82762 port 63812 (throwaway projects dir; templates repo read-only)
+Scene A sidecar userMetadata.fcast=[{"id":"1512b7da-fa4d-43ee-b6e9-37e8c9392c78","name":"Mara"}]
+before scoping: F Cast "includes" value controls=[{"tag":"INPUT","label":"Search resource","placeholder":"search…"}]
+folder picker entries: ["Any folder","","Workspace","Cast"]
+F Cast field definition after scoping: {"key":"fcast","label":"F Cast","type":"multi-resource-ref","refFolder":"f63f70e7-920c-433e-85e8-eee0cdfa8186"}
+Scene A sidebar after scoping (F Cast lines): ["F CAST","MARA"]
+after scoping (includes): F Cast "includes" value controls=[{"tag":"INPUT","label":"Resource","placeholder":"resource..."}]
+typed name "includes Mara" (data: Scene A has F Cast = [Mara]): result=["Scene A"]; definition={"op":"in","field":"fcast","value":"Mara"}
+after scoping (does not include): F Cast "includes" value controls=[{"tag":"INPUT","label":"Resource","placeholder":"resource..."}]
+typed name "does not include Mara" (data: Scene A has F Cast = [Mara]): result=["Elena","Mara"]; definition={"op":"not","child":{"op":"in","field":"fcast","value":"Mara"}}
+stop: recorded 82762(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
