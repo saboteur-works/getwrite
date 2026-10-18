@@ -71,7 +71,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-7, FR-22, FR-23 (OQ-1, OQ-2). May HALT for an owner decision: (b) is a valid end state, reported to the lead; it does not block other parts. Verification, not a gate (OQ-95 decision 1). Needs a build and the app: OUTSIDE the sandbox, main checkout, never a worktree. The throwaway `productName` expectation that logs land in a throwaway folder is general Electron behaviour (medium confidence); the path assertion decides, not the name.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: D-2 failing tests: the noise-word handlers and the empty user-data directory
 **What:** Add the red test that `writeGlobalNoiseWords("", ["said"])` fails today, and the red handler tests for a new directory-taking handler module.
