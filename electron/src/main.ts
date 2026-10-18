@@ -67,6 +67,7 @@ import type {
 import { createSelectionHandleRegistry as createDocxSelectionHandleRegistry } from "./docx-import/selection-handles";
 import { createImportGuard as createDocxImportGuard } from "./docx-import/import-guard";
 import { awaitWorkerOutcome as awaitDocxWorkerOutcome } from "./docx-import/await-worker-outcome";
+import { buildDocxWorkerForkOptions } from "./docx-import/fork-options";
 import type {
   ImportOutcome as DocxImportOutcome,
   ImportRequest as DocxImportRequest,
@@ -658,7 +659,14 @@ function registerDocxImportHandlers(): void {
 
         const workerBundlePath = resolveDocxWorkerBundlePath();
         log(`Forking DOCX import worker: ${workerBundlePath}`);
-        const worker = utilityProcess.fork(workerBundlePath);
+        const worker = utilityProcess.fork(
+          workerBundlePath,
+          [],
+          buildDocxWorkerForkOptions({
+            templatesDir: resolveDirectories().templatesDir,
+            workingDir: getRepoRoot(),
+          }),
+        );
 
         const importRequest: DocxImportRequest = {
           sourcePath: target.path,

@@ -32,3 +32,27 @@ Date: 2026-10-18. Tree: branch `fix/desktop-defects`, unfixed (no source change 
 - Figures from Feature 87 (frontend 6468 passed / 1 skipped, e2e 214 passed / 1 skipped) were not used; the values above were measured on this tree. The e2e figure happens to equal the earlier one.
 - Knip's per-finding contents were not analysed; only counts per section.
 - Lint warnings were counted, not categorised.
+
+## Part A: D-8 DOCX worker fork options
+
+### Task 2: extraction and red test (2026-10-18)
+
+Change: `electron/src/docx-import/fork-options.ts` exports `buildDocxWorkerForkOptions({ templatesDir, workingDir })`, returning `{}` (the as-is behaviour: no `env`, no `cwd`; the inputs are not yet used). `electron/src/main.ts` now calls `utilityProcess.fork(workerBundlePath, [], buildDocxWorkerForkOptions({...}))` for the DOCX fork only; before it was `utilityProcess.fork(workerBundlePath)`. The Scrivener fork line (`utilityProcess.fork(workerBundlePath)` in the Scrivener handler) has no diff. Test: `electron/tests/docx-import/fork-options.test.ts`.
+
+Red run (`pnpm test`, `electron/`): 1 failed | 30 passed files; 1 failed | 488 passed tests (the other 488 are unchanged from the Baselines count). Failing test: `buildDocxWorkerForkOptions > carries GETWRITE_PROJECT_TYPES_DIR equal to the templates directory and a defined cwd`:
+
+```
+AssertionError: expected undefined to be '/root/getwrite-config/templates/proje…' // Object.is equality
+- Expected: "/root/getwrite-config/templates/project-types"
++ Received: undefined
+ ❯ tests/docx-import/fork-options.test.ts:18:53
+     18|     expect(options.env?.GETWRITE_PROJECT_TYPES_DIR).toBe(
+```
+
+The failing assertion is the missing `GETWRITE_PROJECT_TYPES_DIR` key. The `cwd` assertion (`toBeDefined`) sits after it in the same test and was not reached; whether it also fails separately was not run (by reading, `options.cwd` is `undefined` for `{}`). This reproduces the READ statement that the options have neither; it does not reproduce the user-visible failure (Task 4).
+
+`pnpm typecheck` (`electron/`): exit 0.
+
+### Reading check: the Scrivener worker does not read project types (FR-5)
+
+Reading, not a run. `electron/worker/scrivener-import-worker.ts:15-30` imports only from `@gw/core` and `../src/scrivener-import/handle-import-request`. `frontend/src/lib/models/scrivener/import-scrivener-project.ts:110-160` imports no `projectTypes` module and no `GETWRITE_PROJECT_TYPES_DIR` reference. `grep -rn 'projectTypes"' frontend/src` lists importers of `getProjectType` as only `project-crud-core.ts:48`, `plaintext/import-plaintext-project.ts:120` and `docx/import-docx-project.ts:136`; `GETWRITE_PROJECT_TYPES_DIR` is read only at `frontend/src/lib/projectTypes.ts:68`. Not checked: whether `../project` (`createProject`) or other transitively imported modules reach `projectTypes` beyond the direct imports listed (the grep over all of `frontend/src` shows no other importer of it). Finding: the Scrivener worker does not read project types.

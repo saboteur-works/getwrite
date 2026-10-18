@@ -44,7 +44,7 @@ Tasks whose outcome may halt for an owner decision: Task 5 (FR-22 safety not sho
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** Satisfies FR-1, FR-2, FR-5 (reading check), FR-24. The red result reproduces the READ statement that the fork has neither; it does not reproduce the user-visible failure, which Task 4 measures. If the reading check shows the Scrivener worker does read project types, record it and stop Part A for the lead; do not change the Scrivener fork.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: D-8 fix: pass `GETWRITE_PROJECT_TYPES_DIR` and an explicit `cwd` to the DOCX worker
 **What:** Make the fork-options function return the inherited environment plus `GETWRITE_PROJECT_TYPES_DIR` and an explicit `cwd`, and have main pass the templates directory and `getRepoRoot()` into it.
