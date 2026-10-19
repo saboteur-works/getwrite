@@ -27,6 +27,8 @@ export type ProjectTypeEntry = {
   filePath: string;
   /** File name (basename) of the template JSON file. */
   fileName: string;
+  /** Where the entry came from. Only built-in types are listed here. */
+  source: "built-in";
 };
 
 /**
@@ -51,22 +53,28 @@ const ALT_TEMPLATES_DIR = path.join(
 );
 
 /**
- * Resolves the first accessible project-type templates directory.
+ * Resolves the built-in project-type directory. This is the one function that
+ * decides it, so the server, the worker and the CLI cannot disagree.
  *
  * Resolution order:
- * 1. `DEFAULT_TEMPLATES_DIR`
- * 2. `ALT_TEMPLATES_DIR`
+ * 1. `GETWRITE_PROJECT_TYPES_DIR`, if set and non-empty
+ * 2. `GETWRITE_TEMPLATES_DIR`, if set and non-empty
+ * 3. `DEFAULT_TEMPLATES_DIR`
+ * 4. `ALT_TEMPLATES_DIR`
  *
  * If neither directory is readable, returns `DEFAULT_TEMPLATES_DIR` so callers
  * can handle missing-directory behavior in one place.
  *
  * @returns Relative path to the selected templates directory.
  */
-async function resolveTemplatesDir(): Promise<string> {
+export async function resolveBuiltInProjectTypesDir(): Promise<string> {
   // An explicit override wins (used by tests to point at a temp dir, and
-  // available to deployments that relocate the bundled templates).
+  // available to deployments that relocate the bundled templates). The
+  // desktop main process sets GETWRITE_TEMPLATES_DIR for the server.
   const override = process.env.GETWRITE_PROJECT_TYPES_DIR;
   if (override) return override;
+  const templatesEnv = process.env.GETWRITE_TEMPLATES_DIR;
+  if (templatesEnv) return templatesEnv;
   // Try the default first, then the alt.
   try {
     await readdir(DEFAULT_TEMPLATES_DIR, { withFileTypes: true });
@@ -107,7 +115,7 @@ export async function listProjectTypes(
   if (_cache && !forceRefresh) return _cache;
 
   try {
-    const dir = await resolveTemplatesDir();
+    const dir = await resolveBuiltInProjectTypesDir();
     const entries = (await readdir(dir, { withFileTypes: true })) as
       | string[]
       | import("node:fs").Dirent[];
@@ -131,6 +139,7 @@ export async function listProjectTypes(
             spec: validationResult.value,
             filePath,
             fileName: filename,
+            source: "built-in",
           });
         }
       } catch (err) {

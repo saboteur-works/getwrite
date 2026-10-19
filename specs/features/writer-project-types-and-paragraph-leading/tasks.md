@@ -148,7 +148,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 12, 13
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-3 (resolver and built-in directory), FR-13 (built-in cache). The test over the source tree that no other `readdir` of a project-type directory remains is added in Task 16 (it fails until the readers move).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Resolver, saved side: fail-closed store, status and unusable files, no saved cache
 **What:** Make the resolver read `GETWRITE_SAVED_PROJECT_TYPES_DIR` on every call and report status and unusable files, failing closed when unset or when hosted auth is active.
