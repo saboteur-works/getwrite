@@ -73,3 +73,36 @@ export function normalizeParagraphLeadingInDocument(
 ): LeadingJsonNode {
   return normalizeNode(doc);
 }
+
+/** Project body line height used when the project sets none or an unusable one. */
+const FALLBACK_DISPLAY_LEADING = "1.8";
+
+/** Message shown beside the toolbar Line Height control for refused input. */
+export const LEADING_INPUT_ERROR =
+  "Line height must be a number greater than 0.";
+
+/**
+ * The value the toolbar Line Height control shows: the paragraph's explicit
+ * leading, else the project's body line height, else 1.8. Read-only; showing a
+ * value never writes it to the document.
+ */
+export function displayedParagraphLeading(
+  explicit: number | null | undefined,
+  projectLineHeight: string | undefined,
+): string {
+  if (typeof explicit === "number") return String(explicit);
+  const project = readParagraphLeading(projectLineHeight);
+  return project === null ? FALLBACK_DISPLAY_LEADING : String(project);
+}
+
+/**
+ * Validates text typed into the Line Height control. Returns the visible
+ * message for refused input, or `null` when the text is a finite number
+ * greater than 0. There is no floor above 0 for an explicit leading.
+ */
+export function validateParagraphLeadingInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return LEADING_INPUT_ERROR;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && parsed > 0 ? null : LEADING_INPUT_ERROR;
+}

@@ -84,7 +84,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 4, 6
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-21 (US-4). The explicit leading has no floor (settled decision); only the project fields have the 1.8 floor. If a new context is required by the control, add a Storybook decorator (checked again in Task 28).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: 1.8 floor validator, server core, route and schemas
 **What:** Add the shared floor validator to `editor-body-settings.ts` and apply it in `updateEditorConfigCore`, the editor-config route, `ApiEditorBodySchema` and `EditorBodySchema`.

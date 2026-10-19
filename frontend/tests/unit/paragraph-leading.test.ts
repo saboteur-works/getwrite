@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   readParagraphLeading,
   normalizeParagraphLeadingInDocument,
+  displayedParagraphLeading,
+  validateParagraphLeadingInput,
+  LEADING_INPUT_ERROR,
   type LeadingJsonNode,
 } from "../../src/lib/paragraph-leading";
 
@@ -112,5 +115,30 @@ describe("normalizeParagraphLeadingInDocument", () => {
       content: [heading],
     });
     expect(out.content?.[0]).toEqual(heading);
+  });
+});
+
+describe("displayedParagraphLeading (FR-21)", () => {
+  it("prefers the explicit number", () => {
+    expect(displayedParagraphLeading(1.2, "2.2")).toBe("1.2");
+  });
+  it("falls back to the project value, then 1.8", () => {
+    expect(displayedParagraphLeading(null, "2.2")).toBe("2.2");
+    expect(displayedParagraphLeading(null, undefined)).toBe("1.8");
+    expect(displayedParagraphLeading(undefined, "normal")).toBe("1.8");
+    expect(displayedParagraphLeading(null, "0")).toBe("1.8");
+  });
+});
+
+describe("validateParagraphLeadingInput (FR-21)", () => {
+  it("accepts any finite number above 0, with no floor", () => {
+    for (const ok of ["1.2", "0.5", "2", "10"]) {
+      expect(validateParagraphLeadingInput(ok)).toBeNull();
+    }
+  });
+  it("refuses non-numeric, empty, zero and negative input", () => {
+    for (const bad of ["abc", "", "0", "-1", "Infinity", "NaN"]) {
+      expect(validateParagraphLeadingInput(bad)).toBe(LEADING_INPUT_ERROR);
+    }
   });
 });

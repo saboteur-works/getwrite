@@ -39,6 +39,7 @@ export interface ResolvedToolbarInputCommand extends ResolvedToolbarItemBase {
   initialValue: string;
   options: string[];
   rotate?: false | "45" | "90";
+  validate?: (value: string) => string | null;
   onChange: (value: string) => void;
 }
 
@@ -100,6 +101,7 @@ function resolveGroup(
             item.onChange(context, value);
           },
           rotate: item.rotate,
+          validate: item.validate,
         } satisfies ResolvedToolbarInputCommand;
       }
 
