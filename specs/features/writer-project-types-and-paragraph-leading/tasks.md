@@ -57,7 +57,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 3
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-18 (schema half), FR-20, FR-21 (render validity; security.md section 6). The browser-level computed-line-height check is Task 10 (jsdom cannot compute layout).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Remove the `onCreate` stamp and normalise legacy leading at editor creation and content swap
 **What:** Delete the `selectAll().setParagraphLeading("1.5")` stamp from `TipTapEditor`'s `onCreate` and apply `normalizeParagraphLeadingInDocument` where stored content enters the editor (creation `content:` and `loadDocumentIntoEditor`).
