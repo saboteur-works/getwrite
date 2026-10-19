@@ -139,7 +139,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 1
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-2 (c). Safety: needs the desktop app and possibly a build, OUTSIDE the sandbox in the main checkout, never a worktree. Throwaway `--user-data-dir`, throwaway workspace folder (seeded `workspace.json`), throwaway logs folder; first action asserts `userData` and `logs` are not under `~/Library/Application Support/getwrite-electron`, `~/Library/Application Support/GetWrite`, `~/Documents/GetWrite` or `~/Library/Logs/*`, and the run stops as "not run" if either is. If 7340 is held, not run. A packaged result covers that build only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Resolver, built-in side: one directory function and the merged list shape
 **What:** Create the single project-type resolver with one built-in-directory function, validated entries carrying `source`, and the native-bundle exclusion intact.

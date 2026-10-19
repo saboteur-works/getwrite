@@ -173,3 +173,26 @@ One fresh server per run, in this order, all without a restart or any cache clea
 - Why creation (S4) followed an edit of an already-read file: the run shows the end values only. It was not instrumented to separate what the cached entry held from what was read at creation time.
 - The saved-types variable and a separate saved directory: not in the code, so the built-in and saved directories were the same directory here.
 - Node and pnpm versions for this run.
+
+## Part 1: FR-2 (c), do the desktop server's probes find the built-in types (Task 13)
+
+Date: 2026-10-19. Branch `feat/writer-project-types-and-paragraph-leading`, HEAD `f31ccfc6`, no source change. No harness script created: nothing was run.
+
+### Result: UNMEASURED (development app and packaged build)
+
+- `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN`, run when this task started, output:
+
+  ```
+  COMMAND     PID          USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+  GetWrite  88077 jedaisaboteur   23u  IPv4 0x40e0cf9c038a3c74      0t0  TCP *:7340 (LISTEN)
+  ```
+
+  Port 7340, the desktop server port, is held by pid 88077, the user's own GetWrite desktop app. Per the task's Notes ("If 7340 is held, not run"), the Electron development app and any packaged (`--dir`) build were not started, no build was made, and pid 88077 was not touched. No further attempt was made.
+- Therefore not recorded, because never observed: `app.getPath("userData")` and `app.getPath("logs")` assertions, the launch working directory, whether a new project from a built-in type id was created, any dialog text, and any throwaway `project.json`. No processes were started by this task; none to stop. No throwaway user-data, workspace or logs folders were created. The repo `projects/` and the real app-data, log and Documents folders were not read, listed or written.
+- Whether `createProjectCore` finds the built-in types in the desktop app is UNMEASURED for the development app and for any packaged build. To settle it, rerun with the desktop app closed by its owner, using the throwaway `--user-data-dir`, workspace and logs folders and the unpacked build "launched from `/`" and from another directory, as the task describes.
+
+### Static code reading (not a measurement of the app; not observed behaviour)
+
+- Where the server's environment is set: `electron/src/main.ts:200-206` builds `env` as `{ ...process.env, PORT, GETWRITE_PROJECTS_DIR: dirs.projectsDir, GETWRITE_TEMPLATES_DIR: dirs.templatesDir, ... }`. `dirs.templatesDir` is `path.join(root, "getwrite-config", "templates", "project-types")` (`main.ts:141-145`). In the lines read, `GETWRITE_PROJECT_TYPES_DIR` is not set there; it would be present only if inherited from `process.env`.
+- Which probes the library uses: `frontend/src/lib/projectTypes.ts` `resolveTemplatesDir` (line 65 onward) reads `process.env.GETWRITE_PROJECT_TYPES_DIR` as an override (line 68). It does not read `GETWRITE_TEMPLATES_DIR` (the only `process.env` reference in that file is line 68). If the override is unset it probes `readdir` of `getwrite-config/templates/project-types` and then `../getwrite-config/templates/project-types`, both relative to the process working directory (lines 36-52, 72-80), and if neither is readable returns the first path anyway.
+- Reading-only implication, not observed: with only `GETWRITE_TEMPLATES_DIR` set, the library's result would depend on the server's working directory. Whether the desktop server's working directory makes either relative probe resolve, and whether `createProjectCore` (`frontend/src/lib/models/project-crud-core.ts`) therefore finds built-in types, was not run. The web-server record in Task 12 shows the route reads `GETWRITE_TEMPLATES_DIR` and the library reads `GETWRITE_PROJECT_TYPES_DIR`, so the two read paths can name different directories.
