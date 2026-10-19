@@ -55,6 +55,23 @@ function isEnoent(err: unknown): boolean {
   );
 }
 
+/**
+ * Rejects an empty `projectRoot` at every exported entry point.
+ * `path.join("", ".trash")` is the relative `.trash`, so an empty root
+ * resolved against the working directory: with it, `writeTrashRefRecord`,
+ * `softDeleteResource`, `restoreResource` and `purgeResource` were measured
+ * writing `.trash/` and `meta/` files into the cwd (POS note_5effdebe). Not
+ * an absolute-path check: `GETWRITE_PROJECTS_DIR`/`GETWRITE_DATA_ROOT` may be
+ * relative, and the native root is `/projects`.
+ *
+ * @throws {Error} When `projectRoot` is empty.
+ */
+function assertProjectRoot(projectRoot: string): void {
+  if (!projectRoot) {
+    throw new Error("trash: projectRoot is required");
+  }
+}
+
 function trashPaths(projectRoot: string) {
   const trashRoot = path.join(projectRoot, ".trash");
   return {
@@ -160,6 +177,7 @@ export async function nullifyResourceRefs(
   deletedResourceName: string,
   resourceRefFieldKeys: string[],
 ): Promise<TrashRefRecordEntry[]> {
+  assertProjectRoot(projectRoot);
   if (resourceRefFieldKeys.length === 0) return [];
 
   const metaDir = path.join(projectRoot, "meta");
@@ -251,6 +269,7 @@ export async function writeTrashRefRecord(
   resourceId: UUID,
   entries: TrashRefRecordEntry[],
 ): Promise<void> {
+  assertProjectRoot(projectRoot);
   const record: TrashRefRecord = TrashRefRecordSchema.parse({
     resourceId,
     entries,
@@ -278,6 +297,7 @@ export async function readTrashRefRecord(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<TrashRefRecord | undefined> {
+  assertProjectRoot(projectRoot);
   try {
     const raw = await readFile(
       trashRefRecordPath(projectRoot, resourceId),
@@ -298,6 +318,7 @@ export async function softDeleteResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<string> {
+  assertProjectRoot(projectRoot);
   const { trashRoot, trashResourcesDir, trashMetaDir } =
     trashPaths(projectRoot);
 
@@ -495,6 +516,7 @@ export async function softDeleteFolder(
   projectRoot: string,
   folderId: UUID,
 ): Promise<string> {
+  assertProjectRoot(projectRoot);
   const { trashRoot, trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
   const foldersRoot = path.join(projectRoot, "folders");
 
@@ -835,6 +857,7 @@ export async function restoreResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<RestoreResourceResult> {
+  assertProjectRoot(projectRoot);
   const { trashResourcesDir, trashMetaDir } = trashPaths(projectRoot);
 
   // Read the trashed sidecar (if any) so we can resolve destination folder
@@ -1047,6 +1070,7 @@ export async function restoreFolder(
   projectRoot: string,
   folderId: UUID,
 ): Promise<RestoreFolderResult> {
+  assertProjectRoot(projectRoot);
   const { trashFoldersDir } = trashPaths(projectRoot);
 
   let manifest: TrashFolderManifest;
@@ -1152,6 +1176,7 @@ export async function purgeTrashedRevisions(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<void> {
+  assertProjectRoot(projectRoot);
   const trashedRevisionsDir = trashRevisionsBaseDir(projectRoot, resourceId);
   if (await pathExists(trashedRevisionsDir)) {
     await rm(trashedRevisionsDir, { recursive: true, force: true });
@@ -1311,6 +1336,7 @@ export async function purgeResource(
   projectRoot: string,
   resourceId: UUID,
 ): Promise<void> {
+  assertProjectRoot(projectRoot);
   const steps: [PurgeStepName, () => Promise<void>][] = [
     [
       "index-backlinks-mentions",
@@ -1370,6 +1396,7 @@ export async function purgeFolder(
   projectRoot: string,
   folderId: UUID,
 ): Promise<void> {
+  assertProjectRoot(projectRoot);
   const { trashFoldersDir } = trashPaths(projectRoot);
   const manifestPath = trashFolderManifestPath(projectRoot, folderId);
 
@@ -1518,6 +1545,7 @@ export async function listTrashedItems(
   resources: TrashedResourceEntry[];
   folders: TrashedFolderEntry[];
 }> {
+  assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
 
   let metaFiles: string[] = [];
@@ -1683,6 +1711,7 @@ export async function resolveTrashedItemKind(
   projectRoot: string,
   id: UUID,
 ): Promise<"resource" | "folder" | "unknown"> {
+  assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
 
   const sidecarPath = path.join(trashMetaDir, sidecarFilename(id));

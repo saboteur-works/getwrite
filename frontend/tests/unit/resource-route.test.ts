@@ -36,6 +36,15 @@ async function makeTmpProjectsDir(): Promise<{
   const projectId = generateUUID();
   const projectPath = path.join(projectsDir, projectId);
   await fs.mkdir(projectPath, { recursive: true });
+  // Create refuses a directory with no project.json (note_15ea8496).
+  await fs.writeFile(
+    path.join(projectPath, "project.json"),
+    JSON.stringify({
+      id: projectId,
+      name: "Test",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }),
+  );
   return { projectsDir, projectId, projectPath };
 }
 
@@ -128,6 +137,29 @@ describe("POST /api/resource (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  it("returns 404 and writes nothing when no project exists for a well-formed projectId (note_15ea8496)", async () => {
+    const { projectsDir } = await makeTmpProjectsDir();
+    const missingProjectId = generateUUID();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const { POST } = await import("../../app/api/resource/route");
+      const res = await POST(
+        new Request("http://localhost/api/resource", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: missingProjectId,
+            resourceData: { name: "Probe", type: "folder" },
+          }),
+        }) as never,
+      );
+
+      expect(res.status).toBe(404);
+      await expect(
+        fs.stat(path.join(projectsDir, missingProjectId)),
+      ).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 

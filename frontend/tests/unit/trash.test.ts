@@ -9,6 +9,7 @@ import {
   restoreResource,
   purgeResource,
 } from "../../src/lib/models/trash";
+import * as trash from "../../src/lib/models/trash";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -63,4 +64,44 @@ describe("models/trash (T026)", () => {
       await removeDirRetry(tmp);
     }
   });
+});
+
+describe("models/trash empty projectRoot guard (note_5effdebe)", () => {
+  const id = "cccccccc-3333-4333-8333-333333333333";
+  // Every exported entry point that takes a projectRoot. An empty string
+  // used to resolve against the working directory (`path.join("", ".trash")`
+  // is ".trash"), so each call runs with the cwd moved to an empty temp dir.
+  const calls: [string, () => Promise<unknown>][] = [
+    [
+      "nullifyResourceRefs",
+      () => trash.nullifyResourceRefs("", id, "x", ["pov"]),
+    ],
+    ["writeTrashRefRecord", () => trash.writeTrashRefRecord("", id, [])],
+    ["readTrashRefRecord", () => trash.readTrashRefRecord("", id)],
+    ["softDeleteResource", () => trash.softDeleteResource("", id)],
+    ["softDeleteFolder", () => trash.softDeleteFolder("", id)],
+    ["restoreResource", () => trash.restoreResource("", id)],
+    ["restoreFolder", () => trash.restoreFolder("", id)],
+    ["purgeTrashedRevisions", () => trash.purgeTrashedRevisions("", id)],
+    ["purgeResource", () => trash.purgeResource("", id)],
+    ["purgeFolder", () => trash.purgeFolder("", id)],
+    ["listTrashedItems", () => trash.listTrashedItems("")],
+    ["resolveTrashedItemKind", () => trash.resolveTrashedItemKind("", id)],
+  ];
+
+  it.each(calls)(
+    "%s rejects an empty projectRoot and writes nothing relative to the cwd",
+    async (_name, call) => {
+      const originalCwd = process.cwd();
+      const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "gw-trash-cwd-"));
+      process.chdir(cwd);
+      try {
+        await expect(call()).rejects.toThrow("projectRoot is required");
+        expect(await fs.readdir(cwd)).toEqual([]);
+      } finally {
+        process.chdir(originalCwd);
+        await removeDirRetry(cwd);
+      }
+    },
+  );
 });

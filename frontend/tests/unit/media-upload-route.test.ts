@@ -57,6 +57,15 @@ async function makeTmpProjectsDir(): Promise<{
   const projectId = generateUUID();
   const projectPath = path.join(projectsDir, projectId);
   await fs.mkdir(projectPath, { recursive: true });
+  // Upload refuses a directory with no project.json (note_15ea8496).
+  await fs.writeFile(
+    path.join(projectPath, "project.json"),
+    JSON.stringify({
+      id: projectId,
+      name: "Test",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }),
+  );
   return { projectsDir, projectId, projectPath };
 }
 
@@ -240,6 +249,25 @@ describe("POST /api/resource/upload (projectId-based)", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");
+    });
+  });
+
+  it("returns 404 and writes nothing when no project exists for a well-formed projectId (note_15ea8496)", async () => {
+    const { projectsDir } = await makeTmpProjectsDir();
+    const missingProjectId = generateUUID();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const form = new FormData();
+      form.append(
+        "file",
+        new File([ONE_PX_PNG], "x.png", { type: "image/png" }),
+      );
+      form.append("projectId", missingProjectId);
+
+      const res = await POST(uploadRequest(form));
+      expect(res.status).toBe(404);
+      await expect(
+        fs.stat(path.join(projectsDir, missingProjectId)),
+      ).rejects.toMatchObject({ code: "ENOENT" });
     });
   });
 });
