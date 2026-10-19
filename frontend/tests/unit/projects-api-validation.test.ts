@@ -99,35 +99,111 @@ describe("projects.ts transport-boundary validation (FU-10 regression)", () => {
   });
 
   describe("listProjects", () => {
-    it("REJECTS a malformed array entry instead of resolving", async () => {
-      fetchMock.mockResolvedValue(jsonResponse([{ project: {} }]));
+    // Feature 89, Part 1 (FR-2/FR-6): the server (`listProjectsCore`) reports a
+    // project whose `project.json` cannot be used as an unusable entry, so the
+    // third union member accepts it and the rest of the list still resolves.
+    // The wrong-typed manifest field (D-38) is turned into this entry by the
+    // core, not by the client; the core side is pinned in
+    // `project-crud-core-listing.test.ts`.
+    it("accepts an unusable entry as the third shape and lists the rest (Feature 89, FR-6)", async () => {
+      const unusable = {
+        project: { id: "bad-folder-id" },
+        folders: [],
+        resources: [],
+        isUnusable: true,
+        unusableReason: "invalid-manifest",
+      };
+      fetchMock.mockResolvedValue(
+        jsonResponse([
+          { project: validProject, folders: [], resources: [] },
+          unusable,
+        ]),
+      );
 
-      await expect(listProjects()).rejects.toThrow();
+      const result = await listProjects();
+
+      expect(mockedReport).not.toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      expect(result[0].project.id).toBe(validProject.id);
+      expect(result[1]).toEqual(unusable);
+    });
+
+    it.each([
+      "unparseable",
+      "missing-field",
+      "invalid-manifest",
+      "manifest-unreadable",
+      "tree-unreadable",
+    ])("accepts the unusable reason %s", async (reason) => {
+      fetchMock.mockResolvedValue(
+        jsonResponse([
+          {
+            project: { id: "x" },
+            folders: [],
+            resources: [],
+            isUnusable: true,
+            unusableReason: reason,
+          },
+        ]),
+      );
+      await expect(listProjects()).resolves.toHaveLength(1);
+    });
+
+    // Still strict (FR-6/FR-7): an entry matching none of the three shapes is
+    // rejected and reported through `reportTransportValidationFailure`, and
+    // the report carries issues only, never the response body.
+    it.each([
+      ["an entry with no recognised shape", [{ project: {} }]],
+      [
+        "an unusable entry with an unknown reason",
+        [
+          {
+            project: { id: "x" },
+            folders: [],
+            resources: [],
+            isUnusable: true,
+            unusableReason: "because",
+          },
+        ],
+      ],
+      [
+        "an unusable entry carrying a value read from the manifest",
+        [
+          {
+            project: { id: "x", name: "Secret Novel" },
+            folders: [],
+            resources: [],
+            isUnusable: true,
+            unusableReason: "invalid-manifest",
+          },
+        ],
+      ],
+      [
+        "an unusable entry carrying extra fields",
+        [
+          {
+            project: { id: "x" },
+            folders: [],
+            resources: [],
+            isUnusable: true,
+            unusableReason: "invalid-manifest",
+            detail: "Secret Novel",
+          },
+        ],
+      ],
+    ])("still REJECTS %s", async (_label, body) => {
+      fetchMock.mockResolvedValue(jsonResponse(body));
+
+      await expect(listProjects()).rejects.toThrow(
+        "projects.list: response failed validation",
+      );
       expect(mockedReport).toHaveBeenCalledWith(
         "projects.list",
         expect.any(Array),
       );
-    });
-
-    // Feature 89, Part 1 (FR-1): D-38 (`user-handbook/verification.md`) — one
-    // project whose `config.statuses` is a string rejects the whole list, the
-    // healthy project beside it included. Red on the unfixed tree.
-    it("lists the healthy project when another entry has a wrong-typed config.statuses (Feature 89, FR-1)", async () => {
-      const healthy = { project: validProject, folders: [], resources: [] };
-      const wrongTyped = {
-        project: {
-          ...validProject,
-          id: "bbbbbbbb-2222-4222-8222-222222222222",
-          config: { editorConfig: {}, statuses: "oops" },
-        },
-        folders: [],
-        resources: [],
-      };
-      fetchMock.mockResolvedValue(jsonResponse([healthy, wrongTyped]));
-
-      const result = await listProjects();
-
-      expect(result.map((e) => e.project.id)).toContain(validProject.id);
+      expect(JSON.stringify(mockedReport.mock.calls)).not.toContain(
+        "Secret Novel",
+      );
     });
 
     it("REJECTS a non-array body", async () => {

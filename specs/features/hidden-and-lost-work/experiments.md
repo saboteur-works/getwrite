@@ -85,3 +85,29 @@ The "length of 2 but got 1" form is the three unparseable / missing `id` / missi
 - Which `ProjectSchema` issue path (`config.statuses`, `config.features.timeline`, ...) the client reported for each case; only the thrown message was asserted.
 - A `project.json` that exists but cannot be read (permissions); a locked or encrypted project; a resource sidecar that is not JSON.
 - The route's status code and body for the resource-sidecar case.
+
+## Part 1: unreadable projects, core fix (Task 3, FR-2, FR-3, FR-6, FR-7)
+
+Date: 2026-10-18. Tree: branch `fix/hidden-and-lost-work` at `edb28e16` plus the Task 3 edits. Unit tests only (sandbox); no server or app started, so no `lsof` run. Fixtures as in the Task 2 section (throwaway `fs.mkdtemp` directories under `$TMPDIR`; the repository's `projects/` and the protected folders were not touched).
+
+### Observed (run from `frontend/`)
+
+| Command | Result |
+| --- | --- |
+| `pnpm exec vitest run tests/unit/project-crud-core-listing.test.ts` | 21 passed, 0 failed (includes the Task 2 cases, which were 7 failed on the unfixed tree) |
+| `pnpm exec vitest run tests/unit/projects-api-validation.test.ts` | 22 passed, 0 failed |
+| `pnpm exec vitest run tests/unit/native-project-backend.test.ts` | 5 passed, 0 failed (includes the native/HTTP parity case) |
+| `pnpm test:ci` | 612 files passed; 6996 tests passed, 2 expected fail, 1 skipped |
+| `pnpm typecheck` | exit 0 |
+| `pnpm lint` | 0 errors, 393 warnings (baseline was 393) |
+
+- Wrong-typed manifest fields (`config.statuses`, `config.maxRevisions`, `config.features.timeline`, `name: 42`): `listProjectsCore` now returns `{ project: { id: <folder id> }, folders: [], resources: [], isUnusable: true, unusableReason: "invalid-manifest" }` for the damaged project and the healthy project is listed; the strict client accepts both.
+- Unparseable `project.json` returns reason `unparseable`; no `id`, no `createdAt`, and a JSON array return `missing-field`; a `project.json` replaced by a directory (read fails with a non-ENOENT error) returns `manifest-unreadable`.
+- A directory with no `project.json` is absent from the result; a `project.json` read that raises ENOENT is absent; a `ProjectLockedError` on the manifest read is rethrown.
+- Task 2's schema-level case (a wrong-typed `config.statuses` entry inside a client response array is accepted by `listProjects`) was removed, not made green: the strict client still rejects such an entry, which is the intended client behaviour (FR-6); the rejection is now pinned by "still REJECTS ..." cases. The conversion of that manifest into an unusable entry is pinned at the core.
+
+### Not changed or not measured
+
+- A bad `folder.json` (`name: 42`) still rejects the whole list at the client, and a bad resource sidecar still makes `listProjectsCore` itself throw a `ZodError`; both characterisation tests from Task 2 remain and pass. Neither is in Task 3's scope.
+- `tree-unreadable` is in the reason enumeration and accepted by the client schema; nothing produces it yet.
+- No server, route, browser or app run.
