@@ -33,6 +33,18 @@ export default function BodySettingsModal({
   const [draft, setDraft] = useState<EditorBodyConfig>(initialBody ?? {});
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Embedded in Project Settings (`closeOnSave` false), the secondary button
+  // discards this section's unsaved edits and leaves the dialog open; closing
+  // the whole dialog from here dropped every other section's unsaved edits
+  // (D-12). It resets to the last saved values, not the possibly stale prop.
+  const [savedBody, setSavedBody] = useState<EditorBodyConfig>(
+    initialBody ?? {},
+  );
+
+  const handleDiscard = (): void => {
+    setDraft(savedBody);
+    setErrorMessage(null);
+  };
 
   const handleFieldChange = (
     key: keyof EditorBodyConfig,
@@ -46,7 +58,9 @@ export default function BodySettingsModal({
     setErrorMessage(null);
 
     try {
-      await onSave(sanitizeEditorBody(draft) ?? {});
+      const saved = sanitizeEditorBody(draft) ?? {};
+      await onSave(saved);
+      setSavedBody(saved);
       if (closeOnSave) {
         onClose();
       }
@@ -137,10 +151,10 @@ export default function BodySettingsModal({
         <Button
           variant="secondary"
           size="sm"
-          onClick={onClose}
+          onClick={closeOnSave ? onClose : handleDiscard}
           disabled={isSaving}
         >
-          Cancel
+          {closeOnSave ? "Cancel" : "Discard changes"}
         </Button>
         <Button
           variant="default"

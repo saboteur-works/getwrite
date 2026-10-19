@@ -141,6 +141,35 @@ describe("HeadingSettingsModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("embedded: Discard changes resets to the last saved values and does not close (D-12)", async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={onClose}
+        onSave={onSave}
+        closeOnSave={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+      target: { value: "40" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+      target: { value: "50" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Discard changes" }));
+
+    expect(screen.getByLabelText("H1 Font Size")).toHaveValue(40);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   it("does not save when cancel is clicked", () => {
     const onClose = vi.fn();
     const onSave = vi.fn();

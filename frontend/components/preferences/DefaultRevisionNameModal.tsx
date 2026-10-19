@@ -26,6 +26,16 @@ export default function DefaultRevisionNameModal({
   const [draftName, setDraftName] = useState<string>(initialName);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Embedded in Project Settings (`closeOnSave` false), the secondary button
+  // discards this section's unsaved edits and leaves the dialog open; closing
+  // the whole dialog from here dropped every other section's unsaved edits
+  // (D-12). It resets to the last saved values, not the possibly stale prop.
+  const [savedName, setSavedName] = useState<string>(initialName);
+
+  const handleDiscard = (): void => {
+    setDraftName(savedName);
+    setErrorMessage(null);
+  };
 
   const handleSave = async (): Promise<void> => {
     const trimmed = draftName.trim();
@@ -41,6 +51,7 @@ export default function DefaultRevisionNameModal({
     setErrorMessage(null);
     try {
       await onSave(trimmed);
+      setSavedName(trimmed);
       if (closeOnSave) {
         onClose();
       }
@@ -101,8 +112,12 @@ export default function DefaultRevisionNameModal({
 
       {/* Footer */}
       <div className="flex justify-end gap-3 border-t border-gw-border pt-5">
-        <Button variant="secondary" size="sm" onClick={onClose}>
-          Cancel
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={closeOnSave ? onClose : handleDiscard}
+        >
+          {closeOnSave ? "Cancel" : "Discard changes"}
         </Button>
         <Button
           variant="default"

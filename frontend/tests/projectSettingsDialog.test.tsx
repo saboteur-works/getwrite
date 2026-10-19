@@ -209,3 +209,26 @@ describe("ProjectSettingsDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
+
+describe("ProjectSettingsDialog — discarding one section (D-12)", () => {
+  it("discards only the Heading Styles edits and keeps the dialog and the Body Text Styles edits", async () => {
+    const { onOpenChange } = await renderDialog();
+
+    fireEvent.change(screen.getByLabelText("Line Height"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+      target: { value: "40" },
+    });
+
+    const [discardHeadings] = screen.getAllByRole("button", {
+      name: "Discard changes",
+    });
+    fireEvent.click(discardHeadings);
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("H1 Font Size")).toHaveValue(null);
+    expect(screen.getByLabelText("Line Height")).toHaveValue("2");
+  });
+});

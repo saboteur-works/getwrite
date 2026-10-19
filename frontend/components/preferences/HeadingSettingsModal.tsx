@@ -83,6 +83,19 @@ export default function HeadingSettingsModal({
   );
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Embedded in Project Settings (`closeOnSave` false), the secondary button
+  // discards this section's unsaved edits and leaves the dialog open; closing
+  // the whole dialog from here dropped every other section's unsaved edits
+  // (D-12). It resets to the last saved values, not the possibly stale prop.
+  const [savedHeadings, setSavedHeadings] = useState<
+    EditorHeadingMap | undefined
+  >(initialHeadings);
+
+  const handleDiscard = (): void => {
+    setDraftHeadings(buildHeadingDraft(savedHeadings));
+    setVisibleLevels(getVisibleHeadingLevels(savedHeadings));
+    setErrorMessage(null);
+  };
 
   const nextHeadingLevel = getNextHeadingLevel(visibleLevels);
 
@@ -135,7 +148,9 @@ export default function HeadingSettingsModal({
     setErrorMessage(null);
 
     try {
-      await onSave(sanitizeEditorHeadingMap(draftHeadings));
+      const saved = sanitizeEditorHeadingMap(draftHeadings);
+      await onSave(saved);
+      setSavedHeadings(saved);
       if (closeOnSave) {
         onClose();
       }
@@ -356,10 +371,10 @@ export default function HeadingSettingsModal({
           <Button
             variant="secondary"
             size="sm"
-            onClick={onClose}
+            onClick={closeOnSave ? onClose : handleDiscard}
             disabled={isSaving}
           >
-            Cancel
+            {closeOnSave ? "Cancel" : "Discard changes"}
           </Button>
           <Button
             variant="default"
