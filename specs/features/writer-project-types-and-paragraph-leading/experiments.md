@@ -93,3 +93,26 @@ Two throwaway Blank projects created through `POST /api/projects`: "T2 Main" (bo
 ## Task 5: removal of the `onCreate` stamp (regression test, not a fix)
 
 Date: 2026-10-19. Regression test, not a fix: in the Task 2 record (Part 2) the second paragraph kept its stored `"1.2"` (inline `1.2`, computed 18px) across the reopen on the unchanged tree, so no lost value was observed to fix. The new tests in `frontend/tests/unit/paragraph-leading-preserves-structure.test.ts` were red before the change (with a no-op normaliser and the old stamp, stored `"1.5"` paragraphs came back as `"1.5"` where `null` was expected: `[null, 1.2, 2, "1.5"]` against `[null, 1.2, 2, null]`) and green after.
+
+## Task 6: reader search for `paragraphLeading` / `ParagraphLeading`
+
+Date: 2026-10-19. Command (from the repo root): `grep -rIi "paragraphLeading" frontend electron cli` excluding `node_modules`, `.next`, `storybook-static`, `dist` (a case-insensitive match also covers `ParagraphLeading`). `electron/` and `cli/` returned no hit. Hits under `frontend/` by file (the generated `frontend/tsconfig.storybook.tsbuildinfo` also matches and is not source):
+
+| File | Stored or live | Disposition |
+| --- | --- | --- |
+| `components/Editor/Extensions/GetWriteParagraphLeading.ts` | stored (parse, render, command) | reader 1, Task 4 (single-value rule) |
+| `components/Editor/loadDocumentIntoEditor.ts` (via `normalizeParagraphLeadingInDocument`; the name matches `ParagraphLeading`) | stored | reader, Task 5 |
+| `src/lib/paragraph-leading.ts` | the rule itself | Task 3 |
+| `src/lib/export/markdown-serializer.ts` (`tallyNode`) | stored | reader 2, this task: counts only when `readParagraphLeading(...) !== null` |
+| `components/Editor/MenuBar/menuBarState.tsx` | live editor attribute, which can hold a stored legacy value | reader 3, this task: `getWriteParagraphLeading` is `number \| null` |
+| `components/Editor/MenuBar/toolbar-command-schema.ts` (`getValue`, `state.getWriteParagraphLeading`) | live, derived from menuBarState | consumer of reader 3, not a further reader of the stored attribute; adapted to the new `number \| null` type (`?.toString() ?? ""`); Task 7 rewrites it |
+| `components/Editor/EditorContextMenu.tsx`, `MenuBar.tsx` | call `menuBarStateSelector` only | covered by the reader 3 test; no own read |
+| `components/Editor/editorExtensions.ts` | registration | no read |
+| `stories/Editor/MenuBar/MenuBar.stories.tsx`, `tests/editorMenuBar.test.tsx` | mock state / mock `getAttributes` fixtures | not readers; state fixtures changed from `"1.5"` to `null` for the new type |
+| `tests/unit/markdown-custom-nodes.test.ts` | fixture `"2.0"` | not a reader |
+| `e2e/editor-tier3.e2e.spec.ts` | live DOM inline style (comment only matches) | not a reader of stored data |
+| tests: `paragraph-leading*.test.ts`, `markdown-warnings.test.ts`, `menu-bar-state-paragraph-leading.test.ts` | tests | n/a |
+
+Further reader (reader 4): the search found none beyond the three named (extension, markdown warning, menuBarState). The PDF compile files match `lineHeight` only (the project body setting), not `paragraphLeading`.
+
+Red then green: `tests/unit/menu-bar-state-paragraph-leading.test.ts` failed 3 of 5 before the change (`"1.5"` returned `'1.5'`, legacy `"1.2"` returned the string `'1.2'`, `"abc"` returned `'abc'`) and passed after. In `tests/unit/markdown-warnings.test.ts` the new tests for the stamp `"1.5"` not counted, numeric 1.5 counted and legacy `"1.2"` counted were already green before the change (the old comparison `!== "1.5"` gave the same answer for those inputs); the invalid-value test (`"abc"`, `"0"`, -1, 0, `""` not counted) is the one that distinguishes the new rule: re-run against the committed (HEAD) serializer it failed (1 failed, 7 passed), and with the new serializer all 8 pass.

@@ -609,7 +609,7 @@ describe("useToolbarCommands parity", () => {
     fontSize: "14px",
     fontFamily: "Domine",
     isDomine: true,
-    getWriteParagraphLeading: "1.5",
+    getWriteParagraphLeading: null,
     isInsideTable: false,
   };
 

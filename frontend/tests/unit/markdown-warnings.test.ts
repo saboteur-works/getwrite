@@ -75,15 +75,50 @@ describe("markdown warnings", () => {
     expect(byConstruct["image-link"].count).toBe(1);
   });
 
-  it("does not flag default or absent paragraph leading", () => {
+  it('does not flag unset leading or the legacy stamp "1.5" (FR-20 single-value rule)', () => {
     const d = doc([
       {
         type: "paragraph",
         attrs: { paragraphLeading: "1.5" },
-        content: [{ type: "text", text: "default" }],
+        content: [{ type: "text", text: "legacy stamp reads as unset" }],
       },
       { type: "paragraph", content: [{ type: "text", text: "none" }] },
     ]);
+    expect(collectMarkdownWarnings(d)).toEqual([]);
+  });
+
+  it('counts a deliberate numeric 1.5 and a legacy "1.2" as paragraph line spacing (FR-24)', () => {
+    const d = doc([
+      {
+        type: "paragraph",
+        attrs: { paragraphLeading: 1.5 },
+        content: [{ type: "text", text: "deliberate" }],
+      },
+      {
+        type: "paragraph",
+        attrs: { paragraphLeading: "1.2" },
+        content: [{ type: "text", text: "legacy string" }],
+      },
+      {
+        type: "paragraph",
+        attrs: { paragraphLeading: "1.5" },
+        content: [{ type: "text", text: "stamp" }],
+      },
+    ]);
+    const warnings = collectMarkdownWarnings(d);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].construct).toBe("paragraph-leading");
+    expect(warnings[0].count).toBe(2);
+  });
+
+  it("does not count an invalid stored leading, which reads as unset", () => {
+    const d = doc(
+      ["abc", "0", -1, 0, ""].map((paragraphLeading) => ({
+        type: "paragraph",
+        attrs: { paragraphLeading },
+        content: [{ type: "text", text: "invalid" }],
+      })),
+    );
     expect(collectMarkdownWarnings(d)).toEqual([]);
   });
 

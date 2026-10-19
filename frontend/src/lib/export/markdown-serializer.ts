@@ -18,6 +18,7 @@ import Math from "@tiptap/extension-mathematics";
 import CustomHeading from "../../../components/Editor/Extensions/CustomHeading";
 import { unescapeWikiLinkBrackets } from "../../../components/Editor/Extensions/WikiLinkDecoration";
 import { baseSchemaExtensions } from "../../../components/Editor/editorExtensions";
+import { readParagraphLeading } from "../paragraph-leading";
 import type {
   MarkdownConstructWarning,
   MarkdownLossKind,
@@ -67,9 +68,6 @@ export function markdownToDocument(markdown: string): JSONContent {
   return getManager().parse(markdown);
 }
 
-/** Default paragraph line-height; see `GetWriteParagraphLeading`. */
-const DEFAULT_PARAGRAPH_LEADING = "1.5";
-
 /** `textStyle` attributes that carry presentational styling Markdown cannot keep. */
 const TEXT_STYLE_ATTRS = ["color", "backgroundColor", "fontSize", "fontFamily"];
 
@@ -98,8 +96,9 @@ function tallyNode(node: JSONContent, counts: Map<string, number>): void {
   }
 
   if (node.type === "paragraph") {
-    const leading = node.attrs?.paragraphLeading;
-    if (leading != null && leading !== DEFAULT_PARAGRAPH_LEADING) {
+    // Only an explicit leading is lost; unset (including the legacy "1.5"
+    // stamp) is not counted.
+    if (readParagraphLeading(node.attrs?.paragraphLeading) !== null) {
       increment(counts, "paragraph-leading");
     }
   }

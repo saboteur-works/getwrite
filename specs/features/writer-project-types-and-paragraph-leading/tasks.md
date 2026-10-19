@@ -74,8 +74,8 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Done when:** tests that fail first and pass after: a legacy `"1.5"` is not counted, the number 1.5 is counted and a legacy `"1.2"` is counted in the "Paragraph line spacing" warning (FR-24); `menuBarState` reports unset for `"1.5"` and null and the number for a set value (reader 3); one test per further reader the search finds (reader 4), or the record states the search found none beyond the three named; the unit tests that used `"1.5"` as the no-warning value are updated with the rule they now follow. The search output is in `experiments.md`.
 **Depends on:** 3, 4
 **Estimate:** 3 (M)
-**Notes:** Satisfies FR-20 readers (2)-(4), FR-24. Can run in parallel with Task 5 (different files).
-**Done:** [ ]
+**Notes:** Satisfies FR-20 readers (2)-(4), FR-24. Can run in parallel with Task 5 (different files). Reader search recorded in `experiments.md` (Task 6 section): readers found are the three named only (extension, markdown warning, menuBarState); `toolbar-command-schema.ts` `getValue` consumes the derived state and was type-adapted; Task 7 rewrites it.
+**Done:** [x]
 
 ### Task 7: Toolbar Line Height control shows the effective leading and rejects invalid input
 **What:** Make the Line Height control show the explicit value or the project's body line height (1.8 when absent) without writing it, drop `initialValue: "1.5"`, and reject non-positive or non-finite typed values with a visible message.

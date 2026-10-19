@@ -352,7 +352,8 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         tooltipContent: "Line Height",
         rotate: "90",
         initialValue: "1.5",
-        getValue: ({ state }) => state.getWriteParagraphLeading,
+        getValue: ({ state }) =>
+          state.getWriteParagraphLeading?.toString() ?? "",
         onChange: ({ editor }, value) => {
           editor.chain().setParagraphLeading(value).run();
         },

@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import type { EditorStateSnapshot } from "@tiptap/react";
+import { readParagraphLeading } from "../../../src/lib/paragraph-leading";
 
 /**
  * State selector for the MenuBar component.
@@ -57,8 +58,10 @@ export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor>) {
 
     // Custom extensions
     // Example: GetWriteParagraphLeading extension state
-    getWriteParagraphLeading:
+    // The explicit leading as a number, or null when unset (FR-20 rule).
+    getWriteParagraphLeading: readParagraphLeading(
       ctx.editor.getAttributes("paragraph").paragraphLeading,
+    ),
 
     // Table context
     isInsideTable: ctx.editor.isActive("table") ?? false,

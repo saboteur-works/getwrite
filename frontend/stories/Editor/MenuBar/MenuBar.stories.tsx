@@ -207,7 +207,7 @@ const defaultState: MenuBarState = {
   // so the story drove the font-family control with a missing value.
   fontFamily: "Domine",
   isDomine: true,
-  getWriteParagraphLeading: "1.5",
+  getWriteParagraphLeading: null,
   isInsideTable: false,
 };
 
