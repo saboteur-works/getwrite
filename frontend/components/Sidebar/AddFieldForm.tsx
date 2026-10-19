@@ -116,7 +116,11 @@ export default function AddFieldForm({
 
   const slug = slugifyName(name);
   const exactMatch = slug ? findExisting(name, schema) : null;
-  const fuzzyCandidate = !exactMatch && slug ? fuzzyMatch(name, schema) : null;
+  // A deprecated field is hidden from the sidebar (Feature 89, FR-13), so the
+  // form says it exists and offers only Close; it never routes to it.
+  const isDeprecatedMatch = exactMatch?.field.deprecated === true;
+  const rawFuzzy = !exactMatch && slug ? fuzzyMatch(name, schema) : null;
+  const fuzzyCandidate = rawFuzzy?.field.deprecated === true ? null : rawFuzzy;
 
   const suggestions = useMemo(() => {
     if (!name.trim()) return [];
@@ -126,6 +130,7 @@ export default function AddFieldForm({
     for (const group of schema.groups) {
       for (const field of group.fields) {
         if (seen.has(field.key)) continue;
+        if (field.deprecated === true) continue;
         if (field.key.includes(q) || field.label.toLowerCase().includes(q)) {
           seen.add(field.key);
           results.push({ key: field.key, label: field.label });
@@ -154,6 +159,8 @@ export default function AddFieldForm({
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
+
+    if (isDeprecatedMatch) return;
 
     if (exactMatch) {
       onFieldFocused(exactMatch.field.key);
@@ -192,7 +199,7 @@ export default function AddFieldForm({
     }
   }
 
-  const isExactMatch = Boolean(exactMatch);
+  const isExactMatch = Boolean(exactMatch) && !isDeprecatedMatch;
 
   return (
     <div ref={formRef} className="pt-3 border-t border-gw-border">
@@ -276,6 +283,17 @@ export default function AddFieldForm({
             </div>
           </div>
 
+          {/* Deprecated match notice: exists, hidden, nothing to go to */}
+          {isDeprecatedMatch && (
+            <p
+              role="status"
+              className="text-[9px] font-mono text-gw-secondary pl-12 mb-1"
+            >
+              {exactMatch!.field.key} already exists and is deprecated, so it is
+              hidden from the sidebar. Its values are kept.
+            </p>
+          )}
+
           {/* Exact match notice */}
           {isExactMatch && (
             <p className="text-[9px] font-mono text-gw-secondary pl-12 mb-1">
@@ -303,7 +321,7 @@ export default function AddFieldForm({
         </div>
 
         {/* Label / Type / Group — only shown when creating a new field */}
-        {!isExactMatch && (
+        {!isExactMatch && !isDeprecatedMatch && (
           <>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-10 flex-shrink-0 text-[9px] font-mono uppercase tracking-[0.14em] text-gw-dim">
@@ -376,16 +394,18 @@ export default function AddFieldForm({
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {isDeprecatedMatch ? "Close" : "Cancel"}
           </Button>
-          <Button
-            type="submit"
-            variant="secondary"
-            size="sm"
-            disabled={isSubmitting || (!isExactMatch && !slug)}
-          >
-            {isSubmitting ? "Adding…" : isExactMatch ? "Go to field" : "Add"}
-          </Button>
+          {!isDeprecatedMatch && (
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={isSubmitting || (!isExactMatch && !slug)}
+            >
+              {isSubmitting ? "Adding…" : isExactMatch ? "Go to field" : "Add"}
+            </Button>
+          )}
         </div>
       </form>
     </div>

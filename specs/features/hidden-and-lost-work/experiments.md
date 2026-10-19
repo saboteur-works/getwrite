@@ -238,3 +238,18 @@ Error: expected document not to contain element, found <input
 - Image and audio resources; the "Add field" form; query, Organizer and chip UI; saving another field on a resource holding a deprecated value (Task 9 pins it).
 
 Outcome: reproduced on the unfixed tree by tests asserting the desired behaviour; they stay red until Task 9. Task 9 proceeds.
+
+### Part 3 fix, Task 9 (FR-13, FR-14, FR-15, FR-25; OQ-3 (b))
+
+Date: 2026-10-18. Sandbox only; no server started; the on-disk test used a throwaway `os.tmpdir()` projects directory via `GETWRITE_PROJECTS_DIR`.
+
+Tests written first, run before the source change (`pnpm exec vitest run` on the three files): 6 failed, 68 passed.
+
+- Red: the three Task 8 cases; a new restore case (hidden while `deprecated: true`, field shown with the stored value after `deprecated` is removed; failed at the first "not shown" assertion); the "Add field" form message case (no message found); the "Add field" suggestions case (a `deprecated` field was listed as an option).
+- Passing before the change (characterisation, cannot fail first): value survival across `updateSidecarCore` (payload shaped as the page's `handleChangeDynamicMetadata` builds it, spreading the whole `userMetadata`; the merge in `updateSidecarCore` is shallow, so survival depends on that payload shape and the test pins only this shape); the `DeprecateOrClearDialog` text; the help-text item; a live field still routing to `onFieldFocused`.
+
+After the change: the same files plus `add-field-form.test.ts` and `field-dedup.test.ts` pass (120 tests). From `frontend/`: `pnpm test:ci` 614 files passed, 7036 tests passed, 2 expected fail, 1 skipped (7039); `pnpm typecheck` clean; `pnpm lint` 0 errors, 393 warnings (unchanged).
+
+Re-read of the four statements (dialog, `help-content.ts`, `types.ts` comment, `deprecateField` doc comment) against the final behaviour: each says the field is hidden from the sidebar, values kept, queryable/flagged; behaviour now matches; none edited.
+
+Not measured: the "Add field" form and sidebar in a running app (Task 16); Storybook stories for them (not run); a save through the page's React handler (the on-disk test starts at `updateSidecarCore`); image and audio resources.
