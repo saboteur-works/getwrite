@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { describe, it, expect } from "vitest";
+import * as io from "../../src/lib/models/io";
 import { runStorageAdapterConformance } from "./storage-adapter-conformance";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { objectStoreAdapter } from "../../src/lib/models/objectStoreAdapter";
@@ -75,3 +77,32 @@ runStorageAdapterConformance(
     };
   },
 );
+
+// The default adapter (node:fs) is not run through the shared suite, whose
+// fixtures use root-level paths like "/proj". Task 12 (Feature 89, Part 5)
+// pins the one fact the ENOENT-only tolerance depends on: what the default
+// adapter throws for a missing entry, observed against a throwaway directory.
+describe("default filesystem adapter: missing entry (Feature 89 Task 12)", () => {
+  it("readFile, readFileBuffer and readdir on a missing path throw code ENOENT", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "gw-fs-enoent-"));
+    try {
+      const adapter = io.getStorageAdapter();
+      await expect(
+        adapter.readFile(path.join(root, "ghost.txt"), "utf8"),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(
+        adapter.readFileBuffer(path.join(root, "ghost.bin")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(
+        adapter.readdir(path.join(root, "ghost-dir")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+      // A file where a directory is expected is not coded ENOENT.
+      await fs.writeFile(path.join(root, "f.txt"), "x");
+      await expect(
+        adapter.readdir(path.join(root, "f.txt")),
+      ).rejects.toMatchObject({ code: "ENOTDIR" });
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+});

@@ -60,6 +60,51 @@ describe("capacitorFsAdapter — real-plugin error classification (device gate r
     });
   });
 
+  it("codes ENOENT for readFile, readFileBuffer and readdir when the plugin says 'does not exist' (Feature 89 Task 12; the message is the one the repo's fake and device-gate record use; the real plugin was not run)", async () => {
+    const adapter = capacitorFsAdapter(
+      fakePlugin({
+        readFile: async () => {
+          throw capacitorError("File does not exist: foo.txt");
+        },
+        readdir: async () => {
+          throw capacitorError("File does not exist: /ghost");
+        },
+      }),
+    );
+
+    await expect(adapter.readFile("/foo.txt", "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(adapter.readFileBuffer("/foo.txt")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(adapter.readdir("/ghost")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("does not code ENOENT for a plugin failure whose message is not a not-found (Feature 89 Task 12)", async () => {
+    const adapter = capacitorFsAdapter(
+      fakePlugin({
+        readFile: async () => {
+          throw capacitorError("Permission denied reading foo.txt");
+        },
+        readdir: async () => {
+          throw capacitorError("Permission denied listing dir");
+        },
+      }),
+    );
+
+    const readErr: unknown = await adapter
+      .readFile("/foo.txt", "utf8")
+      .catch((e: unknown) => e);
+    const dirErr: unknown = await adapter
+      .readdir("/d")
+      .catch((e: unknown) => e);
+    expect((readErr as { code?: string }).code).toBe("OS-PLUG-FILE-0001");
+    expect((dirErr as { code?: string }).code).toBe("OS-PLUG-FILE-0001");
+  });
+
   it("treats a recursive mkdir onto an existing dir as a no-op (Node idempotency), despite the plugin throwing", async () => {
     const mkdir = vi.fn(async () => {
       throw capacitorError(
