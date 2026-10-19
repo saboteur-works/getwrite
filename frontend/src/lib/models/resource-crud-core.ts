@@ -37,7 +37,7 @@
  */
 import path from "node:path";
 import type { Dirent } from "node:fs";
-import { cp, exists, readdir, readFile, writeFile } from "./io";
+import { cp, exists, readdir, readFile, stat, writeFile } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
 import {
   InvalidProjectIdCoreError,
@@ -101,6 +101,38 @@ export function resolveResourceProjectRootOrThrow(projectId: string): string {
   return projectRoot;
 }
 
+/**
+ * Thrown by {@link createResourceCore} and {@link uploadMediaResourceCore}
+ * when `projectId` is a well-formed UUID but names no project: the resolved
+ * directory has no `project.json`. Routes map it to 404.
+ */
+export class ResourceProjectNotFoundError extends Error {
+  constructor(projectId: string) {
+    super(`project not found: ${projectId}`);
+    this.name = "ResourceProjectNotFoundError";
+  }
+}
+
+/**
+ * Refuses to create into a project that does not exist. Without it, the
+ * create paths' recursive writes made a new project directory for any
+ * well-formed `projectId` (POS note_15ea8496). Only ENOENT means "missing";
+ * any other error, a locked-access error included, propagates.
+ */
+async function assertProjectExists(
+  projectRoot: string,
+  projectId: string,
+): Promise<void> {
+  try {
+    await stat(path.join(projectRoot, "project.json"));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new ResourceProjectNotFoundError(projectId);
+    }
+    throw err;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 1. Create resource
 // ---------------------------------------------------------------------------
@@ -118,6 +150,7 @@ export async function createResourceCore(
   resourceData: CreateResourceOpts,
 ): Promise<AnyResource> {
   const projectPath = resolveResourceProjectRootOrThrow(projectId);
+  await assertProjectExists(projectPath, projectId);
 
   const resource = createResourceOfType(resourceData.type, resourceData);
   await writeResourceWithInitialRevision(projectPath, resource);
@@ -180,6 +213,7 @@ export async function uploadMediaResourceCore(
   input: UploadMediaResourceInput,
 ): Promise<AnyResource> {
   const projectPath = resolveResourceProjectRootOrThrow(projectId);
+  await assertProjectExists(projectPath, projectId);
 
   const validation = validateMediaFile({
     mime: input.mimeType || undefined,

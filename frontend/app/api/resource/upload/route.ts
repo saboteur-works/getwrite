@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { resolveProjectPath } from "../../../../src/lib/models/project-path";
 import {
   MediaUploadValidationError,
+  ResourceProjectNotFoundError,
   uploadMediaResourceCore,
 } from "../../../../src/lib/models/resource-crud-core";
 import { validateMediaFile } from "../../../../src/lib/models/media-validation";
@@ -74,6 +75,12 @@ async function handlePost(req: Request): Promise<Response> {
         return NextResponse.json(
           { error: error.message, reason: error.reason },
           { status: 400 },
+        );
+      }
+      if (error instanceof ResourceProjectNotFoundError) {
+        return NextResponse.json(
+          { error: "Project not found" },
+          { status: 404 },
         );
       }
       throw error;
