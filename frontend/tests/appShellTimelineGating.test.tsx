@@ -39,7 +39,10 @@ const PROJECT_ID = "proj_timeline_gating";
  * Seed an in-memory store with a single selected text resource and render the
  * full AppShell with the given project feature flags.
  */
-async function renderShell(features: ProjectFeatureFlags) {
+async function renderShell(
+  features: ProjectFeatureFlags,
+  { selectResource = true }: { selectResource?: boolean } = {},
+) {
   // A resource with no storyDate so the Timeline view, when mounted, shows its
   // empty state ("no dated scenes") — a reliable marker that it rendered.
   const resource = createTextResource({ name: "Scene A", plainText: "" });
@@ -64,7 +67,7 @@ async function renderShell(features: ProjectFeatureFlags) {
   );
   store.dispatch(setSelectedProjectId(PROJECT_ID));
   store.dispatch(setResources([resource]));
-  store.dispatch(setSelectedResourceId(resource.id));
+  if (selectResource) store.dispatch(setSelectedResourceId(resource.id));
 
   render(
     <Provider store={store}>
@@ -100,6 +103,13 @@ describe("AppShell — Timeline view gating (Task 8)", () => {
 
     // Switching to the Timeline tab mounts TimelineView (empty-state marker).
     fireEvent.click(timelineTab);
+    expect(screen.getByText(/no dated scenes/i)).toBeInTheDocument();
+  });
+
+  it("mounts TimelineView with no resource selected, as in a freshly opened project (task_a7d8581a)", async () => {
+    await renderShell({ timelineView: true }, { selectResource: false });
+
+    fireEvent.click(screen.getByRole("tab", { name: /Timeline/i }));
     expect(screen.getByText(/no dated scenes/i)).toBeInTheDocument();
   });
 

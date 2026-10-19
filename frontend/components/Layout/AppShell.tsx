@@ -1388,8 +1388,8 @@ export default function AppShell({
                           active, render the chosen view; otherwise render empty
                           state or children.
 
-                          `data`, `entityRoster`, and `entityGraph` are
-                          project-wide: they read across every resource (or
+                          `data`, `entityRoster`, `entityGraph`, `timeline`
+                          and `trash` are project-wide: they read across every resource (or
                           every declared entity) and have nothing to show for
                           a single selection, so gating them on
                           `selectedResource` would leave them permanently
@@ -1399,6 +1399,7 @@ export default function AppShell({
                       view === "data" ||
                       view === "entityRoster" ||
                       view === "entityGraph" ||
+                      view === "timeline" ||
                       view === "trash"
                         ? (() => {
                             if (view === "data") {
@@ -1521,10 +1522,7 @@ export default function AppShell({
                             // the current selection), so it is handled here,
                             // before the `!selectedResource` guard, rather
                             // than inside the post-guard `switch` below. The
-                            // Timeline view was placed in that `switch` and is
-                            // still unreachable from a freshly opened project
-                            // as a result (POS task_a7d8581a) — do not repeat
-                            // that mistake here. The `isEntitiesEnabled` check
+                            // `isEntitiesEnabled` check
                             // is a defensive guard; the tab is already
                             // disabled when the feature is off.
                             if (view === "entityGraph") {
@@ -1549,6 +1547,18 @@ export default function AppShell({
                             // the earlier routing-only placeholder.
                             if (view === "trash") {
                               return <TrashView />;
+                            }
+
+                            // Timeline is project-wide too (it reads every
+                            // dated resource from the store). It used to sit in
+                            // the post-guard `switch`, so a freshly opened
+                            // project showed the placeholder (POS
+                            // task_a7d8581a). The flag check is defensive: the
+                            // tab is disabled when the view is off.
+                            if (view === "timeline") {
+                              return isTimelineViewEnabled ? (
+                                <TimelineView />
+                              ) : null;
                             }
 
                             if (!selectedResource)
@@ -1598,13 +1608,6 @@ export default function AppShell({
                                 return <DiffViewController />;
                               case "organizer":
                                 return <OrganizerView />;
-                              case "timeline":
-                                // Defensive guard: the tab is disabled when the
-                                // view is off, but never mount TimelineView even
-                                // if the view state somehow lands here.
-                                return isTimelineViewEnabled ? (
-                                  <TimelineView />
-                                ) : null;
                               default:
                                 return (
                                   <div>
