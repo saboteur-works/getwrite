@@ -1557,6 +1557,94 @@ with the app without hand-rewriting it (see OQ-90).
   decided at Gate 1; FR-69 stays under Later Requirements.
   Status: not started; no `docs/user/handbook/` directory exists
   (read from the repository, 2026-10-14). [US-28][US-29]
+
+- FR-70: A writer MUST be able to save a project type they create or edit in
+  the Project Type Manager, so that the saved type persists across closing
+  the manager and restarting the app, appears in the new-project dialog,
+  and is offered wherever the product asks the writer to choose a project
+  type (the desktop import's project-type choice and the CLI included). The manager MUST NOT present editable fields without a
+  way to save them, and a change that is not saved MUST be shown as unsaved
+  and MUST NOT be lost without the writer being told. Saving MUST work in a
+  packaged desktop build, where the built-in project types are shipped
+  read-only inside the app bundle: a saved type is stored in a location the
+  app can write to, and saving MUST NOT alter the built-in types. A saved
+  type MUST behave like a built-in type when a project is created from it
+  (FR-2). Owner direction, 2026-10-19 (Feature 81 handbook verification,
+  D-1): "it makes no sense to have a form without a way to save". Facts.
+  MEASURED (verification.md, D-1; web build and Electron development app,
+  throwaway copy of the type files): the manager's form is editable and
+  marks "Unsaved changes", no save or delete control was found, and edits
+  and a new draft were gone after reopening. READ (code, this session):
+  nothing in the app saves or autosaves Project Type Manager edits; the
+  built-in types are JSON in `getwrite-config/templates/project-types/`,
+  shipped inside the app bundle. Owner statement, 2026-10-19: there are
+  zero users, so no migration or compatibility constraint applies to this
+  requirement. Decisions (Owner decision, Gate 1, 2026-10-19; resolved:
+  OQ-97 to OQ-100): (a) Scope (OQ-97): this requirement covers desktop and
+  web. Android and hosted multi-tenant are out of scope for now; Android
+  loads project types from a build-time static registry
+  (`frontend/src/lib/models/project-types-static.ts:57-60`) and has no
+  writable store. (b) Location (OQ-97): saved types are app-wide for the
+  installation, stored in the desktop app's userData next to
+  `workspace.json` (following the global-noise-words precedent), and
+  survive moving the workspace. The web build MUST also be given a writable
+  location (the server is given a path). (c) One list (OQ-98): the
+  new-project dialog, the desktop import's project-type choice and the CLI
+  MUST show the same list, produced by one resolver that merges built-in and
+  saved types, and a newly saved type MUST appear without a restart. (d)
+  Built-in and saved types (OQ-99): built-in types are never changed;
+  editing a built-in type saves a copy as a new saved type. A saved type can
+  be renamed and deleted. Existing projects are unaffected, because a
+  project copies its type's settings at creation and keeps only the id. (e)
+  Collisions (OQ-100): saving MUST be refused, with a visible reason, when
+  the saved type would reuse the id or name of a built-in type or of another
+  saved type. READ (code): today the route uses `GETWRITE_TEMPLATES_DIR` and
+  the library and import worker use `GETWRITE_PROJECT_TYPES_DIR`
+  (`frontend/app/api/project-types/route.ts:10-18`,
+  `frontend/src/lib/projectTypes.ts:68-69`,
+  `electron/src/docx-import/fork-options.ts:27-33`); the list is cached in
+  memory (`projectTypes.ts:85,107,175`); project creation copies the type's
+  settings and keeps only the id (`project-creator.ts:228-237`), and the
+  only later reader is the Start Page label (`StartPage.tsx:1038`). [US-1]
+- FR-71: A text paragraph whose leading (line spacing) the writer has not
+  set MUST render at the project's body line height (the Body Text Styles
+  line height, default 1.8), not at a fixed value of its own; changing the
+  project's body line height MUST change the rendered leading of every
+  paragraph whose leading is unset. Opening a document MUST NOT change
+  leading the writer has set, and MUST NOT turn unset leading into a set
+  value. The editor's line-height floor of 1.8 for the default body text
+  is unchanged by this requirement. Decisions (Owner decision, Gate 1,
+  2026-10-19; resolved: OQ-101 and OQ-102): (a) Floor (OQ-101): the 1.8
+  floor applies to the project's body line height setting (Body Text
+  Styles), which MUST enforce it; a writer's explicit paragraph leading is
+  the writer's choice and MAY go below 1.8. By implication of this decision
+  (not separately stated by the owner), the floor also applies to the line
+  height field in the Project Type Manager's editor, since it sets the same
+  body line height on projects made from the type. (b) Stored "1.5"
+  (OQ-102): an already-stored paragraph leading of "1.5" is treated as unset
+  on read; a writer who deliberately chose 1.5 before this change cannot be
+  told apart, and this is accepted on the owner's statement that there are
+  zero users. After this change, unset MUST be represented distinctly (an
+  absent attribute), so new explicit choices, 1.5 included, are kept. Facts. MEASURED (verification.md,
+  D-10; web build): Body Text Styles line height values 2.2 and 1 were
+  stored in `project.json` and a project type's 2.4 was copied into a new
+  project, but the paragraph's inline style stayed `line-height: 1.5` and
+  the rendered height stayed 1.5; a new Blank project stores 1.8 and
+  renders 1.5. READ (code, not measured in the running app): no floor is
+  enforced anywhere today (`toolbar-command-schema.ts:348-357`,
+  `frontend/src/lib/api/schemas.ts:87`,
+  `ProjectTypeEditorForm.tsx:536-539`); the default/parse/render of the
+  paragraph leading is in `GetWriteParagraphLeading.ts:21,31,34,37`; the
+  paragraph-leading control's default "1.5" is rendered as an inline
+  line-height that overrides the project's body line height
+  (`--gw-body-line-height`, 1.8 by default). HYPOTHESIS (not established):
+  `TipTapEditor`'s `onCreate` runs `selectAll().setParagraphLeading("1.5")`
+  on every document open and so may overwrite values a writer chose; the
+  experiment that settles it is to set leading on one paragraph, reopen the
+  document, and read the paragraph's inline style. No cause is stated here
+  for the measured behaviour. READ: `TipTapEditor.tsx:483-491` stamps 1.5 on
+  every editor creation. [US-9]
+
 ## Constraints
 
 - Folder names carry no application semantics: any folder layout is valid,
@@ -3177,6 +3265,42 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (2026-10-18), two decisions. (1) Option (a): a project whose `project.json` cannot be read is listed on the start page as a card that cannot be opened, with a reason, following the existing locked-project card pattern; it can say the project's files are still on disk and unchanged; when no readable name exists it shows the project's folder id. No repair action is required. (2) Scope, also (a): the treatment covers every project whose `project.json` exists but cannot be used (a wrong-typed field (D-38), a file that does not parse, and a manifest missing `id` or `createdAt`), which `listProjectsCore` today drops with only a `console.warn`. A folder with no `project.json` at all (POS note_3c11e2c4) is not a project for this purpose: it stays skipped and is out of scope.
 **Evidence:** Owner decision, Gate 1, 2026-10-18. D-38 measured in `specs/features/user-handbook/verification.md`: one wrong-typed `project.json` hid every project. `specs/product/getwrite.features.md` (~line 3625) already records the related question of client-side per-entry parsing versus server-side per-project validation; where validation happens is a design point for the feature spec, not this question. `docs/standards/failure-visibility.md` says a failure must not render as absence, which bears on option (c).
 **Impact:** FR-23; Feature 89's D-38 part.
+**Owner:** Product owner.
+
+**OQ-97 (resolved): Where do saved project types live: per workspace, or app-wide for the writer on that machine?**
+**Resolution:** Resolved (2026-10-19): option (a). Saved project types are app-wide for the installation, stored in the desktop app's userData next to `workspace.json`, following the global-noise-words precedent; they survive moving the workspace. FR-70 is scoped to desktop and web; Android and hosted multi-tenant are out of scope for now. The web build needs a writable location too (the server is given a path).
+**Evidence:** Owner decision, Gate 1, 2026-10-19. Read: Android loads types from a build-time static registry (`frontend/src/lib/models/project-types-static.ts:57-60`), so it has no writable store.
+**Impact:** FR-70; whether a project type made in one workspace is offered in another, and what the new-project dialog, desktop import and CLI list.
+**Owner:** Product owner.
+
+**OQ-98 (resolved): Are saved project types visible to the CLI and the desktop import's project-type choice, and must all three surfaces always show the same list?**
+**Resolution:** Resolved (2026-10-19): option (a). The new-project dialog, the desktop import's project-type choice and the CLI show one list, via one resolver that merges built-in and saved types. A newly saved type appears without a restart.
+**Evidence:** Owner decision, Gate 1, 2026-10-19. Read: the route uses `GETWRITE_TEMPLATES_DIR` and the library and import worker `GETWRITE_PROJECT_TYPES_DIR` (`frontend/app/api/project-types/route.ts:10-18`, `frontend/src/lib/projectTypes.ts:68-69`, `electron/src/docx-import/fork-options.ts:27-33`); the list is cached in memory (`projectTypes.ts:85,107,175`).
+**Impact:** FR-70, FR-33, FR-2; the CLI `project create` and import commands, which resolve types from a directory today.
+**Owner:** Product owner.
+
+**OQ-99 (resolved): Can a built-in project type be edited in place, or only copied into a new saved type? Can a saved type be renamed or deleted, and what happens to projects already made from it?**
+**Resolution:** Resolved (2026-10-19): option (a). Built-in types are never changed; editing a built-in type saves a copy as a new saved type. Saved types can be renamed and deleted. Existing projects are unaffected.
+**Evidence:** Owner decision, Gate 1, 2026-10-19. Read: a project copies its type's settings at creation and keeps only the id (`project-creator.ts:228-237`); the only later reader is the Start Page label (`StartPage.tsx:1038`).
+**Impact:** FR-70; the manager's controls; the Start Page's earlier claim that types can be created and deleted (D-1, P-16).
+**Owner:** Product owner.
+
+**OQ-100 (resolved): If a saved type has the same id or name as a built-in type, which one wins, and how does the writer tell them apart in the lists?**
+**Resolution:** Resolved (2026-10-19): option (a). Saving is refused, with a visible reason, when a saved type would reuse a built-in type's id or name. By implication (not separately stated by the owner), the same refusal applies to reusing another saved type's id or name, so no two types in the merged list share an id or name and no precedence rule is needed.
+**Evidence:** Owner decision, Gate 1, 2026-10-19.
+**Impact:** FR-70, FR-2.
+**Owner:** Product owner.
+
+**OQ-101 (resolved): May a writer set paragraph leading below the 1.8 floor the repo rule sets for editor line height, and does the floor apply to the project body line height setting, the paragraph-leading control, or both?**
+**Resolution:** Resolved (2026-10-19): option (a). The 1.8 floor applies to the project's body line height setting (Body Text Styles), which must enforce it; a writer's explicit paragraph leading is the writer's choice and may go below 1.8. Implication, marked as such (not separately stated by the owner): the floor also applies to the line height field in the Project Type Manager's editor, because it sets the same body line height on projects made from the type.
+**Evidence:** Owner decision, Gate 1, 2026-10-19. Measured: a body line height of 1 was accepted (verification.md, D-10). Read: no floor is enforced anywhere today (`toolbar-command-schema.ts:348-357`, `frontend/src/lib/api/schemas.ts:87`, `ProjectTypeEditorForm.tsx:536-539`).
+**Impact:** FR-71; the measured toolbar behaviour (1.2 and 0.5 accepted, D-10).
+**Owner:** Product owner.
+
+**OQ-102 (resolved): What does an already stored paragraph leading of "1.5" mean after FR-71: a value the writer chose, or the old default to be treated as unset? Can the two be told apart?**
+**Resolution:** Resolved (2026-10-19): option (a). An already-stored paragraph leading of "1.5" is treated as unset on read, on the owner's statement that there are zero users; a writer who deliberately chose 1.5 before this change cannot be told apart, and this is accepted. After the change, unset is represented distinctly (absent attribute), so new explicit choices, including 1.5, are kept.
+**Evidence:** Owner decision, Gate 1, 2026-10-19. Read: `GetWriteParagraphLeading.ts:21,31,34,37` default/parse/render; `TipTapEditor.tsx:483-491` stamps 1.5 on every editor creation.
+**Impact:** FR-71; existing documents. The owner states there are zero users.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)
