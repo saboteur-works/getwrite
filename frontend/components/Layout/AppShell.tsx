@@ -1290,10 +1290,14 @@ export default function AppShell({
               <main className="appshell-work-area">
                 <div className="appshell-work-area-content">
                   {/* Persistent desktop sharing indicator: first child of the
-                      main work area, so it shows in every view of the shell. */}
-                  <div className="shrink-0 w-full">
-                    <SharingStatus />
-                  </div>
+                      main work area, so it shows in every view of an open
+                      project. With no project the Start Page is this shell's
+                      child and shows its own (note_b1b217db). */}
+                  {resources ? (
+                    <div className="shrink-0 w-full">
+                      <SharingStatus />
+                    </div>
+                  ) : null}
                   {resources ? (
                     <div className="shrink-0 w-full">
                       <div className="workarea-header border-b-hairline border-b-gw-border">
