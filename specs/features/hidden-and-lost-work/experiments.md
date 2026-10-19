@@ -392,3 +392,64 @@ Observations NOT acted on (outside the Task 12 survey's scope; none was reproduc
 2. `renameFolderById`'s bare `catch` around the `folder.json` read would swallow a locked-access error if one reached it. Not checked whether the rename route fails first for a locked project.
 3. `listProjectsCore` marker-write race window between the two marker reads (row 3): not reproduced.
 4. The Capacitor ENOENT coding depends on the plugin message matching `/does not exist/i`; READ, not run against the real plugin.
+
+## In-app exercise (Task 16)
+
+Date: 2026-10-18 (local run 20:51 MDT onward). Web build, observation only. No source change in this task. A unit test is not an in-app result and none is cited here.
+
+### Environment record
+
+- Build: `pnpm build` (`next build`) from `frontend/` in the main checkout, outside the sandbox, exit 0. Commit at build time: `a5bc254d` (branch `fix/hidden-and-lost-work`, tree clean before the build; `git status --short` after the build showed no modified file, so `frontend/tsconfig.json` did not need restoring).
+- Server: `pnpm exec next start -p 3457` from `frontend/`, with `GETWRITE_PROJECTS_DIR=<throwaway>/projects`. Next printed `"next start" does not work with "output: standalone" configuration` and `Couldn't load fs` / `Couldn't load zlib`, and then served every page and API route used below. The standalone server (`node .next/standalone/server.js`) was not used.
+- Throwaway projects directory (set through `GETWRITE_PROJECTS_DIR`): `/var/folders/qk/x8z53mfn36q33gbbzrhmpws00000gn/T/gw-ex-FAlN/projects`. Server log: `/var/folders/qk/x8z53mfn36q33gbbzrhmpws00000gn/T/gw-ex-FAlN/server.log`.
+- Port used: 3457 (nothing held 3000, 7340 or 6006 before the run; 3457 was chosen as a free port, not because 3000 was held). No desktop run (web run).
+- `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before: no output (exit 1). After the last process stopped (same command plus `-iTCP:3457`): no output (exit 1). Before and after are identical (no listener on any of the four ports).
+- Pids started by this run: 89215 (`pnpm exec next start -p 3457`, parent pid 1), 89221 (the pnpm node child), 89222 (`next-server (v16.2.6)`, the listener on 3457). Stopped: `kill 89222`; 89221 and 89215 had already exited when `kill` was run on them ("no such process"); `ps -p` for all three afterwards printed no rows. Nothing was stopped by port or name; no `pkill`/`killall`.
+- Not read, listed or written: the repository's `projects/`, `~/Library/Application Support/...`, `~/Documents/GetWrite`, `~/Library/Logs/getwrite-electron`.
+- Driver: Playwright (Chromium, headless) run as Node scripts from `frontend/` for every UI step, plus `curl` against `POST /api/projects` and `GET /api/projects` to create the four projects and list them. Direct file edits in the throwaway directory: corrupting three `project.json` files (below) and removing `"deprecated": true` from one schema field (part 3 restore). The ad hoc step scripts were deleted after use; `scripts/probe-start.mjs` (start-page text dump) is kept. Console error seen on every page load, not part of the parts: `404 http://localhost:3457/api/auth/get-session` (hosted-auth route; this build runs with no hosted auth configured; not investigated).
+
+### Part 1: unusable-project card (landed) -- exercised
+
+Setup: four projects created through `POST /api/projects` (type `blank`: Healthy, Unparseable, NoId, WrongType), then in the throwaway directory `project.json` of the second was overwritten with `{ this is not json`, the `id` key was deleted from the third, and `name` was set to the number `12345` in the fourth.
+
+Observed on the start page (`/`, after a page load) with the three unusable projects present:
+
+- One project card, "Healthy", with an "Open project" button, and three cards labelled "PROJECT · CANNOT BE OPENED", headed by the folder name (the folder names are UUIDs, so the headings are UUIDs): unparseable: "Its project.json file is not valid JSON, so it cannot be opened."; wrong-typed field: "Its project.json file does not match the format GetWrite expects, so it cannot be opened."; missing id: "Its project.json file is missing its id or creation date, so it cannot be opened." Each ends "The project's files are still on disk and unchanged."
+- Header tiles read "1 active project". No "Open" button exists on a cannot-be-opened card (the page's button list was: settings menu, Start a New Project, App Settings, Manage Healthy, Open Healthy).
+- Clicking "Open Healthy" opened the project: top bar "Healthy", tree "Workspace", all later parts ran inside it.
+- Server log: for each list request one line per unusable project, in the three forms `Project "<folder>" has an unparseable project.json (listed as unusable).`, `... has an unusable project.json (invalid-manifest).`, `... has an unusable project.json (missing-field).` The log file has 100 lines at the end of the run (7 start-up and warning lines, the rest these per-project lines, repeated per page load/list call). A search for `^\s*at ` and `Error:` found 0 matches: no stack in the log.
+- `GET /api/projects` returned HTTP 200 with 4 entries.
+- Not observed: a `folder.json` or resource sidecar that fails validation inside an otherwise healthy project; the `unreadable`, `tree-unreadable` and other reason categories (no input was made for them).
+
+### Part 2: nested folder delete and Trash (landed) -- exercised
+
+Setup in the Healthy project through the UI (resource tree row menu "Create", type Folder or Document): Workspace > Parent > Child > Grandchild, and a text document "Leaf doc" in Grandchild. `folder.json` `parentId` values on disk confirmed the nesting (Parent's parent is Workspace, Child's is Parent, Grandchild's is Child; Leaf doc's `folderId` is Grandchild's id).
+
+Observed:
+
+- Tree before: Workspace, Parent, Child, Grandchild, Leaf doc (row menus for all five).
+- Parent row menu "Delete" opened a dialog "Delete Parent: This will move the folder and everything in it to Trash. Proceed?"; confirming showed a toast "Folder deleted / Parent". Tree after: Workspace only.
+- Trash tab: heading "Trash", "0 of 1 item selected", one entry "Parent" with lines "folder: Child", "folder: Grandchild", "resource: Leaf doc". On disk `.trash/folders/` held `parent`, `child`, `grandchild` and `.trash/resources/` held one entry; `folders/` held only `workspace`.
+- Selecting the entry and "Restore selected" opened a dialog "Restore 1 item from Trash?"; confirming showed "1 of 1 restored." and "Trash is empty." Tree after restore: Workspace, Parent, Child, Grandchild, Leaf doc. On disk `.trash/folders/` was empty and `folders/` held `child`, `grandchild`, `parent`, `workspace`; `parentId` values were again Parent -> Workspace, Child -> Parent, Grandchild -> Child.
+- Not observed: restoring a descendant on its own, restore name conflicts, Trash with more than one entry, permanent delete, encrypted projects.
+
+### Part 3: deprecated field hidden in the sidebar (landed) -- exercised
+
+Setup: Project Settings > Metadata, "Add field to Document" twice (default label "New Field"; a probe run added the first one, the exercise run the second); renamed through the manager to "Mood" (key `field-1792378719216`) and "Spare" (key `field-1792378733191`). A harness mistake typed "Mood" into the Subtypes "New subtype" input once, so the project also has a subtype "Mood"; it appears in the Subtype select and in "Applies to subtypes" lists and is unrelated to the field. Leaf doc's sidebar "Mood" input was set to `wistful`; the sidecar then held `"userMetadata": {"field-1792378719216": "wistful"}`.
+
+Observed:
+
+- In the Metadata Fields manager, the row Remove button for Mood opened "Remove field: Mood" with options DEPRECATE ("Keep values in sidecars; hide field from sidebar; ...") and CLEAR; choosing Deprecate wrote `"deprecated": true` on that field in `project.json` (`config.metadataSchema`). The manager then showed the Mood row with a "DEPRECATED" badge, its type select, move and remove icons, and no restore control.
+- Leaf doc sidebar after deprecating: no "Mood" field group (group lookup count 0); the Spare field was still shown. The sidecar still held `"field-1792378719216": "wistful"`.
+- Sidebar "+ Add field", typing the key `field-1792378719216` in NAME: a status line "field-1792378719216 already exists and is deprecated, so it is hidden from the sidebar. Its values are kept." and a Close button (the form showed no navigation to the field). Typing the label "Mood" was not tried.
+- Restore: the manager offered no restore, so `"deprecated": true` was removed from that field in the throwaway `project.json` by script, and the app reloaded. Leaf doc sidebar then showed the "Mood" group with the input value `wistful` (group count 1).
+- Not observed: whether the Organizer, query builder or Data view treat the deprecated field as the manager text says ("queryable but flagged"); deprecating a field that has no stored values; the "Clear" option; a field with `appliesTo` subtypes.
+
+### Parts 4 and 5: not exercised
+
+- Part 4 closed on branch (a) (no product change), so there is nothing in the app to exercise; not exercised.
+- Part 5 closed with no product change; not exercised.
+
+### Not measured in this task
+
+Desktop (Electron) run; the standalone server; any browser other than Chromium; the repo's e2e/Storybook suite (a separate task); behaviour on Windows paths; a hosted-auth run.
