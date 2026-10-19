@@ -116,3 +116,60 @@ Date: 2026-10-19. Command (from the repo root): `grep -rIi "paragraphLeading" fr
 Further reader (reader 4): the search found none beyond the three named (extension, markdown warning, menuBarState). The PDF compile files match `lineHeight` only (the project body setting), not `paragraphLeading`.
 
 Red then green: `tests/unit/menu-bar-state-paragraph-leading.test.ts` failed 3 of 5 before the change (`"1.5"` returned `'1.5'`, legacy `"1.2"` returned the string `'1.2'`, `"abc"` returned `'abc'`) and passed after. In `tests/unit/markdown-warnings.test.ts` the new tests for the stamp `"1.5"` not counted, numeric 1.5 counted and legacy `"1.2"` counted were already green before the change (the old comparison `!== "1.5"` gave the same answer for those inputs); the invalid-value test (`"abc"`, `"0"`, -1, 0, `""` not counted) is the one that distinguishes the new rule: re-run against the committed (HEAD) serializer it failed (1 failed, 7 passed), and with the new serializer all 8 pass.
+
+## Part 1: FR-2 (a) and (b), freshness of the type read and cache instances, web (Task 12)
+
+Date: 2026-10-19. Unchanged source tree (branch `feat/writer-project-types-and-paragraph-leading`, HEAD `edadee9b`; no source change). Harness: `specs/features/writer-project-types-and-paragraph-leading/scripts/fr2-saved-types-freshness.mjs` (HTTP only, Node `fetch`; no browser). Raw outputs of the two runs and the two server logs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t12/` (`run1.json`, `run2.json`, `server.log`, `server2.log`; outside the repo).
+
+### Environment and safety record
+
+- Substitution, stated: `GETWRITE_SAVED_PROJECT_TYPES_DIR` does not exist in code yet, so the experiment points the existing variables at a throwaway copy of the built-in type files. The route (`app/api/project-types/route.ts:9-17`) reads `GETWRITE_TEMPLATES_DIR`; the library (`projectTypes.ts:resolveTemplatesDir`) reads `GETWRITE_PROJECT_TYPES_DIR`. Both were set to the same throwaway directory. "Saved type" below means a file written by hand into that directory.
+- `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:3100 -iTCP:6006 -sTCP:LISTEN` before the server started: one listener, `GetWrite` pid 88077 on `*:7340` (the user's desktop app, not touched). Nothing on 3000, 3100 or 6006. After both runs and the stops: the same single listener (pid 88077).
+- Asserted throwaway paths (the harness exits before its first request unless all three are under the temp root, none contains a protected folder name, and the types directory holds no symlink):
+  - `GETWRITE_PROJECTS_DIR=/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t12/projects`
+  - `GETWRITE_PROJECT_TYPES_DIR` = `GETWRITE_TEMPLATES_DIR` = `.../scratchpad/t12/types` (same prefix). It held 7 files copied from `getwrite-config/templates/project-types/` (6 type files and `project-type.schema.json`); the originals were only read.
+  - Before the first mutating request the harness listed `GET /api/projects` and exited unless every returned `rootPath` was under the projects root (run1 and run2: empty list). Every project it created was asserted under that root. The repo's `projects/` and every real app-data folder were not read, listed or written.
+- Dev server: `pnpm exec next dev -p 3100` from `frontend/`, outside the sandbox, started with the three variables above, twice (a fresh server per run; run2 started with a new empty projects folder).
+  - Run1 pids: 3492, 3494, 3498, 3499, 3505 (next-server), 3622 (postcss helper). All stopped by pid; confirmed gone.
+  - Run2 pids: 7213, 7215, 7219, 7220, 7322 (next-server), 7327 (postcss helper). All stopped by pid; confirmed gone.
+- `git status --short` after: only the new harness script (this file's edits are this task's).
+
+### Method
+
+One fresh server per run, in this order, all without a restart or any cache clearing by the harness. Types written are copies of the Blank spec with a changed `id`, `name` and one folder (`folders: [{ name: "AlphaFolder" }]`). "Create" is `POST /api/projects` with `{ name, projectType: <id> }`, which reaches `createProjectCore` (`project-crud-core.ts:373`) and `getProjectType` in the library; the folders of the created project are read from the throwaway project's directory.
+
+1. S1: `GET /api/project-types` before any write (no request had reached the library).
+2. S2: write `t12-alpha.json`; `GET`; create from `t12-alpha` (the first library read).
+3. S3: write `t12-beta.json`; `GET`; create from `t12-beta`; 3 s later `GET` and create from `t12-beta` again (S3b).
+4. S4: rewrite `t12-alpha.json` with folder `AlphaFolderEdited`; `GET`; create from `t12-alpha`.
+5. S5: delete `t12-beta.json`; `GET`; create from `t12-beta`.
+6. S6: create from `blank` (control).
+7. S7 (run2 only; added after run1): delete `t12-alpha.json`; `GET`; create from `t12-alpha`.
+
+### Observed values (run1 and run2 gave identical values for S1 to S6; S7 is run2 only)
+
+| Step | `GET /api/project-types` | Create from the id |
+| --- | --- | --- |
+| S1, no write yet | 200; ids `article, blank, game_writing, novel, poetry_and_lyrics, serial` | not run |
+| S2, `t12-alpha` written | 200; the six ids plus `t12-alpha` | 200; created project's folders `alphafolder` |
+| S3, `t12-beta` written | 200; the six ids plus `t12-alpha`, `t12-beta` | `t12-beta`: 404 `{"error":"Project type not found"}`; no project created |
+| S3b, 3 s later | 200; same eight ids | `t12-beta`: 404 again |
+| S4, `t12-alpha` edited in place | 200; `t12-alpha` `folders` = `[{"name":"AlphaFolderEdited"}]` | 200; created project's folders `alphafolderedited` |
+| S5, `t12-beta` deleted | 200; the six ids plus `t12-alpha` | `t12-beta`: 404 |
+| S6, control | not run | `blank`: 200; folders `workspace` |
+| S7, `t12-alpha` deleted (run2) | 200; the six built-in ids | `t12-alpha`: 500 `{"error":"ENOENT: no such file or directory, open '<throwaway types dir>/t12-alpha.json'"}`; no project created |
+
+- (a) A valid type file written by hand while the server ran appeared in `GET /api/project-types` on the next request, and a project was created from its id on the next request, with no restart (S2). The same held for an in-place edit read through the route (S4).
+- (b) Staleness of the library: a file written after the library's first read (S2) was listed by the route (S3) and not found by creation (404 at S3 and 3 s later at S3b). Creation from an id the library had already read followed an edit of that file (S4: folder name from the edited file) and, after that file was deleted, failed with a 500 carrying an ENOENT for that file's path (S7).
+- (b) Route and creation path: for the same file changes the route listed `t12-beta` (S3) and creation did not find it (S3, S3b), so the two read paths gave different answers for the same directory and the same moment. The route does not import the library (`route.ts` imports only `schemas` and `locked-access`). `POST /api/projects` was the only server-side caller of `getProjectType` reached in this run; no second request path to the library was run, so whether other request paths share one `_cache` instance is UNMEASURED (see below).
+- Page errors and server errors beyond the 404s and the one 500 above: none in `server.log` / `server2.log`.
+
+### Not measured
+
+- Whether `_cache` is one instance across all request paths into the library: only `POST /api/projects` reaches the library in the web server (`createProjectCore`); the plain-text and DOCX imports run through the CLI and the worker, which were not started, so no second path was compared. Whether a Next.js dev-server module reload (hot reload after a source edit) resets `_cache` was not run.
+- `clearProjectTypeCache` and `listProjectTypes(true)`: nothing on the server's request paths calls them (grep of `frontend/src` and `frontend/app` found no caller outside `projectTypes.ts`), so a forced refresh was not exercised.
+- Production build (`next start`) behaviour, Electron development app and packaged app (Task 13 covers the packaged/desktop built-in probe, not this), the standalone server, and other browsers or clients. The result covers `next dev` on this tree with these inputs.
+- Behaviour with two files written in one tick, concurrent requests, a file that is invalid JSON or fails `validateProjectType`, and a directory that does not exist or is unreadable.
+- Why creation (S4) followed an edit of an already-read file: the run shows the end values only. It was not instrumented to separate what the cached entry held from what was read at creation time.
+- The saved-types variable and a separate saved directory: not in the code, so the built-in and saved directories were the same directory here.
+- Node and pnpm versions for this run.

@@ -130,7 +130,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 1
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-2 (a), (b) (US-2). Safety: dev server outside the sandbox with `GETWRITE_PROJECTS_DIR` and `GETWRITE_SAVED_PROJECT_TYPES_DIR` set to throwaway folders under `$TMPDIR` or the scratchpad, asserted before the first request; never the repo's `projects/` or any real app-data folder. The saved-types variable does not exist in code yet, so the experiment uses the existing `GETWRITE_PROJECT_TYPES_DIR` / `GETWRITE_TEMPLATES_DIR` pointing at a throwaway copy of the type files and says so in the record; the FR-13 cache design (Task 15) stands on this record.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: FR-2 experiment (desktop/packaged): do the server's probes find the built-in types
 **What:** Record FR-2 (c): whether `createProjectCore` finds the built-in types in the Electron development app and, if a packaged build can be made, in it, given the server's environment sets only `GETWRITE_TEMPLATES_DIR`.
