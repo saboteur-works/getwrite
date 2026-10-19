@@ -41,7 +41,7 @@ pnpm storybook        # frontend storybook (port 6006)
 pnpm knip             # dead-code / unused export check
 ```
 
-Frontend checks run from `frontend/`: `pnpm typecheck`, `pnpm lint`, `pnpm test:ci`, `pnpm test:e2e` (needs `pnpm storybook` running). Full list in `frontend/CLAUDE.md`.
+Frontend checks run from `frontend/`: `pnpm typecheck`, `pnpm lint`, `pnpm test:ci`, `pnpm test:e2e` (builds and serves Storybook itself on :6006; stop `pnpm storybook` first, or the run refuses the port). Full list in `frontend/CLAUDE.md`.
 
 **Next.js DevTools MCP**: when a task involves running, debugging, or modifying the Next.js app itself (dev server, App Router routing, server components, build config, caching), call the `init` tool from `next-devtools` first. Skip it for tasks that only touch unrelated files (CLI, models, Electron, docs).
 
@@ -149,4 +149,4 @@ Detailed styling guidance exists in STYLING.md
 
 ## Testing
 
-Unit, integration, component and a11y tests live in `frontend/tests/`; E2E (`frontend/e2e/`, Playwright, Chromium only) runs against Storybook. Prefer TDD and extend an existing test file before creating one. Never use a prop on an in-project component without opening its source and stories first. Details in `frontend/CLAUDE.md` and `docs/standards/testing.md`.
+Unit, integration, component and a11y tests live in `frontend/tests/`; E2E (`frontend/e2e/`, Playwright, Chromium only) runs against a built Storybook that `pnpm test:e2e` builds and serves itself. Prefer TDD and extend an existing test file before creating one. Never use a prop on an in-project component without opening its source and stories first. Details in `frontend/CLAUDE.md` and `docs/standards/testing.md`.

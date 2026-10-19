@@ -11,7 +11,7 @@ pnpm lint       # ESLint
 pnpm build      # next build
 pnpm test       # Vitest (watch)
 pnpm test:ci    # Vitest (single pass)
-pnpm test:e2e   # Playwright; needs `pnpm storybook` on :6006
+pnpm test:e2e   # Playwright; builds Storybook and serves it on :6006 itself (stop `pnpm storybook` first)
 pnpm test:sharing-smoke  # sharing-gate refusal smoke; needs a built standalone server (pnpm build, then copy .next/static into .next/standalone/frontend/.next/static)
 pnpm build:native        # Android static export (see "Native build")
 ```
