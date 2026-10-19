@@ -366,3 +366,29 @@ Note on the Capacitor row: the plugin's own not-found text is recognised by mess
 ### Not measured
 
 - The real `@capacitor/filesystem` plugin (READ only); an HTTP request to a locked project through `withStorageContext`; the marker-written-between-reads interleaving of row 3; the rename route against a locked project; any behaviour on Windows paths.
+
+### Task 13: closed, no exposed caller
+
+Date: 2026-10-18. No test and no product change in this task; `experiments.md` is the only file edited. Verification was by re-reading the code at each call site against the Task 12 survey table (READ, no run).
+
+Verification result (findings):
+
+- Row 1, `project-loader.ts:67`: `migrateProjectOnLoad` is awaited at line 61, before `readFolderTree`; the Task 12 note says it reads `project.json` through the same adapter, and the loader test added in Task 12 pins that a locked and a keyless marked project reject with `ProjectLockedError` / `MissingProjectKeyError` there. A locked-access error does not reach the `readFolderTree` catch on this path.
+- Row 3, `project-crud-core.ts:226`: `readProjectMarker` at line 171 and the early `return listEncryptedProject(...)` for a marked project come before it; an unmarked directory is read through the inner adapter without the keyring. The `project.json` `readFile` at ~187 also precedes line 226 and rethrows a locked-access error (`isLockedAccessError`), so a marker written between the two marker reads would more likely fail there than at 226. The interleaving was not reproduced.
+- Row 4, `cli/src/commands/doctor.ts:63`: `guardAgainstEncryptedProject` runs at line 52 and returns before it; the CLI uses the plain adapter.
+- Row 2, `resource-templates.ts:386`: CLI-only callers, plain adapter, guard first (as in the survey; not re-traced beyond that).
+- `workspace-adapter.ts` throws `ProjectLockedError` / `MissingProjectKeyError` from its per-project adapter selection (~142, ~153); the Task 12 tests pin that only `readFile`, `readFileBuffer`, `writeFile` and `appendFile` throw them and `readdir` / `stat` pass through.
+- No call path was found that puts a locked-access error inside `readFolderTree`'s `catch`. Per the Task 13 contract ("the survey, not the READ, decides"), no red test was written.
+
+Closure:
+
+- Part 5 closes with no product change (FR-22).
+- Task 14 is closed: no exposed caller. FR-23's narrowing of the `readFolderTree` / `childDirs` catches is not done on its own.
+- Task 15 is closed: no exposed caller. FR-32's `tree-unreadable` is declared in the reason enumeration but is not produced by any code.
+
+Observations NOT acted on (outside the Task 12 survey's scope; none was reproduced; no cause is established):
+
+1. `childDirs`' bare `catch` around `readdir` returns `[]` for any error (for example `EACCES`, `ENOTDIR`, an uncoded plugin error); each of those reads as an empty tree.
+2. `renameFolderById`'s bare `catch` around the `folder.json` read would swallow a locked-access error if one reached it. Not checked whether the rename route fails first for a locked project.
+3. `listProjectsCore` marker-write race window between the two marker reads (row 3): not reproduced.
+4. The Capacitor ENOENT coding depends on the plugin message matching `/does not exist/i`; READ, not run against the real plugin.
