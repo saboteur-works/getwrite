@@ -12,6 +12,20 @@ The Start Page is the first thing you see when you open GetWrite.
 
 Every project you've created is listed here, along with running totals of how many projects, resources, and folders you've made.
 
+## Projects that cannot be opened
+
+A project whose `project.json` file cannot be used is listed as a card labelled "PROJECT · CANNOT BE OPENED" instead of being left out. The card is headed by the project's folder name (the folder names are UUIDs, so the heading is a UUID), gives a reason, and has no **Open** button. This is not in a release yet (merged after 2.2.0).
+
+In a web run with three such projects beside one healthy one, the page showed the healthy project's card with its **Open project** button and three cannot-be-opened cards; the header tile read "1 active project". Opening the healthy project worked. The reasons observed, each followed by "The project's files are still on disk and unchanged.":
+
+- A `project.json` that was not valid JSON: "Its project.json file is not valid JSON, so it cannot be opened."
+- A `project.json` with `name` set to a number: "Its project.json file does not match the format GetWrite expects, so it cannot be opened."
+- A `project.json` with its `id` key deleted: "Its project.json file is missing its id or creation date, so it cannot be opened."
+
+The card also has two further reasons in its text, neither seen in the app. For a `project.json` that exists but cannot be read, the text is "Its project.json file exists but could not be read, so it cannot be opened." (reason `manifest-unreadable`); no such file was made in the run. For a project whose folders or resources cannot be read, the text is "Its folders or resources could not be read, so it cannot be opened." (reason `tree-unreadable`); no code in this build produces that reason, so it was not seen. Neither of these two texts adds the "files are still on disk and unchanged" sentence.
+
+Not tried: a bad `folder.json` or resource file inside an otherwise healthy project. The card wording is working copy.
+
 ## Working with projects
 
 From the Start Page you can act on a project without opening it first:
