@@ -1641,3 +1641,88 @@ describe("MetadataSidebar — subtype field filtering (Task 12)", () => {
     expect(strip(container.innerHTML)).toBe(strip(removedHtml));
   });
 });
+
+// ---------------------------------------------------------------------------
+// Deprecated custom fields (Feature 89, Task 8; FR-12)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — deprecated custom fields (Feature 89, Task 8)", () => {
+  const DEPRECATED_VALUE = "value on a deprecated field";
+
+  function mountDeprecated(options: {
+    groupOverrides?: Record<string, unknown>;
+    deprecatedOverrides?: Record<string, unknown>;
+    resourceOverrides?: Record<string, unknown>;
+  }): React.ReactElement {
+    const schema: MetadataSchema = {
+      groups: [
+        {
+          id: "g",
+          label: "Custom Group",
+          fields: [
+            { key: "live-field", label: "Live Field", type: "text" },
+            {
+              key: "old-field",
+              label: "Old Field",
+              type: "text",
+              deprecated: true,
+              ...options.deprecatedOverrides,
+            },
+          ],
+          ...options.groupOverrides,
+        } as MetadataSchema["groups"][number],
+      ],
+    };
+    const base = createTextResource({
+      name: "R",
+      plainText: "",
+      userMetadata: { "live-field": "live", "old-field": DEPRECATED_VALUE },
+    });
+    const res = { ...base, ...options.resourceOverrides } as AnyResource;
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: "p",
+        rootPath: "/test",
+        metadataSchema: schema,
+        subtypes: ["Scene"],
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    return (
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  }
+
+  it("does not show a deprecated field that holds a value (the non-deprecated sibling is shown)", async () => {
+    await renderAndFlush(mountDeprecated({}));
+    expect(screen.getByLabelText("live-field")).toHaveValue("live");
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+  });
+
+  it("does not show a deprecated field in a folder-scoped group the resource matches", async () => {
+    await renderAndFlush(
+      mountDeprecated({
+        groupOverrides: { folderId: "f1" },
+        resourceOverrides: { folderId: "f1" },
+      }),
+    );
+    expect(screen.getByLabelText("live-field")).toHaveValue("live");
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+  });
+
+  it("does not show a deprecated field restricted by appliesTo when the subtype matches", async () => {
+    await renderAndFlush(
+      mountDeprecated({
+        deprecatedOverrides: { appliesTo: ["Scene"] },
+        resourceOverrides: { resourceSubtype: "Scene" },
+      }),
+    );
+    expect(screen.getByLabelText("live-field")).toHaveValue("live");
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+  });
+});

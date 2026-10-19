@@ -200,3 +200,41 @@ Result: moving a child before its parent changes the outcome from failure to suc
 ### Not measured
 
 - The HTTP route and native backend after the fix; projects created outside `createProjectFromType`; the on-disk directory layout after restore was not compared with the layout before delete (the tests compare id, parentId, name and orderIndex from each `folder.json`, not directory paths).
+
+## Part 3: deprecated custom fields in `MetadataSidebar`, reproduction (Task 8, FR-12, FR-25, FR-31)
+
+Date: 2026-10-18. Tree: `fix/hidden-and-lost-work`, on top of Task 7, no source change. Component tests only, inside the sandbox; no server or app started (no `lsof`, no pid). No `projects/` or app-support folder was touched; the store is the in-memory Redux store from `makeStore()`.
+
+### Method
+
+- Added a `describe` block, "MetadataSidebar — deprecated custom fields (Feature 89, Task 8)", to the existing `frontend/tests/metadataSidebar.test.tsx`. Props confirmed against `MetadataSidebar.tsx` (`onChangeField?`, `className?`) and the file's existing mounts: the component reads the project schema, selected project and selected resource from the store, so each case dispatches `setProject({ metadataSchema })`, `setSelectedProjectId`, `setResources`, `setSelectedResourceId`.
+- Schema: one group holding a live text field `live-field` and a text field `old-field` with `deprecated: true`. The text resource carries `userMetadata` `{ "live-field": "live", "old-field": "value on a deprecated field" }`. Each case asserts `live-field` is shown with its value (the group renders) and that `queryByLabelText("old-field")` is absent.
+- Cases: (1) plain group; (2) group with `folderId: "f1"` and a resource with `folderId: "f1"` (folder-scoped by group, scope matching); (3) deprecated field with `appliesTo: ["Scene"]` and a resource with `resourceSubtype: "Scene"` (restricted, subtype matching).
+- Command: `pnpm --filter getwrite-frontend exec vitest run tests/metadataSidebar.test.tsx -t "deprecated custom fields"`.
+
+### Observed (unfixed tree)
+
+All three cases failed at the `not.toBeInTheDocument()` assertion; in each, `live-field` assertion before it passed:
+
+```
+ ❯ |jsdom| tests/metadataSidebar.test.tsx (67 tests | 3 failed | 64 skipped)
+     × does not show a deprecated field that holds a value (the non-deprecated sibling is shown)
+     × does not show a deprecated field in a folder-scoped group the resource matches
+     × does not show a deprecated field restricted by appliesTo when the subtype matches
+Error: expected document not to contain element, found <input
+  aria-label="old-field" ... type="text" value="value on a deprecated field"
+/> instead
+```
+
+(identical element and value in all three).
+
+- Which were already hidden: none. Case 1, the one FR-12 makes decisive, did fail, so the READ (the sidebar renders a deprecated field) is reproduced and Part 3 does not stop; Task 9 proceeds.
+- For reference, reading `MetadataSidebar.tsx` (not an experiment): the `visibleFields` filter at ~525 checks `isFieldVisible` (feature flags) and `isFieldVisibleForSubtype`; neither reads `deprecated`. The test result above is consistent with that and was not separated further.
+- The tests stay in the file asserting the desired behaviour (field not shown); they are red until Task 9. The rest of `metadataSidebar.test.tsx` was run in the same file (67 tests: 3 failed, 64 passed).
+
+### Not measured
+
+- A folder-scoped group whose folder does not match, or an `appliesTo` field whose subtype does not match, for a deprecated field: those are already hidden by the existing scope checks regardless of `deprecated`, and were not run as separate cases.
+- Image and audio resources; the "Add field" form; query, Organizer and chip UI; saving another field on a resource holding a deprecated value (Task 9 pins it).
+
+Outcome: reproduced on the unfixed tree by tests asserting the desired behaviour; they stay red until Task 9. Task 9 proceeds.
