@@ -50,6 +50,7 @@ import ShellSettingsMenu, {
   type SettingsMenuAction,
 } from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
+import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import SidebarContextMenu from "../ResourceTree/SidebarContextMenu";
@@ -208,6 +209,12 @@ export interface AppShellProps {
   ) => Promise<void>;
   /** Closes the active project and returns to the start page. */
   onCloseProject?: () => void;
+  /**
+   * Called after Project Settings saves a writing goal, so the owner of
+   * `project.config` can update it; without it a reopened dialog showed the
+   * goal empty until a reload (D-14).
+   */
+  onProjectGoalSaved?: ProjectGoalSavedHandler;
   /** Called when the user creates an image or audio resource via the modal. */
   onMediaCreateConfirmed?: (
     file: File,
@@ -246,6 +253,7 @@ export default function AppShell({
   onChangeStoryEndDate,
   onResourceAction,
   onCloseProject,
+  onProjectGoalSaved,
   onMediaCreateConfirmed,
   project,
 }: AppShellProps): JSX.Element {
@@ -1190,6 +1198,7 @@ export default function AppShell({
                     }
                     initialDailyWordGoal={project?.config?.dailyWordGoal}
                     initialWordCountGoal={project?.config?.wordCountGoal}
+                    onProjectGoalSaved={onProjectGoalSaved}
                     initialMentionHighlightDurationSeconds={
                       project?.config?.mentionHighlightDurationSeconds
                     }

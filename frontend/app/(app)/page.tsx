@@ -951,6 +951,18 @@ export default function Home(): JSX.Element {
     toastService.success("Resource created", resource.name);
   };
 
+  /** Applies a saved writing goal to the open project's config (D-14). */
+  const handleProjectGoalSaved = (
+    key: "dailyWordGoal" | "wordCountGoal",
+    goal: number | null,
+  ): void => {
+    setSelectedProject((prev) =>
+      prev
+        ? { ...prev, config: { ...prev.config, [key]: goal ?? undefined } }
+        : prev,
+    );
+  };
+
   const handleCloseProject = (): void => {
     setSelectedProject(null);
     dispatch(setSelectedProjectId(null));
@@ -969,6 +981,7 @@ export default function Home(): JSX.Element {
       onResourceSelect={handleResourceSelect}
       onResourceAction={handleResourceAction}
       onCloseProject={handleCloseProject}
+      onProjectGoalSaved={handleProjectGoalSaved}
       onMediaCreateConfirmed={handleMediaCreate}
       selectedResourceId={selectedResource?.id ?? null}
       onChangeSynopsis={handleChangeSynopsis}

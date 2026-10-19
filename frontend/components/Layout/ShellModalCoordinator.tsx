@@ -18,7 +18,9 @@ import CompilePreviewModal from "../common/CompilePreviewModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
-import ProjectSettingsDialog from "./ProjectSettingsDialog";
+import ProjectSettingsDialog, {
+  type ProjectGoalSavedHandler,
+} from "./ProjectSettingsDialog";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
@@ -94,6 +96,8 @@ export interface ShellModalCoordinatorProps {
   initialDailyWordGoal?: number;
   /** Currently saved project-wide `wordCountGoal`, for the Writing Goals tab of ProjectSettingsDialog. */
   initialWordCountGoal?: number;
+  /** Forwarded to ProjectSettingsDialog's Writing Goals fields (D-14). */
+  onProjectGoalSaved?: ProjectGoalSavedHandler;
   /** Currently saved `config.mentionHighlightDurationSeconds`, for the Entities tab of ProjectSettingsDialog. */
   initialMentionHighlightDurationSeconds?: number;
   isPreferencesModalOpen: boolean;
@@ -175,6 +179,7 @@ export default function ShellModalCoordinator({
   projectId,
   initialDailyWordGoal,
   initialWordCountGoal,
+  onProjectGoalSaved,
   initialMentionHighlightDurationSeconds,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
@@ -342,6 +347,7 @@ export default function ShellModalCoordinator({
         projectId={projectId}
         initialDailyWordGoal={initialDailyWordGoal}
         initialWordCountGoal={initialWordCountGoal}
+        onProjectGoalSaved={onProjectGoalSaved}
         initialMentionHighlightDurationSeconds={
           initialMentionHighlightDurationSeconds
         }

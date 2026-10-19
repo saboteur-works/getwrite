@@ -12,6 +12,8 @@ export interface DailyWordGoalFieldProps {
   projectId: string;
   /** Currently saved daily goal; omitted when none is set. */
   initialGoal?: number;
+  /** Called with the saved value after a successful save; `null` when cleared. */
+  onSaved?: (goal: number | null) => void;
 }
 
 const INVALID_MESSAGE = "Enter a whole number of words, 0 or greater.";
@@ -38,6 +40,7 @@ function parseGoal(draft: string): number | null | undefined {
 export default function DailyWordGoalField({
   projectId,
   initialGoal,
+  onSaved,
 }: DailyWordGoalFieldProps): JSX.Element {
   const [draft, setDraft] = useState<string>(
     initialGoal === undefined ? "" : String(initialGoal),
@@ -58,6 +61,7 @@ export default function DailyWordGoalField({
     try {
       await setDailyWordGoal(projectId, goal);
       notifyWritingLogGoalChanged();
+      onSaved?.(goal);
       setSavedMessage(
         goal === null ? "Daily goal cleared." : "Daily goal saved.",
       );
