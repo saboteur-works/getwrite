@@ -89,3 +89,7 @@ Two throwaway Blank projects created through `POST /api/projects`: "T2 Main" (bo
 - Other toolbar values (below 1.2, above 1.8, non-numeric), multi-paragraph selection, headings and lists.
 - Electron, the packaged app, native/Capacitor, and other browsers; the result covers the web dev server (`next dev`, Chromium) on this tree and these inputs only.
 - Node and pnpm versions for this run.
+
+## Task 5: removal of the `onCreate` stamp (regression test, not a fix)
+
+Date: 2026-10-19. Regression test, not a fix: in the Task 2 record (Part 2) the second paragraph kept its stored `"1.2"` (inline `1.2`, computed 18px) across the reopen on the unchanged tree, so no lost value was observed to fix. The new tests in `frontend/tests/unit/paragraph-leading-preserves-structure.test.ts` were red before the change (with a no-op normaliser and the old stamp, stored `"1.5"` paragraphs came back as `"1.5"` where `null` was expected: `[null, 1.2, 2, "1.5"]` against `[null, 1.2, 2, null]`) and green after.

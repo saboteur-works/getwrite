@@ -34,6 +34,8 @@ import EditorContextMenu from "./Editor/EditorContextMenu";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
 import {
   loadDocumentIntoEditor,
+  normalizeStoredContent,
+  settleCreatedEditor,
   shouldSyncEditorContent,
 } from "./Editor/loadDocumentIntoEditor";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
@@ -414,7 +416,7 @@ export default function TipTapEditor({
           },
         }),
       ],
-      content: value || "",
+      content: normalizeStoredContent((value as Content) || ""),
       editable: !readonly,
       /**
        * Emits both HTML and JSON representations for parent persistence flows.
@@ -476,19 +478,16 @@ export default function TipTapEditor({
         emitNodeTypes(editor);
       },
       /**
-       * Migrates legacy math string representations to node-based format,
-       * and stamps every paragraph with an explicit leading value. Marked
-       * `addToHistory: false` — see `onUpdate` above for why.
+       * Migrates legacy math string representations to node-based format and
+       * collapses the cursor to the start. It no longer stamps a leading on
+       * every paragraph: leading is unset unless the writer sets it, and
+       * legacy stored values are normalised on the way in
+       * (`normalizeStoredContent`). Marked `addToHistory: false` — see
+       * `onUpdate` above for why.
        */
       onCreate: ({ editor }) => {
         migrateMathStrings(editor);
-        editor
-          .chain()
-          .setMeta("addToHistory", false)
-          .selectAll()
-          .setParagraphLeading("1.5")
-          .setTextSelection(0) // collapse cursor to start, or wherever you want
-          .run();
+        settleCreatedEditor(editor);
         // Populate the initial node-type indicator for the starting cursor.
         emitNodeTypes(editor);
       },

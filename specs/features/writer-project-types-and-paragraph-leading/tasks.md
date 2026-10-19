@@ -66,7 +66,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 2, 3, 4
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-19, FR-20 reader (1). Shares `TipTapEditor.tsx` with Task 7 only through the toolbar wiring; serialise if both touch it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Other readers of stored leading, and the Markdown export warning
 **What:** Apply the single-value rule at the remaining readers of `paragraphLeading` and make the export warning count set leading only.
