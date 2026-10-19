@@ -281,7 +281,7 @@ export const LockedProjectListEntrySchema = z.object({
  * Still strict: an entry with any other reason, or a non-empty tree, matches
  * none of the three list shapes and is rejected.
  */
-export const UnusableProjectListEntrySchema = z.strictObject({
+const UnusableProjectListEntrySchema = z.strictObject({
   project: z.strictObject({ id: z.string() }),
   folders: z.tuple([]),
   resources: z.tuple([]),

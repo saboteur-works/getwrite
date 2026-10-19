@@ -37,7 +37,7 @@ export interface LockedProjectApiEntry {
  * category, nothing read from the manifest, and empty `folders`/`resources`.
  * Only a `list()` response can contain it.
  */
-export interface UnusableProjectApiEntry {
+interface UnusableProjectApiEntry {
   project: { id: string };
   folders: [];
   resources: [];
