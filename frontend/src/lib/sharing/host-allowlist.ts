@@ -113,6 +113,22 @@ export function ownHostNames(input: {
  * case-insensitively. A missing header, no port, another port, an IPv6
  * literal, a trailing-dot name, userinfo or a path all fail the exact match.
  */
+/**
+ * True only when the header is exactly a loopback name with the server's port
+ * (`localhost`, `127.0.0.1` or `[::1]`), compared case-insensitively. Used with
+ * sharing off, where only this machine should reach the server; a
+ * DNS-rebinding page sends its own name and fails.
+ */
+export function isLoopbackHost(input: {
+  hostHeader: string | null | undefined;
+  port: number;
+}): boolean {
+  if (input.hostHeader === null || input.hostHeader === undefined) return false;
+  return ["localhost", "127.0.0.1", "[::1]"]
+    .map((name) => `${name}:${input.port}`)
+    .includes(input.hostHeader.toLowerCase());
+}
+
 export function isAllowedHost(input: {
   hostHeader: string | null | undefined;
   port: number;

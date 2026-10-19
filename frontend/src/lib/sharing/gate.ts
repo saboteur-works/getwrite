@@ -26,13 +26,15 @@ import {
 import {
   HOST_NOT_ALLOWED_MESSAGE,
   isAllowedHost,
+  isLoopbackHost,
   parseServerPort,
   readOwnMachine,
   type OwnMachine,
 } from "./host-allowlist";
-import { isSameOrigin } from "./same-origin";
+import { isCrossOriginWrite, isSameOrigin } from "./same-origin";
 import {
   bindBeyondLoopback,
+  bindIsLoopback,
   readSharingEnv,
   type EnvLike,
 } from "./sharing-env";
@@ -178,6 +180,13 @@ function hostIsAllowed(
   });
 }
 
+/** True when the Host is a loopback name on the server's own port; a missing or non-numeric PORT refuses. */
+function loopbackHostIsAllowed(request: NextRequest, env: EnvLike): boolean {
+  const port = parseServerPort(env.PORT);
+  if (port === undefined) return false;
+  return isLoopbackHost({ hostHeader: request.headers.get("host"), port });
+}
+
 /**
  * FR-34: the server was told it is bound beyond loopback but the gate is not
  * on. Refuses with a 403, never a redirect (the redirect target would be
@@ -220,6 +229,12 @@ export async function runGate(
   }
   // The window check does not depend on the store, so a window request never reads it.
   const first = classifyRequest({ ...inputs, store: { kind: "empty" } });
+  if (first.kind === "off" && bindIsLoopback(env)) {
+    // The desktop server with sharing off (POS note_d7d147d5): only this
+    // machine's own names, and no write sent by a page on another origin.
+    if (!loopbackHostIsAllowed(request, env)) return refuseHostNotAllowed();
+    if (isCrossOriginWrite(request)) return refuseCrossOrigin();
+  }
   if (first.kind === "off" || first.kind === "window") {
     return forward(request, first);
   }

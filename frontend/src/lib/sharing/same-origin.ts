@@ -24,6 +24,25 @@ function hostOf(value: string): string | undefined {
   }
 }
 
+/**
+ * True for a state-changing request that a browser sent from another origin:
+ * its `Origin` (or, without one, its `Referer`) is present and does not name
+ * the `Host`; `Origin: null` counts. A write carrying neither header passes,
+ * since browsers send `Origin` on cross-site writes and a non-browser local
+ * client can already reach the files directly. Looser than
+ * {@link isSameOrigin}, which also refuses a write with neither.
+ */
+export function isCrossOriginWrite(input: {
+  method: string;
+  headers: HeaderReader;
+}): boolean {
+  const headers = input.headers;
+  if (headers.get("origin") === null && headers.get("referer") === null) {
+    return false;
+  }
+  return !isSameOrigin(input);
+}
+
 export function isSameOrigin(input: {
   method: string;
   headers: HeaderReader;
