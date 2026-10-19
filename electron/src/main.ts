@@ -436,15 +436,17 @@ function registerGlobalNoiseWordsHandlers(): void {
   const handlers = createGlobalNoiseWordsHandlers({
     userDataDir: app.getPath("userData"),
     log,
+    isTrustedSender: (url) => isTrustedSender(url, localOrigin(PORT)),
   });
 
-  ipcMain.handle("getwrite:global-noise-words-get", (): string[] =>
-    handlers.get(),
+  ipcMain.handle("getwrite:global-noise-words-get", (event): string[] =>
+    handlers.get(event),
   );
 
   ipcMain.handle(
     "getwrite:global-noise-words-set",
-    (_event, words: string[]): GlobalNoiseWordsSetResult => handlers.set(words),
+    (event, words: unknown): GlobalNoiseWordsSetResult =>
+      handlers.set(event, words),
   );
 }
 
