@@ -8,6 +8,7 @@ import {
   DEFAULT_VISIBLE_HEADING_LEVELS,
   getNextHeadingLevel,
   getVisibleHeadingLevels,
+  sanitizeEditorHeading,
   sanitizeEditorHeadingMap,
   type EditorHeadingFieldKey,
   type EditorHeadingMap,
@@ -216,6 +217,13 @@ export default function HeadingSettingsModal({
                     Set the typography attributes applied to {label} in the
                     editor.
                   </p>
+                  {/* An empty level stores nothing, so saving drops it; say
+                      so rather than let it vanish after a save (D-11). */}
+                  {isOptionalLevel && !sanitizeEditorHeading(heading) ? (
+                    <p className="mt-1 text-sm text-gw-secondary">
+                      No styles set, so this level is not kept when you save.
+                    </p>
+                  ) : null}
                 </div>
                 {isOptionalLevel ? (
                   <Button

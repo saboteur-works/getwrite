@@ -170,6 +170,27 @@ describe("HeadingSettingsModal", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
+  it("says an added level with no styles is not kept on save, until a style is set (D-11)", () => {
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        closeOnSave={false}
+      />,
+    );
+    const note = "No styles set, so this level is not kept when you save.";
+    expect(screen.queryByText(note)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /add h4/i }));
+    expect(screen.getByText(note)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("H4 Font Size"), {
+      target: { value: "22" },
+    });
+    expect(screen.queryByText(note)).toBeNull();
+  });
+
   it("does not save when cancel is clicked", () => {
     const onClose = vi.fn();
     const onSave = vi.fn();
