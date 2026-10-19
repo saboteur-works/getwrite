@@ -40,7 +40,12 @@ export default defineConfig({
     command:
       "pnpm run build-storybook && node scripts/serve-storybook-static.mjs",
     port: 6006,
-    reuseExistingServer: true,
+    // Never reuse whatever is on 6006. Reuse let a running `storybook dev`
+    // stand in for the build, which brought back the compile-on-first-visit
+    // timeouts measured above (first test of a run flaky, 2026-10-19, local
+    // runs that started `pnpm storybook` first as the docs then said). With
+    // reuse off, a server already on 6006 fails the run at start instead.
+    reuseExistingServer: false,
     timeout: 300_000,
   },
 });

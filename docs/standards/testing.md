@@ -19,7 +19,7 @@ This document applies when running or writing tests.
 | Targeted by file    | `pnpm test:ci <filename-without-extension>` |
 | E2E                 | `pnpm test:e2e`                             |
 
-- E2E tests require Storybook running on port 6006; start with `pnpm storybook` before running `pnpm test:e2e`
+- `pnpm test:e2e` builds Storybook and serves the built output on port 6006 itself (`playwright.config.ts` `webServer`); do not start `pnpm storybook` first. The dev server compiles each story on first visit, which regularly exceeds the 5s timeouts, and with `reuseExistingServer: false` a server already on 6006 fails the run at start
 
 ---
 
