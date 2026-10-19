@@ -96,6 +96,31 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(form.has("projectRoot")).toBe(false);
   });
 
+  it("createResource resolves with the folder when the server creates a folder (note_ea319573)", async () => {
+    // The body `POST /api/resource` returned for a folder in the Feature 89
+    // in-app run (2026-10-18).
+    const folder = {
+      id: "6571a283-b9ba-4e8b-83b9-a0bd3937de1c",
+      name: "Probe",
+      slug: "probe",
+      type: "folder",
+      parentId: "86b0c877-7dae-40e1-afa3-eadd88d76191",
+      createdAt: "2026-10-19T03:15:29.931Z",
+      orderIndex: 0,
+      special: false,
+      metadataSource: { isMetadataSource: false },
+    };
+    fetchMock.mockResolvedValue(jsonResponse({ resource: folder }));
+
+    const created = await createResource(directoryUuid, {
+      type: "folder",
+      name: "Probe",
+    });
+
+    expect(created).toEqual({ resource: folder });
+    expect(mockedReport).not.toHaveBeenCalled();
+  });
+
   it("createResource rejects when the response body doesn't match ResourceResponseSchema", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ resource: { id: "not-a-uuid" } }),

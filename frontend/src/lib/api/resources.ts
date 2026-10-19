@@ -1,6 +1,7 @@
 import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
 import {
+  CreateResourceResponseSchema,
   PatchRevisionContentResponseSchema,
   ResourceContentResponseSansTipTapSchema,
   ResourceContentResponseSchema,
@@ -210,7 +211,7 @@ export const httpResourcesTransport: ResourcesTransport = {
       body: JSON.stringify({ resourceData, projectId }),
     });
     const body: unknown = await response.json();
-    const result = ResourceResponseSchema.safeParse(body);
+    const result = CreateResourceResponseSchema.safeParse(body);
     if (!result.success) {
       reportTransportValidationFailure("resources.create", result.error.issues);
       throw new Error("Invalid response from resource create");

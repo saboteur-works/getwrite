@@ -28,6 +28,8 @@
  *   (`../models/entity-alias-table.ts`)
  * - `ResourceResponseSchema` — the FR-1 `{ resource: AnyResource }` response
  *   wrapper shape.
+ * - `CreateResourceResponseSchema` — the same wrapper for create, which also
+ *   accepts a folder.
  */
 import { z } from "zod";
 import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
@@ -342,6 +344,17 @@ export const EntityAliasTableSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
+
+// ---------------------------------------------------------------------------
+// CreateResourceResponseSchema — the `POST /api/resource` response. Create is
+// the one resource route that can return a folder (`type: "folder"`), so it
+// also accepts `FolderSchema` above (the project list's folder shape); validating it against
+// `ResourceResponseSchema` rejected every folder create (POS note_ea319573).
+// ---------------------------------------------------------------------------
+
+export const CreateResourceResponseSchema = z.object({
+  resource: z.union([AnyResourceSchema, FolderSchema]),
+});
 
 // ---------------------------------------------------------------------------
 // ResourceContentResponseSchema — matches `ResourceContentResponse`
