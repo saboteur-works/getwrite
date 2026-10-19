@@ -15,6 +15,21 @@ function renderInDialog(ui: React.ReactElement) {
 }
 
 describe("BodySettingsModal", () => {
+  it("qualifies the scope and states the 1.8 minimum and own-spacing rule", () => {
+    renderInDialog(
+      <BodySettingsModal
+        onClose={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("apply to all editor body text");
+    expect(text).toContain("no spacing of its own");
+    expect(text).toContain("at least 1.8");
+    expect(text).toContain("a paragraph with its own spacing keeps it");
+  });
+
   it("renders all body field labels", () => {
     renderInDialog(
       <BodySettingsModal

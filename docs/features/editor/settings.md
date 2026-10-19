@@ -55,6 +55,14 @@ What it does: Controls the vertical space between lines in body text. Also appli
 | User config           | Not currently exposed in the UI                                              |
 | Project type template | Yes — `editorConfig.body.lineHeight`                                         |
 
+Paragraphs and the project line height:
+
+- A paragraph with no leading of its own (unset) follows the project line height.
+- An explicit per-paragraph leading, set from the editor toolbar Line Height field, has no 1.8 floor and may go below 1.8. The toolbar rejects a value that is not a number greater than 0.
+- The 1.8 minimum applies to the project line height (Body Text Styles, the project type manager, and the validator). Body Text Styles shows "Line height must be a number of at least 1.8." for a lower value.
+- A stored paragraph leading of `"1.5"` (the legacy value) reads as unset, so that paragraph follows the project line height.
+- A paragraph with its own spacing keeps it when the project line height changes.
+
 ### Paragraph Spacing
 
 What it does: Sets the top and bottom margin of each paragraph (the gap between paragraphs). The first paragraph in a block has its top margin zeroed out.

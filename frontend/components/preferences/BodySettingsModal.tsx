@@ -103,7 +103,9 @@ export default function BodySettingsModal({
         </h2>
         <p className="max-w-2xl text-sm text-gw-secondary">
           Configure default body text typography for this project. These
-          settings apply to all editor body text.
+          settings apply to body text that has no spacing of its own. Line
+          height must be at least 1.8, and a paragraph with its own spacing
+          keeps it.
         </p>
       </header>
 

@@ -168,7 +168,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
         items: [
           [
             strong("Editor"),
-            " - typography for the editor: font, size, weight, letter spacing, and color for each heading level and for body text.",
+            " - typography for the editor: font, size, weight, letter spacing, and color for each heading level and for body text. Body text line height must be at least 1.8; a paragraph you give its own line height from the editor toolbar keeps it.",
           ],
           [
             strong("Default Revision Name"),

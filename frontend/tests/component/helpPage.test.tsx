@@ -100,6 +100,26 @@ describe("HelpPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("states the 1.8 line height minimum and own-leading rule in the Editor tab entry", async () => {
+    const user = userEvent.setup();
+
+    render(<HelpPage />);
+
+    await user.click(screen.getByRole("tab", { name: /Projects/i }));
+
+    const projectsPanel = screen.getByRole("tabpanel", { name: /Projects/i });
+
+    expect(
+      within(projectsPanel).getByText(
+        (_content: string, element: Element | null) =>
+          (element?.tagName === "LI" &&
+            element?.textContent?.includes("at least 1.8") &&
+            element?.textContent?.includes("keeps it")) ??
+          false,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("explains subtypes and field restriction in the Metadata Fields manager", async () => {
     const user = userEvent.setup();
 

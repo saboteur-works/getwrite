@@ -120,7 +120,8 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 9, 10
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-25 (Part 2). Wording is a working copy, not owner-reviewed. No new user-visible controls.
-**Done:** [ ]
+**Handbook pages naming line height (for the scribe; not edited):** `docs/user/handbook/write/editor-appearance.md` (says Body Text Styles line height does not change rendering, rendered 1.5 vs stored 1.8, toolbar accepted 0.5; now stale).
+**Done:** [x]
 
 ### Task 12: FR-2 experiment (web): freshness of the saved-types read and cache instances
 **What:** Run FR-2 (a) and (b) on the web dev server with a throwaway saved-types directory and record the observed values.
