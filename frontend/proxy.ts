@@ -4,7 +4,8 @@ import { runGate } from "./src/lib/sharing/gate";
 
 /**
  * Home-network sharing gate (Feature 75). Runs for every request; with sharing
- * off it only forwards. All logic lives in `src/lib/sharing/gate.ts`.
+ * off it forwards, except that the desktop's loopback server refuses foreign
+ * Hosts and cross-origin writes. All logic lives in `src/lib/sharing/gate.ts`.
  */
 export function proxy(request: NextRequest): Promise<NextResponse> {
   return runGate(request, process.env);
