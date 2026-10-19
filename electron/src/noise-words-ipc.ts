@@ -21,7 +21,7 @@ export interface GlobalNoiseWordsHandlerDeps {
 }
 
 /** The part of an IPC event the sender check reads. */
-export interface NoiseWordsSenderEvent {
+interface NoiseWordsSenderEvent {
   senderFrame?: { url?: string | null } | null;
 }
 
