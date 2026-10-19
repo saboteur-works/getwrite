@@ -25,7 +25,7 @@ Select **Today's writing** (hover it to see "Show today's writing details") to o
 
 Not yet in a release (merged after 2.2.0).
 
-Open **Project Settings** and use **Daily word goal**. It is in the **Writing Goals** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. After saving, the field can show the value from before the save if you reopen Project Settings before reloading the project. This is separate from any total word-count goal for the project.
+Open **Project Settings** and use **Daily word goal**. It is in the **Writing Goals** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. This is separate from any total word-count goal for the project.
 
 ## Total and per-resource word-count goals
 
@@ -33,7 +33,7 @@ Not yet in a release (merged after 2.2.0).
 
 Beyond the daily goal above, GetWrite also has two other word-count goals you can set, change, or clear from inside the app:
 
-- **A total goal for the whole project** — also in **Project Settings**, **Writing Goals** tab, in the field below "Daily word goal", labeled "Total word-count goal". Reopening the tab right after saving, before reloading the project, can show the value from before the save (the same staleness as the daily goal above); the saved value was in project.json right after the save.
+- **A total goal for the whole project** — also in **Project Settings**, **Writing Goals** tab, in the field below "Daily word goal", labeled "Total word-count goal".
 - **A goal for one resource** — in that resource's own sidebar, under a "Word count goal" section (shown for text resources only). When set, a progress bar appears in that section.
 
 Neither is shown in the footer described above, and neither was shown in red. See [Project Configuration](../protect-and-finish/project-configuration.md) for details on the project-wide field.
@@ -64,7 +64,6 @@ Each day is a file at `meta/writing-log/YYYY-MM-DD.json` in your project folder,
 - A moved paragraph counted as nothing: cutting a paragraph and pasting it at the end of the document saved different content and added no entry.
 - Retyping five words in reverse order added 0 and deleted 0.
 - A change of capitalization (`three` to `Three`) or of attached punctuation (`four` to `four,`) counted as one word added and one deleted.
-- After saving a goal and closing Project Settings, reopening it without reloading the project showed an empty field although the goal was saved (daily goal and total goal each, one run).
 - When the day's log file was not valid JSON, the footer and the details window read "Today's count is unavailable".
 - A save whose previous content was plain text, or whose revision file was missing, was recorded as skipped and the footer then read "Today's count may be incomplete".
 

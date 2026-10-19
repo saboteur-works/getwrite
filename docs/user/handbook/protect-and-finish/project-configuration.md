@@ -34,7 +34,7 @@ Common fields
 
   Not yet in a release (merged after 2.2.0).
 
-- `config.wordCountGoal` (optional): A total word-count goal for the whole project, a whole number of words (0 or more). In the app, open **Project Settings**, go to the **Writing Goals** tab, and use the field below "Daily word goal", labeled "Total word-count goal" (button **Save word-count goal**). Leave the field empty and save to clear the goal (the key was removed). It accepted and refused the same values as the daily goal. It is separate from the per-day goal above and from the per-resource goal described next. In the Data view the project goal showed as a "Writing Goal" bar ("48 / 200 words · 24%") whose fill was near-black (rgb 10, 10, 10), not red. After saving, Project Settings reopened without reloading the project showed both goal fields empty although the file held the saved values; after a reload they showed the saved values.
+- `config.wordCountGoal` (optional): A total word-count goal for the whole project, a whole number of words (0 or more). In the app, open **Project Settings**, go to the **Writing Goals** tab, and use the field below "Daily word goal", labeled "Total word-count goal" (button **Save word-count goal**). Leave the field empty and save to clear the goal (the key was removed). It accepted and refused the same values as the daily goal. It is separate from the per-day goal above and from the per-resource goal described next. In the Data view the project goal showed as a "Writing Goal" bar ("48 / 200 words · 24%") whose fill was near-black (rgb 10, 10, 10), not red.
 
   Not yet in a release (merged after 2.2.0).
 
@@ -99,8 +99,7 @@ Help
 
 ## Warnings and limits
 
-- After saving a goal, Project Settings reopened without reloading the project showed the **Daily word goal** and **Total word-count goal** fields empty although the file held the saved values (see the notes above for `config.dailyWordGoal` and `config.wordCountGoal`).
-- One `project.json` with a wrong-typed value in `config` hid every project from the Start Page, with a message that does not name the project.
+- A `project.json` with a wrong-typed value in `config` makes that project a "cannot be opened" card on the Start Page; the other projects still list and open (see [Start Page](../organize/start-page.md)).
 - A `project.json` with `timelineView: true` written by hand without `timeline` did not switch the Timeline fields on; the app's switch wrote both.
 - The Start Page's project card did not show a `description`.
 - `maxRevisions` and `autoPrune` appear inside `config` in a new project; the same names at the top level of the file were kept but had no effect on `prune`.
