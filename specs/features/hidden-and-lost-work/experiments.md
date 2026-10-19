@@ -291,3 +291,14 @@ Sidecar holding `aliases: ["Al", "Ally"]` and `wordCountGoal: 1500`, payload the
 - The page's React handler and HTTP route end to end (the test starts at `updateSidecarCore`; the page payload was read from code and reproduced by hand).
 - A stale local copy carrying an older `entityKind` in a running app; timing or editor-state dependence (no concurrent writes were run).
 - Any key other than `entityKind`, `aliases`, `wordCountGoal`; the native transport; encrypted projects.
+
+### Task 11 outcome (FR-18, FR-19, FR-20, FR-24, FR-25)
+
+Branch taken: **(a)**, stored `entityKind` kept. No product change. Branch (b) (red test, fix, clear-case test) and branch (c) (stop for the owner) were not taken, so FR-19's tests are not applicable.
+
+- Pinning test at the `updateSidecarCore` level: `frontend/tests/unit/resource-crud-core-entity-kind-omitted.test.ts` (from Task 10). It asserts the stored `entityKind` stays "character" for the recorded payload, for the payload `page.tsx` `updateResource` builds, and for a JSON-dropped `undefined` `entityKind`. Confirmed to fulfil (a); no addition needed. Run in the sandbox for Task 11, result below.
+- The payload omission (`entityKind` absent from the second `updateSidecar` payload) is recorded as a finding that did not cause loss.
+- The claim of harm is disproved for `entityKind` ONLY, at the `updateSidecarCore` level.
+- `aliases` and `wordCountGoal`: observations for those keys only (both kept when the payload omitted them). Neither was fixed; the wider stale-save family was not measured and is not claimed fixed or harmless.
+- Open caveat, not a measured loss: at the core, a payload carrying a different `entityKind` replaces the stored one; whether the app can send such a payload was not measured.
+- Docs revised only to what was measured: `docs/features/resource-subtype.md` (the `page.tsx` overlay and stale-copy section, and the Known limitations line) and `frontend/CLAUDE.md` (Resource subtype entry). Handbook pages are left to Task 17.
