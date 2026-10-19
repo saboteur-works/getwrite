@@ -244,3 +244,96 @@ test.describe("Block-level controls", () => {
     );
   });
 });
+
+// Paragraph leading against the project body line height (Body Text Styles).
+// The story mounts the editor from a stored document with three paragraphs:
+// two unset and one (the second) with explicit leading 1.2.
+const LEADING_STORY =
+  "/iframe.html?id=editor-tiptapeditor-paragraph-leading--project-line-height-and-explicit-leading";
+
+interface ParagraphLeadingRead {
+  ratio: number;
+  inline: string;
+}
+
+/**
+ * `waitForEditorReady` waits on the empty-document placeholder, which a
+ * seeded document never shows; wait on the toolbar and the seeded paragraphs.
+ */
+async function waitForSeededEditor(page: Page): Promise<void> {
+  await page.locator("#editor-menu-bar").waitFor({ state: "visible" });
+  await expect(contentScope(page).locator("p")).toHaveCount(3);
+}
+
+async function readParagraph(
+  page: Page,
+  index: number,
+): Promise<ParagraphLeadingRead> {
+  return contentScope(page)
+    .locator("p")
+    .nth(index)
+    .evaluate((element: HTMLElement): ParagraphLeadingRead => {
+      const style = getComputedStyle(element);
+      return {
+        ratio: parseFloat(style.lineHeight) / parseFloat(style.fontSize),
+        inline: element.style.lineHeight,
+      };
+    });
+}
+
+async function storedParagraphLeadings(page: Page): Promise<unknown[]> {
+  const text = await page.getByTestId("stored-doc").innerText();
+  const doc = JSON.parse(text) as {
+    content: Array<{ attrs?: { paragraphLeading?: unknown } }>;
+  };
+  return doc.content.map((node) => node.attrs?.paragraphLeading ?? null);
+}
+
+test.describe("Paragraph leading and project line height", () => {
+  test("an unset paragraph follows the project line height, explicit leading is kept", async ({
+    page,
+  }) => {
+    await page.goto(LEADING_STORY);
+    await waitForSeededEditor(page);
+
+    const settings: Array<{ option: string; expected: number }> = [
+      { option: "2.2", expected: 2.2 },
+      { option: "2.4", expected: 2.4 },
+      { option: "absent", expected: 1.8 },
+    ];
+    for (const { option, expected } of settings) {
+      await page.getByTestId(`project-line-height-${option}`).click();
+      await expect
+        .poll(async () => (await readParagraph(page, 0)).ratio)
+        .toBeCloseTo(expected, 2);
+      const unset = await readParagraph(page, 0);
+      expect(unset.inline).toBe("");
+      const explicit = await readParagraph(page, 1);
+      expect(explicit.inline).toBe("1.2");
+      expect(explicit.ratio).toBeCloseTo(1.2, 2);
+    }
+  });
+
+  test("a leading set through the toolbar is stored as a number and survives reopen", async ({
+    page,
+  }) => {
+    await page.goto(LEADING_STORY);
+    await waitForSeededEditor(page);
+
+    await contentScope(page).locator("p").nth(2).click();
+    await page.getByRole("spinbutton", { name: /Line Height/i }).fill("1.5");
+    await expect
+      .poll(async () => (await storedParagraphLeadings(page))[2])
+      .toBe(1.5);
+
+    await page.getByTestId("reopen-editor").click();
+    await waitForSeededEditor(page);
+
+    const leadings = await storedParagraphLeadings(page);
+    expect(leadings[0]).toBeNull();
+    expect(leadings[2]).toBe(1.5);
+    expect((await readParagraph(page, 2)).inline).toBe("1.5");
+    expect((await readParagraph(page, 0)).inline).toBe("");
+    expect((await readParagraph(page, 1)).inline).toBe("1.2");
+  });
+});

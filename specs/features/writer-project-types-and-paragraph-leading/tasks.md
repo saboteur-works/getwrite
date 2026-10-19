@@ -111,7 +111,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 5, 7
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-18 (acceptance), FR-20 (b), FR-26 (Playwright for part 2). Safety: `pnpm test:e2e` builds and serves Storybook itself on :6006 outside the sandbox; check 6006 is free first, never start `pnpm storybook`, record any pid started and stop only it by pid. The stories use in-memory data only; no read or write of `projects/` or any real app-data folder.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Part 2 documentation (FR-25, Part 2 half)
 **What:** Update the Body Text Styles text and the docs for the floor and for paragraphs with their own spacing.
