@@ -11,6 +11,8 @@ export interface WordCountGoalFieldProps {
   projectId: string;
   /** Currently saved project-wide word-count goal; omitted when none is set. */
   initialGoal?: number;
+  /** Called with the saved value after a successful save; `null` when cleared. */
+  onSaved?: (goal: number | null) => void;
 }
 
 const INVALID_MESSAGE = "Enter a whole number of words, 0 or greater.";
@@ -38,6 +40,7 @@ function parseGoal(draft: string): number | null | undefined {
 export default function WordCountGoalField({
   projectId,
   initialGoal,
+  onSaved,
 }: WordCountGoalFieldProps): JSX.Element {
   const [draft, setDraft] = useState<string>(
     initialGoal === undefined ? "" : String(initialGoal),
@@ -57,6 +60,7 @@ export default function WordCountGoalField({
     setErrorMessage(null);
     try {
       await setWordCountGoal(projectId, goal);
+      onSaved?.(goal);
       setSavedMessage(
         goal === null
           ? "Project word-count goal cleared."

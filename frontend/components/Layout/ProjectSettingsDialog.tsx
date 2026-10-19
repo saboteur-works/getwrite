@@ -38,6 +38,15 @@ import OrganizerCardBodySettings from "../preferences/OrganizerCardBodySettings"
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
+/**
+ * Reports a Writing Goals save to whoever holds the project's config, with the
+ * saved value (`null` when cleared), so a reopened dialog shows it (D-14).
+ */
+export type ProjectGoalSavedHandler = (
+  key: "dailyWordGoal" | "wordCountGoal",
+  goal: number | null,
+) => void;
+
 export interface ProjectSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,6 +64,8 @@ export interface ProjectSettingsDialogProps {
   initialDailyWordGoal?: number;
   /** Currently saved project-wide `wordCountGoal`, if any. */
   initialWordCountGoal?: number;
+  /** Called after a Writing Goals field saves, so the owner of the project's config can update it (D-14). */
+  onProjectGoalSaved?: ProjectGoalSavedHandler;
   /**
    * Currently saved `config.mentionHighlightDurationSeconds`, if any
    * (Entity mention navigation, Task 10). Omitted when the project has
@@ -134,6 +145,7 @@ export default function ProjectSettingsDialog({
   projectId,
   initialDailyWordGoal,
   initialWordCountGoal,
+  onProjectGoalSaved,
   initialMentionHighlightDurationSeconds,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
@@ -265,10 +277,16 @@ export default function ProjectSettingsDialog({
                   <DailyWordGoalField
                     projectId={projectId}
                     initialGoal={initialDailyWordGoal}
+                    onSaved={(goal) =>
+                      onProjectGoalSaved?.("dailyWordGoal", goal)
+                    }
                   />
                   <WordCountGoalField
                     projectId={projectId}
                     initialGoal={initialWordCountGoal}
+                    onSaved={(goal) =>
+                      onProjectGoalSaved?.("wordCountGoal", goal)
+                    }
                   />
                 </>
               ) : null}

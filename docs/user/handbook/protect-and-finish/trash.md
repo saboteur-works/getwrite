@@ -23,7 +23,7 @@ Trash is available on web and desktop.
 ## Warnings and limits
 
 - Permanent deletion cannot be undone ("Permanently delete 1 item? This cannot be undone.").
-- The confirmation for deleting a single resource reads "This will remove the resource. Proceed?" and does not mention Trash; the one for a folder reads "This will move the folder and everything in it to Trash. Proceed?".
+- The confirmation for deleting a single resource reads "This will move the resource to Trash. Proceed?"; the one for a folder reads "This will move the folder and everything in it to Trash. Proceed?".
 - In the run this page was verified from, deleting a resource did not change the built-in **Point of View** field of another resource that pointed at it (the field kept its link and its name, before and after the restore); a custom **Ref** field was cleared and re-linked as described above. A later change (unreleased) makes delete clear the built-in Point of View reference in a project whose metadata fields were never edited; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked.
 - In a test of the earlier code (not the app), deleting a folder with a child and a grandchild folder failed with a "no such file or directory" error and left part of the folder in Trash. That is not what the web run above showed after the change. Restoring a folder's contents on their own, name conflicts on restoring a nested folder, Trash with more than one entry, and encrypted projects were not tried in that run.
 

@@ -171,7 +171,7 @@ describe("ShellModalCoordinator — delete confirm dialog wording (FR-2)", () =>
       />,
     );
     expect(
-      screen.getByText("This will remove the resource. Proceed?"),
+      screen.getByText("This will move the resource to Trash. Proceed?"),
     ).toBeTruthy();
   });
 });

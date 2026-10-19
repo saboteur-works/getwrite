@@ -50,6 +50,7 @@ import ShellSettingsMenu, {
   type SettingsMenuAction,
 } from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
+import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
 import SidebarContextMenu from "../ResourceTree/SidebarContextMenu";
@@ -208,6 +209,12 @@ export interface AppShellProps {
   ) => Promise<void>;
   /** Closes the active project and returns to the start page. */
   onCloseProject?: () => void;
+  /**
+   * Called after Project Settings saves a writing goal, so the owner of
+   * `project.config` can update it; without it a reopened dialog showed the
+   * goal empty until a reload (D-14).
+   */
+  onProjectGoalSaved?: ProjectGoalSavedHandler;
   /** Called when the user creates an image or audio resource via the modal. */
   onMediaCreateConfirmed?: (
     file: File,
@@ -246,6 +253,7 @@ export default function AppShell({
   onChangeStoryEndDate,
   onResourceAction,
   onCloseProject,
+  onProjectGoalSaved,
   onMediaCreateConfirmed,
   project,
 }: AppShellProps): JSX.Element {
@@ -1190,6 +1198,7 @@ export default function AppShell({
                     }
                     initialDailyWordGoal={project?.config?.dailyWordGoal}
                     initialWordCountGoal={project?.config?.wordCountGoal}
+                    onProjectGoalSaved={onProjectGoalSaved}
                     initialMentionHighlightDurationSeconds={
                       project?.config?.mentionHighlightDurationSeconds
                     }
@@ -1290,10 +1299,14 @@ export default function AppShell({
               <main className="appshell-work-area">
                 <div className="appshell-work-area-content">
                   {/* Persistent desktop sharing indicator: first child of the
-                      main work area, so it shows in every view of the shell. */}
-                  <div className="shrink-0 w-full">
-                    <SharingStatus />
-                  </div>
+                      main work area, so it shows in every view of an open
+                      project. With no project the Start Page is this shell's
+                      child and shows its own (note_b1b217db). */}
+                  {resources ? (
+                    <div className="shrink-0 w-full">
+                      <SharingStatus />
+                    </div>
+                  ) : null}
                   {resources ? (
                     <div className="shrink-0 w-full">
                       <div className="workarea-header border-b-hairline border-b-gw-border">
@@ -1344,11 +1357,11 @@ export default function AppShell({
                           })()}
                           disabledReasons={{
                             timeline:
-                              "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+                              "The Timeline view is off. Turn it on in Project Settings → Timeline.",
                             entityRoster:
-                              "Entities are off. Turn them on in User Preferences → Entities.",
+                              "Entities are off. Turn them on in Project Settings → Entities.",
                             entityGraph:
-                              "Entities are off. Turn them on in User Preferences → Entities.",
+                              "Entities are off. Turn them on in Project Settings → Entities.",
                           }}
                         />
                         <div className="w-full min-w-0 sm:w-80 sm:flex-none">
@@ -1375,8 +1388,8 @@ export default function AppShell({
                           active, render the chosen view; otherwise render empty
                           state or children.
 
-                          `data`, `entityRoster`, and `entityGraph` are
-                          project-wide: they read across every resource (or
+                          `data`, `entityRoster`, `entityGraph`, `timeline`
+                          and `trash` are project-wide: they read across every resource (or
                           every declared entity) and have nothing to show for
                           a single selection, so gating them on
                           `selectedResource` would leave them permanently
@@ -1386,6 +1399,7 @@ export default function AppShell({
                       view === "data" ||
                       view === "entityRoster" ||
                       view === "entityGraph" ||
+                      view === "timeline" ||
                       view === "trash"
                         ? (() => {
                             if (view === "data") {
@@ -1508,10 +1522,7 @@ export default function AppShell({
                             // the current selection), so it is handled here,
                             // before the `!selectedResource` guard, rather
                             // than inside the post-guard `switch` below. The
-                            // Timeline view was placed in that `switch` and is
-                            // still unreachable from a freshly opened project
-                            // as a result (POS task_a7d8581a) — do not repeat
-                            // that mistake here. The `isEntitiesEnabled` check
+                            // `isEntitiesEnabled` check
                             // is a defensive guard; the tab is already
                             // disabled when the feature is off.
                             if (view === "entityGraph") {
@@ -1536,6 +1547,18 @@ export default function AppShell({
                             // the earlier routing-only placeholder.
                             if (view === "trash") {
                               return <TrashView />;
+                            }
+
+                            // Timeline is project-wide too (it reads every
+                            // dated resource from the store). It used to sit in
+                            // the post-guard `switch`, so a freshly opened
+                            // project showed the placeholder (POS
+                            // task_a7d8581a). The flag check is defensive: the
+                            // tab is disabled when the view is off.
+                            if (view === "timeline") {
+                              return isTimelineViewEnabled ? (
+                                <TimelineView />
+                              ) : null;
                             }
 
                             if (!selectedResource)
@@ -1585,13 +1608,6 @@ export default function AppShell({
                                 return <DiffViewController />;
                               case "organizer":
                                 return <OrganizerView />;
-                              case "timeline":
-                                // Defensive guard: the tab is disabled when the
-                                // view is off, but never mount TimelineView even
-                                // if the view state somehow lands here.
-                                return isTimelineViewEnabled ? (
-                                  <TimelineView />
-                                ) : null;
                               default:
                                 return (
                                   <div>

@@ -677,7 +677,9 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         <MetadataSidebar />
       </Provider>,
     );
-    expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add field" }),
+    ).toBeInTheDocument();
   });
 
   it("dispatches addMetadataField with first group id and a generated key on click", async () => {
@@ -724,7 +726,7 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
     );
 
     // Click opens the AddFieldForm inline mini-form (Task 20)
-    fireEvent.click(screen.getByLabelText("add-metadata-field"));
+    fireEvent.click(screen.getByRole("button", { name: "Add field" }));
 
     // Fill in a name and submit the form
     const nameInput = screen.getByLabelText("field-name");
@@ -777,9 +779,9 @@ describe("MetadataSidebar — Add field footer button (Task 11)", () => {
         <MetadataSidebar />
       </Provider>,
     );
-    const btn = screen.getByLabelText(
-      "add-metadata-field",
-    ) as HTMLButtonElement;
+    const btn = screen.getByRole("button", {
+      name: "Add field",
+    }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
   });
 });
@@ -951,7 +953,9 @@ describe("MetadataSidebar — media resource display", () => {
     );
     // Editable schema fields + add-field affordance are available, like text
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
-    expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add field" }),
+    ).toBeInTheDocument();
     // The read-only image section still renders alongside the editor
     expect(screen.getByText(/100/)).toBeInTheDocument();
   });
@@ -994,7 +998,9 @@ describe("MetadataSidebar — media resource display", () => {
       </Provider>,
     );
     expect(screen.getByLabelText("synopsis")).toBeInTheDocument();
-    expect(screen.getByLabelText("add-metadata-field")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add field" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("MP3")).toBeInTheDocument();
   });
 

@@ -238,6 +238,13 @@ function triggerDownload(blob: Blob, filename: string): void {
 export interface StartPageProps {
   /** Optional externally controlled list of projects to render. */
   projects?: StartPageProjectEntry[];
+  /**
+   * Whether `projects` has been read yet. While `"loading"` or after a
+   * `"failed"` read an empty list is not shown as "No projects yet", so a
+   * slow or failed read never renders as an empty workspace. Defaults to
+   * `"loaded"`.
+   */
+  projectsStatus?: "loading" | "loaded" | "failed";
   /** Callback fired after project creation succeeds. */
   onCreate?: (projectFiles: StartPageCreateResult) => void;
   /**
@@ -294,6 +301,7 @@ export interface StartPageProps {
  */
 export default function StartPage({
   projects = [],
+  projectsStatus = "loaded",
   onCreate,
   onOpen,
   lockStatus = "absent",
@@ -858,14 +866,30 @@ export default function StartPage({
             </h2>
           </div>
           <div className="max-w-xl text-left sm:text-right text-gw-small leading-6 text-gw-secondary">
-            {localProjects.length === 0
+            {localProjects.length === 0 && projectsStatus === "loaded"
               ? "Create your first project to begin writing."
               : "Open a project or manage its packaging and metadata."}
           </div>
         </div>
 
         <div className="px-6 lg:px-10 mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {localProjects.length === 0 ? (
+          {localProjects.length === 0 && projectsStatus === "loading" ? (
+            <p
+              role="status"
+              className="text-gw-small text-gw-secondary md:col-span-2 xl:col-span-3"
+            >
+              Loading projects…
+            </p>
+          ) : null}
+          {localProjects.length === 0 && projectsStatus === "failed" ? (
+            <p
+              role="alert"
+              className="text-gw-small text-gw-secondary md:col-span-2 xl:col-span-3"
+            >
+              Projects could not be loaded.
+            </p>
+          ) : null}
+          {localProjects.length === 0 && projectsStatus === "loaded" ? (
             <article className="border-hairline border-gw-border start-page-fade-in p-6 md:col-span-2 xl:col-span-3">
               <p className="text-gw-label uppercase tracking-label-xl text-gw-secondary">
                 Empty shelf

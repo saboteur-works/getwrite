@@ -127,6 +127,10 @@ export default function Home(): JSX.Element {
 
   /** All projects known to the app, fetched from `GET /api/projects` on mount. */
   const [projects, setProjects] = useState<StartPageProjectEntry[]>([]);
+  /** Whether the project list has been read; an empty list is not "no projects" until it has. */
+  const [projectsStatus, setProjectsStatus] = useState<
+    "loading" | "loaded" | "failed"
+  >("loading");
 
   /**
    * The project currently open in the editor, or `null` when the user is
@@ -180,9 +184,11 @@ export default function Home(): JSX.Element {
         // kept out of the store so nothing can select or open it.
         dispatch(setProjectsInStore(data.filter((entry) => !entry.isUnusable)));
         setProjects(data);
+        setProjectsStatus("loaded");
       }
     } catch (err) {
       console.error("Error fetching projects:", err);
+      setProjectsStatus("failed");
     }
   }, [dispatch]);
 
@@ -951,6 +957,18 @@ export default function Home(): JSX.Element {
     toastService.success("Resource created", resource.name);
   };
 
+  /** Applies a saved writing goal to the open project's config (D-14). */
+  const handleProjectGoalSaved = (
+    key: "dailyWordGoal" | "wordCountGoal",
+    goal: number | null,
+  ): void => {
+    setSelectedProject((prev) =>
+      prev
+        ? { ...prev, config: { ...prev.config, [key]: goal ?? undefined } }
+        : prev,
+    );
+  };
+
   const handleCloseProject = (): void => {
     setSelectedProject(null);
     dispatch(setSelectedProjectId(null));
@@ -969,6 +987,7 @@ export default function Home(): JSX.Element {
       onResourceSelect={handleResourceSelect}
       onResourceAction={handleResourceAction}
       onCloseProject={handleCloseProject}
+      onProjectGoalSaved={handleProjectGoalSaved}
       onMediaCreateConfirmed={handleMediaCreate}
       selectedResourceId={selectedResource?.id ?? null}
       onChangeSynopsis={handleChangeSynopsis}
@@ -983,6 +1002,7 @@ export default function Home(): JSX.Element {
       {!selectedProject ? (
         <StartPage
           projects={projects}
+          projectsStatus={projectsStatus}
           onCreate={handleCreate}
           onOpen={handleOpenFromStartPage}
           lockStatus={

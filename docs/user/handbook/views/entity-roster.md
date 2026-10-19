@@ -27,7 +27,7 @@ Click (or press Enter or Space on) a row to jump straight to that entity's docum
 
 ## Turning it on
 
-The Entities tab depends on the **Entities** setting being turned on for the project: open **Project Settings**, select the **Entities** tab and turn on **Entities**. While it's off, the tab is greyed out; hovering it shows "Entities are off. Turn them on in User Preferences → Entities."
+The Entities tab depends on the **Entities** setting being turned on for the project: open **Project Settings**, select the **Entities** tab and turn on **Entities**. While it's off, the tab is greyed out; hovering it shows "Entities are off. Turn them on in Project Settings → Entities."
 
 Not yet in a release (merged after 2.2.0).
 

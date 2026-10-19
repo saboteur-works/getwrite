@@ -59,7 +59,7 @@ Alongside the canvas, the same nodes and connections are also presented as a pla
 
 ## Turning it on
 
-Like the Entities view, the Graph tab depends on the **Entities** setting being turned on for the project: open **Project Settings**, select the **Entities** tab and turn on **Entities**. While it's off, the tab is greyed out; hovering it shows "Entities are off. Turn them on in User Preferences → Entities."
+Like the Entities view, the Graph tab depends on the **Entities** setting being turned on for the project: open **Project Settings**, select the **Entities** tab and turn on **Entities**. While it's off, the tab is greyed out; hovering it shows "Entities are off. Turn them on in Project Settings → Entities."
 
 Not yet in a release (merged after 2.2.0).
 

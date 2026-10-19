@@ -608,7 +608,7 @@ export default function MetadataSidebar({
                   onClick={() => setIsAddFormVisible(true)}
                   disabled={!selectedProjectId || schema.groups.length === 0}
                   className="flex w-full items-center gap-1.5 py-1 text-gw-label font-mono uppercase tracking-label text-gw-secondary hover:text-gw-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                  aria-label="add-metadata-field"
+                  aria-label="Add field"
                 >
                   + Add field
                 </button>

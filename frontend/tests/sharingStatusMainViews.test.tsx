@@ -84,6 +84,19 @@ describe("SharingStatus in main views", () => {
     expect(await screen.findByText(SHARING_IS_ON)).toBeInTheDocument();
   });
 
+  it("shows one 'Sharing is on' on the Start page as the app renders it, inside the shell with no project (note_b1b217db)", async () => {
+    installEffectiveBridge();
+    render(
+      <Provider store={makeStore()}>
+        <AppShell showSidebars={false}>
+          <StartPage projects={[]} />
+        </AppShell>
+      </Provider>,
+    );
+    expect(await screen.findByText(SHARING_IS_ON)).toBeInTheDocument();
+    expect(screen.getAllByText(SHARING_IS_ON)).toHaveLength(1);
+  });
+
   it("shows nothing about sharing without a bridge", () => {
     render(
       <Provider store={makeStore()}>

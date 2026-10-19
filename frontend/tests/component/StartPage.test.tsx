@@ -1117,3 +1117,24 @@ describe("toStartPageEntry — list entries reach the page (Feature 89, FR-5)", 
     expect(view.isUnusable).toBeUndefined();
   });
 });
+
+describe("StartPage — project list status (no false empty state)", () => {
+  it("does not say 'No projects yet' while the list is loading", () => {
+    renderStartPage({ projects: [], projectsStatus: "loading" });
+    expect(screen.queryByText("No projects yet")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading projects…");
+  });
+
+  it("says the list could not be loaded, not 'No projects yet', when listing failed", () => {
+    renderStartPage({ projects: [], projectsStatus: "failed" });
+    expect(screen.queryByText("No projects yet")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Projects could not be loaded.",
+    );
+  });
+
+  it("still says 'No projects yet' once an empty list has loaded", () => {
+    renderStartPage({ projects: [], projectsStatus: "loaded" });
+    expect(screen.getByText("No projects yet")).toBeInTheDocument();
+  });
+});
