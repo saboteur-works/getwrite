@@ -111,3 +111,10 @@ Date: 2026-10-18. Tree: branch `fix/hidden-and-lost-work` at `edb28e16` plus the
 - A bad `folder.json` (`name: 42`) still rejects the whole list at the client, and a bad resource sidecar still makes `listProjectsCore` itself throw a `ZodError`; both characterisation tests from Task 2 remain and pass. Neither is in Task 3's scope.
 - `tree-unreadable` is in the reason enumeration and accepted by the client schema; nothing produces it yet.
 - No server, route, browser or app run.
+
+## Part 1, Task 5: stories for the unusable-project card (2026-10-18)
+
+- Added five stories to `frontend/stories/Start/StartPage.stories.tsx` (`UnusableUnparseable`, `UnusableMissingField`, `UnusableInvalidManifest`, `UnusableManifestUnreadable`, `UnusableTreeUnreadable`), one per reason category, each beside a healthy project. The card needs no new context, so no decorator was added. Each play function asserts the label, the folder-id heading, the category's reason text, and no button or link inside the card.
+- Process listing before and after: `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` printed nothing both times (exit 1). No Storybook dev server was started and no pid exists; the run used the Vitest Storybook runner (`pnpm exec vitest run --config=vitest.storybook.config.ts --configLoader runner stories/Start/StartPage.stories.tsx`), which drives Chromium itself.
+- a11y decision: the stories set `parameters.a11y.test = "error"`. First run with strict on: 5 failed, each with one violation, `landmark-complementary-is-top-level` on StartPage's own `<aside>` (the page shell, not the card). Contrast and all other rules reported nothing on the card. Observation only: whether the same violation exists on the other StartPage stories was not measured (they run at the global `todo` level). Decision: the stories switch off that one rule and keep strict on; a page-shell fix is not in this feature.
+- Result after that: 16 passed, 0 failed for the whole file (11 existing stories plus the 5 new). `pnpm typecheck` exit 0.
