@@ -41,6 +41,16 @@ export function readSharingEnv(env: EnvLike): SharingEnv {
  * means undeclared and is false, so `pnpm dev`, hosted deployments and tests
  * that never set it are unchanged.
  */
+/**
+ * True when the server declares a loopback bind: the desktop app's own server
+ * with sharing off. Unset (hosted, `pnpm dev`) is false, so those keep their
+ * existing behaviour.
+ */
+export function bindIsLoopback(env: EnvLike): boolean {
+  const value = env[BIND_ENV];
+  return value !== undefined && LOOPBACK_BINDS.includes(value);
+}
+
 export function bindBeyondLoopback(env: EnvLike): boolean {
   const value = env[BIND_ENV];
   if (value === undefined) return false;

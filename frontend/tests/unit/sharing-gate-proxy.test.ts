@@ -135,6 +135,86 @@ describe("sharing off", () => {
   });
 });
 
+// POS note_d7d147d5: with sharing off the desktop server (bound to
+// loopback, GETWRITE_BIND=127.0.0.1) took a cross-site text/plain POST from a
+// page on another local origin, and served a foreign Host (measured
+// 2026-10-19).
+describe("sharing off, desktop loopback bind", () => {
+  const LOOPBACK = "127.0.0.1:3000";
+
+  beforeEach(() => {
+    vi.stubEnv("GETWRITE_SHARING", "0");
+    vi.stubEnv("GETWRITE_BIND", "127.0.0.1");
+  });
+
+  function local(
+    pathname: string,
+    init: { method?: string; headers?: Record<string, string> } = {},
+  ): NextRequest {
+    return req(pathname, {
+      method: init.method,
+      headers: { host: LOOPBACK, ...(init.headers ?? {}) },
+    });
+  }
+
+  it("passes loopback Hosts on the server's port", async () => {
+    for (const host of ["127.0.0.1:3000", "localhost:3000", "LOCALHOST:3000"]) {
+      const res = await proxy(local("/api/projects", { headers: { host } }));
+      expect(isPassThrough(res)).toBe(true);
+      expect(forwarded(res)).toBe("off");
+    }
+  });
+
+  it("refuses a Host that is not loopback on the server's port, as a DNS-rebinding page would send", async () => {
+    for (const host of [
+      "evil.example:3000",
+      "127.0.0.1.evil.example:3000",
+      "10.0.0.5:3000",
+      "127.0.0.1:7340",
+      "127.0.0.1",
+    ]) {
+      const res = await proxy(local("/api/projects", { headers: { host } }));
+      expect(res.status).toBe(403);
+      expect(res.headers.get("x-getwrite-gate")).toBe("host-not-allowed");
+    }
+  });
+
+  it("refuses a state-changing request whose Origin or Referer names another origin", async () => {
+    for (const headers of <Record<string, string>[]>[
+      { origin: "http://127.0.0.1:8799" },
+      { origin: "https://evil.example" },
+      { origin: "null" },
+      { referer: "http://127.0.0.1:8799/page" },
+    ]) {
+      for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+        const res = await proxy(local("/api/projects", { method, headers }));
+        expect(res.status).toBe(403);
+        expect(res.headers.get("x-getwrite-gate")).toBe("cross-origin");
+      }
+    }
+  });
+
+  it("passes a same-origin write, and a write with neither Origin nor Referer (a non-browser client)", async () => {
+    for (const headers of <Record<string, string>[]>[
+      { origin: `http://${LOOPBACK}` },
+      { referer: `http://${LOOPBACK}/` },
+      {},
+    ]) {
+      const res = await proxy(
+        local("/api/projects", { method: "POST", headers }),
+      );
+      expect(isPassThrough(res)).toBe(true);
+    }
+  });
+
+  it("passes a GET that carries a foreign Origin", async () => {
+    const res = await proxy(
+      local("/api/projects", { headers: { origin: "https://evil.example" } }),
+    );
+    expect(isPassThrough(res)).toBe(true);
+  });
+});
+
 describe("sharing on, no credential", () => {
   it.each(API_PATHS)("refuses %s with a typed 401 JSON", async (p) => {
     for (const method of ["GET", "POST"]) {
@@ -994,12 +1074,17 @@ describe("bound beyond loopback without the gate on (FR-34)", () => {
     await expectBindRefusal(await proxy(req("/api/projects")));
   });
 
+  // A loopback-bound socket only sees a loopback Host; any other Host is a
+  // DNS-rebinding page, refused since note_d7d147d5 (see "sharing off, desktop
+  // loopback bind").
   it.each(["127.0.0.1", "localhost", "::1"])(
-    "GETWRITE_BIND=%s with sharing off passes everything",
+    "GETWRITE_BIND=%s with sharing off passes everything from a loopback Host",
     async (bind) => {
       stubBind("0", bind);
       for (const p of ["/api/projects", "/", "/pair", "/_next/static/x"]) {
-        const res = await proxy(req(p));
+        const res = await proxy(
+          req(p, { headers: { host: "127.0.0.1:3000" } }),
+        );
         expect(isPassThrough(res)).toBe(true);
         expect(forwarded(res)).toBe("off");
       }
