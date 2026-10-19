@@ -1357,11 +1357,11 @@ export default function AppShell({
                           })()}
                           disabledReasons={{
                             timeline:
-                              "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+                              "The Timeline view is off. Turn it on in Project Settings → Timeline.",
                             entityRoster:
-                              "Entities are off. Turn them on in User Preferences → Entities.",
+                              "Entities are off. Turn them on in Project Settings → Entities.",
                             entityGraph:
-                              "Entities are off. Turn them on in User Preferences → Entities.",
+                              "Entities are off. Turn them on in Project Settings → Entities.",
                           }}
                         />
                         <div className="w-full min-w-0 sm:w-80 sm:flex-none">

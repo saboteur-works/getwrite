@@ -50,7 +50,9 @@ export default function ConfirmDialog({
           <DialogDescription>{description}</DialogDescription>
         ) : null}
         {details ? (
-          <div className="confirm-dialog-details">{details}</div>
+          <div className="confirm-dialog-details text-gw-secondary">
+            {details}
+          </div>
         ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>

@@ -106,5 +106,12 @@ describe("ConfirmDialog", () => {
       render(<ConfirmDialog {...baseProps} details={<span>Pending</span>} />);
       expect(document.querySelector(".confirm-dialog-details")).toBeTruthy();
     });
+
+    it("gives details a text colour, so uncoloured content is readable in a portaled dark dialog (note_e3c9e47c)", () => {
+      render(<ConfirmDialog {...baseProps} details={<span>Pending</span>} />);
+      expect(
+        document.querySelector(".confirm-dialog-details")?.classList,
+      ).toContain("text-gw-secondary");
+    });
   });
 });

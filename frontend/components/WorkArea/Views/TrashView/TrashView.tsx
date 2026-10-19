@@ -482,7 +482,7 @@ export default function TrashView({
 
   return (
     <div className={className} data-testid="trash-view">
-      <h2 className="workarea-section-title">Trash</h2>
+      <h2 className="text-gw-h2 font-semibold text-gw-secondary">Trash</h2>
 
       {isLoading && (
         <p className="text-gw-nano text-gw-secondary" role="status">

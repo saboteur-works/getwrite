@@ -289,6 +289,11 @@ describe("TrashView", () => {
 
     expect(await screen.findByTestId("trash-empty-state")).toBeTruthy();
     expect(screen.getByText(/trash is empty/i)).toBeTruthy();
+    // A top-level view title uses the section-heading token, like the
+    // Organizer (note_f4753168).
+    expect(
+      screen.getByRole("heading", { name: "Trash", level: 2 }).className,
+    ).toContain("text-gw-h2");
     expect(screen.queryByTestId("trash-list")).toBeNull();
     expect(screen.queryAllByTestId("trash-row")).toHaveLength(0);
   });

@@ -454,6 +454,10 @@ describe("EntityRosterView", () => {
     );
 
     expect(await screen.findByTestId("entity-roster-empty-state")).toBeTruthy();
+    // Padded like a roster row, not flush in the corner (note_ed91bc06).
+    expect(screen.getByTestId("entity-roster-empty-state").className).toMatch(
+      /\bpx-4\b/,
+    );
     expect(
       screen.getByText(/no entities have been declared yet/i),
     ).toBeTruthy();

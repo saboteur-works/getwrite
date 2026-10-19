@@ -113,6 +113,16 @@ describe("AppShell — Timeline view gating (Task 8)", () => {
     expect(screen.getByText(/no dated scenes/i)).toBeInTheDocument();
   });
 
+  it("tells the writer to turn the Timeline view on in Project Settings, where the setting is (D-32)", async () => {
+    await renderShell({});
+
+    const tab = screen.getByRole("tab", { name: /Timeline/i });
+    const anchor = tab.closest("[data-tooltip-content]");
+    expect(anchor?.getAttribute("data-tooltip-content")).toBe(
+      "The Timeline view is off. Turn it on in Project Settings → Timeline.",
+    );
+  });
+
   it("disables the Timeline tab and never mounts TimelineView when the view is off", async () => {
     await renderShell({ timelineView: false });
 

@@ -315,7 +315,10 @@ export default function EntityRosterView({
   return (
     <div className={className} data-testid="entity-roster-view">
       {isEmpty ? (
-        <p data-testid="entity-roster-empty-state">
+        <p
+          data-testid="entity-roster-empty-state"
+          className="px-4 py-2.5 text-gw-small text-gw-secondary"
+        >
           No entities have been declared yet. Give a resource an entity kind to
           have it appear here.
         </p>

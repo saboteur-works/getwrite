@@ -218,7 +218,7 @@ export default function ShellModalCoordinator({
         description={
           folders?.some((f) => f.id === contextAction.resourceId)
             ? "This will move the folder and everything in it to Trash. Proceed?"
-            : "This will remove the resource. Proceed?"
+            : "This will move the resource to Trash. Proceed?"
         }
         confirmLabel="Delete"
         cancelLabel="Cancel"

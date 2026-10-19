@@ -43,7 +43,7 @@ export const DisabledTimeline: Story = {
         disabledViews={["timeline"]}
         disabledReasons={{
           timeline:
-            "The Timeline view is off. Turn it on in User Preferences → Timeline view.",
+            "The Timeline view is off. Turn it on in Project Settings → Timeline.",
         }}
         onChange={(v) => console.log("view changed", v)}
       />
