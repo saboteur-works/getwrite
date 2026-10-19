@@ -235,6 +235,11 @@ with the app without hand-rewriting it (see OQ-90).
   as a user handbook that is accurate to what the app does today, including
   its warnings and gotchas, so that I can learn the app and avoid losing
   work or being surprised by a limit. [Later]
+- US-30: As a writer on deadline whose project is locked or whose files
+  cannot be read, I want to be told so, instead of being shown an empty
+  project or folder tree, so that I do not mistake locked or unreadable work
+  for lost work. [Next] (Owner decision, Gate 3, 2026-10-18; Feature 89,
+  part 5.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 - US-29: As a maintainer of a repository that generates GetWrite's online user
@@ -390,7 +395,13 @@ with the app without hand-rewriting it (see OQ-90).
   locked: it cannot be renamed, retyped, reordered, or removed, though its
   options are project-supplied and user-editable. Every other built-in field
   is unlocked at load time and is editable exactly like a user-defined field —
-  `locked` protects a field definition, not its option list. [US-14]
+  `locked` protects a field definition, not its option list. Added
+  2026-10-18 (Feature 89): a field that has been deprecated MUST NOT be
+  shown in the resource sidebar, as the deprecate choice tells the writer;
+  its stored values MUST remain on the resource and MUST reappear if the
+  field is restored. Observed (POS note_230d6135, read in `MetadataSidebar.tsx`, which
+  filters on feature flags and subtype only; not run): a deprecated field
+  is still shown. [US-14]
 - FR-21: Users MUST be able to reorder resources and folders via
   drag-and-drop, with order persisted to disk, and MUST have context-menu
   actions to create, rename, copy/duplicate (a single behavior offered
@@ -407,6 +418,29 @@ with the app without hand-rewriting it (see OQ-90).
 - FR-23: Users MUST be able to create, open, rename, delete, and package
   projects from a start page; package compiles selected project resources
   to PDF, DOCX, Markdown, or text — it is not a project-level zip export.
+  Added 2026-10-18 (Feature 89): one project whose `project.json` is
+  damaged or has a wrong-typed field MUST NOT hide the writer's other
+  projects from the start page; the remaining projects MUST be listed and
+  openable. Owner decision 2026-10-18 (OQ-96, option a): every project
+  whose `project.json` exists but cannot be used (a wrong-typed field, a
+  file that does not parse, or a manifest missing `id` or `createdAt`)
+  MUST appear on the start page as a card that cannot be opened, with a
+  reason, following the locked-project card pattern; the card MAY say the
+  project's files are still on disk and unchanged, and when no readable
+  name exists it MUST show the project's folder id. No repair action is
+  required. A folder with no `project.json` at all is not a project for
+  this purpose: it is not listed. Measured (D-38,
+  `specs/features/user-handbook/verification.md`): one `project.json`
+  with a wrong-typed field hid every project. Read, not run (triage):
+  `listProjectsCore` (`frontend/src/lib/models/project-crud-core.ts`
+  ~142-168) silently skips an unusable project with only a `console.warn`,
+  contrary to `docs/standards/failure-visibility.md` section 1. Where
+  validation happens is a design point for the feature spec. Read, not
+  run: the client rejects the whole list when any entry fails validation
+  (`frontend/src/lib/api/projects.ts`), pinned by
+  `frontend/tests/unit/projects-api-validation.test.ts` ("REJECTS a
+  malformed array entry"), which this requirement would change. The
+  locked-encrypted project case was already fixed (commit 96b4bff7).
   [US-15]
 - FR-24: The product MUST render a lightweight hover preview — the
   referenced resource's stored name plus the first 8 characters of its id,
@@ -434,7 +468,16 @@ with the app without hand-rewriting it (see OQ-90).
   per-entity mention indexes are computed rather than hand-maintained; it
   MUST also let a saved query or smart folder filter resources by entity
   mention. The product MUST NOT infer an entity the writer never declared,
-  and MUST NOT perform pronoun or coreference resolution. [US-3]
+  and MUST NOT perform pronoun or coreference resolution. Added
+  2026-10-18 (Feature 89): a resource's entity declaration (`entityKind`)
+  MUST persist across later edits to the same resource, including editing
+  a custom metadata field after declaring it. Measured at request-payload
+  level only (`frontend/tests/page-stale-sidecar-save.test.tsx`, with the
+  save mocked): after setting `entityKind` and then editing a custom
+  field, the second sidecar save's payload omitted `entityKind` while the
+  client state held both. Whether a missing or stale value is then stored
+  was never measured; that harm is a hypothesis (POS note note_fa1c425b).
+  Left unfixed by Feature 87 by decision at the time. [US-3]
 - FR-36: Users MUST be able to toggle a working mode that visually marks every
   declared entity's name and aliases inline in the editor, so that the
   entities present in a passage are apparent at a glance without opening a
@@ -645,7 +688,15 @@ with the app without hand-rewriting it (see OQ-90).
   reference that changed in the meantime (resolved: OQ-30). A set of
   follow-up refinements identified after the merge is tracked separately in
   `specs/features/trash-ui/follow-up-work.md` and addressed by
-  `specs/features/trash-ui-followups.md`. [US-11]
+  `specs/features/trash-ui-followups.md`. Added 2026-10-18 (Feature 89):
+  deleting a folder that contains nested folders MUST succeed and MUST
+  move the folder and every descendant, at any depth, into Trash as one
+  restorable unit; it MUST NOT fail partway or leave part of the subtree
+  outside Trash. Measured earlier (POS note note_f818d108): deleting a
+  folder with nested child folders returned 404; not re-run on `main`.
+  Hypothesis, not established: parents are moved before their children,
+  so a child's original path no longer exists (read, `trash.ts`); existing
+  tests use flat folder layouts. [US-11]
 - FR-54: The product MUST check an entity's `name`, not only its
   `aliases`, against a noise-prone-word heuristic, flagging — never
   filtering, hiding, or otherwise suppressing — a detected mention whose
@@ -1602,7 +1653,13 @@ with the app without hand-rewriting it (see OQ-90).
   no usable key merely hands back unusable ciphertext bytes, while such a
   write both exposes plaintext inside a project marked encrypted and
   destroys the ciphertext it overwrites, with no way back short of
-  restoring from a backup outside this system.
+  restoring from a backup outside this system. Added 2026-10-18 (Feature
+  89): a locked-access error (`ProjectLockedError`,
+  `MissingProjectKeyError`) MUST NOT be swallowed on the way to an empty
+  result, per `docs/standards/failure-visibility.md`. Read, not run:
+  `readFolderTree` (`frontend/src/lib/models/folder-utils.ts`) has a bare
+  `catch {}` that discards every error, including these (POS note
+  note_36a47f66); which callers are exposed was not surveyed. [US-30]
 
   Measured 2026-09-17 (static reading of source, not exercised): `adapterFor`
   in `frontend/src/lib/models/crypto/workspace-adapter.ts:84` returns the
@@ -3113,6 +3170,13 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (2026-10-18), three decisions. (1) D-8 is fixed in both builds unconditionally: the DOCX worker fork is given `GETWRITE_PROJECT_TYPES_DIR` (the templates directory main already computes) and an explicit working directory; the packaged-build run happens afterwards as verification of the fix, not as a gate. (2) D-40 gets a manual desktop compile outside the verification script; if it shows a product defect, the size decides: a one-line change (for example deferring `revokeObjectURL`) is fixed inside Feature 88, while a main-process download handler or a decision about where compiled files go is scoped as a separate feature; if it shows a script fault, the script is fixed and it is recorded that no product change was needed. (3) Both checks are run (Word import in a packaged build, and the manual desktop compile); the packaged run must use a throwaway user-data directory and a throwaway workspace folder, never the owner's real ones, and if that cannot be arranged safely the packaged import is the owner's manual check.
 **Evidence:** Owner decision, Gate 1, 2026-10-18. Measured: development-app failure and the working-directory-dependent lookup (`specs/features/user-handbook/verification.md`, D-8). Read, not run: the DOCX worker is forked with no env or cwd (`electron/src/main.ts:661`); `GETWRITE_PROJECT_TYPES_DIR`, the only override `frontend/src/lib/projectTypes.ts:68` reads, is set nowhere in `electron/`; its fallbacks are cwd-relative while a packaged build ships the files under `process.resourcesPath/getwrite-config` (`electron/electron-builder.yml`); the Scrivener worker does not read project types. Hypothesis (medium confidence, not established): a packaged build launched from Finder fails the same way. D-40: not resolvable from code; candidate causes, none established, are a fault in the verification script's hook, the product revoking the object URL synchronously after `click()` (`frontend/src/lib/compile/download-file.ts:32-42`, read), or interception elsewhere; the manual compile is the experiment that discriminates them.
 **Impact:** FR-33, FR-14; Feature 88's D-8 and D-40 parts.
+**Owner:** Product owner.
+
+**OQ-96 (resolved): When one project cannot be read (a damaged or wrong-typed `project.json`), how is it shown to the writer on the start page?**
+**Options:** (a) list it as a card that cannot be opened, with a reason; (b) leave it out of the list and show a notice naming it; (c) leave it out silently, with a log entry only.
+**Resolution:** Resolved (2026-10-18), two decisions. (1) Option (a): a project whose `project.json` cannot be read is listed on the start page as a card that cannot be opened, with a reason, following the existing locked-project card pattern; it can say the project's files are still on disk and unchanged; when no readable name exists it shows the project's folder id. No repair action is required. (2) Scope, also (a): the treatment covers every project whose `project.json` exists but cannot be used (a wrong-typed field (D-38), a file that does not parse, and a manifest missing `id` or `createdAt`), which `listProjectsCore` today drops with only a `console.warn`. A folder with no `project.json` at all (POS note_3c11e2c4) is not a project for this purpose: it stays skipped and is out of scope.
+**Evidence:** Owner decision, Gate 1, 2026-10-18. D-38 measured in `specs/features/user-handbook/verification.md`: one wrong-typed `project.json` hid every project. `specs/product/getwrite.features.md` (~line 3625) already records the related question of client-side per-entry parsing versus server-side per-project validation; where validation happens is a design point for the feature spec, not this question. `docs/standards/failure-visibility.md` says a failure must not render as absence, which bears on option (c).
+**Impact:** FR-23; Feature 89's D-38 part.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)

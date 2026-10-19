@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Project, Folder, AnyResource } from "../models/types";
+import type { UnusableProjectReason } from "../models/unusable-project-reason";
 import { createTransport } from "../../store/transport/create-transport";
 import { ProjectApiEntrySchema, ProjectListEntrySchema } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
@@ -31,12 +32,33 @@ export interface LockedProjectApiEntry {
 }
 
 /**
- * The full response shape of a `list()` entry — a normal entry, or the
- * reduced locked entry above. `open`/`create` keep returning the narrower,
- * always-fully-populated `ProjectApiEntry`, since neither can return a
- * locked entry.
+ * The entry `GET /api/projects` returns for a project whose `project.json`
+ * exists but cannot be used (Feature 89, FR-2): the folder id and a reason
+ * category, nothing read from the manifest, and empty `folders`/`resources`.
+ * Only a `list()` response can contain it.
  */
-export type ProjectListApiEntry = ProjectApiEntry | LockedProjectApiEntry;
+interface UnusableProjectApiEntry {
+  project: { id: string };
+  folders: [];
+  resources: [];
+  isUnusable: true;
+  unusableReason: UnusableProjectReason;
+  /** Never set: an unusable entry is neither locked nor encrypted. */
+  isLocked?: undefined;
+  /** Never set: an unusable entry is neither locked nor encrypted. */
+  isEncrypted?: undefined;
+}
+
+/**
+ * The full response shape of a `list()` entry — a normal entry, the
+ * reduced locked entry above, or the unusable entry. `open`/`create` keep
+ * returning the narrower, always-fully-populated `ProjectApiEntry`, since
+ * neither can return a locked or unusable entry.
+ */
+export type ProjectListApiEntry =
+  | ProjectApiEntry
+  | LockedProjectApiEntry
+  | UnusableProjectApiEntry;
 
 function apiError(body: unknown, status: number): Error {
   const message =

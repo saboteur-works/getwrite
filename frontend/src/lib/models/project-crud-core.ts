@@ -40,6 +40,8 @@ import {
 } from "./crypto/name-index";
 import { getLocalResources } from "./resource";
 import { readFolderTree } from "./folder-utils";
+import { ProjectSchema } from "./schemas";
+import type { UnusableProjectReason } from "./unusable-project-reason";
 import { resolveProjectsDir } from "./projects-dir";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { loadProjectFromDisk, type LoadedProject } from "./project-loader";
@@ -75,6 +77,17 @@ export interface ProjectListEntry {
    * entry — they are empty because nothing was read, not because nothing exists.
    */
   isEncrypted?: boolean;
+  /**
+   * Present and `true` when the project's `project.json` exists but cannot be
+   * used (Feature 89, FR-2). Such an entry carries only the folder id as
+   * `project.id` (the directory name, never a value read from the manifest),
+   * the {@link UnusableProjectReason} category, and empty `resources` and
+   * `folders`. It is a shape of its own: `isLocked` and `isEncrypted` are not
+   * set on it.
+   */
+  isUnusable?: boolean;
+  /** The category for an unusable entry; see {@link UnusableProjectReason}. */
+  unusableReason?: UnusableProjectReason;
 }
 
 /** Result shape of `createProjectCore` — mirrors `POST /api/projects`'s payload shape. */
@@ -84,32 +97,60 @@ export interface CreateProjectResult {
   resources: unknown[];
 }
 
+/** True for the "path does not exist" error (`code: "ENOENT"`) and nothing else. */
+function isMissingEntryError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
+}
+
 /**
- * Structural guard for a `project.json` manifest the Start screen can list.
- *
- * The list consumer chain (`buildProjectView` reads `project.id`; `StartPage`
- * reads `project.createdAt`) needs exactly a string `id` and `createdAt` —
- * every other `ProjectSchema` field is optional and unused by the listing. So
- * this is the precise "is this a real project we can show?" predicate: narrow
- * enough that a legitimate, loadable project with an unrelated legacy/nested
- * field is never dropped, strict enough to skip the incomplete manifests that
- * used to make the whole list fail.
+ * Builds the list entry for a project whose `project.json` exists but cannot
+ * be used. Carries the folder id (the directory name) and the reason category
+ * only: no manifest value and no error text.
  */
-function isListableProjectManifest(
-  manifest: unknown,
-): manifest is { id: string; createdAt: string } {
-  if (typeof manifest !== "object" || manifest === null) return false;
-  const record = manifest as Record<string, unknown>;
-  return typeof record.id === "string" && typeof record.createdAt === "string";
+function unusableEntry(
+  folderId: string,
+  reason: UnusableProjectReason,
+): ProjectListEntry {
+  return {
+    project: { id: folderId },
+    resources: [],
+    folders: [],
+    isUnusable: true,
+    unusableReason: reason,
+  };
+}
+
+/**
+ * Classifies a parsed manifest: `null` when it is usable, otherwise the reason
+ * it is not. "Usable" is `ProjectSchema.safeParse`, the same schema the client
+ * validates each list entry's `project` against, so server and client cannot
+ * disagree. A manifest without a string `id` and `createdAt` is `missing-field`;
+ * one that has both but fails the schema is `invalid-manifest`.
+ */
+function classifyManifest(manifest: unknown): UnusableProjectReason | null {
+  const record =
+    typeof manifest === "object" && manifest !== null
+      ? (manifest as Record<string, unknown>)
+      : {};
+  if (typeof record.id !== "string" || typeof record.createdAt !== "string") {
+    return "missing-field";
+  }
+  return ProjectSchema.safeParse(manifest).success ? null : "invalid-manifest";
 }
 
 /**
  * Lists every project under `resolveProjectsDir()`, each with its parsed
  * `project.json`, folder tree, and resources.
  *
- * Lifted from `GET /api/projects`'s `getProjects` handler body, hardened so a
- * single unreadable/incomplete `project.json` is skipped (with a warning)
- * rather than failing the entire list.
+ * Lifted from `GET /api/projects`'s `getProjects` handler body. A project whose
+ * `project.json` exists but cannot be used does not fail the list and is not
+ * dropped: it is returned as an unusable entry (folder id and reason category,
+ * no contents; Feature 89, FR-2/FR-3). A directory with no `project.json`
+ * (ENOENT) is skipped and unlisted, and a locked-access error is rethrown.
  */
 export async function listProjectsCore(): Promise<ProjectListEntry[]> {
   const projectsDir = resolveProjectsDir();
@@ -140,41 +181,52 @@ export async function listProjectsCore(): Promise<ProjectListEntry[]> {
       }
 
       const projectPath = path.join(projectsDir, id, "project.json");
-      let manifest: unknown;
+      let raw: string;
       try {
-        manifest = JSON.parse(await readFile(projectPath, "utf-8"));
+        raw = await readFile(projectPath, "utf-8");
       } catch (error) {
-        // Unreadable or non-JSON manifest — a stray directory, or a partial /
-        // corrupt write. Skip this one project rather than failing the whole
-        // list via `Promise.all` rejection (the bug where a single bad
-        // project.json made every project vanish from the Start screen).
+        // No manifest: a stray directory, not a project. Skipped and unlisted.
+        if (isMissingEntryError(error)) return null;
+        // A locked project is the locked path's business, never "unusable".
+        if (isLockedAccessError(error)) throw error;
+        // The file exists but could not be read (permission, I/O). Reported by
+        // category only; the error text is not carried into the entry.
         console.warn(
-          `Skipping unreadable project "${id}" while listing projects:`,
-          error,
+          `Project "${id}" has an unreadable project.json (listed as unusable).`,
         );
-        return null;
-      }
-      if (!isListableProjectManifest(manifest)) {
-        // Parses fine but is missing a field the Start screen needs to list it
-        // (see `isListableProjectManifest`). Skip it instead of letting it
-        // poison the list — but do NOT run the full `ProjectSchema.parse`
-        // here: that would drop a legitimate, loadable project over an
-        // unrelated nested field the list never reads, and would reshape the
-        // payload the HTTP route returns verbatim.
-        console.warn(
-          `Skipping project "${id}" with an incomplete manifest while listing projects.`,
-        );
-        return null;
+        return unusableEntry(id, "manifest-unreadable");
       }
 
-      // Deliberately outside the guard above: a transient read failure on a
+      let manifest: unknown;
+      try {
+        manifest = JSON.parse(raw);
+      } catch {
+        console.warn(
+          `Project "${id}" has an unparseable project.json (listed as unusable).`,
+        );
+        return unusableEntry(id, "unparseable");
+      }
+
+      // The core runs `ProjectSchema` (via `classifyManifest`) because the
+      // client rejects the whole list over one entry whose `project` fails it;
+      // a project the schema rejects is therefore never one the client could
+      // have shown. Reporting it as unusable keeps the rest of the list.
+      const unusableReason = classifyManifest(manifest);
+      if (unusableReason !== null) {
+        console.warn(
+          `Project "${id}" has an unusable project.json (${unusableReason}).`,
+        );
+        return unusableEntry(id, unusableReason);
+      }
+
+      // Deliberately outside the manifest handling above: a transient read failure on a
       // healthy project's folders/resources still propagates (surfacing as an
       // error) instead of silently dropping the project from the list.
       const foldersPath = path.join(projectsDir, id, "folders");
       const folders = await readFolderTree(foldersPath);
       const resources = await getLocalResources(path.join(projectsDir, id));
       // Return the raw parsed manifest verbatim (not a schema-parsed copy) so
-      // the payload stays byte-identical to the pre-guard behaviour.
+      // the payload stays byte-identical to the pre-validation behaviour.
       return { project: manifest, resources, folders };
     }),
   );

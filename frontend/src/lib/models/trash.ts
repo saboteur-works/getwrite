@@ -420,6 +420,54 @@ async function collectFolderDescriptors(
 }
 
 /**
+ * Entries of a manifest an earlier, interrupted `softDeleteFolder` attempt
+ * wrote for `folderId`, or `[]` when there is none (or it cannot be parsed,
+ * in which case the fresh walk stands alone, as before).
+ */
+async function readPriorFolderManifestDescendants(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<TrashFolderManifestEntry[]> {
+  try {
+    const raw = await readFile(
+      trashFolderManifestPath(projectRoot, folderId),
+      "utf8",
+    );
+    return TrashFolderManifestSchema.parse(JSON.parse(raw)).descendants;
+  } catch (err: unknown) {
+    if (isLockedAccessError(err)) throw err;
+    return [];
+  }
+}
+
+function mergeWithPriorManifest(
+  prior: TrashFolderManifestEntry[],
+  fresh: TrashFolderManifestEntry[],
+): TrashFolderManifestEntry[] {
+  const known = new Set(prior.map((e) => e.id));
+  return [...prior, ...fresh.filter((e) => !known.has(e.id))];
+}
+
+/**
+ * Moves one folder directory to `.trash/folders/<dirname>`. Descendant
+ * directories are moved flat, so two folders at different depths may share a
+ * directory name; a taken destination gets the folder id appended (trashed
+ * descriptors are found by the id in `folder.json`, never by directory name).
+ */
+async function moveFolderDirToTrash(
+  trashFoldersDir: string,
+  fd: FolderDescriptorEntry,
+): Promise<void> {
+  await mkdir(trashFoldersDir, { recursive: true });
+  const base = path.basename(fd.dirPath);
+  let dest = path.join(trashFoldersDir, base);
+  if (await pathExists(dest)) {
+    dest = path.join(trashFoldersDir, `${base}-${fd.folder.id}`);
+  }
+  await rename(fd.dirPath, dest);
+}
+
+/**
  * Soft-deletes a folder and every descendant folder/resource beneath it
  * (FR-3, FR-20): a plain resource delete never touches `folders/`, so a
  * folder delete needs its own cascade to avoid orphaning children.
@@ -496,7 +544,14 @@ export async function softDeleteFolder(
     return entries;
   }
 
-  const descendants = collectDescendants(folderId);
+  // On a retry after a partial failure the live tree no longer holds the
+  // descendants an earlier attempt already moved, so the manifest an earlier
+  // attempt wrote stays authoritative: keep its entries (and order) and add
+  // any the live tree still holds that it lacks.
+  const descendants = mergeWithPriorManifest(
+    await readPriorFolderManifestDescendants(projectRoot, folderId),
+    collectDescendants(folderId),
+  );
 
   // Write the manifest before moving anything, so an interrupted cascade
   // still leaves a record of what was intended (mirrors the ref record being
@@ -527,7 +582,10 @@ export async function softDeleteFolder(
   for (const entry of descendants) {
     if (entry.kind !== "resource") continue;
     const resource = resourceById.get(entry.id);
-    const deletedName = resource?.name ?? "";
+    // Not live any more: an earlier attempt already moved it. Re-running the
+    // sequence would overwrite its ref record with an empty one.
+    if (!resource) continue;
+    const deletedName = resource.name ?? "";
     const clearedEntries = await nullifyResourceRefs(
       projectRoot,
       entry.id,
@@ -539,21 +597,22 @@ export async function softDeleteFolder(
   }
 
   // Move every descendant folder's own descriptor into `.trash/folders/`,
-  // preserving its existing directory name.
+  // deepest first. The manifest lists a folder before its own descendants,
+  // and a folder's directory holds its subfolders' directories on disk, so
+  // moving a parent first carries its children with it and the later rename
+  // of a child's recorded path fails with ENOENT (observed on the unfixed
+  // tree, see experiments.md Part 2). Reverse order moves each directory
+  // out while its parent is still in place.
   const folderById = new Map(allFolders.map((fd) => [fd.folder.id, fd]));
-  for (const entry of descendants) {
+  for (const entry of [...descendants].reverse()) {
     if (entry.kind !== "folder") continue;
     const fd = folderById.get(entry.id);
     if (!fd) continue;
-    const dest = path.join(trashFoldersDir, path.basename(fd.dirPath));
-    await mkdir(trashFoldersDir, { recursive: true });
-    await rename(fd.dirPath, dest);
+    await moveFolderDirToTrash(trashFoldersDir, fd);
   }
 
   // Finally, move the target folder's own descriptor.
-  const targetDest = path.join(trashFoldersDir, path.basename(target.dirPath));
-  await mkdir(trashFoldersDir, { recursive: true });
-  await rename(target.dirPath, targetDest);
+  await moveFolderDirToTrash(trashFoldersDir, target);
 
   return trashRoot;
 }

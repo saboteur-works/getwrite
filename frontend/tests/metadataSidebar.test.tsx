@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
+import AddFieldForm from "../components/Sidebar/AddFieldForm";
 import {
   createTextResource,
   createImageResource,
@@ -1639,5 +1640,263 @@ describe("MetadataSidebar — subtype field filtering (Task 12)", () => {
     const strip = (html: string): string =>
       html.replace(/<select[^>]*aria-label="Subtype"[\s\S]*?<\/select>/, "");
     expect(strip(container.innerHTML)).toBe(strip(removedHtml));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Deprecated custom fields (Feature 89, Task 8; FR-12)
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — deprecated custom fields (Feature 89, Task 8)", () => {
+  const DEPRECATED_VALUE = "value on a deprecated field";
+
+  function mountDeprecated(options: {
+    groupOverrides?: Record<string, unknown>;
+    deprecatedOverrides?: Record<string, unknown>;
+    resourceOverrides?: Record<string, unknown>;
+  }): React.ReactElement {
+    const schema: MetadataSchema = {
+      groups: [
+        {
+          id: "g",
+          label: "Custom Group",
+          fields: [
+            { key: "live-field", label: "Live Field", type: "text" },
+            {
+              key: "old-field",
+              label: "Old Field",
+              type: "text",
+              deprecated: true,
+              ...options.deprecatedOverrides,
+            },
+          ],
+          ...options.groupOverrides,
+        } as MetadataSchema["groups"][number],
+      ],
+    };
+    const base = createTextResource({
+      name: "R",
+      plainText: "",
+      userMetadata: { "live-field": "live", "old-field": DEPRECATED_VALUE },
+    });
+    const res = { ...base, ...options.resourceOverrides } as AnyResource;
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: "p",
+        rootPath: "/test",
+        metadataSchema: schema,
+        subtypes: ["Scene"],
+      }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    return (
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  }
+
+  it("does not show a deprecated field that holds a value (the non-deprecated sibling is shown)", async () => {
+    await renderAndFlush(mountDeprecated({}));
+    expect(screen.getByLabelText("live-field")).toHaveValue("live");
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+  });
+
+  it("does not show a deprecated field in a folder-scoped group the resource matches", async () => {
+    await renderAndFlush(
+      mountDeprecated({
+        groupOverrides: { folderId: "f1" },
+        resourceOverrides: { folderId: "f1" },
+      }),
+    );
+    expect(screen.getByLabelText("live-field")).toHaveValue("live");
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+  });
+
+  it("does not show a deprecated field restricted by appliesTo when the subtype matches", async () => {
+    await renderAndFlush(
+      mountDeprecated({
+        deprecatedOverrides: { appliesTo: ["Scene"] },
+        resourceOverrides: { resourceSubtype: "Scene" },
+      }),
+    );
+    expect(screen.getByLabelText("live-field")).toHaveValue("live");
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Deprecated custom fields: restore and the "Add field" form (Feature 89, Task 9;
+// FR-13, OQ-3 (b))
+// ---------------------------------------------------------------------------
+
+describe("MetadataSidebar — deprecated fields: restore (Feature 89, Task 9)", () => {
+  it("shows the stored value again when the field is restored (deprecated removed)", async () => {
+    const withFlag: MetadataSchema = {
+      groups: [
+        {
+          id: "g",
+          label: "Custom Group",
+          fields: [
+            { key: "live-field", label: "Live Field", type: "text" },
+            {
+              key: "old-field",
+              label: "Old Field",
+              type: "text",
+              deprecated: true,
+            },
+          ],
+        },
+      ],
+    };
+    const restored: MetadataSchema = {
+      groups: [
+        {
+          id: "g",
+          label: "Custom Group",
+          fields: [
+            { key: "live-field", label: "Live Field", type: "text" },
+            { key: "old-field", label: "Old Field", type: "text" },
+          ],
+        },
+      ],
+    };
+    const res = createTextResource({
+      name: "R",
+      plainText: "",
+      userMetadata: { "live-field": "live", "old-field": "kept value" },
+    });
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({ id: "p", rootPath: "/test", metadataSchema: withFlag }),
+    );
+    testStore.dispatch(setSelectedProjectId("p"));
+    testStore.dispatch(setResources([res]));
+    testStore.dispatch(setSelectedResourceId(res.id));
+    await renderAndFlush(
+      <Provider store={testStore}>
+        <MetadataSidebar />
+      </Provider>,
+    );
+    expect(screen.getByLabelText("live-field")).toBeInTheDocument();
+    expect(screen.queryByLabelText("old-field")).not.toBeInTheDocument();
+
+    await act(async () => {
+      testStore.dispatch(
+        setProject({ id: "p", rootPath: "/test", metadataSchema: restored }),
+      );
+    });
+    expect(screen.getByLabelText("old-field")).toHaveValue("kept value");
+  });
+});
+
+describe("AddFieldForm — deprecated field (Feature 89, Task 9; OQ-3 (b))", () => {
+  const schema: MetadataSchema = {
+    groups: [
+      {
+        id: "custom-g",
+        label: "Custom Group",
+        fields: [
+          { key: "live-field", label: "Live Field", type: "text" },
+          {
+            key: "old-field",
+            label: "Old Field",
+            type: "text",
+            deprecated: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  function mountForm() {
+    const onCancel = vi.fn();
+    const onFieldFocused = vi.fn();
+    const onCreated = vi.fn();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("{}", { status: 200 }));
+    const testStore = makeStore();
+    render(
+      <Provider store={testStore}>
+        <AddFieldForm
+          schema={schema}
+          selectedProjectId="p"
+          onCancel={onCancel}
+          onFieldFocused={onFieldFocused}
+          onCreated={onCreated}
+        />
+      </Provider>,
+    );
+    return { onCancel, onFieldFocused, onCreated, fetchSpy };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("says the field exists and is deprecated (hidden from the sidebar) and offers only Close", () => {
+    const { onCancel, onFieldFocused, onCreated, fetchSpy } = mountForm();
+    const input = screen.getByLabelText("field-name");
+    fireEvent.change(input, { target: { value: "Old Field" } });
+
+    expect(
+      screen.getByText(
+        /old-field.*already exists and is deprecated.*hidden from the sidebar/i,
+      ),
+    ).toBeInTheDocument();
+    const form = input.closest("form") as HTMLFormElement;
+    const buttons: HTMLButtonElement[] = Array.from(
+      form.getElementsByTagName("button"),
+    );
+    const names = buttons.map((b) => b.textContent);
+    expect(names).toEqual(["Close"]);
+    // The create-field inputs are not offered either.
+    expect(screen.queryByLabelText("field-label")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("field-type")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("field-group")).not.toBeInTheDocument();
+
+    // Submitting (Enter) neither routes, writes, nor creates a duplicate.
+    fireEvent.submit(form);
+    expect(onFieldFocused).not.toHaveBeenCalled();
+    expect(onCreated).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer the deprecated field as a suggestion or a 'Did you mean' route", () => {
+    const { onFieldFocused } = mountForm();
+    const input = screen.getByLabelText("field-name");
+
+    fireEvent.change(input, { target: { value: "field" } });
+    const options = screen
+      .getAllByRole("option")
+      .map((o: HTMLElement) => o.textContent);
+    expect(options.some((t: string | null) => t?.includes("live-field"))).toBe(
+      true,
+    );
+    expect(options.some((t: string | null) => t?.includes("old-field"))).toBe(
+      false,
+    );
+
+    fireEvent.change(input, { target: { value: "old-fiel" } });
+    expect(screen.queryByText("Did you mean")).not.toBeInTheDocument();
+    expect(onFieldFocused).not.toHaveBeenCalled();
+  });
+
+  it("still routes a live field to onFieldFocused (unchanged)", () => {
+    const { onFieldFocused } = mountForm();
+    const input = screen.getByLabelText("field-name");
+    fireEvent.change(input, { target: { value: "Live Field" } });
+    expect(
+      screen.getByText(/Already exists in Custom Group/),
+    ).toBeInTheDocument();
+    fireEvent.submit(input.closest("form")!);
+    expect(onFieldFocused).toHaveBeenCalledWith("live-field");
   });
 });

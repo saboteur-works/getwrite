@@ -66,6 +66,18 @@ export function runStorageAdapterConformance(
       ).rejects.toMatchObject({ code: "ENOENT" });
     });
 
+    it("readFileBuffer on a missing path throws ENOENT", async () => {
+      await expect(io.readFileBuffer("/proj/ghost.bin")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    });
+
+    it("readdir on a missing directory throws ENOENT", async () => {
+      await expect(io.readdir("/proj/ghost-dir")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    });
+
     it("exists reflects presence for files and directories", async () => {
       await io.mkdir("/proj/dir", { recursive: true });
       await io.writeFile("/proj/dir/f.txt", "x");

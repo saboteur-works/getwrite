@@ -33,6 +33,7 @@ import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshCont
 import ProseDiagnosticsSection from "./ProseDiagnosticsSection";
 import SubtypeSection from "./SubtypeSection";
 import { isFieldVisibleForSubtype } from "../../src/lib/models/field-subtype-scope";
+import { isFieldDeprecated } from "../../src/lib/models/field-deprecation";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import useAppSelector from "../../src/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -524,6 +525,7 @@ export default function MetadataSidebar({
               }
               const visibleFields = group.fields.filter(
                 (field) =>
+                  !isFieldDeprecated(field) &&
                   isFieldVisible(field) &&
                   isFieldVisibleForSubtype(
                     field.key,

@@ -31,6 +31,7 @@
  */
 import { z } from "zod";
 import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
+import { UNUSABLE_PROJECT_REASONS } from "../models/unusable-project-reason";
 import {
   ENTITY_KIND_COLOR_SLOTS,
   ENTITY_KIND_SHAPE_NAMES,
@@ -271,13 +272,33 @@ export const LockedProjectListEntrySchema = z.object({
 });
 
 /**
+ * The list entry `listProjectsCore` returns for a project whose `project.json`
+ * exists but cannot be used (Feature 89, FR-2/FR-6/FR-7). Deliberately declares
+ * only what the server derives itself: the folder id (`project.id`, the
+ * directory name) and the reason category. Nothing read from the manifest is
+ * declared, so nothing read from it can be shown. `folders` and `resources`
+ * are always empty. Only a `GET /api/projects` list response can contain it.
+ * Still strict: an entry with any other reason, or a non-empty tree, matches
+ * none of the three list shapes and is rejected.
+ */
+const UnusableProjectListEntrySchema = z.strictObject({
+  project: z.strictObject({ id: z.string() }),
+  folders: z.tuple([]),
+  resources: z.tuple([]),
+  isUnusable: z.literal(true),
+  unusableReason: z.enum(UNUSABLE_PROJECT_REASONS),
+});
+
+/**
  * The full response shape of a `GET /api/projects` list entry: a normal,
- * fully-populated project entry, or the reduced locked entry above. `open`
- * and `create` responses validate against `ProjectApiEntrySchema` directly,
- * since neither route can return a locked entry.
+ * fully-populated project entry, the reduced locked entry, or the unusable
+ * entry above. `open` and `create` responses validate against
+ * `ProjectApiEntrySchema` directly, since neither route can return a locked
+ * or unusable entry.
  */
 export const ProjectListEntrySchema = z.union([
   LockedProjectListEntrySchema,
+  UnusableProjectListEntrySchema,
   ProjectApiEntrySchema,
 ]);
 

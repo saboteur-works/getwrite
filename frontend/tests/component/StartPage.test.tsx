@@ -48,6 +48,12 @@ import {
   UNLOCK_CHECK_FAILED_MESSAGE,
   UNLOCK_CHECK_RETRY_LABEL,
 } from "../../components/Sharing/sharing-copy";
+import { runAxe } from "../a11y/helpers/axe";
+import { UNUSABLE_PROJECT_REASONS } from "../../src/lib/models/unusable-project-reason";
+import type { UnusableProjectReason } from "../../src/lib/models/unusable-project-reason";
+import { UNUSABLE_PROJECT_COPY } from "../../components/Start/unusable-project-copy";
+import { toStartPageEntry } from "../../components/Start/list-entry-view";
+import type { ProjectListApiEntry } from "../../src/lib/api/projects";
 import type {
   DocxImportOutcome,
   DocxSourceChoice,
@@ -867,5 +873,247 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
       </SharingLimitsProvider>,
     );
     expect(screen.getByText(/2 resources/)).toBeInTheDocument();
+  });
+});
+
+describe("StartPage — unusable project cards (Feature 89, FR-4/FR-5/FR-33)", () => {
+  const BAD_ID = "99999999-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const GOOD_DIR = "55555555-eeee-4eee-8eee-eeeeeeeeeeee";
+
+  /** An unusable entry exactly as `listProjectsCore` returns it. */
+  function unusable(
+    reason: UnusableProjectReason,
+    id: string = BAD_ID,
+  ): StartPageProjectEntry {
+    return {
+      project: { id },
+      folders: [],
+      resources: [],
+      isUnusable: true,
+      unusableReason: reason,
+    } as unknown as StartPageProjectEntry;
+  }
+
+  function healthy(): StartPageProjectEntry {
+    return {
+      project: {
+        id: "p-good",
+        name: "Healthy Novel",
+        rootPath: `/tmp/projects/${GOOD_DIR}`,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+      resources: [],
+      folders: [],
+    } as unknown as StartPageProjectEntry;
+  }
+
+  function renderWith(projects: StartPageProjectEntry[]) {
+    return render(
+      <SharingLimitsProvider>
+        <Provider store={makeStore()}>
+          <StartPage projects={projects} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+  }
+
+  it("renders one article per unusable entry, named by the folder id, labelled as not openable", () => {
+    renderWith([unusable("unparseable")]);
+    const card = screen.getByRole("article", { name: BAD_ID });
+    expect(
+      within(card).getByRole("heading", { name: BAD_ID }),
+    ).toBeInTheDocument();
+    expect(within(card).getByText(/project · cannot be opened/i)).toBeVisible();
+    expect(within(card).getByText(/not valid JSON/i)).toBeInTheDocument();
+  });
+
+  it("offers no open, rename, delete or package control on the card", () => {
+    renderWith([unusable("invalid-manifest")]);
+    const card = screen.getByRole("article", { name: BAD_ID });
+    expect(within(card).queryAllByRole("button")).toHaveLength(0);
+    expect(within(card).queryAllByRole("link")).toHaveLength(0);
+    expect(within(card).queryAllByRole("menuitem")).toHaveLength(0);
+  });
+
+  it("uses no red class and only text-gw-secondary or stronger", () => {
+    renderWith([unusable("missing-field")]);
+    const card = screen.getByRole("article", { name: BAD_ID });
+    const classes = [card, ...Array.from(card.querySelectorAll("*"))]
+      .map((el) => el.getAttribute("class") ?? "")
+      .join(" ");
+    expect(classes).not.toMatch(/red/);
+    expect(classes).not.toMatch(/text-gw-(mid|tertiary|disabled)/);
+  });
+
+  it("maps every reason category to card text, so a category without copy fails", () => {
+    for (const reason of UNUSABLE_PROJECT_REASONS) {
+      const entry = UNUSABLE_PROJECT_COPY[reason];
+      expect(entry, `copy for ${reason}`).toBeDefined();
+      expect(entry.reason.length).toBeGreaterThan(10);
+    }
+    expect(Object.keys(UNUSABLE_PROJECT_COPY).sort()).toEqual(
+      [...UNUSABLE_PROJECT_REASONS].sort(),
+    );
+  });
+
+  it.each(UNUSABLE_PROJECT_REASONS.map((r) => [r] as const))(
+    "shows the %s reason text on its card",
+    (reason) => {
+      const { unmount } = renderWith([unusable(reason)]);
+      const card = screen.getByRole("article", { name: BAD_ID });
+      expect(card.textContent).toContain(UNUSABLE_PROJECT_COPY[reason].reason);
+      unmount();
+    },
+  );
+
+  it.each([
+    ["unparseable", true],
+    ["missing-field", true],
+    ["invalid-manifest", true],
+    ["manifest-unreadable", false],
+    ["tree-unreadable", false],
+  ] as const)(
+    "%s: the 'files are still on disk and unchanged' sentence present = %s",
+    (reason, expected) => {
+      renderWith([unusable(reason)]);
+      const card = screen.getByRole("article", { name: BAD_ID });
+      expect(/still on disk and unchanged/i.test(card.textContent ?? "")).toBe(
+        expected,
+      );
+    },
+  );
+
+  it("does not show the Create the first project empty state with only unusable entries", () => {
+    renderWith([unusable("unparseable")]);
+    expect(
+      screen.queryByRole("button", { name: /create the first project/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/no projects yet/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("article", { name: BAD_ID })).toBeInTheDocument();
+  });
+
+  it("still shows the empty state when the list is empty", () => {
+    renderWith([]);
+    expect(
+      screen.getByRole("button", { name: /create the first project/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists a healthy project beside unusable ones and opens it by directory id", async () => {
+    const onOpen = vi.fn();
+    render(
+      <SharingLimitsProvider>
+        <Provider store={makeStore()}>
+          <StartPage
+            projects={[unusable("unparseable"), healthy()]}
+            onOpen={onOpen}
+          />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Open Healthy Novel" }));
+    expect(onOpen).toHaveBeenCalledWith(GOOD_DIR);
+    expect(screen.getByRole("article", { name: BAD_ID })).toBeInTheDocument();
+  });
+
+  it("sorts unusable entries after healthy projects whatever the input order", () => {
+    renderWith([unusable("unparseable"), healthy()]);
+    const names = screen
+      .getAllByRole("article")
+      .map((a: HTMLElement) => a.getAttribute("aria-labelledby"));
+    expect(names[0]).toBe("proj-p-good-title");
+    expect(names[1]).toBe(`proj-${BAD_ID}-title`);
+  });
+
+  it("counts only openable projects in the summary, not unusable entries", () => {
+    renderWith([unusable("unparseable"), healthy()]);
+    expect(screen.getByText(/1 active project$/i)).toBeInTheDocument();
+  });
+
+  it("does not name an unusable entry as the featured project", () => {
+    renderWith([unusable("unparseable")]);
+    expect(
+      screen.getByText(/pick up where you left off in your next manuscript/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the unusable card and shows no empty state after the healthy project is deleted", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 200 }),
+    );
+    const store = makeStore();
+    store.dispatch(
+      setProjects([{ project: healthy().project, folders: [], resources: [] }]),
+    );
+    render(
+      <SharingLimitsProvider>
+        <Provider store={store}>
+          <StartPage projects={[healthy(), unusable("unparseable")]} />
+        </Provider>
+      </SharingLimitsProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Healthy Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Manage Healthy Novel" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("article", { name: BAD_ID })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /create the first project/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("packages a healthy project beside an unusable one", async () => {
+    renderWith([unusable("unparseable"), healthy()]);
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Manage Healthy Novel" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Package" }));
+    expect(
+      await screen.findByRole("dialog", { name: /Compile Project/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("passes axe on the card", async () => {
+    const { container } = renderWith([unusable("tree-unreadable")]);
+    const card = screen.getByRole("article", { name: BAD_ID });
+    await runAxe(card.parentElement ?? container, ["region"]);
+  });
+});
+
+describe("toStartPageEntry — list entries reach the page (Feature 89, FR-5)", () => {
+  it("carries isUnusable and unusableReason through and reads no project fields", () => {
+    const entry: ProjectListApiEntry = {
+      project: { id: "dir-1" },
+      folders: [],
+      resources: [],
+      isUnusable: true,
+      unusableReason: "unparseable",
+    };
+    const view = toStartPageEntry(entry);
+    expect(view.isUnusable).toBe(true);
+    expect(view.unusableReason).toBe("unparseable");
+    expect(view.project.id).toBe("dir-1");
+    expect(view.folders).toEqual([]);
+    expect(view.resources).toEqual([]);
+  });
+
+  it("leaves a healthy entry unflagged", () => {
+    const view = toStartPageEntry({
+      project: { id: "p", name: "N", createdAt: "2026-01-01T00:00:00.000Z" },
+      folders: [],
+      resources: [],
+    } as unknown as ProjectListApiEntry);
+    expect(view.isUnusable).toBeUndefined();
   });
 });

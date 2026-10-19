@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as io from "../../src/lib/models/io";
 import type { StorageAdapter } from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import { loadProjectFromDisk } from "../../src/lib/models/project-loader";
 import { runInStorageContext } from "../../src/lib/models/storage-context";
 import {
   ProjectBusyError,
@@ -427,5 +428,111 @@ describe("workspace adapter — marker-first fail-closed (Task 2)", () => {
     expect(
       isEnvelope(await plainBase.readFileBuffer(`${projectRoot}/b.txt`)),
     ).toBe(true);
+  });
+});
+
+describe("workspace adapter: missing entries and locked projects (Feature 89 Task 12)", () => {
+  const WS = "/ws3";
+  const KEYED_ID = "66666666-6666-4666-8666-666666666666";
+  const OPEN_ID = "77777777-7777-4777-8777-777777777777";
+  const UNKEYED_ID = "88888888-8888-4888-8888-888888888888";
+  let plainBase: StorageAdapter;
+  let ring: Keyring;
+
+  const code = async (p: Promise<unknown>): Promise<unknown> =>
+    p.then(
+      () => "resolved",
+      (e: unknown) => (e as { code?: unknown }).code ?? (e as Error).name,
+    );
+
+  beforeEach(async () => {
+    plainBase = createMemoryAdapter();
+    for (const id of [KEYED_ID, OPEN_ID, UNKEYED_ID]) {
+      await plainBase.mkdir(`${WS}/${id}/folders/a`, { recursive: true });
+    }
+    ring = await createKeyring(PASS, TEST_ARGON2_PARAMS);
+    await ring.addProject(KEYED_ID);
+    await writeProjectMarker(`${WS}/${KEYED_ID}`, plainBase);
+    await writeProjectMarker(`${WS}/${UNKEYED_ID}`, plainBase);
+  });
+
+  const run = <T>(r: Keyring | null, fn: () => Promise<T>): Promise<T> =>
+    Promise.resolve(
+      runInStorageContext(
+        {
+          tenantRoot: WS,
+          adapter: workspaceEncryptionAdapter(plainBase, WS, r),
+        },
+        fn,
+      ),
+    );
+
+  it("a missing file and a missing directory are coded ENOENT for an unencrypted project and for a keyed encrypted project", async () => {
+    for (const id of [OPEN_ID, KEYED_ID]) {
+      await run(ring, async () => {
+        expect(await code(io.readFile(`${WS}/${id}/ghost.json`, "utf-8"))).toBe(
+          "ENOENT",
+        );
+        expect(await code(io.readFileBuffer(`${WS}/${id}/ghost.json`))).toBe(
+          "ENOENT",
+        );
+        expect(await code(io.readdir(`${WS}/${id}/ghost-dir`))).toBe("ENOENT");
+      });
+    }
+  });
+
+  it("locked: readFile rejects ProjectLockedError, while readdir and stat on the same project resolve (they are passed to the inner adapter)", async () => {
+    await writeProjectMarker(`${WS}/${KEYED_ID}`, plainBase);
+    await plainBase.writeFile(`${WS}/${KEYED_ID}/folders/a/folder.json`, "{}");
+    await run(null, async () => {
+      expect(
+        await code(io.readFile(`${WS}/${KEYED_ID}/folders/a/folder.json`)),
+      ).toBe("ProjectLockedError");
+      expect(await io.readdir(`${WS}/${KEYED_ID}/folders`)).toEqual(["a"]);
+      expect((await io.stat(`${WS}/${KEYED_ID}/folders/a`)).isDirectory()).toBe(
+        true,
+      );
+      // A missing directory under a locked project is still ENOENT, not locked.
+      expect(await code(io.readdir(`${WS}/${KEYED_ID}/ghost-dir`))).toBe(
+        "ENOENT",
+      );
+    });
+  });
+
+  it("locked: readFile of a path that does not exist rejects ProjectLockedError, not ENOENT (the marker check comes first)", async () => {
+    await run(null, async () => {
+      expect(
+        await code(io.readFile(`${WS}/${KEYED_ID}/folders/a/folder.json`)),
+      ).toBe("ProjectLockedError");
+    });
+  });
+
+  it("loadProjectFromDisk on a locked and on a keyless marked project rejects with the locked error (the project.json read precedes readFolderTree)", async () => {
+    for (const id of [KEYED_ID, UNKEYED_ID]) {
+      await plainBase.writeFile(`${WS}/${id}/project.json`, "{}");
+      await plainBase.writeFile(`${WS}/${id}/folders/a/folder.json`, "{}");
+    }
+    await run(null, async () => {
+      expect(await code(loadProjectFromDisk(`${WS}/${KEYED_ID}`))).toBe(
+        "ProjectLockedError",
+      );
+    });
+    await run(ring, async () => {
+      expect(await code(loadProjectFromDisk(`${WS}/${UNKEYED_ID}`))).toBe(
+        "MissingProjectKeyError",
+      );
+    });
+  });
+
+  it("keyless: readFile rejects MissingProjectKeyError, while readdir and stat resolve", async () => {
+    await run(ring, async () => {
+      expect(
+        await code(io.readFile(`${WS}/${UNKEYED_ID}/folders/a/folder.json`)),
+      ).toBe("MissingProjectKeyError");
+      expect(await io.readdir(`${WS}/${UNKEYED_ID}/folders`)).toEqual(["a"]);
+      expect(
+        (await io.stat(`${WS}/${UNKEYED_ID}/folders/a`)).isDirectory(),
+      ).toBe(true);
+    });
   });
 });

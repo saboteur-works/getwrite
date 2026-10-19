@@ -15,6 +15,11 @@ import {
 } from "../../src/store/projectsSlice";
 import { setResources, setFolders } from "../../src/store/resourcesSlice";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
+import type { UnusableProjectReason } from "../../src/lib/models/unusable-project-reason";
+import {
+  UNUSABLE_PROJECT_COPY,
+  UNUSABLE_PROJECT_LABEL,
+} from "../../components/Start/unusable-project-copy";
 import type {
   DesktopBridge,
   DocxImportOutcome,
@@ -834,3 +839,81 @@ export const LockedLimitsCheckFailed: Story = {
     expect(canvas.queryByLabelText(/passphrase/i)).not.toBeInTheDocument();
   },
 };
+
+/**
+ * Feature 89 (FR-4, FR-29): the card for a project whose `project.json`
+ * exists but cannot be used, one story per reason category. StartPage needs no
+ * extra context for it (the card is a plain component), so no decorator is
+ * added. Each story asserts the label, the folder-id heading, the category's
+ * reason text, and that the card holds no control of any kind.
+ *
+ * a11y decision: `test: "error"` is set on these stories (per
+ * docs/standards/accessibility.md section 6), so the strict-axe run in
+ * Chromium also checks colour contrast, which the jsdom helper disables. The
+ * result of that run is recorded in
+ * specs/features/hidden-and-lost-work/experiments.md (Task 5).
+ */
+function unusableStory(reason: UnusableProjectReason, folderId: string): Story {
+  return {
+    args: {
+      projects: [
+        { project, folders, resources },
+        {
+          project: { id: folderId, name: folderId, createdAt: "" },
+          folders: [],
+          resources: [],
+          isUnusable: true,
+          unusableReason: reason,
+        },
+      ],
+      onCreate: () => undefined,
+      onOpen: () => undefined,
+    },
+    parameters: {
+      a11y: {
+        test: "error",
+        // StartPage's own <aside> sits inside another landmark; that is the
+        // page shell, not the card, and is out of Feature 89's scope. Only
+        // this rule is switched off; contrast and every other rule stay on.
+        config: {
+          rules: [
+            { id: "landmark-complementary-is-top-level", enabled: false },
+          ],
+        },
+      },
+    },
+    render: (args: StartPageProps) => <StartPage {...args} />,
+    play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+      const canvas = within(canvasElement);
+      const card = await canvas.findByRole("article", { name: folderId });
+      const inCard = within(card);
+      expect(inCard.getByText(UNUSABLE_PROJECT_LABEL)).toBeInTheDocument();
+      expect(
+        inCard.getByText(UNUSABLE_PROJECT_COPY[reason].reason),
+      ).toBeInTheDocument();
+      expect(inCard.queryByRole("button")).not.toBeInTheDocument();
+      expect(inCard.queryByRole("link")).not.toBeInTheDocument();
+    },
+  };
+}
+
+export const UnusableUnparseable: Story = unusableStory(
+  "unparseable",
+  "0b1c-unparseable",
+);
+export const UnusableMissingField: Story = unusableStory(
+  "missing-field",
+  "0b1c-missing-field",
+);
+export const UnusableInvalidManifest: Story = unusableStory(
+  "invalid-manifest",
+  "0b1c-invalid-manifest",
+);
+export const UnusableManifestUnreadable: Story = unusableStory(
+  "manifest-unreadable",
+  "0b1c-manifest-unreadable",
+);
+export const UnusableTreeUnreadable: Story = unusableStory(
+  "tree-unreadable",
+  "0b1c-tree-unreadable",
+);
