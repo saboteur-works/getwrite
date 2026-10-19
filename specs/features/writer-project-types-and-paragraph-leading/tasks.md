@@ -39,7 +39,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 1
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-1 (US-4). Its result decides whether Task 5's removal of the `onCreate` stamp is labelled a fix or a regression test; it does not change what FR-18..FR-21 require. Safety: runs a dev server outside the sandbox with `GETWRITE_PROJECTS_DIR` pointing to a throwaway folder under `$TMPDIR` or the scratchpad, never the repo's `projects/` and never a real app-data folder; the harness asserts the resolved projects folder is under the throwaway root before the first request. Web build only; the Electron app is not needed. The result covers this build and these inputs only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Pure paragraph-leading read/normalise functions
 **What:** Add `readParagraphLeading` (single value) and `normalizeParagraphLeadingInDocument` (whole stored document) as pure functions under `frontend/src/lib/`, implementing FR-20's load rule.
