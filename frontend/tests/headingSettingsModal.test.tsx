@@ -141,6 +141,56 @@ describe("HeadingSettingsModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("embedded: Discard changes resets to the last saved values and does not close (D-12)", async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={onClose}
+        onSave={onSave}
+        closeOnSave={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+      target: { value: "40" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+      target: { value: "50" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Discard changes" }));
+
+    expect(screen.getByLabelText("H1 Font Size")).toHaveValue(40);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("says an added level with no styles is not kept on save, until a style is set (D-11)", () => {
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        closeOnSave={false}
+      />,
+    );
+    const note = "No styles set, so this level is not kept when you save.";
+    expect(screen.queryByText(note)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /add h4/i }));
+    expect(screen.getByText(note)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("H4 Font Size"), {
+      target: { value: "22" },
+    });
+    expect(screen.queryByText(note)).toBeNull();
+  });
+
   it("does not save when cancel is clicked", () => {
     const onClose = vi.fn();
     const onSave = vi.fn();

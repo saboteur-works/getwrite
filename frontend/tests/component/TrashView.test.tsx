@@ -902,7 +902,7 @@ describe("TrashView — Task 6 (FR-10): refetch on a resourcesSlice delete made 
     );
 
     await waitFor(() => expect(mockedListTrash).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId("trash-empty-state")).toBeTruthy();
+    expect(await screen.findByTestId("trash-empty-state")).toBeTruthy();
 
     // Simulate a delete made elsewhere (e.g. the resource tree), which
     // dispatches `removeResource` against `resourcesSlice` directly — this

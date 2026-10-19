@@ -28,17 +28,16 @@ For each heading level you can set:
 
 The section lists H1 to H3 and an **Add H4** button; **Add H5** and **Add H6** appear in turn. Each added level has a **Remove** button (for example **Remove H4**). H1 to H3 have none.
 
-Changes are staged in the dialog as you edit: the editor does not change until you click **Save Changes**. Clicking **Cancel** closes Project Settings and discards what you changed in that session.
+Changes are staged in the dialog as you edit: the editor does not change until you click **Save Changes**. **Discard changes** puts this section back to what was last saved and leaves Project Settings open; other sections keep their unsaved edits. **Body Text Styles** and **Default Revision Name** have the same button.
 
 A heading with a custom color kept that color when the theme was switched to dark; headings without one changed with the theme.
 
 ## Warnings and limits
 
 - In the runs this page was verified from, saving **Body Text Styles** after saving **Heading Styles** left project.json with an empty `headings` set (two runs). In one of them the editor's H1 was 40px again and the dialog read 40 after a reload. A later change (unreleased) makes a Body Text Styles save keep the stored headings; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked.
-- **Cancel** closes the whole Project Settings dialog, not only the Editor tab.
 - **Save Changes** left the dialog open.
 - Clicking the pipette button changed nothing visible in the browser used for this check; the color was set through the color control itself.
-- An added level with nothing set was not kept: after saving with H4 set to 22 and H5 left empty, a reload listed H1 to H4 only.
+- An added level with nothing set is not kept when you save; the section says so ("No styles set, so this level is not kept when you save.") until you set a style. After saving with H4 set to 22 and H5 left empty, a reload listed H1 to H4 only.
 - The toolbar showed buttons Heading 1 to Heading 6 from the start, whether or not H4 to H6 had been added.
 
 Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a.
