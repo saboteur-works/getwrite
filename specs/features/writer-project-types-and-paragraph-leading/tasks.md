@@ -157,7 +157,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 14
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-4 (reader), FR-5, FR-6 (server side), FR-13. The variable is read by the resolver and nothing else (the desktop main process sets it in Task 20). Narrow catches as `project-loader.ts` does.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Move every reader to the resolver, and the GET response shape
 **What:** Make the route, the manager page, `createProjectCore`, the DOCX import and the plain-text import read types only through the resolver, and extend the GET response with entries, `unusable` and saved-directory status.
