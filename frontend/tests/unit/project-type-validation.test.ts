@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { validateProjectType } from "../../src/lib/models/schemas";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  EditorConfigSchema,
+  validateProjectType,
+} from "../../src/lib/models/schemas";
+import { validateProject } from "../../src/lib/models/project";
+import { createProject } from "../../src/lib/models/project";
+import { ApiEditorConfigSchema } from "../../src/lib/api/schemas";
 
 describe("project-type validation (T016)", () => {
   it("accepts a minimal valid spec", () => {
@@ -334,5 +342,81 @@ describe("project-type subtypes seeding (Feature 72, FR-26)", () => {
     expect(validateProjectType({ ...base, subtypes: ["  "] }).success).toBe(
       false,
     );
+  });
+});
+
+describe("project line height floor (Part 2, FR-22)", () => {
+  const base = { id: "t", name: "T", folders: [{ name: "Workspace" }] };
+  const withLineHeight = (lineHeight: string) => ({
+    ...base,
+    editorConfig: { body: { lineHeight } },
+  });
+  const accepted = ["", "1.8", "2", "3.5"];
+  const refused = ["1.7", "1", "0.5", "normal", "150%", "1.8em", "28px", "abc"];
+
+  it.each(accepted)("validateProjectType accepts lineHeight %j", (v) => {
+    expect(validateProjectType(withLineHeight(v)).success).toBe(true);
+  });
+
+  it.each(refused)("validateProjectType refuses lineHeight %j", (v) => {
+    const res = validateProjectType(withLineHeight(v));
+    expect(res.success).toBe(false);
+    expect(JSON.stringify(res.errors)).toContain(
+      "Line height must be a number of at least 1.8.",
+    );
+  });
+
+  it.each(accepted)("EditorConfigSchema accepts lineHeight %j", (v) => {
+    expect(
+      EditorConfigSchema.safeParse({ body: { lineHeight: v } }).success,
+    ).toBe(true);
+  });
+
+  it.each(refused)("EditorConfigSchema refuses lineHeight %j", (v) => {
+    expect(
+      EditorConfigSchema.safeParse({ body: { lineHeight: v } }).success,
+    ).toBe(false);
+  });
+
+  it.each(accepted)("ApiEditorConfigSchema accepts lineHeight %j", (v) => {
+    expect(
+      ApiEditorConfigSchema.safeParse({ body: { lineHeight: v } }).success,
+    ).toBe(true);
+  });
+
+  it.each(refused)("ApiEditorConfigSchema refuses lineHeight %j", (v) => {
+    expect(
+      ApiEditorConfigSchema.safeParse({ body: { lineHeight: v } }).success,
+    ).toBe(false);
+  });
+
+  it("all built-in project type files still pass validateProjectType", () => {
+    const dir = path.resolve(
+      __dirname,
+      "../../../getwrite-config/templates/project-types",
+    );
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith(".json") && f !== "project-type.schema.json");
+    expect(files).toHaveLength(6);
+    for (const f of files) {
+      const parsed: unknown = JSON.parse(
+        fs.readFileSync(path.join(dir, f), "utf8"),
+      );
+      expect(validateProjectType(parsed).success, f).toBe(true);
+    }
+  });
+
+  it("a stored project with lineHeight below 1.8 stays valid (no migration, not refused on read)", () => {
+    const proj = createProject({ name: "Legacy" });
+    const legacy = {
+      ...proj,
+      config: {
+        ...(proj.config ?? {}),
+        editorConfig: { body: { lineHeight: "1.5" } },
+      },
+    };
+    const parsed = validateProject(legacy);
+    expect(parsed.config?.editorConfig?.body?.lineHeight).toBe("1.5");
   });
 });

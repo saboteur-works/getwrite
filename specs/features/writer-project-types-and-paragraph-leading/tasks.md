@@ -93,7 +93,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 1
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-22 (b)-(d), FR-26 (floor at core and schema). Refuse, do not clamp (OQ-6). No migration.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Floor in Body Text Styles and in the Project Type Manager Line Height field
 **What:** Show the floor refusal in `BodySettingsModal` and the manager's Line Height field, keeping the typed value and refusing Save.

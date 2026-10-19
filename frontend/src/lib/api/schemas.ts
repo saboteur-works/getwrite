@@ -31,6 +31,10 @@
  * - `CreateResourceResponseSchema` — the same wrapper for create, which also
  *   accepts a folder.
  */
+import {
+  getLineHeightError,
+  LINE_HEIGHT_FLOOR_MESSAGE,
+} from "../editor-body-settings";
 import { z } from "zod";
 import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
 import { UNUSABLE_PROJECT_REASONS } from "../models/unusable-project-reason";
@@ -84,7 +88,12 @@ const ApiEditorHeadingSchema = z.object({
 const ApiEditorBodySchema = z.object({
   fontFamily: z.string().optional(),
   fontSize: z.string().optional(),
-  lineHeight: z.string().optional(),
+  lineHeight: z
+    .string()
+    .optional()
+    .refine((v) => getLineHeightError(v) === undefined, {
+      message: LINE_HEIGHT_FLOOR_MESSAGE,
+    }),
   paragraphSpacing: z.string().optional(),
 });
 

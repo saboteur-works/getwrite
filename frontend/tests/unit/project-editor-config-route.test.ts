@@ -191,6 +191,47 @@ describe("POST /api/project/editor-config", () => {
     expect(saved.config.editorConfig.headings).toEqual({});
   });
 
+  it.each(["1.7", "1", "0.5", "normal", "150%", "1.8em", "28px", "abc"])(
+    "returns 400 with the floor message and writes nothing for lineHeight %j",
+    async (lineHeight) => {
+      const projectsDir = await makeProjectsDir();
+      const projectId = generateUUID();
+      const projectPath = await writeProject(projectsDir, projectId);
+      const file = path.join(projectPath, PROJECT_FILENAME);
+      const before = await fs.readFile(file, "utf8");
+
+      const res = await withProjectsDir(projectsDir, () =>
+        POST(editorConfigRequest({ projectId, body: { lineHeight } }) as never),
+      );
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe(
+        "Line height must be a number of at least 1.8.",
+      );
+      expect(await fs.readFile(file, "utf8")).toBe(before);
+    },
+  );
+
+  it.each(["", "1.8", "2", "3.5"])(
+    "saves lineHeight %j",
+    async (lineHeight) => {
+      const projectsDir = await makeProjectsDir();
+      const projectId = generateUUID();
+      await writeProject(projectsDir, projectId);
+
+      const res = await withProjectsDir(projectsDir, () =>
+        POST(
+          editorConfigRequest({
+            projectId,
+            body: { fontSize: "18px", lineHeight },
+          }) as never,
+        ),
+      );
+
+      expect(res.status).toBe(200);
+    },
+  );
+
   it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
     const projectsDir = await makeProjectsDir();
 

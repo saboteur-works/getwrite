@@ -12,6 +12,10 @@
 import { z } from "zod";
 import { QueryASTSchema } from "./query-ast";
 import { normalizeSubtypeLabel } from "./field-subtype-scope";
+import {
+  getLineHeightError,
+  LINE_HEIGHT_FLOOR_MESSAGE,
+} from "../editor-body-settings";
 export type {
   QueryAST,
   LeafNode,
@@ -104,11 +108,31 @@ const EditorHeadingSchema = z.object({
   color: z.string().optional(),
 });
 
-const EditorBodySchema = z.object({
+const EditorBodyFieldsShape = {
   fontFamily: z.string().optional(),
   fontSize: z.string().optional(),
-  lineHeight: z.string().optional(),
   paragraphSpacing: z.string().optional(),
+};
+
+/** Write/spec shape: the project line height must meet the 1.8 floor. */
+const EditorBodySchema = z.object({
+  ...EditorBodyFieldsShape,
+  lineHeight: z
+    .string()
+    .optional()
+    .refine((v) => getLineHeightError(v) === undefined, {
+      message: LINE_HEIGHT_FLOOR_MESSAGE,
+    }),
+});
+
+/**
+ * Stored-data shape for `project.json`: no floor, so a project saved before
+ * the floor existed stays usable (no migration; the floor is enforced on
+ * write and in project-type specs, not on read).
+ */
+const StoredEditorBodySchema = z.object({
+  ...EditorBodyFieldsShape,
+  lineHeight: z.string().optional(),
 });
 
 export const EditorConfigSchema = z.object({
@@ -123,6 +147,11 @@ export const EditorConfigSchema = z.object({
     })
     .optional(),
   body: EditorBodySchema.optional(),
+});
+
+/** `EditorConfigSchema` with the lenient stored-data body (see {@link StoredEditorBodySchema}). */
+const StoredEditorConfigSchema = EditorConfigSchema.extend({
+  body: StoredEditorBodySchema.optional(),
 });
 
 /**
@@ -312,7 +341,7 @@ export const ProjectConfigSchema = z.object({
     )
     .optional(),
   tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
-  editorConfig: EditorConfigSchema.optional(),
+  editorConfig: StoredEditorConfigSchema.optional(),
   defaultRevisionName: z.string().optional(),
   metadataSchema: MetadataSchemaSchema.optional(),
   metadataRevision: z.number().int().nonnegative().optional(),

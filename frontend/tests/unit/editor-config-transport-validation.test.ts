@@ -189,3 +189,66 @@ describe("httpEditorConfigTransport.saveBody", () => {
     consoleWarnSpy.mockRestore();
   });
 });
+
+describe("httpEditorConfigTransport.saveBody — floor on the response schema", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("reports a response body whose line height is below 1.8", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ editorConfig: { body: { lineHeight: "1.7" } } }),
+        ),
+    );
+
+    await httpEditorConfigTransport.saveBody("project-1", {
+      lineHeight: "1.7",
+    });
+    expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces the server's 400 floor message and does not report it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            { error: "Line height must be a number of at least 1.8." },
+            false,
+          ),
+        ),
+    );
+
+    await expect(
+      httpEditorConfigTransport.saveBody("project-1", { lineHeight: "1.7" }),
+    ).rejects.toThrow("Line height must be a number of at least 1.8.");
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+
+  it("accepts a response body at the floor", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ editorConfig: { body: { lineHeight: "1.8" } } }),
+        ),
+    );
+
+    await httpEditorConfigTransport.saveBody("project-1", {
+      lineHeight: "1.8",
+    });
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+});
