@@ -108,6 +108,20 @@ export function normalizeDefinition(
 }
 
 /**
+ * Collects every string message from a zod `format()` error tree, at any
+ * depth (nested objects such as `editorConfig.body.lineHeight` carry their
+ * messages in `_errors` arrays below the top level).
+ */
+function collectErrorMessages(node: unknown): string[] {
+  if (typeof node === "string") return [node];
+  if (Array.isArray(node)) return node.flatMap(collectErrorMessages);
+  if (typeof node === "object" && node !== null) {
+    return Object.values(node).flatMap(collectErrorMessages);
+  }
+  return [];
+}
+
+/**
  * Validates a draft definition against the project-type schema.
  *
  * This function is the single gate applied before a draft is written to disk.
@@ -122,15 +136,7 @@ export function validateDraft(
 ): DraftValidationResult {
   const schemaResult = validateProjectType(definition);
   if (!schemaResult.success) {
-    const messages = Object.values(schemaResult.errors ?? {})
-      .flatMap((entry) =>
-        Array.isArray(entry)
-          ? entry
-          : typeof entry === "object" && entry !== null
-            ? Object.values(entry).flat()
-            : [],
-      )
-      .filter((msg): msg is string => typeof msg === "string");
+    const messages = collectErrorMessages(schemaResult.errors);
 
     return {
       valid: false,

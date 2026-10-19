@@ -102,7 +102,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 8
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-22 (a), FR-23 (US-3, US-4). Touches `ProjectTypeEditorForm.tsx`, which Part 1 Tasks 21-22 also edit: do not run Tasks 9 and 22 in parallel. If Part 2 is cut, FR-23 is cut with it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Browser-level test: computed line height and reopen
 **What:** Add a Storybook story and Playwright e2e test that show computed paragraph line height follows the project setting, explicit leading is kept, and a deliberate 1.5 survives save and reopen.

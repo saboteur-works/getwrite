@@ -69,3 +69,20 @@ export const PartialValues: Story = {
     },
   },
 };
+
+export const LineHeightBelowFloor: Story = {
+  args: {
+    initialBody: { ...fullConfig, lineHeight: "1.7" },
+    onClose: () => console.log("close"),
+    onSave: async (body: EditorBodyConfig) => {
+      console.log("save", body);
+    },
+  },
+  play: async () => {
+    // The dialog renders in a portal, so look in the whole document.
+    const save = Array.from(document.querySelectorAll("button")).find(
+      (b) => b.textContent === "Save Changes",
+    );
+    save?.click();
+  },
+};

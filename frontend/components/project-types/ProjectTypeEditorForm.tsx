@@ -9,6 +9,7 @@
  * mutation semantics to callbacks supplied by the parent orchestrator.
  */
 
+import { useId } from "react";
 import Button from "../common/UI/Button/Button";
 import Input from "../common/UI/Input/Input";
 import Textarea from "../common/UI/Textarea/Textarea";
@@ -20,6 +21,7 @@ import type {
   ProjectTypeResourceKind,
 } from "../../src/types/project-types";
 import type { EditorHeading } from "../../src/lib/models/types";
+import { getLineHeightError } from "../../src/lib/editor-body-settings";
 
 const HEADING_LEVELS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
 type HeadingLevel = (typeof HEADING_LEVELS)[number];
@@ -535,6 +537,9 @@ export default function ProjectTypeEditorForm({
                 label="Line Height"
                 value={definition.editorConfig?.body?.lineHeight ?? ""}
                 placeholder="1.8"
+                error={getLineHeightError(
+                  definition.editorConfig?.body?.lineHeight,
+                )}
                 onChange={(value) =>
                   patchBody({ lineHeight: value || undefined })
                 }
@@ -601,6 +606,8 @@ interface LabeledInputProps {
   label: string;
   value: string;
   placeholder?: string;
+  /** Refusal message; when set it is linked to the input and flagged invalid. */
+  error?: string;
   onChange: (value: string) => void;
 }
 
@@ -608,18 +615,29 @@ function LabeledInput({
   label,
   value,
   placeholder,
+  error,
   onChange,
 }: LabeledInputProps): JSX.Element {
+  const errorId = useId();
   return (
-    <label className="project-type-editor-field">
-      <span className="project-type-editor-field-label">{label}</span>
-      <Input
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="project-type-editor-field-control"
-      />
-    </label>
+    <div className="project-type-editor-field">
+      <label className="project-type-editor-field">
+        <span className="project-type-editor-field-label">{label}</span>
+        <Input
+          value={value}
+          placeholder={placeholder}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          onChange={(e) => onChange(e.target.value)}
+          className="project-type-editor-field-control"
+        />
+      </label>
+      {error ? (
+        <p id={errorId} className="text-sm text-gw-secondary">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

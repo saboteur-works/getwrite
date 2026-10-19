@@ -97,3 +97,14 @@ export const Interactive: Story = {
     return <Wrapper />;
   },
 };
+
+export const LineHeightBelowFloor: Story = {
+  render: Interactive.render,
+  args: {
+    ...Interactive.args,
+    definition: {
+      ...baseDefinition,
+      editorConfig: { body: { lineHeight: "1.7" } },
+    },
+  },
+};

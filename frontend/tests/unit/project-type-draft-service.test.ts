@@ -62,6 +62,33 @@ describe("ProjectTypeDraftService.validateDraft", () => {
   });
 });
 
+describe("ProjectTypeDraftService.validateDraft line height floor (FR-23)", () => {
+  const withLineHeight = (lineHeight: string): ProjectTypeDefinition => ({
+    id: "lh",
+    name: "LH",
+    description: "",
+    folders: [{ name: "Drafts" }],
+    defaultFolders: [],
+    defaultResources: [],
+    statuses: [],
+    editorConfig: { body: { lineHeight } },
+  });
+
+  it.each(["1.7", "normal"])("refuses %j with the floor message", (v) => {
+    const result = validateDraft(withLineHeight(v));
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errors).toContain(
+        "Line height must be a number of at least 1.8.",
+      );
+    }
+  });
+
+  it.each(["", "1.8", "2"])("accepts %j", (v) => {
+    expect(validateDraft(withLineHeight(v))).toEqual({ valid: true });
+  });
+});
+
 describe("ProjectTypeDraftService.createEmptyProjectType", () => {
   it("seeds at least one starter folder", () => {
     const draft = createEmptyProjectType();
