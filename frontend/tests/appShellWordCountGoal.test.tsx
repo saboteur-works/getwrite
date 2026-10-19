@@ -188,7 +188,10 @@ describe("AppShell word-count goal wiring (Task 8)", () => {
       (screen.getByLabelText("Total word-count goal") as HTMLInputElement)
         .value,
     ).toBe("50000");
-  });
+    // Renders the whole shell and opens Project Settings twice: 1.2 s alone
+    // locally, over the 5 s default under CI's full-suite load. 15 s matches
+    // appShellDailyGoalFooterRefresh.test.tsx.
+  }, 15000);
 
   it("saves the word-count goal against the project directory id, not project.id", async () => {
     renderWithPageShapedProject(undefined);
