@@ -167,3 +167,36 @@ State after the thrown error for the depth-2 layout (from a one-off listing, not
 - Whether projects created outside `createProjectFromType` (UI folder creation, import) nest directories on disk.
 
 Outcome: reproduced on the unfixed tree by a test that asserts the desired behaviour; it stays red until Task 7. Task 7 proceeds.
+
+## Part 2: cause discrimination and fix (Task 7, FR-9, FR-10, FR-11)
+
+Date: 2026-10-18. Tree: `fix/hidden-and-lost-work`, on top of Task 6. Unit tests only, inside the sandbox; no server or app started (no `lsof`, no pid). Fixtures are throwaway `fs.mkdtemp` directories under `$TMPDIR`.
+
+### Discriminating experiment
+
+- Change tried (temporary, reverted before the fix): in `softDeleteFolder`'s descendant-folder loop, iterate `[...descendants].reverse()` (children before parents; the manifest list is pre-order, so reversed it is deepest-first) and nothing else.
+- Command: `pnpm --filter getwrite-frontend exec vitest run tests/unit/trash-folder-cascade.test.ts`.
+- Before (unfixed, Task 6): 8 tests, 1 failed. The failing operation is `rename` at `trash.ts:550` with source `<tmp>/folders/depth-two/two-child/two-grandchild` and destination `<tmp>/.trash/folders/two-grandchild`, ENOENT.
+- With children moved before parents: 8 tests, 8 passed, including the depth-2 case.
+- Observed in the same run family on the unfixed tree for depth 3: `rename '<tmp>/folders/deep-root/level-a/level-b' -> '<tmp>/.trash/folders/level-b'` ENOENT (level-a, its parent, had already been moved).
+
+Result: moving a child before its parent changes the outcome from failure to success. Because the only variable changed was the order of the renames, the cause is established as: a folder's directory contains its subfolders' directories on disk (`createProjectFromType` nests them), the cascade moved a parent directory first (carrying the child with it), and the later rename of the child's recorded path no longer existed. The hypothesis (parents moved before children) is established by this experiment. Not shown: that this is the same event as the 404 in note_f818d108.
+
+### Fix (`frontend/src/lib/models/trash.ts`)
+
+- Descendant folder directories are moved deepest first, then the target.
+- A destination name already taken under `.trash/folders/` (moves are flat, two depths can share a directory name) gets `-<folderId>` appended; trashed descriptors are found by the id in `folder.json`.
+- Retry: on a retry the live tree no longer holds what an earlier attempt moved, so the earlier manifest is read and its entries kept (new live entries are added); resources no longer live are skipped, so a retry does not overwrite their ref records with empty ones. A failure still throws to the caller; the target moves last, so it stays live and a retry can find it.
+- Unchanged: index/backlink/mention removal, reference nullification and ref record, collision handling and root fallback on restore, purge sweep.
+
+### Evidence
+
+- Red before the fix (`trash-folder-cascade.test.ts`, 11 tests): 3 failed, 8 passed. Failing: depth 2 (Task 6), the new depth 3 case (ENOENT as above), the new partial-failure/retry case (the retry also threw ENOENT, so red for the same cause, not for the injected failure). The new "folder holding child folders and resources" case passed on the unfixed tree (it has only depth 1 below the target); kept as a regression guard.
+- Green after the fix: 11 of 11.
+- Partial-failure test: the target's parent directory (`folders/deep-root`) is made read-only (`chmod 555`), so moving its child out fails after the deeper directories already moved; `softDeleteFolder` rejects, the target is still live; permissions restored, retry completes, the manifest lists all 7 descendants, `listTrashedItems` shows one entry with 7 descendants, and `restoreFolder` restores them.
+- Restore test (depth 3 and mixed): the live folder set (id, parentId, name, orderIndex) equals the set before delete; each resource sidecar keeps `folderId` and `orderIndex`.
+- `pnpm test:ci` (frontend): 612 files passed; 7026 tests passed, 2 expected fail, 1 skipped (7029). `pnpm typecheck`: exit 0. `pnpm lint`: 0 errors, 393 warnings (touched files: no output from eslint).
+
+### Not measured
+
+- The HTTP route and native backend after the fix; projects created outside `createProjectFromType`; the on-disk directory layout after restore was not compared with the layout before delete (the tests compare id, parentId, name and orderIndex from each `folder.json`, not directory paths).

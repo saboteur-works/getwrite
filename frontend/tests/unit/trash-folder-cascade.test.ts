@@ -8,7 +8,11 @@ import {
   createTextResource,
   writeResourceToFile,
 } from "../../src/lib/models/resource";
-import { softDeleteFolder } from "../../src/lib/models/trash";
+import {
+  listTrashedItems,
+  restoreFolder,
+  softDeleteFolder,
+} from "../../src/lib/models/trash";
 import {
   createProjectFromType,
   type ProjectTypeSpec,
@@ -370,6 +374,249 @@ describe("models/trash — softDeleteFolder over createProjectFromType nested la
       }
     },
   );
+});
+
+/**
+ * Feature 89, FR-9/FR-10 (Task 7): depth 3, a folder with both child folders
+ * and resources, restore as one unit, and retry after a partial failure.
+ */
+const DEEP_SPEC: ProjectTypeSpec = {
+  id: "f89-deep",
+  name: "F89 Deep",
+  folders: [{ name: "Deep Root" }, { name: "Wide Root" }, { name: "Keeper" }],
+  defaultFolders: [
+    { folder: "Deep Root", name: "Level A" },
+    { folder: "Level A", name: "Level B" },
+    { folder: "Level B", name: "Level C" },
+    { folder: "Wide Root", name: "Wide Kid 1" },
+    { folder: "Wide Root", name: "Wide Kid 2" },
+  ],
+  defaultResources: [
+    { folder: "Deep Root", name: "Deep Res 0", type: "text", template: "a" },
+    { folder: "Level A", name: "Deep Res A", type: "text", template: "b" },
+    { folder: "Level B", name: "Deep Res B", type: "text", template: "c" },
+    { folder: "Level C", name: "Deep Res C", type: "text", template: "d" },
+    { folder: "Wide Root", name: "Wide Res 1", type: "text", template: "e" },
+    { folder: "Wide Root", name: "Wide Res 2", type: "text", template: "f" },
+    { folder: "Wide Kid 1", name: "Wide Kid Res", type: "text", template: "g" },
+    { folder: "Keeper", name: "Keeper Res", type: "text", template: "h" },
+  ],
+};
+
+interface LiveFolder {
+  id: string;
+  parentId: string | null;
+  name: string;
+  orderIndex: number;
+}
+
+async function liveFolders(root: string): Promise<LiveFolder[]> {
+  const out: LiveFolder[] = [];
+  for (const e of await listRecursive(path.join(root, "folders"))) {
+    if (!e.endsWith("folder.json")) continue;
+    const f = JSON.parse(
+      await fs.readFile(path.join(root, "folders", e), "utf8"),
+    ) as {
+      id: string;
+      parentId?: string | null;
+      name: string;
+      orderIndex: number;
+    };
+    out.push({
+      id: f.id,
+      parentId: f.parentId ?? null,
+      name: f.name,
+      orderIndex: f.orderIndex,
+    });
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+describe("models/trash — softDeleteFolder deep and wide subtrees, restore, retry (Feature 89, FR-9, FR-10)", () => {
+  async function build(): Promise<{
+    tmp: string;
+    byName: (n: string) => { id: string };
+  }> {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-f89-deep-"));
+    const created = await createProjectFromType({
+      projectRoot: tmp,
+      spec: DEEP_SPEC,
+    });
+    const all = [...created.folders, ...created.resources];
+    return {
+      tmp,
+      byName: (n: string) => {
+        const hit = all.find((x) => x.name === n);
+        if (!hit) throw new Error(`fixture missing ${n}`);
+        return hit;
+      },
+    };
+  }
+
+  const CASES = [
+    {
+      label: "depth 3",
+      target: "Deep Root",
+      folders: ["Level A", "Level B", "Level C"],
+      resources: ["Deep Res 0", "Deep Res A", "Deep Res B", "Deep Res C"],
+    },
+    {
+      label: "a folder holding child folders and resources",
+      target: "Wide Root",
+      folders: ["Wide Kid 1", "Wide Kid 2"],
+      resources: ["Wide Res 1", "Wide Res 2", "Wide Kid Res"],
+    },
+  ];
+
+  it.each(CASES)(
+    "$label: every descendant is in .trash, listed as one entry, and restores as one unit",
+    async ({ target, folders, resources }) => {
+      const { tmp, byName } = await build();
+      try {
+        const targetId = byName(target).id;
+        const before = await liveFolders(tmp);
+        const sidecarsBefore = new Map<
+          string,
+          Record<string, unknown> | null
+        >();
+        for (const n of resources) {
+          sidecarsBefore.set(n, await readSidecar(tmp, byName(n).id as never));
+        }
+
+        await softDeleteFolder(tmp, targetId as never);
+
+        const trashedIds: string[] = [];
+        for (const e of await listRecursive(
+          path.join(tmp, ".trash", "folders"),
+        )) {
+          if (!e.endsWith("folder.json")) continue;
+          trashedIds.push(
+            (
+              JSON.parse(
+                await fs.readFile(
+                  path.join(tmp, ".trash", "folders", e),
+                  "utf8",
+                ),
+              ) as { id: string }
+            ).id,
+          );
+        }
+        expect(trashedIds.sort()).toEqual(
+          [targetId, ...folders.map((n) => byName(n).id)].sort(),
+        );
+        for (const n of resources) {
+          expect(
+            await pathExists(
+              path.join(
+                tmp,
+                ".trash",
+                "meta",
+                `resource-${byName(n).id}.meta.json`,
+              ),
+            ),
+          ).toBe(true);
+        }
+        const live = (await liveFolders(tmp)).map((f) => f.id);
+        for (const id of [targetId, ...folders.map((n) => byName(n).id)]) {
+          expect(live).not.toContain(id);
+        }
+
+        const manifest = JSON.parse(
+          await fs.readFile(
+            path.join(tmp, ".trash", "meta", `folder-${targetId}.json`),
+            "utf8",
+          ),
+        ) as TrashFolderManifest;
+        expect(manifest.descendants.map((d) => d.id).sort()).toEqual(
+          [...folders, ...resources].map((n) => byName(n).id).sort(),
+        );
+
+        const listed = await listTrashedItems(tmp);
+        expect(listed.folders.map((f) => f.id)).toEqual([targetId]);
+        expect(listed.folders[0]?.descendants.map((d) => d.id).sort()).toEqual(
+          [...folders, ...resources].map((n) => byName(n).id).sort(),
+        );
+        expect(listed.resources).toEqual([]);
+
+        const restored = await restoreFolder(tmp, targetId as never);
+        expect(restored.renamed).toBe(false);
+        expect(restored.relocated).toBe(false);
+        expect(await liveFolders(tmp)).toEqual(before);
+        for (const n of resources) {
+          const after = await readSidecar(tmp, byName(n).id as never);
+          expect(after).not.toBeNull();
+          expect(after?.["folderId"]).toEqual(
+            sidecarsBefore.get(n)?.["folderId"],
+          );
+          expect(after?.["orderIndex"]).toEqual(
+            sidecarsBefore.get(n)?.["orderIndex"],
+          );
+        }
+        expect((await listTrashedItems(tmp)).folders).toEqual([]);
+        expect(
+          await listRecursive(path.join(tmp, ".trash", "folders")),
+        ).toEqual([]);
+      } finally {
+        await removeDirRetry(tmp);
+      }
+    },
+  );
+
+  it("a failure partway through is reported, and a retry completes the subtree with the full manifest", async () => {
+    const { tmp, byName } = await build();
+    const lockedDir = path.join(tmp, "folders", "deep-root");
+    try {
+      const targetId = byName("Deep Root").id;
+      const all = [
+        "Level A",
+        "Level B",
+        "Level C",
+        "Deep Res 0",
+        "Deep Res A",
+        "Deep Res B",
+        "Deep Res C",
+      ].map((n) => byName(n).id);
+      // A read-only parent directory makes moving its child out fail
+      // partway through the cascade (the deeper moves have already happened).
+      await fs.chmod(lockedDir, 0o555);
+      await expect(softDeleteFolder(tmp, targetId as never)).rejects.toThrow();
+      await fs.chmod(lockedDir, 0o755);
+
+      // Nothing is silently half-deleted: the target is still live, so the
+      // writer was told and can retry.
+      expect((await liveFolders(tmp)).map((f) => f.id)).toContain(targetId);
+
+      await softDeleteFolder(tmp, targetId as never);
+
+      const manifest = JSON.parse(
+        await fs.readFile(
+          path.join(tmp, ".trash", "meta", `folder-${targetId}.json`),
+          "utf8",
+        ),
+      ) as TrashFolderManifest;
+      expect(manifest.descendants.map((d) => d.id).sort()).toEqual(
+        [...all].sort(),
+      );
+      const live = (await liveFolders(tmp)).map((f) => f.id);
+      for (const id of [targetId, ...all]) expect(live).not.toContain(id);
+
+      const listed = await listTrashedItems(tmp);
+      expect(listed.folders.map((f) => f.id)).toEqual([targetId]);
+      expect(listed.folders[0]?.descendants).toHaveLength(all.length);
+
+      await restoreFolder(tmp, targetId as never);
+      const restoredIds = (await liveFolders(tmp)).map((f) => f.id);
+      for (const n of ["Deep Root", "Level A", "Level B", "Level C"]) {
+        expect(restoredIds).toContain(byName(n).id);
+      }
+      for (const n of ["Deep Res 0", "Deep Res C"]) {
+        expect(await readSidecar(tmp, byName(n).id as never)).not.toBeNull();
+      }
+    } finally {
+      await fs.chmod(lockedDir, 0o755).catch(() => undefined);
+      await removeDirRetry(tmp);
+    }
+  });
 });
 
 describe("F87 D-36: softDeleteFolder against a referencing Point of View", () => {
