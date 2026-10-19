@@ -9,6 +9,10 @@ import {
   writeResourceToFile,
 } from "../../src/lib/models/resource";
 import { softDeleteFolder } from "../../src/lib/models/trash";
+import {
+  createProjectFromType,
+  type ProjectTypeSpec,
+} from "../../src/lib/models/project-creator";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
 import {
@@ -227,6 +231,145 @@ describe("models/trash — softDeleteFolder cascade (Task 6, FR-3, FR-20)", () =
       await removeDirRetry(tmp);
     }
   });
+});
+
+/**
+ * Feature 89, FR-8: layouts built by `createProjectFromType`, whose
+ * `defaultFolders` create subfolders NESTED on disk
+ * (`folders/<parent>/<child>/folder.json`). The cascade tests above build
+ * folders with `writeResourceToFile`, which stores every folder flat under
+ * `folders/<slug>/`, so they never exercised nested directories.
+ */
+const NESTED_SPEC: ProjectTypeSpec = {
+  id: "f89-nested",
+  name: "F89 Nested",
+  folders: [{ name: "Depth One" }, { name: "Depth Two" }],
+  defaultFolders: [
+    { folder: "Depth One", name: "One Child" },
+    { folder: "Depth Two", name: "Two Child" },
+    { folder: "Two Child", name: "Two Grandchild" },
+  ],
+  defaultResources: [
+    { folder: "Depth One", name: "One Top Res", type: "text", template: "a" },
+    { folder: "One Child", name: "One Child Res", type: "text", template: "b" },
+    { folder: "Depth Two", name: "Two Top Res", type: "text", template: "c" },
+    { folder: "Two Child", name: "Two Mid Res", type: "text", template: "d" },
+    {
+      folder: "Two Grandchild",
+      name: "Two Leaf Res",
+      type: "text",
+      template: "e",
+    },
+  ],
+};
+
+async function listRecursive(root: string, rel = ""): Promise<string[]> {
+  const out: string[] = [];
+  let names: string[] = [];
+  try {
+    names = (await fs.readdir(path.join(root, rel))).sort();
+  } catch {
+    return out;
+  }
+  for (const n of names) {
+    const r = rel ? `${rel}/${n}` : n;
+    const st = await fs.stat(path.join(root, r));
+    out.push(st.isDirectory() ? `${r}/` : r);
+    if (st.isDirectory()) out.push(...(await listRecursive(root, r)));
+  }
+  return out;
+}
+
+describe("models/trash — softDeleteFolder over createProjectFromType nested layouts (Feature 89, FR-8)", () => {
+  async function build(): Promise<{
+    tmp: string;
+    byName: (n: string) => { id: string; slug?: string };
+  }> {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-f89-nested-"));
+    const created = await createProjectFromType({
+      projectRoot: tmp,
+      spec: NESTED_SPEC,
+    });
+    const all = [...created.folders, ...created.resources];
+    return {
+      tmp,
+      byName: (n: string) => {
+        const hit = all.find((x) => x.name === n);
+        if (!hit) throw new Error(`fixture missing ${n}`);
+        return hit;
+      },
+    };
+  }
+
+  it.each([
+    {
+      label: "depth 1: folder with one child folder",
+      target: "Depth One",
+      folders: ["One Child"],
+      resources: ["One Top Res", "One Child Res"],
+    },
+    {
+      label: "depth 2: folder with a child and a grandchild",
+      target: "Depth Two",
+      folders: ["Two Child", "Two Grandchild"],
+      resources: ["Two Top Res", "Two Mid Res", "Two Leaf Res"],
+    },
+  ])(
+    "$label: whole subtree lands in .trash/",
+    async ({ target, folders, resources }) => {
+      const { tmp, byName } = await build();
+      try {
+        const targetId = byName(target).id;
+        const result = await softDeleteFolder(tmp, targetId as never);
+        expect(result).toBe(path.join(tmp, ".trash"));
+
+        const manifest = JSON.parse(
+          await fs.readFile(
+            path.join(tmp, ".trash", "meta", `folder-${targetId}.json`),
+            "utf8",
+          ),
+        ) as TrashFolderManifest;
+        const listed = manifest.descendants.map((d) => d.id).sort();
+        const expected = [...folders, ...resources]
+          .map((n) => byName(n).id)
+          .sort();
+        expect(listed).toEqual(expected);
+
+        // Every resource sidecar is out of the live project.
+        for (const n of resources) {
+          expect(await readSidecar(tmp, byName(n).id as never)).toBeNull();
+        }
+
+        // The target's directory (and so every nested child directory) is
+        // out of live folders/, and its descriptor plus each descendant
+        // folder descriptor are present somewhere under .trash/folders/.
+        const live = await listRecursive(path.join(tmp, "folders"));
+        const trashed = await listRecursive(
+          path.join(tmp, ".trash", "folders"),
+        );
+        const targetSlug = byName(target).slug as string;
+        expect(live.filter((e) => e.startsWith(`${targetSlug}`))).toEqual([]);
+        const trashedDescriptors = [];
+        for (const e of trashed.filter((x) => x.endsWith("folder.json"))) {
+          trashedDescriptors.push(
+            (
+              JSON.parse(
+                await fs.readFile(
+                  path.join(tmp, ".trash", "folders", e),
+                  "utf8",
+                ),
+              ) as { id: string }
+            ).id,
+          );
+        }
+        expect(trashedDescriptors.sort()).toEqual(
+          [targetId, ...folders.map((n) => byName(n).id)].sort(),
+        );
+      } finally {
+        await removeDirRetry(tmp);
+      }
+    },
+  );
 });
 
 describe("F87 D-36: softDeleteFolder against a referencing Point of View", () => {

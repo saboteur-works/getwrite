@@ -118,3 +118,52 @@ Date: 2026-10-18. Tree: branch `fix/hidden-and-lost-work` at `edb28e16` plus the
 - Process listing before and after: `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` printed nothing both times (exit 1). No Storybook dev server was started and no pid exists; the run used the Vitest Storybook runner (`pnpm exec vitest run --config=vitest.storybook.config.ts --configLoader runner stories/Start/StartPage.stories.tsx`), which drives Chromium itself.
 - a11y decision: the stories set `parameters.a11y.test = "error"`. First run with strict on: 5 failed, each with one violation, `landmark-complementary-is-top-level` on StartPage's own `<aside>` (the page shell, not the card). Contrast and all other rules reported nothing on the card. Observation only: whether the same violation exists on the other StartPage stories was not measured (they run at the global `todo` level). Decision: the stories switch off that one rule and keep strict on; a page-shell fix is not in this feature.
 - Result after that: 16 passed, 0 failed for the whole file (11 existing stories plus the 5 new). `pnpm typecheck` exit 0.
+
+## Part 2: nested-folder delete reproduction on the unfixed tree (Task 6, FR-8, FR-25, FR-31)
+
+Date: 2026-10-18. Tree: branch `fix/hidden-and-lost-work` at `b4eab56d`; the only edit is the new test block in `frontend/tests/unit/trash-folder-cascade.test.ts`. No product change. Unit test only (inside the sandbox); no server, app or Storybook was started, so no `lsof` was run and no pid exists. Fixtures are throwaway `fs.mkdtemp` directories under `$TMPDIR`; the repository's `projects/` and the protected folders were not touched.
+
+### Method
+
+- Layout built by `createProjectFromType` with an inline spec: top folders `Depth One` and `Depth Two`; `defaultFolders` `One Child` (under Depth One), `Two Child` (under Depth Two), `Two Grandchild` (under Two Child); a text resource at every level (5 resources).
+- On disk, `createProjectFromType` nests subfolder directories: `folders/depth-one/one-child/`, `folders/depth-two/two-child/two-grandchild/`, each with its own `folder.json`. The existing cascade tests in the same file build folders with `writeResourceToFile`, which stores every folder flat at `folders/<slug>/` even when `parentFolderId` is set, so they did not exercise nested directories (an observation about the existing fixtures, not a claim about what real projects contain).
+- Call: `softDeleteFolder(tmp, <Depth One id>)` and `softDeleteFolder(tmp, <Depth Two id>)`, each on a fresh layout. Asserted: the returned path is `<tmp>/.trash`; `.trash/meta/folder-<id>.json` lists exactly the descendant folder and resource ids; each descendant resource sidecar is gone from the live project; no live directory remains under the target; the folder descriptors under `.trash/folders/` are exactly the target plus every descendant folder.
+
+### Observed (`pnpm --filter getwrite-frontend exec vitest run tests/unit/trash-folder-cascade.test.ts`)
+
+Result: 8 tests, 1 failed, 7 passed (the 6 pre-existing tests pass unchanged).
+
+| Case | Outcome |
+| --- | --- |
+| Depth 1: `Depth One` with child `One Child`, resources at both levels | PASSED: no error, all assertions held |
+| Depth 2: `Depth Two` with child `Two Child` and grandchild `Two Grandchild`, resources at all three levels | FAILED: `softDeleteFolder` threw |
+
+Failing output, as seen:
+
+```
+Error: ENOENT: no such file or directory, rename '<tmp>/folders/depth-two/two-child/two-grandchild' -> '<tmp>/.trash/folders/two-grandchild'
+ ❯ softDeleteFolder src/lib/models/trash.ts:550:5
+    550|     await rename(fd.dirPath, dest);
+```
+
+State after the thrown error for the depth-2 layout (from a one-off listing, not kept as a test):
+
+- Live `folders/`: `depth-one/` (with `one-child/`) untouched; `depth-two/` and `depth-two/folder.json` remain. `depth-two/two-child/` is gone.
+- `.trash/folders/`: `two-child/folder.json` and `two-child/two-grandchild/folder.json` (the grandchild went to trash nested inside the moved child directory, not as its own entry). The target `Depth Two` descriptor is NOT in trash.
+- `.trash/meta/`: `folder-<DepthTwoId>.json` (manifest) present; `resource-*.meta.json` and `refs-*.json` for the three `Depth Two` subtree resources present; `.trash/resources/` holds the three resources. Live `meta/` holds no `resource-*` sidecar.
+- So the call returned an error and left the subtree partly in Trash: the resources and the child/grandchild descriptors moved, the target folder descriptor did not.
+- Depth 1 passed, which is consistent with a failure needing a folder two levels below the target; this is the only nesting depth pair measured (depth 1 passes, depth 2 fails). Depth 3 was not run.
+
+### Reading the code against the observation (not an experiment)
+
+- `softDeleteFolder` builds `descendants` depth-first with each folder entry pushed before its own children, then renames every descendant folder's `dirPath` in that order, then the target. The failing rename is the grandchild's path after `two-child` (its parent) had already been renamed away; that sequence is what the listing above shows. Whether moving a child before its parent changes the result was not tried: the hypothesis (parents moved before children) is consistent with this output but is NOT established; Task 7 owns the discriminating experiment.
+- The ENOENT is thrown by `rename` inside the model (`trash.ts:550`), reproduced at the unit level. The 404 in note_f818d108 was not re-run, and what `POST /api/folder/[folder-id]/delete` returns for this error (status, body) was not exercised, because the unit test reproduced. Whether that earlier 404 and this ENOENT are the same event is not shown.
+
+### Not measured
+
+- The HTTP route; any server or browser run.
+- `listTrashedItems` and `restoreFolder` on the partly-trashed state; retry after the failure.
+- Depth 3, and a folder holding both a child folder and resources beyond the depth-1/2 layouts above.
+- Whether projects created outside `createProjectFromType` (UI folder creation, import) nest directories on disk.
+
+Outcome: reproduced on the unfixed tree by a test that asserts the desired behaviour; it stays red until Task 7. Task 7 proceeds.
