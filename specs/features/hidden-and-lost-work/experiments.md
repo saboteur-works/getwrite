@@ -253,3 +253,41 @@ After the change: the same files plus `add-field-form.test.ts` and `field-dedup.
 Re-read of the four statements (dialog, `help-content.ts`, `types.ts` comment, `deprecateField` doc comment) against the final behaviour: each says the field is hidden from the sidebar, values kept, queryable/flagged; behaviour now matches; none edited.
 
 Not measured: the "Add field" form and sidebar in a running app (Task 16); Storybook stories for them (not run); a save through the page's React handler (the on-disk test starts at `updateSidecarCore`); image and audio resources.
+
+## Part 4: what `updateSidecarCore` stores for `entityKind` when a whole-resource payload omits it (Task 10, FR-17, FR-20, FR-24, FR-31)
+
+Date: 2026-10-18. Tree: `fix/hidden-and-lost-work`, on top of Task 9, no product change. Sandbox only; no server or app started (no `lsof`, no pid). Throwaway `os.tmpdir()` projects directory per case via `GETWRITE_PROJECTS_DIR`; no `projects/` or app-support folder touched.
+
+### Method
+
+- New test file `frontend/tests/unit/resource-crud-core-entity-kind-omitted.test.ts` (a new file rather than an addition to an existing resource-crud-core file, because the existing ones are scoped to other features: entity-graph position, locked sidecar, deprecated field values). It calls the real `updateSidecarCore` (no mock) against a sidecar written first with `entityKind` and reads it back with `readSidecar`. The assertions pin the observed values; the tests pass.
+- Payload "recorded": the second `updateSidecar` payload recorded by `tests/page-stale-sidecar-save.test.tsx`: `{ id, name: "Chapter One", type: "text", folderId: null, orderIndex: 0, userMetadata: { mood: "calm" } }`, no `entityKind` key.
+- Payload "page", read from `frontend/app/(app)/page.tsx` `updateResource` (~439-519), not guessed: `updateSidecar(resourceId, dir, applyUpdate(resource))` with no `clearKeys`. `applyUpdate` = the updater's result (the page's local resource copy spread), then Redux `resourceSubtype` (key deleted if Redux has none), then Redux `wordCount` if numeric. It adds no `entityKind`, so a local copy without the key sends none. The test sends the recorded shape plus `wordCount: 42`, through a JSON round trip (as HTTP does).
+- Reading `updateSidecarCore` (`resource-crud-core.ts` ~458-498, not an experiment): `merged = { ...existing, ...update, orderIndex, folderId }`, then `clearKeys` deleted. The measurements below are what separate "kept" from that reading.
+- Command: `pnpm --filter getwrite-frontend exec vitest run tests/unit/resource-crud-core-entity-kind-omitted.test.ts`.
+
+### Observed (unfixed tree; sidecar before: `entityKind: "character"`)
+
+| Payload | `entityKind` after |
+| --- | --- |
+| recorded (no `entityKind`) | `"character"` (kept); `userMetadata` = `{ mood: "calm" }` |
+| page.tsx `updateResource` shape (no `entityKind`, `wordCount: 42`) | `"character"` (kept); `userMetadata` = `{ mood: "calm" }`; stored `wordCount` stayed 5 (client value dropped) |
+| page.tsx shape with a local copy holding `entityKind: undefined` (dropped by JSON) | `"character"` (kept) |
+
+Result: 5 tests passed (3 rows above, plus the two below).
+
+Additional core-level observation (not one of the two required payloads): sidecar holding `entityKind: "place"`, payload carrying `entityKind: "character"` -> stored `"character"` (replaced, as the merge reading predicts). This is a statement about the core only. Whether a stale local resource copy carrying an older `entityKind` reaches `updateResource` in a running app was NOT measured, so no claim is made that the app sends such a payload.
+
+### FR-18 branch selected
+
+(a): for the two payloads FR-17 requires, both of which omit `entityKind`, the stored `entityKind` is kept. The omission in the payload did not delete it at the `updateSidecarCore` level. The spec's claim of harm is disproved for the omit-case for `entityKind` only, at the core level. Caveat for the owner/Task 11: the harm path via a payload that CARRIES an older value (row "replaced" above) is a different shape from what FR-17 specified; it was observed at the core only and is not selected as branch (c) because no measured payload the page builds from the recorded test produced it, but whether the page can build it was not measured.
+
+### Observations for `aliases` and `wordCountGoal` (FR-24), those keys only
+
+Sidecar holding `aliases: ["Al", "Ally"]` and `wordCountGoal: 1500`, payload the recorded shape (omitting both): both kept (`["Al","Ally"]`, `1500`). No product change from this. The wider stale-save family (any other key a whole-resource save may omit, and payloads that carry stale values for these keys) was not measured.
+
+### Not measured
+
+- The page's React handler and HTTP route end to end (the test starts at `updateSidecarCore`; the page payload was read from code and reproduced by hand).
+- A stale local copy carrying an older `entityKind` in a running app; timing or editor-state dependence (no concurrent writes were run).
+- Any key other than `entityKind`, `aliases`, `wordCountGoal`; the native transport; encrypted projects.
