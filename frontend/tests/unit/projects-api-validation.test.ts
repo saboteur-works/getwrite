@@ -109,6 +109,27 @@ describe("projects.ts transport-boundary validation (FU-10 regression)", () => {
       );
     });
 
+    // Feature 89, Part 1 (FR-1): D-38 (`user-handbook/verification.md`) — one
+    // project whose `config.statuses` is a string rejects the whole list, the
+    // healthy project beside it included. Red on the unfixed tree.
+    it("lists the healthy project when another entry has a wrong-typed config.statuses (Feature 89, FR-1)", async () => {
+      const healthy = { project: validProject, folders: [], resources: [] };
+      const wrongTyped = {
+        project: {
+          ...validProject,
+          id: "bbbbbbbb-2222-4222-8222-222222222222",
+          config: { editorConfig: {}, statuses: "oops" },
+        },
+        folders: [],
+        resources: [],
+      };
+      fetchMock.mockResolvedValue(jsonResponse([healthy, wrongTyped]));
+
+      const result = await listProjects();
+
+      expect(result.map((e) => e.project.id)).toContain(validProject.id);
+    });
+
     it("REJECTS a non-array body", async () => {
       fetchMock.mockResolvedValue(jsonResponse({ not: "an array" }));
 
