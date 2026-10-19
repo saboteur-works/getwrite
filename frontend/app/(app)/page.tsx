@@ -38,13 +38,9 @@ import StartPage, {
   type StartPageProjectEntry,
   type StartPageCreateResult,
 } from "../../components/Start/StartPage";
-import type { Folder, AnyResource, TextResource } from "../../src/lib/models";
-import type {
-  MetadataValue,
-  Project,
-  ResourceRef,
-} from "../../src/lib/models/types";
-import { buildProjectView } from "../../src/lib/models/project-view";
+import type { Folder, AnyResource } from "../../src/lib/models";
+import type { MetadataValue, ResourceRef } from "../../src/lib/models/types";
+import { toStartPageEntry } from "../../components/Start/list-entry-view";
 import { listProjects, openProject } from "../../src/lib/api/projects";
 import {
   checkWorkspaceLock,
@@ -177,29 +173,12 @@ export default function Home(): JSX.Element {
   const refreshProjects = useCallback(async (): Promise<void> => {
     try {
       const entries = await listProjects();
-      // buildProjectView expects TextResource[] and returns UIResource[]; the original
-      // code cast through `any` (p: any) to bypass both constraints. We preserve that
-      // runtime behaviour with a targeted cast rather than a blanket any.
-      //
-      // `p.project` is cast to `Project` too: a locked entry's project is only
-      // `{ id, createdAt }` (`ProjectListApiEntry`'s locked variant, FR20), which
-      // `buildProjectView` tolerates at runtime — it only reads `project.id` —
-      // but does not statically satisfy `Project`'s required `name`.
-      const data = entries.map((p) => ({
-        ...buildProjectView({
-          project: p.project as Project,
-          folders: p.folders,
-          resources: p.resources as unknown as TextResource[],
-        }),
-        // Carried through deliberately: `buildProjectView` returns only
-        // project/folders/resources, so without this the Start screen cannot
-        // tell an encrypted project from an ordinary one and renders a locked
-        // entry as "Untitled Project · 0 resources · 0 folders".
-        isEncrypted: p.isEncrypted,
-        isLocked: p.isLocked,
-      })) as unknown as StartPageProjectEntry[];
+      const data = entries.map(toStartPageEntry);
+
       if (Array.isArray(data)) {
-        dispatch(setProjectsInStore(data));
+        // An unusable entry is a folder id and a reason, not a project: it is
+        // kept out of the store so nothing can select or open it.
+        dispatch(setProjectsInStore(data.filter((entry) => !entry.isUnusable)));
         setProjects(data);
       }
     } catch (err) {

@@ -21,6 +21,8 @@ import CreateProjectModal, {
   type CreateProjectPayload,
 } from "./CreateProjectModal";
 import ManageProjectMenu from "./ManageProjectMenu";
+import UnusableProjectCard from "./UnusableProjectCard";
+import type { UnusableProjectReason } from "../../src/lib/models/unusable-project-reason";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import ImportScrivenerDialog from "./ImportScrivenerDialog";
 import ImportDocxDialog from "./ImportDocxDialog";
@@ -82,6 +84,16 @@ export interface StartPageProjectEntry {
    * and offers no actions that would need its contents (FR20).
    */
   isLocked?: boolean;
+  /**
+   * True when the project's `project.json` exists but cannot be used
+   * (Feature 89). `project.id` is then the folder id and nothing else about
+   * the project is known; the card cannot be opened, renamed, deleted or
+   * packaged, and the entry counts as neither an openable project nor an
+   * empty list.
+   */
+  isUnusable?: boolean;
+  /** Why the project is unusable; set whenever `isUnusable` is true. */
+  unusableReason?: UnusableProjectReason;
 }
 
 /**
@@ -401,6 +413,14 @@ export default function StartPage({
   /** Projects sorted by most recent activity (newest first). */
   const sortedProjects = useMemo<StartPageProjectEntry[]>(() => {
     return [...localProjects].sort((left, right) => {
+      // Unusable entries carry no timestamps; keep them after every project
+      // that can be opened, in a stable order by folder id.
+      if (left.isUnusable || right.isUnusable) {
+        if (left.isUnusable && right.isUnusable) {
+          return left.project.id.localeCompare(right.project.id);
+        }
+        return left.isUnusable ? 1 : -1;
+      }
       const leftTimestamp = Date.parse(
         getProjectLastEditedTimestamp(left) ?? "",
       );
@@ -412,6 +432,12 @@ export default function StartPage({
       return rightSafe - leftSafe;
     });
   }, [localProjects]);
+
+  /** Entries that can be opened (everything except unusable ones). */
+  const openableProjects = useMemo<StartPageProjectEntry[]>(
+    () => localProjects.filter((entry) => !entry.isUnusable),
+    [localProjects],
+  );
 
   /** Total non-folder resources across all visible projects. */
   const totalRenderableResources = useMemo<number>(() => {
@@ -429,8 +455,8 @@ export default function StartPage({
 
   /** Lead project name referenced in the hero copy. */
   const featuredProjectName = useMemo<string>(() => {
-    return localProjects[0]?.project.name ?? "your next manuscript";
-  }, [localProjects]);
+    return openableProjects[0]?.project.name ?? "your next manuscript";
+  }, [openableProjects]);
 
   /**
    * Handles successful project creation from modal and updates local list.
@@ -724,8 +750,8 @@ export default function StartPage({
 
               <div className="mt-6 flex flex-wrap gap-3 text-sm">
                 <span className="inline-flex items-center text-gw-micro font-mono tracking-label uppercase border-gw-border border-hairline px-2 py-0.5 text-gw-secondary">
-                  {localProjects.length} active project
-                  {localProjects.length === 1 ? "" : "s"}
+                  {openableProjects.length} active project
+                  {openableProjects.length === 1 ? "" : "s"}
                 </span>
                 <span className="inline-flex items-center text-gw-micro font-mono tracking-label uppercase border-gw-border border-hairline px-2 py-0.5 text-gw-secondary">
                   {totalRenderableResources} writing assets
@@ -743,11 +769,11 @@ export default function StartPage({
               <div className="mt-5 grid gap-4">
                 <div>
                   <div className="text-gw-h1 font-semibold text-gw-primary">
-                    {localProjects.length}
+                    {openableProjects.length}
                   </div>
                   <p className="mt-2 text-gw-body leading-6 text-gw-secondary">
                     Project
-                    {localProjects.length === 1 ? "" : "s"} ready to open and
+                    {openableProjects.length === 1 ? "" : "s"} ready to open and
                     continue.
                   </p>
                 </div>
@@ -863,6 +889,15 @@ export default function StartPage({
           ) : null}
 
           {sortedProjects.map((projectEntry) => {
+            if (projectEntry.isUnusable) {
+              return (
+                <UnusableProjectCard
+                  key={projectEntry.project.id}
+                  folderId={projectEntry.project.id}
+                  reason={projectEntry.unusableReason ?? "invalid-manifest"}
+                />
+              );
+            }
             if (projectEntry.isLocked) {
               return (
                 <article
