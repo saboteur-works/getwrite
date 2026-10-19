@@ -453,3 +453,62 @@ Observed:
 ### Not measured in this task
 
 Desktop (Electron) run; the standalone server; any browser other than Chromium; the repo's e2e/Storybook suite (a separate task); behaviour on Windows paths; a hosted-auth run.
+
+## Final suites (Task 18, FR-29, FR-30, FR-31)
+
+Date: 2026-10-18 (local run from 21:05 MDT). Main checkout, branch `fix/hidden-and-lost-work`, HEAD `7f58c498` (feature commits only; baseline commit `23ac1c8e`). Node v24.15.0, pnpm 10.28.0. No source change in this task.
+
+### Parts: landed, closed or stopped (FR-30)
+
+| Part | Outcome | Records |
+| --- | --- | --- |
+| 1, unreadable projects (FR-1 to FR-7) | landed (Tasks 2-5) | reproduction "Part 1: unreadable projects, reproduction (Task 2)"; "core fix (Task 3)"; "Task 5" stories; tests `project-crud-core-listing.test.ts`, `projects-api-validation.test.ts`, `StartPage.test.tsx` |
+| 2, nested-folder delete (FR-8 to FR-11) | landed (Tasks 6-7) | "Part 2 ... reproduction (Task 6)"; "cause discrimination and fix (Task 7)"; test `trash-folder-cascade.test.ts` |
+| 3, deprecated custom fields in `MetadataSidebar` (FR-12 to FR-15) | landed (Tasks 8-9) | "Part 3 ... reproduction (Task 8)"; "Part 3 fix, Task 9"; tests `metadataSidebar.test.tsx`, `deprecatedFieldCopy.test.tsx`, `resource-crud-core-deprecated-field-values.test.ts` |
+| 4, `entityKind` on whole-resource payload (FR-17 to FR-20, FR-24) | closed, no product change, branch (a) (Tasks 10-11) | "Part 4 ... (Task 10)" measurement and "Task 11 outcome"; test `resource-crud-core-entity-kind-omitted.test.ts` |
+| 5, `readFolderTree` callers (FR-21, FR-22) | closed, no product change (Tasks 12-13; Tasks 14 and 15 not applicable) | "Part 5: survey ... (Task 12)" and "Task 13: closed, no exposed caller" |
+
+No part stopped for the owner.
+
+### Suites against the Task 1 baseline
+
+| Suite | Command (cwd) | Baseline | Final | Status |
+| --- | --- | --- | --- | --- |
+| frontend tests | `pnpm test:ci` (`frontend/`) | 612 files; 6967 passed, 2 expected fail, 1 skipped, 0 failed | 615 files; 7063 passed, 2 expected fail, 1 skipped (7066), 0 failed; exit 0 | run |
+| typecheck | `pnpm typecheck` (`frontend/`) | exit 0 | exit 0 | run |
+| lint | `pnpm lint` (`frontend/`) | exit 0; 0 errors, 393 warnings | exit 0; 0 errors, 393 warnings | run |
+| knip | `pnpm knip` (repo root) | exit 1; 413 findings | exit 1; 414 findings: unused files 49, unused dependencies 1, unused devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 166, unused exported types 170, duplicate exports 14 (+6 configuration hints, not counted) | run |
+| e2e | `pnpm test:e2e` (`frontend/`, outside sandbox) | exit 0; 214 passed, 1 skipped, 0 failed | exit 0; 214 passed, 1 skipped, 0 failed (1.2m); no failure names | run |
+| cli tests | not run (see below) | not run to completion | not run | NOT RUN |
+| electron tests | not run (see below) | 510 passed | not run | NOT RUN |
+
+Per-section knip difference from baseline: unused exported types 169 to 170 (+1); the other sections' counts are equal. The baseline's per-finding list was not kept, so which individual findings are new was not separated by diff; the comparison below is by name against the baseline source.
+
+Knip findings that name files touched by `git diff --name-only 23ac1c8e..HEAD` (touched source/test/doc files outside `specs/`):
+- `frontend/src/lib/api/projects.ts`: `resolveProjectsTransport` (unused export; the export exists in the baseline file), `LockedProjectApiEntry` (unused exported type; exists in baseline), `UnusableProjectApiEntry` (unused exported type; NOT in the baseline file, added by this feature).
+- `frontend/src/lib/api/schemas.ts`: `ApiEditorConfigSchema`, `ProjectSchema`, `FolderSchema`, `LockedProjectListEntrySchema` (each exported in the baseline file), `UnusableProjectListEntrySchema` (unused export; NOT in the baseline file, added by this feature).
+- No finding names any other touched file.
+The two feature-added names are reported as findings and were not fixed here; why the unused-exports section count is still 166 was not investigated.
+
+`cli/` and `electron/`: `git diff --stat 23ac1c8e..HEAD -- cli electron` is empty, so neither package is touched. `readFolderTree` behaviour did not change (Part 5 closed), so the cli tests were not run (and the baseline cli run never completed, so there is no cli figure to compare); the electron tests were not run because `electron/` is untouched. Neither is reported as passing.
+
+### Process listing (FR-28)
+
+`lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` (outside sandbox): before the e2e run, empty (exit 1); after it, empty (exit 1). Playwright's webServer started and stopped its own Storybook; this task started no separate process and recorded no pid. Task 16's run recorded the same command empty before and after (plus 3457), with its pids 89215, 89221, 89222 stopped. Task 1's before and after were empty. All recorded listings are identical: no listener on any of the ports.
+
+### Task 16 in-app observations (separate from the suites)
+
+- Part 1 unusable-project card: run (web build, Chromium via Playwright, throwaway projects dir); see "In-app exercise (Task 16)".
+- Part 2 nested folder delete and Trash restore: run.
+- Part 3 deprecated field hidden in the sidebar: run (restore done by editing the throwaway `project.json`; the app offered no restore control).
+- Part 4: not run (no product change).
+- Part 5: not run (no product change).
+- Desktop (Electron) run, standalone server, hosted auth: not run.
+
+### git status
+
+`git status --short` after all runs showed no modified file besides this append to `specs/features/hidden-and-lost-work/experiments.md`; `frontend/tsconfig.json` was not modified, so no restore was needed.
+
+### Not measured
+
+cli test counts; electron tests on this tree; which individual knip findings differ from the baseline beyond the name checks above; lint warnings were counted, not categorised.
