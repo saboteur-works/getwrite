@@ -48,7 +48,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 1
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-20 (rule, tests (c) and (e) at function level), FR-21 (finite number greater than 0 test). No upper bound and no minimum above 0 (OQ-5). In memory only: the function marks nothing changed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Paragraph-leading extension: unset by default, number when set, safe render
 **What:** Change `GetWriteParagraphLeading` so the attribute defaults to absent, renders no inline `line-height` when unset, parses pasted `line-height` through the Task 3 rule, and `setParagraphLeading` stores a JSON number and refuses non-positive or non-finite input.
