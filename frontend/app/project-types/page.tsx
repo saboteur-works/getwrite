@@ -20,9 +20,10 @@ import type {
 async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
   const { entries } = await resolveProjectTypes();
   return entries
-    .map(({ fileName, spec }) => ({
+    .map(({ fileName, spec, source }) => ({
       fileName,
       definition: spec as ProjectTypeDefinition,
+      source,
     }))
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
 }

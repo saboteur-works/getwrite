@@ -23,6 +23,7 @@ import { validateProjectType } from "../../src/lib/models/schemas";
 import {
   resolveProjectTypesTransport,
   type ProjectTypeConflict,
+  type ProjectTypeList,
   type ProjectTypeSource,
   type ProjectTypesTransport,
   type ProjectTypeWriteRefusalReason,
@@ -194,6 +195,47 @@ export function validateDraft(
 
 const BUILT_IN_DELETE_MESSAGE =
   "Built-in project types cannot be changed or deleted.";
+
+/** The text label for where an item came from; never conveyed by colour alone. */
+export function describeItemOrigin(
+  item: ProjectTypeListItem,
+): "Built-in" | "Saved" | "Draft" {
+  if (item.fileName === undefined) return "Draft";
+  return item.source === "saved" ? "Saved" : "Built-in";
+}
+
+/**
+ * Rebuilds the item list from a server list. An item the writer has edited is
+ * kept as edited (never overwritten by the server copy); drafts are kept; every
+ * other item is replaced by the server's entry.
+ */
+export function mergeListIntoItems(
+  items: ProjectTypeListItem[],
+  list: ProjectTypeList,
+): ProjectTypeListItem[] {
+  const listed = new Set(list.entries.map((entry) => entry.fileName));
+  const kept = items.filter(
+    (item) =>
+      item.fileName === undefined ||
+      (item.hasChanges && !listed.has(item.fileName)),
+  );
+  const fromServer = list.entries.map((entry): ProjectTypeListItem => {
+    const edited = items.find(
+      (item) => item.fileName === entry.fileName && item.hasChanges,
+    );
+    if (edited) return edited;
+    const definition = normalizeDefinition(entry.spec);
+    return {
+      key: toItemKey(entry.fileName, definition),
+      fileName: entry.fileName,
+      definition,
+      baseline: definition,
+      source: entry.source,
+      hasChanges: false,
+    };
+  });
+  return [...kept, ...fromServer];
+}
 
 function isSavedItem(item: ProjectTypeListItem): boolean {
   return item.fileName !== undefined && item.source === "saved";
@@ -433,6 +475,8 @@ export interface ProjectTypeDraftServiceState {
   handleSaveAsCopy: () => Promise<DraftSaveResult | null>;
   /** Deletes the selected item (built-ins are refused). */
   handleDelete: () => Promise<DraftDeleteResult | null>;
+  /** Replaces unedited items with the server's list; edits and drafts stay. */
+  refreshFromList: (list: ProjectTypeList) => void;
 }
 
 /**
@@ -461,9 +505,13 @@ export function useProjectTypeDraftService(
   }, [initialTemplates]);
 
   const [items, setItems] = useState<ProjectTypeListItem[]>(initialItems);
-  const [selectedKey, setSelectedKey] = useState<string>(
+  const [chosenKey, setSelectedKey] = useState<string>(
     initialItems[0]?.key ?? "",
   );
+  // A refresh can drop the chosen item; fall back to the first one listed.
+  const selectedKey = items.some((item) => item.key === chosenKey)
+    ? chosenKey
+    : (items[0]?.key ?? "");
 
   const selectedItem = items.find((item) => item.key === selectedKey) ?? null;
   const [isWriting, setIsWriting] = useState(false);
@@ -646,8 +694,13 @@ export function useProjectTypeDraftService(
       return result;
     });
 
+  const refreshFromList = (list: ProjectTypeList): void => {
+    setItems((previous) => mergeListIntoItems(previous, list));
+  };
+
   return {
     isWriting,
+    refreshFromList,
     handleSave,
     handleSaveAsCopy,
     handleDelete,

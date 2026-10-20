@@ -7,6 +7,7 @@ const sampleItems: ProjectTypeListItem[] = [
   {
     key: "file:novel.json",
     fileName: "novel.json",
+    source: "built-in",
     hasChanges: false,
     definition: {
       id: "novel",
@@ -18,6 +19,7 @@ const sampleItems: ProjectTypeListItem[] = [
   {
     key: "file:script.json",
     fileName: "script.json",
+    source: "saved",
     hasChanges: true,
     definition: {
       id: "script",

@@ -220,7 +220,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 21
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-6 (notice), FR-10 (UI), FR-11, FR-12 (US-1, US-3). Shares `ProjectTypeEditorForm.tsx` with Task 9; do not run in parallel with it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Unsaved-changes prompt on every exit path
 **What:** Offer Save, Discard and Keep editing when any item has `hasChanges` and the writer selects another item, closes the page or modal, goes back, or closes the window or tab.

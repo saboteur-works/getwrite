@@ -19,10 +19,26 @@ import {
 } from "../../src/store/projectsSlice";
 import { resolvePreferredColorMode } from "../../src/lib/user-preferences";
 import type { MetadataValue } from "../../src/lib/models/types";
-import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
+import type {
+  ProjectTypeDefinition,
+  ProjectTypeTemplateFile,
+} from "../../src/types/project-types";
+import {
+  projectTypeListNotice,
+  resolveProjectTypesTransport,
+  type ProjectTypesTransport,
+} from "../../src/lib/api/project-types";
+import Button from "../common/UI/Button/Button";
+import ConfirmDialog from "../common/ConfirmDialog";
 import ProjectTypeEditorForm from "./ProjectTypeEditorForm";
 import ProjectTypeListPane from "./ProjectTypeListPane";
-import { useProjectTypeDraftService } from "./ProjectTypeDraftService";
+import {
+  describeItemOrigin,
+  useProjectTypeDraftService,
+  type DraftDeleteResult,
+  type DraftOperationFailure,
+  type DraftSaveResult,
+} from "./ProjectTypeDraftService";
 import { DialogTitle } from "../common/UI/Dialog/Dialog";
 
 /**
@@ -37,6 +53,45 @@ interface ProjectTypesManagerPageProps {
   onClose?: () => void;
   /** Renders without page-level shell wrapper when true. */
   renderInModal?: boolean;
+  /**
+   * One-line notice from the loader (unusable or unreadable saved files);
+   * shown as an alert while non-empty. Replaced by the notice of each refresh.
+   */
+  listNotice?: string | null;
+  /** Resolves the transport used to save, delete and re-read the list. */
+  resolveTransport?: () => Promise<ProjectTypesTransport>;
+}
+
+/** What a refused or failed action tells the writer, and where. */
+interface ActionFeedback {
+  /** The definition the action ran on; the message hides once it is edited. */
+  definition: ProjectTypeDefinition;
+  idMessage?: string;
+  nameMessage?: string;
+  messages: string[];
+}
+
+/**
+ * Places a failed save or delete: an id problem next to the id field, a name
+ * clash next to the name field, anything else in the action bar.
+ */
+function feedbackFor(
+  definition: ProjectTypeDefinition,
+  failure: DraftOperationFailure,
+): ActionFeedback {
+  if (failure.kind === "validation") {
+    return { definition, messages: failure.errors };
+  }
+  if (failure.kind === "failed") {
+    return { definition, messages: [failure.message] };
+  }
+  if (failure.reason === "id-clash" || failure.reason === "invalid") {
+    return { definition, idMessage: failure.message, messages: [] };
+  }
+  if (failure.reason === "name-clash") {
+    return { definition, nameMessage: failure.message, messages: [] };
+  }
+  return { definition, messages: [failure.message] };
 }
 
 /**
@@ -49,6 +104,8 @@ export default function ProjectTypesManagerPage({
   initialTemplates,
   onClose,
   renderInModal = false,
+  listNotice = null,
+  resolveTransport = resolveProjectTypesTransport,
 }: ProjectTypesManagerPageProps): JSX.Element {
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -82,7 +139,86 @@ export default function ProjectTypesManagerPage({
     handleUpdateStatus,
     handleAddDefaultFolder,
     handleRemoveDefaultFolder,
-  } = useProjectTypeDraftService(initialTemplates);
+    isWriting,
+    handleSave,
+    handleSaveAsCopy,
+    handleDelete,
+    refreshFromList,
+  } = useProjectTypeDraftService(initialTemplates, resolveTransport);
+
+  const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
+  const [status, setStatus] = useState<string>("");
+  const [refreshNotice, setRefreshNotice] = useState<{
+    value: string | null;
+  } | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  const shownNotice = refreshNotice ? refreshNotice.value : listNotice;
+  const origin = selectedItem ? describeItemOrigin(selectedItem) : null;
+  const shownFeedback =
+    feedback && selectedItem && feedback.definition === selectedItem.definition
+      ? feedback
+      : null;
+
+  /** Re-reads the list from the server so the manager shows what is stored. */
+  const refreshList = async (): Promise<void> => {
+    try {
+      const transport = await resolveTransport();
+      const list = await transport.list();
+      refreshFromList(list);
+      setRefreshNotice({ value: projectTypeListNotice(list) });
+      setRefreshError(null);
+    } catch (error) {
+      setRefreshError(
+        `The list could not be refreshed: ${
+          error instanceof Error ? error.message : "unknown error"
+        }`,
+      );
+    }
+  };
+
+  const settle = async (
+    result: DraftSaveResult | DraftDeleteResult | null,
+    definition: ProjectTypeDefinition,
+    succeeded: string,
+  ): Promise<void> => {
+    if (result === null) return;
+    if (!result.ok) {
+      setStatus("");
+      setFeedback(feedbackFor(definition, result));
+      return;
+    }
+    setFeedback(null);
+    setStatus(succeeded);
+    await refreshList();
+  };
+
+  const runSave = async (asCopy: boolean): Promise<void> => {
+    if (!selectedItem) return;
+    const { definition } = selectedItem;
+    const result = await (asCopy ? handleSaveAsCopy() : handleSave());
+    const isCopy = result?.ok === true && "copied" in result && result.copied;
+    const name =
+      result?.ok === true && "item" in result
+        ? result.item.definition.name
+        : definition.name;
+    await settle(
+      result,
+      definition,
+      isCopy
+        ? `Saved a copy as \u201C${name}\u201D.`
+        : `Saved \u201C${name}\u201D.`,
+    );
+  };
+
+  const runDelete = async (): Promise<void> => {
+    if (!selectedItem) return;
+    const { definition } = selectedItem;
+    const result = await handleDelete();
+    setIsConfirmingDelete(false);
+    await settle(result, definition, `Deleted \u201C${definition.name}\u201D.`);
+  };
 
   const handleCloseManager = (): void => {
     if (onClose) {
@@ -135,6 +271,20 @@ export default function ProjectTypesManagerPage({
         </div>
       </header>
 
+      {shownNotice ? (
+        <p role="alert" className="text-sm text-gw-primary">
+          {shownNotice}
+        </p>
+      ) : null}
+      {refreshError ? (
+        <p role="alert" className="text-sm text-gw-primary">
+          {refreshError}
+        </p>
+      ) : null}
+      <p role="status" aria-live="polite" className="text-sm text-gw-secondary">
+        {status}
+      </p>
+
       <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 lg:grid-cols-[280px_1fr]">
         <ProjectTypeListPane
           items={items}
@@ -145,22 +295,81 @@ export default function ProjectTypesManagerPage({
 
         <div className="min-h-0 overflow-y-auto rounded-lg border border-gw-border bg-gw-chrome p-5">
           {selectedItem ? (
-            <ProjectTypeEditorForm
-              definition={selectedItem.definition}
-              onChange={(nextDefinition) => {
-                updateSelectedDefinition(() => nextDefinition);
-              }}
-              onAddFolder={handleAddFolder}
-              onRemoveFolder={handleRemoveFolder}
-              onAddResource={handleAddResource}
-              onRemoveResource={handleRemoveResource}
-              onWordCountGoalChange={handleWordCountGoalChange}
-              onAddStatus={handleAddStatus}
-              onRemoveStatus={handleRemoveStatus}
-              onUpdateStatus={handleUpdateStatus}
-              onAddDefaultFolder={handleAddDefaultFolder}
-              onRemoveDefaultFolder={handleRemoveDefaultFolder}
-            />
+            <>
+              <div
+                role="group"
+                aria-label="Project type actions"
+                className="mb-4 flex flex-wrap items-center gap-2"
+              >
+                <span className="text-sm font-medium text-gw-primary">
+                  {origin}
+                </span>
+                {origin === "Built-in" ? (
+                  <Button
+                    size="sm"
+                    disabled={isWriting}
+                    onClick={() => void runSave(true)}
+                  >
+                    {isWriting ? "Saving\u2026" : "Save as copy"}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={isWriting}
+                    aria-busy={isWriting}
+                    onClick={() => void runSave(false)}
+                  >
+                    {isWriting ? "Saving\u2026" : "Save"}
+                  </Button>
+                )}
+                {origin === "Saved" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={isWriting}
+                      onClick={() => void runSave(true)}
+                    >
+                      Save as copy
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={isWriting}
+                      onClick={() => setIsConfirmingDelete(true)}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+              {shownFeedback && shownFeedback.messages.length > 0 ? (
+                <div role="alert" className="mb-4 text-sm text-gw-primary">
+                  {shownFeedback.messages.map((message) => (
+                    <p key={message}>{message}</p>
+                  ))}
+                </div>
+              ) : null}
+              <ProjectTypeEditorForm
+                idReadOnly={origin !== "Draft"}
+                idError={shownFeedback?.idMessage}
+                nameError={shownFeedback?.nameMessage}
+                definition={selectedItem.definition}
+                onChange={(nextDefinition) => {
+                  updateSelectedDefinition(() => nextDefinition);
+                }}
+                onAddFolder={handleAddFolder}
+                onRemoveFolder={handleRemoveFolder}
+                onAddResource={handleAddResource}
+                onRemoveResource={handleRemoveResource}
+                onWordCountGoalChange={handleWordCountGoalChange}
+                onAddStatus={handleAddStatus}
+                onRemoveStatus={handleRemoveStatus}
+                onUpdateStatus={handleUpdateStatus}
+                onAddDefaultFolder={handleAddDefaultFolder}
+                onRemoveDefaultFolder={handleRemoveDefaultFolder}
+              />
+            </>
           ) : (
             <div className="rounded-md border border-dashed border-gw-border p-6 text-sm text-gw-secondary">
               No project type selected.
@@ -168,6 +377,15 @@ export default function ProjectTypesManagerPage({
           )}
         </div>
       </section>
+      <ConfirmDialog
+        isOpen={isConfirmingDelete}
+        title={`Delete \u201C${selectedItem?.definition.name ?? ""}\u201D?`}
+        description={`Projects already made from \u201C${selectedItem?.definition.name ?? ""}\u201D are not affected. The type can no longer be chosen for new projects.`}
+        confirmLabel="Delete"
+        isConfirmDisabled={isWriting}
+        onConfirm={() => void runDelete()}
+        onCancel={() => setIsConfirmingDelete(false)}
+      />
     </main>
   );
 

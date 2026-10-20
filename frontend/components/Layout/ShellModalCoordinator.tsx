@@ -111,6 +111,8 @@ export interface ShellModalCoordinatorProps {
   isProjectTypesLoading: boolean;
   projectTypesLoadError: string | null;
   projectTypeTemplates: ProjectTypeTemplateFile[];
+  /** Notice for unusable saved project types; shown in the manager. */
+  projectTypesNotice?: string | null;
   resources?: AnyResource[];
   folders?: Folder[];
   project?: CanonicalProject | null;
@@ -192,6 +194,7 @@ export default function ShellModalCoordinator({
   isProjectTypesLoading,
   projectTypesLoadError,
   projectTypeTemplates,
+  projectTypesNotice = null,
   resources,
   folders,
   project,
@@ -397,6 +400,7 @@ export default function ShellModalCoordinator({
           ) : (
             <ProjectTypesManagerPage
               initialTemplates={projectTypeTemplates}
+              listNotice={projectTypesNotice}
               renderInModal
               onClose={() => setIsProjectTypesModalOpen(false)}
             />

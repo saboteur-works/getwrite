@@ -6,6 +6,8 @@ import {
   saveDraftItem,
   saveDraftItemAsCopy,
   deleteDraftItem,
+  describeItemOrigin,
+  mergeListIntoItems,
   type ProjectTypeListItem,
 } from "../../components/project-types/ProjectTypeDraftService";
 import type {
@@ -389,5 +391,74 @@ describe("deleteDraftItem", () => {
     });
     expect(await deleteDraftItem(draft, transport)).toEqual({ ok: true });
     expect(transport.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("describeItemOrigin and mergeListIntoItems", () => {
+  const def = (id: string, name: string): ProjectTypeDefinition => ({
+    id,
+    name,
+    description: "",
+    folders: [{ name: "Workspace" }],
+    defaultFolders: [],
+    defaultResources: [],
+    statuses: [],
+  });
+  const item = (
+    fileName: string | undefined,
+    source: "built-in" | "saved" | undefined,
+    name: string,
+    hasChanges = false,
+  ): ProjectTypeListItem => ({
+    key: fileName ? `file:${fileName}` : `draft:${name}`,
+    ...(fileName ? { fileName } : {}),
+    ...(source ? { source } : {}),
+    definition: def(name.toLowerCase(), name),
+    hasChanges,
+  });
+
+  it("labels built-in, saved and draft items", () => {
+    expect(describeItemOrigin(item("a.json", "built-in", "A"))).toBe(
+      "Built-in",
+    );
+    expect(describeItemOrigin(item("b.json", "saved", "B"))).toBe("Saved");
+    expect(describeItemOrigin(item(undefined, undefined, "C"))).toBe("Draft");
+    expect(describeItemOrigin(item("d.json", undefined, "D"))).toBe("Built-in");
+  });
+
+  it("takes the server's entries, keeps drafts and edited items", () => {
+    const edited = item("b.json", "saved", "B edited", true);
+    const draft = item(undefined, undefined, "Draft");
+    const merged = mergeListIntoItems(
+      [draft, item("a.json", "built-in", "A"), edited],
+      {
+        entries: [
+          { fileName: "a.json", spec: def("a", "A2"), source: "built-in" },
+          { fileName: "b.json", spec: def("b", "B"), source: "saved" },
+          { fileName: "c.json", spec: def("c", "C"), source: "saved" },
+        ],
+        unusable: [],
+        savedStatus: "ok",
+      },
+    );
+    expect(merged.map((i) => i.key)).toEqual([
+      "draft:Draft",
+      "file:a.json",
+      "file:b.json",
+      "file:c.json",
+    ]);
+    expect(merged[1].definition.name).toBe("A2");
+    expect(merged[2]).toBe(edited);
+    expect(merged[3].source).toBe("saved");
+    expect(merged[3].hasChanges).toBe(false);
+  });
+
+  it("drops an unedited item the server no longer lists", () => {
+    const merged = mergeListIntoItems([item("gone.json", "saved", "Gone")], {
+      entries: [],
+      unusable: [],
+      savedStatus: "ok",
+    });
+    expect(merged).toEqual([]);
   });
 });

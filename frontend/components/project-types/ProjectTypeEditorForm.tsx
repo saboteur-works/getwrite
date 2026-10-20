@@ -47,6 +47,12 @@ export interface ProjectTypeEditorFormProps {
   onUpdateStatus: (index: number, value: string) => void;
   onAddDefaultFolder: () => void;
   onRemoveDefaultFolder: (index: number) => void;
+  /** Makes the ID field read-only (a saved type's id is fixed; so is a built-in's). */
+  idReadOnly?: boolean;
+  /** Refusal message shown next to the ID field as an alert. */
+  idError?: string;
+  /** Refusal message shown next to the Name field as an alert. */
+  nameError?: string;
 }
 
 export default function ProjectTypeEditorForm({
@@ -62,6 +68,9 @@ export default function ProjectTypeEditorForm({
   onUpdateStatus,
   onAddDefaultFolder,
   onRemoveDefaultFolder,
+  idReadOnly = false,
+  idError,
+  nameError,
 }: ProjectTypeEditorFormProps): JSX.Element {
   const patchDefinition = (updates: Partial<ProjectTypeDefinition>): void => {
     onChange({ ...definition, ...updates });
@@ -139,12 +148,17 @@ export default function ProjectTypeEditorForm({
           label="ID"
           value={definition.id}
           placeholder="novel"
+          readOnly={idReadOnly}
+          error={idError}
+          errorIsAlert
           onChange={(value) => patchDefinition({ id: value })}
         />
         <LabeledInput
           label="Name"
           value={definition.name}
           placeholder="Novel"
+          error={nameError}
+          errorIsAlert
           onChange={(value) => patchDefinition({ name: value })}
         />
         <LabeledNumberInput
@@ -608,6 +622,9 @@ interface LabeledInputProps {
   placeholder?: string;
   /** Refusal message; when set it is linked to the input and flagged invalid. */
   error?: string;
+  /** Announces `error` as an alert (a refusal) rather than quiet field help. */
+  errorIsAlert?: boolean;
+  readOnly?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -616,6 +633,8 @@ function LabeledInput({
   value,
   placeholder,
   error,
+  errorIsAlert = false,
+  readOnly,
   onChange,
 }: LabeledInputProps): JSX.Element {
   const errorId = useId();
@@ -626,6 +645,7 @@ function LabeledInput({
         <Input
           value={value}
           placeholder={placeholder}
+          readOnly={readOnly}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           onChange={(e) => onChange(e.target.value)}
@@ -633,7 +653,11 @@ function LabeledInput({
         />
       </label>
       {error ? (
-        <p id={errorId} className="text-sm text-gw-secondary">
+        <p
+          id={errorId}
+          role={errorIsAlert ? "alert" : undefined}
+          className="text-sm text-gw-secondary"
+        >
           {error}
         </p>
       ) : null}

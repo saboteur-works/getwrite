@@ -108,3 +108,13 @@ export const LineHeightBelowFloor: Story = {
     },
   },
 };
+
+export const SavedIdReadOnlyWithRefusals: Story = {
+  args: {
+    ...Interactive.args,
+    definition: baseDefinition,
+    idReadOnly: true,
+    idError: "A project type with the id novel already exists.",
+    nameError: "A project type named Novel already exists.",
+  },
+};
