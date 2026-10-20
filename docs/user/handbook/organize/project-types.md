@@ -1,7 +1,7 @@
 ---
 title: Project Types
 order: 30
-summary: The six built-in project types, the folders and starter documents each creates, and the Project Type Manager.
+summary: The six built-in project types, the folders and starter documents each creates, and saving your own in the Project Type Manager.
 ---
 
 # Project Types
@@ -27,13 +27,21 @@ GetWrite ships with these built-in types. The description is the text shown when
 
 ## Managing project types
 
-Open the **Project Type Manager** from the settings menu (gear icon). It lists the six built-in types by name and file name, and opens the selected type in a form with its id, name, word count goal, description, statuses, folders, default folders, default resources and editor settings. **New Project Type** opens a blank draft.
+Open the **Project Type Manager** from the settings menu (gear icon). It lists the built-in types and any you have saved, and opens the selected type in a form with its id, name, word count goal, description, statuses, folders, default folders, default resources and editor settings. **New Project Type** opens a blank draft.
 
-Editing a field marks the type "Unsaved changes", but no control to save or delete a project type was found in the manager. In a test on a throwaway copy of the project-type files, an edited type and a new draft were not written to those files, and after closing and reopening the manager the six originals were listed again.
+- A built-in type offers **Save as copy** only. Built-in types are never changed or deleted.
+- **Save as copy** writes your edits as a new saved type with its own id and name; the original is unchanged.
+- A type you saved offers **Save** (replaces it), **Save as copy** and **Delete**. Delete asks you to confirm.
+- A new draft offers **Save**. Its id can be edited until the first save, and is read-only after that.
+- Each type needs its own id and its own name. A save is refused if the id matches any other type, or if the name matches another type's name ignoring capitals and surrounding spaces. The refusal names the type it clashes with.
+- If you close the manager, go back, or select another type while any type has unsaved edits, an "Unsaved changes" prompt lists them with **Keep editing**, **Discard** and **Save**. Escape or clicking outside means Keep editing. If a save is refused, you stay in the manager.
+- A saved type appears in the new-project dialog and the Word import dialog. The Word import dialog refuses a type that was deleted after the dialog loaded, before anything is written.
+
+On the desktop app, saved types are kept in a `project-types` folder inside the app's data folder, shared by every workspace. Where that folder is not configured (for example `pnpm start` without `GETWRITE_SAVED_PROJECT_TYPES_DIR` exported, or hosted auth active), Save, Save as copy and Delete are refused with "Saving project types is not available here." and nothing is written. If saved files cannot be read or used, the manager shows "Saved project types could not be read." or "N saved project type file(s) could not be used." For the command line, see [the CLI guide](../../../features/cli.md) (`project types`, `project create --project-type`).
 
 ## Warnings and limits
 
-- The Project Type Manager has no save or delete control, and edits made in it were not kept (see above).
-- The Word import dialog on the desktop app lists the Game Writing type as "Game Documentation" and Poetry and Lyrics as "Poetry & Lyrics"; the Start Page's create dialog and the Project Type Manager use "Game Writing" and "Poetry and Lyrics".
+- The Word import dialog on the desktop app lists the Game Writing type as "Game Documentation" and Poetry and Lyrics as "Poetry & Lyrics"; the Start Page's create dialog and the Project Type Manager use "Game Writing" and "Poetry and Lyrics". (Not re-checked after Feature 90.)
+- The command-line tool sees saved types only when `GETWRITE_SAVED_PROJECT_TYPES_DIR` is exported to the same folder, so its list can differ from the app's.
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit b9ddb83c.
+Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit b9ddb83c. The Managing project types section (Feature 90) was read from the code in `ProjectTypesManagerPage.tsx`, `UnsavedChangesPrompt.tsx` and `project-types-write-core.ts`, not re-measured in a running app.

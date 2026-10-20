@@ -13,7 +13,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 ## Organize
 
 - [Start Page](organize/start-page.md) — The first page of GetWrite, where you create, open, rename, delete, compile and import projects.
-- [Project Types](organize/project-types.md) — The six built-in project types, the folders and starter documents each creates, and the Project Type Manager.
+- [Project Types](organize/project-types.md) — The six built-in project types, the folders and starter documents each creates, and saving your own in the Project Type Manager.
 - [Resource Tree](organize/resource-tree.md) — The panel that lists a project's documents, images, audio and folders, and how to create, rename, move and reorder them.
 
 ## Write
