@@ -36,7 +36,11 @@ import {
   LINE_HEIGHT_FLOOR_MESSAGE,
 } from "../editor-body-settings";
 import { z } from "zod";
-import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
+import {
+  AnyResourceSchema,
+  ProjectTypeSchema,
+  TipTapDocumentSchema,
+} from "../models/schemas";
 import { UNUSABLE_PROJECT_REASONS } from "../models/unusable-project-reason";
 import {
   ENTITY_KIND_COLOR_SLOTS,
@@ -871,3 +875,25 @@ export const SharingLimitsResponseSchema = z.discriminatedUnion("role", [
     }),
   }),
 ]);
+
+/**
+ * Body of `GET /api/project-types` (Feature 90, FR-6): the merged list with
+ * each entry's source, the saved files that could not be used (name and short
+ * reason only) and the saved-directory status.
+ */
+export const ProjectTypeListResponseSchema = z.object({
+  entries: z.array(
+    z.object({
+      spec: ProjectTypeSchema,
+      fileName: z.string(),
+      source: z.enum(["built-in", "saved"]),
+    }),
+  ),
+  unusable: z.array(
+    z.object({
+      fileName: z.string(),
+      reason: z.enum(["unparseable", "invalid", "unreadable"]),
+    }),
+  ),
+  savedStatus: z.enum(["ok", "not-configured", "unreadable"]),
+});

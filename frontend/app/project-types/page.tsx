@@ -2,63 +2,29 @@
  * @module ProjectTypesRoute
  *
  * App Router page for project type template management.
- * Loads JSON templates from `getwrite-config/templates/project-types` and
- * renders a UI-only management screen.
+ * Loads project types through the resolver and renders the management screen.
  */
 
-import fs from "node:fs/promises";
-import path from "node:path";
 import ProjectTypesManagerPage from "../../components/project-types/ProjectTypesManagerPage";
+import { resolveProjectTypes } from "../../src/lib/projectTypes";
 import type {
   ProjectTypeDefinition,
   ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
 
 /**
- * Resolves the absolute path to the project type template directory.
+ * Reads all project types through the single resolver (FR-3).
  *
- * @returns Absolute filesystem path.
- */
-function resolveProjectTypesDirectory(): string {
-  return (
-    process.env.GETWRITE_TEMPLATES_DIR ??
-    path.join(
-      process.cwd(),
-      "..",
-      "getwrite-config",
-      "templates",
-      "project-types",
-    )
-  );
-}
-
-/**
- * Reads and parses all project type templates from disk.
- *
- * @returns Parsed template files sorted by filename.
+ * @returns Validated template files sorted by filename.
  */
 async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
-  const directoryPath = resolveProjectTypesDirectory();
-
-  const directoryEntries = await fs.readdir(directoryPath, {
-    withFileTypes: true,
-  });
-
-  const jsonFileNames = directoryEntries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-    .filter((entry) => entry.name !== "project-type.schema.json")
-    .map((entry) => entry.name)
-    .sort((left, right) => left.localeCompare(right));
-
-  return await Promise.all(
-    jsonFileNames.map(async (fileName) => {
-      const filePath = path.join(directoryPath, fileName);
-      const rawContent = await fs.readFile(filePath, "utf8");
-      const parsed = JSON.parse(rawContent) as ProjectTypeDefinition;
-
-      return { fileName, definition: parsed };
-    }),
-  );
+  const { entries } = await resolveProjectTypes();
+  return entries
+    .map(({ fileName, spec }) => ({
+      fileName,
+      definition: spec as ProjectTypeDefinition,
+    }))
+    .sort((left, right) => left.fileName.localeCompare(right.fileName));
 }
 
 /**

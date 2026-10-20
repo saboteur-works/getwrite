@@ -166,7 +166,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 15
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-3 (readers), FR-6 (response). Write routes are Task 19.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Client response schema, transport and failure notice
 **What:** Replace the bare array schema with a validated list-response schema and surface a one-line notice when files were unusable or the saved directory is not `ok`.

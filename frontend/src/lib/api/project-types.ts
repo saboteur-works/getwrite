@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ProjectTypeDefinition } from "../../types/project-types";
 import { ProjectTypeSchema } from "../models/schemas";
+import { ProjectTypeListResponseSchema } from "./schemas";
 import { createTransport } from "../../store/transport/create-transport";
 import { reportTransportValidationFailure } from "./transport-validation";
 
@@ -47,6 +48,15 @@ export const httpProjectTypesTransport: ProjectTypesTransport = {
       throw new Error(`Failed to load project types (${response.status})`);
     }
     const body: unknown = await response.json();
+    // Interim shape handling until Task 17 replaces the schema and surfaces
+    // `unusable`/`savedStatus`: the route now answers with the list object;
+    // a bare array is still accepted so existing callers keep working.
+    const listed = ProjectTypeListResponseSchema.safeParse(body);
+    if (listed.success) {
+      return listed.data.entries.map(
+        (entry) => entry.spec as ProjectTypeDefinition,
+      );
+    }
     const result = z.array(ProjectTypeSchema).safeParse(body);
     if (!result.success) {
       reportTransportValidationFailure(
