@@ -753,6 +753,49 @@ function addSlugClashIssues(
   }
 }
 
+/** Longest project-type id a save accepts (it becomes `<id>.json` on disk). */
+export const MAX_PROJECT_TYPE_ID_LENGTH = 64;
+
+const WORD_COUNT_GOAL_MESSAGE =
+  "Word count goal must be a whole number of 0 or more.";
+
+/** Form section titles for each top-level project-type key, for fallback messages. */
+const PROJECT_TYPE_SECTION_LABELS: Record<string, string> = {
+  id: "ID",
+  name: "Name",
+  description: "Description",
+  folders: "Folders",
+  defaultFolders: "Default Folders",
+  defaultResources: "Default Resources",
+  editorConfig: "Editor settings",
+  statuses: "Statuses",
+  relationshipTypes: "Relationship types",
+  subtypes: "Subtypes",
+  wordCountGoal: "Word Count Goal",
+};
+
+/**
+ * Per-parse fallback for refusals the schema gives no message of its own
+ * (values the manager's form cannot produce, as in a hand-edited file), so a
+ * writer never sees a default validator message. Schema messages take
+ * precedence over this.
+ */
+function readableProjectTypeIssue(issue: {
+  code?: string;
+  path?: PropertyKey[];
+  keys?: string[];
+}): string {
+  if (issue.code === "unrecognized_keys" && issue.keys?.length) {
+    return `This project type has a setting GetWrite does not recognise: ${issue.keys.join(", ")}.`;
+  }
+  const top = issue.path?.[0];
+  const section =
+    typeof top === "string" ? PROJECT_TYPE_SECTION_LABELS[top] : undefined;
+  return section
+    ? `A value under ${section} is not valid.`
+    : "This project type is not valid.";
+}
+
 /**
  * Project-type specification schema.
  *
@@ -771,10 +814,25 @@ function addSlugClashIssues(
  */
 export const ProjectTypeSchema = z
   .object({
-    id: z.string().regex(/^[a-z0-9-_]+$/),
+    id: z
+      .string()
+      .min(1, "ID must not be blank.")
+      .max(
+        MAX_PROJECT_TYPE_ID_LENGTH,
+        `ID must be ${MAX_PROJECT_TYPE_ID_LENGTH} characters or fewer.`,
+      )
+      .regex(
+        /^[a-z0-9-_]*$/,
+        "ID can use only lowercase letters, numbers, hyphens (-) and underscores (_).",
+      ),
     name: z.string().trim().min(1, "Name must not be blank."),
     description: z.string().optional(),
-    folders: z.array(ProjectTypeFolderSchema).min(1),
+    folders: z
+      .array(ProjectTypeFolderSchema)
+      .min(
+        1,
+        "Add at least one folder. A new project needs a folder to hold its documents.",
+      ),
     defaultResources: z.array(ProjectTypeResourceSchema).optional(),
     defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
     editorConfig: EditorConfigSchema.optional(),
@@ -788,7 +846,11 @@ export const ProjectTypeSchema = z
     ).optional(),
     /** Seeds the new project's subtype list (Feature 72, FR-26). */
     subtypes: SubtypeListSchema.optional(),
-    wordCountGoal: z.number().int().nonnegative().optional(),
+    wordCountGoal: z
+      .number()
+      .int(WORD_COUNT_GOAL_MESSAGE)
+      .nonnegative(WORD_COUNT_GOAL_MESSAGE)
+      .optional(),
   })
   .strict()
   .superRefine((spec, ctx) => {
@@ -831,7 +893,9 @@ export type ProjectTypeSpec = z.infer<typeof ProjectTypeSchema>;
  * }
  */
 export function validateProjectType(spec: unknown) {
-  const result = ProjectTypeSchema.safeParse(spec);
+  const result = ProjectTypeSchema.safeParse(spec, {
+    error: readableProjectTypeIssue,
+  });
   if (result.success) return { success: true as const, value: result.data };
   return {
     success: false as const,

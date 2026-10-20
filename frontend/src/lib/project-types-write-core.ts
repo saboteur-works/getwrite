@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  MAX_PROJECT_TYPE_ID_LENGTH,
   projectTypeFieldErrors,
   validateProjectType,
   type ProjectTypeSpec,
@@ -29,8 +30,8 @@ import {
 import { normalizeSubtypeLabel } from "./models/field-subtype-scope";
 import { resolveProjectTypes, type ProjectTypeEntry } from "./projectTypes";
 
-/** Longest id accepted; the schema pattern alone has no upper bound. */
-export const MAX_PROJECT_TYPE_ID_LENGTH = 64;
+/** Longest id accepted; defined with the schema, which enforces it too. */
+export { MAX_PROJECT_TYPE_ID_LENGTH };
 
 /** Why a write was refused or failed. */
 export type ProjectTypeWriteRefusalReason =

@@ -41,8 +41,7 @@ describe("project-type validation (T016)", () => {
     const spec = { id: "empty-folders", name: "Empty Folders", folders: [] };
     const res = validateProjectType(spec);
     expect(res.success).toBe(false);
-    // zod reports a "Too small" array error for empty arrays
-    expect(JSON.stringify(res.errors)).toMatch(/Too small|>=1/);
+    expect(JSON.stringify(res.errors)).toContain("Add at least one folder.");
   });
 
   it("accepts a template without a Workspace folder", () => {
@@ -77,7 +76,9 @@ describe("project-type validation (T016)", () => {
     };
     const res = validateProjectType(spec);
     expect(res.success).toBe(false);
-    expect(JSON.stringify(res.errors)).toContain("pattern");
+    expect(JSON.stringify(res.errors)).toContain(
+      "ID can use only lowercase letters",
+    );
   });
 
   it("rejects unknown top-level fields", () => {
@@ -725,5 +726,95 @@ describe("project-type blank and duplicate entries (Feature 90, FR-28)", () => {
         true,
       );
     });
+  });
+});
+
+describe("project-type refusal messages are readable (Feature 90, FR-28 g)", () => {
+  const valid = {
+    id: "my-type",
+    name: "My Type",
+    folders: [{ name: "Drafts" }],
+  };
+  const ZOD_DEFAULT =
+    /expected|too small|too big|invalid input|invalid string|unrecognized key/i;
+
+  function messagesFor(spec: unknown): string[] {
+    const result = validateProjectType(spec);
+    if (result.success) return [];
+    return result.issues.map((issue) => issue.message);
+  }
+
+  it("asks for a folder when there is none, also with a starter document whose folder is blank", () => {
+    const messages = messagesFor({
+      ...valid,
+      folders: [],
+      defaultResources: [{ name: "Opening", folder: "", type: "text" }],
+    });
+    expect(messages).toEqual([
+      "Add at least one folder. A new project needs a folder to hold its documents.",
+    ]);
+  });
+
+  it("says how long an ID may be", () => {
+    expect(messagesFor({ ...valid, id: "a".repeat(65) })).toEqual([
+      "ID must be 64 characters or fewer.",
+    ]);
+    expect(messagesFor({ ...valid, id: "a".repeat(64) })).toEqual([]);
+  });
+
+  it("says a blank ID must not be blank, once", () => {
+    expect(messagesFor({ ...valid, id: "" })).toEqual([
+      "ID must not be blank.",
+    ]);
+  });
+
+  it.each(["My Type", "my type", "my.type"])(
+    "says which characters an ID may use for %j",
+    (id) => {
+      expect(messagesFor({ ...valid, id })).toEqual([
+        "ID can use only lowercase letters, numbers, hyphens (-) and underscores (_).",
+      ]);
+    },
+  );
+
+  it.each([-5, 1.5])(
+    "says the word count goal must be a whole number of 0 or more for %j",
+    (wordCountGoal) => {
+      expect(messagesFor({ ...valid, wordCountGoal })).toEqual([
+        "Word count goal must be a whole number of 0 or more.",
+      ]);
+    },
+  );
+
+  it("names the section for a value the form cannot produce", () => {
+    const messages = messagesFor({
+      ...valid,
+      folders: [{ name: "Drafts", metadataSource: 5 }],
+    });
+    expect(messages).toEqual(["A value under Folders is not valid."]);
+  });
+
+  it("names an unrecognised setting in plain words", () => {
+    expect(messagesFor({ ...valid, colour: "red" })).toEqual([
+      "This project type has a setting GetWrite does not recognise: colour.",
+    ]);
+  });
+
+  it("never shows a default validator message for these refusals", () => {
+    const specs: unknown[] = [
+      { ...valid, folders: [] },
+      { ...valid, id: "" },
+      { ...valid, id: "Bad Id" },
+      { ...valid, wordCountGoal: -1 },
+      { ...valid, folders: [{ name: "Drafts", metadataSource: 5 }] },
+      { ...valid, defaultResources: [{ name: "Doc", type: "video" }] },
+      { ...valid, extra: true },
+      { ...valid, name: 7 },
+    ];
+    for (const spec of specs) {
+      for (const message of messagesFor(spec)) {
+        expect(message).not.toMatch(ZOD_DEFAULT);
+      }
+    }
   });
 });
