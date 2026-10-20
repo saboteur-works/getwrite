@@ -358,3 +358,56 @@ What the experiments separate: the dialog's `onOpenChange` and the close guard b
 - `pnpm exec vitest run tests/appShellProjectTypesEscape.test.tsx`: 3 passed. `pnpm test:e2e e2e/shell-project-types-escape.e2e.spec.ts`: see the full run below.
 - From `frontend/`: `pnpm typecheck` exit 0; `pnpm lint` exit 0 (0 errors, 393 warnings; none in the new files); `pnpm test:ci` exit 0: 629 files passed, 7451 tests passed, 2 expected fail, 1 skipped (includes the Task 30 coordinator tests, the Task 23 exit-path tests and the a11y tests); `pnpm test:e2e` (6006 free beforehand, Storybook built and served by the command) exit 0: 222 passed, 1 skipped.
 - FR-17 is shown met in a browser at the shell level. It is not shown met in the packaged app: Task 36 re-runs check (b) on a build with this change.
+
+## Final suites (after F-7 fix)
+
+Date: 2026-10-20. Branch `feat/writer-project-types-and-paragraph-leading`, main checkout, HEAD e9456598 (Task 35 fix committed), working tree clean at the start. Raw outputs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t36/`. Compared with the "Final suites (after Stage 6.5)" table above (Task 34) and, where noted, the Task 35 record. All commands ran outside the sandbox in one sequential script.
+
+| Item | Command (cwd) | Observed | Task 34 |
+| --- | --- | --- | --- |
+| frontend typecheck | `pnpm typecheck` (`frontend/`) | exit 0 | exit 0 |
+| frontend lint | `pnpm lint` (`frontend/`) | 393 problems: 0 errors, 393 warnings; exit 0 | 393 / 0 errors |
+| frontend tests | `pnpm test:ci` (`frontend/`) | 629 files passed; 7451 passed, 2 expected fail, 1 skipped (7454), 0 failed; exit 0 | 628 files; 7448 passed, 2 expected fail, 1 skipped (Task 35 recorded 629 / 7451) |
+| frontend e2e | `pnpm test:e2e` (`frontend/`; 6006 empty beforehand; `pnpm storybook` never started) | exit 0; 222 passed, 1 skipped, 0 failed, 0 flaky | 219 passed, 1 skipped (Task 35 recorded 222 passed) |
+| knip | `pnpm knip` (repo root) | exit 1, 407 findings: unused files 49, unused dependencies 1, devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 161, unused exported types 168, duplicate exports 14 | exit 1, 407 findings (same per-category counts) |
+| electron typecheck | `pnpm typecheck` (`electron/`) | exit 0 | exit 0 |
+| electron tests | `pnpm test` (`electron/`) | 33 files; 516 passed, 0 failed; exit 0 (includes `tests/worker-bundles-load.test.ts`) | 33 files; 516 passed |
+| electron worker | `pnpm build:worker` (`electron/`) | exit 0 (both bundles 2.0mb) | exit 0 |
+| CLI build | `pnpm build` (`cli/`) | exit 0 (`dist/bin/getwrite-cli.cjs` 2.3mb) | exit 0 |
+| CLI tests | `pnpm test` (`cli/`, outside the sandbox) | 23 files, 153 passed, 0 failed; exit 0 | 23 files, 153 passed |
+
+- knip comparison basis: this run's output against `scratchpad/t28/knip2.txt`, both with `:line:col` stripped and sorted. The two files differ by exactly one line, a `WARN Issue while reading "~/.npmrc". EPERM` line present only in the t28 file (a sandbox message); every finding line is identical, so there is no new finding and no removed one. Same basis and caveat as Task 34 (not a fresh run on the Task 1 commit).
+- No known load-dependent flake (entity-roster, search-route, schemaManagerRestriction a11y, writinglogfooter a11y, resource-context-menu e2e:41) failed in this run; no rerun was needed.
+- lsof `-nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN`: before, no listener (exit 1); after the suites, none; after the packaged probe stopped and cleanup, none. Nothing this task started holds those ports.
+- Processes not started by this task, left alone: `next dev` pids 3763 and 15954 (still running at the end).
+- `frontend/tsconfig.json`: `git status --short` was empty after the suites (no rewrite).
+- No story, decorator or test was changed by this task.
+
+## Packaged-app re-check (after F-7 fix)
+
+Date: 2026-10-20. Throwaway build from HEAD e9456598, built exactly as in the Task 34 record: `pnpm electron:build` (repo root, exit 0), then from `electron/`: `pnpm exec electron-builder --config electron-builder.yml --dir --mac --arm64 -c.mac.identity=null -c.productName=GetWriteF90Probe -c.appId=works.saboteur.getwrite.f90probe -c.extraMetadata.name=getwrite-f90probe -c.directories.output=/tmp/getwrite-f90/dist` (exit 0). Launched with `--user-data-dir=/tmp/getwrite-f90/userData`, seeded `workspace.json` -> `/tmp/getwrite-f90/projects`, driven by a copy of the Task 34 driver (output directory `scratchpad/t36/pkg`). 7340 was free before launch. The Word import file picker was replaced in the main process (`dialog.showOpenDialog` returns `/tmp/getwrite-f90/fixtures/multi-heading.docx`, a copy of `frontend/tests/fixtures/docx/multi-heading.docx`); the import, worker fork and project creation were the app's own.
+
+Built chunk (observed fact): the packaged client chunk `.../Resources/frontend/.next/standalone/frontend/.next/static/chunks/13caaaspz8esl.js` holds the AppShell document keydown handler ending `"Escape"===e.key&&(O(!1),F(!1),H(!1))` (three state setters; the Task 35 source diff removed the fourth, `setIsProjectTypesModalOpen(false)`), and still holds the prompt's `onKeyDown:e=>{"Escape"===e.key&&e.stopPropagation()`. I did not diff the Task 34 chunk, so the count of setters before is taken from the source diff, not from a Task 34 chunk.
+
+In-app path assertion, before any action (`app.getPath`): `userData` = `/private/tmp/getwrite-f90/userData`, `logs` = `/Users/jedaisaboteur/Library/Logs/getwrite-f90probe`, `isPackaged` = true, name `getwrite-f90probe`, `resourcesPath` = `/private/tmp/getwrite-f90/dist/mac-arm64/GetWriteF90Probe.app/Contents/Resources`; under a protected folder: false; result PASS.
+
+Path to the manager: start page (no project open), gear menu "Open project settings menu", "Project Type Manager".
+
+| Check | Result | Observed values | Task 34 |
+| --- | --- | --- | --- |
+| (c) Save as copy with "Probe Novel" typed | MEASURED, held | Novel selected, Name set to "Probe Novel", Save as copy: status "Saved a copy as “Probe Novel”."; `userData/project-types/novel-copy.json` has `id` "novel-copy", `name` "Probe Novel"; list row "Probe Novel / novel-copy.json / Saved" | held |
+| (d) Name clash | MEASURED, held | Saved type's Name set to "Novel", Save pressed: alert text "Novel (built-in) already uses this name."; stored name stayed "Probe Novel" | held |
+| (b) Escape on the manager with unsaved changes opens the prompt and the draft is kept | MEASURED, held, 3 of 3 | Saved type "Probe Novel" selected, Name set to "Probe Novel EDIT", Name input focused (`INPUT`), one Escape, 800 ms. Attempt 1: dialogs `["Project Type Management","Unsaved changes"]`, Name field value "Probe Novel EDIT". Attempt 2: same dialogs, same value. Attempt 3: same dialogs, same value. Between attempts "Keep editing" was clicked. The stored file name stayed "Probe Novel" | 0 of 3 |
+| (b) Escape on the prompt leaves the manager open | MEASURED, held, 3 of 3 | Prompt opened with the manager's Close button (dialogs `["Project Type Management","Unsaved changes"]`, active element `BUTTON:Keep editing`), one Escape, 800 ms. Attempts 1, 2 and 3: dialogs `["Project Type Management"]`, Name field value "Probe Novel EDIT", stored name "Probe Novel" | 0 of 3 |
+| (a) Word import, built-in type (Novel) | MEASURED, succeeded | Dialog "The Word document was imported successfully."; `/tmp/getwrite-f90/projects/206dc3de-...` with `project.json` name "Import Novel", `projectType` "novel"; app log: "Forking DOCX import worker: .../Resources/docx-import-worker.cjs" | succeeded |
+| (a) Word import, saved type | MEASURED, succeeded | Type list: Article, Blank, Game Writing, Novel, Poetry and Lyrics, Serial, "Probe Novel (Saved)"; same success text; project `4f6a5c3a-...` name "Import Saved", `projectType` "novel-copy"; two "Forking DOCX import worker" lines in the app log; no "exited unexpectedly" line | succeeded |
+
+Notes on the run: the manager's list showed "UNSAVED CHANGES" text twice in the (b) manager attempts (a text count of 2, not examined further). To leave the manager after (b) I restored the Name field to "Probe Novel" and pressed Close; the "Unsaved changes" prompt still opened (dialog count 2) and I pressed the first button matching /discard/i; that step is not one of the checks. Dialog titles were read through `aria-labelledby`. No cause is stated for the change from 0 of 3 to 3 of 3 beyond the Task 35 record: the packaged result is observed on a build whose chunk carries the Task 35 change.
+
+Cleanup: the app was closed through the driver; all seven recorded pids (75937, 76036, 76037, 76050, 76065, 83377, 84128) exited after `app.close`; `lsof` on 7340 afterwards: none. Deleted: `/tmp/getwrite-f90`, `~/Library/Logs/getwrite-f90probe`, `~/Library/Preferences/works.saboteur.getwrite.f90probe.plist` (it existed this time). Screenshots and logs kept only under the scratchpad `t36/` directory.
+
+### git status --short (after this task)
+
+```
+ M specs/features/writer-project-types-and-paragraph-leading/experiments.md
+```
