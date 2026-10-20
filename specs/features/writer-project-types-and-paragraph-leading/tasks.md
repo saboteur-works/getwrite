@@ -247,7 +247,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 17, 20
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-15, FR-26 (import dialog). Does not run the app.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: CLI: resolver, `--project-type`, `project types`, unset-variable notice
 **What:** Make the CLI resolve types through the resolver, add `project create --project-type <id>` (exclusive with `--spec`) and `project types`, and print the unset-variable notice.

@@ -126,4 +126,23 @@ describe("readers resolve saved project types (FR-3)", () => {
       }),
     ).rejects.toBeInstanceOf(UnknownProjectTypeError);
   });
+
+  it("refuses a saved id deleted between choosing and importing, before any write", async () => {
+    await writeSaved("my-saved", ["idea"]);
+    clearProjectTypeCache();
+    // The id was listed (and chosen) while the file existed; it is then deleted.
+    await fs.rm(path.join(savedDir, "my-saved.json"));
+    clearProjectTypeCache();
+    const projectRoot = path.join(root, "deleted-id-out");
+    await expect(
+      importDocxProject({
+        sourcePath: path.join(FIXTURES, "docx", "multi-heading.docx"),
+        projectRoot,
+        projectType: "my-saved",
+      }),
+    ).rejects.toBeInstanceOf(UnknownProjectTypeError);
+    await expect(fs.stat(projectRoot)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
 });

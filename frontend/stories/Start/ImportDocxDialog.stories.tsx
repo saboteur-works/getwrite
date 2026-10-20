@@ -11,6 +11,66 @@ import type {
 const HANDLE = "handle-1";
 const DISPLAY_NAME = "My Manuscript";
 
+type ProjectTypesMode = "ok" | "notice" | "loading" | "error";
+
+const realFetch: typeof window.fetch = window.fetch.bind(window);
+
+/** Body satisfying `ProjectTypeListResponseSchema` for the loaded states. */
+function projectTypesBody(mode: ProjectTypesMode): string {
+  return JSON.stringify({
+    entries: [
+      {
+        spec: { id: "blank", name: "Blank", folders: [{ name: "Notes" }] },
+        fileName: "blank.json",
+        source: "built-in",
+      },
+      {
+        spec: { id: "novel", name: "Novel", folders: [{ name: "Manuscript" }] },
+        fileName: "novel.json",
+        source: "built-in",
+      },
+      {
+        spec: {
+          id: "my-saved",
+          name: "My Saved Type",
+          folders: [{ name: "Notes" }],
+        },
+        fileName: "my-saved.json",
+        source: "saved",
+      },
+    ],
+    unusable:
+      mode === "notice" ? [{ fileName: "broken.json", reason: "invalid" }] : [],
+    savedStatus: "ok",
+  });
+}
+
+/**
+ * Replaces `window.fetch` so `/api/project-types` answers per `mode`
+ * (the dialog reads the list through the transport on open); every other
+ * request goes to the real fetch.
+ */
+function installProjectTypesFetch(mode: ProjectTypesMode): void {
+  window.fetch = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    if (!url.endsWith("/api/project-types")) return realFetch(input, init);
+    if (mode === "loading") return new Promise<Response>(() => {});
+    if (mode === "error") return new Response(null, { status: 500 });
+    return new Response(projectTypesBody(mode), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+}
+
 /**
  * Installs a fake desktop bridge on `window`, mirroring
  * `tests/component/ImportDocxDialog.test.tsx`'s `installBridge` helper and
@@ -21,10 +81,12 @@ const DISPLAY_NAME = "My Manuscript";
  * @param overrides - Bridge methods to use in place of the defaults.
  */
 function installDocxBridge(overrides: {
+  projectTypes?: ProjectTypesMode;
   chooseDocxFile?: () => Promise<DocxSourceChoice>;
   chooseDocxFolder?: () => Promise<DocxSourceChoice>;
   startDocxImport?: () => Promise<DocxImportOutcome>;
 }): void {
+  installProjectTypesFetch(overrides.projectTypes ?? "ok");
   const chooseDocxFile =
     overrides.chooseDocxFile ??
     (async (): Promise<DocxSourceChoice> => ({
@@ -359,5 +421,80 @@ export const Fatal: Story = {
     await userEvent.click(body.getByRole("button", { name: /^Start$/i }));
     const alert = await body.findByRole("alert");
     await waitFor(() => expect(alert).toHaveFocus());
+  },
+};
+
+/** The list loaded: saved types are offered, labelled, and blank is selected. */
+export const ProjectTypesLoaded: Story = {
+  args: {
+    isOpen: true,
+    onClose: () => console.log("close"),
+    onImported: (projectId: string) => console.log("imported", projectId),
+  },
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
+    installDocxBridge({ projectTypes: "ok" });
+    return <ImportDocxDialog {...args} />;
+  },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(
+      await body.findByRole("button", { name: /Choose document/i }),
+    );
+    const select =
+      await body.findByLabelText<HTMLSelectElement>(/Project type/i);
+    await body.findByRole("option", { name: "My Saved Type (Saved)" });
+    expect(select.value).toBe("blank");
+  },
+};
+
+/** A saved file could not be used: the notice shows beside the list. */
+export const ProjectTypesWithUnusableFile: Story = {
+  ...ProjectTypesLoaded,
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
+    installDocxBridge({ projectTypes: "notice" });
+    return <ImportDocxDialog {...args} />;
+  },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(
+      await body.findByRole("button", { name: /Choose document/i }),
+    );
+    await body.findByText(/1 saved project type file could not be used/i);
+  },
+};
+
+/** The list is still loading: a status shows and Start is disabled. */
+export const ProjectTypesLoading: Story = {
+  ...ProjectTypesLoaded,
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
+    installDocxBridge({ projectTypes: "loading" });
+    return <ImportDocxDialog {...args} />;
+  },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(
+      await body.findByRole("button", { name: /Choose document/i }),
+    );
+    await body.findByText(/Loading project types/i);
+    expect(body.getByRole("button", { name: /^Start$/i })).toBeDisabled();
+  },
+};
+
+/** The list failed to load: the error and Retry show, no list, Start disabled. */
+export const ProjectTypesLoadError: Story = {
+  ...ProjectTypesLoaded,
+  render: (args: React.ComponentProps<typeof ImportDocxDialog>) => {
+    installDocxBridge({ projectTypes: "error" });
+    return <ImportDocxDialog {...args} />;
+  },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(
+      await body.findByRole("button", { name: /Choose document/i }),
+    );
+    await body.findByText(/Failed to load project types/i);
+    await body.findByRole("button", { name: /Retry/i });
+    expect(body.queryByLabelText(/Project type/i)).not.toBeInTheDocument();
+    expect(body.getByRole("button", { name: /^Start$/i })).toBeDisabled();
   },
 };
