@@ -113,6 +113,19 @@ describe("project-types write routes (Task 19)", () => {
       });
     }
 
+    it("refuses a body that fails a FR-28 rule with 400 and writes no file", async () => {
+      for (const bad of [
+        { ...spec("mine", "Mine"), statuses: ["Draft", ""] },
+        { ...spec("mine", "  ") },
+        { ...spec("mine", "Mine"), folders: [{ name: "A" }, { name: "A!" }] },
+      ]) {
+        const res = await POST(post(bad));
+        expect(res.status).toBe(400);
+        expect((await res.json()).reason).toBe("invalid");
+      }
+      expect(await savedFiles()).toEqual([]);
+    });
+
     it("refuses a body with an extra key (no client path or source) with 400", async () => {
       for (const extra of [
         { source: "built-in" },
@@ -254,6 +267,20 @@ describe("project-types write routes (Task 19)", () => {
         await fsp.readFile(path.join(savedDir, "mine.json"), "utf8"),
       );
       expect(written.name).toBe("Mine");
+    });
+
+    it("refuses a body that fails a FR-28 rule with 400 and leaves the stored file unchanged", async () => {
+      await POST(post(spec("mine", "Mine")));
+      const res = await PUT(
+        put("mine", { ...spec("mine", "Mine"), statuses: ["Draft", " draft"] }),
+        ctx("mine"),
+      );
+      expect(res.status).toBe(400);
+      expect(await savedFiles()).toEqual(["mine.json"]);
+      const written = JSON.parse(
+        await fsp.readFile(path.join(savedDir, "mine.json"), "utf8"),
+      );
+      expect(written.statuses).toBeUndefined();
     });
 
     it("refuses an unsafe path id, an extra key and an oversize body with 400", async () => {

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   EditorConfigSchema,
+  ProjectTypeSchema,
   validateProjectType,
 } from "../../src/lib/models/schemas";
 import { validateProject } from "../../src/lib/models/project";
@@ -418,5 +419,311 @@ describe("project line height floor (Part 2, FR-22)", () => {
     };
     const parsed = validateProject(legacy);
     expect(parsed.config?.editorConfig?.body?.lineHeight).toBe("1.5");
+  });
+});
+
+type Issue = { path: PropertyKey[]; message: string };
+
+function issuesOf(spec: unknown): Issue[] {
+  const result = ProjectTypeSchema.safeParse(spec);
+  return result.success
+    ? []
+    : result.error.issues.map((i) => ({ path: i.path, message: i.message }));
+}
+
+const base = (
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+  id: "t",
+  name: "T",
+  folders: [{ name: "Workspace" }],
+  ...extra,
+});
+
+describe("project-type blank and duplicate entries (Feature 90, FR-28)", () => {
+  describe("type name", () => {
+    it.each(["", "   "])("refuses name %j", (name) => {
+      expect(issuesOf(base({ name }))).toEqual([
+        { path: ["name"], message: "Name must not be blank." },
+      ]);
+    });
+
+    it("stores the trimmed name and keeps its case", () => {
+      const r = ProjectTypeSchema.parse(base({ name: "  My Novel " }));
+      expect(r.name).toBe("My Novel");
+    });
+  });
+
+  describe.each([
+    ["statuses", "Status label must not be blank.", "Duplicate status label."],
+    [
+      "relationshipTypes",
+      "Relationship type must not be blank.",
+      "Duplicate relationship type.",
+    ],
+  ])("%s", (key, blank, dup) => {
+    it.each(["", "  "])("refuses a blank entry %j at its index", (entry) => {
+      expect(issuesOf(base({ [key]: ["Draft", entry] }))).toEqual([
+        { path: [key, 1], message: blank },
+      ]);
+    });
+
+    it("refuses a duplicate under trim and case, reporting the second", () => {
+      expect(issuesOf(base({ [key]: ["Draft", " draft "] }))).toEqual([
+        { path: [key, 1], message: dup },
+      ]);
+    });
+
+    it("accepts an empty list and an absent one", () => {
+      expect(issuesOf(base({ [key]: [] }))).toEqual([]);
+      expect(issuesOf(base())).toEqual([]);
+    });
+
+    it("trims surrounding space in the parsed value", () => {
+      const r = ProjectTypeSchema.parse(base({ [key]: [" Draft ", "Done"] }));
+      expect((r as Record<string, unknown>)[key]).toEqual(["Draft", "Done"]);
+    });
+  });
+
+  describe("folder, subfolder and starter document names", () => {
+    it("refuses a blank folder name with its path", () => {
+      expect(
+        issuesOf(base({ folders: [{ name: "Ok" }, { name: "  " }] })),
+      ).toEqual([
+        {
+          path: ["folders", 1, "name"],
+          message: "Folder name must not be blank.",
+        },
+      ]);
+    });
+
+    it("refuses a blank subfolder name and a blank Parent Folder", () => {
+      expect(
+        issuesOf(
+          base({
+            defaultFolders: [
+              { folder: "Workspace", name: "" },
+              { folder: "   ", name: "Sub" },
+              { folder: "", name: "Sub2" },
+            ],
+          }),
+        ),
+      ).toEqual([
+        {
+          path: ["defaultFolders", 0, "name"],
+          message: "Subfolder name must not be blank.",
+        },
+        {
+          path: ["defaultFolders", 1, "folder"],
+          message: "Parent folder must not be blank.",
+        },
+        {
+          path: ["defaultFolders", 2, "folder"],
+          message: "Parent folder must not be blank.",
+        },
+      ]);
+    });
+
+    it("refuses a blank starter document name in folders[].defaultResources and top-level defaultResources", () => {
+      expect(
+        issuesOf(
+          base({
+            folders: [
+              { name: "W", defaultResources: [{ name: " ", type: "text" }] },
+            ],
+            defaultResources: [{ name: "", type: "text" }],
+          }),
+        ),
+      ).toEqual([
+        {
+          path: ["folders", 0, "defaultResources", 0, "name"],
+          message: "Starter document name must not be blank.",
+        },
+        {
+          path: ["defaultResources", 0, "name"],
+          message: "Starter document name must not be blank.",
+        },
+      ]);
+    });
+
+    it("trims folder, subfolder and starter document names and keeps their case", () => {
+      const r = ProjectTypeSchema.parse(
+        base({
+          folders: [
+            {
+              name: " Drafts ",
+              defaultResources: [{ name: " In Folder ", type: "text" }],
+            },
+          ],
+          defaultFolders: [{ folder: "Drafts", name: " Part One " }],
+          defaultResources: [{ name: " Title Page ", type: "text" }],
+        }),
+      );
+      expect(r.folders[0]?.name).toBe("Drafts");
+      expect(r.folders[0]?.defaultResources?.[0]?.name).toBe("In Folder");
+      expect(r.defaultFolders?.[0]?.name).toBe("Part One");
+      expect(r.defaultResources?.[0]?.name).toBe("Title Page");
+    });
+
+    it("accepts a blank or absent starter document folder", () => {
+      expect(
+        issuesOf(
+          base({
+            defaultResources: [
+              { name: "A", type: "text", folder: "" },
+              { name: "B", type: "text", folder: "  " },
+              { name: "C", type: "text" },
+            ],
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe("slug-equal siblings", () => {
+    it("refuses top-level folders Chapter 1 then Chapter 1!, reporting the second", () => {
+      expect(
+        issuesOf(
+          base({ folders: [{ name: "Chapter 1" }, { name: "Chapter 1!" }] }),
+        ),
+      ).toEqual([
+        {
+          path: ["folders", 1, "name"],
+          message:
+            "Folder name \u201cChapter 1!\u201d is too similar to \u201cChapter 1\u201d.",
+        },
+      ]);
+    });
+
+    it("refuses the reversed pair, reporting the second", () => {
+      expect(
+        issuesOf(
+          base({ folders: [{ name: "Chapter 1!" }, { name: "Chapter 1" }] }),
+        ),
+      ).toEqual([
+        {
+          path: ["folders", 1, "name"],
+          message:
+            "Folder name \u201cChapter 1\u201d is too similar to \u201cChapter 1!\u201d.",
+        },
+      ]);
+    });
+
+    it.each([
+      [
+        ["Part 1", "part-1"],
+        ["A", "A!"],
+      ],
+      [
+        ["part-1", "Part 1"],
+        ["A!", "A"],
+      ],
+    ])(
+      "refuses slug-equal subfolders under parents %j (equal by slugify) in order %j",
+      (parents, names) => {
+        expect(
+          issuesOf(
+            base({
+              folders: [{ name: "Part 1" }],
+              defaultFolders: [
+                { folder: parents[0], name: names[0] },
+                { folder: parents[1], name: names[1] },
+              ],
+            }),
+          ),
+        ).toEqual([
+          {
+            path: ["defaultFolders", 1, "name"],
+            message: `Subfolder name \u201c${names[1]}\u201d is too similar to \u201c${names[0]}\u201d.`,
+          },
+        ]);
+      },
+    );
+
+    it("accepts slug-equal subfolders under different parents", () => {
+      expect(
+        issuesOf(
+          base({
+            folders: [{ name: "One" }, { name: "Two" }],
+            defaultFolders: [
+              { folder: "One", name: "Notes" },
+              { folder: "Two", name: "Notes!" },
+            ],
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("accepts a subfolder whose slug equals a top-level folder's (siblings only)", () => {
+      expect(
+        issuesOf(
+          base({
+            folders: [{ name: "Notes" }, { name: "Other" }],
+            defaultFolders: [
+              { folder: "Other", name: "Notes" },
+              { folder: "Notes", name: "Notes!" },
+            ],
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe("starter documents with the same slug in one folder (allowed)", () => {
+    it("are not refused: project creation writes two resources for them (project-creator.test.ts, MEASURED 2026-10-20)", () => {
+      expect(
+        issuesOf(
+          base({
+            defaultResources: [
+              { folder: "Workspace", name: "Chapter 1", type: "text" },
+              { folder: "Workspace", name: "Chapter 1!", type: "text" },
+            ],
+            folders: [
+              {
+                name: "Workspace",
+                defaultResources: [
+                  { name: "Scene", type: "text" },
+                  { name: "Scene!", type: "text" },
+                ],
+              },
+            ],
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe("built-in files", () => {
+    const dir = path.resolve(
+      __dirname,
+      "../../../getwrite-config/templates/project-types",
+    );
+    const files = [
+      "article_project_type.json",
+      "blank_project_type.json",
+      "game_documentation.json",
+      "novel_project_type.json",
+      "poetry_and_lyrics_type.json",
+      "serial_project_type.json",
+    ];
+    it("the directory holds exactly these six spec files", () => {
+      expect(
+        fs
+          .readdirSync(dir)
+          .filter(
+            (f) => f.endsWith(".json") && f !== "project-type.schema.json",
+          )
+          .sort(),
+      ).toEqual(files);
+    });
+    it.each(files)("%s passes validateProjectType", (f) => {
+      const parsed: unknown = JSON.parse(
+        fs.readFileSync(path.join(dir, f), "utf8"),
+      );
+      const res = validateProjectType(parsed);
+      expect(res.success, JSON.stringify(res.success ? [] : res.errors)).toBe(
+        true,
+      );
+    });
   });
 });

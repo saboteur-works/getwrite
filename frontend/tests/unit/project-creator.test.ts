@@ -425,4 +425,46 @@ describe("models/project-creator", () => {
       await removeDirRetry(tmp);
     }
   });
+  it("two starter documents with the same slug in one folder are written as two resources (Feature 90, Task 37 collision check)", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-starter-collision-"),
+    );
+    try {
+      const spec = {
+        id: "test-starter-collision",
+        name: "Starter Collision Test",
+        folders: [{ name: "Workspace" }],
+        defaultResources: [
+          {
+            folder: "Workspace",
+            name: "Chapter 1",
+            type: "text" as const,
+            template: "first",
+          },
+          {
+            folder: "Workspace",
+            name: "Chapter 1!",
+            type: "text" as const,
+            template: "second",
+          },
+        ],
+      };
+      const { resources } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "Starter Collision Project" },
+      );
+      const dirs = await fs.readdir(path.join(tmp, "resources"));
+      const plain = await Promise.all(
+        dirs.map((d) =>
+          fs.readFile(path.join(tmp, "resources", d, "content.txt"), "utf8"),
+        ),
+      );
+      expect(resources.map((r) => r.slug)).toEqual(["chapter-1", "chapter-1"]);
+      expect(dirs).toHaveLength(2);
+      expect(plain.sort()).toEqual(["first", "second"]);
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

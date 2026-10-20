@@ -109,6 +109,20 @@ describe("saved project types write core (Task 18)", () => {
       });
     });
 
+    it("stores the trimmed name, so the same name without the space then clashes (FR-8, FR-28)", async () => {
+      await createSavedProjectType(spec("mine", "My Novel "), false);
+      const written = JSON.parse(
+        await fsp.readFile(path.join(savedDir, "mine.json"), "utf8"),
+      );
+      expect(written.name).toBe("My Novel");
+      expect(
+        await createSavedProjectType(spec("m2", "My Novel"), false),
+      ).toMatchObject({ ok: false, reason: "name-clash" });
+      expect(
+        await createSavedProjectType(spec("m3", "My Novel  "), false),
+      ).toMatchObject({ ok: false, reason: "name-clash" });
+    });
+
     it("a name clash names the conflicting type and its source", async () => {
       const builtIn = await createSavedProjectType(
         spec("n2", " novel "),

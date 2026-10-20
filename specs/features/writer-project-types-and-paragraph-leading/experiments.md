@@ -411,3 +411,15 @@ Cleanup: the app was closed through the driver; all seven recorded pids (75937, 
 ```
  M specs/features/writer-project-types-and-paragraph-leading/experiments.md
 ```
+
+## Task 37: starter-document collision check (FR-28 (c), OQ-7)
+
+Date: 2026-10-20. Label: MEASURED (test run) for the on-disk result, READ (code only) for the paths.
+
+READ: `writeResourceToFile` (`frontend/src/lib/models/resource-persistence.ts:113-`) writes a text resource under `<projectRoot>/resources/<resource.id>/` (`content.tiptap.json`, `content.txt`) and a sidecar keyed by `resource.id`; the slug is stored in the sidecar but is not a path component. `createProjectFromType` (`project-creator.ts`, loop near :322) picks the folder with `slugify(r.folder)` (first folder when `folder` is absent) and sets `slug: slugify(r.name)`, `folderId` and `orderIndex` per entry. Only the top-level `defaultResources` list is read by the creator's seeding loop.
+
+MEASURED (test run): `frontend/tests/unit/project-creator.test.ts`, "two starter documents with the same slug in one folder are written as two resources", in a `mkdtemp` directory under the OS temp folder. Spec: one folder `Workspace` and top-level `defaultResources` `Chapter 1` and `Chapter 1!` (both `folder: "Workspace"`, templates "first" and "second"). Observed: the returned resources have slugs `["chapter-1","chapter-1"]`, `resources/` holds 2 directories, and their `content.txt` values are "first" and "second" (sorted). Passed.
+
+Also observed in the first run of that test: a spec that put the same two documents in `folders[0].defaultResources` produced `resources: []` from `createAndAssertProject`, i.e. the creator seeded nothing from a folder-level `defaultResources` list. The schema still accepts such lists; no cause beyond the READ above was tested.
+
+Rule applied: no collision on disk, so same-slug starter documents are ALLOWED. `ProjectTypeSchema` has no starter-document duplicate rule and no "Starter document name … is too similar to …" message. A schema test (`project-type-validation.test.ts`, "starter documents with the same slug in one folder (allowed)") asserts that same-slug pairs in `defaultResources` and in `folders[].defaultResources` pass. Task 38 therefore adds no too-similar field error for starter documents.

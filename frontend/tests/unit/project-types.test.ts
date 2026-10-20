@@ -320,6 +320,24 @@ describe("projectTypes loader (T005)", () => {
       expect(JSON.stringify(r.unusable)).not.toMatch(/SECRET/);
     });
 
+    it("lists a saved file that fails a FR-28 rule as invalid and does not return it", async () => {
+      await fs.writeFile(
+        path.join(savedStoreDir, "blank-status.json"),
+        JSON.stringify({ ...spec("blank-status"), statuses: ["Draft", ""] }),
+      );
+      await fs.writeFile(
+        path.join(savedStoreDir, "ok.json"),
+        JSON.stringify(spec("ok")),
+      );
+      const r = await resolveProjectTypes(false);
+      expect(r.unusable).toEqual([
+        { fileName: "blank-status.json", reason: "invalid" },
+      ]);
+      expect(
+        r.entries.filter((e) => e.source === "saved").map((e) => e.spec.id),
+      ).toEqual(["ok"]);
+    });
+
     it("shows a saved file written between two calls with no cache clearing", async () => {
       expect((await listProjectTypes(false)).map((e) => e.spec.id)).toEqual([
         "novel",

@@ -12,6 +12,7 @@
 import { z } from "zod";
 import { QueryASTSchema } from "./query-ast";
 import { normalizeSubtypeLabel } from "./field-subtype-scope";
+import { slugify } from "../utils";
 import {
   getLineHeightError,
   LINE_HEIGHT_FLOOR_MESSAGE,
@@ -668,7 +669,7 @@ export const Schemas = {
  */
 export const ProjectTypeResourceSchema = z.object({
   folder: z.string().optional(),
-  name: z.string(),
+  name: z.string().trim().min(1, "Starter document name must not be blank."),
   type: ResourceTypeSchema,
   template: z.string().optional(),
   userMetadata: z.record(z.string(), MetadataValue).optional(),
@@ -678,7 +679,7 @@ export const ProjectTypeResourceSchema = z.object({
  * Project-type folder schema defining folder seed structure.
  */
 export const ProjectTypeFolderSchema = z.object({
-  name: z.string(),
+  name: z.string().trim().min(1, "Folder name must not be blank."),
   special: z.boolean().optional(),
   metadataSource: MetadataSourceSchema.optional(),
   defaultResources: z.array(ProjectTypeResourceSchema).optional(),
@@ -689,8 +690,8 @@ export const ProjectTypeFolderSchema = z.object({
  * Each entry declares one subfolder under a named parent folder.
  */
 export const ProjectTypeDefaultFolderSchema = z.object({
-  folder: z.string(),
-  name: z.string(),
+  folder: z.string().trim().min(1, "Parent folder must not be blank."),
+  name: z.string().trim().min(1, "Subfolder name must not be blank."),
   special: z.boolean().optional(),
   metadataSource: MetadataSourceSchema.optional(),
 });
@@ -700,11 +701,68 @@ export type ProjectTypeDefaultFolder = z.infer<
 >;
 
 /**
+ * Feature 90, FR-28: a trimmed list of labels that refuses blank entries and
+ * entries equal under `normalizeSubtypeLabel`, reporting the second of a pair
+ * at its index. An empty list is valid.
+ */
+function labelListSchema(blankMessage: string, duplicateMessage: string) {
+  return z.array(z.string().trim()).superRefine((labels, ctx) => {
+    const seen = new Set<string>();
+    labels.forEach((label, index) => {
+      const key = normalizeSubtypeLabel(label);
+      if (key === "") {
+        ctx.addIssue({ code: "custom", path: [index], message: blankMessage });
+        return;
+      }
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index],
+          message: duplicateMessage,
+        });
+      }
+      seen.add(key);
+    });
+  });
+}
+
+/**
+ * Feature 90, FR-28 (c): adds an issue at `path(index)` for each entry whose
+ * `slugify` value equals that of an earlier entry in the same group, naming
+ * both. Blank names are skipped (the field schema already refuses them).
+ */
+function addSlugClashIssues(
+  ctx: z.RefinementCtx,
+  entries: ReadonlyArray<{ group: string; name: string; path: PropertyKey[] }>,
+  label: string,
+): void {
+  const firstByKey = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.name === "") continue;
+    const key = `${entry.group}\u0000${slugify(entry.name)}`;
+    const first = firstByKey.get(key);
+    if (first === undefined) {
+      firstByKey.set(key, entry.name);
+      continue;
+    }
+    ctx.addIssue({
+      code: "custom",
+      path: entry.path,
+      message: `${label} \u201c${entry.name}\u201d is too similar to \u201c${first}\u201d.`,
+    });
+  }
+}
+
+/**
  * Project-type specification schema.
  *
  * Constraints:
  * - `id` must be lowercase slug-like text (`[a-z0-9-_]+`).
  * - At least one folder is required.
+ * - Type, folder, subfolder and starter document names are trimmed and not
+ *   blank; statuses and relationship types are trimmed, not blank and unique
+ *   (Feature 90, FR-28); sibling folders and sibling subfolders must differ
+ *   under `slugify`. Starter documents with equal slugs are allowed.
  *
  * Authors may use any folder layout; no folder name carries application
  * semantics. The deprecated `special` folder flag is still accepted (and
@@ -714,19 +772,45 @@ export type ProjectTypeDefaultFolder = z.infer<
 export const ProjectTypeSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9-_]+$/),
-    name: z.string(),
+    name: z.string().trim().min(1, "Name must not be blank."),
     description: z.string().optional(),
     folders: z.array(ProjectTypeFolderSchema).min(1),
     defaultResources: z.array(ProjectTypeResourceSchema).optional(),
     defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
     editorConfig: EditorConfigSchema.optional(),
-    statuses: z.array(z.string()).optional(),
-    relationshipTypes: z.array(z.string()).optional(),
+    statuses: labelListSchema(
+      "Status label must not be blank.",
+      "Duplicate status label.",
+    ).optional(),
+    relationshipTypes: labelListSchema(
+      "Relationship type must not be blank.",
+      "Duplicate relationship type.",
+    ).optional(),
     /** Seeds the new project's subtype list (Feature 72, FR-26). */
     subtypes: SubtypeListSchema.optional(),
     wordCountGoal: z.number().int().nonnegative().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((spec, ctx) => {
+    addSlugClashIssues(
+      ctx,
+      spec.folders.map((f, i) => ({
+        group: "",
+        name: f.name,
+        path: ["folders", i, "name"],
+      })),
+      "Folder name",
+    );
+    addSlugClashIssues(
+      ctx,
+      (spec.defaultFolders ?? []).map((f, i) => ({
+        group: slugify(f.folder),
+        name: f.name,
+        path: ["defaultFolders", i, "name"],
+      })),
+      "Subfolder name",
+    );
+  });
 
 /**
  * Inferred TypeScript shape of a valid project-type spec.
