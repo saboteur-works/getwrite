@@ -193,7 +193,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 18
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-7, FR-8, FR-9, FR-10 (server), FR-26. Per OQ-2, once the pairing gate passes a paired device may save and delete saved types.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Desktop environment: set `GETWRITE_SAVED_PROJECT_TYPES_DIR` for the server and the DOCX worker
 **What:** Have the Electron main process set the variable to `path.join(app.getPath("userData"), "project-types")` in the server environment and pass it into the DOCX worker's fork options.

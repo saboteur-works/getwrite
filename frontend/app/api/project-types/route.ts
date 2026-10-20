@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { resolveProjectTypes } from "../../../src/lib/projectTypes";
 import { isLockedAccessError } from "../../../src/lib/models/locked-access";
+import { createSavedProjectType } from "../../../src/lib/project-types-write-core";
+import {
+  invalidBodyResponse,
+  readCappedJson,
+  resultResponse,
+} from "../../../src/lib/project-types-write-http";
+
+/*
+ * `GET` and `POST` here are not wrapped by `withStorageContext`: project
+ * types are app-level configuration on the real filesystem (bundled
+ * built-ins plus the directory named by `GETWRITE_SAVED_PROJECT_TYPES_DIR`),
+ * not project data, so no tenant or project context applies. Nothing in this
+ * file reads a path, file name, directory or `source` from the client.
+ */
 
 /**
  * Lists every project type through the single resolver (FR-3).
@@ -37,4 +51,17 @@ export async function GET() {
       { status: 500 },
     );
   }
+}
+
+/**
+ * `POST /api/project-types` creates a saved type. The body is the whole spec
+ * (max 256 KiB, refused before parsing); unknown keys are refused. 201
+ * `{ fileName, spec }`, or a refusal `{ error, reason, conflictsWith? }`:
+ * 400 invalid, 409 id-clash / name-clash, 503 saving-unavailable, 500
+ * unreadable / write-failed.
+ */
+export async function POST(request: Request) {
+  const parsed = await readCappedJson(request);
+  if (!parsed.ok) return invalidBodyResponse();
+  return resultResponse(await createSavedProjectType(parsed.value), 201);
 }

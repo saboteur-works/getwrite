@@ -89,6 +89,7 @@ function forwarded(res: NextResponse): string | null {
 }
 
 const API_PATHS = [
+  "/api/project-types",
   "/api/projects",
   "/api/version-check",
   "/api/auth-status",
