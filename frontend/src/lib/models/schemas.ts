@@ -832,8 +832,43 @@ export type ProjectTypeSpec = z.infer<typeof ProjectTypeSchema>;
  */
 export function validateProjectType(spec: unknown) {
   const result = ProjectTypeSchema.safeParse(spec);
-  if (result.success) return { success: true, value: result.data };
-  return { success: false, errors: result.error.format() };
+  if (result.success) return { success: true as const, value: result.data };
+  return {
+    success: false as const,
+    errors: result.error.format(),
+    issues: result.error.issues.map(
+      (issue): ProjectTypeIssue => ({
+        path: issue.path.filter(
+          (segment): segment is string | number => typeof segment !== "symbol",
+        ),
+        message: issue.message,
+      }),
+    ),
+  };
+}
+
+/** One schema refusal with the path of the offending entry (Feature 90, FR-28 d). */
+export interface ProjectTypeIssue {
+  path: Array<string | number>;
+  message: string;
+}
+
+/**
+ * Keys each issue that has a path by that path joined with "." (for example
+ * `statuses.1` or `folders.0.name`). Two issues at one path share the key,
+ * their messages joined with a space.
+ */
+export function projectTypeFieldErrors(
+  issues: ReadonlyArray<ProjectTypeIssue>,
+): Record<string, string> {
+  const keyed: Record<string, string> = {};
+  for (const issue of issues) {
+    if (issue.path.length === 0) continue;
+    const key = issue.path.join(".");
+    keyed[key] =
+      key in keyed ? `${keyed[key]} ${issue.message}` : issue.message;
+  }
+  return keyed;
 }
 
 /**

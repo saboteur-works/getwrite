@@ -47,15 +47,17 @@ export function statusForRefusal(
 export function refusalResponse(
   refusal: Pick<
     ProjectTypeWriteRefusal,
-    "reason" | "message" | "conflictsWith"
+    "reason" | "message" | "conflictsWith" | "fieldErrors"
   >,
 ): NextResponse {
   const body: {
     error: string;
     reason: ProjectTypeWriteRefusalReason;
     conflictsWith?: ProjectTypeWriteRefusal["conflictsWith"];
+    fieldErrors?: ProjectTypeWriteRefusal["fieldErrors"];
   } = { error: refusal.message, reason: refusal.reason };
   if (refusal.conflictsWith) body.conflictsWith = refusal.conflictsWith;
+  if (refusal.fieldErrors) body.fieldErrors = refusal.fieldErrors;
   return NextResponse.json(body, { status: statusForRefusal(refusal.reason) });
 }
 

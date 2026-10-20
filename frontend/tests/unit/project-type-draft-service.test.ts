@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   validateDraft,
+  isFormFieldKey,
   createEmptyProjectType,
   applyDefinitionEdit,
   saveDraftItem,
@@ -98,6 +99,143 @@ describe("ProjectTypeDraftService.validateDraft line height floor (FR-23)", () =
 
   it.each(["", "1.8", "2"])("accepts %j", (v) => {
     expect(validateDraft(withLineHeight(v))).toEqual({ valid: true });
+  });
+});
+
+describe("ProjectTypeDraftService.validateDraft field-keyed errors (FR-28 d, f)", () => {
+  const base: ProjectTypeDefinition = {
+    id: "fresh",
+    name: "Fresh",
+    description: "",
+    folders: [{ name: "Workspace" }],
+    defaultFolders: [],
+    defaultResources: [],
+    statuses: [],
+  };
+
+  function refused(definition: ProjectTypeDefinition) {
+    const result = validateDraft(definition);
+    if (result.valid) throw new Error("expected a refusal");
+    return result;
+  }
+
+  it("keys an empty status to its path as well as the flat list", () => {
+    const result = refused({ ...base, statuses: ["Draft", ""] });
+    expect(result.fieldErrors["statuses.1"]).toBe(
+      "Status label must not be blank.",
+    );
+    expect(result.errors).toContain("Status label must not be blank.");
+    expect(result.unplacedErrors).not.toContain(
+      "Status label must not be blank.",
+    );
+  });
+
+  it.each([
+    ["type name", { ...base, name: " " }, "name", "Name must not be blank."],
+    [
+      "duplicate status",
+      { ...base, statuses: ["Draft", "draft"] },
+      "statuses.1",
+      "Duplicate status label.",
+    ],
+    [
+      "folder name",
+      { ...base, folders: [{ name: "Workspace" }, { name: "" }] },
+      "folders.1.name",
+      "Folder name must not be blank.",
+    ],
+    [
+      "subfolder name",
+      { ...base, defaultFolders: [{ folder: "Workspace", name: "" }] },
+      "defaultFolders.0.name",
+      "Subfolder name must not be blank.",
+    ],
+    [
+      "parent folder",
+      { ...base, defaultFolders: [{ folder: "", name: "Act" }] },
+      "defaultFolders.0.folder",
+      "Parent folder must not be blank.",
+    ],
+    [
+      "starter document name",
+      {
+        ...base,
+        defaultResources: [{ folder: "Workspace", name: "", type: "text" }],
+      },
+      "defaultResources.0.name",
+      "Starter document name must not be blank.",
+    ],
+    [
+      "similar folder",
+      { ...base, folders: [{ name: "Workspace" }, { name: "Workspace!" }] },
+      "folders.1.name",
+      "Folder name \u201cWorkspace!\u201d is too similar to \u201cWorkspace\u201d.",
+    ],
+  ] as const)(
+    "keys a %s error to its path",
+    (_label, definition, key, text) => {
+      const result = refused(definition as ProjectTypeDefinition);
+      expect(result.fieldErrors[key]).toBe(text);
+      expect(result.unplacedErrors).not.toContain(text);
+      expect(isFormFieldKey(key)).toBe(true);
+    },
+  );
+
+  it("an error with no input in the form stays in unplacedErrors", () => {
+    const empty = refused({ ...base, folders: [] });
+    expect(empty.fieldErrors.folders).toBeDefined();
+    expect(isFormFieldKey("folders")).toBe(false);
+    expect(empty.unplacedErrors).toContain(empty.fieldErrors.folders);
+
+    // The definition type has no relationshipTypes; a stored type can carry them.
+    const relationship = refused({
+      ...base,
+      relationshipTypes: ["Ally", ""],
+    } as ProjectTypeDefinition);
+    expect(relationship.fieldErrors["relationshipTypes.1"]).toBe(
+      "Relationship type must not be blank.",
+    );
+    expect(relationship.unplacedErrors).toContain(
+      "Relationship type must not be blank.",
+    );
+  });
+
+  it("returns the field errors from saveDraftItem's validation failure and sends nothing", async () => {
+    const transport = fakeTransport();
+    const draft = item(
+      { ...def("mine", "Mine"), statuses: [""] },
+      { fileName: undefined, source: undefined, baseline: undefined },
+    );
+    const result = await saveDraftItem(draft, [draft], transport);
+    expect(result).toMatchObject({
+      ok: false,
+      kind: "validation",
+      fieldErrors: { "statuses.0": "Status label must not be blank." },
+    });
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("passes a refusal's field errors through unchanged", async () => {
+    const fieldErrors = { "statuses.0": "Status label must not be blank." };
+    const transport = fakeTransport(() => ({
+      ok: false,
+      reason: "invalid",
+      message: "The project type is not valid.",
+      fieldErrors,
+    }));
+    const draft = item(def("mine", "Mine"), {
+      fileName: undefined,
+      source: undefined,
+      baseline: undefined,
+    });
+    const result = await saveDraftItem(draft, [draft], transport);
+    expect(result).toEqual({
+      ok: false,
+      kind: "refused",
+      reason: "invalid",
+      message: "The project type is not valid.",
+      fieldErrors,
+    });
   });
 });
 
@@ -200,6 +338,11 @@ describe("saveDraftItem", () => {
       ok: false,
       kind: "validation",
       errors: ["Line height must be a number of at least 1.8."],
+      fieldErrors: {
+        "editorConfig.body.lineHeight":
+          "Line height must be a number of at least 1.8.",
+      },
+      unplacedErrors: ["Line height must be a number of at least 1.8."],
     });
   });
 

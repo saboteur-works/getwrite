@@ -118,3 +118,36 @@ export const SavedIdReadOnlyWithRefusals: Story = {
     nameError: "Novel (built-in) already uses this name.",
   },
 };
+
+/**
+ * A refused draft (Feature 90, FR-28 f): each schema refusal sits beside the
+ * input that caused it, as an alert linked to the input. The existing stories
+ * cannot show this, because the refusals arrive through `fieldErrors`.
+ */
+export const RefusedDraftFieldErrors: Story = {
+  args: {
+    ...Interactive.args,
+    definition: {
+      ...baseDefinition,
+      name: "",
+      statuses: ["", "Draft", "draft"],
+      folders: [{ name: "Workspace" }, { name: "Workspace!" }],
+      defaultFolders: [
+        { folder: "", name: "" },
+        { folder: "Workspace", name: "Chapter 1" },
+      ],
+      defaultResources: [{ folder: "", name: "", type: "text" }],
+    },
+    fieldErrors: {
+      name: "Name must not be blank.",
+      "statuses.0": "Status label must not be blank.",
+      "statuses.2": "Duplicate status label.",
+      "folders.1.name":
+        "Folder name “Workspace!” is too similar to “Workspace”.",
+      "defaultFolders.0.name": "Subfolder name must not be blank.",
+      "defaultFolders.0.folder": "Parent folder must not be blank.",
+      "defaultResources.0.name": "Starter document name must not be blank.",
+    },
+  },
+  parameters: { a11y: { test: "error" } },
+};

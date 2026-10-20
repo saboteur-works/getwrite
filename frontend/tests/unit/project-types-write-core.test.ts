@@ -191,6 +191,18 @@ describe("saved project types write core (Task 18)", () => {
       expect(fs.existsSync(savedDir)).toBe(false);
     });
 
+    it("an invalid spec carries its schema refusals keyed by path (FR-28 d)", async () => {
+      const r = await createSavedProjectType(
+        { ...spec("mine", "Mine"), statuses: ["Draft", ""] },
+        false,
+      );
+      expect(r).toMatchObject({
+        ok: false,
+        reason: "invalid",
+        fieldErrors: { "statuses.1": "Status label must not be blank." },
+      });
+    });
+
     it("refuses an over-long id", async () => {
       const r = await createSavedProjectType(
         spec("a".repeat(200), "Long"),

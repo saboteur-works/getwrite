@@ -143,7 +143,11 @@ export default function BodySettingsModal({
                   )}
                 </HeadingStyleField>
                 {fieldError ? (
-                  <p id={errorId} className="text-sm text-gw-secondary">
+                  <p
+                    id={errorId}
+                    role="alert"
+                    className="text-sm text-gw-secondary"
+                  >
                     {fieldError}
                   </p>
                 ) : null}

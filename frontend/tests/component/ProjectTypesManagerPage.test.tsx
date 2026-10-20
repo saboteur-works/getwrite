@@ -353,6 +353,453 @@ describe("ProjectTypesManagerPage refusals", () => {
   });
 });
 
+function sectionOf(title: string): HTMLElement {
+  const section = screen
+    .getByRole("heading", { name: title })
+    .closest("section");
+  if (!section) throw new Error(`no section for ${title}`);
+  return section;
+}
+
+/** The input is flagged invalid and linked to an alert that reads `message`. */
+function expectFieldAlert(input: HTMLElement, message: string): void {
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  const id = input.getAttribute("aria-describedby");
+  expect(id).toBeTruthy();
+  const alert = document.getElementById(id ?? "");
+  expect(alert).not.toBeNull();
+  expect(alert).toHaveAttribute("role", "alert");
+  expect(alert).toHaveTextContent(message);
+}
+
+function expectNoFieldAlert(input: HTMLElement): void {
+  expect(input).not.toHaveAttribute("aria-invalid");
+  expect(input).not.toHaveAttribute("aria-describedby");
+}
+
+function clickSave(): void {
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+}
+
+describe("ProjectTypesManagerPage intro text (FR-29 b)", () => {
+  it("describes built-in types and your own, and no longer names the config folder", () => {
+    renderManager(makeTransport());
+    expect(
+      screen.getByText(
+        "View built-in project types, and create, edit and delete your own.",
+      ),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(
+      "getwrite-config/templates/project-types",
+    );
+  });
+});
+
+describe("ProjectTypesManagerPage field errors (FR-28 f, g)", () => {
+  it("empty status label: shown at the status input, edits kept, nothing sent, not repeated in the action bar", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    clickSave();
+
+    const input = await screen.findByLabelText("Status Label");
+    await waitFor(() =>
+      expectFieldAlert(input, "Status label must not be blank."),
+    );
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("ID")).toHaveValue("fresh");
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+    expect(input).toHaveValue("");
+    expect(screen.getAllByText("Status label must not be blank.")).toHaveLength(
+      1,
+    );
+  });
+
+  it("blank type name: shown at the Name input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "");
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getByLabelText("Name"),
+        "Name must not be blank.",
+      ),
+    );
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("ID")).toHaveValue("fresh");
+    expect(screen.getAllByText("Name must not be blank.")).toHaveLength(1);
+  });
+
+  it("duplicate status: the second input carries the message, the first does not", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    const [first, second] = screen.getAllByLabelText("Status Label");
+    fireEvent.change(first, { target: { value: "Draft" } });
+    fireEvent.change(second, { target: { value: "draft" } });
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getAllByLabelText("Status Label")[1],
+        "Duplicate status label.",
+      ),
+    );
+    expectNoFieldAlert(screen.getAllByLabelText("Status Label")[0]);
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(screen.getAllByLabelText("Status Label")[1]).toHaveValue("draft");
+  });
+
+  it("blank relationship type: the form has no input for it, so it is listed once in the action bar", async () => {
+    const transport = makeTransport();
+    render(
+      <ProjectTypesManagerPage
+        initialTemplates={[
+          {
+            ...saved,
+            // The definition type has no relationshipTypes (the form has no
+            // input for them), but a stored type can carry the list.
+            definition: {
+              ...saved.definition,
+              relationshipTypes: ["Ally", ""],
+            } as ProjectTypeDefinition,
+          },
+        ]}
+        resolveTransport={async () => transport}
+      />,
+    );
+    clickSave();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Relationship type must not be blank.");
+    expect(
+      screen.getAllByText("Relationship type must not be blank."),
+    ).toHaveLength(1);
+    expect(transport.update).not.toHaveBeenCalled();
+  });
+
+  it("blank folder name: shown at that folder's input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Folder" }));
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getAllByLabelText("Folder Name")[1],
+        "Folder name must not be blank.",
+      ),
+    );
+    expectNoFieldAlert(screen.getAllByLabelText("Folder Name")[0]);
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("blank subfolder name: shown at the subfolder Name input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Default Folder" }));
+    clickSave();
+
+    const section = sectionOf("Default Folders");
+    await waitFor(() =>
+      expectFieldAlert(
+        within(section).getByLabelText("Name"),
+        "Subfolder name must not be blank.",
+      ),
+    );
+    expectNoFieldAlert(within(section).getByLabelText("Parent Folder"));
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("blank Parent Folder: 'Parent folder must not be blank.' at that input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Default Folder" }));
+    const section = sectionOf("Default Folders");
+    fireEvent.change(within(section).getByLabelText("Name"), {
+      target: { value: "Act" },
+    });
+    fireEvent.change(within(section).getByLabelText("Parent Folder"), {
+      target: { value: "" },
+    });
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        within(section).getByLabelText("Parent Folder"),
+        "Parent folder must not be blank.",
+      ),
+    );
+    expectNoFieldAlert(within(section).getByLabelText("Name"));
+    expect(within(section).getByLabelText("Name")).toHaveValue("Act");
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("blank starter document name: shown at that Name input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Resource" }));
+    clickSave();
+
+    const section = sectionOf("Default Resources");
+    await waitFor(() =>
+      expectFieldAlert(
+        within(section).getByLabelText("Name"),
+        "Starter document name must not be blank.",
+      ),
+    );
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("slug-too-similar folders: the message names both and sits at the second folder's input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Folder" }));
+    fireEvent.change(screen.getAllByLabelText("Folder Name")[1], {
+      target: { value: "Workspace!" },
+    });
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getAllByLabelText("Folder Name")[1],
+        "Folder name “Workspace!” is too similar to “Workspace”.",
+      ),
+    );
+    expectNoFieldAlert(screen.getAllByLabelText("Folder Name")[0]);
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("slug-too-similar subfolders under one parent: at the second subfolder's input", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Default Folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Default Folder" }));
+    const section = sectionOf("Default Folders");
+    const [firstName, secondName] = within(section).getAllByLabelText("Name");
+    fireEvent.change(firstName, { target: { value: "Chapter 1" } });
+    fireEvent.change(secondName, { target: { value: "Chapter 1!" } });
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        within(section).getAllByLabelText("Name")[1],
+        "Subfolder name “Chapter 1!” is too similar to “Chapter 1”.",
+      ),
+    );
+    expectNoFieldAlert(within(section).getAllByLabelText("Name")[0]);
+  });
+
+  it("starter documents with the same slug are allowed (Task 37: no collision on disk)", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Resource" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Resource" }));
+    const section = sectionOf("Default Resources");
+    const [a, b] = within(section).getAllByLabelText("Name");
+    fireEvent.change(a, { target: { value: "Chapter 1" } });
+    fireEvent.change(b, { target: { value: "Chapter 1!" } });
+    clickSave();
+
+    await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("starter document Folder shows the helper line and an empty value raises no error", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Resource" }));
+    const section = sectionOf("Default Resources");
+    expect(
+      within(section).getByText("Leave empty to use the first folder."),
+    ).toBeInTheDocument();
+    fireEvent.change(within(section).getAllByLabelText("Name")[0], {
+      target: { value: "Opening" },
+    });
+    fireEvent.change(within(section).getByLabelText("Folder"), {
+      target: { value: "" },
+    });
+    clickSave();
+
+    await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("two blank rows each show their own message; fixing one clears only its message and aria-invalid", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    clickSave();
+
+    await waitFor(() => {
+      const [first, second] = screen.getAllByLabelText("Status Label");
+      expectFieldAlert(first, "Status label must not be blank.");
+      expectFieldAlert(second, "Status label must not be blank.");
+      expect(first.getAttribute("aria-describedby")).not.toBe(
+        second.getAttribute("aria-describedby"),
+      );
+    });
+
+    fireEvent.change(screen.getAllByLabelText("Status Label")[0], {
+      target: { value: "Draft" },
+    });
+
+    const [first, second] = screen.getAllByLabelText("Status Label");
+    expectNoFieldAlert(first);
+    expectFieldAlert(second, "Status label must not be blank.");
+    expect(screen.getAllByText("Status label must not be blank.")).toHaveLength(
+      1,
+    );
+  });
+
+  it("an error with no field (no folders) stays in the action bar; a field error is not also listed there", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    fireEvent.click(
+      within(sectionOf("Folders")).getByRole("button", { name: "Remove" }),
+    );
+    clickSave();
+
+    const bar = (await screen.findAllByRole("alert")).find(
+      (el: HTMLElement) => el.tagName === "DIV",
+    );
+    expect(bar).toBeDefined();
+    expect(bar).not.toHaveTextContent("Status label must not be blank.");
+    expectFieldAlert(
+      screen.getByLabelText("Status Label"),
+      "Status label must not be blank.",
+    );
+    expect(screen.getAllByText("Status label must not be blank.")).toHaveLength(
+      1,
+    );
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("Save as copy on a built-in follows the same path", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    select("Novel");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    const bar = screen.getByRole("group", { name: "Project type actions" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Save as copy" }));
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getByLabelText("Status Label"),
+        "Status label must not be blank.",
+      ),
+    );
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("Save as copy on a saved type follows the same path", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    select("Mine");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    const bar = screen.getByRole("group", { name: "Project type actions" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Save as copy" }));
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getByLabelText("Status Label"),
+        "Status label must not be blank.",
+      ),
+    );
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(transport.update).not.toHaveBeenCalled();
+  });
+
+  it("a 400 whose path maps to a field is shown at that field, not in the action bar", async () => {
+    const transport = makeTransport({
+      create: vi.fn(async () => ({
+        ok: false as const,
+        reason: "invalid" as const,
+        message: "The project type is not valid.",
+        fieldErrors: { "statuses.0": "Status label must not be blank." },
+      })),
+    });
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    fireEvent.change(screen.getByLabelText("Status Label"), {
+      target: { value: "Draft" },
+    });
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getByLabelText("Status Label"),
+        "Status label must not be blank.",
+      ),
+    );
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByLabelText("Status Label")).toHaveValue("Draft");
+  });
+
+  it("a 400 whose path maps to no field is shown in the action bar", async () => {
+    const transport = makeTransport({
+      create: vi.fn(async () => ({
+        ok: false as const,
+        reason: "invalid" as const,
+        message: "The project type is not valid.",
+        fieldErrors: { folders: "Too small: expected at least 1 folder." },
+      })),
+    });
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    clickSave();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.tagName).toBe("DIV");
+    expect(alert).toHaveTextContent("Too small: expected at least 1 folder.");
+    expect(screen.getByLabelText("ID")).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText("Name")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("has no axe violations with field errors showing", async () => {
+    const transport = makeTransport();
+    const { container } = renderManager(transport);
+    startDraft("fresh", "");
+    fireEvent.click(screen.getByRole("button", { name: "Add Status" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Folder" }));
+    fireEvent.change(screen.getAllByLabelText("Folder Name")[1], {
+      target: { value: "Workspace!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add Default Folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Resource" }));
+    clickSave();
+
+    await waitFor(() =>
+      expectFieldAlert(
+        screen.getByLabelText("Status Label"),
+        "Status label must not be blank.",
+      ),
+    );
+    expect(
+      container.querySelectorAll('[role="alert"][id]').length,
+    ).toBeGreaterThanOrEqual(5);
+    await runAxe(container);
+  });
+});
+
 describe("ProjectTypesManagerPage Delete", () => {
   it("confirms with the consequences, then deletes a saved type", async () => {
     const transport = makeTransport({

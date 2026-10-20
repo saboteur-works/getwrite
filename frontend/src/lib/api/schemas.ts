@@ -936,4 +936,5 @@ export const ProjectTypeWriteRefusalSchema = z.object({
       source: z.enum(["built-in", "saved"]),
     })
     .optional(),
+  fieldErrors: z.record(z.string(), z.string()).optional(),
 });

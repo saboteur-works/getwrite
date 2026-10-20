@@ -221,6 +221,28 @@ describe("httpProjectTypesTransport writes (Feature 90, FR-8)", () => {
     },
   );
 
+  it("carries fieldErrors through on an invalid refusal", async () => {
+    const fieldErrors = { "statuses.0": "Status label must not be blank." };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(refusalBody("invalid", { fieldErrors }), false, 400),
+        ),
+    );
+
+    const result = await httpProjectTypesTransport.create(spec);
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "invalid",
+      message: "msg for invalid",
+      fieldErrors,
+    });
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+
   it("carries conflictsWith through on a name clash", async () => {
     const conflictsWith = { id: "novel", name: "Novel", source: "built-in" };
     vi.stubGlobal(

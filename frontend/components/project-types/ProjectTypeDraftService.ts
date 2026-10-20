@@ -19,7 +19,10 @@
  */
 
 import { useState, useMemo, useRef } from "react";
-import { validateProjectType } from "../../src/lib/models/schemas";
+import {
+  projectTypeFieldErrors,
+  validateProjectType,
+} from "../../src/lib/models/schemas";
 import {
   resolveProjectTypesTransport,
   type ProjectTypeConflict,
@@ -60,13 +63,21 @@ export interface ProjectTypeListItem {
 
 /** Why a save or delete did not happen, or was refused. */
 export type DraftOperationFailure =
-  | { ok: false; kind: "validation"; errors: string[] }
+  | {
+      ok: false;
+      kind: "validation";
+      errors: string[];
+      fieldErrors: Record<string, string>;
+      unplacedErrors: string[];
+    }
   | {
       ok: false;
       kind: "refused";
       reason: ProjectTypeWriteRefusalReason;
       message: string;
       conflictsWith?: ProjectTypeConflict;
+      /** Server refusal messages keyed by schema path (see `fieldErrors` below). */
+      fieldErrors?: Record<string, string>;
     }
   | { ok: false; kind: "failed"; message: string };
 
@@ -92,7 +103,31 @@ export type DraftDeleteResult = { ok: true } | DraftOperationFailure;
  */
 export type DraftValidationResult =
   | { valid: true }
-  | { valid: false; errors: string[] };
+  | {
+      valid: false;
+      /** Every refusal message, flat. */
+      errors: string[];
+      /** Messages keyed by schema path, joined with "." (`statuses.1`). */
+      fieldErrors: Record<string, string>;
+      /** Messages with no input in the form: shown in the action bar. */
+      unplacedErrors: string[];
+    };
+
+/**
+ * Paths the editor form has an input for, and so can show an error beside:
+ * the type name, a status label, a folder name, a subfolder name and parent,
+ * and a starter document name. Any other path (the id, the folders list
+ * itself, relationship types, subtypes, editor settings, folder-level starter
+ * documents) has no such input, or is shown elsewhere, and goes to the action
+ * bar.
+ */
+const FORM_FIELD_KEY =
+  /^(name|statuses\.\d+|folders\.\d+\.name|defaultFolders\.\d+\.(name|folder)|defaultResources\.\d+\.name)$/;
+
+/** True when the form shows an error for this schema-path key beside an input. */
+export function isFormFieldKey(key: string): boolean {
+  return FORM_FIELD_KEY.test(key);
+}
 
 /**
  * Creates an empty draft project type definition.
@@ -182,11 +217,18 @@ export function validateDraft(
   const schemaResult = validateProjectType(definition);
   if (!schemaResult.success) {
     const messages = collectErrorMessages(schemaResult.errors);
+    const { issues } = schemaResult;
+    const unplaced = issues
+      .filter((issue) => !isFormFieldKey(issue.path.join(".")))
+      .map((issue) => issue.message);
 
     return {
       valid: false,
       errors:
         messages.length > 0 ? messages : ["Invalid project type definition."],
+      fieldErrors: projectTypeFieldErrors(issues),
+      unplacedErrors:
+        messages.length > 0 ? unplaced : ["Invalid project type definition."],
     };
   }
 
@@ -355,7 +397,13 @@ export async function saveDraftItem(
     : item.definition;
   const validation = validateDraft(definition);
   if (!validation.valid) {
-    return { ok: false, kind: "validation", errors: validation.errors };
+    return {
+      ok: false,
+      kind: "validation",
+      errors: validation.errors,
+      fieldErrors: validation.fieldErrors,
+      unplacedErrors: validation.unplacedErrors,
+    };
   }
   try {
     const outcome = isSaved
@@ -378,18 +426,19 @@ function refusalFields(refusal: {
   reason: ProjectTypeWriteRefusalReason;
   message: string;
   conflictsWith?: ProjectTypeConflict;
+  fieldErrors?: Record<string, string>;
 }): {
   reason: ProjectTypeWriteRefusalReason;
   message: string;
   conflictsWith?: ProjectTypeConflict;
+  fieldErrors?: Record<string, string>;
 } {
-  return refusal.conflictsWith
-    ? {
-        reason: refusal.reason,
-        message: refusal.message,
-        conflictsWith: refusal.conflictsWith,
-      }
-    : { reason: refusal.reason, message: refusal.message };
+  return {
+    reason: refusal.reason,
+    message: refusal.message,
+    ...(refusal.conflictsWith ? { conflictsWith: refusal.conflictsWith } : {}),
+    ...(refusal.fieldErrors ? { fieldErrors: refusal.fieldErrors } : {}),
+  };
 }
 
 /**
@@ -412,7 +461,13 @@ export async function saveDraftItemAsCopy(
   };
   const validation = validateDraft(definition);
   if (!validation.valid) {
-    return { ok: false, kind: "validation", errors: validation.errors };
+    return {
+      ok: false,
+      kind: "validation",
+      errors: validation.errors,
+      fieldErrors: validation.fieldErrors,
+      unplacedErrors: validation.unplacedErrors,
+    };
   }
   try {
     const outcome = await transport.create(definition);

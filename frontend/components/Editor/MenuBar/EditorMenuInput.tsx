@@ -69,6 +69,8 @@ export interface EditorMenuInputProps {
    * Optional validator for typed input. Returns a message for refused input
    * (shown beside the control, linked with `aria-describedby`, and the change
    * is not forwarded to `onChange`), or `null` when the input is acceptable.
+   * On blur after a refusal a number input shows `initialValue` again and the
+   * message stays; inputs without a validator are unaffected.
    */
   validate?: (value: string) => string | null;
   minValue?: number;
@@ -179,6 +181,10 @@ export default function EditorMenuInput({
           }}
           onBlur={() => {
             isFocused.current = false;
+            // Only an input with a validator: after a refusal the field shows
+            // the value in effect again and the message stays (Feature 90,
+            // FR-29 c). Inputs without a validator keep what was typed.
+            if (validate && error !== null) setValue(initialValue);
           }}
           className={`editor-menu-input-control editor-menu-number-input ${buttonClasses}`}
         />

@@ -35,7 +35,9 @@ import ProjectTypeListPane from "./ProjectTypeListPane";
 import UnsavedChangesPrompt from "./UnsavedChangesPrompt";
 import {
   describeItemOrigin,
+  isFormFieldKey,
   useProjectTypeDraftService,
+  validateDraft,
   type DraftDeleteResult,
   type DraftOperationFailure,
   type DraftSaveResult,
@@ -80,9 +82,58 @@ type PendingExit =
 interface ActionFeedback {
   /** The definition the action ran on; the message hides once it is edited. */
   definition: ProjectTypeDefinition;
+  /** File of the item the action ran on; absent for an unsaved draft. */
+  fileName: string | undefined;
   idMessage?: string;
   nameMessage?: string;
+  /** Messages with no input in the form, listed in the action bar. */
   messages: string[];
+  /** Messages for form inputs, keyed by schema path (see `isFormFieldKey`). */
+  fieldErrors: Record<string, string>;
+  /**
+   * True for a refusal made by the client check: the keyed inputs are
+   * re-checked as the writer edits, so fixing one clears only its message.
+   * False for a server refusal, whose messages hide on the next edit.
+   */
+  recheck: boolean;
+}
+
+/** Splits keyed messages into those the form shows at an input and the rest. */
+function splitByPlacement(keyed: Record<string, string>): {
+  placed: Record<string, string>;
+  unplaced: string[];
+} {
+  const placed: Record<string, string> = {};
+  const unplaced: string[] = [];
+  for (const [key, message] of Object.entries(keyed)) {
+    if (isFormFieldKey(key)) placed[key] = message;
+    else unplaced.push(message);
+  }
+  return { placed, unplaced };
+}
+
+/**
+ * The field messages to show for the selected item. A client-check refusal is
+ * re-checked against the current definition, for the keys it named, so fixing
+ * one input clears only its message; a server refusal shows until the next
+ * edit (`isCurrent`). Nothing shows for a different item than the one refused.
+ */
+function visibleFieldErrors(
+  feedback: ActionFeedback | null,
+  item: { fileName?: string; definition: ProjectTypeDefinition } | null,
+  isCurrent: boolean,
+): Record<string, string> | undefined {
+  if (!feedback || !item || feedback.fileName !== item.fileName) {
+    return undefined;
+  }
+  if (!feedback.recheck) return isCurrent ? feedback.fieldErrors : undefined;
+  const now = validateDraft(item.definition);
+  if (now.valid) return undefined;
+  const still: Record<string, string> = {};
+  for (const key of Object.keys(feedback.fieldErrors)) {
+    if (key in now.fieldErrors) still[key] = now.fieldErrors[key];
+  }
+  return still;
 }
 
 /**
@@ -91,21 +142,36 @@ interface ActionFeedback {
  */
 function feedbackFor(
   definition: ProjectTypeDefinition,
+  fileName: string | undefined,
   failure: DraftOperationFailure,
 ): ActionFeedback {
+  const base = { definition, fileName, fieldErrors: {}, recheck: false };
   if (failure.kind === "validation") {
-    return { definition, messages: failure.errors };
+    return {
+      ...base,
+      messages: failure.unplacedErrors,
+      fieldErrors: splitByPlacement(failure.fieldErrors).placed,
+      recheck: true,
+    };
   }
   if (failure.kind === "failed") {
-    return { definition, messages: [failure.message] };
+    return { ...base, messages: [failure.message] };
+  }
+  if (
+    failure.reason === "invalid" &&
+    failure.fieldErrors &&
+    Object.keys(failure.fieldErrors).length > 0
+  ) {
+    const { placed, unplaced } = splitByPlacement(failure.fieldErrors);
+    return { ...base, messages: unplaced, fieldErrors: placed };
   }
   if (failure.reason === "id-clash" || failure.reason === "invalid") {
-    return { definition, idMessage: failure.message, messages: [] };
+    return { ...base, idMessage: failure.message, messages: [] };
   }
   if (failure.reason === "name-clash") {
-    return { definition, nameMessage: failure.message, messages: [] };
+    return { ...base, nameMessage: failure.message, messages: [] };
   }
-  return { definition, messages: [failure.message] };
+  return { ...base, messages: [failure.message] };
 }
 
 /**
@@ -176,6 +242,11 @@ export default function ProjectTypesManagerPage({
     feedback && selectedItem && feedback.definition === selectedItem.definition
       ? feedback
       : null;
+  const shownFieldErrors = visibleFieldErrors(
+    feedback,
+    selectedItem,
+    shownFeedback !== null,
+  );
 
   /** Re-reads the list from the server so the manager shows what is stored. */
   const refreshList = async (): Promise<void> => {
@@ -197,12 +268,13 @@ export default function ProjectTypesManagerPage({
   const settle = async (
     result: DraftSaveResult | DraftDeleteResult | null,
     definition: ProjectTypeDefinition,
+    fileName: string | undefined,
     succeeded: string,
   ): Promise<void> => {
     if (result === null) return;
     if (!result.ok) {
       setStatus("");
-      setFeedback(feedbackFor(definition, result));
+      setFeedback(feedbackFor(definition, fileName, result));
       return;
     }
     setFeedback(null);
@@ -212,7 +284,7 @@ export default function ProjectTypesManagerPage({
 
   const runSave = async (asCopy: boolean): Promise<void> => {
     if (!selectedItem) return;
-    const { definition } = selectedItem;
+    const { definition, fileName } = selectedItem;
     const result = await (asCopy ? handleSaveAsCopy() : handleSave());
     const isCopy = result?.ok === true && "copied" in result && result.copied;
     const name =
@@ -222,6 +294,7 @@ export default function ProjectTypesManagerPage({
     await settle(
       result,
       definition,
+      fileName,
       isCopy
         ? `Saved a copy as \u201C${name}\u201D.`
         : `Saved \u201C${name}\u201D.`,
@@ -230,10 +303,15 @@ export default function ProjectTypesManagerPage({
 
   const runDelete = async (): Promise<void> => {
     if (!selectedItem) return;
-    const { definition } = selectedItem;
+    const { definition, fileName } = selectedItem;
     const result = await handleDelete();
     setIsConfirmingDelete(false);
-    await settle(result, definition, `Deleted \u201C${definition.name}\u201D.`);
+    await settle(
+      result,
+      definition,
+      fileName,
+      `Deleted \u201C${definition.name}\u201D.`,
+    );
   };
 
   const dirtyItems = items.filter((item) => item.hasChanges);
@@ -304,18 +382,19 @@ export default function ProjectTypesManagerPage({
 
   const saveAndExit = async (): Promise<void> => {
     if (!selectedItem) return;
-    const { definition } = selectedItem;
+    const { definition, fileName } = selectedItem;
     const result = await handleSave();
     if (result === null) return;
     if (!result.ok) {
       setStatus("");
-      setFeedback(feedbackFor(definition, result));
+      setFeedback(feedbackFor(definition, fileName, result));
       keepEditing();
       return;
     }
     await settle(
       result,
       definition,
+      fileName,
       `Saved \u201C${result.item.definition.name}\u201D.`,
     );
     setIsResumingAfterSave(true);
@@ -433,8 +512,7 @@ export default function ProjectTypesManagerPage({
             </h1>
           )}
           <p className="text-sm text-gw-secondary">
-            View, create, and edit project type templates from
-            getwrite-config/templates/project-types.
+            View built-in project types, and create, edit and delete your own.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -534,6 +612,7 @@ export default function ProjectTypesManagerPage({
                 idReadOnly={origin !== "Draft"}
                 idError={shownFeedback?.idMessage}
                 nameError={shownFeedback?.nameMessage}
+                fieldErrors={shownFieldErrors}
                 definition={selectedItem.definition}
                 onChange={(nextDefinition) => {
                   updateSelectedDefinition(() => nextDefinition);

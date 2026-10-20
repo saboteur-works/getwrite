@@ -215,6 +215,24 @@ describe("BodySettingsModal", () => {
       },
     );
 
+    it("announces a refused 1.2 as an alert linked to the field (FR-29 a), keeps the value and saves nothing", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
+
+      const field = screen.getByLabelText("Line Height");
+      fireEvent.change(field, { target: { value: "1.2" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Line height must be a number of at least 1.8.",
+      );
+      expect(field).toHaveAttribute("aria-describedby", alert.id);
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveValue("1.2");
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
     it.each([
       ["", {}],
       ["2", { lineHeight: "2" }],

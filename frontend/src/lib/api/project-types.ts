@@ -96,6 +96,12 @@ export type ProjectTypeWriteOutcome =
       reason: ProjectTypeWriteRefusalReason;
       message: string;
       conflictsWith?: ProjectTypeConflict;
+      /**
+       * For an `invalid` refusal from the schema: the refusal messages keyed
+       * by schema path joined with "." (`statuses.1`), so each can be shown
+       * at its field (Feature 90, FR-28 d, f).
+       */
+      fieldErrors?: Record<string, string>;
     };
 
 /**
@@ -143,10 +149,14 @@ async function readWriteOutcome(
     reportTransportValidationFailure(callSite, refusal.error.issues);
     throw new Error(`Failed to save project types (${response.status})`);
   }
-  const { error, reason, conflictsWith } = refusal.data;
-  return conflictsWith
-    ? { ok: false, reason, message: error, conflictsWith }
-    : { ok: false, reason, message: error };
+  const { error, reason, conflictsWith, fieldErrors } = refusal.data;
+  return {
+    ok: false,
+    reason,
+    message: error,
+    ...(conflictsWith ? { conflictsWith } : {}),
+    ...(fieldErrors ? { fieldErrors } : {}),
+  };
 }
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const;

@@ -21,7 +21,11 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { validateProjectType, type ProjectTypeSpec } from "./models/schemas";
+import {
+  projectTypeFieldErrors,
+  validateProjectType,
+  type ProjectTypeSpec,
+} from "./models/schemas";
 import { normalizeSubtypeLabel } from "./models/field-subtype-scope";
 import { resolveProjectTypes, type ProjectTypeEntry } from "./projectTypes";
 
@@ -53,12 +57,18 @@ type ProjectTypeWriteSuccess = {
   spec?: ProjectTypeSpec;
 };
 
-/** Refused or failed write. `conflictsWith` is set for the two clash reasons. */
+/**
+ * Refused or failed write. `conflictsWith` is set for the two clash reasons;
+ * `fieldErrors` (schema path joined with "." to the fixed schema message) for
+ * an `invalid` refusal that came from the schema, so a client can place each
+ * message at its field (Feature 90, FR-28 d).
+ */
 export type ProjectTypeWriteRefusal = {
   ok: false;
   reason: ProjectTypeWriteRefusalReason;
   message: string;
   conflictsWith?: ProjectTypeConflict;
+  fieldErrors?: Record<string, string>;
 };
 
 export type ProjectTypeWriteResult =
@@ -234,7 +244,12 @@ async function checkSpec(
   if (dir === null) return refuse("saving-unavailable");
   const validated = validateProjectType(input);
   if (!validated.success || !("value" in validated) || !validated.value) {
-    return refuse("invalid");
+    const fieldErrors = validated.success
+      ? {}
+      : projectTypeFieldErrors(validated.issues);
+    return Object.keys(fieldErrors).length > 0
+      ? { ...refuse("invalid"), fieldErrors }
+      : refuse("invalid");
   }
   const spec = validated.value;
   if (!isSafeId(spec.id)) return refuse("invalid");

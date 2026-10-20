@@ -53,6 +53,14 @@ export interface ProjectTypeEditorFormProps {
   idError?: string;
   /** Refusal message shown next to the Name field as an alert. */
   nameError?: string;
+  /**
+   * Schema refusals keyed by path joined with "." (`name`, `statuses.1`,
+   * `folders.0.name`, `defaultFolders.0.name`, `defaultFolders.0.folder`,
+   * `defaultResources.0.name`; see `isFormFieldKey`). Each message is shown
+   * as an alert beside its input. Other keys are ignored here: the manager
+   * lists them in the action bar.
+   */
+  fieldErrors?: Record<string, string>;
 }
 
 export default function ProjectTypeEditorForm({
@@ -71,6 +79,7 @@ export default function ProjectTypeEditorForm({
   idReadOnly = false,
   idError,
   nameError,
+  fieldErrors,
 }: ProjectTypeEditorFormProps): JSX.Element {
   const patchDefinition = (updates: Partial<ProjectTypeDefinition>): void => {
     onChange({ ...definition, ...updates });
@@ -157,7 +166,7 @@ export default function ProjectTypeEditorForm({
           label="Name"
           value={definition.name}
           placeholder="Novel"
-          error={nameError}
+          error={nameError ?? fieldErrors?.name}
           errorIsAlert
           onChange={(value) => patchDefinition({ name: value })}
         />
@@ -207,6 +216,8 @@ export default function ProjectTypeEditorForm({
                   label="Status Label"
                   value={status}
                   placeholder="e.g. Draft"
+                  error={fieldErrors?.[`statuses.${index}`]}
+                  errorIsAlert
                   onChange={(value) => onUpdateStatus(index, value)}
                 />
                 <div
@@ -251,6 +262,8 @@ export default function ProjectTypeEditorForm({
                   label="Folder Name"
                   value={folder.name}
                   placeholder="Workspace"
+                  error={fieldErrors?.[`folders.${index}.name`]}
+                  errorIsAlert
                   onChange={(value) => patchFolder(index, { name: value })}
                 />
                 <div
@@ -319,6 +332,8 @@ export default function ProjectTypeEditorForm({
                   label="Name"
                   value={df.name}
                   placeholder="Chapter 1"
+                  error={fieldErrors?.[`defaultFolders.${index}.name`]}
+                  errorIsAlert
                   onChange={(value) =>
                     patchDefaultFolder(index, { name: value })
                   }
@@ -327,6 +342,8 @@ export default function ProjectTypeEditorForm({
                   label="Parent Folder"
                   value={df.folder}
                   placeholder="Workspace"
+                  error={fieldErrors?.[`defaultFolders.${index}.folder`]}
+                  errorIsAlert
                   onChange={(value) =>
                     patchDefaultFolder(index, { folder: value })
                   }
@@ -394,12 +411,15 @@ export default function ProjectTypeEditorForm({
                   label="Name"
                   value={resource.name}
                   placeholder="Manuscript Start"
+                  error={fieldErrors?.[`defaultResources.${index}.name`]}
+                  errorIsAlert
                   onChange={(value) => patchResource(index, { name: value })}
                 />
                 <LabeledInput
                   label="Folder"
-                  value={resource.folder}
+                  value={resource.folder ?? ""}
                   placeholder="Workspace"
+                  helper="Leave empty to use the first folder."
                   onChange={(value) => patchResource(index, { folder: value })}
                 />
                 <LabeledSelect
@@ -624,6 +644,8 @@ interface LabeledInputProps {
   error?: string;
   /** Announces `error` as an alert (a refusal) rather than quiet field help. */
   errorIsAlert?: boolean;
+  /** Quiet help under the input, linked to it by `aria-describedby`. */
+  helper?: string;
   readOnly?: boolean;
   onChange: (value: string) => void;
 }
@@ -634,10 +656,16 @@ function LabeledInput({
   placeholder,
   error,
   errorIsAlert = false,
+  helper,
   readOnly,
   onChange,
 }: LabeledInputProps): JSX.Element {
   const errorId = useId();
+  const helperId = useId();
+  const describedBy =
+    [error ? errorId : null, helper ? helperId : null]
+      .filter((id): id is string => id !== null)
+      .join(" ") || undefined;
   return (
     <div className="project-type-editor-field">
       <label className="project-type-editor-field">
@@ -647,11 +675,16 @@ function LabeledInput({
           placeholder={placeholder}
           readOnly={readOnly}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={describedBy}
           onChange={(e) => onChange(e.target.value)}
           className="project-type-editor-field-control"
         />
       </label>
+      {helper ? (
+        <p id={helperId} className="project-type-editor-helper-text">
+          {helper}
+        </p>
+      ) : null}
       {error ? (
         <p
           id={errorId}

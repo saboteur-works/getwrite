@@ -765,6 +765,94 @@ describe("Line Height control (FR-21)", () => {
   });
 });
 
+describe("Line Height control after a refusal (FR-29 c, OQ-11 a)", () => {
+  function renderLineHeight(projectLineHeight: string) {
+    mockUseEditorState.mockReturnValue({
+      ...mockUseEditorState(),
+      getWriteParagraphLeading: null,
+    });
+    const store = makeStore();
+    store.dispatch(
+      setEditorConfig({
+        headings: {},
+        body: { lineHeight: projectLineHeight },
+      }),
+    );
+    const { editor, actions } = createEditorDouble();
+    render(
+      <Provider store={store}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+    return {
+      actions,
+      field: screen.getByRole("spinbutton", { name: /Line Height/i }),
+    };
+  }
+
+  it("shows the refusal for 0, leaves the leading alone, and after blur shows the effective leading with the refusal still present", () => {
+    const { actions, field } = renderLineHeight("2.2");
+
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "0" } });
+
+    expect(field).toHaveValue(0);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Line height must be a number greater than 0.",
+    );
+    expect(actions.filter((a) => a.name === "setParagraphLeading")).toEqual([]);
+
+    fireEvent.blur(field);
+
+    expect(field).toHaveValue(2.2);
+    const message = screen.getByRole("alert");
+    expect(message).toHaveTextContent(
+      "Line height must be a number greater than 0.",
+    );
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field.getAttribute("aria-describedby")).toBe(message.id);
+    expect(actions.filter((a) => a.name === "setParagraphLeading")).toEqual([]);
+  });
+
+  it("a valid value typed after a refusal still clears the message and is forwarded", () => {
+    const { actions, field } = renderLineHeight("2.2");
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "0" } });
+    fireEvent.blur(field);
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "1.4" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      actions
+        .filter((a) => a.name === "setParagraphLeading")
+        .map((a) => a.payload),
+    ).toEqual(["1.4"]);
+  });
+});
+
+describe("Another toolbar number input is unchanged by FR-29 c (Font Size, no validator)", () => {
+  it("a typed value stays in the field after blur and nothing is refused", () => {
+    const { editor, actions } = createEditorDouble();
+    render(
+      <Provider store={makeStore()}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+    const field = screen.getByRole("spinbutton", { name: /Font Size/i });
+    expect(field).toHaveValue(14);
+
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "18" } });
+    fireEvent.blur(field);
+
+    expect(field).toHaveValue(18);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      actions.filter((a) => a.name === "setFontSize").map((a) => a.payload),
+    ).toEqual(["18px"]);
+  });
+});
+
 describe("Line Height schema entry", () => {
   it("no longer carries an initialValue", () => {
     const group = toolbarCommandSchema.find(

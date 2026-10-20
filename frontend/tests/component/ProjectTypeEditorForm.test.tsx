@@ -20,15 +20,18 @@ const base: ProjectTypeDefinition = {
 function Harness({
   initial,
   onDefinition,
+  fieldErrors,
 }: {
   initial: ProjectTypeDefinition;
   onDefinition?: (d: ProjectTypeDefinition) => void;
+  fieldErrors?: Record<string, string>;
 }): JSX.Element {
   const [definition, setDefinition] = React.useState(initial);
   const noop = vi.fn();
   return (
     <ProjectTypeEditorForm
       definition={definition}
+      fieldErrors={fieldErrors}
       onChange={(d) => {
         setDefinition(d);
         onDefinition?.(d);
@@ -95,5 +98,67 @@ describe("ProjectTypeEditorForm Line Height floor (FR-23)", () => {
       />,
     );
     await runAxe(container);
+  });
+});
+
+describe("ProjectTypeEditorForm field errors (FR-28 f)", () => {
+  const populated: ProjectTypeDefinition = {
+    ...base,
+    statuses: ["", "Draft"],
+    folders: [{ name: "Workspace" }, { name: "Workspace!" }],
+    defaultFolders: [{ folder: "", name: "" }],
+    defaultResources: [{ folder: "Workspace", name: "", type: "text" }],
+  };
+  const fieldErrors = {
+    name: "Name must not be blank.",
+    "statuses.0": "Status label must not be blank.",
+    "folders.1.name": "Folder name is too similar.",
+    "defaultFolders.0.name": "Subfolder name must not be blank.",
+    "defaultFolders.0.folder": "Parent folder must not be blank.",
+    "defaultResources.0.name": "Starter document name must not be blank.",
+  };
+
+  it("places each keyed message beside its own input as an alert linked by aria-describedby", () => {
+    render(<Harness initial={populated} fieldErrors={fieldErrors} />);
+    const alerts = screen.getAllByRole("alert");
+    expect(alerts).toHaveLength(Object.keys(fieldErrors).length);
+
+    const expectLinked = (input: HTMLElement, text: string): void => {
+      const alert = alerts.find((a: HTMLElement) => a.textContent === text);
+      expect(alert).toBeDefined();
+      expect(input.getAttribute("aria-describedby")).toBe(alert?.id);
+      expect(input).toHaveAttribute("aria-invalid", "true");
+    };
+    expectLinked(
+      screen.getAllByLabelText("Name")[0],
+      "Name must not be blank.",
+    );
+    expectLinked(
+      screen.getAllByLabelText("Status Label")[0],
+      "Status label must not be blank.",
+    );
+    expect(screen.getAllByLabelText("Status Label")[1]).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expectLinked(
+      screen.getAllByLabelText("Folder Name")[1],
+      "Folder name is too similar.",
+    );
+    expectLinked(
+      screen.getByLabelText("Parent Folder"),
+      "Parent folder must not be blank.",
+    );
+  });
+
+  it("shows no alert without field errors", () => {
+    render(<Harness initial={populated} />);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows the helper line under each starter document Folder field", () => {
+    render(<Harness initial={populated} />);
+    expect(
+      screen.getByText("Leave empty to use the first folder."),
+    ).toBeInTheDocument();
   });
 });

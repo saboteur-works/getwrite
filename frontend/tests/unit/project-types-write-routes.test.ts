@@ -126,6 +126,18 @@ describe("project-types write routes (Task 19)", () => {
       expect(await savedFiles()).toEqual([]);
     });
 
+    it("a FR-28 refusal body carries fieldErrors keyed by path", async () => {
+      const res = await POST(
+        post({ ...spec("mine", "Mine"), statuses: ["Draft", ""] }),
+      );
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: "The project type is not valid.",
+        reason: "invalid",
+        fieldErrors: { "statuses.1": "Status label must not be blank." },
+      });
+    });
+
     it("refuses a body with an extra key (no client path or source) with 400", async () => {
       for (const extra of [
         { source: "built-in" },
