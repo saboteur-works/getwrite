@@ -37,7 +37,7 @@ From the Start Page you can act on a project without opening it first:
 - **Compile** a project into a single output: open its **Manage** menu and choose **Package**. See [Compiling Projects](../protect-and-finish/compiling.md).
 - **Import** a Scrivener 3 project (created on a Mac) as a new GetWrite project — desktop app only. Choose the `.scriv` project, name the new project, and GetWrite carries over its folders and documents, then shows a report of anything it couldn't convert.
 - **Import Word Document** — desktop app only. Choose a single `.docx` file or a folder of them, name the new project, and GetWrite converts the text (splitting a single file into one resource per heading, by default), then shows a report of anything it couldn't convert.
-- **App Settings** — opens a standalone settings dialog that isn't tied to any one project and needs no login or account. It manages a list of global noise words: words "flagged as noise in every project". After a word was added there, an entity named with that word showed the noise-word note in a project (see [Entities View](../views/entity-roster.md)).
+- **App Settings** is no longer a Start Page button. Open it from the settings menu (gear icon), where it follows **User Preferences**; the item is there whether or not a project is open. It is a standalone settings dialog that isn't tied to any one project and needs no login or account. It manages a list of global noise words: words "flagged as noise in every project". After a word was added there, an entity named with that word showed the noise-word note in a project (see [Entities View](../views/entity-roster.md)).
   Not yet in a release (merged after 2.2.0).
 
 ## Warnings and limits
