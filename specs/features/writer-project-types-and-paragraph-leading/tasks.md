@@ -30,7 +30,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** none
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-26 (baseline half) and the final-suite list. Safety: `pnpm test:e2e` starts Storybook only (no desktop app, no project data); it still runs outside the sandbox with the lsof record, the pid of anything started recorded and stopped by pid, and no read or write of `projects/` or any real app-data folder. Earlier figures are reported, not current; measure. The uncommitted edits to `specs/product/getwrite.features.md`, `specs/product/getwrite.md` and the spec itself are the pipeline's; leave them alone.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-1 experiment: paragraph leading across save and reopen on the unchanged tree
 **What:** Run the FR-1 experiment on the unchanged tree and record the observed values in `experiments.md` (Part 2 section).
@@ -284,7 +284,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 15, 20, 26
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-27, FR-5, FR-26. Cause is stated only as the measured import chain. Safety: no app run; the load test starts `node` on built files only and touches no projects folder or app-data folder.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Escape in the manager and in the unsaved-changes prompt
 **What:** Make Escape on the manager with unsaved changes open the prompt instead of closing, and Escape on the prompt mean Keep editing and close only the prompt.
@@ -293,7 +293,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 23
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-17. MEASURED F-5: 3 of 3 attempts lost edits on Escape, and Escape on the prompt closed the manager. Shares `ProjectTypesManagerPage.tsx` with Tasks 31 and 32 only through the manager; serialise Tasks 30 to 32.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Save as copy keeps the typed name
 **What:** Make Save as copy use the name the writer typed when it differs from the source's name and does not clash, and only otherwise name the copy "<source name> copy".
@@ -302,7 +302,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 22
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-11, FR-12. Shares files with Tasks 30 and 32; serialise.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Clash message names the conflicting type and its source
 **What:** Make the 409 body's `error` and the manager's visible refusal text name the type the id or name clashes with and its source.
@@ -311,7 +311,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 19, 22
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-8, FR-26. Shares files with Tasks 30 and 31; serialise.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Correct the stale handbook line on Word import type names; check `null` leading readers
 **What:** Fix the line in the handbook that says the Word import dialog uses different type names, and confirm by reading that no reader of stored `paragraphLeading` treats `null` differently from an absent key.
@@ -320,7 +320,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 27
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-25, FR-20 and FR-24 (null read as unset; Stage 6.5 F-2, F-6). Wording is a working copy.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: Final suites again, and packaged-app re-check
 **What:** Re-run every final suite of Task 28 on the branch with Tasks 29 to 33 in, and re-run the packaged-app checks that found the Stage 6.5 defects, recording observed values only.
@@ -356,16 +356,17 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 36
 **Estimate:** 5 (L; was 3, grown by OQ-7 to OQ-10: slug duplicate rules in both orderings, the starter-document collision sub-step with its unit test, trim storage and the Parent Folder rule)
 **Notes:** Satisfies FR-28 (a) to (e), (g), FR-26. Shares `schemas.ts` with no other open task. No app run; no projects folder or app-data folder is read.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 38: Inline field errors in the Project Type Manager form (FR-28) and three re-check fixes (FR-29)
 **What:** Show each schema refusal next to the field that caused it, keeping the writer's edits, and keep the action-bar list for errors with no field. Also fix three defects from the packaged re-check of 2026-10-20 (FR-29): announce the Body Text Styles line-height refusal, replace the stale intro text in the Project Type Manager, and revert the toolbar Line Height field to the effective value after a refusal (OQ-11 resolved (a), owner, 2026-10-20; that input only).
 **Files:** Modifies `frontend/components/project-types/ProjectTypeDraftService.ts` (`validateDraft` returns field-keyed errors by Zod `path` as well as the flat list), `frontend/components/project-types/ProjectTypeEditorForm.tsx` (the status, relationship type, subtype, name, folder, subfolder and starter document inputs; the status input is near line 200), `frontend/components/project-types/ProjectTypesManagerPage.tsx` (`feedbackFor`, near line 90, and the save path) and the `LabeledInput` component only if its `error` and `errorIsAlert` props do not cover list rows (open its source and stories first; do not use a prop not read there); FR-29: `frontend/components/preferences/BodySettingsModal.tsx` (the line-height refusal `<p>`, READ near `:145-149`; open it and `stories/Preferences/BodySettingsModal.stories.tsx` first), the intro `<p>` in `ProjectTypesManagerPage.tsx` (READ near `:435-438`; find the string by grep before editing), and `frontend/components/Editor/MenuBar/EditorMenuInput.tsx` (open it, `tests/editorMenuBar.test.tsx` and its stories first; the change is limited to the Line Height input, the one with a validator); extends the BodySettingsModal test and its story/a11y test, the manager component test, and `tests/editorMenuBar.test.tsx` or the `EditorMenuInput` test; extends `frontend/tests/unit/project-type-draft-service.test.ts`, the manager and form component tests, and the form stories; adds an a11y test beside the existing manager a11y tests (find them; `create-project-modal.a11y.test.tsx` is the existing example of the convention).
-**Done when:** tests that fail first and pass after: `validateDraft` on a draft with an empty status returns an error keyed to that status (its path) as well as the flat message; in the form, saving a draft with an empty status label shows "Status label must not be blank." in an element with `role="alert"` linked to that input by `aria-describedby`, the input has `aria-invalid="true"`, the typed values of every field are unchanged, and no request is sent (the transport mock is not called); the same for the type name, a duplicate status, a blank relationship type, a blank folder name, a blank subfolder name and a blank starter document name and a blank Parent Folder ("Parent folder must not be blank."); a slug-too-similar folder or subfolder shows its message, naming both entries, beside the second entry's input; the starter document's Folder field shows the helper line "Leave empty to use the first folder." and an empty value there raises no error; two blank rows each show their own message beside their own input; fixing the field clears its message and its `aria-invalid`; an error with no field (for example a `folders` list that is empty) still appears in the action-bar list, and a field error does not also appear there twice; a 400 from the server whose path maps to a field is shown at the field and one that does not map is shown in the action bar; Save as copy and Save follow the same path; an a11y test (axe) on the form in the error state passes; FR-29 (a): in Body Text Styles a refused line height (for example "1.2") shows "Line height must be a number of at least 1.8." in an element with `role="alert"`, linked by `aria-describedby`, and the input has `aria-invalid="true"`, the typed value stays and nothing is saved (fails first on the unchanged component for the missing role); FR-29 (b): the manager renders "View built-in project types, and create, edit and delete your own." and the string `getwrite-config/templates/project-types` is absent from the page text (fails first on the unchanged page); FR-29 (c) (OQ-11 resolved (a)): typing "0" into the toolbar Line Height field shows the refusal, the paragraph's leading is unchanged, and after blur the field shows the effective leading with the refusal message still present; and a test shows one other toolbar number input (one that shares `EditorMenuInput.tsx` and has no validator) unchanged: a typed value that is not committed stays in the field after blur, as before; the stories gain one story with errors showing, only if the existing stories cannot show a refused draft (the task records which). `pnpm typecheck`, `pnpm lint` and the narrowest test files pass from `frontend/`.
+**Done when:** tests that fail first and pass after: `validateDraft` on a draft with an empty status returns an error keyed to that status (its path) as well as the flat message; in the form, saving a draft with an empty status label shows "Status label must not be blank." in an element with `role="alert"` linked to that input by `aria-describedby`, the input has `aria-invalid="true"`, the typed values of every field are unchanged, and no request is sent (the transport mock is not called); the same for the type name, a duplicate status, a blank relationship type, a blank folder name, a blank subfolder name and a blank starter document name and a blank Parent Folder ("Parent folder must not be blank."); a slug-too-similar folder or subfolder shows its message, naming both entries, beside the second entry's input; the starter document's Folder field shows the helper line "Leave empty to use the first folder." and an empty value there raises no error; two blank rows each show their own message beside their own input; fixing the field clears its message and its `aria-invalid`; an error with no field (for example a `folders` list that is empty) still appears in the action-bar list, and a field error does not also appear there twice; a 400 from the server whose path maps to a field is shown at the field and one that does not map is shown in the action bar; Save as copy and Save follow the same path; an a11y test (axe) on the form in the error state passes; FR-29 (a): in Body Text Styles a refused line height (for example "1.2") shows "Line height must be a number of at least 1.8." in an element with `role="alert"`, linked by `aria-describedby`, and the input has `aria-invalid="true"`, the typed value stays and nothing is saved (fails first on the unchanged component for the missing role); FR-29 (b): the manager renders "View built-in project types, and create, edit and delete your own." and the string `getwrite-config/templates/project-types` is absent from the page text (fails first on the unchanged page); FR-29 (c) (OQ-11 resolved (a)): typing "0" into the toolbar Line Height field shows the refusal, the paragraph's leading is unchanged, and after blur the field shows the effective leading with the refusal message still present; and a test shows one other toolbar number input (one that shares `EditorMenuInput.tsx` and has no validator) unchanged: a typed value stays in the field after blur and nothing is refused, as before (MEASURED 2026-10-20: a non-validated toolbar number input such as Font Size forwards every change immediately, so nothing stays uncommitted); the stories gain one story with errors showing, only if the existing stories cannot show a refused draft (the task records which). `pnpm typecheck`, `pnpm lint` and the narrowest test files pass from `frontend/`.
 **Depends on:** 37
 **Estimate:** 5 (L; was 3, grown by FR-29: three further fixes in three components, each with its own failing-first test and an a11y check; (c) is required and adds one unchanged-behaviour test for another toolbar input)
 **Notes:** Satisfies FR-28 (f), (g), FR-29, FR-26, and accessibility.md. FR-29 (c) is required (OQ-11 resolved (a), owner, 2026-10-20). `EditorMenuInput` is shared by every toolbar number, range, color and select control, so the change is limited to the Line Height input and checked against the others by the unchanged-behaviour test. Shares `ProjectTypeEditorForm.tsx` and `ProjectTypesManagerPage.tsx` with earlier tasks (22, 23, 30 to 32) that are complete; no open task shares them. The too-similar field errors for folders and subfolders follow OQ-7, and for starter documents follow what Task 37 records about the on-disk collision. A new context requirement on a component needs a Storybook decorator or `pnpm test:e2e` fails.
-**Done:** [ ]
+**Recorded deviation (commit e53e081a; accepted by the owner at Gate 6, 2026-10-20):** what shipped differs from the Files and Done-when above in these ways. (a) Wire extension: an optional `fieldErrors` field was added to the 400 `invalid` refusal, running through `frontend/src/lib/models/project-types-write-core.ts`, `project-types-write-http.ts`, `frontend/src/lib/api/schemas.ts` and `frontend/src/lib/api/project-types.ts`, and `frontend/src/lib/models/schemas.ts` now also returns `issues`; a server 400 can be mapped to a field only through `fieldErrors`. (b) No field for relationship types or subtypes: the form has no input for them, so a blank one stays in the action-bar list, listed once, and a test pins that; the same applies to the `id` path, an empty `folders` list and folder-level `defaultResources`. (c) Invalid id: an `invalid` refusal with no `fieldErrors` (an unsafe or over-long id) shows beside the ID field, as before. (d) One new story, `RefusedDraftFieldErrors`. (e) FR-29 (c), unchanged-input wording: measured, a non-validated toolbar number input (Font Size) forwards every change immediately, so nothing stays uncommitted; the test pins "typed value stays after blur and nothing is refused".
+**Done:** [x]
 
 ### Task 39: Final suites and packaged-app re-check of the new validation
 **What:** Re-run every final suite on the branch with Tasks 37 and 38 in, and re-check the new validation in a packaged throwaway build the way Task 36 did, recording observed values only.
@@ -374,7 +375,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 37, 38
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-28, FR-29, FR-26. Estimate kept at 3 although the packaged checks grew from six to ten: they share one build and one driver. Safety: runs outside the sandbox in the main checkout; the path assertion must show the app is using the `/tmp/getwrite-f90` userData and workspace before any action, otherwise the check stops. NEVER read, list or write the repo's `projects/`, `~/Library/Application Support/getwrite-electron`, `~/Library/Application Support/GetWrite`, `~/Documents/GetWrite`, `~/Library/Logs/*` or `~/Library/Preferences/works.saboteur.getwrite.plist`. Port 7340 must be free before the app starts; stop only processes this task started, by pid.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 39
