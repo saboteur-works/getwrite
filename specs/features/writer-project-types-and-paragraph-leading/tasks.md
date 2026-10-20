@@ -184,7 +184,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 15
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-5 (write refusals), FR-8, FR-9, FR-10 (server), FR-26. Safety: tests write only to throwaway directories; the built-in checksum test only reads the built-in directory.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Write routes, id validation, body cap and sharing-gate registration
 **What:** Add `POST /api/project-types`, `PUT /api/project-types/[id]` and `DELETE /api/project-types/[id]` over the Task 18 core, with all client input validated.
