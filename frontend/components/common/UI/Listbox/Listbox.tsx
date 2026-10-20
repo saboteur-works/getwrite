@@ -6,6 +6,8 @@ import { cn } from "../utils";
 export interface ListboxOption {
   value: string;
   label: string;
+  /** Optional decorative icon shown before the label; pass it `aria-hidden`. */
+  icon?: React.ReactNode;
   /** Optional secondary label shown to the right of the main label. */
   meta?: string;
   /** Optional content rendered below the label (accepts React nodes for rich text like <mark>). */
@@ -81,6 +83,9 @@ export default function Listbox({
             onMouseEnter={() => onHighlightChange?.(i)}
           >
             <div className="listbox-option-top">
+              {opt.icon ? (
+                <span className="listbox-option-icon">{opt.icon}</span>
+              ) : null}
               <span className="listbox-option-label">{opt.label}</span>
               {opt.meta ? (
                 <span className="listbox-option-meta">{opt.meta}</span>

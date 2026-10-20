@@ -2630,6 +2630,12 @@ html.gw-theme-dark {
     gap: 8px;
   }
 
+  .listbox-option-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-gw-secondary);
+  }
+
   .listbox-option-label {
     flex: 1;
     min-width: 0;

@@ -6,6 +6,11 @@ import type { AnyResource } from "../../src/lib/models/types";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Input from "./UI/Input/Input";
 import Listbox from "./UI/Listbox/Listbox";
+import {
+  AudioIcon,
+  FileTextIcon,
+  ImageIcon,
+} from "../ResourceTree/ResourceTreeIcons";
 
 interface ResourceCommandPaletteProps {
   isOpen: boolean;
@@ -28,6 +33,13 @@ function getResourceTypeLabel(resource: AnyResource): string {
   }
 
   return "Text";
+}
+
+/** The resource tree's icon for the resource's type (decorative). */
+function getResourceTypeIcon(resource: AnyResource): React.ReactNode {
+  if (resource.type === "image") return <ImageIcon />;
+  if (resource.type === "audio") return <AudioIcon />;
+  return <FileTextIcon />;
 }
 
 export default function ResourceCommandPalette({
@@ -155,6 +167,7 @@ export default function ResourceCommandPalette({
             options={filteredResources.map((r) => ({
               value: r.id,
               label: getResourceName(r),
+              icon: getResourceTypeIcon(r),
               meta: getResourceTypeLabel(r),
             }))}
             highlightedIndex={highlightedIndex}
