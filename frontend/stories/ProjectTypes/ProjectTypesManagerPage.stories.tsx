@@ -183,14 +183,14 @@ export const Refusal: Story = {
     resolveTransport: fakeTransport(() => ({
       ok: false,
       reason: "id-clash",
-      message: "A project type with the id novel already exists.",
+      message: "Novel (built-in) already uses this id.",
     })),
   },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await startDraftAndSave(canvasElement, "novel", "Another");
     await expect(
       await within(canvasElement).findByRole("alert"),
-    ).toHaveTextContent("already exists");
+    ).toHaveTextContent("Novel (built-in) already uses this id.");
   },
 };
 

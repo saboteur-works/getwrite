@@ -240,7 +240,7 @@ describe("ProjectTypesManagerPage refusals", () => {
       create: vi.fn(async () => ({
         ok: false as const,
         reason: "id-clash" as const,
-        message: "A project type with the id novel already exists.",
+        message: "Novel (built-in) already uses this id.",
       })),
     });
     renderManager(transport);
@@ -248,7 +248,7 @@ describe("ProjectTypesManagerPage refusals", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("already exists");
+    expect(alert).toHaveTextContent("Novel (built-in) already uses this id.");
     expect(screen.getByLabelText("ID")).toHaveAttribute(
       "aria-describedby",
       alert.id,
@@ -262,7 +262,7 @@ describe("ProjectTypesManagerPage refusals", () => {
       create: vi.fn(async () => ({
         ok: false as const,
         reason: "name-clash" as const,
-        message: "A project type named Novel already exists.",
+        message: "Novel (built-in) already uses this name.",
       })),
     });
     renderManager(transport);
@@ -274,6 +274,7 @@ describe("ProjectTypesManagerPage refusals", () => {
       "aria-describedby",
       alert.id,
     );
+    expect(alert).toHaveTextContent("Novel (built-in) already uses this name.");
     expect(screen.getByLabelText("ID")).not.toHaveAttribute("aria-describedby");
     expect(screen.getByLabelText("Name")).toHaveValue("Novel");
   });

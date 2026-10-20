@@ -68,6 +68,7 @@ export type ProjectTypeWriteResult =
 const MESSAGES: Record<ProjectTypeWriteRefusalReason, string> = {
   "saving-unavailable": "Saving project types is not available here.",
   invalid: "The project type is not valid.",
+  // Fallbacks only: a clash with a known type names it (see clashMessage).
   "id-clash": "A project type with this id already exists.",
   "name-clash": "A project type with this name already exists.",
   "built-in": "Built-in project types cannot be changed or deleted.",
@@ -76,13 +77,25 @@ const MESSAGES: Record<ProjectTypeWriteRefusalReason, string> = {
   "write-failed": "The project type could not be written.",
 };
 
+/** "<name> (<source>) already uses this <id|name>." for the two clash reasons. */
+function clashMessage(
+  reason: "id-clash" | "name-clash",
+  conflict: ProjectTypeConflict,
+): string {
+  const what = reason === "id-clash" ? "id" : "name";
+  return `${conflict.name} (${conflict.source}) already uses this ${what}.`;
+}
+
 function refuse(
   reason: ProjectTypeWriteRefusalReason,
   conflictsWith?: ProjectTypeConflict,
 ): ProjectTypeWriteRefusal {
-  return conflictsWith
-    ? { ok: false, reason, message: MESSAGES[reason], conflictsWith }
-    : { ok: false, reason, message: MESSAGES[reason] };
+  if (!conflictsWith) return { ok: false, reason, message: MESSAGES[reason] };
+  const message =
+    reason === "id-clash" || reason === "name-clash"
+      ? clashMessage(reason, conflictsWith)
+      : MESSAGES[reason];
+  return { ok: false, reason, message, conflictsWith };
 }
 
 /** The saved directory, or `null` when saving is unavailable (fail closed). */
@@ -270,11 +283,11 @@ export async function createSavedProjectType(
   try {
     fs.mkdirSync(dir, { recursive: true });
     if (!createFileExclusive(target, serialize(spec))) {
-      return refuse("id-clash", {
-        id: spec.id,
-        name: spec.name,
-        source: "saved",
-      });
+      // A concurrent create won: name the type that now holds the id.
+      const winner = (await resolveProjectTypes(false)).entries.find(
+        (e) => e.spec.id === spec.id,
+      );
+      return refuse("id-clash", winner ? conflictOf(winner) : undefined);
     }
   } catch {
     return refuse("write-failed");

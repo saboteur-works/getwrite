@@ -114,7 +114,7 @@ export const SavedIdReadOnlyWithRefusals: Story = {
     ...Interactive.args,
     definition: baseDefinition,
     idReadOnly: true,
-    idError: "A project type with the id novel already exists.",
-    nameError: "A project type named Novel already exists.",
+    idError: "Novel (built-in) already uses this id.",
+    nameError: "Novel (built-in) already uses this name.",
   },
 };

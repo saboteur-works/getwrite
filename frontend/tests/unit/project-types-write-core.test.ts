@@ -90,6 +90,44 @@ describe("saved project types write core (Task 18)", () => {
       });
     });
 
+    it("an id clash names the saved type that holds the id and its source", async () => {
+      await createSavedProjectType(spec("mine", "My Novel"), false);
+      const r = await createSavedProjectType(spec("mine", "Other"), false);
+      expect(r).toMatchObject({
+        ok: false,
+        reason: "id-clash",
+        message: "My Novel (saved) already uses this id.",
+      });
+    });
+
+    it("an id clash with a built-in names the built-in type", async () => {
+      const r = await createSavedProjectType(spec("novel", "Something"), false);
+      expect(r).toMatchObject({
+        ok: false,
+        reason: "id-clash",
+        message: "Novel (built-in) already uses this id.",
+      });
+    });
+
+    it("a name clash names the conflicting type and its source", async () => {
+      const builtIn = await createSavedProjectType(
+        spec("n2", " novel "),
+        false,
+      );
+      expect(builtIn).toMatchObject({
+        ok: false,
+        reason: "name-clash",
+        message: "Novel (built-in) already uses this name.",
+      });
+      await createSavedProjectType(spec("mine", "My Novel"), false);
+      const saved = await createSavedProjectType(spec("m2", "my novel"), false);
+      expect(saved).toMatchObject({
+        ok: false,
+        reason: "name-clash",
+        message: "My Novel (saved) already uses this name.",
+      });
+    });
+
     it("of two concurrent creates of one id exactly one succeeds", async () => {
       const results = await Promise.all([
         createSavedProjectType(spec("race", "Race A"), false),
@@ -98,6 +136,10 @@ describe("saved project types write core (Task 18)", () => {
       expect(results.filter((r) => r.ok)).toHaveLength(1);
       const loser = results.find((r) => !r.ok);
       expect(loser).toMatchObject({ ok: false, reason: "id-clash" });
+      const winnerName = results.find((r) => r.ok)?.spec?.name;
+      expect(loser).toMatchObject({
+        message: `${winnerName} (saved) already uses this id.`,
+      });
       expect(await fsp.readdir(savedDir)).toEqual(["race.json"]);
     });
 
@@ -176,6 +218,7 @@ describe("saved project types write core (Task 18)", () => {
         ok: false,
         reason: "name-clash",
         conflictsWith: { id: "a", source: "saved" },
+        message: "Alpha (saved) already uses this name.",
       });
       expect(
         await replaceSavedProjectType(spec("b", "NOVEL"), false),

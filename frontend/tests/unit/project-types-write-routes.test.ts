@@ -184,8 +184,18 @@ describe("project-types write routes (Task 19)", () => {
       const res = await POST(post(spec("novel", "Something")));
       expect(res.status).toBe(409);
       expect(await res.json()).toEqual({
-        error: "A project type with this id already exists.",
+        error: "Novel (built-in) already uses this id.",
         reason: "id-clash",
+        conflictsWith: { id: "novel", name: "Novel", source: "built-in" },
+      });
+    });
+
+    it("returns 409 naming the built-in type for a name clash with a built-in", async () => {
+      const res = await POST(post(spec("probe", " novel ")));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({
+        error: "Novel (built-in) already uses this name.",
+        reason: "name-clash",
         conflictsWith: { id: "novel", name: "Novel", source: "built-in" },
       });
     });
@@ -196,6 +206,7 @@ describe("project-types write routes (Task 19)", () => {
       expect(res.status).toBe(409);
       const body = await res.json();
       expect(body.reason).toBe("name-clash");
+      expect(body.error).toBe("Mine (saved) already uses this name.");
       expect(body.conflictsWith).toEqual({
         id: "mine",
         name: "Mine",
