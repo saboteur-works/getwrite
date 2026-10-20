@@ -275,7 +275,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 11, 27
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-26 (final suites include `pnpm test:e2e`; decorator for any new context). Safety: runs outside the sandbox in the main checkout; no desktop app is started and no `pnpm storybook` is started first; throwaway folders only, never `projects/` or any real app-data folder (`~/Library/Application Support/getwrite-electron`, `~/Library/Application Support/GetWrite`, `~/Documents/GetWrite`, `~/Library/Logs/*`). If an optional real-app check is made, it follows the Task 13 path assertion and throwaway `--user-data-dir`, or is recorded UNMEASURED. If only one part ships, its own final suites are the same list; the part not shipped is excluded from the stories audit.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 28

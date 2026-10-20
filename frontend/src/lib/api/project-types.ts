@@ -29,11 +29,8 @@ import { reportTransportValidationFailure } from "./transport-validation";
 // ---------------------------------------------------------------------------
 
 export type ProjectTypeSource = "built-in" | "saved";
-export type ProjectTypeUnusableReason =
-  | "unparseable"
-  | "invalid"
-  | "unreadable";
-export type SavedProjectTypesStatus = "ok" | "not-configured" | "unreadable";
+type ProjectTypeUnusableReason = "unparseable" | "invalid" | "unreadable";
+type SavedProjectTypesStatus = "ok" | "not-configured" | "unreadable";
 
 /** One listed project type with where it came from (Feature 90, FR-6). */
 export interface ProjectTypeListEntry {
@@ -234,9 +231,4 @@ export const resolveProjectTypesTransport: () => Promise<ProjectTypesTransport> 
 export async function listProjectTypeEntries(): Promise<ProjectTypeList> {
   const transport = await resolveProjectTypesTransport();
   return transport.list();
-}
-
-/** The specs alone, for callers that need no notice. */
-export async function listProjectTypes(): Promise<ProjectTypeDefinition[]> {
-  return (await listProjectTypeEntries()).entries.map((e) => e.spec);
 }

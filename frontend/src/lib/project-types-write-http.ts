@@ -88,7 +88,7 @@ export function resultResponse(
  *
  * @returns the text, or `null` when the body is absent, too large or unreadable.
  */
-export async function readCappedText(
+async function readCappedText(
   request: Request,
   maxBytes: number = MAX_PROJECT_TYPE_BODY_BYTES,
 ): Promise<string | null> {

@@ -206,3 +206,66 @@ Date: 2026-10-19. The order `GETWRITE_PROJECT_TYPES_DIR`, then `GETWRITE_TEMPLAT
 Date: 2026-10-19. Design: built-in entries stay in the module-level `_cache` (cleared by `clearProjectTypeCache`, refreshed by `forceRefresh`); saved entries are read from the saved directory on every call and are never held in a module-level cache. Save-time invalidation was not used.
 
 Observed in the Task 12 record (MEASURED, `next dev`, one directory standing in for both sources): a file written after the library's first read was listed by `GET /api/project-types` (S3) and not found by project creation (404 at S3 and at S3b, 3 s later); after a file already read was deleted, creation failed with a 500 carrying an ENOENT (S7). Whether the route and the creation path share one `_cache` instance was UNMEASURED there (only `POST /api/projects` reached the library), so the condition for the optional save-time invalidation in FR-13 (route and creation share one instance) was not established, and per-call reading of the saved directory was chosen. Resolver-level check in `frontend/tests/unit/project-types.test.ts`: a saved file written between two `listProjectTypes()` calls appears on the second call, and after it is removed `getProjectType` returns `undefined`, with no cache clearing. The server-level acceptance (route, `createProjectCore`, rename, delete in one running server) is not run in this task.
+
+## Final suites (Task 28)
+
+Date: 2026-10-19. Branch `feat/writer-project-types-and-paragraph-leading`, main checkout. Raw outputs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t28/`. Baseline column is the Task 1 table above. Frontend typecheck, lint and test:ci were re-run after the knip changes below; the values shown are from that last run (the first test:ci run, before those edits, gave the same counts).
+
+| Item | Command (cwd) | Observed | Task 1 baseline |
+| --- | --- | --- | --- |
+| frontend typecheck | `pnpm typecheck` (`frontend/`) | exit 0 | exit 0 |
+| frontend lint | `pnpm lint` (`frontend/`) | 393 problems: 0 errors, 393 warnings; exit 0 | 393 / 0 errors |
+| frontend tests | `pnpm test:ci` (`frontend/`) | 626 files passed; 7425 passed, 2 expected fail, 1 skipped (7428), 0 failed; exit 0 | 615 files; 7094 passed, 2 expected fail, 1 skipped |
+| frontend e2e | `pnpm test:e2e` (`frontend/`, outside the sandbox; 6006 empty beforehand) | exit 0; 218 passed, 1 flaky, 1 skipped, 0 failed. Flaky (passed on retry #1): `e2e/resource-context-menu.e2e.spec.ts:41` "keyboard navigation and activation fires action and closes". Rerun of that spec alone (`pnpm test:e2e e2e/resource-context-menu.e2e.spec.ts`): 6 passed, exit 0 | 214 passed, 1 skipped |
+| knip | `pnpm knip` (repo root) | first run: exit 1, 413 findings: 50 unused files, 163 unused exports, 176 unused exported types (others unchanged). After the changes listed below: exit 1, 407 findings: unused files 49, unused dependencies 1, devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 161, unused exported types 168, duplicate exports 14. Comparing finding names with the baseline file: no name present now that is absent from the baseline; four baseline names no longer reported (`ApiEditorConfigSchema`, `EditorConfigSchema`, `ShellProjectTypeLoaderState`, `resolveProjectTypesTransport`) | exit 1, 411 findings |
+| electron typecheck | `pnpm typecheck` (`electron/`) | exit 0 | exit 0 |
+| electron tests | `pnpm test` (`electron/`) | 32 files; 514 passed, 0 failed; exit 0 | 512 passed |
+| electron worker | `pnpm build:worker` (`electron/`) | exit 0 | exit 0 |
+| CLI tests | `pnpm test` (`cli/`) | outside the sandbox: 23 files, 153 passed, 0 failed; exit 0. See process note | 22 files, 144 passed |
+| CLI build | `pnpm build` (`cli/`) | exit 0 (`dist/bin/getwrite-cli.cjs` 2.3mb) | not recorded in Task 1 |
+
+### knip changes made by this task (new findings from this feature, removed)
+
+The first run reported these names as new against the baseline; each was un-exported or removed, not added to an ignore list, except the last:
+- `frontend/src/lib/project-types-write-core.ts`: `ProjectTypeConflict`, `ProjectTypeWriteSuccess` now unexported (used only inside the file).
+- `frontend/src/lib/projectTypes.ts`: `UnusableSavedReason`, `UnusableSavedFile`, `SavedDirectoryStatus` now unexported.
+- `frontend/src/lib/api/project-types.ts`: `ProjectTypeUnusableReason`, `SavedProjectTypesStatus` now unexported; the function `listProjectTypes` (no caller in `frontend/` or `cli/` outside its own definition) deleted.
+- `frontend/src/lib/project-types-write-http.ts`: `readCappedText` now unexported.
+- `frontend/src/lib/core.ts`: `type ProjectTypeEntry` removed from the barrel (no consumer).
+- `cli/src/lib/server-only-stub.ts` (reported as an unused file): it is used only through the esbuild `--alias:server-only=` flag in `cli/package.json` and the alias in `cli/vitest.config.ts`, which knip cannot see; added to the `ignore` list in `knip.json` with a comment, the pattern already used there for alias-only files.
+After these edits `pnpm typecheck` exit 0, and `pnpm test:ci`, `pnpm lint` as in the table.
+
+### Process notes
+
+- `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before: one listener, GetWrite pid 88077 on 7340 (the user's app, not started or touched by this task). After the final e2e run: the same single listener; nothing on 3000 or 6006.
+- CLI tests, first attempts: `pnpm test` inside the sandbox did not finish (stopped by `timeout` at 240 s, exit 124; one earlier attempt moved to the background). `cli/tests/qa/server.test.ts` starts a real Next dev server and its blocker listener on 127.0.0.1:3000; a node process (pid 74542, cwd `cli/`, started by my first CLI run) was left holding 3000, which made a later `vitest run` fail that one test with `EADDRINUSE` (152 passed, 1 failed). I stopped pid 74542 by pid (outside the sandbox, since the sandbox refused `kill`). Excluding `server.test.ts`, the sandboxed run gave 22 files, 144 passed. The full suite then passed outside the sandbox (23 files, 153 passed). Whether the sandboxed hang is the sandbox (the sandbox note in project memory about `next dev`) was not tested; no cause is recorded.
+- The killed dev-server run left `frontend/tsconfig.json` rewritten by Next (extra `.next-qa/...` include entries and reformatting). I restored it with `git show HEAD:frontend/tsconfig.json > frontend/tsconfig.json` and deleted the two `frontend/.next-qa/getwrite-cli-qa-server-*` directories it named (the directory is git-ignored). `git status` shows no `tsconfig.json` change.
+- Known load-dependent flakes (entity-roster, search-route, schemaManagerRestriction a11y, writinglogfooter a11y): none failed in either `test:ci` run, so no rerun was needed. The one e2e flaky above is not on that list; it passed on retry and when the spec was run alone.
+- `pnpm` printed an `~/.npmrc` EPERM warning in sandboxed commands; not a result. No desktop app and no `pnpm storybook` was started. Nothing under `projects/` or app-data folders was touched.
+
+### Stories audit (components new or changed in `git diff --stat 65248d99..HEAD`)
+
+| Component | Story file |
+| --- | --- |
+| Part 2 toolbar paragraph-leading control: `components/Editor/MenuBar/EditorMenuInput.tsx`, `MenuBar.tsx` (with `menuBarState.tsx`, `toolbar-command-schema.ts`, `useToolbarCommand.ts`) | `frontend/stories/Editor/MenuBar/EditorMenuInput.stories.tsx`, `MenuBar/MenuBar.stories.tsx` (changed) |
+| `components/TipTapEditor.tsx` (leading extension, `GetWriteParagraphLeading.ts`) | `frontend/stories/Editor/TipTapEditorLeading.stories.tsx` (new) |
+| Body Text Styles / manager field message: `components/preferences/BodySettingsModal.tsx`; `components/project-types/ProjectTypeEditorForm.tsx` | `frontend/stories/Preferences/BodySettingsModal.stories.tsx`; `frontend/stories/ProjectTypes/ProjectTypeEditorForm.stories.tsx` (both changed) |
+| Part 1 manager: `ProjectTypesManagerPage.tsx`, `ProjectTypeListPane.tsx` | `frontend/stories/ProjectTypes/ProjectTypesManagerPage.stories.tsx`, `ProjectTypeListPane.stories.tsx` (changed) |
+| `components/project-types/UnsavedChangesPrompt.tsx` (new) | `frontend/stories/ProjectTypes/UnsavedChangesPrompt.stories.tsx` (new) |
+| `components/Start/CreateProjectModal.tsx`, `ImportDocxDialog.tsx` | `frontend/stories/Start/CreateProjectModal.stories.tsx`, `ImportDocxDialog.stories.tsx` (changed) |
+| `components/Layout/ShellProjectTypeLoader.tsx`, `ShellModalCoordinator.tsx`, `AppShell.tsx` | no story of their own (non-visual loader and the shell wiring); `frontend/stories/AppShell.stories.tsx` and `Layout/AppShellAfterOpen.stories.tsx` render the shell and were not changed; both passed in the e2e run |
+
+New context requirement: none was added. No decorator or `.storybook` file changed in the diff, `UnsavedChangesPrompt.tsx` imports only `Button` and no provider, and the full `pnpm test:e2e` run passed. No story or test change was needed to make a gap pass.
+
+### git status --short (after this task)
+
+```
+ M frontend/src/lib/api/project-types.ts
+ M frontend/src/lib/core.ts
+ M frontend/src/lib/project-types-write-core.ts
+ M frontend/src/lib/project-types-write-http.ts
+ M frontend/src/lib/projectTypes.ts
+ M knip.json
+ M specs/features/writer-project-types-and-paragraph-leading/experiments.md
+ M specs/features/writer-project-types-and-paragraph-leading/tasks.md
+```

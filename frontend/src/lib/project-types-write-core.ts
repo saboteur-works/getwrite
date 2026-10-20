@@ -41,14 +41,14 @@ export type ProjectTypeWriteRefusalReason =
   | "write-failed";
 
 /** The existing type a clash is with. */
-export type ProjectTypeConflict = {
+type ProjectTypeConflict = {
   id: string;
   name: string;
   source: "built-in" | "saved";
 };
 
 /** Successful write. `spec` is absent for delete. */
-export type ProjectTypeWriteSuccess = {
+type ProjectTypeWriteSuccess = {
   ok: true;
   fileName: string;
   spec?: ProjectTypeSpec;

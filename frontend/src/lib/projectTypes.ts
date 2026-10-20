@@ -33,16 +33,13 @@ export type ProjectTypeEntry = {
 };
 
 /** Why a saved file could not be used. Never carries file content or parser text. */
-export type UnusableSavedReason = "unparseable" | "invalid" | "unreadable";
+type UnusableSavedReason = "unparseable" | "invalid" | "unreadable";
 
 /** A saved file that was skipped, by name and short reason only. */
-export type UnusableSavedFile = {
-  fileName: string;
-  reason: UnusableSavedReason;
-};
+type UnusableSavedFile = { fileName: string; reason: UnusableSavedReason };
 
 /** State of the saved-types directory as seen by the last resolution. */
-export type SavedDirectoryStatus = "ok" | "not-configured" | "unreadable";
+type SavedDirectoryStatus = "ok" | "not-configured" | "unreadable";
 
 /** Merged result of one resolution: built-in then saved entries, plus saved-side diagnostics. */
 export type ProjectTypeResolution = {

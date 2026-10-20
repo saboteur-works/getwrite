@@ -28,7 +28,6 @@ export { createProjectFromType } from "./models/project-creator";
 export {
   resolveProjectTypes,
   clearProjectTypeCache,
-  type ProjectTypeEntry,
   type ProjectTypeResolution,
 } from "./projectTypes";
 
