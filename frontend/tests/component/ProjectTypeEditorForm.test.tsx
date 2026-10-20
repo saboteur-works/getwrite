@@ -162,3 +162,28 @@ describe("ProjectTypeEditorForm field errors (FR-28 f)", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("ProjectTypeEditorForm row names keep focus while typing", () => {
+  const rows: ProjectTypeDefinition = {
+    ...base,
+    folders: [{ name: "Drafts" }],
+    defaultFolders: [{ folder: "Workspace", name: "Part 1" }],
+    defaultResources: [{ folder: "Workspace", name: "Opening", type: "text" }],
+  };
+
+  it.each([
+    ["folder name", "Drafts"],
+    ["subfolder name", "Part 1"],
+    ["starter document name", "Opening"],
+  ])("the %s input stays the focused element after a change", (_, start) => {
+    render(<Harness initial={rows} />);
+
+    const field = screen.getByDisplayValue(start);
+    field.focus();
+    fireEvent.change(field, { target: { value: `${start}x` } });
+
+    const after = screen.getByDisplayValue(`${start}x`);
+    expect(after).toBe(field);
+    expect(document.activeElement).toBe(after);
+  });
+});

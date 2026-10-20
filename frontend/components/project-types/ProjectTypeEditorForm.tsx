@@ -254,7 +254,7 @@ export default function ProjectTypeEditorForm({
         <div className="project-type-editor-stack">
           {definition.folders.map((folder, index) => (
             <div
-              key={`${folder.name || "folder"}-${index}`}
+              key={index}
               className="project-type-editor-card project-type-editor-stack"
             >
               <div className="project-type-editor-form-grid project-type-editor-form-grid--folder-row">
@@ -324,7 +324,7 @@ export default function ProjectTypeEditorForm({
         <div className="project-type-editor-stack">
           {(definition.defaultFolders ?? []).map((df, index) => (
             <div
-              key={`${df.name || "df"}-${index}`}
+              key={index}
               className="project-type-editor-card project-type-editor-stack"
             >
               <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
@@ -403,7 +403,7 @@ export default function ProjectTypeEditorForm({
         <div className="project-type-editor-stack">
           {(definition.defaultResources ?? []).map((resource, index) => (
             <div
-              key={`${resource.name || "resource"}-${index}`}
+              key={index}
               className="project-type-editor-card project-type-editor-stack"
             >
               <div className="project-type-editor-form-grid project-type-editor-form-grid--three-column">
