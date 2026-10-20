@@ -13,6 +13,7 @@ describe("buildDocxWorkerForkOptions", () => {
     const options = buildDocxWorkerForkOptions({
       templatesDir: "/root/getwrite-config/templates/project-types",
       workingDir: "/root",
+      savedProjectTypesDir: "/ud/project-types",
       baseEnv: {},
     });
 
@@ -26,6 +27,7 @@ describe("buildDocxWorkerForkOptions", () => {
     const options = buildDocxWorkerForkOptions({
       templatesDir: "/t",
       workingDir: "/root",
+      savedProjectTypesDir: "/ud/project-types",
       baseEnv: { PATH: "/usr/bin", SOME_VAR: "kept" },
     });
 
@@ -37,9 +39,39 @@ describe("buildDocxWorkerForkOptions", () => {
     const options = buildDocxWorkerForkOptions({
       templatesDir: "/t",
       workingDir: "/some/where else",
+      savedProjectTypesDir: "/ud/project-types",
       baseEnv: {},
     });
 
     expect(options.cwd).toBe("/some/where else");
+  });
+
+  it("carries GETWRITE_SAVED_PROJECT_TYPES_DIR equal to the directory given, beside the other variables (Feature 90 FR-4)", () => {
+    const options = buildDocxWorkerForkOptions({
+      templatesDir: "/t",
+      workingDir: "/root",
+      savedProjectTypesDir: "/ud/project-types",
+      baseEnv: { KEEP: "yes" },
+    });
+
+    expect(options.env.GETWRITE_SAVED_PROJECT_TYPES_DIR).toBe(
+      "/ud/project-types",
+    );
+    expect(options.env.GETWRITE_PROJECT_TYPES_DIR).toBe("/t");
+    expect(options.env.KEEP).toBe("yes");
+    expect(options.cwd).toBe("/root");
+  });
+
+  it("overrides an inherited GETWRITE_SAVED_PROJECT_TYPES_DIR with the directory given", () => {
+    const options = buildDocxWorkerForkOptions({
+      templatesDir: "/t",
+      workingDir: "/root",
+      savedProjectTypesDir: "/ud/project-types",
+      baseEnv: { GETWRITE_SAVED_PROJECT_TYPES_DIR: "/stale" },
+    });
+
+    expect(options.env.GETWRITE_SAVED_PROJECT_TYPES_DIR).toBe(
+      "/ud/project-types",
+    );
   });
 });

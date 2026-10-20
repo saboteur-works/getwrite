@@ -130,6 +130,15 @@ function projectsDirEnvironment(): ProjectsDirEnvironment {
   };
 }
 
+/**
+ * Directory of writer-saved project types, `<userData>/project-types`. Uses
+ * `app.getPath("userData")` in both builds; it is not read from or written to
+ * `workspace.json`.
+ */
+function savedProjectTypesDir(): string {
+  return path.join(app.getPath("userData"), "project-types");
+}
+
 function resolveDirectories() {
   const root = getRepoRoot();
   return {
@@ -216,6 +225,9 @@ function startServer(
     GETWRITE_WINDOW_SECRET: windowSecret,
     [READINESS_KEY_ENV]: readinessKey,
     GETWRITE_SHARING_DIR: app.getPath("userData"),
+    // Writer-saved project types (Feature 90 FR-4). `app.getPath("userData")`
+    // directly: `projectsDirEnvironment().userDataDir` is "" when unpackaged.
+    GETWRITE_SAVED_PROJECT_TYPES_DIR: savedProjectTypesDir(),
     ...buildServerBindEnv(mode),
   };
 
@@ -660,6 +672,7 @@ function registerDocxImportHandlers(): void {
           [],
           buildDocxWorkerForkOptions({
             templatesDir: resolveDirectories().templatesDir,
+            savedProjectTypesDir: savedProjectTypesDir(),
             workingDir: getRepoRoot(),
             baseEnv: process.env,
           }),

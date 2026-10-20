@@ -202,7 +202,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 15
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-4, FR-26 (`fork-options`). Does not run the app; a measurement of the real app is Task 28's optional check only if the safety assertion holds. Safety: no app run in this task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Draft service and transport: save, save as copy, delete
 **What:** Add the client transport for the three write routes and the draft-service operations that use them, with `hasChanges`, `fileName` and refusals handled.
