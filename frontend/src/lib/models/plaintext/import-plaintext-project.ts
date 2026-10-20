@@ -173,6 +173,8 @@ export interface ImportPlainTextProjectOptions {
   projectRoot: string;
   /** Optional destination project name; see the module doc's per-source-shape naming rules for the default. */
   name?: string;
+  /** Whether hosted auth is active (FR-27). Required, no default: callers (the CLI and the import workers) are never hosted and pass `false`. */
+  hostedAuthActive: boolean;
 }
 
 /** Result of a successful {@link importPlainTextProject} run. */
@@ -217,11 +219,10 @@ function newReportAccumulator(): ReportAccumulator {
  * `import-docx-project.ts`'s `resolveProjectTypeSeed` but with no option to
  * choose a different one — this feature has no `--project-type` option.
  */
-async function resolveDefaultProjectTypeSeed(): Promise<{
-  statuses?: string[];
-  relationshipTypes?: string[];
-}> {
-  const entry = await getProjectType(DEFAULT_PROJECT_TYPE);
+async function resolveDefaultProjectTypeSeed(
+  hostedAuthActive: boolean,
+): Promise<{ statuses?: string[]; relationshipTypes?: string[] }> {
+  const entry = await getProjectType(DEFAULT_PROJECT_TYPE, hostedAuthActive);
   if (entry === undefined) {
     // The "blank" project type ships with the repo; this should be
     // unreachable in practice, but fail loudly rather than silently
@@ -362,7 +363,9 @@ export async function importPlainTextProject(
     detected.kind === "directory"
       ? await walkPlainTextFolder(sourcePath)
       : undefined;
-  const projectTypeSeed = await resolveDefaultProjectTypeSeed();
+  const projectTypeSeed = await resolveDefaultProjectTypeSeed(
+    options.hostedAuthActive,
+  );
 
   let currentPhase: (typeof ORCHESTRATION_PHASES)[number] =
     ORCHESTRATION_PHASES[0];

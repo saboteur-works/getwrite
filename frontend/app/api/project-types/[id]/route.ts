@@ -1,3 +1,4 @@
+import { isHostedAuthActive } from "../../../../src/lib/auth/auth-config";
 import {
   deleteSavedProjectType,
   replaceSavedProjectType,
@@ -42,7 +43,10 @@ export async function PUT(request: Request, context: Context) {
   ) {
     return invalidBodyResponse();
   }
-  return resultResponse(await replaceSavedProjectType(body), 200);
+  return resultResponse(
+    await replaceSavedProjectType(body, isHostedAuthActive()),
+    200,
+  );
 }
 
 /**
@@ -51,6 +55,6 @@ export async function PUT(request: Request, context: Context) {
  */
 export async function DELETE(_request: Request, context: Context) {
   const { id } = await context.params;
-  const result = await deleteSavedProjectType(id);
+  const result = await deleteSavedProjectType(id, isHostedAuthActive());
   return result.ok ? resultResponse(result, 200) : refusalResponse(result);
 }

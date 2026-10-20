@@ -8,9 +8,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@gw/core": path.resolve(__dirname, "../frontend/src/lib/core.ts"),
-      // `server-only` throws outside a Next.js server component; the CLI is plain
-      // Node, so resolve it to an empty module (same alias as the esbuild build).
-      "server-only": path.resolve(__dirname, "src/lib/server-only-stub.ts"),
     },
   },
   test: {

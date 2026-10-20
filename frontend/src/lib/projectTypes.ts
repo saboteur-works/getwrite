@@ -1,6 +1,11 @@
 /**
  * @module projectTypes
  *
+ * Imports nothing server-only (FR-27): the CLI and the Electron import workers
+ * load it without a bundler alias. Whether hosted auth is active is therefore
+ * an explicit, required input (`hostedAuthActive`) with no default: server
+ * callers pass `isHostedAuthActive()`, the CLI and the workers pass `false`.
+ *
  * Loads, validates, caches, and queries project-type template specifications.
  *
  * Project-type templates are JSON files stored under
@@ -16,7 +21,6 @@
 import path from "node:path";
 import { readdir, readFile } from "node:fs/promises";
 import { validateProjectType, ProjectTypeSpec } from "./models/schemas";
-import { isHostedAuthActive } from "./auth/auth-config";
 
 /**
  * Metadata plus parsed content for one project-type template file.
@@ -172,9 +176,9 @@ type SavedRead = Omit<ProjectTypeResolution, "entries"> & {
  * Fails closed: an unset/empty variable or active hosted auth reads nothing
  * (no cwd, repository, built-in or projects-directory fallback). Never cached.
  */
-async function readSavedEntries(): Promise<SavedRead> {
+async function readSavedEntries(hostedAuthActive: boolean): Promise<SavedRead> {
   const dir = process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR;
-  if (!dir || dir.trim() === "" || isHostedAuthActive()) {
+  if (!dir || dir.trim() === "" || hostedAuthActive) {
     return { entries: [], unusable: [], savedStatus: "not-configured" };
   }
   let names: { name: string }[];
@@ -226,14 +230,17 @@ async function readSavedEntries(): Promise<SavedRead> {
  * `forceRefresh`) followed by saved entries (read from disk on every call).
  * A built-in id wins over a saved entry with the same id in `getProjectType`.
  *
+ * @param hostedAuthActive - Whether hosted auth is active. Required, no default:
+ *   when true the saved directory is not read (FR-5, fail closed).
  * @param forceRefresh - When true, rescans the built-in directory too.
  * @returns Entries, unusable saved files and the saved-directory status.
  */
 export async function resolveProjectTypes(
+  hostedAuthActive: boolean,
   forceRefresh = false,
 ): Promise<ProjectTypeResolution> {
   if (!_cache || forceRefresh) _cache = await readBuiltInEntries();
-  const saved = await readSavedEntries();
+  const saved = await readSavedEntries(hostedAuthActive);
   return {
     entries: [..._cache, ...saved.entries],
     unusable: saved.unusable,
@@ -244,30 +251,34 @@ export async function resolveProjectTypes(
 /**
  * Lists available project-type entries (built-in first, then saved).
  *
+ * @param hostedAuthActive - Whether hosted auth is active (required, no default).
  * @param forceRefresh - When true, also rescans the built-in directory.
  * @returns Validated entries; see `resolveProjectTypes` for diagnostics.
  */
 export async function listProjectTypes(
+  hostedAuthActive: boolean,
   forceRefresh = false,
 ): Promise<ProjectTypeEntry[]> {
-  return (await resolveProjectTypes(forceRefresh)).entries;
+  return (await resolveProjectTypes(hostedAuthActive, forceRefresh)).entries;
 }
 
 /**
  * Finds a single project-type template by its `spec.id`.
  *
  * @param id - Project-type identifier to find.
+ * @param hostedAuthActive - Whether hosted auth is active (required, no default).
  * @param forceRefresh - When true, rescans templates before lookup.
  * @returns Matching template entry, or `undefined` when not found.
  *
  * @example
- * const novel = await getProjectType("novel");
+ * const novel = await getProjectType("novel", false);
  */
 export async function getProjectType(
   id: string,
+  hostedAuthActive: boolean,
   forceRefresh = false,
 ): Promise<ProjectTypeEntry | undefined> {
-  const list = await listProjectTypes(forceRefresh);
+  const list = await listProjectTypes(hostedAuthActive, forceRefresh);
   return list.find((entry) => entry.spec.id === id);
 }
 

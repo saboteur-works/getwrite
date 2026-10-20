@@ -61,11 +61,11 @@ describe("projectTypes loader (T005)", () => {
       JSON.stringify(spec),
     );
 
-    const list = await listProjectTypes(true);
+    const list = await listProjectTypes(false, true);
     expect(list.length).toBe(1);
     expect(list[0].spec.id).toBe("novel");
 
-    const byId = await getProjectType("novel", false);
+    const byId = await getProjectType("novel", false, false);
     expect(byId).toBeDefined();
     expect(byId?.spec.name).toBe("Novel");
   });
@@ -95,7 +95,7 @@ describe("projectTypes loader (T005)", () => {
       JSON.stringify(ok),
     );
 
-    const list = await listProjectTypes(true);
+    const list = await listProjectTypes(false, true);
     // only the valid one should be returned
     expect(list.map((l) => l.spec.id)).toEqual(["short"]);
   });
@@ -105,7 +105,7 @@ describe("projectTypes loader (T005)", () => {
       path.join(templatesDir, "short.json"),
       JSON.stringify(spec),
     );
-    const list = await listProjectTypes(true);
+    const list = await listProjectTypes(false, true);
     expect(list).toHaveLength(1);
     expect(list[0].source).toBe("built-in");
     expect(list[0].filePath).toBe(path.join(templatesDir, "short.json"));
@@ -117,18 +117,21 @@ describe("projectTypes loader (T005)", () => {
       path.join(templatesDir, "a.json"),
       JSON.stringify({ id: "a", name: "A", folders: [{ name: "W" }] }),
     );
-    expect((await listProjectTypes()).map((l) => l.spec.id)).toEqual(["a"]);
+    expect((await listProjectTypes(false)).map((l) => l.spec.id)).toEqual([
+      "a",
+    ]);
     await fs.writeFile(
       path.join(templatesDir, "b.json"),
       JSON.stringify({ id: "b", name: "B", folders: [{ name: "W" }] }),
     );
     // cached: b not yet visible
-    expect((await listProjectTypes()).map((l) => l.spec.id)).toEqual(["a"]);
-    clearProjectTypeCache();
-    expect((await listProjectTypes()).map((l) => l.spec.id).sort()).toEqual([
+    expect((await listProjectTypes(false)).map((l) => l.spec.id)).toEqual([
       "a",
-      "b",
     ]);
+    clearProjectTypeCache();
+    expect(
+      (await listProjectTypes(false)).map((l) => l.spec.id).sort(),
+    ).toEqual(["a", "b"]);
   });
 
   describe("resolveBuiltInProjectTypesDir", () => {
@@ -146,9 +149,9 @@ describe("projectTypes loader (T005)", () => {
         path.join(templatesDir, "t.json"),
         JSON.stringify(spec),
       );
-      expect((await listProjectTypes(true)).map((l) => l.spec.id)).toEqual([
-        "t",
-      ]);
+      expect(
+        (await listProjectTypes(false, true)).map((l) => l.spec.id),
+      ).toEqual(["t"]);
     });
 
     it("treats an empty GETWRITE_PROJECT_TYPES_DIR as unset", async () => {
@@ -207,7 +210,7 @@ describe("projectTypes loader (T005)", () => {
         path.join(savedStoreDir, "mine.json"),
         JSON.stringify(spec("mine")),
       );
-      const r = await resolveProjectTypes();
+      const r = await resolveProjectTypes(false);
       expect(r.savedStatus).toBe("ok");
       expect(r.unusable).toEqual([]);
       expect(r.entries.map((e) => [e.spec.id, e.source])).toEqual([
@@ -217,7 +220,7 @@ describe("projectTypes loader (T005)", () => {
       const saved = r.entries[1];
       expect(saved.filePath).toBe(path.join(savedStoreDir, "mine.json"));
       expect(saved.fileName).toBe("mine.json");
-      expect((await getProjectType("mine"))?.source).toBe("saved");
+      expect((await getProjectType("mine", false))?.source).toBe("saved");
     });
 
     it.each([undefined, ""])(
@@ -226,7 +229,7 @@ describe("projectTypes loader (T005)", () => {
         if (value === undefined)
           delete process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR;
         else process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR = value;
-        const r = await resolveProjectTypes();
+        const r = await resolveProjectTypes(false);
         expect(r.savedStatus).toBe("not-configured");
         expect(r.unusable).toEqual([]);
         expect(r.entries.map((e) => e.source)).toEqual(["built-in"]);
@@ -241,7 +244,7 @@ describe("projectTypes loader (T005)", () => {
       );
       vi.mocked(readdirSpy).mockClear();
       vi.mocked(readFileSpy).mockClear();
-      await resolveProjectTypes();
+      await resolveProjectTypes(false);
       const read = [
         ...vi.mocked(readdirSpy).mock.calls,
         ...vi.mocked(readFileSpy).mock.calls,
@@ -255,14 +258,12 @@ describe("projectTypes loader (T005)", () => {
     });
 
     it("gives built-in only and not-configured when hosted auth is active", async () => {
-      process.env.DATABASE_URL = "postgres://example.invalid/db";
-      process.env.BETTER_AUTH_SECRET = "not-a-real-secret";
       await fs.writeFile(
         path.join(savedStoreDir, "mine.json"),
         JSON.stringify(spec("mine")),
       );
       vi.mocked(readdirSpy).mockClear();
-      const r = await resolveProjectTypes();
+      const r = await resolveProjectTypes(true);
       expect(r.savedStatus).toBe("not-configured");
       expect(r.entries.map((e) => e.source)).toEqual(["built-in"]);
       const read = vi.mocked(readdirSpy).mock.calls.map((c) => String(c[0]));
@@ -274,7 +275,7 @@ describe("projectTypes loader (T005)", () => {
         savedStoreDir,
         "not-yet",
       );
-      const r = await resolveProjectTypes();
+      const r = await resolveProjectTypes(false);
       expect(r.savedStatus).toBe("ok");
       expect(r.unusable).toEqual([]);
       expect(r.entries.map((e) => e.source)).toEqual(["built-in"]);
@@ -285,7 +286,7 @@ describe("projectTypes loader (T005)", () => {
       const asFile = path.join(savedStoreDir, "a-file");
       await fs.writeFile(asFile, "x");
       process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR = asFile;
-      const r = await resolveProjectTypes();
+      const r = await resolveProjectTypes(false);
       expect(r.savedStatus).toBe("unreadable");
       expect(r.entries.map((e) => e.source)).toEqual(["built-in"]);
     });
@@ -306,7 +307,7 @@ describe("projectTypes loader (T005)", () => {
         JSON.stringify(spec("ok")),
       );
       await fs.writeFile(path.join(savedStoreDir, "notes.txt"), "ignored");
-      const r = await resolveProjectTypes();
+      const r = await resolveProjectTypes(false);
       expect(r.savedStatus).toBe("ok");
       expect(r.entries.filter((e) => e.source === "saved")).toHaveLength(1);
       expect(
@@ -320,35 +321,34 @@ describe("projectTypes loader (T005)", () => {
     });
 
     it("shows a saved file written between two calls with no cache clearing", async () => {
-      expect((await listProjectTypes()).map((e) => e.spec.id)).toEqual([
+      expect((await listProjectTypes(false)).map((e) => e.spec.id)).toEqual([
         "novel",
       ]);
       await fs.writeFile(
         path.join(savedStoreDir, "late.json"),
         JSON.stringify(spec("late")),
       );
-      expect((await listProjectTypes()).map((e) => e.spec.id)).toEqual([
+      expect((await listProjectTypes(false)).map((e) => e.spec.id)).toEqual([
         "novel",
         "late",
       ]);
       await fs.rm(path.join(savedStoreDir, "late.json"));
-      expect((await getProjectType("late")) === undefined).toBe(true);
+      expect((await getProjectType("late", false)) === undefined).toBe(true);
     });
 
     it("keeps the built-in cache cleared by clearProjectTypeCache", async () => {
-      await listProjectTypes();
+      await listProjectTypes(false);
       await fs.writeFile(
         path.join(templatesDir, "later.json"),
         JSON.stringify(spec("later")),
       );
-      expect((await listProjectTypes()).map((e) => e.spec.id)).toEqual([
+      expect((await listProjectTypes(false)).map((e) => e.spec.id)).toEqual([
         "novel",
       ]);
       clearProjectTypeCache();
-      expect((await listProjectTypes()).map((e) => e.spec.id).sort()).toEqual([
-        "later",
-        "novel",
-      ]);
+      expect(
+        (await listProjectTypes(false)).map((e) => e.spec.id).sort(),
+      ).toEqual(["later", "novel"]);
     });
   });
 });

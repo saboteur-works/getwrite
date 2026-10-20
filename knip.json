@@ -21,11 +21,7 @@
     // specs/**: per-feature measurement and verification scripts (Features
     // 78, 81 and earlier), run by hand from the specs that record them —
     // not app code.
-    "specs/**",
-    // cli/src/lib/server-only-stub.ts: resolved only through the esbuild
-    // --alias and vitest alias for "server-only" in cli (Feature 90), never
-    // by a static import, so knip cannot see its references.
-    "cli/src/lib/server-only-stub.ts"
+    "specs/**"
   ],
   "workspaces": {
     ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },

@@ -83,7 +83,7 @@ describe("readers resolve saved project types (FR-3)", () => {
 
   it("createProjectCore accepts a saved type", async () => {
     await writeSaved("my-saved", ["idea"]);
-    const result = await createProjectCore("From saved", "my-saved");
+    const result = await createProjectCore("From saved", "my-saved", false);
     expect(result.project.name).toBe("From saved");
     expect(result.folders.map((f) => f.name)).toContain("Drafts");
   });
@@ -95,6 +95,7 @@ describe("readers resolve saved project types (FR-3)", () => {
       sourcePath: path.join(FIXTURES, "docx", "multi-heading.docx"),
       projectRoot,
       projectType: "my-saved",
+      hostedAuthActive: false,
     });
     await flushIndexer();
     const project = JSON.parse(
@@ -109,6 +110,7 @@ describe("readers resolve saved project types (FR-3)", () => {
     await importPlainTextProject({
       sourcePath: path.join(FIXTURES, "plaintext", "single-document.txt"),
       projectRoot,
+      hostedAuthActive: false,
     });
     await flushIndexer();
     const project = JSON.parse(
@@ -123,6 +125,7 @@ describe("readers resolve saved project types (FR-3)", () => {
         sourcePath: path.join(FIXTURES, "docx", "multi-heading.docx"),
         projectRoot: path.join(root, "never-written"),
         projectType: "no-such-type",
+        hostedAuthActive: false,
       }),
     ).rejects.toBeInstanceOf(UnknownProjectTypeError);
   });
@@ -139,6 +142,7 @@ describe("readers resolve saved project types (FR-3)", () => {
         sourcePath: path.join(FIXTURES, "docx", "multi-heading.docx"),
         projectRoot,
         projectType: "my-saved",
+        hostedAuthActive: false,
       }),
     ).rejects.toBeInstanceOf(UnknownProjectTypeError);
     await expect(fs.stat(projectRoot)).rejects.toMatchObject({

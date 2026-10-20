@@ -6,6 +6,7 @@
  */
 
 import ProjectTypesManagerPage from "../../components/project-types/ProjectTypesManagerPage";
+import { isHostedAuthActive } from "../../src/lib/auth/auth-config";
 import { resolveProjectTypes } from "../../src/lib/projectTypes";
 import type {
   ProjectTypeDefinition,
@@ -18,7 +19,7 @@ import type {
  * @returns Validated template files sorted by filename.
  */
 async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
-  const { entries } = await resolveProjectTypes();
+  const { entries } = await resolveProjectTypes(isHostedAuthActive());
   return entries
     .map(({ fileName, spec, source }) => ({
       fileName,

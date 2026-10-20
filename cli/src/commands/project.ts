@@ -142,7 +142,7 @@ export default function registerProject(program: Command): void {
         if (options.projectType) {
           // Resolved before any write: an unknown id leaves nothing on disk.
           const id = String(options.projectType);
-          const resolution = await resolveProjectTypes();
+          const resolution = await resolveProjectTypes(false);
           const entry = resolution.entries.find((e) => e.spec.id === id);
           if (!entry) {
             console.error(unknownProjectTypeMessage(id, resolution));
@@ -180,7 +180,7 @@ export default function registerProject(program: Command): void {
     )
     .action(async () => {
       try {
-        const resolution = await resolveProjectTypes();
+        const resolution = await resolveProjectTypes(false);
         for (const e of resolution.entries) {
           console.log(`${e.spec.id}\t${e.spec.name}\t${e.source}`);
         }
@@ -286,6 +286,8 @@ export default function registerProject(program: Command): void {
             name: options?.name,
             splitLevel,
             projectType: options?.projectType,
+            // The CLI is never hosted (FR-27).
+            hostedAuthActive: false,
           }),
         );
 
@@ -297,7 +299,7 @@ export default function registerProject(program: Command): void {
       } catch (err) {
         if (err instanceof UnknownProjectTypeError) {
           console.error(err.message);
-          const notice = savedTypesNotice(await resolveProjectTypes());
+          const notice = savedTypesNotice(await resolveProjectTypes(false));
           if (notice) console.error(notice);
           process.exit(2);
           return;
@@ -328,6 +330,7 @@ export default function registerProject(program: Command): void {
             sourcePath: source,
             projectRoot,
             name: options?.name,
+            hostedAuthActive: false,
           }),
         );
 

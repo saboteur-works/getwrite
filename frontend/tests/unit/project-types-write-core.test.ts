@@ -63,7 +63,7 @@ describe("saved project types write core (Task 18)", () => {
 
   describe("create", () => {
     it("creates the directory on first save and writes <id>.json", async () => {
-      const result = await createSavedProjectType(spec("mine", "Mine"));
+      const result = await createSavedProjectType(spec("mine", "Mine"), false);
       expect(result).toMatchObject({ ok: true, fileName: "mine.json" });
       const written = JSON.parse(
         await fsp.readFile(path.join(savedDir, "mine.json"), "utf8"),
@@ -73,16 +73,16 @@ describe("saved project types write core (Task 18)", () => {
     });
 
     it("a file the core accepts is listed by the resolver", async () => {
-      await createSavedProjectType(spec("mine", "Mine"));
-      const entries = await listProjectTypes();
+      await createSavedProjectType(spec("mine", "Mine"), false);
+      const entries = await listProjectTypes(false);
       expect(
         entries.find((e) => e.spec.id === "mine" && e.source === "saved"),
       ).toBeDefined();
     });
 
     it("a second create of the same id fails with id-clash", async () => {
-      await createSavedProjectType(spec("mine", "Mine"));
-      const second = await createSavedProjectType(spec("mine", "Other"));
+      await createSavedProjectType(spec("mine", "Mine"), false);
+      const second = await createSavedProjectType(spec("mine", "Other"), false);
       expect(second).toMatchObject({
         ok: false,
         reason: "id-clash",
@@ -92,8 +92,8 @@ describe("saved project types write core (Task 18)", () => {
 
     it("of two concurrent creates of one id exactly one succeeds", async () => {
       const results = await Promise.all([
-        createSavedProjectType(spec("race", "Race A")),
-        createSavedProjectType(spec("race", "Race B")),
+        createSavedProjectType(spec("race", "Race A"), false),
+        createSavedProjectType(spec("race", "Race B"), false),
       ]);
       expect(results.filter((r) => r.ok)).toHaveLength(1);
       const loser = results.find((r) => !r.ok);
@@ -102,7 +102,7 @@ describe("saved project types write core (Task 18)", () => {
     });
 
     it("reports id-clash against a built-in id", async () => {
-      const r = await createSavedProjectType(spec("novel", "Something"));
+      const r = await createSavedProjectType(spec("novel", "Something"), false);
       expect(r).toMatchObject({
         ok: false,
         reason: "id-clash",
@@ -111,14 +111,17 @@ describe("saved project types write core (Task 18)", () => {
     });
 
     it("reports name-clash after trim and case-folding, built-in and saved", async () => {
-      const builtIn = await createSavedProjectType(spec("n2", "  novel "));
+      const builtIn = await createSavedProjectType(
+        spec("n2", "  novel "),
+        false,
+      );
       expect(builtIn).toMatchObject({
         ok: false,
         reason: "name-clash",
         conflictsWith: { id: "novel", source: "built-in" },
       });
-      await createSavedProjectType(spec("mine", "Mine"));
-      const saved = await createSavedProjectType(spec("m2", " MINE"));
+      await createSavedProjectType(spec("mine", "Mine"), false);
+      const saved = await createSavedProjectType(spec("m2", " MINE"), false);
       expect(saved).toMatchObject({
         ok: false,
         reason: "name-clash",
@@ -127,20 +130,23 @@ describe("saved project types write core (Task 18)", () => {
     });
 
     it("refuses an invalid spec and writes nothing", async () => {
-      const r = await createSavedProjectType({ id: "../x", name: "X" });
+      const r = await createSavedProjectType({ id: "../x", name: "X" }, false);
       expect(r).toMatchObject({ ok: false, reason: "invalid" });
       expect(fs.existsSync(savedDir)).toBe(false);
     });
 
     it("refuses an over-long id", async () => {
-      const r = await createSavedProjectType(spec("a".repeat(200), "Long"));
+      const r = await createSavedProjectType(
+        spec("a".repeat(200), "Long"),
+        false,
+      );
       expect(r).toMatchObject({ ok: false, reason: "invalid" });
     });
 
     it("returns an error, not success, for a read-only directory", async () => {
       await fsp.mkdir(savedDir);
       await fsp.chmod(savedDir, 0o500);
-      const r = await createSavedProjectType(spec("mine", "Mine"));
+      const r = await createSavedProjectType(spec("mine", "Mine"), false);
       expect(r).toMatchObject({ ok: false, reason: "write-failed" });
       expect(await fsp.readdir(savedDir)).toEqual([]);
     });
@@ -148,11 +154,11 @@ describe("saved project types write core (Task 18)", () => {
 
   describe("replace", () => {
     it("replaces the file and does not clash with itself", async () => {
-      await createSavedProjectType(spec("mine", "Mine"));
-      const r = await replaceSavedProjectType({
-        ...spec("mine", "mine"),
-        description: "changed",
-      });
+      await createSavedProjectType(spec("mine", "Mine"), false);
+      const r = await replaceSavedProjectType(
+        { ...spec("mine", "mine"), description: "changed" },
+        false,
+      );
       expect(r).toMatchObject({ ok: true, fileName: "mine.json" });
       const written = JSON.parse(
         await fsp.readFile(path.join(savedDir, "mine.json"), "utf8"),
@@ -162,14 +168,18 @@ describe("saved project types write core (Task 18)", () => {
     });
 
     it("name-clashes with another saved type and a built-in", async () => {
-      await createSavedProjectType(spec("a", "Alpha"));
-      await createSavedProjectType(spec("b", "Beta"));
-      expect(await replaceSavedProjectType(spec("b", "alpha "))).toMatchObject({
+      await createSavedProjectType(spec("a", "Alpha"), false);
+      await createSavedProjectType(spec("b", "Beta"), false);
+      expect(
+        await replaceSavedProjectType(spec("b", "alpha "), false),
+      ).toMatchObject({
         ok: false,
         reason: "name-clash",
         conflictsWith: { id: "a", source: "saved" },
       });
-      expect(await replaceSavedProjectType(spec("b", "NOVEL"))).toMatchObject({
+      expect(
+        await replaceSavedProjectType(spec("b", "NOVEL"), false),
+      ).toMatchObject({
         ok: false,
         reason: "name-clash",
         conflictsWith: { id: "novel", source: "built-in" },
@@ -177,23 +187,23 @@ describe("saved project types write core (Task 18)", () => {
     });
 
     it("refuses a built-in id with reason built-in", async () => {
-      const r = await replaceSavedProjectType(spec("novel", "Novel 2"));
+      const r = await replaceSavedProjectType(spec("novel", "Novel 2"), false);
       expect(r).toMatchObject({ ok: false, reason: "built-in" });
       expect(fs.existsSync(savedDir)).toBe(false);
     });
 
     it("refuses an id that was never saved with not-found", async () => {
-      const r = await replaceSavedProjectType(spec("ghost", "Ghost"));
+      const r = await replaceSavedProjectType(spec("ghost", "Ghost"), false);
       expect(r).toMatchObject({ ok: false, reason: "not-found" });
     });
 
     it("keeps the previous file and leaves no temporary file when the write fails", async () => {
-      await createSavedProjectType(spec("mine", "Mine"));
+      await createSavedProjectType(spec("mine", "Mine"), false);
       const before = await fsp.readFile(path.join(savedDir, "mine.json"));
       vi.spyOn(fs, "renameSync").mockImplementation(() => {
         throw new Error("injected rename failure");
       });
-      const r = await replaceSavedProjectType(spec("mine", "Renamed"));
+      const r = await replaceSavedProjectType(spec("mine", "Renamed"), false);
       expect(r).toMatchObject({ ok: false, reason: "write-failed" });
       vi.restoreAllMocks();
       expect(await fsp.readFile(path.join(savedDir, "mine.json"))).toEqual(
@@ -205,25 +215,25 @@ describe("saved project types write core (Task 18)", () => {
 
   describe("delete", () => {
     it("removes only that file", async () => {
-      await createSavedProjectType(spec("a", "Alpha"));
-      await createSavedProjectType(spec("b", "Beta"));
-      const r = await deleteSavedProjectType("a");
+      await createSavedProjectType(spec("a", "Alpha"), false);
+      await createSavedProjectType(spec("b", "Beta"), false);
+      const r = await deleteSavedProjectType("a", false);
       expect(r).toMatchObject({ ok: true, fileName: "a.json" });
       expect(await fsp.readdir(savedDir)).toEqual(["b.json"]);
     });
 
     it("refuses a built-in id with reason built-in", async () => {
-      const r = await deleteSavedProjectType("novel");
+      const r = await deleteSavedProjectType("novel", false);
       expect(r).toMatchObject({ ok: false, reason: "built-in" });
       expect(fs.existsSync(path.join(builtInDir, "novel.json"))).toBe(true);
     });
 
     it("refuses an unsafe id and a missing id", async () => {
-      expect(await deleteSavedProjectType("../x")).toMatchObject({
+      expect(await deleteSavedProjectType("../x", false)).toMatchObject({
         ok: false,
         reason: "invalid",
       });
-      expect(await deleteSavedProjectType("nope")).toMatchObject({
+      expect(await deleteSavedProjectType("nope", false)).toMatchObject({
         ok: false,
         reason: "not-found",
       });
@@ -234,21 +244,19 @@ describe("saved project types write core (Task 18)", () => {
     it("returns saving-unavailable when the variable is unset", async () => {
       delete process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR;
       for (const r of [
-        await createSavedProjectType(spec("mine", "Mine")),
-        await replaceSavedProjectType(spec("mine", "Mine")),
-        await deleteSavedProjectType("mine"),
+        await createSavedProjectType(spec("mine", "Mine"), false),
+        await replaceSavedProjectType(spec("mine", "Mine"), false),
+        await deleteSavedProjectType("mine", false),
       ]) {
         expect(r).toMatchObject({ ok: false, reason: "saving-unavailable" });
       }
     });
 
     it("returns saving-unavailable when hosted auth is active", async () => {
-      process.env.DATABASE_URL = "postgres://example.invalid/db";
-      process.env.BETTER_AUTH_SECRET = "test-secret-value";
       for (const r of [
-        await createSavedProjectType(spec("mine", "Mine")),
-        await replaceSavedProjectType(spec("mine", "Mine")),
-        await deleteSavedProjectType("mine"),
+        await createSavedProjectType(spec("mine", "Mine"), true),
+        await replaceSavedProjectType(spec("mine", "Mine"), true),
+        await deleteSavedProjectType("mine", true),
       ]) {
         expect(r).toMatchObject({ ok: false, reason: "saving-unavailable" });
       }
@@ -288,13 +296,16 @@ describe("saved project types write core (Task 18)", () => {
       const before = checksums(real);
       expect(Object.keys(before).length).toBeGreaterThan(0);
 
-      await createSavedProjectType(spec("fresh", "Fresh Type"));
-      await createSavedProjectType(spec("fresh-copy", "Fresh Type Copy"));
-      await replaceSavedProjectType(spec("fresh", "Fresh Renamed"));
-      await replaceSavedProjectType(spec("novel", "Novel Hijack"));
-      await deleteSavedProjectType("fresh");
-      await deleteSavedProjectType("novel");
-      await deleteSavedProjectType("fresh-copy");
+      await createSavedProjectType(spec("fresh", "Fresh Type"), false);
+      await createSavedProjectType(
+        spec("fresh-copy", "Fresh Type Copy"),
+        false,
+      );
+      await replaceSavedProjectType(spec("fresh", "Fresh Renamed"), false);
+      await replaceSavedProjectType(spec("novel", "Novel Hijack"), false);
+      await deleteSavedProjectType("fresh", false);
+      await deleteSavedProjectType("novel", false);
+      await deleteSavedProjectType("fresh-copy", false);
 
       expect(checksums(real)).toEqual(before);
       expect(await fsp.readdir(savedDir)).toEqual([]);

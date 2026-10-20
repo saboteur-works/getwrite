@@ -369,16 +369,20 @@ export class ProjectTypeNotFoundError extends Error {
  * (the try/catch -> 400/404/500 status mapping stays in the route; this core
  * throws {@link MissingProjectFieldsError}/{@link ProjectTypeNotFoundError}
  * instead of returning those `NextResponse`s directly).
+ *
+ * @param hostedAuthActive - Whether hosted auth is active; the route passes
+ *   `isHostedAuthActive()`. Required, no default (FR-27): true hides saved types.
  */
 export async function createProjectCore(
   name: string | undefined,
   projectType: string | undefined,
+  hostedAuthActive: boolean,
 ): Promise<CreateProjectResult> {
   if (!name || !projectType) {
     throw new MissingProjectFieldsError();
   }
 
-  const entry = await getProjectType(projectType);
+  const entry = await getProjectType(projectType, hostedAuthActive);
   if (!entry) {
     throw new ProjectTypeNotFoundError();
   }

@@ -231,6 +231,8 @@ export interface ImportDocxProjectOptions {
   splitLevel?: HeadingSplitLevel;
   /** Project-type spec `id` (FR-8, FR-9); defaults to `"blank"`. */
   projectType?: string;
+  /** Whether hosted auth is active (FR-27). Required, no default: callers (the CLI and the import workers) are never hosted and pass `false`. */
+  hostedAuthActive: boolean;
 }
 
 /** Result of a successful {@link importDocxProject} run. */
@@ -316,8 +318,9 @@ function foldMammothMessages(
  */
 async function resolveProjectTypeSeed(
   projectType: string,
+  hostedAuthActive: boolean,
 ): Promise<{ statuses?: string[]; relationshipTypes?: string[] }> {
-  const entry = await getProjectType(projectType);
+  const entry = await getProjectType(projectType, hostedAuthActive);
   if (entry === undefined) {
     throw new UnknownProjectTypeError(projectType);
   }
@@ -617,7 +620,10 @@ export async function importDocxProject(
   const projectTypeId = options.projectType ?? DEFAULT_PROJECT_TYPE;
 
   // FR-8: validated before any write.
-  const projectTypeSeed = await resolveProjectTypeSeed(projectTypeId);
+  const projectTypeSeed = await resolveProjectTypeSeed(
+    projectTypeId,
+    options.hostedAuthActive,
+  );
 
   // FR-7: recorded, once and before any write, whether projectRoot existed
   // before this run — this recorded value (not a later filesystem check) is

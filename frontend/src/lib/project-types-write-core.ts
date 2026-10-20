@@ -23,7 +23,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { validateProjectType, type ProjectTypeSpec } from "./models/schemas";
 import { normalizeSubtypeLabel } from "./models/field-subtype-scope";
-import { isHostedAuthActive } from "./auth/auth-config";
 import { resolveProjectTypes, type ProjectTypeEntry } from "./projectTypes";
 
 /** Longest id accepted; the schema pattern alone has no upper bound. */
@@ -87,9 +86,9 @@ function refuse(
 }
 
 /** The saved directory, or `null` when saving is unavailable (fail closed). */
-function savedDirectory(): string | null {
+function savedDirectory(hostedAuthActive: boolean): string | null {
   const dir = process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR;
-  if (!dir || dir.trim() === "" || isHostedAuthActive()) return null;
+  if (!dir || dir.trim() === "" || hostedAuthActive) return null;
   return path.resolve(dir);
 }
 
@@ -214,8 +213,11 @@ type Checked =
   | ProjectTypeWriteRefusal;
 
 /** Gate shared by create and replace: availability, validation, readable list. */
-async function checkSpec(input: unknown): Promise<Checked> {
-  const dir = savedDirectory();
+async function checkSpec(
+  input: unknown,
+  hostedAuthActive: boolean,
+): Promise<Checked> {
+  const dir = savedDirectory(hostedAuthActive);
   if (dir === null) return refuse("saving-unavailable");
   const validated = validateProjectType(input);
   if (!validated.success || !("value" in validated) || !validated.value) {
@@ -223,7 +225,7 @@ async function checkSpec(input: unknown): Promise<Checked> {
   }
   const spec = validated.value;
   if (!isSafeId(spec.id)) return refuse("invalid");
-  const resolution = await resolveProjectTypes();
+  const resolution = await resolveProjectTypes(hostedAuthActive);
   if (resolution.savedStatus === "unreadable") return refuse("unreadable");
   return { ok: true, dir, spec, others: resolution.entries };
 }
@@ -249,11 +251,14 @@ function serialize(spec: ProjectTypeSpec): string {
  * `saving-unavailable`, `unreadable` or `write-failed`.
  *
  * @param input - Untrusted spec; validated with `validateProjectType`.
+ * @param hostedAuthActive - Whether hosted auth is active; routes pass
+ *   `isHostedAuthActive()`. Required, no default; true refuses `saving-unavailable`.
  */
 export async function createSavedProjectType(
   input: unknown,
+  hostedAuthActive: boolean,
 ): Promise<ProjectTypeWriteResult> {
-  const checked = await checkSpec(input);
+  const checked = await checkSpec(input, hostedAuthActive);
   if (!checked.ok) return checked;
   const { dir, spec, others } = checked;
   const sameId = others.find((e) => e.spec.id === spec.id);
@@ -284,11 +289,13 @@ export async function createSavedProjectType(
  * {@link createSavedProjectType} except `id-clash`.
  *
  * @param input - Untrusted spec; validated with `validateProjectType`.
+ * @param hostedAuthActive - Whether hosted auth is active (required, no default).
  */
 export async function replaceSavedProjectType(
   input: unknown,
+  hostedAuthActive: boolean,
 ): Promise<ProjectTypeWriteResult> {
-  const checked = await checkSpec(input);
+  const checked = await checkSpec(input, hostedAuthActive);
   if (!checked.ok) return checked;
   const { dir, spec, others } = checked;
   if (others.some((e) => e.spec.id === spec.id && e.source === "built-in")) {
@@ -313,14 +320,16 @@ export async function replaceSavedProjectType(
  * `saving-unavailable` or `write-failed`.
  *
  * @param id - Untrusted id; validated before any path is formed.
+ * @param hostedAuthActive - Whether hosted auth is active (required, no default).
  */
 export async function deleteSavedProjectType(
   id: unknown,
+  hostedAuthActive: boolean,
 ): Promise<ProjectTypeWriteResult> {
-  const dir = savedDirectory();
+  const dir = savedDirectory(hostedAuthActive);
   if (dir === null) return refuse("saving-unavailable");
   if (!isSafeId(id)) return refuse("invalid");
-  const resolution = await resolveProjectTypes();
+  const resolution = await resolveProjectTypes(hostedAuthActive);
   if (
     resolution.entries.some((e) => e.spec.id === id && e.source === "built-in")
   ) {

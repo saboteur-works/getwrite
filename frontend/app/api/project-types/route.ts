@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isHostedAuthActive } from "../../../src/lib/auth/auth-config";
 import { resolveProjectTypes } from "../../../src/lib/projectTypes";
 import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 import { createSavedProjectType } from "../../../src/lib/project-types-write-core";
@@ -26,7 +27,8 @@ import {
  */
 export async function GET() {
   try {
-    const { entries, unusable, savedStatus } = await resolveProjectTypes();
+    const { entries, unusable, savedStatus } =
+      await resolveProjectTypes(isHostedAuthActive());
     return NextResponse.json({
       entries: entries.map(({ spec, fileName, source }) => ({
         spec,
@@ -63,5 +65,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const parsed = await readCappedJson(request);
   if (!parsed.ok) return invalidBodyResponse();
-  return resultResponse(await createSavedProjectType(parsed.value), 201);
+  return resultResponse(
+    await createSavedProjectType(parsed.value, isHostedAuthActive()),
+    201,
+  );
 }
