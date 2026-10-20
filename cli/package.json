@@ -7,7 +7,7 @@
     "getwrite-cli": "dist/bin/getwrite-cli.cjs"
   },
   "scripts": {
-    "build": "esbuild src/getwrite-cli.ts --bundle --platform=node --target=node16 --outfile=dist/bin/getwrite-cli.cjs --banner:js=\"#!/usr/bin/env node\" --format=cjs --tsconfig=tsconfig.json --external:playwright --external:playwright-core --external:chromium-bidi",
+    "build": "esbuild src/getwrite-cli.ts --bundle --platform=node --target=node16 --outfile=dist/bin/getwrite-cli.cjs --banner:js=\"#!/usr/bin/env node\" --format=cjs --tsconfig=tsconfig.json --alias:server-only=./src/lib/server-only-stub.ts --external:playwright --external:playwright-core --external:chromium-bidi",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

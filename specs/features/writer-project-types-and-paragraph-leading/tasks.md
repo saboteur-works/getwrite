@@ -256,7 +256,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 16
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-16, FR-26 (CLI). Safety: CLI tests run only against throwaway folders; never the repo's `projects/` or a real app-data folder; the encryption-guard tests are unchanged.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Part 1 documentation (FR-25, Part 1 half)
 **What:** Document the saved store, the variable, the resolver and the new CLI options, and correct the help text that says types can be created and deleted.

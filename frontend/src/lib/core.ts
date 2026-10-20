@@ -24,6 +24,14 @@ export * from "./models";
 // Projects
 export { createProjectFromType } from "./models/project-creator";
 
+// Project types (resolver: built-in plus saved)
+export {
+  resolveProjectTypes,
+  clearProjectTypeCache,
+  type ProjectTypeEntry,
+  type ProjectTypeResolution,
+} from "./projectTypes";
+
 // Folders
 export { readFolderTree, renameFolderById } from "./models/folder-utils";
 
