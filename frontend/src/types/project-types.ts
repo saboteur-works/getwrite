@@ -145,4 +145,9 @@ export interface ProjectTypeTemplateFile {
    * Parsed project type payload.
    */
   definition: ProjectTypeDefinition;
+  /**
+   * Where the file came from. Absent means built-in (never overwritten or
+   * deleted); saved types are marked by the loader (Feature 90, Task 24).
+   */
+  source?: "built-in" | "saved";
 }

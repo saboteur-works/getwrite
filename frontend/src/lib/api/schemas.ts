@@ -897,3 +897,43 @@ export const ProjectTypeListResponseSchema = z.object({
   ),
   savedStatus: z.enum(["ok", "not-configured", "unreadable"]),
 });
+
+/**
+ * Success body of `POST`/`PUT /api/project-types` (Feature 90, FR-8): the file
+ * written and the spec as stored. Carries no `ok` field.
+ */
+export const ProjectTypeWriteSuccessSchema = z.object({
+  fileName: z.string(),
+  spec: ProjectTypeSchema,
+});
+
+/** Success body of `DELETE /api/project-types/<id>`: the file removed. */
+export const ProjectTypeDeleteSuccessSchema = z.object({
+  fileName: z.string(),
+});
+
+/**
+ * Refusal body of the project-type write routes: `{ error, reason,
+ * conflictsWith? }`, where `conflictsWith` names the existing type a clash is
+ * with.
+ */
+export const ProjectTypeWriteRefusalSchema = z.object({
+  error: z.string(),
+  reason: z.enum([
+    "saving-unavailable",
+    "invalid",
+    "id-clash",
+    "name-clash",
+    "built-in",
+    "not-found",
+    "unreadable",
+    "write-failed",
+  ]),
+  conflictsWith: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      source: z.enum(["built-in", "saved"]),
+    })
+    .optional(),
+});

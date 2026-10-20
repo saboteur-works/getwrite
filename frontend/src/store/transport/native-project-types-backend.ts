@@ -28,7 +28,19 @@ import type { ProjectTypeDefinition } from "../../types/project-types";
 import type {
   ProjectTypeList,
   ProjectTypesTransport,
+  ProjectTypeWriteOutcome,
 } from "../../lib/api/project-types";
+
+/**
+ * The native build keeps its static registry and has no saved directory, so
+ * every write is refused as `saving-unavailable`: a value the caller shows,
+ * with no request made.
+ */
+const SAVING_UNAVAILABLE: ProjectTypeWriteOutcome = {
+  ok: false,
+  reason: "saving-unavailable",
+  message: "Saving project types is not available here.",
+};
 
 /**
  * Builds the in-process project-types transport for a native build. Takes
@@ -48,6 +60,15 @@ export function createNativeProjectTypesTransport(): ProjectTypesTransport {
         unusable: [],
         savedStatus: "not-configured",
       };
+    },
+    async create() {
+      return SAVING_UNAVAILABLE;
+    },
+    async update() {
+      return SAVING_UNAVAILABLE;
+    },
+    async remove() {
+      return SAVING_UNAVAILABLE;
     },
   };
 }

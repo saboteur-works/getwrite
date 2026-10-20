@@ -100,4 +100,23 @@ describe("project-types-static registry — proves static-import resolution, not
   it("returns undefined for an unknown id rather than throwing", () => {
     expect(getStaticProjectType("not-a-real-type")).toBeUndefined();
   });
+
+  it("refuses every write as saving-unavailable with no HTTP", async () => {
+    const fetchMock = guardAgainstFetch();
+    const transport = createNativeProjectTypesTransport();
+    const spec = (await transport.list()).entries[0].spec;
+
+    for (const outcome of [
+      await transport.create(spec),
+      await transport.update(spec.id, spec),
+      await transport.remove(spec.id),
+    ]) {
+      expect(outcome).toMatchObject({
+        ok: false,
+        reason: "saving-unavailable",
+      });
+    }
+
+    fetchMock.restore();
+  });
 });

@@ -132,6 +132,152 @@ describe("httpProjectTypesTransport.list", () => {
   });
 });
 
+describe("httpProjectTypesTransport writes (Feature 90, FR-8)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const spec = { ...validProjectType, id: "mine", name: "Mine" };
+  const refusalBody = (
+    reason: string,
+    extra: Record<string, unknown> = {},
+  ) => ({ error: `msg for ${reason}`, reason, ...extra });
+
+  it("create posts the whole spec once and returns fileName and spec", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ fileName: "mine.json", spec }, true, 201),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpProjectTypesTransport.create(spec);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/project-types");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual(spec);
+    expect(result).toMatchObject({ ok: true, fileName: "mine.json" });
+    expect(result.ok && result.spec?.id).toBe("mine");
+  });
+
+  it("update puts to the encoded path id", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ fileName: "mine.json", spec }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpProjectTypesTransport.update("mine", spec);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/project-types/mine");
+    expect(init.method).toBe("PUT");
+    expect(result.ok).toBe(true);
+  });
+
+  it("remove deletes and returns fileName only", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ fileName: "mine.json" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpProjectTypesTransport.remove("mine");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/project-types/mine");
+    expect(init.method).toBe("DELETE");
+    expect(result).toEqual({ ok: true, fileName: "mine.json" });
+  });
+
+  it.each([
+    ["invalid", 400],
+    ["id-clash", 409],
+    ["built-in", 403],
+    ["not-found", 404],
+    ["write-failed", 500],
+    ["saving-unavailable", 503],
+  ])(
+    "returns a %s (%i) response as a refusal value",
+    async (reason, status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(jsonResponse(refusalBody(reason), false, status)),
+      );
+
+      const result = await httpProjectTypesTransport.create(spec);
+
+      expect(result).toEqual({
+        ok: false,
+        reason,
+        message: `msg for ${reason}`,
+      });
+      expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+    },
+  );
+
+  it("carries conflictsWith through on a name clash", async () => {
+    const conflictsWith = { id: "novel", name: "Novel", source: "built-in" };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            refusalBody("name-clash", { conflictsWith }),
+            false,
+            409,
+          ),
+        ),
+    );
+
+    const result = await httpProjectTypesTransport.create(spec);
+
+    expect(result).toMatchObject({ ok: false, reason: "name-clash" });
+    expect(!result.ok && result.conflictsWith).toEqual(conflictsWith);
+  });
+
+  it.each([
+    ["a 201 without a spec", { fileName: "mine.json" }, true, 201],
+    [
+      "a 201 whose spec fails the schema",
+      {
+        fileName: "mine.json",
+        spec: { id: "Bad ID!", name: "x", folders: [] },
+      },
+      true,
+      201,
+    ],
+    [
+      "a refusal status with an unknown reason",
+      refusalBody("weird"),
+      false,
+      409,
+    ],
+    ["a refusal status with no body shape", { nope: 1 }, false, 500],
+  ])(
+    "reports and throws on %s, never success",
+    async (_l, body, ok, status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(jsonResponse(body, ok, status)),
+      );
+
+      await expect(httpProjectTypesTransport.create(spec)).rejects.toThrow();
+      expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+      expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+        "project-types.create",
+        expect.any(Array),
+      );
+    },
+  );
+});
+
 describe("projectTypeListNotice", () => {
   const base: ProjectTypeList = {
     entries: [],

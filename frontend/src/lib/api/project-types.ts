@@ -1,5 +1,10 @@
 import type { ProjectTypeDefinition } from "../../types/project-types";
-import { ProjectTypeListResponseSchema } from "./schemas";
+import {
+  ProjectTypeDeleteSuccessSchema,
+  ProjectTypeListResponseSchema,
+  ProjectTypeWriteRefusalSchema,
+  ProjectTypeWriteSuccessSchema,
+} from "./schemas";
 import { createTransport } from "../../store/transport/create-transport";
 import { reportTransportValidationFailure } from "./transport-validation";
 
@@ -65,15 +70,89 @@ export function projectTypeListNotice(list: ProjectTypeList): string | null {
   return null;
 }
 
+/** Why a write was refused or failed (Feature 90, FR-8; the route's `reason`). */
+export type ProjectTypeWriteRefusalReason =
+  | "saving-unavailable"
+  | "invalid"
+  | "id-clash"
+  | "name-clash"
+  | "built-in"
+  | "not-found"
+  | "unreadable"
+  | "write-failed";
+
+/** The existing type a clash is with. */
+export interface ProjectTypeConflict {
+  id: string;
+  name: string;
+  source: ProjectTypeSource;
+}
+
 /**
- * The project-types-route-backed operation both platforms implement. Shared
+ * Outcome of a write call. A refusal is a value, not an exception, so a caller
+ * cannot mistake it for success; `spec` is present for create and update only.
+ */
+export type ProjectTypeWriteOutcome =
+  | { ok: true; fileName: string; spec?: ProjectTypeDefinition }
+  | {
+      ok: false;
+      reason: ProjectTypeWriteRefusalReason;
+      message: string;
+      conflictsWith?: ProjectTypeConflict;
+    };
+
+/**
+ * The project-types-route-backed operations both platforms implement. Shared
  * with `../../store/transport/native-project-types-backend`, which imports
  * this type rather than duplicating it.
  */
 export interface ProjectTypesTransport {
   /** Lists every available project-type template with its notice data. */
   list(): Promise<ProjectTypeList>;
+  /** Creates a saved type from a whole spec. */
+  create(spec: ProjectTypeDefinition): Promise<ProjectTypeWriteOutcome>;
+  /** Replaces the saved type `id`; `spec.id` must equal `id`. */
+  update(
+    id: string,
+    spec: ProjectTypeDefinition,
+  ): Promise<ProjectTypeWriteOutcome>;
+  /** Deletes the saved type `id`. */
+  remove(id: string): Promise<ProjectTypeWriteOutcome>;
 }
+
+/**
+ * Reads a write response. A refusal status must carry the refusal shape and a
+ * success status the success shape for the call; anything else is reported
+ * and thrown, never returned as success or as a refusal.
+ */
+async function readWriteOutcome(
+  callSite: string,
+  response: Response,
+  successSchema:
+    | typeof ProjectTypeWriteSuccessSchema
+    | typeof ProjectTypeDeleteSuccessSchema,
+): Promise<ProjectTypeWriteOutcome> {
+  const body: unknown = await response.json();
+  if (response.ok) {
+    const result = successSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(callSite, result.error.issues);
+      throw new Error("Invalid project types response shape");
+    }
+    return { ok: true, ...result.data } as ProjectTypeWriteOutcome;
+  }
+  const refusal = ProjectTypeWriteRefusalSchema.safeParse(body);
+  if (!refusal.success) {
+    reportTransportValidationFailure(callSite, refusal.error.issues);
+    throw new Error(`Failed to save project types (${response.status})`);
+  }
+  const { error, reason, conflictsWith } = refusal.data;
+  return conflictsWith
+    ? { ok: false, reason, message: error, conflictsWith }
+    : { ok: false, reason, message: error };
+}
+
+const JSON_HEADERS = { "Content-Type": "application/json" } as const;
 
 /**
  * HTTP transport. A body that fails the list-response schema is reported and
@@ -95,6 +174,43 @@ export const httpProjectTypesTransport: ProjectTypesTransport = {
       throw new Error("Invalid project types response shape");
     }
     return result.data as ProjectTypeList;
+  },
+
+  async create(spec) {
+    const response = await fetch("/api/project-types", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(spec),
+    });
+    return readWriteOutcome(
+      "project-types.create",
+      response,
+      ProjectTypeWriteSuccessSchema,
+    );
+  },
+
+  async update(id, spec) {
+    const response = await fetch(
+      `/api/project-types/${encodeURIComponent(id)}`,
+      { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(spec) },
+    );
+    return readWriteOutcome(
+      "project-types.update",
+      response,
+      ProjectTypeWriteSuccessSchema,
+    );
+  },
+
+  async remove(id) {
+    const response = await fetch(
+      `/api/project-types/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    return readWriteOutcome(
+      "project-types.remove",
+      response,
+      ProjectTypeDeleteSuccessSchema,
+    );
   },
 };
 

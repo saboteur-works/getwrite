@@ -211,7 +211,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 17, 19
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-8 (client), FR-10, FR-11 (copy flow), FR-12 (service). The native build keeps its static registry: write transport calls are not bundled for native (exclusion tests green).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Project Type Manager UI: Save, Save as copy, Delete, labels and alerts
 **What:** Add the Save, Save as copy and Delete controls, the "Built-in" / "Saved" text labels, the read-only id for a saved type, the delete confirmation and the `role="alert"` refusal and notice regions to the manager.
