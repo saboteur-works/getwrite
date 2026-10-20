@@ -1158,3 +1158,12 @@ describe("StartPage — project list status (no false empty state)", () => {
     expect(screen.getByText("No projects yet")).toBeInTheDocument();
   });
 });
+
+describe("StartPage — App Settings moved to the settings menu", () => {
+  it("has no App Settings button", () => {
+    renderStartPage();
+    expect(
+      screen.queryByRole("button", { name: "App Settings" }),
+    ).not.toBeInTheDocument();
+  });
+});

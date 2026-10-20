@@ -263,6 +263,7 @@ export default function AppShell({
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState<boolean>(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
     useState<boolean>(false);
+  const [isAppSettingsOpen, setIsAppSettingsOpen] = useState<boolean>(false);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] =
     useState<boolean>(false);
   const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
@@ -869,6 +870,10 @@ export default function AppShell({
         setIsSettingsMenuOpen(false);
         setIsPreferencesModalOpen(true);
         break;
+      case "app-settings":
+        setIsSettingsMenuOpen(false);
+        setIsAppSettingsOpen(true);
+        break;
       case "project-settings":
         setIsSettingsMenuOpen(false);
         setIsProjectSettingsOpen(true);
@@ -1188,6 +1193,8 @@ export default function AppShell({
                     onSaveDefaultRevisionName={handleSaveDefaultRevisionName}
                     isPreferencesModalOpen={isPreferencesModalOpen}
                     setIsPreferencesModalOpen={setIsPreferencesModalOpen}
+                    isAppSettingsOpen={isAppSettingsOpen}
+                    setIsAppSettingsOpen={setIsAppSettingsOpen}
                     isHelpModalOpen={isHelpModalOpen}
                     setIsHelpModalOpen={setIsHelpModalOpen}
                     isProjectTypesModalOpen={isProjectTypesModalOpen}

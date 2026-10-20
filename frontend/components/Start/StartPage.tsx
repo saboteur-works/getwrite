@@ -10,7 +10,7 @@
  * and local optimistic updates for create/rename/delete interactions.
  */
 import { useEffect, useMemo, useState } from "react";
-import { FolderPlus, Plus, FolderOpen, Import, Settings } from "lucide-react";
+import { FolderPlus, Plus, FolderOpen, Import } from "lucide-react";
 import Card from "../common/UI/Card/Card";
 import type {
   Project as CanonicalProject,
@@ -26,7 +26,6 @@ import type { UnusableProjectReason } from "../../src/lib/models/unusable-projec
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import ImportScrivenerDialog from "./ImportScrivenerDialog";
 import ImportDocxDialog from "./ImportDocxDialog";
-import AppSettingsDialog from "../AppSettings/AppSettingsDialog";
 import { toastService } from "../../src/lib/toast-service";
 import { downloadFile } from "../../src/lib/compile/download-file";
 import {
@@ -341,7 +340,6 @@ export default function StartPage({
   /** Controls the DOCX import dialog's visibility. */
   const [isDocxImportDialogOpen, setIsDocxImportDialogOpen] =
     useState<boolean>(false);
-  const [isAppSettingsOpen, setIsAppSettingsOpen] = useState<boolean>(false);
   /**
    * Whether the user chose to carry on without unlocking this session.
    *
@@ -599,14 +597,6 @@ export default function StartPage({
         />
       ) : null}
 
-      {/* Reachable with no login/account required (FR-14) — never gated on
-          `desktopBridge`/`isHostedAuthActive()`, unlike the import dialogs
-          above. */}
-      <AppSettingsDialog
-        isOpen={isAppSettingsOpen}
-        onClose={() => setIsAppSettingsOpen(false)}
-      />
-
       <CompilePreviewModal
         isOpen={compileTargetProjectId !== null}
         projectId={compileTargetProjectId ?? undefined}
@@ -837,16 +827,6 @@ export default function StartPage({
                       Import Word Document
                     </Button>
                   ) : null}
-
-                  <Button
-                    variant="secondary"
-                    onClick={() => setIsAppSettingsOpen(true)}
-                    title="App Settings"
-                    aria-label="App Settings"
-                  >
-                    <Settings size={16} aria-hidden="true" />
-                    App Settings
-                  </Button>
                 </div>
               </div>
             </aside>

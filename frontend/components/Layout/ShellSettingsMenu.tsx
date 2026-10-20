@@ -13,6 +13,7 @@ import {
   BookOpen,
   Archive,
   FileSliders,
+  MonitorCog,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 import Button from "../common/UI/Button/Button";
@@ -20,6 +21,7 @@ import useDismissableMenu from "../common/UI/hooks/useDismissableMenu";
 
 export type SettingsMenuAction =
   | "preferences"
+  | "app-settings"
   | "project-settings"
   | "project-type-manager"
   | "toggle-color-mode"
@@ -171,6 +173,12 @@ export default function ShellSettingsMenu({
                 icon={<Settings size={14} aria-hidden="true" />}
                 label="User Preferences"
                 onClick={() => onAction("preferences")}
+              />
+              <MenuItemButton
+                className="appshell-topbar-dropdown-item"
+                icon={<MonitorCog size={14} aria-hidden="true" />}
+                label="App Settings"
+                onClick={() => onAction("app-settings")}
               />
               {hasProject &&
                 projectScopedItems.map(({ icon, label, action }) => (

@@ -87,6 +87,8 @@ function makeDefaultProps(
     onSaveDefaultRevisionName: vi.fn(),
     isPreferencesModalOpen: false,
     setIsPreferencesModalOpen: vi.fn(),
+    isAppSettingsOpen: false,
+    setIsAppSettingsOpen: vi.fn(),
     isHelpModalOpen: false,
     setIsHelpModalOpen: vi.fn(),
     isProjectTypesModalOpen: false,
