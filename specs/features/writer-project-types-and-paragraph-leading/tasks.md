@@ -265,7 +265,8 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 22, 23, 24, 25, 26
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-25 (Part 1). Wording is a working copy.
-**Done:** [ ]
+**Done:** [x]
+**Task notes (implementor):** Handbook pages that name project types (not edited; scribe stage to reconcile): `docs/user/project-types.md`, `docs/user/handbook/organize/project-types.md` (says the manager has no save or delete control and edits are not kept; now untrue), `docs/user/handbook/index.md` (summary line), `docs/user/handbook/organize/start-page.md` (links to project types), `docs/user/handbook/write/editor-appearance.md` (template-set body text).
 
 ### Task 28: Final suites, Storybook stories and decorators
 **What:** Run every final suite on the branch, confirm every new or changed component has stories (and a decorator for any new context requirement), and record results against the Task 1 baseline.

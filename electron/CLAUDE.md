@@ -12,7 +12,7 @@ Paths are relative to `electron/` unless they start with `frontend/` or `docs/`.
 
 - Spawns `frontend/.next/standalone` (repo root, or `process.resourcesPath` when packaged) on the fixed port `PORT` in `src/server-config.ts` (7340; no override, no fallback). Bind env, window URL, readiness check, navigation guard, IPC sender check and displayed addresses all read it. Dev (`pnpm electron:dev`) uses it too; plain `pnpm dev` stays on 3000. Port blocks: ADR-023.
 - Start-up order: `port-in-use.ts` `createPortGuard` probes `127.0.0.1`, `::1`, `0.0.0.0`, `::` -> if anything listens, fork nothing and show a `data:` page naming the port (a probe error also refuses) -> fork -> `sharing/server-readiness.ts` `waitForServer` (with `readiness-identity.ts`, `readiness-http.ts`, `server-launch.ts` `runLaunchSequence`) polls `GET /api/sharing/ready?challenge=...` with no window header and accepts only the HMAC proof under a per-launch `GETWRITE_READINESS_KEY` -> only then install the window secret and load the local origin.
-- Env passed to the forked server: `GETWRITE_PROJECTS_DIR`, `HOSTNAME`/`GETWRITE_BIND`/`GETWRITE_SHARING` (from `buildServerBindEnv`), `GETWRITE_WINDOW_SECRET`, `GETWRITE_SHARING_DIR` (`userData`), `GETWRITE_READINESS_KEY` (server env only, separate from the window secret).
+- Env passed to the forked server: `GETWRITE_PROJECTS_DIR`, `HOSTNAME`/`GETWRITE_BIND`/`GETWRITE_SHARING` (from `buildServerBindEnv`), `GETWRITE_WINDOW_SECRET`, `GETWRITE_SHARING_DIR` (`userData`), `GETWRITE_SAVED_PROJECT_TYPES_DIR` (`<userData>/project-types`, app-wide, not in `workspace.json`), `GETWRITE_READINESS_KEY` (server env only, separate from the window secret).
 
 ## Projects location (`src/projects-dir.ts`, unit-tested)
 

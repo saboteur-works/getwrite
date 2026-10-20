@@ -737,7 +737,35 @@ export const HELP_TABS: HelpTabDefinition[] = [
         content: [
           "Open ",
           strong("Project Type Manager"),
-          " from the settings menu (gear icon) to browse the bundled project types and inspect their folders, resources, statuses, and editor settings. Edits made here are held in the session only and are not written back — project types are files under getwrite-config/templates/project-types/, so adding, changing, or removing one means editing those files directly.",
+          " from the settings menu (gear icon) to browse the bundled project types and your own, and to edit their folders, resources, statuses, and editor settings. Bundled types never change: ",
+          strong("Save as copy"),
+          " writes your edits as a new type of your own. For a type you saved, ",
+          strong("Save"),
+          " replaces it, ",
+          strong("Save as copy"),
+          " makes another, and ",
+          strong("Delete"),
+          " removes it after you confirm. ",
+          strong("New Project Type"),
+          " starts a blank draft; its ID can be changed until you first save it. A saved type appears in the new-project and Word import lists straight away.",
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          "Each type needs its own ID and its own name; a name that matches another type's name, ignoring capitals and surrounding spaces, is refused. If you leave the manager or pick another type while something has unsaved edits, GetWrite asks whether to ",
+          strong("Save"),
+          ", ",
+          strong("Discard"),
+          " or ",
+          strong("Keep editing"),
+          ".",
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          "On the desktop app, your types are kept in a project-types folder inside the app's data folder, shared by every workspace. If the app cannot save types in your setup, Save is refused with a message and nothing is written. If a saved file cannot be read, a notice says that saved types could not be read or used.",
         ],
       },
       {
