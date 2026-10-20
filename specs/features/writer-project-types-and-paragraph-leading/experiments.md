@@ -269,3 +269,52 @@ New context requirement: none was added. No decorator or `.storybook` file chang
  M specs/features/writer-project-types-and-paragraph-leading/experiments.md
  M specs/features/writer-project-types-and-paragraph-leading/tasks.md
 ```
+
+## Final suites (after Stage 6.5)
+
+Date: 2026-10-20. Branch `feat/writer-project-types-and-paragraph-leading`, main checkout, HEAD 704edeaf (Tasks 29 to 33 committed). Raw outputs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t34/`. Compared with the "Final suites (Task 28)" table above.
+
+| Item | Command (cwd) | Observed | Task 28 |
+| --- | --- | --- | --- |
+| frontend typecheck | `pnpm typecheck` (`frontend/`) | exit 0 | exit 0 |
+| frontend lint | `pnpm lint` (`frontend/`) | 393 problems: 0 errors, 393 warnings; exit 0 | 393 / 0 errors |
+| frontend tests | `pnpm test:ci` (`frontend/`) | 628 files passed; 7448 passed, 2 expected fail, 1 skipped (7451), 0 failed; exit 0 | 626 files; 7425 passed, 2 expected fail, 1 skipped |
+| frontend e2e | `pnpm test:e2e` (`frontend/`, outside the sandbox; 6006 empty beforehand; `pnpm storybook` never started) | exit 0; 219 passed, 1 skipped, 0 failed, 0 flaky | 218 passed, 1 flaky, 1 skipped |
+| knip | `pnpm knip` (repo root) | exit 1, 407 findings: unused files 49, unused dependencies 1, devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 161, unused exported types 168, duplicate exports 14 | exit 1, 407 findings (same per-category counts) |
+| electron typecheck | `pnpm typecheck` (`electron/`) | exit 0 | exit 0 |
+| electron tests | `pnpm test` (`electron/`) | 33 files; 516 passed, 0 failed; exit 0. `tests/worker-bundles-load.test.ts` alone: 2 passed (the test builds the bundles itself in `beforeAll`) | 32 files; 514 passed |
+| electron worker | `pnpm build:worker` (`electron/`) | exit 0 (both bundles 2.0mb) | exit 0 |
+| CLI build | `pnpm build` (`cli/`) | exit 0 (`dist/bin/getwrite-cli.cjs` 2.3mb) | exit 0 |
+| CLI tests | `pnpm test` (`cli/`, outside the sandbox) | 23 files, 153 passed, 0 failed; exit 0 | 23 files, 153 passed |
+
+- knip comparison basis: the Task 28 final knip output (`scratchpad/t28/knip2.txt`) against this run, both with `:line:col` stripped and sorted. The two are identical line for line (422 lines each), so there is no new finding and no removed one. This is a comparison against Task 28's final state, not against a fresh run on the Task 1 baseline commit (no run on another commit was made; the main worktree was not switched). The CLI stub is gone: `cli/src/lib/server-only-stub.ts` does not exist and `knip.json` has no entry naming it.
+- e2e: the Task 28 flake (`resource-context-menu.e2e.spec.ts:41`) did not occur in this run; no rerun was needed. No known flake (entity-roster, search-route, schemaManagerRestriction a11y, writinglogfooter a11y) failed in `test:ci`.
+- lsof `-nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN`: before, no listener (exit 1, empty), so the user's GetWrite app that held 7340 during Task 28 was not running. After the last command (packaged probe stopped), none.
+- Processes not started by this task, left alone: `next dev` pids 3763 (started 2026-10-19 20:33) and 15954 (started 2026-10-20 10:52), with their `next-server` children and `frontend/.next-qa/getwrite-cli-qa-server-*` directories. They are not on 3000 and were running before this task's CLI run. This task's own CLI run left no process behind.
+- `frontend/tsconfig.json`: `git diff --stat` empty after the CLI suite, after the frontend build and at the end.
+- No story, decorator or test was changed by this task.
+
+## Packaged-app re-check
+
+Date: 2026-10-20. Throwaway build, nothing under the owner's folders or the repo's `projects/` read or written. Build: `pnpm electron:build` (repo root), then from `electron/`: `pnpm exec electron-builder --config electron-builder.yml --dir --mac --arm64 -c.mac.identity=null -c.productName=GetWriteF90Probe -c.appId=works.saboteur.getwrite.f90probe -c.extraMetadata.name=getwrite-f90probe -c.directories.output=/tmp/getwrite-f90/dist` (both exit 0; unpacked, unsigned). Launched with `--user-data-dir=/tmp/getwrite-f90/userData` and a seeded `workspace.json` pointing at `/tmp/getwrite-f90/projects`, driven by the Task 28-era Playwright driver (copied, output directory changed). 7340 was free before launch. The Word import file picker was replaced in the main process (`dialog.showOpenDialog` returns `frontend/tests/fixtures/docx/multi-heading.docx`, copied to `/tmp/getwrite-f90/fixtures/`); the import itself, the worker fork and the project creation were the app's own.
+
+In-app path assertion, before any action (`app.getPath`): `userData` = `/private/tmp/getwrite-f90/userData`, `logs` = `/Users/jedaisaboteur/Library/Logs/getwrite-f90probe`, `isPackaged` = true, name `getwrite-f90probe`, `resourcesPath` = `/private/tmp/getwrite-f90/dist/mac-arm64/GetWriteF90Probe.app/Contents/Resources`; under a protected folder: false; result PASS.
+
+| Check | Result | Observed values | Finding |
+| --- | --- | --- | --- |
+| (a) Word import, built-in type (Novel) | MEASURED, succeeded | Dialog showed "The Word document was imported successfully."; `/tmp/getwrite-f90/projects/c7df4dbc-...` created with `project.json` name "Import Novel", `projectType` "novel"; app log: "Forking DOCX import worker: .../Resources/docx-import-worker.cjs"; no "exited unexpectedly" message | F-1 |
+| (a) Word import, saved type | MEASURED, succeeded | After (c) saved "Probe Novel" (id `novel-copy`), the dialog's type list was Article, Blank, Game Writing, Novel, Poetry and Lyrics, Serial, "Probe Novel (Saved)"; import with it showed the same success text; project `6fb110c5-...` name "Import Saved", `projectType` "novel-copy" | F-1 |
+| (b) Escape on the manager with unsaved changes opens the prompt and the draft is kept | MEASURED, did NOT hold, 0 of 3 | In each of 3 attempts (saved type "Probe Novel" selected, Name field edited, list row showing "UNSAVED CHANGES", Name field focused, one Escape): after 800 ms no dialog was open (neither the manager nor the prompt); the edited Name field was gone; reopening the manager showed the saved name "Probe Novel", so the edit was lost. The same edit followed by the manager's Close button opened the prompt ("Unsaved changes") in 3 of 3 | F-5 |
+| (b) Escape on the prompt leaves the manager open | MEASURED, did NOT hold, 0 of 3 | In each of 3 attempts (prompt opened with the Close button, one Escape): afterwards zero dialogs, the manager was closed and the draft lost | F-5 |
+| (c) Save as copy with "Probe Novel" typed | MEASURED, held | Novel selected, Name field set to "Probe Novel", Save as copy: status "Saved a copy as “Probe Novel”."; `userData/project-types/novel-copy.json` has `id` "novel-copy", `name` "Probe Novel"; the list shows "Probe Novel / novel-copy.json / Saved" | F-3 |
+| (d) Name clash | MEASURED, held | Saved type's Name set to "Novel" and Save pressed: alert text "Novel (built-in) already uses this name."; the stored file's name stayed "Probe Novel" | F-4 |
+
+Check (b) is the one result of this task that differs from what Tasks 29 to 33 aimed at. The built output was checked and contains the Task 30 code: the packaged client chunk holds the prompt's `onKeyDown:e=>{"Escape"===e.key&&e.stopPropagation()}` and the manager's `registerCloseGuard`; `pnpm test:ci` (including `ProjectTypesManagerPage.test.tsx` and `shellModalCoordinator.test.tsx`) and `pnpm test:e2e` pass. So the unit and Storybook runs pass while the packaged window shows the F-5 behaviour again. No cause is recorded. Experiments that would discriminate: (1) press Escape in the same state against the dev server in plain Chromium (Playwright, no Electron) to separate Electron from the web build; (2) log, at the dialog's `onOpenChange` and in the close guard, whether the guard is called and what it returns when Escape is pressed in the packaged window; (3) press Escape with the focus on the dialog container rather than an input. FR-17 and Task 30 are therefore not shown met in the packaged app; they are shown met only at the jsdom and Storybook level.
+
+Cleanup: the app was closed through the driver (all seven recorded pids exited after `app.close`; `lsof` on 7340 afterwards: none). Deleted: `/tmp/getwrite-f90`, `~/Library/Logs/getwrite-f90probe`; `~/Library/Preferences/works.saboteur.getwrite.f90probe.plist` did not exist. Screenshots and logs kept only under the scratchpad `t34/` directory.
+
+### git status --short (after this task)
+
+```
+ M specs/features/writer-project-types-and-paragraph-leading/experiments.md
+```
