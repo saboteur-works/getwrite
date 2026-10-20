@@ -687,6 +687,36 @@ export async function addGroup(
 }
 
 /**
+ * Sets a group's display label. The label is trimmed; the group id is never
+ * changed, so built-in groups may be relabelled too.
+ *
+ * Throws if the group does not exist, the trimmed label is blank, or another
+ * group already uses the label (compared trimmed and case-insensitively).
+ */
+export async function renameGroup(
+  projectRoot: string,
+  groupId: string,
+  newLabel: string,
+): Promise<MetadataSchema> {
+  return withLockedSchema(projectRoot, (schema) => {
+    const group = findGroup(schema, groupId);
+    const label = newLabel.trim();
+    if (label === "") throw new Error("Group name must not be blank.");
+    const clash = schema.groups.find(
+      (g) =>
+        g.id !== groupId &&
+        g.label.trim().toLowerCase() === label.toLowerCase(),
+    );
+    if (clash) {
+      throw new Error(
+        `A group named \u201c${clash.label.trim()}\u201d already exists.`,
+      );
+    }
+    group.label = label;
+  });
+}
+
+/**
  * Removes a group by ID, along with all of its fields.
  *
  * Throws if the group does not exist.
@@ -1116,6 +1146,7 @@ const metadataSchema = {
   addGroup,
   removeGroup,
   reorderGroups,
+  renameGroup,
   renameFieldKey,
 };
 

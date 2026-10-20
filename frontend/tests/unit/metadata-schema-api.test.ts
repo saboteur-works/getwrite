@@ -1041,3 +1041,58 @@ describe("POST/GET /api/project/metadata-schema — locked-access rethrow (Featu
     }
   });
 });
+
+describe("rename-group action", () => {
+  it("dispatches to renameGroup and returns the updated schema", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const schema = await dispatchMetadataSchemaAction(dir, {
+      action: "rename-group",
+      groupId: GROUP_ID,
+      newLabel: "Renamed",
+    });
+    expect(schema.groups[0].label).toBe("Renamed");
+  });
+
+  it("the route answers 400 with the reason for a blank name", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-mschema-route-"),
+    );
+    const projectId = generateUUID();
+    const projectPath = path.join(projectsDir, projectId);
+    await fs.mkdir(projectPath, { recursive: true });
+    const proj = createProject({ name: "route-test" });
+    await fs.writeFile(
+      path.join(projectPath, PROJECT_FILENAME),
+      JSON.stringify(
+        { ...proj, config: { ...proj.config, metadataSchema: baseSchema() } },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    try {
+      const { POST } =
+        await import("../../app/api/project/metadata-schema/route");
+      const res = await POST(
+        new Request("http://localhost/api/project/metadata-schema", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "rename-group",
+            projectId,
+            groupId: GROUP_ID,
+            newLabel: "  ",
+          }),
+        }) as never,
+      );
+      const json = (await res.json()) as { details: string };
+      expect(res.status).toBe(400);
+      expect(json.details).toBe("Group name must not be blank.");
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = originalEnv;
+      await removeDirRetry(projectsDir);
+    }
+  });
+});

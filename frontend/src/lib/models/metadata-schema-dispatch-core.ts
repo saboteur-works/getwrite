@@ -33,6 +33,7 @@ import {
   clearField,
   reorderFields,
   renameField,
+  renameGroup,
   updateFieldOptions,
   updateFieldOptionsWithMigration,
   updateRefProperties,
@@ -136,6 +137,12 @@ interface RemoveGroupRequest {
   groupId: string;
 }
 
+interface RenameGroupRequest {
+  action: "rename-group";
+  groupId: string;
+  newLabel: string;
+}
+
 interface ReorderGroupsRequest {
   action: "reorder-groups";
   newGroupIdOrder: string[];
@@ -202,6 +209,7 @@ export type MetadataSchemaDispatchRequest =
   | UpdateFieldOptionsRequest
   | AddGroupRequest
   | RemoveGroupRequest
+  | RenameGroupRequest
   | ReorderGroupsRequest
   | RenameFieldKeyRequest
   | ChangeFieldTypeRequest
@@ -220,8 +228,8 @@ export class UnknownMetadataSchemaActionError extends Error {
     super(
       "Expected one of: add-field, remove-field, reorder-fields, " +
         "rename-field, update-field-options, update-ref-properties, " +
-        "change-field-type, add-group, remove-group, reorder-groups, " +
-        "rename-key",
+        "change-field-type, add-group, remove-group, rename-group, " +
+        "reorder-groups, rename-key",
     );
     this.name = "UnknownMetadataSchemaActionError";
   }
@@ -294,6 +302,10 @@ export async function dispatchMetadataSchemaAction(
 
     case "remove-group": {
       return removeGroup(projectRoot, request.groupId);
+    }
+
+    case "rename-group": {
+      return renameGroup(projectRoot, request.groupId, request.newLabel);
     }
 
     case "reorder-groups": {

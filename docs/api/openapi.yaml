@@ -837,7 +837,7 @@ paths:
         `reorder-fields`, `rename-field`, `update-field-options`,
         `update-field-options-with-migration`, `update-ref-properties`,
         `update-field-applies-to`, `change-field-type`, `change-field-type-with-migration`, `rename-key`,
-        `add-group`, `remove-group`, `reorder-groups`.
+        `add-group`, `remove-group`, `rename-group`, `reorder-groups`.
 
         Additional fields depend on the action (e.g. `groupId`, `fieldKey`, `field`,
         `newLabel`, `options`, `newType`, `migrations`, `group`, `newKeyOrder`,
@@ -870,6 +870,7 @@ paths:
                       rename-key,
                       add-group,
                       remove-group,
+                      rename-group,
                       reorder-groups,
                     ]
                 projectId:
@@ -887,7 +888,7 @@ paths:
                   schema:
                     $ref: "#/components/schemas/MetadataSchema"
         "400":
-          description: Invalid JSON, invalid action, invalid field key, or a client-side operation error (locked/not found/already exists)
+          description: Invalid JSON, invalid action, invalid field key, or a client-side operation error (locked/not found/already exists/must not be blank)
           content:
             application/json:
               schema:

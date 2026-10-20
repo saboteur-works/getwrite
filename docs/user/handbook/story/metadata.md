@@ -35,6 +35,8 @@ In the Metadata Fields manager, a built-in field other than Status can have its 
 
 Beyond these, you can add your own **custom fields**: **+ Add field** at the bottom of the sidebar asks for a name, a label, a type and a group. The types are Text, Number, Date, Boolean (yes/no), Select and Multi (single- or multiple-choice, with their options typed one per line in the manager), and Ref and Multi Ref (links to other resources). Each type took a value, and the values were still there after a reload.
 
+Not yet in a release: in the Metadata Fields manager, click a group's name to rename it, including the built-in groups. **Enter** or clicking away saves and **Escape** cancels. The name is saved without surrounding spaces; a blank name, or one another group already uses (ignoring capitals), is refused with a message beside the field. Renaming changes only the name shown, never the fields in the group. (Checked by unit tests, not in a running app.)
+
 Fields that link to other resources suggest resources by name. A **Ref** field suggests resources from the whole project. A **Multi Ref** field has a **Folder scope** setting in the Metadata Fields manager — **Any folder** by default, or one folder, with an **Include subfolders** option. With the scope set to a Characters folder, typing `a` offered only the resources in that folder (Elena and Mara); a Ref field has no such setting.
 
 Image and audio resources carry the same editable fields and tags as text documents, with a read-only technical section shown above them: for an image its dimensions and EXIF data (a test file with the EXIF tags Make and Model showed `64 × 48 px`, `Canon` and `TestCam`), and for audio its format and duration (an MP3 of two seconds showed `MP3` and `2s`).
