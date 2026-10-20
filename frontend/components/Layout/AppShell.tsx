@@ -806,8 +806,9 @@ export default function AppShell({
       }
 
       if (event.key === "Escape") {
+        // The Project Type Manager is not closed here: its dialog owns Escape
+        // through the close guard, which asks first when edits are unsaved.
         setIsPreferencesModalOpen(false);
-        setIsProjectTypesModalOpen(false);
         setIsHelpModalOpen(false);
         setIsResourcePaletteOpen(false);
       }
