@@ -380,3 +380,278 @@ describe("ProjectTypesManagerPage notice", () => {
     await runAxe(container);
   });
 });
+
+describe("ProjectTypesManagerPage unsaved-changes prompt on every exit path", () => {
+  const promptName = /unsaved changes/i;
+
+  function renderWith(
+    transport: ProjectTypesTransport,
+    extra: {
+      onClose?: () => void;
+      registerCloseGuard?: (guard: (() => boolean) | null) => void;
+    } = {},
+  ): ReturnType<typeof render> {
+    return render(
+      <ProjectTypesManagerPage
+        initialTemplates={[builtIn, saved]}
+        resolveTransport={async () => transport}
+        {...extra}
+      />,
+    );
+  }
+
+  it("select another item: prompts when an item has changes, Keep editing returns focus to the row", async () => {
+    renderWith(makeTransport());
+    startDraft("fresh", "Fresh");
+    const row = screen.getByRole("button", { name: /Mine/ });
+    row.focus();
+    fireEvent.click(row);
+
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(row));
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+  });
+
+  it("select another item: no prompt when nothing has changed", () => {
+    renderWith(makeTransport());
+    select("Mine");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByLabelText("ID")).toHaveValue("mine");
+  });
+
+  it("select another item: Discard drops every edit and moves to the chosen item", async () => {
+    renderWith(makeTransport());
+    select("Mine");
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Mine edited" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Novel/ }));
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Discard" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByLabelText("ID")).toHaveValue("novel");
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    select("Mine");
+    expect(screen.getByLabelText("Name")).toHaveValue("Mine");
+  });
+
+  it("select another item: Save saves the draft, then moves to the chosen item", async () => {
+    const transport = makeTransport();
+    renderWith(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: /Novel/ }));
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByLabelText("ID")).toHaveValue("novel"),
+    );
+  });
+
+  it("Escape in the prompt means Keep editing", async () => {
+    renderWith(makeTransport());
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: /Novel/ }));
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+  });
+
+  it("page Close: prompts when changed and calls onClose only after Discard", async () => {
+    const onClose = vi.fn();
+    renderWith(makeTransport(), { onClose });
+    startDraft("fresh", "Fresh");
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    closeButton.focus();
+    fireEvent.click(closeButton);
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(closeButton));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(closeButton);
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: promptName })).getByRole(
+        "button",
+        { name: "Discard" },
+      ),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("page Close: no prompt when nothing has changed", () => {
+    const onClose = vi.fn();
+    renderWith(makeTransport(), { onClose });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("page Close: Save then closes", async () => {
+    const onClose = vi.fn();
+    const transport = makeTransport();
+    renderWith(transport, { onClose });
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: promptName })).getByRole(
+        "button",
+        { name: "Save" },
+      ),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(transport.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("modal dismissal: the registered guard blocks the dismissal and prompts when changed", async () => {
+    let guard: (() => boolean) | null = null;
+    const onClose = vi.fn();
+    renderWith(makeTransport(), {
+      onClose,
+      registerCloseGuard: (next) => {
+        guard = next;
+      },
+    });
+    expect(guard).not.toBeNull();
+    expect(guard!()).toBe(false);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    startDraft("fresh", "Fresh");
+    let isBlocked = false;
+    act(() => {
+      isBlocked = guard!();
+    });
+    expect(isBlocked).toBe(true);
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("browser back: prompts when changed, Keep editing stays, Discard goes back", async () => {
+    const back = vi
+      .spyOn(window.history, "back")
+      .mockImplementation(() => undefined);
+    renderWith(makeTransport());
+    startDraft("fresh", "Fresh");
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    expect(back).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: promptName })).getByRole(
+        "button",
+        { name: "Discard" },
+      ),
+    );
+    await waitFor(() => expect(back).toHaveBeenCalled());
+    back.mockRestore();
+  });
+
+  it("browser back: nothing is intercepted when nothing has changed", () => {
+    const back = vi
+      .spyOn(window.history, "back")
+      .mockImplementation(() => undefined);
+    renderWith(makeTransport());
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    back.mockRestore();
+  });
+
+  it("window or tab close: beforeunload is cancelled only while an item has changes", () => {
+    renderWith(makeTransport());
+    const clean = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+
+    startDraft("fresh", "Fresh");
+    const dirty = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(dirty);
+    expect(dirty.defaultPrevented).toBe(true);
+  });
+
+  it("Save refused by a 409 keeps the writer in the manager with the draft intact", async () => {
+    const onClose = vi.fn();
+    const transport = makeTransport({
+      create: vi.fn(async () => ({
+        ok: false as const,
+        reason: "id-clash" as const,
+        message: "A project type with the id fresh already exists.",
+      })),
+    });
+    renderWith(transport, { onClose });
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: promptName })).getByRole(
+        "button",
+        { name: "Save" },
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "already exists",
+    );
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("ID")).toHaveValue("fresh");
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+  });
+
+  it("Save refused as saving-unavailable keeps the writer on the draft instead of moving", async () => {
+    const transport = makeTransport({
+      create: vi.fn(async () => ({
+        ok: false as const,
+        reason: "saving-unavailable" as const,
+        message: "Saving project types is not available here.",
+      })),
+    });
+    renderWith(transport);
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: /Novel/ }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: promptName })).getByRole(
+        "button",
+        { name: "Save" },
+      ),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("not available");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByLabelText("ID")).toHaveValue("fresh");
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+  });
+
+  it("the prompt has no axe violations", async () => {
+    renderWith(makeTransport());
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: /Novel/ }));
+    await screen.findByRole("dialog", { name: promptName });
+    await runAxe(document.body);
+  });
+});

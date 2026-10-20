@@ -229,7 +229,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 22
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-17 (US-3), FR-26.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: New-project dialog and manager loader read the resolver list
 **What:** Make `CreateProjectModal` and `ShellProjectTypeLoader` list built-in and saved types from the resolver response, re-read on each open, mark saved types and show the notice.

@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useRef } from "react";
+
 import type {
   AnyResource,
   Folder,
@@ -209,6 +211,13 @@ export default function ShellModalCoordinator({
   onBuildCompilePreview,
   onConfirmCompile,
 }: ShellModalCoordinatorProps): JSX.Element {
+  const projectTypesCloseGuard = useRef<(() => boolean) | null>(null);
+  const registerProjectTypesCloseGuard = useCallback(
+    (guard: (() => boolean) | null): void => {
+      projectTypesCloseGuard.current = guard;
+    },
+    [],
+  );
   return (
     <>
       <ConfirmDialog
@@ -380,7 +389,11 @@ export default function ShellModalCoordinator({
 
       <Dialog
         open={isProjectTypesModalOpen}
-        onOpenChange={onDialogClose(setIsProjectTypesModalOpen)}
+        onOpenChange={(open) => {
+          // The manager may hold unsaved edits; it prompts instead of closing.
+          if (!open && projectTypesCloseGuard.current?.()) return;
+          onDialogClose(setIsProjectTypesModalOpen)(open);
+        }}
       >
         <DialogContent maxWidth="max-w-[1200px]" aria-describedby={undefined}>
           {isProjectTypesLoading ? (
@@ -402,6 +415,7 @@ export default function ShellModalCoordinator({
               initialTemplates={projectTypeTemplates}
               listNotice={projectTypesNotice}
               renderInModal
+              registerCloseGuard={registerProjectTypesCloseGuard}
               onClose={() => setIsProjectTypesModalOpen(false)}
             />
           )}

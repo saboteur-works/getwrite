@@ -10,7 +10,7 @@
  * - Resolve dark/light mode from selected project metadata.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -32,6 +32,7 @@ import Button from "../common/UI/Button/Button";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ProjectTypeEditorForm from "./ProjectTypeEditorForm";
 import ProjectTypeListPane from "./ProjectTypeListPane";
+import UnsavedChangesPrompt from "./UnsavedChangesPrompt";
 import {
   describeItemOrigin,
   useProjectTypeDraftService,
@@ -60,7 +61,20 @@ interface ProjectTypesManagerPageProps {
   listNotice?: string | null;
   /** Resolves the transport used to save, delete and re-read the list. */
   resolveTransport?: () => Promise<ProjectTypesTransport>;
+  /**
+   * Lets a host that owns the modal's own dismissal (Escape, outside click)
+   * ask the manager first. The guard returns true when it has taken over the
+   * dismissal by showing the unsaved-changes prompt; false when the host may
+   * close. Called with null when the manager unmounts.
+   */
+  registerCloseGuard?: (guard: (() => boolean) | null) => void;
 }
+
+/** Where the writer was heading when the unsaved-changes prompt interrupted. */
+type PendingExit =
+  | { kind: "select"; key: string }
+  | { kind: "close" }
+  | { kind: "back" };
 
 /** What a refused or failed action tells the writer, and where. */
 interface ActionFeedback {
@@ -106,6 +120,7 @@ export default function ProjectTypesManagerPage({
   renderInModal = false,
   listNotice = null,
   resolveTransport = resolveProjectTypesTransport,
+  registerCloseGuard,
 }: ProjectTypesManagerPageProps): JSX.Element {
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -144,6 +159,7 @@ export default function ProjectTypesManagerPage({
     handleSaveAsCopy,
     handleDelete,
     refreshFromList,
+    discardChanges,
   } = useProjectTypeDraftService(initialTemplates, resolveTransport);
 
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
@@ -220,9 +236,25 @@ export default function ProjectTypesManagerPage({
     await settle(result, definition, `Deleted \u201C${definition.name}\u201D.`);
   };
 
+  const dirtyItems = items.filter((item) => item.hasChanges);
+  const hasAnyChanges = dirtyItems.length > 0;
+  const [pendingExit, setPendingExit] = useState<PendingExit | null>(null);
+  const [isResumingAfterSave, setIsResumingAfterSave] = useState(false);
+  const hasChangesRef = useRef(hasAnyChanges);
+  hasChangesRef.current = hasAnyChanges;
+  // True while a history entry pushed by this page sits above the page's own.
+  const sentinelRef = useRef(false);
+  // The control focused when the prompt was requested; focus returns to it.
+  const openerRef = useRef<HTMLElement | null>(null);
+
   const handleCloseManager = (): void => {
     if (onClose) {
       onClose();
+      return;
+    }
+    if (sentinelRef.current) {
+      sentinelRef.current = false;
+      window.history.go(-2);
       return;
     }
     if (window.history.length > 1) {
@@ -231,6 +263,135 @@ export default function ProjectTypesManagerPage({
     }
     router.push("/");
   };
+
+  const performExit = (exit: PendingExit): void => {
+    if (exit.kind === "select") setSelectedKey(exit.key);
+    else if (exit.kind === "close") handleCloseManager();
+    else window.history.back();
+  };
+
+  /** Runs the exit, or asks first when any item has unsaved edits. */
+  const requestExit = (exit: PendingExit): void => {
+    openerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    if (!hasAnyChanges) {
+      performExit(exit);
+      return;
+    }
+    const firstDirty = dirtyItems[0];
+    if (firstDirty && !selectedItem?.hasChanges) setSelectedKey(firstDirty.key);
+    setPendingExit(exit);
+  };
+
+  const keepEditing = (): void => {
+    if (pendingExit?.kind === "back" && !sentinelRef.current) {
+      window.history.pushState(window.history.state, "");
+      sentinelRef.current = true;
+    }
+    setIsResumingAfterSave(false);
+    setPendingExit(null);
+  };
+
+  const discardAndExit = (): void => {
+    const exit = pendingExit;
+    discardChanges();
+    setFeedback(null);
+    setPendingExit(null);
+    if (exit) performExit(exit);
+  };
+
+  const saveAndExit = async (): Promise<void> => {
+    if (!selectedItem) return;
+    const { definition } = selectedItem;
+    const result = await handleSave();
+    if (result === null) return;
+    if (!result.ok) {
+      setStatus("");
+      setFeedback(feedbackFor(definition, result));
+      keepEditing();
+      return;
+    }
+    await settle(
+      result,
+      definition,
+      `Saved \u201C${result.item.definition.name}\u201D.`,
+    );
+    setIsResumingAfterSave(true);
+  };
+
+  // After a prompt Save, carry on once no item has edits; otherwise offer the
+  // next item with edits.
+  useEffect(() => {
+    if (!isResumingAfterSave || isWriting || !pendingExit) return;
+    setIsResumingAfterSave(false);
+    if (hasAnyChanges) {
+      const next = items.find((item) => item.hasChanges);
+      if (next && next.key !== selectedKey) setSelectedKey(next.key);
+      return;
+    }
+    const exit = pendingExit;
+    setPendingExit(null);
+    performExit(exit);
+    // performExit and the hook setters are recreated each render; the state
+    // read here is what triggers the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isResumingAfterSave, isWriting, items]);
+
+  // Browser or OS window and tab close: the browser's own confirmation.
+  useEffect(() => {
+    if (!hasAnyChanges) return undefined;
+    const onBeforeUnload = (event: BeforeUnloadEvent): void => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasAnyChanges]);
+
+  // Browser back: while edits exist a history entry sits above the page's own,
+  // so Back lands on the page and the prompt can appear before leaving.
+  useEffect(() => {
+    if (hasAnyChanges && !sentinelRef.current) {
+      window.history.pushState(window.history.state, "");
+      sentinelRef.current = true;
+    }
+  }, [hasAnyChanges]);
+
+  useEffect(() => {
+    const onPopState = (): void => {
+      if (!sentinelRef.current) return;
+      sentinelRef.current = false;
+      if (hasChangesRef.current) setPendingExit({ kind: "back" });
+      else window.history.back();
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // In a modal the page stays mounted underneath; remove the entry we pushed.
+  useEffect(
+    () => () => {
+      if (renderInModal && sentinelRef.current) {
+        sentinelRef.current = false;
+        window.history.back();
+      }
+    },
+    [renderInModal],
+  );
+
+  // The modal host asks before it dismisses the dialog (Escape, outside click).
+  const closeGuardRef = useRef<() => boolean>(() => false);
+  closeGuardRef.current = (): boolean => {
+    if (!hasAnyChanges) return false;
+    requestExit({ kind: "close" });
+    return true;
+  };
+  useEffect(() => {
+    registerCloseGuard?.(() => closeGuardRef.current());
+    return () => registerCloseGuard?.(null);
+  }, [registerCloseGuard]);
 
   // Bound the manager to a definite height so the list and editor panes scroll
   // internally instead of growing the page. In a modal `main` has no flex
@@ -263,7 +424,7 @@ export default function ProjectTypesManagerPage({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleCloseManager}
+            onClick={() => requestExit({ kind: "close" })}
             className="rounded-md border border-gw-primary bg-transparent px-3 py-2 text-sm font-medium text-gw-primary hover:bg-gw-chrome2 transition-colors duration-150"
           >
             Close
@@ -289,7 +450,10 @@ export default function ProjectTypesManagerPage({
         <ProjectTypeListPane
           items={items}
           selectedKey={selectedKey}
-          onSelectKey={setSelectedKey}
+          onSelectKey={(key) => {
+            if (key === selectedKey) return;
+            requestExit({ kind: "select", key });
+          }}
           onCreateProjectType={handleCreateProjectType}
         />
 
@@ -385,6 +549,20 @@ export default function ProjectTypesManagerPage({
         isConfirmDisabled={isWriting}
         onConfirm={() => void runDelete()}
         onCancel={() => setIsConfirmingDelete(false)}
+      />
+      <UnsavedChangesPrompt
+        isOpen={pendingExit !== null}
+        itemNames={dirtyItems.map(
+          (item) =>
+            item.definition.name.trim() ||
+            item.definition.id.trim() ||
+            "Untitled",
+        )}
+        isSaving={isWriting}
+        returnFocusTo={openerRef.current}
+        onSave={() => void saveAndExit()}
+        onDiscard={discardAndExit}
+        onKeepEditing={keepEditing}
       />
     </main>
   );

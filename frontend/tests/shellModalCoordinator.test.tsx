@@ -1,8 +1,12 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: vi.fn(), push: vi.fn() }),
+}));
+
 import ShellModalCoordinator from "../components/Layout/ShellModalCoordinator";
 import type { ShellModalCoordinatorProps } from "../components/Layout/ShellModalCoordinator";
 import projectReducer from "../src/store/projectsSlice";
@@ -244,5 +248,58 @@ describe("ShellModalCoordinator — close-project confirm dialog", () => {
       />,
     );
     expect(document.querySelector(".sync-blockers-list")).toBeNull();
+  });
+});
+
+describe("ShellModalCoordinator — project types modal dismissal (FR-17)", () => {
+  const templates = [
+    {
+      fileName: "mine.json",
+      source: "saved" as const,
+      definition: {
+        id: "mine",
+        name: "Mine",
+        description: "",
+        folders: [{ name: "Workspace" }],
+      },
+    },
+  ];
+
+  function renderOpen(setOpen: (open: boolean) => void): void {
+    render(
+      <Provider store={makeStore()}>
+        <ShellModalCoordinator
+          {...makeDefaultProps({
+            isProjectTypesModalOpen: true,
+            setIsProjectTypesModalOpen: setOpen,
+            projectTypeTemplates: templates,
+          })}
+        />
+      </Provider>,
+    );
+  }
+
+  it("Escape closes the modal when nothing has changed", () => {
+    const setOpen = vi.fn();
+    renderOpen(setOpen);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(setOpen).toHaveBeenCalledWith(false);
+  });
+
+  it("Escape with unsaved edits shows the prompt and does not close the modal", async () => {
+    const setOpen = vi.fn();
+    renderOpen(setOpen);
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Mine edited" },
+    });
+    fireEvent.keyDown(screen.getAllByRole("dialog")[0], { key: "Escape" });
+
+    expect(
+      await screen.findByRole("dialog", { name: /unsaved changes/i }),
+    ).toBeInTheDocument();
+    expect(setOpen).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(setOpen).toHaveBeenCalledWith(false));
   });
 });

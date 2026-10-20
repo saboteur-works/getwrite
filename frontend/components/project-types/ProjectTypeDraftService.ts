@@ -237,6 +237,20 @@ export function mergeListIntoItems(
   return [...kept, ...fromServer];
 }
 
+/**
+ * Drops every unsaved edit: an edited item returns to its last loaded
+ * definition, an unsaved draft is removed, other items are untouched.
+ */
+export function discardAllEdits(
+  items: ProjectTypeListItem[],
+): ProjectTypeListItem[] {
+  return items.flatMap((item): ProjectTypeListItem[] => {
+    if (!item.hasChanges) return [item];
+    if (item.fileName === undefined || item.baseline === undefined) return [];
+    return [{ ...item, definition: item.baseline, hasChanges: false }];
+  });
+}
+
 function isSavedItem(item: ProjectTypeListItem): boolean {
   return item.fileName !== undefined && item.source === "saved";
 }
@@ -477,6 +491,8 @@ export interface ProjectTypeDraftServiceState {
   handleDelete: () => Promise<DraftDeleteResult | null>;
   /** Replaces unedited items with the server's list; edits and drafts stay. */
   refreshFromList: (list: ProjectTypeList) => void;
+  /** Drops every unsaved edit and removes unsaved drafts. */
+  discardChanges: () => void;
 }
 
 /**
@@ -698,9 +714,14 @@ export function useProjectTypeDraftService(
     setItems((previous) => mergeListIntoItems(previous, list));
   };
 
+  const discardChanges = (): void => {
+    setItems((previous) => discardAllEdits(previous));
+  };
+
   return {
     isWriting,
     refreshFromList,
+    discardChanges,
     handleSave,
     handleSaveAsCopy,
     handleDelete,

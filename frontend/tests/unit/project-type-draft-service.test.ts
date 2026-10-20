@@ -8,6 +8,7 @@ import {
   deleteDraftItem,
   describeItemOrigin,
   mergeListIntoItems,
+  discardAllEdits,
   type ProjectTypeListItem,
 } from "../../components/project-types/ProjectTypeDraftService";
 import type {
@@ -460,5 +461,49 @@ describe("describeItemOrigin and mergeListIntoItems", () => {
       savedStatus: "ok",
     });
     expect(merged).toEqual([]);
+  });
+});
+
+describe("discardAllEdits", () => {
+  const baseline: ProjectTypeDefinition = {
+    id: "mine",
+    name: "Mine",
+    description: "",
+    folders: [{ name: "Workspace" }],
+  };
+  const edited: ProjectTypeListItem = {
+    key: "mine.json",
+    fileName: "mine.json",
+    source: "saved",
+    baseline,
+    definition: { ...baseline, name: "Mine edited" },
+    hasChanges: true,
+  };
+  const clean: ProjectTypeListItem = {
+    key: "novel.json",
+    fileName: "novel.json",
+    source: "built-in",
+    baseline: { ...baseline, id: "novel", name: "Novel" },
+    definition: { ...baseline, id: "novel", name: "Novel" },
+    hasChanges: false,
+  };
+  const draft: ProjectTypeListItem = {
+    key: "draft:new-1",
+    definition: { ...baseline, id: "", name: "" },
+    hasChanges: true,
+  };
+
+  it("resets edited items to their baseline, drops drafts and keeps clean items", () => {
+    const result = discardAllEdits([draft, edited, clean]);
+    expect(result.map((item) => item.key)).toEqual(["mine.json", "novel.json"]);
+    expect(result[0].definition).toEqual(baseline);
+    expect(result[0].hasChanges).toBe(false);
+    expect(result[1]).toBe(clean);
+  });
+
+  it("does not mutate its input", () => {
+    const input = [edited];
+    discardAllEdits(input);
+    expect(input[0].definition.name).toBe("Mine edited");
   });
 });

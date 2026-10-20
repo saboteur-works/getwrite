@@ -219,3 +219,27 @@ export const WithNotice: Story = {
     listNotice: "2 saved project type files could not be used.",
   },
 };
+
+export const UnsavedChangesPromptOnSelect: Story = {
+  args: {
+    initialTemplates: [savedTemplate, ...builtInTemplates],
+    renderInModal: true,
+    resolveTransport: fakeTransport((spec) => ({
+      ok: true,
+      fileName: `${spec.id}.json`,
+      spec,
+    })),
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.clear(await canvas.findByLabelText("Name"));
+    await userEvent.type(canvas.getByLabelText("Name"), "My Novel 2");
+    await userEvent.click(canvas.getByRole("button", { name: /Short Story/ }));
+    const dialog = await within(document.body).findByRole("dialog", {
+      name: "Unsaved changes",
+    });
+    await expect(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    ).toBeInTheDocument();
+  },
+};
