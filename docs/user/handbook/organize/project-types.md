@@ -41,7 +41,7 @@ On the desktop app, saved types are kept in a `project-types` folder inside the 
 
 ## Warnings and limits
 
-- The Word import dialog on the desktop app lists the Game Writing type as "Game Documentation" and Poetry and Lyrics as "Poetry & Lyrics"; the Start Page's create dialog and the Project Type Manager use "Game Writing" and "Poetry and Lyrics". (Not re-checked after Feature 90.)
+- The Word import dialog lists the same names as the Project Type Manager: Article, Blank, Game Writing, Novel, Poetry and Lyrics, Serial.
 - The command-line tool sees saved types only when `GETWRITE_SAVED_PROJECT_TYPES_DIR` is exported to the same folder, so its list can differ from the app's.
 
 Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit b9ddb83c. The Managing project types section (Feature 90) was read from the code in `ProjectTypesManagerPage.tsx`, `UnsavedChangesPrompt.tsx` and `project-types-write-core.ts`, not re-measured in a running app.

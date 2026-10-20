@@ -74,6 +74,17 @@ describe("normalizeParagraphLeadingInDocument", () => {
     }
   });
 
+  it("returns unset for a null leading and for an absent key alike (null is the stored unset form)", () => {
+    const out = normalizeParagraphLeadingInDocument({
+      type: "doc",
+      content: [para(null), para()],
+    });
+    const [nullLeading, absent] = out.content ?? [];
+    expect(nullLeading.attrs).toBeUndefined();
+    expect(absent.attrs).toBeUndefined();
+    expect(nullLeading).toEqual(absent);
+  });
+
   it("does not mutate its input", () => {
     const doc: LeadingJsonNode = {
       type: "doc",

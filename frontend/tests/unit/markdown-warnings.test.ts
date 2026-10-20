@@ -122,6 +122,23 @@ describe("markdown warnings", () => {
     expect(collectMarkdownWarnings(d)).toEqual([]);
   });
 
+  it("counts neither a null leading nor an absent key (null is the stored unset form)", () => {
+    const d = doc([
+      {
+        type: "paragraph",
+        attrs: { paragraphLeading: null },
+        content: [{ type: "text", text: "null" }],
+      },
+      { type: "paragraph", content: [{ type: "text", text: "absent" }] },
+      {
+        type: "paragraph",
+        attrs: {},
+        content: [{ type: "text", text: "no key" }],
+      },
+    ]);
+    expect(collectMarkdownWarnings(d)).toEqual([]);
+  });
+
   it("counts repeated occurrences of the same construct", () => {
     const d = doc([
       { type: "image", attrs: { src: "a", resourceId: "1" } },
