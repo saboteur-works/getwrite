@@ -280,7 +280,14 @@ const MAX_COPY_ID_LENGTH = 64;
 function copyIdentity(
   source: ProjectTypeDefinition,
   items: ProjectTypeListItem[],
+  typedName: string,
 ): { id: string; name: string } {
+  // FR-8 comparison: trim, case-insensitive. A typed name that differs from the
+  // source's is kept as written, even if it clashes with another type: the
+  // write refuses it and the draft keeps what the writer typed.
+  const shouldKeepTyped =
+    typedName.trim().length > 0 &&
+    typedName.trim().toLowerCase() !== source.name.trim().toLowerCase();
   const ids = new Set<string>([source.id]);
   const names = new Set<string>([source.name.trim().toLowerCase()]);
   for (const listed of items) {
@@ -293,8 +300,11 @@ function copyIdentity(
     const idSuffix = n === 1 ? "-copy" : `-copy-${n}`;
     const nameSuffix = n === 1 ? " copy" : ` copy ${n}`;
     const id = `${source.id.slice(0, MAX_COPY_ID_LENGTH - idSuffix.length)}${idSuffix}`;
-    const name = `${source.name}${nameSuffix}`;
-    if (!ids.has(id) && !names.has(name.trim().toLowerCase())) {
+    const name = shouldKeepTyped ? typedName : `${source.name}${nameSuffix}`;
+    if (
+      !ids.has(id) &&
+      (shouldKeepTyped || !names.has(name.trim().toLowerCase()))
+    ) {
       return { id, name };
     }
   }
@@ -394,7 +404,7 @@ export async function saveDraftItemAsCopy(
   transport: ProjectTypesTransport,
 ): Promise<DraftSaveResult> {
   const source = item.baseline ?? item.definition;
-  const identity = copyIdentity(source, items);
+  const identity = copyIdentity(source, items, item.definition.name);
   const definition: ProjectTypeDefinition = {
     ...item.definition,
     id: identity.id,

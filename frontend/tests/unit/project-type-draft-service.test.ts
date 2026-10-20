@@ -246,6 +246,76 @@ describe("saveDraftItem", () => {
     expect(posted.name.toLowerCase()).not.toBe("novel copy");
   });
 
+  it("keeps the name the writer typed when saving a built-in as a copy", async () => {
+    const transport = fakeTransport();
+    const builtIn = item(def("novel", "Novel"), { source: "built-in" });
+    const edited = {
+      ...builtIn,
+      definition: { ...builtIn.definition, name: "Probe Novel" },
+    };
+
+    await saveDraftItemAsCopy(edited, [edited], transport);
+
+    const posted = transport.create.mock.calls[0][0] as ProjectTypeDefinition;
+    expect(posted.name).toBe("Probe Novel");
+    expect(posted.id).not.toBe("novel");
+  });
+
+  it.each(["Novel", "  novel  ", "NOVEL", ""])(
+    "names the copy '<source name> copy' when the typed name is %j (same as the source by FR-8, or empty)",
+    async (typed) => {
+      const transport = fakeTransport();
+      const builtIn = item(def("novel", "Novel"), { source: "built-in" });
+      const edited = {
+        ...builtIn,
+        definition: { ...builtIn.definition, name: typed },
+      };
+
+      await saveDraftItemAsCopy(edited, [edited], transport);
+
+      const posted = transport.create.mock.calls[0][0] as ProjectTypeDefinition;
+      expect(posted.name).toBe("Novel copy");
+    },
+  );
+
+  it("does not replace a typed name that clashes with another type; the refusal is returned and the draft keeps the typed name", async () => {
+    const refusal = {
+      ok: false as const,
+      reason: "name-clash" as const,
+      message: "A project type with this name already exists.",
+    };
+    const transport = fakeTransport(() => refusal);
+    const builtIn = item(def("novel", "Novel"), { source: "built-in" });
+    const other = item(def("mine", "Mine"));
+    const edited = {
+      ...builtIn,
+      definition: { ...builtIn.definition, name: " mine " },
+    };
+
+    const result = await saveDraftItemAsCopy(
+      edited,
+      [edited, other],
+      transport,
+    );
+
+    const posted = transport.create.mock.calls[0][0] as ProjectTypeDefinition;
+    expect(posted.name).toBe(" mine ");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("refused");
+    expect(edited.definition.name).toBe(" mine ");
+  });
+
+  it("applies the uniqueness suffix when '<source name> copy' itself clashes", async () => {
+    const transport = fakeTransport();
+    const builtIn = item(def("novel", "Novel"), { source: "built-in" });
+    const taken = item(def("other", "Novel copy"));
+
+    await saveDraftItemAsCopy(builtIn, [builtIn, taken], transport);
+
+    const posted = transport.create.mock.calls[0][0] as ProjectTypeDefinition;
+    expect(posted.name).toBe("Novel copy 2");
+  });
+
   it("a saved type is updated with PUT on its original id; rename changes the name only", async () => {
     const transport = fakeTransport();
     const saved = item(def("mine", "Mine"));

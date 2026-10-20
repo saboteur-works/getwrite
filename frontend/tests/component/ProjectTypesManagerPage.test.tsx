@@ -278,6 +278,46 @@ describe("ProjectTypesManagerPage refusals", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("Novel");
   });
 
+  it("built-in: typing a name and choosing Save as copy posts that name", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    select("Novel");
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Probe Novel" },
+    });
+    const bar = screen.getByRole("group", { name: "Project type actions" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Save as copy" }));
+
+    await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
+    const posted = (transport.create as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as ProjectTypeDefinition;
+    expect(posted.name).toBe("Probe Novel");
+    expect(posted.id).not.toBe("novel");
+  });
+
+  it("built-in: a typed name that clashes with another type is refused and stays in the Name field", async () => {
+    const transport = makeTransport({
+      create: vi.fn(async () => ({
+        ok: false as const,
+        reason: "name-clash" as const,
+        message: "A project type with this name already exists.",
+      })),
+    });
+    renderManager(transport);
+    select("Novel");
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "mine" },
+    });
+    const bar = screen.getByRole("group", { name: "Project type actions" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Save as copy" }));
+
+    await screen.findByRole("alert");
+    const posted = (transport.create as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as ProjectTypeDefinition;
+    expect(posted.name).toBe("mine");
+    expect(screen.getByLabelText("Name")).toHaveValue("mine");
+  });
+
   it("saving-unavailable shows an alert and leaves the draft as written", async () => {
     const transport = makeTransport({
       create: vi.fn(async () => ({
