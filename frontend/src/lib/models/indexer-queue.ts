@@ -102,10 +102,35 @@ export function installShutdownHooks(): void {
   process.on("beforeExit", handle("beforeExit"));
 }
 
+/** A revision file holds TipTap JSON; older ones may hold plain text. */
+function revisionContentToPlainText(raw: string): string {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      (parsed as { type?: unknown }).type === "doc"
+    ) {
+      return tiptapToPlainText(
+        parsed as Parameters<typeof tiptapToPlainText>[0],
+      );
+    }
+  } catch {
+    // not JSON: plain text
+  }
+  return raw;
+}
+
 /**
- * Loads a resource's persisted plain text, preferring canonical content
- * storage and falling back to the last revision snapshot if that is
- * unavailable. Shared by the whole-resource indexing task ({@link runTask},
+ * Loads a resource's persisted plain text from its content files. Content
+ * files that exist but hold no text mean the resource is empty (`""`). Only
+ * when neither content file exists does it fall back to a revision: the
+ * canonical one, or the newest when none is canonical, converted from its
+ * TipTap JSON to text. Before this, empty content also fell through to the
+ * newest revision, read as raw JSON; after the writer deleted their text that
+ * revision was the "Auto-backup before large deletion" snapshot, so an
+ * emptied resource got diagnostics, search hits and mentions from the deleted
+ * text. Shared by the whole-resource indexing task ({@link runTask},
  * Task 5) and the targeted single-entity rescan ({@link rescanEntityAcrossProject},
  * Task 6) so both scan the same "already on disk" text — never unsaved
  * editor state.
@@ -133,19 +158,30 @@ export async function loadPersistedPlainText(
     plain =
       loaded.plainText ||
       (loaded.tiptap ? tiptapToPlainText(loaded.tiptap) : undefined);
+    // Content files that exist but hold no text: the resource is empty.
+    if (
+      plain === undefined &&
+      (loaded.plainText !== undefined || loaded.tiptap)
+    ) {
+      plain = "";
+    }
   } catch (err) {
     if (isLockedAccessError(err)) throw err;
     // ignore
   }
 
-  // Fallback: read last revision content (content.bin) if present
-  if (!plain) {
+  // Fallback, only when there are no content files: the canonical revision,
+  // or the newest revision when none is canonical.
+  if (plain === undefined) {
     try {
       const revs = await listRevisions(projectRoot, resourceId);
-      const last = revs[revs.length - 1];
-      if (last?.filePath) {
+      const source =
+        revs.find((rev) => rev.isCanonical) ?? revs[revs.length - 1];
+      if (source?.filePath) {
         try {
-          plain = await readFile(last.filePath, "utf8");
+          plain = revisionContentToPlainText(
+            await readFile(source.filePath, "utf8"),
+          );
         } catch (err) {
           if (isLockedAccessError(err)) throw err;
           // ignore read errors
