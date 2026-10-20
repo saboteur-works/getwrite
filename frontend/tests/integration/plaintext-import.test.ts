@@ -191,7 +191,11 @@ describe("importPlainTextProject — single-file source, single-document.txt (FR
     beforeHash = await hashTree(FIXTURES_DIR);
     projectRoot = await mkTempProjectRoot("getwrite-plaintext-import-single-");
 
-    await importPlainTextProject({ sourcePath, projectRoot });
+    await importPlainTextProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
 
     afterHash = await hashTree(FIXTURES_DIR);
@@ -260,7 +264,11 @@ describe("importPlainTextProject — folder source (FR-2, FR-3)", () => {
     beforeHash = await hashTree(sourcePath);
     projectRoot = await mkTempProjectRoot("getwrite-plaintext-import-folder-");
 
-    await importPlainTextProject({ sourcePath, projectRoot });
+    await importPlainTextProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
 
     afterHash = await hashTree(sourcePath);
@@ -332,6 +340,7 @@ describe("importPlainTextProject — refusals before any write", () => {
       await importPlainTextProject({
         sourcePath: path.join(FIXTURES_DIR, "single-document.txt"),
         projectRoot,
+        hostedAuthActive: false,
       });
     } catch (err) {
       caughtError = err;
@@ -368,7 +377,11 @@ describe("importPlainTextProject — refusals before any write", () => {
     await expect(fs.stat(projectRoot)).rejects.toThrow();
 
     await expect(
-      importPlainTextProject({ sourcePath: sourceDir, projectRoot }),
+      importPlainTextProject({
+        sourcePath: sourceDir,
+        projectRoot,
+        hostedAuthActive: false,
+      }),
     ).rejects.toThrow(NoTxtFilesFoundError);
 
     await expect(fs.stat(projectRoot)).rejects.toThrow();
@@ -416,6 +429,7 @@ describe("importPlainTextProject — writing log (Feature 59, FR-8)", () => {
     await importPlainTextProject({
       sourcePath: path.join(FIXTURES_DIR, "single-document.txt"),
       projectRoot,
+      hostedAuthActive: false,
     });
     await flushIndexer();
 
@@ -454,6 +468,7 @@ describe("importPlainTextProject — writes no resourceSubtype (FR-27)", () => {
       await importPlainTextProject({
         sourcePath: path.join(FIXTURES_DIR, "single-document.txt"),
         projectRoot,
+        hostedAuthActive: false,
       });
       await flushIndexer();
 

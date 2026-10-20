@@ -12,6 +12,11 @@
 import { z } from "zod";
 import { QueryASTSchema } from "./query-ast";
 import { normalizeSubtypeLabel } from "./field-subtype-scope";
+import { slugify } from "../utils";
+import {
+  getLineHeightError,
+  LINE_HEIGHT_FLOOR_MESSAGE,
+} from "../editor-body-settings";
 export type {
   QueryAST,
   LeafNode,
@@ -104,11 +109,31 @@ const EditorHeadingSchema = z.object({
   color: z.string().optional(),
 });
 
-const EditorBodySchema = z.object({
+const EditorBodyFieldsShape = {
   fontFamily: z.string().optional(),
   fontSize: z.string().optional(),
-  lineHeight: z.string().optional(),
   paragraphSpacing: z.string().optional(),
+};
+
+/** Write/spec shape: the project line height must meet the 1.8 floor. */
+const EditorBodySchema = z.object({
+  ...EditorBodyFieldsShape,
+  lineHeight: z
+    .string()
+    .optional()
+    .refine((v) => getLineHeightError(v) === undefined, {
+      message: LINE_HEIGHT_FLOOR_MESSAGE,
+    }),
+});
+
+/**
+ * Stored-data shape for `project.json`: no floor, so a project saved before
+ * the floor existed stays usable (no migration; the floor is enforced on
+ * write and in project-type specs, not on read).
+ */
+const StoredEditorBodySchema = z.object({
+  ...EditorBodyFieldsShape,
+  lineHeight: z.string().optional(),
 });
 
 export const EditorConfigSchema = z.object({
@@ -123,6 +148,11 @@ export const EditorConfigSchema = z.object({
     })
     .optional(),
   body: EditorBodySchema.optional(),
+});
+
+/** `EditorConfigSchema` with the lenient stored-data body (see {@link StoredEditorBodySchema}). */
+const StoredEditorConfigSchema = EditorConfigSchema.extend({
+  body: StoredEditorBodySchema.optional(),
 });
 
 /**
@@ -312,7 +342,7 @@ export const ProjectConfigSchema = z.object({
     )
     .optional(),
   tagAssignments: z.record(z.string(), z.array(UUID)).optional(),
-  editorConfig: EditorConfigSchema.optional(),
+  editorConfig: StoredEditorConfigSchema.optional(),
   defaultRevisionName: z.string().optional(),
   metadataSchema: MetadataSchemaSchema.optional(),
   metadataRevision: z.number().int().nonnegative().optional(),
@@ -639,7 +669,7 @@ export const Schemas = {
  */
 export const ProjectTypeResourceSchema = z.object({
   folder: z.string().optional(),
-  name: z.string(),
+  name: z.string().trim().min(1, "Starter document name must not be blank."),
   type: ResourceTypeSchema,
   template: z.string().optional(),
   userMetadata: z.record(z.string(), MetadataValue).optional(),
@@ -649,7 +679,7 @@ export const ProjectTypeResourceSchema = z.object({
  * Project-type folder schema defining folder seed structure.
  */
 export const ProjectTypeFolderSchema = z.object({
-  name: z.string(),
+  name: z.string().trim().min(1, "Folder name must not be blank."),
   special: z.boolean().optional(),
   metadataSource: MetadataSourceSchema.optional(),
   defaultResources: z.array(ProjectTypeResourceSchema).optional(),
@@ -660,8 +690,8 @@ export const ProjectTypeFolderSchema = z.object({
  * Each entry declares one subfolder under a named parent folder.
  */
 export const ProjectTypeDefaultFolderSchema = z.object({
-  folder: z.string(),
-  name: z.string(),
+  folder: z.string().trim().min(1, "Parent folder must not be blank."),
+  name: z.string().trim().min(1, "Subfolder name must not be blank."),
   special: z.boolean().optional(),
   metadataSource: MetadataSourceSchema.optional(),
 });
@@ -671,11 +701,111 @@ export type ProjectTypeDefaultFolder = z.infer<
 >;
 
 /**
+ * Feature 90, FR-28: a trimmed list of labels that refuses blank entries and
+ * entries equal under `normalizeSubtypeLabel`, reporting the second of a pair
+ * at its index. An empty list is valid.
+ */
+function labelListSchema(blankMessage: string, duplicateMessage: string) {
+  return z.array(z.string().trim()).superRefine((labels, ctx) => {
+    const seen = new Set<string>();
+    labels.forEach((label, index) => {
+      const key = normalizeSubtypeLabel(label);
+      if (key === "") {
+        ctx.addIssue({ code: "custom", path: [index], message: blankMessage });
+        return;
+      }
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index],
+          message: duplicateMessage,
+        });
+      }
+      seen.add(key);
+    });
+  });
+}
+
+/**
+ * Feature 90, FR-28 (c): adds an issue at `path(index)` for each entry whose
+ * `slugify` value equals that of an earlier entry in the same group, naming
+ * both. Blank names are skipped (the field schema already refuses them).
+ */
+function addSlugClashIssues(
+  ctx: z.RefinementCtx,
+  entries: ReadonlyArray<{ group: string; name: string; path: PropertyKey[] }>,
+  label: string,
+): void {
+  const firstByKey = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.name === "") continue;
+    const key = `${entry.group}\u0000${slugify(entry.name)}`;
+    const first = firstByKey.get(key);
+    if (first === undefined) {
+      firstByKey.set(key, entry.name);
+      continue;
+    }
+    ctx.addIssue({
+      code: "custom",
+      path: entry.path,
+      message: `${label} \u201c${entry.name}\u201d is too similar to \u201c${first}\u201d.`,
+    });
+  }
+}
+
+/** Longest project-type id a save accepts (it becomes `<id>.json` on disk). */
+export const MAX_PROJECT_TYPE_ID_LENGTH = 64;
+
+const WORD_COUNT_GOAL_MESSAGE =
+  "Word count goal must be a whole number of 0 or more.";
+
+/** Form section titles for each top-level project-type key, for fallback messages. */
+const PROJECT_TYPE_SECTION_LABELS: Record<string, string> = {
+  id: "ID",
+  name: "Name",
+  description: "Description",
+  folders: "Folders",
+  defaultFolders: "Default Folders",
+  defaultResources: "Default Resources",
+  editorConfig: "Editor settings",
+  statuses: "Statuses",
+  relationshipTypes: "Relationship types",
+  subtypes: "Subtypes",
+  wordCountGoal: "Word Count Goal",
+};
+
+/**
+ * Per-parse fallback for refusals the schema gives no message of its own
+ * (values the manager's form cannot produce, as in a hand-edited file), so a
+ * writer never sees a default validator message. Schema messages take
+ * precedence over this.
+ */
+function readableProjectTypeIssue(issue: {
+  code?: string;
+  path?: PropertyKey[];
+  keys?: string[];
+}): string {
+  if (issue.code === "unrecognized_keys" && issue.keys?.length) {
+    return `This project type has a setting GetWrite does not recognise: ${issue.keys.join(", ")}.`;
+  }
+  const top = issue.path?.[0];
+  const section =
+    typeof top === "string" ? PROJECT_TYPE_SECTION_LABELS[top] : undefined;
+  return section
+    ? `A value under ${section} is not valid.`
+    : "This project type is not valid.";
+}
+
+/**
  * Project-type specification schema.
  *
  * Constraints:
  * - `id` must be lowercase slug-like text (`[a-z0-9-_]+`).
  * - At least one folder is required.
+ * - Type, folder, subfolder and starter document names are trimmed and not
+ *   blank; statuses and relationship types are trimmed, not blank and unique
+ *   (Feature 90, FR-28); sibling folders and sibling subfolders must differ
+ *   under `slugify`. Starter documents with equal slugs are allowed.
  *
  * Authors may use any folder layout; no folder name carries application
  * semantics. The deprecated `special` folder flag is still accepted (and
@@ -684,20 +814,65 @@ export type ProjectTypeDefaultFolder = z.infer<
  */
 export const ProjectTypeSchema = z
   .object({
-    id: z.string().regex(/^[a-z0-9-_]+$/),
-    name: z.string(),
+    id: z
+      .string()
+      .min(1, "ID must not be blank.")
+      .max(
+        MAX_PROJECT_TYPE_ID_LENGTH,
+        `ID must be ${MAX_PROJECT_TYPE_ID_LENGTH} characters or fewer.`,
+      )
+      .regex(
+        /^[a-z0-9-_]*$/,
+        "ID can use only lowercase letters, numbers, hyphens (-) and underscores (_).",
+      ),
+    name: z.string().trim().min(1, "Name must not be blank."),
     description: z.string().optional(),
-    folders: z.array(ProjectTypeFolderSchema).min(1),
+    folders: z
+      .array(ProjectTypeFolderSchema)
+      .min(
+        1,
+        "Add at least one folder. A new project needs a folder to hold its documents.",
+      ),
     defaultResources: z.array(ProjectTypeResourceSchema).optional(),
     defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
     editorConfig: EditorConfigSchema.optional(),
-    statuses: z.array(z.string()).optional(),
-    relationshipTypes: z.array(z.string()).optional(),
+    statuses: labelListSchema(
+      "Status label must not be blank.",
+      "Duplicate status label.",
+    ).optional(),
+    relationshipTypes: labelListSchema(
+      "Relationship type must not be blank.",
+      "Duplicate relationship type.",
+    ).optional(),
     /** Seeds the new project's subtype list (Feature 72, FR-26). */
     subtypes: SubtypeListSchema.optional(),
-    wordCountGoal: z.number().int().nonnegative().optional(),
+    wordCountGoal: z
+      .number()
+      .int(WORD_COUNT_GOAL_MESSAGE)
+      .nonnegative(WORD_COUNT_GOAL_MESSAGE)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((spec, ctx) => {
+    addSlugClashIssues(
+      ctx,
+      spec.folders.map((f, i) => ({
+        group: "",
+        name: f.name,
+        path: ["folders", i, "name"],
+      })),
+      "Folder name",
+    );
+    addSlugClashIssues(
+      ctx,
+      (spec.defaultFolders ?? []).map((f, i) => ({
+        group: slugify(f.folder),
+        name: f.name,
+        path: ["defaultFolders", i, "name"],
+      })),
+      "Subfolder name",
+    );
+  });
 
 /**
  * Inferred TypeScript shape of a valid project-type spec.
@@ -718,9 +893,46 @@ export type ProjectTypeSpec = z.infer<typeof ProjectTypeSchema>;
  * }
  */
 export function validateProjectType(spec: unknown) {
-  const result = ProjectTypeSchema.safeParse(spec);
-  if (result.success) return { success: true, value: result.data };
-  return { success: false, errors: result.error.format() };
+  const result = ProjectTypeSchema.safeParse(spec, {
+    error: readableProjectTypeIssue,
+  });
+  if (result.success) return { success: true as const, value: result.data };
+  return {
+    success: false as const,
+    errors: result.error.format(),
+    issues: result.error.issues.map(
+      (issue): ProjectTypeIssue => ({
+        path: issue.path.filter(
+          (segment): segment is string | number => typeof segment !== "symbol",
+        ),
+        message: issue.message,
+      }),
+    ),
+  };
+}
+
+/** One schema refusal with the path of the offending entry (Feature 90, FR-28 d). */
+export interface ProjectTypeIssue {
+  path: Array<string | number>;
+  message: string;
+}
+
+/**
+ * Keys each issue that has a path by that path joined with "." (for example
+ * `statuses.1` or `folders.0.name`). Two issues at one path share the key,
+ * their messages joined with a space.
+ */
+export function projectTypeFieldErrors(
+  issues: ReadonlyArray<ProjectTypeIssue>,
+): Record<string, string> {
+  const keyed: Record<string, string> = {};
+  for (const issue of issues) {
+    if (issue.path.length === 0) continue;
+    const key = issue.path.join(".");
+    keyed[key] =
+      key in keyed ? `${keyed[key]} ${issue.message}` : issue.message;
+  }
+  return keyed;
 }
 
 /**

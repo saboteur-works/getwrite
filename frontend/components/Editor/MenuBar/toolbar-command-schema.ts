@@ -12,6 +12,10 @@ import type {
   EditorHeadings,
 } from "../../../src/lib/models/types";
 import { FONT_OPTIONS } from "../../../src/lib/fonts/fonts";
+import {
+  displayedParagraphLeading,
+  validateParagraphLeadingInput,
+} from "../../../src/lib/paragraph-leading";
 import { loadGoogleFont } from "../../../src/lib/fonts/loadGoogleFont";
 
 export interface ToolbarCommandContext {
@@ -51,6 +55,8 @@ export interface ToolbarInputCommand extends ToolbarCommandItemBase {
   inputType: EditorMenuInputType;
   options?: string[];
   getValue: (context: ToolbarCommandContext) => string;
+  /** Returns a visible message for refused typed input, or null when valid. */
+  validate?: (value: string) => string | null;
   onChange: (context: ToolbarCommandContext, value: string) => void;
 }
 
@@ -351,8 +357,12 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         inputType: "number",
         tooltipContent: "Line Height",
         rotate: "90",
-        initialValue: "1.5",
-        getValue: ({ state }) => state.getWriteParagraphLeading,
+        getValue: ({ state, editorConfig }) =>
+          displayedParagraphLeading(
+            state.getWriteParagraphLeading,
+            editorConfig?.body?.lineHeight,
+          ),
+        validate: validateParagraphLeadingInput,
         onChange: ({ editor }, value) => {
           editor.chain().setParagraphLeading(value).run();
         },

@@ -30,6 +30,40 @@ export const BODY_FIELD_DEFINITIONS: EditorBodyFieldDefinition[] = [
   },
 ];
 
+/** The one message shown and returned for every refused project line height. */
+export const LINE_HEIGHT_FLOOR_MESSAGE =
+  "Line height must be a number of at least 1.8.";
+
+const MIN_PROJECT_LINE_HEIGHT = 1.8;
+const UNITLESS_NUMBER = /^\d+(\.\d+)?$/;
+
+/**
+ * Validates a project body line height. Empty (after trimming) means "use
+ * 1.8" and is valid. Otherwise the value must be a unitless number of at
+ * least 1.8, with no upper bound; `normal`, `%`, `em` and `px` are refused.
+ * Refuses, never clamps.
+ *
+ * @returns {@link LINE_HEIGHT_FLOOR_MESSAGE} when refused, otherwise `undefined`.
+ */
+export function getLineHeightError(
+  value: string | undefined,
+): string | undefined {
+  const trimmed = value?.trim() ?? "";
+  if (trimmed === "") return undefined;
+  if (!UNITLESS_NUMBER.test(trimmed)) return LINE_HEIGHT_FLOOR_MESSAGE;
+  return Number(trimmed) >= MIN_PROJECT_LINE_HEIGHT
+    ? undefined
+    : LINE_HEIGHT_FLOOR_MESSAGE;
+}
+
+/** Thrown by write paths when a project line height is refused. */
+export class InvalidLineHeightError extends Error {
+  constructor() {
+    super(LINE_HEIGHT_FLOOR_MESSAGE);
+    this.name = "InvalidLineHeightError";
+  }
+}
+
 function normalizeBodyValue(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
 }

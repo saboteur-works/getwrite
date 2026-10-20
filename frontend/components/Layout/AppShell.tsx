@@ -806,8 +806,9 @@ export default function AppShell({
       }
 
       if (event.key === "Escape") {
+        // The Project Type Manager is not closed here: its dialog owns Escape
+        // through the close guard, which asks first when edits are unsaved.
         setIsPreferencesModalOpen(false);
-        setIsProjectTypesModalOpen(false);
         setIsHelpModalOpen(false);
         setIsResourcePaletteOpen(false);
       }
@@ -1158,6 +1159,7 @@ export default function AppShell({
                   projectTypeTemplates,
                   isProjectTypesLoading,
                   projectTypesLoadError,
+                  projectTypesNotice,
                 }) => (
                   <ShellModalCoordinator
                     isProjectEncrypted={isActiveProjectEncrypted}
@@ -1206,6 +1208,7 @@ export default function AppShell({
                     setIsResourcePaletteOpen={setIsResourcePaletteOpen}
                     isProjectTypesLoading={isProjectTypesLoading}
                     projectTypesLoadError={projectTypesLoadError}
+                    projectTypesNotice={projectTypesNotice}
                     projectTypeTemplates={projectTypeTemplates}
                     resources={resources}
                     folders={liveFolders}

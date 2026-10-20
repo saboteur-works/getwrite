@@ -91,4 +91,39 @@ describe("native editor-config transport — in-process backend reuses the share
       transport.saveBody("not-a-uuid", { fontSize: "18px" }),
     ).rejects.toThrow(/Invalid projectId/);
   });
+
+  it.each(["1.7", "1", "0.5", "normal", "150%", "1.8em", "28px", "abc"])(
+    "saveBody inherits the core's floor: rejects lineHeight %j and writes nothing",
+    async (lineHeight) => {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = await makeProject(fs);
+      const adapter = capacitorFsAdapter(fs);
+      const file = path.join(PROJECTS_DIR, projectId, "project.json");
+      const before = await adapter.readFile(file, "utf-8");
+      const transport = createNativeEditorConfigTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+
+      await expect(
+        transport.saveBody(projectId, { lineHeight }),
+      ).rejects.toThrow("Line height must be a number of at least 1.8.");
+      expect(await adapter.readFile(file, "utf-8")).toBe(before);
+    },
+  );
+
+  it.each(["", "1.8", "2"])(
+    "saveBody accepts lineHeight %j",
+    async (lineHeight) => {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = await makeProject(fs);
+      const transport = createNativeEditorConfigTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+      await expect(
+        transport.saveBody(projectId, { lineHeight }),
+      ).resolves.toBeDefined();
+    },
+  );
 });

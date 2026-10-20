@@ -25,7 +25,22 @@
  */
 import { listStaticProjectTypes } from "../../lib/models/project-types-static";
 import type { ProjectTypeDefinition } from "../../types/project-types";
-import type { ProjectTypesTransport } from "../../lib/api/project-types";
+import type {
+  ProjectTypeList,
+  ProjectTypesTransport,
+  ProjectTypeWriteOutcome,
+} from "../../lib/api/project-types";
+
+/**
+ * The native build keeps its static registry and has no saved directory, so
+ * every write is refused as `saving-unavailable`: a value the caller shows,
+ * with no request made.
+ */
+const SAVING_UNAVAILABLE: ProjectTypeWriteOutcome = {
+  ok: false,
+  reason: "saving-unavailable",
+  message: "Saving project types is not available here.",
+};
 
 /**
  * Builds the in-process project-types transport for a native build. Takes
@@ -33,8 +48,27 @@ import type { ProjectTypesTransport } from "../../lib/api/project-types";
  */
 export function createNativeProjectTypesTransport(): ProjectTypesTransport {
   return {
-    async list() {
-      return listStaticProjectTypes() as unknown as ProjectTypeDefinition[];
+    async list(): Promise<ProjectTypeList> {
+      const specs =
+        listStaticProjectTypes() as unknown as ProjectTypeDefinition[];
+      return {
+        entries: specs.map((spec) => ({
+          spec,
+          fileName: `${spec.id}.json`,
+          source: "built-in" as const,
+        })),
+        unusable: [],
+        savedStatus: "not-configured",
+      };
+    },
+    async create() {
+      return SAVING_UNAVAILABLE;
+    },
+    async update() {
+      return SAVING_UNAVAILABLE;
+    },
+    async remove() {
+      return SAVING_UNAVAILABLE;
     },
   };
 }

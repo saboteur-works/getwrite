@@ -31,6 +31,26 @@ vi.mock("../../src/store/sharing-limits-transport-service", () => ({
 }));
 
 const compileTextMock = vi.fn();
+// The DOCX dialog reads the project-type list on open; serve a fixed one.
+vi.mock("../../src/lib/api/project-types", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/api/project-types")>();
+  return {
+    ...actual,
+    listProjectTypeEntries: async () => ({
+      entries: [
+        {
+          spec: { id: "blank", name: "Blank", folders: [{ name: "Notes" }] },
+          fileName: "blank.json",
+          source: "built-in" as const,
+        },
+      ],
+      unusable: [],
+      savedStatus: "ok" as const,
+    }),
+  };
+});
+
 vi.mock("../../src/lib/api/compile", () => ({
   compilePdf: vi.fn(),
   compileDocx: vi.fn(),

@@ -164,6 +164,9 @@ behaviour. There is no `Back Matter` folder in any shipped template.
 ## Validation & Runtime
 
 - Runtime validation is provided by the Zod schema in `frontend/src/lib/models/schemas.ts`. Use the exported helpers `validateProjectType()` and `validateProjectTypeFile()` to check a JSON object or file before scaffolding.
+- Entry rules (Feature 90, FR-28): the type `name`, folder, subfolder (`defaultFolders[].name`, `.folder`) and starter document names are trimmed and must not be blank. `statuses` and `relationshipTypes` are trimmed, with no blank entries and no duplicates under `normalizeSubtypeLabel`. Sibling `folders` names, and `defaultFolders` names within one parent, must differ under `slugify` ("Folder name “Chapter 1!” is too similar to “Chapter 1”."). Starter documents with equal slugs are allowed (they are written as separate resources). Each refusal is an issue with a path; `projectTypeFieldErrors()` keys them by the path joined with "." and the write core returns them as `fieldErrors` on a 400 `invalid` refusal so the manager places each message at its field.
+- Id and goal rules: `id` must be 1 to `MAX_PROJECT_TYPE_ID_LENGTH` (64, defined in `schemas.ts` and re-exported by `project-types-write-core.ts`) characters of lowercase letters, numbers, hyphens and underscores, so the form refuses an over-long id as well as the write core. `folders` needs at least one entry, and `wordCountGoal` must be a whole number of 0 or more. Each has its own message ("ID must not be blank.", "ID can use only lowercase letters, numbers, hyphens (-) and underscores (\_).", "ID must be 64 characters or fewer.", "Add at least one folder. A new project needs a folder to hold its documents.", "Word count goal must be a whole number of 0 or more."). The folders issue has no field, so the manager shows it in the action-bar list rather than beside a field. `validateProjectType()` gives any other issue a fallback message, "A value under <section> is not valid.", or for an unknown key "This project type has a setting GetWrite does not recognise: <key>.". These messages are covered by unit tests only; they were not measured in the app.
+- A saved file that breaks these rules is reported in `unusable` as `invalid`, so the CLI skips it as well.
 - The scaffolding entrypoint `createProjectFromType()` (in `frontend/src/lib/models/project-creator.ts`) validates incoming specs and throws a descriptive error if validation fails.
 
 ## Usage Notes & Best Practices
@@ -193,8 +196,54 @@ The following project types ship with GetWrite in `getwrite-config/templates/pro
 
 Note that the file name does not always match the `id` (e.g. `game_documentation.json` has id `game_writing`).
 
-For detailed folder structure and default resources, see each JSON file directly. The project-type selection UI reads these at runtime via `GET /api/project-types`.
+For detailed folder structure and default resources, see each JSON file directly. The project-type selection UI reads these at runtime via `GET /api/project-types`, which returns the built-in types followed by any saved ones (see below).
+
+## Saved project types (Feature 90, Part 1)
+
+Writers can create, edit and delete their own project types in the Project Type Manager. A saved type is one JSON file, `<id>.json`, holding exactly the spec described above, in a **saved store** that is separate from the bundled directory. Built-in types are never written, replaced or deleted.
+
+### Where the store is
+
+The store is the directory named by the environment variable `GETWRITE_SAVED_PROJECT_TYPES_DIR`. Nothing else decides it: there is no default, no working-directory fallback and no use of the projects folder.
+
+- **Desktop:** `electron/src/main.ts` sets the variable for the forked server to `<userData>/project-types` (`app.getPath("userData")`, in packaged and unpackaged builds). It is app-wide, not per workspace: moving the workspace does not move or hide saved types, and app updates do not touch it, because it is outside the app bundle and outside `workspace.json`. The directory is created on the first save.
+- **Web dev (`pnpm start`):** the variable is unset unless you export it, so saving is unavailable. Export it to a throwaway or personal folder before starting the dev server to save types, for example `GETWRITE_SAVED_PROJECT_TYPES_DIR=$HOME/getwrite-project-types pnpm start`. Without it the manager still lists and edits the built-in types, but Save, Save as copy and Delete are refused.
+- **Hosted auth active (`DATABASE_URL` and `BETTER_AUTH_SECRET` set):** treated as not configured, even if the variable is set.
+- **Native (Capacitor) build:** there are no API routes; the project-types backend serves the bundled list only and reports the saved store as `not-configured`.
+
+### Fail-closed behaviour
+
+An unset or blank variable, or active hosted auth, means no saved directory is read and every write is refused with reason `saving-unavailable` (HTTP 503 from the routes). There is no fallback location. A missing directory is not an error (nothing has been saved yet); any other failure to read it makes the resolution report `unreadable`, and writes are then refused with `unreadable` (HTTP 500) rather than treating the store as empty.
+
+### The resolver
+
+`frontend/src/lib/projectTypes.ts` `resolveProjectTypes()` is the single place that lists types. It returns `{ entries, unusable, savedStatus }`: built-in entries first (cached in memory), then saved entries (read from disk on every call, never cached, so a write is visible on the next call). Each entry has `source: "built-in" | "saved"`. A saved file that cannot be used (`unparseable`, `invalid`, `unreadable`) is skipped and reported in `unusable` by file name and short reason only. `savedStatus` is `ok`, `not-configured` or `unreadable`. A built-in id wins over a saved entry with the same id in `getProjectType`. The server, the CLI and the dialogs all read through it.
+
+### Routes
+
+Under `frontend/app/api/project-types/` (not wrapped by `withStorageContext`: app-level configuration, no tenant or project; nothing reads a path, file name or `source` from the client):
+
+- `GET /api/project-types` returns `{ entries: [{ spec, fileName, source }], unusable, savedStatus }`. Server paths are not sent.
+- `POST /api/project-types` creates a saved type (201 `{ fileName, spec }`).
+- `PUT /api/project-types/[id]` replaces one; the body `id` must equal the path id (200).
+- `DELETE /api/project-types/[id]` deletes exactly `<id>.json` (200 `{ fileName }`).
+
+Bodies are capped at 256 KiB, refused before parsing, and validated with the strict schema. A refusal is `{ error, reason, conflictsWith?, fieldErrors? }`: 400 `invalid`, 403 `built-in`, 404 `not-found`, 409 `id-clash` / `name-clash`, 503 `saving-unavailable`, 500 `unreadable` / `write-failed`. The core is `frontend/src/lib/project-types-write-core.ts`; creation is exclusive and replacement is an atomic rename.
+
+### The clash rule
+
+A save is refused when its **id** equals any existing type's id (built-in or saved), or when its **name**, after trimming and case-folding (`normalizeSubtypeLabel`), equals another type's name (built-in or saved). Replacing a saved type never clashes with itself. The refusal names the type it clashes with.
+
+### In the manager
+
+- A built-in type offers **Save as copy** only. Saved types offer **Save**, **Save as copy** and **Delete** (after a confirmation). A new draft offers **Save** and its id can be edited until it is saved; after that the id is read-only.
+- **Save as copy** writes the edited content as a new saved type with a new id and name; the original is unchanged.
+- The manager shows one line when the list lost saved types: "Saved project types could not be read." (`unreadable`) or "1 saved project type file could not be used." or "N saved project type files could not be used." (unusable files; singular for one). There is **no notice** when the store is `not-configured`: that is not a failure. The new-project dialog and the Word import dialog show the same lines.
+- **Unsaved-changes prompt** (`UnsavedChangesPrompt.tsx`): leaving the manager (close, browser back) or selecting another item while any item has edits opens "Unsaved changes", naming the items, with **Keep editing**, **Discard** and **Save**. Escape or an outside click means Keep editing. Save writes the item and then carries on with the exit; a refused save keeps the writer in the manager.
+
+The new-project dialog and the Word import dialog load their list from the resolver, so a saved type is offered wherever a built-in is. The Word import dialog refuses an id that was deleted after the dialog loaded, before anything is written.
 
 ## Troubleshooting
 
+- Saving a type fails with "Saving project types is not available here." (503) when `GETWRITE_SAVED_PROJECT_TYPES_DIR` is unset: this is the normal state of `pnpm start` without the variable.
 - If scaffolding fails with a validation error, run the validator against the file to see field-level problems. The error message contains the zod validation errors.

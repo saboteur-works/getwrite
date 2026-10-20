@@ -194,7 +194,11 @@ describe("importDocxProject — single-file source, core-properties.docx (FR-14)
     beforeHash = await hashTree(FIXTURES_DIR);
     projectRoot = await mkTempProjectRoot("getwrite-docx-import-core-props-");
 
-    await importDocxProject({ sourcePath, projectRoot });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
 
     afterHash = await hashTree(FIXTURES_DIR);
@@ -251,7 +255,11 @@ describe("importDocxProject — single-file source, multi-heading.docx (FR-2)", 
     projectRoot = await mkTempProjectRoot(
       "getwrite-docx-import-multi-heading-",
     );
-    await importDocxProject({ sourcePath, projectRoot });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
     resources = await readAllResources(projectRoot);
   });
@@ -291,7 +299,12 @@ describe("importDocxProject — multi-heading.docx split at level 2 (FR-14 pream
 
   beforeAll(async () => {
     projectRoot = await mkTempProjectRoot("getwrite-docx-import-preamble-");
-    await importDocxProject({ sourcePath, projectRoot, splitLevel: 2 });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      splitLevel: 2,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
     resources = await readAllResources(projectRoot);
     report = await readReport(projectRoot);
@@ -325,7 +338,11 @@ describe("importDocxProject — no-headings.docx (FR-14 no-heading naming, filen
 
   beforeAll(async () => {
     projectRoot = await mkTempProjectRoot("getwrite-docx-import-no-headings-");
-    await importDocxProject({ sourcePath, projectRoot });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
     resources = await readAllResources(projectRoot);
   });
@@ -349,7 +366,12 @@ describe("importDocxProject — single-file source, footnotes-endnotes.docx (FR-
 
   beforeAll(async () => {
     projectRoot = await mkTempProjectRoot("getwrite-docx-import-notes-");
-    await importDocxProject({ sourcePath, projectRoot, splitLevel: "none" });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      splitLevel: "none",
+      hostedAuthActive: false,
+    });
     await flushIndexer();
     resources = await readAllResources(projectRoot);
     report = await readReport(projectRoot);
@@ -391,6 +413,7 @@ describe("importDocxProject — FR-18 package-part detection surfaces in the FR-
     await importDocxProject({
       sourcePath: path.join(FIXTURES_DIR, "tracked-changes.docx"),
       projectRoot,
+      hostedAuthActive: false,
     });
     await flushIndexer();
     const report = await readReport(projectRoot);
@@ -414,6 +437,7 @@ describe("importDocxProject — FR-18 package-part detection surfaces in the FR-
     await importDocxProject({
       sourcePath: path.join(FIXTURES_DIR, "comments.docx"),
       projectRoot,
+      hostedAuthActive: false,
     });
     await flushIndexer();
     const report = await readReport(projectRoot);
@@ -434,6 +458,7 @@ describe("importDocxProject — FR-18 package-part detection surfaces in the FR-
     await importDocxProject({
       sourcePath: path.join(FIXTURES_DIR, "with-image.docx"),
       projectRoot,
+      hostedAuthActive: false,
     });
     await flushIndexer();
     const report = await readReport(projectRoot);
@@ -465,7 +490,11 @@ describe("importDocxProject — folder source (FR-3, FR-15)", () => {
     beforeHash = await hashTree(sourcePath);
     projectRoot = await mkTempProjectRoot("getwrite-docx-import-folder-");
 
-    await importDocxProject({ sourcePath, projectRoot });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
 
     afterHash = await hashTree(sourcePath);
@@ -549,6 +578,7 @@ describe("importDocxProject — no diagnostics on a successful import (FR-19)", 
       const { warnCalls, errorCalls } = await runImportSilently({
         sourcePath: path.join(FIXTURES_DIR, "core-properties.docx"),
         projectRoot,
+        hostedAuthActive: false,
       });
       expect(warnCalls).toEqual([]);
       expect(errorCalls).toEqual([]);
@@ -565,6 +595,7 @@ describe("importDocxProject — no diagnostics on a successful import (FR-19)", 
       const { warnCalls, errorCalls } = await runImportSilently({
         sourcePath: path.join(FIXTURES_DIR, "folder-source"),
         projectRoot,
+        hostedAuthActive: false,
       });
       expect(warnCalls).toEqual([]);
       expect(errorCalls).toEqual([]);
@@ -585,6 +616,7 @@ describe("importDocxProject — refusals before any write", () => {
         sourcePath: path.join(FIXTURES_DIR, "no-headings.docx"),
         projectRoot,
         projectType: "not-a-real-project-type",
+        hostedAuthActive: false,
       }),
     ).rejects.toThrow(UnknownProjectTypeError);
 
@@ -607,6 +639,7 @@ describe("importDocxProject — refusals before any write", () => {
       await importDocxProject({
         sourcePath: path.join(FIXTURES_DIR, "no-headings.docx"),
         projectRoot,
+        hostedAuthActive: false,
       });
     } catch (err) {
       caughtError = err;
@@ -668,6 +701,7 @@ describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
     await importDocxProject({
       sourcePath: path.join(FIXTURES_DIR, "multi-heading.docx"),
       projectRoot,
+      hostedAuthActive: false,
     });
     await flushIndexer();
 
@@ -702,7 +736,11 @@ describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
         new Document({ sections: [{ children: [new Paragraph({})] }] }),
       ),
     );
-    await importDocxProject({ sourcePath, projectRoot });
+    await importDocxProject({
+      sourcePath,
+      projectRoot,
+      hostedAuthActive: false,
+    });
     await flushIndexer();
 
     const entries = await readAllLogEntries(projectRoot);
@@ -728,6 +766,7 @@ describe("importDocxProject — writing log (Feature 59, FR-3/FR-10)", () => {
       importDocxProject({
         sourcePath: path.join(FIXTURES_DIR, "multi-heading.docx"),
         projectRoot,
+        hostedAuthActive: false,
       }),
     ).rejects.toThrow("injected log failure");
     await flushIndexer();
@@ -756,6 +795,7 @@ describe("importDocxProject — writes no resourceSubtype (FR-27)", () => {
       await importDocxProject({
         sourcePath: path.join(FIXTURES_DIR, "core-properties.docx"),
         projectRoot,
+        hostedAuthActive: false,
       });
       await flushIndexer();
 

@@ -6,6 +6,7 @@ import {
   ProjectTypeNotFoundError,
 } from "../../../src/lib/models/project-crud-core";
 import { isLockedAccessError } from "../../../src/lib/models/locked-access";
+import { isHostedAuthActive } from "../../../src/lib/auth/auth-config";
 import { withStorageContext } from "../_tenant/with-storage-context";
 
 /**
@@ -35,7 +36,11 @@ async function createProject(req: Request) {
       projectType?: string;
     };
 
-    const result = await createProjectCore(name, projectType);
+    const result = await createProjectCore(
+      name,
+      projectType,
+      isHostedAuthActive(),
+    );
 
     return NextResponse.json(result);
   } catch (err) {

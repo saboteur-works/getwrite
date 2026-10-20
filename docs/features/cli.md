@@ -45,7 +45,7 @@ pnpm cli:test           # or: pnpm --filter getwrite-cli test
 Creates a new GetWrite project on disk from a project-type spec file.
 
 ```sh
-getwrite-cli project create [projectRoot] --spec <specPath> [--name <name>]
+getwrite-cli project create [projectRoot] (--spec <specPath> | --project-type <id>) [--name <name>]
 ```
 
 **Arguments:**
@@ -54,12 +54,16 @@ getwrite-cli project create [projectRoot] --spec <specPath> [--name <name>]
 
 **Options:**
 
-- `-s, --spec <specPath>` (required) — path to a project-type JSON spec file. See `getwrite-config/templates/project-types/` for bundled specs.
+- `-s, --spec <specPath>` — path to a project-type JSON spec file. See `getwrite-config/templates/project-types/` for bundled specs.
+- `-t, --project-type <id>` — the `id` of a built-in project type, or of a saved one when `GETWRITE_SAVED_PROJECT_TYPES_DIR` is set (see `project types`). Resolved before any write; an unknown id is refused with the ids the CLI can see, and nothing is created.
+
+Exactly one of `--spec` and `--project-type` is required; giving both, or neither, is refused (exit `2`).
+
 - `-n, --name <name>` (optional) — display name for the project. Defaults to the spec's `name` field.
 
 **What it does:**
 
-1. Validates the spec file.
+1. Validates the spec file (or the resolved project type).
 2. Creates `<projectRoot>/project.json`.
 3. Creates `<projectRoot>/folders/<slug>/folder.json` for each folder in the spec.
 4. Creates `<projectRoot>/resources/<uuid>/content.txt` and `content.tiptap.json` for each default resource.
@@ -117,6 +121,24 @@ node cli/dist/bin/getwrite-cli.cjs project import-scrivener ./MyNovel.scriv ./my
 # Report written to: ./my-novel/scrivener-import-report.txt
 ```
 
+```sh
+node cli/dist/bin/getwrite-cli.cjs project create ./my-novel --project-type novel
+```
+
+---
+
+### `project types`
+
+Lists the project types the CLI can see, one per line as `id`, `name`, `source` separated by tabs (`source` is `built-in` or `saved`).
+
+```sh
+getwrite-cli project types
+```
+
+**Saved types and the variable.** The CLI reads saved project types only from the directory named by `GETWRITE_SAVED_PROJECT_TYPES_DIR`. It has no flag and does not look for the desktop app's store. When the variable is unset it lists the built-in types only and prints a notice ("Saved project types were not included: GETWRITE_SAVED_PROJECT_TYPES_DIR is not set. Export it to the saved project types folder to include them."); when the folder cannot be read it prints a notice saying so; a saved file that cannot be used is reported by file name and reason (`unparseable`, `invalid`, `unreadable`). **The consequence is that the CLI's list can differ from the desktop dialogs' list** until the variable is exported to the same folder (the desktop app's is `<userData>/project-types`). A saved file that breaks the project type entry rules (blank or duplicate statuses, blank names, sibling folders that slugify alike; see [project-types.md](project-types.md)) is reported as `invalid` and is not usable from the CLI. The same resolver and notices apply to `project create --project-type` and `project import-docx --project-type`.
+
+**Exit codes:** `0` = success, `2` = error
+
 ---
 
 ### `project import-docx`
@@ -136,7 +158,7 @@ getwrite-cli project import-docx <source> [projectRoot] [--name <name>] [-s, --s
 
 - `-n, --name <name>` (optional) — destination project name. Defaults to the document's own core title (single-file source, when present) or `source`'s basename otherwise.
 - `-s, --split-level <1-6|none>` (optional) — heading level to split a single-file source into one resource per section. Defaults to `1`. `"none"` imports the whole document as a single resource. Refused, before any write, against a folder source — a folder source always creates one resource per file and never splits.
-- `-t, --project-type <id>` (optional) — destination project-type spec id, read from `getwrite-config/templates/project-types/`. Defaults to `blank`. An unrecognized id is refused before any write.
+- `-t, --project-type <id>` (optional) — destination project-type spec id: built-in, or saved when `GETWRITE_SAVED_PROJECT_TYPES_DIR` is set. Defaults to `blank`. An unrecognized id is refused before any write.
 
 **What it carries over:**
 

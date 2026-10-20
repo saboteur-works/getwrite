@@ -137,3 +137,22 @@ export const Disabled: Story = {
     </div>
   ),
 };
+
+export const NumberInputWithValidation: Story = {
+  render: () => (
+    <div className="p-4 bg-gw-chrome flex items-center gap-2">
+      <EditorMenuInput
+        Icon="lineHeight"
+        type="number"
+        initialValue="1.8"
+        tooltipContent="Line Height"
+        validate={(value) =>
+          Number(value) > 0
+            ? null
+            : "Line height must be a number greater than 0."
+        }
+        onChange={action("leading-changed")}
+      />
+    </div>
+  ),
+};

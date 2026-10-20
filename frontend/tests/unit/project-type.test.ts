@@ -36,8 +36,9 @@ describe("project-type schema (T016/T017)", () => {
     };
     const res = validateProjectType(spec);
     expect(res.success).toBe(false);
-    // zod produces a human-friendly message for regex failures
-    expect(JSON.stringify(res.errors)).toContain("must match pattern");
+    expect(JSON.stringify(res.errors)).toContain(
+      "ID can use only lowercase letters",
+    );
   });
 
   it("preserves Workspace defaults when validation succeeds", () => {

@@ -16,6 +16,8 @@ export interface DocxWorkerForkOptions {
 export interface DocxWorkerForkInputs {
   /** Directory holding the project-type specs. */
   templatesDir: string;
+  /** Directory of writer-saved project types (`<userData>/project-types`). */
+  savedProjectTypesDir: string;
   /** Working directory the worker should start in. */
   workingDir: string;
   /** Environment the worker inherits (passing `env` replaces it, so it is carried over). */
@@ -24,13 +26,17 @@ export interface DocxWorkerForkInputs {
 
 /**
  * Returns the fork options for the DOCX worker: the base environment plus
- * `GETWRITE_PROJECT_TYPES_DIR`, and the given working directory unchanged.
+ * `GETWRITE_PROJECT_TYPES_DIR` and `GETWRITE_SAVED_PROJECT_TYPES_DIR`, and the given working directory unchanged.
  */
 export function buildDocxWorkerForkOptions(
   inputs: DocxWorkerForkInputs,
 ): DocxWorkerForkOptions {
   return {
-    env: { ...inputs.baseEnv, GETWRITE_PROJECT_TYPES_DIR: inputs.templatesDir },
+    env: {
+      ...inputs.baseEnv,
+      GETWRITE_PROJECT_TYPES_DIR: inputs.templatesDir,
+      GETWRITE_SAVED_PROJECT_TYPES_DIR: inputs.savedProjectTypesDir,
+    },
     cwd: inputs.workingDir,
   };
 }

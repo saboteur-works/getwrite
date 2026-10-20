@@ -18,22 +18,48 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ImportDocxDialog from "../../components/Start/ImportDocxDialog";
 import type {
+  ProjectTypeList,
+  ProjectTypeListEntry,
+} from "../../src/lib/api/project-types";
+import type {
   DocxImportOutcome,
   DocxSourceChoice,
 } from "../../src/lib/desktop-bridge";
 
+const listProjectTypeEntriesMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../src/lib/api/project-types", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/api/project-types")>();
+  return { ...actual, listProjectTypeEntries: listProjectTypeEntriesMock };
+});
+
+/** A listed entry; the spec carries only what the dialog reads. */
+function entry(
+  id: string,
+  name: string,
+  source: "built-in" | "saved",
+): ProjectTypeListEntry {
+  return {
+    spec: { id, name, folders: [{ name: "Notes" }] },
+    fileName: `${id}.json`,
+    source,
+  };
+}
+
+const LISTED: ProjectTypeList = {
+  entries: [
+    entry("article", "Article", "built-in"),
+    entry("blank", "Blank", "built-in"),
+    entry("novel", "Novel", "built-in"),
+    entry("my-saved", "My Saved Type", "saved"),
+  ],
+  unusable: [],
+  savedStatus: "ok",
+};
+
 const HANDLE = "handle-1";
 const DISPLAY_NAME = "My Manuscript";
-
-/** The known project-type ids, read from `getwrite-config/templates/project-types/*.json`'s own `id` fields. */
-const KNOWN_PROJECT_TYPE_IDS = [
-  "article",
-  "blank",
-  "game_writing",
-  "novel",
-  "poetry_and_lyrics",
-  "serial",
-];
 
 /**
  * Installs a fake desktop bridge on `window`.
@@ -101,6 +127,8 @@ function neverResolvingImportSpy() {
 
 beforeEach(() => {
   delete (window as unknown as Record<string, unknown>).getwriteDesktop;
+  listProjectTypeEntriesMock.mockReset();
+  listProjectTypeEntriesMock.mockResolvedValue(LISTED);
 });
 
 afterEach(() => {
@@ -210,28 +238,86 @@ describe("ImportDocxDialog — choose-source", () => {
 });
 
 describe("ImportDocxDialog — editing-name", () => {
-  it("defaults the project-type control to blank and offers every known project-type id", async () => {
+  async function openEditingName(): Promise<void> {
     installBridge({});
     render(
       <ImportDocxDialog isOpen={true} onClose={vi.fn()} onImported={vi.fn()} />,
     );
-
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: /Choose document/i }));
     await screen.findByLabelText(/Name/i);
+  }
 
-    const projectTypeSelect = screen.getByLabelText(
+  it("loads the list through the transport on open, defaults to blank and offers saved types", async () => {
+    await openEditingName();
+
+    expect(listProjectTypeEntriesMock).toHaveBeenCalled();
+    const select = (await screen.findByLabelText(
       /Project type/i,
-    ) as HTMLSelectElement;
-    expect(projectTypeSelect.value).toBe("blank");
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(4));
+    expect(select.value).toBe("blank");
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      "article",
+      "blank",
+      "novel",
+      "my-saved",
+    ]);
+    expect(
+      screen.getByRole("option", { name: "My Saved Type (Saved)" }),
+    ).toBeInTheDocument();
+  });
 
-    const optionValues = Array.from(projectTypeSelect.options).map(
-      (option) => option.value,
+  it("offers no game_writing entry the list does not contain (no hard-coded fallback)", async () => {
+    await openEditingName();
+    const select = (await screen.findByLabelText(
+      /Project type/i,
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(4));
+    expect(Array.from(select.options).map((o) => o.value)).not.toContain(
+      "game_writing",
     );
-    for (const id of KNOWN_PROJECT_TYPE_IDS) {
-      expect(optionValues).toContain(id);
-    }
+  });
+
+  it("shows the notice when saved files could not be used", async () => {
+    listProjectTypeEntriesMock.mockResolvedValue({
+      ...LISTED,
+      unusable: [{ fileName: "broken.json", reason: "invalid" }],
+    });
+    await openEditingName();
+    expect(
+      await screen.findByText("1 saved project type file could not be used."),
+    ).toBeInTheDocument();
+  });
+
+  it("on a load failure shows the error, offers no list and blocks Start; Retry reloads", async () => {
+    listProjectTypeEntriesMock.mockRejectedValueOnce(new Error("boom"));
+    await openEditingName();
+
+    const alert = await screen.findByText(/Failed to load project types/i);
+    expect(alert).toHaveTextContent("boom");
+    expect(screen.queryByLabelText(/Project type/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: /Blank/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Start$/i })).toBeDisabled();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /Retry/i }));
+    const select = (await screen.findByLabelText(
+      /Project type/i,
+    )) as HTMLSelectElement;
+    expect(select.value).toBe("blank");
+  });
+
+  it("while loading, shows a status and no list", async () => {
+    listProjectTypeEntriesMock.mockReturnValue(new Promise(() => {}));
+    await openEditingName();
+    expect(screen.getByText(/Loading project types/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Project type/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Start$/i })).toBeDisabled();
   });
 });
 
@@ -247,7 +333,7 @@ describe("ImportDocxDialog — importing", () => {
     await user.click(screen.getByRole("button", { name: /Choose document/i }));
     const nameInput = await screen.findByLabelText(/Name/i);
     const splitLevelSelect = screen.getByLabelText(/Split into resources at/i);
-    const projectTypeSelect = screen.getByLabelText(/Project type/i);
+    const projectTypeSelect = await screen.findByLabelText(/Project type/i);
 
     await user.click(screen.getByRole("button", { name: /^Start$/i }));
 

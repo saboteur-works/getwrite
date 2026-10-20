@@ -37,6 +37,8 @@ import {
   type EditorHeadingMap,
 } from "../editor-heading-settings";
 import {
+  getLineHeightError,
+  InvalidLineHeightError,
   sanitizeEditorBody,
   type EditorBodyConfig,
 } from "../editor-body-settings";
@@ -89,10 +91,15 @@ export interface UpdateEditorConfigResult {
  * value, including `{}` for `headings`, is still sanitized and replaces.
  *
  * @throws {InvalidProjectIdCoreError} When `projectId` is not a well-formed UUID.
+ * @throws {InvalidLineHeightError} When `body.lineHeight` is not empty and not
+ *   a unitless number of at least 1.8. Nothing is written (refuse, not clamp).
  */
 export async function updateEditorConfigCore(
   input: UpdateEditorConfigInput,
 ): Promise<UpdateEditorConfigResult> {
+  if (getLineHeightError(input.body?.lineHeight) !== undefined) {
+    throw new InvalidLineHeightError();
+  }
   const projectRoot = resolveEditorConfigProjectRootOrThrow(input.projectId);
   const projectFilePath = path.join(projectRoot, "project.json");
   const parsedProject = JSON.parse(

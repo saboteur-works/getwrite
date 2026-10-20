@@ -9,6 +9,7 @@
  * mutation semantics to callbacks supplied by the parent orchestrator.
  */
 
+import { useId } from "react";
 import Button from "../common/UI/Button/Button";
 import Input from "../common/UI/Input/Input";
 import Textarea from "../common/UI/Textarea/Textarea";
@@ -20,6 +21,7 @@ import type {
   ProjectTypeResourceKind,
 } from "../../src/types/project-types";
 import type { EditorHeading } from "../../src/lib/models/types";
+import { getLineHeightError } from "../../src/lib/editor-body-settings";
 
 const HEADING_LEVELS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
 type HeadingLevel = (typeof HEADING_LEVELS)[number];
@@ -45,6 +47,20 @@ export interface ProjectTypeEditorFormProps {
   onUpdateStatus: (index: number, value: string) => void;
   onAddDefaultFolder: () => void;
   onRemoveDefaultFolder: (index: number) => void;
+  /** Makes the ID field read-only (a saved type's id is fixed; so is a built-in's). */
+  idReadOnly?: boolean;
+  /** Refusal message shown next to the ID field as an alert. */
+  idError?: string;
+  /** Refusal message shown next to the Name field as an alert. */
+  nameError?: string;
+  /**
+   * Schema refusals keyed by path joined with "." (`name`, `statuses.1`,
+   * `folders.0.name`, `defaultFolders.0.name`, `defaultFolders.0.folder`,
+   * `defaultResources.0.name`; see `isFormFieldKey`). Each message is shown
+   * as an alert beside its input. Other keys are ignored here: the manager
+   * lists them in the action bar.
+   */
+  fieldErrors?: Record<string, string>;
 }
 
 export default function ProjectTypeEditorForm({
@@ -60,6 +76,10 @@ export default function ProjectTypeEditorForm({
   onUpdateStatus,
   onAddDefaultFolder,
   onRemoveDefaultFolder,
+  idReadOnly = false,
+  idError,
+  nameError,
+  fieldErrors,
 }: ProjectTypeEditorFormProps): JSX.Element {
   const patchDefinition = (updates: Partial<ProjectTypeDefinition>): void => {
     onChange({ ...definition, ...updates });
@@ -137,12 +157,17 @@ export default function ProjectTypeEditorForm({
           label="ID"
           value={definition.id}
           placeholder="novel"
+          readOnly={idReadOnly}
+          error={idError}
+          errorIsAlert
           onChange={(value) => patchDefinition({ id: value })}
         />
         <LabeledInput
           label="Name"
           value={definition.name}
           placeholder="Novel"
+          error={nameError ?? fieldErrors?.name}
+          errorIsAlert
           onChange={(value) => patchDefinition({ name: value })}
         />
         <LabeledNumberInput
@@ -191,6 +216,8 @@ export default function ProjectTypeEditorForm({
                   label="Status Label"
                   value={status}
                   placeholder="e.g. Draft"
+                  error={fieldErrors?.[`statuses.${index}`]}
+                  errorIsAlert
                   onChange={(value) => onUpdateStatus(index, value)}
                 />
                 <div
@@ -227,7 +254,7 @@ export default function ProjectTypeEditorForm({
         <div className="project-type-editor-stack">
           {definition.folders.map((folder, index) => (
             <div
-              key={`${folder.name || "folder"}-${index}`}
+              key={index}
               className="project-type-editor-card project-type-editor-stack"
             >
               <div className="project-type-editor-form-grid project-type-editor-form-grid--folder-row">
@@ -235,6 +262,8 @@ export default function ProjectTypeEditorForm({
                   label="Folder Name"
                   value={folder.name}
                   placeholder="Workspace"
+                  error={fieldErrors?.[`folders.${index}.name`]}
+                  errorIsAlert
                   onChange={(value) => patchFolder(index, { name: value })}
                 />
                 <div
@@ -295,7 +324,7 @@ export default function ProjectTypeEditorForm({
         <div className="project-type-editor-stack">
           {(definition.defaultFolders ?? []).map((df, index) => (
             <div
-              key={`${df.name || "df"}-${index}`}
+              key={index}
               className="project-type-editor-card project-type-editor-stack"
             >
               <div className="project-type-editor-form-grid project-type-editor-form-grid--two-column">
@@ -303,6 +332,8 @@ export default function ProjectTypeEditorForm({
                   label="Name"
                   value={df.name}
                   placeholder="Chapter 1"
+                  error={fieldErrors?.[`defaultFolders.${index}.name`]}
+                  errorIsAlert
                   onChange={(value) =>
                     patchDefaultFolder(index, { name: value })
                   }
@@ -311,6 +342,8 @@ export default function ProjectTypeEditorForm({
                   label="Parent Folder"
                   value={df.folder}
                   placeholder="Workspace"
+                  error={fieldErrors?.[`defaultFolders.${index}.folder`]}
+                  errorIsAlert
                   onChange={(value) =>
                     patchDefaultFolder(index, { folder: value })
                   }
@@ -370,7 +403,7 @@ export default function ProjectTypeEditorForm({
         <div className="project-type-editor-stack">
           {(definition.defaultResources ?? []).map((resource, index) => (
             <div
-              key={`${resource.name || "resource"}-${index}`}
+              key={index}
               className="project-type-editor-card project-type-editor-stack"
             >
               <div className="project-type-editor-form-grid project-type-editor-form-grid--three-column">
@@ -378,12 +411,15 @@ export default function ProjectTypeEditorForm({
                   label="Name"
                   value={resource.name}
                   placeholder="Manuscript Start"
+                  error={fieldErrors?.[`defaultResources.${index}.name`]}
+                  errorIsAlert
                   onChange={(value) => patchResource(index, { name: value })}
                 />
                 <LabeledInput
                   label="Folder"
-                  value={resource.folder}
+                  value={resource.folder ?? ""}
                   placeholder="Workspace"
+                  helper="Leave empty to use the first folder."
                   onChange={(value) => patchResource(index, { folder: value })}
                 />
                 <LabeledSelect
@@ -535,6 +571,9 @@ export default function ProjectTypeEditorForm({
                 label="Line Height"
                 value={definition.editorConfig?.body?.lineHeight ?? ""}
                 placeholder="1.8"
+                error={getLineHeightError(
+                  definition.editorConfig?.body?.lineHeight,
+                )}
                 onChange={(value) =>
                   patchBody({ lineHeight: value || undefined })
                 }
@@ -601,6 +640,13 @@ interface LabeledInputProps {
   label: string;
   value: string;
   placeholder?: string;
+  /** Refusal message; when set it is linked to the input and flagged invalid. */
+  error?: string;
+  /** Announces `error` as an alert (a refusal) rather than quiet field help. */
+  errorIsAlert?: boolean;
+  /** Quiet help under the input, linked to it by `aria-describedby`. */
+  helper?: string;
+  readOnly?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -608,18 +654,47 @@ function LabeledInput({
   label,
   value,
   placeholder,
+  error,
+  errorIsAlert = false,
+  helper,
+  readOnly,
   onChange,
 }: LabeledInputProps): JSX.Element {
+  const errorId = useId();
+  const helperId = useId();
+  const describedBy =
+    [error ? errorId : null, helper ? helperId : null]
+      .filter((id): id is string => id !== null)
+      .join(" ") || undefined;
   return (
-    <label className="project-type-editor-field">
-      <span className="project-type-editor-field-label">{label}</span>
-      <Input
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="project-type-editor-field-control"
-      />
-    </label>
+    <div className="project-type-editor-field">
+      <label className="project-type-editor-field">
+        <span className="project-type-editor-field-label">{label}</span>
+        <Input
+          value={value}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          onChange={(e) => onChange(e.target.value)}
+          className="project-type-editor-field-control"
+        />
+      </label>
+      {helper ? (
+        <p id={helperId} className="project-type-editor-helper-text">
+          {helper}
+        </p>
+      ) : null}
+      {error ? (
+        <p
+          id={errorId}
+          role={errorIsAlert ? "alert" : undefined}
+          className="text-sm text-gw-secondary"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

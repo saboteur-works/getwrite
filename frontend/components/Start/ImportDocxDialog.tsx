@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import Input from "../common/UI/Input/Input";
 import Select from "../common/UI/Select/Select";
 import { getDesktopBridge } from "../../src/lib/desktop-bridge";
+import {
+  listProjectTypeEntries,
+  projectTypeListNotice,
+} from "../../src/lib/api/project-types";
 
 export interface ImportDocxDialogProps {
   isOpen: boolean;
@@ -13,20 +17,14 @@ export interface ImportDocxDialogProps {
   onImported: (projectId: string) => void;
 }
 
-/**
- * The known project-type ids (FR-8), read from each spec's own `id` field
- * under `getwrite-config/templates/project-types/`. Verified on disk:
- * `article`, `blank`, `game_writing` (the `game_documentation.json` spec's
- * own id, not its filename), `novel`, `poetry_and_lyrics`, `serial`.
- */
-const PROJECT_TYPE_OPTIONS: ReadonlyArray<{ id: string; label: string }> = [
-  { id: "blank", label: "Blank" },
-  { id: "article", label: "Article" },
-  { id: "game_writing", label: "Game Documentation" },
-  { id: "novel", label: "Novel" },
-  { id: "poetry_and_lyrics", label: "Poetry & Lyrics" },
-  { id: "serial", label: "Serial" },
-];
+/** One project type offered by the control, from the transport list. */
+interface ProjectTypeOption {
+  id: string;
+  label: string;
+}
+
+/** Id preselected when the list offers it (FR-9). */
+const DEFAULT_PROJECT_TYPE_ID = "blank";
 
 /** Split-level options (FR-2): Heading 1-6, or no split at all. */
 const SPLIT_LEVEL_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -89,7 +87,17 @@ export default function ImportDocxDialog({
   const [name, setName] = useState<string>("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [splitLevelValue, setSplitLevelValue] = useState<string>("1");
-  const [projectType, setProjectType] = useState<string>("blank");
+  const [projectType, setProjectType] = useState<string>(
+    DEFAULT_PROJECT_TYPE_ID,
+  );
+  // The offered types come only from the transport list. `null` means not
+  // loaded (loading or failed): no list is offered and nothing is guessed.
+  const [typeOptions, setTypeOptions] = useState<ProjectTypeOption[] | null>(
+    null,
+  );
+  const [isLoadingTypes, setIsLoadingTypes] = useState<boolean>(false);
+  const [typesError, setTypesError] = useState<string | null>(null);
+  const [listNotice, setListNotice] = useState<string | null>(null);
   // Tracked separately from `state` because the split-level control must stay
   // visible (disabled) through `importing`, not just `editing-name`.
   const [sourceKind, setSourceKind] = useState<SourceKind | null>(null);
@@ -99,6 +107,37 @@ export default function ImportDocxDialog({
   const outcomeRef = useRef<HTMLDivElement | null>(null);
   const openProjectRef = useRef<HTMLButtonElement | null>(null);
 
+  const loadTypes = useCallback(async (): Promise<void> => {
+    setIsLoadingTypes(true);
+    setTypesError(null);
+    setListNotice(null);
+    setTypeOptions(null);
+    try {
+      const list = await listProjectTypeEntries();
+      const options = list.entries.map((e) => ({
+        id: e.spec.id,
+        label: `${e.spec.name}${e.source === "saved" ? " (Saved)" : ""}`,
+      }));
+      setTypeOptions(options);
+      setListNotice(projectTypeListNotice(list));
+      setProjectType(
+        options.some((o) => o.id === DEFAULT_PROJECT_TYPE_ID)
+          ? DEFAULT_PROJECT_TYPE_ID
+          : (options[0]?.id ?? ""),
+      );
+    } catch (err) {
+      setTypesError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoadingTypes(false);
+    }
+  }, []);
+
+  // Load the list each time the dialog opens, so a type saved or deleted
+  // since the last open is seen.
+  useEffect(() => {
+    if (isOpen) void loadTypes();
+  }, [isOpen, loadTypes]);
+
   // Reset to the initial state every time the dialog opens.
   useEffect(() => {
     if (isOpen) {
@@ -106,7 +145,7 @@ export default function ImportDocxDialog({
       setName("");
       setNameError(null);
       setSplitLevelValue("1");
-      setProjectType("blank");
+      setProjectType(DEFAULT_PROJECT_TYPE_ID);
       setSourceKind(null);
     }
   }, [isOpen]);
@@ -322,21 +361,46 @@ export default function ImportDocxDialog({
               </label>
             )}
 
-            <label className="project-modal-field mt-3 block">
-              <div className="project-modal-label">Project type</div>
-              <Select
-                value={projectType}
-                onChange={(e) => setProjectType(e.target.value)}
-                className="w-full mt-1"
-                disabled={isImporting}
-              >
-                {PROJECT_TYPE_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            {typeOptions ? (
+              <label className="project-modal-field mt-3 block">
+                <div className="project-modal-label">Project type</div>
+                <Select
+                  value={projectType}
+                  onChange={(e) => setProjectType(e.target.value)}
+                  className="w-full mt-1"
+                  disabled={isImporting}
+                >
+                  {typeOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            ) : null}
+            {isLoadingTypes ? (
+              <div role="status" className="project-modal-hint mt-3">
+                Loading project types…
+              </div>
+            ) : null}
+            {listNotice ? (
+              <div role="status" className="project-modal-hint mt-3">
+                {listNotice}
+              </div>
+            ) : null}
+            {typesError ? (
+              <div role="alert" className="project-modal-error mt-3">
+                Failed to load project types: {typesError}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="ml-2"
+                  onClick={() => void loadTypes()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : null}
 
             <div className="project-modal-actions">
               {!isImporting && (
@@ -348,7 +412,11 @@ export default function ImportDocxDialog({
                   Choose a different source…
                 </Button>
               )}
-              <Button type="submit" variant="default" disabled={isImporting}>
+              <Button
+                type="submit"
+                variant="default"
+                disabled={isImporting || !typeOptions || !projectType}
+              >
                 {isImporting ? "Importing…" : "Start"}
               </Button>
             </div>

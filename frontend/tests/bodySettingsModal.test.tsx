@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import BodySettingsModal from "../components/preferences/BodySettingsModal";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
+import { runAxe } from "./a11y/helpers/axe";
+import { LINE_HEIGHT_FLOOR_MESSAGE } from "../src/lib/editor-body-settings";
 
 function renderInDialog(ui: React.ReactElement) {
   return render(
@@ -13,6 +15,21 @@ function renderInDialog(ui: React.ReactElement) {
 }
 
 describe("BodySettingsModal", () => {
+  it("qualifies the scope and states the 1.8 minimum and own-spacing rule", () => {
+    renderInDialog(
+      <BodySettingsModal
+        onClose={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("apply to all editor body text");
+    expect(text).toContain("no spacing of its own");
+    expect(text).toContain("at least 1.8");
+    expect(text).toContain("a paragraph with its own spacing keeps it");
+  });
+
   it("renders all body field labels", () => {
     renderInDialog(
       <BodySettingsModal
@@ -171,6 +188,99 @@ describe("BodySettingsModal", () => {
       expect(preview.style.fontFamily).toBe("");
       expect(preview.style.fontSize).toBe("");
       expect(preview.style.lineHeight).toBe("");
+    });
+  });
+
+  describe("line height floor (FR-22 a, FR-23)", () => {
+    it.each(["1.7", "normal"])(
+      "refuses %j on Save: message linked to the field, value kept, no request",
+      async (value) => {
+        const onSave = vi.fn().mockResolvedValue(undefined);
+        const onClose = vi.fn();
+        renderInDialog(<BodySettingsModal onClose={onClose} onSave={onSave} />);
+
+        const field = screen.getByLabelText("Line Height");
+        fireEvent.change(field, { target: { value } });
+        fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+        const message = await screen.findByText(LINE_HEIGHT_FLOOR_MESSAGE);
+        expect(message.textContent).toBe(
+          "Line height must be a number of at least 1.8.",
+        );
+        expect(field).toHaveAttribute("aria-describedby", message.id);
+        expect(field).toHaveAttribute("aria-invalid", "true");
+        expect(field).toHaveValue(value);
+        expect(onSave).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+      },
+    );
+
+    it("announces a refused 1.2 as an alert linked to the field (FR-29 a), keeps the value and saves nothing", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
+
+      const field = screen.getByLabelText("Line Height");
+      fireEvent.change(field, { target: { value: "1.2" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Line height must be a number of at least 1.8.",
+      );
+      expect(field).toHaveAttribute("aria-describedby", alert.id);
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveValue("1.2");
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["", {}],
+      ["2", { lineHeight: "2" }],
+    ])("saves %j", async (value, expected) => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
+
+      fireEvent.change(screen.getByLabelText("Line Height"), {
+        target: { value },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(expected));
+      expect(screen.queryByText(LINE_HEIGHT_FLOOR_MESSAGE)).toBeNull();
+    });
+
+    it("clears the message once the value is edited", async () => {
+      renderInDialog(
+        <BodySettingsModal
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+      const field = screen.getByLabelText("Line Height");
+      fireEvent.change(field, { target: { value: "1.7" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await screen.findByText(LINE_HEIGHT_FLOOR_MESSAGE);
+
+      fireEvent.change(field, { target: { value: "1.9" } });
+
+      expect(screen.queryByText(LINE_HEIGHT_FLOOR_MESSAGE)).toBeNull();
+      expect(field).not.toHaveAttribute("aria-describedby");
+    });
+
+    it("has no axe violations with the linked message shown", async () => {
+      const { container } = renderInDialog(
+        <BodySettingsModal
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText("Line Height"), {
+        target: { value: "1.7" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await screen.findByText(LINE_HEIGHT_FLOOR_MESSAGE);
+
+      await runAxe(container);
     });
   });
 });

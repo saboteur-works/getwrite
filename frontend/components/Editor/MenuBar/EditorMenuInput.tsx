@@ -65,6 +65,14 @@ export interface EditorMenuInputProps {
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
   rotate?: false | "45" | "90";
+  /**
+   * Optional validator for typed input. Returns a message for refused input
+   * (shown beside the control, linked with `aria-describedby`, and the change
+   * is not forwarded to `onChange`), or `null` when the input is acceptable.
+   * On blur after a refusal a number input shows `initialValue` again and the
+   * message stays; inputs without a validator are unaffected.
+   */
+  validate?: (value: string) => string | null;
   minValue?: number;
   maxValue?: number;
 }
@@ -106,18 +114,22 @@ export default function EditorMenuInput({
   options = [],
   onChange,
   rotate = false,
+  validate,
   minValue = 0,
   maxValue = 100,
 }: EditorMenuInputProps) {
   const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState<string | null>(null);
   const isFocused = useRef(false);
   const IconComponent = inputIconRegistry[Icon];
   const controlId = `${Icon}-${type ?? "color"}-input`;
+  const errorId = `${controlId}-error`;
   const buttonClasses = buildButtonClasses(active, disabled);
 
   useEffect(() => {
     if (!isFocused.current) {
       setValue(initialValue);
+      setError(null);
     }
   }, [initialValue]);
 
@@ -128,9 +140,13 @@ export default function EditorMenuInput({
     "data-tooltip-content": tooltipContent,
     "aria-label": tooltipContent || Icon,
     value,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": error ? errorId : undefined,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setValue(e.target.value);
-      onChange?.(e);
+      const message = validate?.(e.target.value) ?? null;
+      setError(message);
+      if (message === null) onChange?.(e);
     },
   };
 
@@ -165,6 +181,10 @@ export default function EditorMenuInput({
           }}
           onBlur={() => {
             isFocused.current = false;
+            // Only an input with a validator: after a refusal the field shows
+            // the value in effect again and the message stays (Feature 90,
+            // FR-29 c). Inputs without a validator keep what was typed.
+            if (validate && error !== null) setValue(initialValue);
           }}
           className={`editor-menu-input-control editor-menu-number-input ${buttonClasses}`}
         />
@@ -180,6 +200,11 @@ export default function EditorMenuInput({
             </option>
           ))}
         </select>
+      )}
+      {error && (
+        <span id={errorId} role="alert" className="text-xs">
+          {error}
+        </span>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import StartPage from "../components/Start/StartPage";
 import CreateProjectModal from "../components/Start/CreateProjectModal";
+import { projectTypesListBody } from "./helpers/projectTypesListBody";
 
 describe("Create project flow (integration) - modal calls API and adds project", () => {
   afterEach(() => {
@@ -35,13 +36,14 @@ describe("Create project flow (integration) - modal calls API and adds project",
         if (url.endsWith("/api/project-types")) {
           return Promise.resolve({
             ok: true,
-            json: async () => [
-              {
-                id: "novel",
-                name: "Novel",
-                folders: [{ name: "Workspace", defaultResources: [] }],
-              },
-            ],
+            json: async () =>
+              projectTypesListBody([
+                {
+                  id: "novel",
+                  name: "Novel",
+                  folders: [{ name: "Workspace", defaultResources: [] }],
+                },
+              ]),
           });
         }
         if (url.endsWith("/api/projects") && init && init.method === "POST") {
@@ -141,14 +143,19 @@ describe("Create project modal — project-type list parity (T027)", () => {
         if (url.endsWith("/api/project-types")) {
           return Promise.resolve({
             ok: true,
-            json: async () => [
-              {
-                id: "screenplay",
-                name: "Screenplay",
-                folders: [{ name: "Workspace" }],
-              },
-              { id: "essay", name: "Essay", folders: [{ name: "Workspace" }] },
-            ],
+            json: async () =>
+              projectTypesListBody([
+                {
+                  id: "screenplay",
+                  name: "Screenplay",
+                  folders: [{ name: "Workspace" }],
+                },
+                {
+                  id: "essay",
+                  name: "Essay",
+                  folders: [{ name: "Workspace" }],
+                },
+              ]),
           });
         }
         return Promise.resolve({ ok: true, json: async () => [] });
@@ -201,5 +208,139 @@ describe("Create project modal — project-type list parity (T027)", () => {
       },
       { timeout: 2000 },
     );
+  });
+});
+
+describe("Create project modal - resolver list (Feature 90, Task 24)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const spec = (id: string, name: string) => ({
+    id,
+    name,
+    folders: [{ name: "Workspace" }],
+  });
+
+  function stubBodies(bodies: unknown[]): ReturnType<typeof vi.spyOn> {
+    let call = 0;
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      const body = bodies[Math.min(call, bodies.length - 1)];
+      call += 1;
+      return { ok: true, json: async () => body } as Response;
+    });
+  }
+
+  const renderModal = (isOpen: boolean) => (
+    <CreateProjectModal
+      isOpen={isOpen}
+      onClose={vi.fn()}
+      onCreate={vi.fn()}
+      defaultName=""
+      defaultType="novel"
+    />
+  );
+
+  it("marks saved types as Saved in text and leaves built-ins unmarked", async () => {
+    stubBodies([
+      {
+        entries: [
+          {
+            spec: spec("novel", "Novel"),
+            fileName: "novel.json",
+            source: "built-in",
+          },
+          {
+            spec: spec("mine", "My Type"),
+            fileName: "mine.json",
+            source: "saved",
+          },
+        ],
+        unusable: [],
+        savedStatus: "ok",
+      },
+    ]);
+    render(renderModal(true));
+    const saved = await screen.findByRole("option", { name: /My Type/ });
+    expect(saved.textContent).toMatch(/\(Saved\)/);
+    const builtIn = screen.getByRole("option", { name: /Novel/ });
+    expect(builtIn.textContent).not.toMatch(/Saved/);
+  });
+
+  it("re-reads the list on each open so a newly saved type appears", async () => {
+    const first = projectTypesListBody([spec("novel", "Novel")]);
+    const second = {
+      entries: [
+        {
+          spec: spec("novel", "Novel"),
+          fileName: "novel.json",
+          source: "built-in",
+        },
+        {
+          spec: spec("fresh", "Fresh Type"),
+          fileName: "fresh.json",
+          source: "saved",
+        },
+      ],
+      unusable: [],
+      savedStatus: "ok",
+    };
+    const fetchSpy = stubBodies([first, second]);
+    const { rerender } = render(renderModal(true));
+    await screen.findByRole("option", { name: /Novel/ });
+    expect(screen.queryByRole("option", { name: /Fresh Type/ })).toBeNull();
+    rerender(renderModal(false));
+    rerender(renderModal(true));
+    await screen.findByRole("option", { name: /Fresh Type/ });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the notice when saved files are unusable", async () => {
+    stubBodies([
+      projectTypesListBody([spec("novel", "Novel")], {
+        unusable: [{ fileName: "bad.json", reason: "invalid" }],
+      }),
+    ]);
+    render(renderModal(true));
+    const notice = await screen.findByText(/saved project type file/);
+    expect(notice.getAttribute("role")).toBe("status");
+  });
+
+  it("shows the notice when the saved folder is unreadable", async () => {
+    stubBodies([
+      projectTypesListBody([spec("novel", "Novel")], {
+        savedStatus: "unreadable",
+      }),
+    ]);
+    render(renderModal(true));
+    expect(
+      await screen.findByText(/Saved project types could not be read/),
+    ).toBeTruthy();
+  });
+
+  it("shows no notice for a clean list", async () => {
+    stubBodies([projectTypesListBody([spec("novel", "Novel")])]);
+    render(renderModal(true));
+    await screen.findByRole("option", { name: /Novel/ });
+    expect(screen.queryByText(/could not be/)).toBeNull();
+  });
+
+  it("shows the error and no stale list when a reopen fails", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => projectTypesListBody([spec("novel", "Novel")]),
+      } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+    const { rerender } = render(renderModal(true));
+    await screen.findByRole("option", { name: /Novel/ });
+    rerender(renderModal(false));
+    rerender(renderModal(true));
+    expect(
+      await screen.findByText(/Failed to load project types/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /^Novel/ })).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });

@@ -30,8 +30,11 @@ describe("native project-types transport — reads the static template registry 
 
     const list = await transport.list();
 
-    expect(list.length).toBeGreaterThan(0);
-    expect(list.map((t) => t.id).sort()).toEqual(
+    expect(list.entries.length).toBeGreaterThan(0);
+    expect(list.unusable).toEqual([]);
+    expect(list.savedStatus).toBe("not-configured");
+    expect(list.entries.every((e) => e.source === "built-in")).toBe(true);
+    expect(list.entries.map((e) => e.spec.id).sort()).toEqual(
       listStaticProjectTypes()
         .map((t) => t.id)
         .sort(),
@@ -43,7 +46,7 @@ describe("native project-types transport — reads the static template registry 
   it("includes every bundled project type by id, matching what the fs-based route would have produced", async () => {
     const transport = createNativeProjectTypesTransport();
     const list = await transport.list();
-    const ids = list.map((t) => t.id);
+    const ids = list.entries.map((e) => e.spec.id);
 
     for (const id of [
       "article",
@@ -96,5 +99,24 @@ describe("project-types-static registry — proves static-import resolution, not
 
   it("returns undefined for an unknown id rather than throwing", () => {
     expect(getStaticProjectType("not-a-real-type")).toBeUndefined();
+  });
+
+  it("refuses every write as saving-unavailable with no HTTP", async () => {
+    const fetchMock = guardAgainstFetch();
+    const transport = createNativeProjectTypesTransport();
+    const spec = (await transport.list()).entries[0].spec;
+
+    for (const outcome of [
+      await transport.create(spec),
+      await transport.update(spec.id, spec),
+      await transport.remove(spec.id),
+    ]) {
+      expect(outcome).toMatchObject({
+        ok: false,
+        reason: "saving-unavailable",
+      });
+    }
+
+    fetchMock.restore();
   });
 });

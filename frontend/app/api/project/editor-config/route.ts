@@ -10,7 +10,10 @@ import {
   updateEditorConfigCore,
 } from "../../../../src/lib/models/editor-config-core";
 import type { EditorHeadingMap } from "../../../../src/lib/editor-heading-settings";
-import type { EditorBodyConfig } from "../../../../src/lib/editor-body-settings";
+import {
+  InvalidLineHeightError,
+  type EditorBodyConfig,
+} from "../../../../src/lib/editor-body-settings";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
@@ -41,6 +44,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
+    }
+    if (error instanceof InvalidLineHeightError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     const message =
       error instanceof Error

@@ -313,6 +313,41 @@ describe("route and page enumeration", () => {
     expect(STORE_INDEPENDENT_EXCEPTIONS.every(isExceptionName)).toBe(true);
   });
 
+  it("enumerates the project-types read and write routes by walking, none an exception (Feature 90, Task 19)", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const labels = entries
+      .filter((e) => e.url.startsWith("/api/project-types"))
+      .map(label)
+      .sort();
+    expect(labels).toEqual([
+      `DELETE /api/project-types/${DUMMY}`,
+      "GET /api/project-types",
+      "POST /api/project-types",
+      `PUT /api/project-types/${DUMMY}`,
+    ]);
+    expect(labels.some(isExceptionName)).toBe(false);
+  });
+
+  it("lets a paired device through the project-types write routes (OQ-2) and refuses an unpaired one", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const writes = entries.filter(
+      (e) => e.url.startsWith("/api/project-types") && e.method !== "GET",
+    );
+    expect(writes).toHaveLength(3);
+    const token = await pairInto(dir);
+    for (const entry of writes) {
+      const origin = "http://10.0.0.5:3000";
+      const paired = await proxy(
+        makeRequest(entry, {
+          headers: { cookie: `${DEVICE_COOKIE}=${token}`, origin },
+        }),
+      );
+      expect(isPassThrough(paired), label(entry)).toBe(true);
+      const unpaired = await proxy(makeRequest(entry, { headers: { origin } }));
+      expect(isRefusal(unpaired), label(entry)).toBe(true);
+    }
+  });
+
   it("counts the documented exceptions", () => {
     expect(ENUMERATED_EXCEPTIONS.length + 1).toBe(EXCEPTION_COUNT);
     expect(STATIC_EXCEPTION).toBe("/_next/static/");

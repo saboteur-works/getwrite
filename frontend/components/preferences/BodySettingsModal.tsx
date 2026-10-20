@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import {
   BODY_FIELD_DEFINITIONS,
+  getLineHeightError,
   sanitizeEditorBody,
 } from "../../src/lib/editor-body-settings";
 import HeadingStyleField from "./HeadingStyleField";
@@ -33,6 +34,9 @@ export default function BodySettingsModal({
   const [draft, setDraft] = useState<EditorBodyConfig>(initialBody ?? {});
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lineHeightError, setLineHeightError] = useState<string | undefined>(
+    undefined,
+  );
   // Embedded in Project Settings (`closeOnSave` false), the secondary button
   // discards this section's unsaved edits and leaves the dialog open; closing
   // the whole dialog from here dropped every other section's unsaved edits
@@ -44,16 +48,26 @@ export default function BodySettingsModal({
   const handleDiscard = (): void => {
     setDraft(savedBody);
     setErrorMessage(null);
+    setLineHeightError(undefined);
   };
 
   const handleFieldChange = (
     key: keyof EditorBodyConfig,
     value: string,
   ): void => {
+    if (key === "lineHeight") setLineHeightError(undefined);
     setDraft((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async (): Promise<void> => {
+    const refused = getLineHeightError(draft.lineHeight);
+    if (refused) {
+      // Refuse, never clamp: the typed value stays and no request is sent.
+      setLineHeightError(refused);
+      setErrorMessage(null);
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
 
@@ -89,37 +103,57 @@ export default function BodySettingsModal({
         </h2>
         <p className="max-w-2xl text-sm text-gw-secondary">
           Configure default body text typography for this project. These
-          settings apply to all editor body text.
+          settings apply to body text that has no spacing of its own. Line
+          height must be at least 1.8, and a paragraph with its own spacing
+          keeps it.
         </p>
       </header>
 
       <Card as="section" padding="lg">
         <div className="grid gap-3 md:grid-cols-2">
-          {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => (
-            <HeadingStyleField key={key} id={`body-${key}`} label={label}>
-              {key === "fontFamily" ? (
-                <FontFamilyInput
-                  id={`body-${key}`}
-                  aria-label={label}
-                  value={draft[key] ?? ""}
-                  placeholder={placeholder}
-                  onChange={(event) =>
-                    handleFieldChange(key, event.target.value)
-                  }
-                />
-              ) : (
-                <Input
-                  id={`body-${key}`}
-                  aria-label={label}
-                  value={draft[key] ?? ""}
-                  placeholder={placeholder}
-                  onChange={(event) =>
-                    handleFieldChange(key, event.target.value)
-                  }
-                />
-              )}
-            </HeadingStyleField>
-          ))}
+          {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => {
+            const fieldError =
+              key === "lineHeight" ? lineHeightError : undefined;
+            const errorId = `body-${key}-error`;
+            return (
+              <div key={key} className="flex flex-col gap-1">
+                <HeadingStyleField id={`body-${key}`} label={label}>
+                  {key === "fontFamily" ? (
+                    <FontFamilyInput
+                      id={`body-${key}`}
+                      aria-label={label}
+                      value={draft[key] ?? ""}
+                      placeholder={placeholder}
+                      onChange={(event) =>
+                        handleFieldChange(key, event.target.value)
+                      }
+                    />
+                  ) : (
+                    <Input
+                      id={`body-${key}`}
+                      aria-label={label}
+                      value={draft[key] ?? ""}
+                      placeholder={placeholder}
+                      aria-invalid={fieldError ? true : undefined}
+                      aria-describedby={fieldError ? errorId : undefined}
+                      onChange={(event) =>
+                        handleFieldChange(key, event.target.value)
+                      }
+                    />
+                  )}
+                </HeadingStyleField>
+                {fieldError ? (
+                  <p
+                    id={errorId}
+                    role="alert"
+                    className="text-sm text-gw-secondary"
+                  >
+                    {fieldError}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
 
           <div className="mt-4 border-t border-gw-border pt-4">
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">

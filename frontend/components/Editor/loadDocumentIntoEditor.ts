@@ -1,6 +1,10 @@
 import type { Editor } from "@tiptap/core";
 import type { Content } from "@tiptap/react";
 import isEqual from "lodash/isEqual";
+import {
+  normalizeParagraphLeadingInDocument,
+  type LeadingJsonNode,
+} from "../../src/lib/paragraph-leading";
 
 /**
  * Replaces the editor's whole document with externally-loaded content —
@@ -29,7 +33,7 @@ export function loadDocumentIntoEditor(editor: Editor, content: Content): void {
   editor
     .chain()
     .setMeta("addToHistory", false)
-    .setContent(content, { emitUpdate: false })
+    .setContent(normalizeStoredContent(content), { emitUpdate: false })
     .run();
 }
 
@@ -78,4 +82,36 @@ export function shouldSyncEditorContent(
   if (value === lastEmitted) return false;
   if (typeof value !== "string" && isEqual(value, currentJSON)) return false;
   return value !== currentHTML;
+}
+
+/**
+ * Passes stored content through the single paragraph-leading rule
+ * (`normalizeParagraphLeadingInDocument`) on its way into the editor: the
+ * legacy `"1.5"` stamp and invalid values become unset, other legacy strings
+ * become numbers. Applied where stored content enters the editor (creation
+ * `content:` and {@link loadDocumentIntoEditor}). In memory only: it marks
+ * nothing changed. A string (HTML) is returned as-is: only a JSON document
+ * carries stored leading.
+ */
+export function normalizeStoredContent(content: Content): Content {
+  if (
+    content !== null &&
+    typeof content === "object" &&
+    !Array.isArray(content) &&
+    (content as LeadingJsonNode).type === "doc"
+  ) {
+    return normalizeParagraphLeadingInDocument(
+      content as LeadingJsonNode,
+    ) as Content;
+  }
+  return content;
+}
+
+/**
+ * The part of `TipTapEditor`'s `onCreate` that follows the math migration:
+ * collapse the cursor to the start, outside the undo stack. It no longer stamps
+ * a leading on every paragraph, so opening a document changes nothing in it.
+ */
+export function settleCreatedEditor(editor: Editor): void {
+  editor.chain().setMeta("addToHistory", false).setTextSelection(0).run();
 }

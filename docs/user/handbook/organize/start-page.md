@@ -30,7 +30,7 @@ Not tried: a bad `folder.json` or resource file inside an otherwise healthy proj
 
 From the Start Page you can act on a project without opening it first:
 
-- **Create** a new project: select **Start a New Project**, give it a name and choose a [project type](project-types.md). The new project opens straight away.
+- **Create** a new project: select **Start a New Project**, give it a name and choose a [project type](project-types.md), built-in or one you saved. The new project opens straight away.
 - **Open** a project to start writing.
 - **Rename** a project: open its **Manage** menu and choose **Rename**.
 - **Delete** a project you no longer need: open its **Manage** menu, choose **Delete**, and confirm. The confirmation says the project and its resources are permanently removed.

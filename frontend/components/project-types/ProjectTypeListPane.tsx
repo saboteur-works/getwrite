@@ -10,7 +10,10 @@
  * it holds no draft state and performs no validation.
  */
 
-import type { ProjectTypeListItem } from "./ProjectTypeDraftService";
+import {
+  describeItemOrigin,
+  type ProjectTypeListItem,
+} from "./ProjectTypeDraftService";
 
 /**
  * Props accepted by {@link ProjectTypeListPane}.
@@ -40,7 +43,10 @@ export default function ProjectTypeListPane({
   onCreateProjectType,
 }: ProjectTypeListPaneProps): JSX.Element {
   return (
-    <aside className="project-type-list-pane">
+    <section
+      className="project-type-list-pane"
+      aria-label="Project type templates"
+    >
       <div className="project-type-list-pane-header">Templates</div>
       <ul className="project-type-list-pane-items">
         {items.map((item) => {
@@ -67,6 +73,9 @@ export default function ProjectTypeListPane({
                 <span className="project-type-list-pane-item-meta">
                   {item.fileName ?? "new draft"}
                 </span>
+                <span className="project-type-list-pane-item-meta">
+                  {describeItemOrigin(item)}
+                </span>
                 {item.hasChanges ? (
                   <span className="project-type-list-pane-item-dirty">
                     Unsaved changes
@@ -86,6 +95,6 @@ export default function ProjectTypeListPane({
           New Project Type
         </button>
       </div>
-    </aside>
+    </section>
   );
 }

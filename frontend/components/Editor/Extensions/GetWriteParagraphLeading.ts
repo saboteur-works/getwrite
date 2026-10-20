@@ -1,9 +1,10 @@
 import { Extension } from "@tiptap/core";
+import { readParagraphLeading } from "../../../src/lib/paragraph-leading";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     getWriteParagraphLeading: {
-      setParagraphLeading: (value: string) => ReturnType;
+      setParagraphLeading: (value: string | number) => ReturnType;
       unsetParagraphLeading: () => ReturnType;
     };
   }
@@ -12,14 +13,12 @@ declare module "@tiptap/core" {
 /**
  * Custom TipTap extension to manage paragraph leading (line height) in the editor. This extension
  * targets line height adjustments within paragraphs (not between paragraphs). It provides a default
- * line height that is overriden when the user changes the line height via the editor menu, or
- * when the user selects content with a different line height, ensuring consistent behavior across the editor.
+ * leading that is unset by default (the paragraph follows the project's body line height) and a
+ * JSON number once the writer sets one.
  *
  * This extension is designed to be used in conjunction with the `LineHeight` extension, and it assumes
  */
 const GetWriteParagraphLeading = Extension.create(() => {
-  const defaultLineHeight = "1.5";
-
   return {
     name: "getWriteParagraphLeading",
     addGlobalAttributes() {
@@ -28,13 +27,21 @@ const GetWriteParagraphLeading = Extension.create(() => {
           types: ["paragraph"],
           attributes: {
             paragraphLeading: {
-              default: defaultLineHeight,
-              parseHTML: (element) => {
-                const lineHeight = element.style.lineHeight;
-                return lineHeight || defaultLineHeight;
-              },
+              default: null,
+              // Pasted inline line-height goes through the same rule as stored
+              // documents: the legacy "1.5" stamp and non-numeric values read
+              // as unset (FR-18, FR-20).
+              parseHTML: (element) =>
+                readParagraphLeading(element.style.lineHeight),
+              // Stored content is persisted user data: only a finite number
+              // greater than 0 is ever interpolated into the style (FR-21).
               renderHTML: (attributes) => {
-                return { style: `line-height: ${attributes.paragraphLeading}` };
+                const leading = readParagraphLeading(
+                  attributes.paragraphLeading,
+                );
+                return leading === null
+                  ? {}
+                  : { style: `line-height: ${leading}` };
               },
             },
           },
@@ -62,10 +69,17 @@ const GetWriteParagraphLeading = Extension.create(() => {
          * only behaviour the attribute schema supports.
          */
         setParagraphLeading:
-          (value: string) =>
+          (value: string | number) =>
           ({ chain }) => {
+            // A number is stored as-is; a string is read as a number. The
+            // legacy "1.5" string is a stored-form rule, not a typed value.
+            const leading =
+              typeof value === "number"
+                ? readParagraphLeading(value)
+                : readParagraphLeading(value === "1.5" ? 1.5 : value);
+            if (leading === null) return false;
             return chain()
-              .updateAttributes("paragraph", { paragraphLeading: value })
+              .updateAttributes("paragraph", { paragraphLeading: leading })
               .run();
           },
 

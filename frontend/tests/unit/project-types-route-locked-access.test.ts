@@ -20,26 +20,18 @@
  * propagates uncaught. It cannot assert a 401/409 response, because none is
  * produced without the wrapper this route lacks.
  */
-import fs from "node:fs/promises";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 
-vi.mock("node:fs/promises", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs/promises")>();
-  return {
-    ...actual,
-    default: { ...actual, readdir: vi.fn(actual.readdir) },
-    readdir: vi.fn(actual.readdir),
-  };
-});
+// The route no longer calls `readdir` itself (Feature 90, Task 16): it reads
+// through the resolver, so the locked-access error is injected there.
+vi.mock("../../src/lib/projectTypes", () => ({ resolveProjectTypes: vi.fn() }));
+
+import { resolveProjectTypes } from "../../src/lib/projectTypes";
 
 describe("GET /api/project-types — locked-access rethrow (FR-14)", () => {
-  afterEach(() => {
-    vi.mocked(fs.readdir).mockRestore?.();
-  });
-
   it("propagates a locked-access-shaped error instead of folding it into the fixed 500 shape", async () => {
-    vi.mocked(fs.readdir).mockRejectedValueOnce(
+    vi.mocked(resolveProjectTypes).mockRejectedValueOnce(
       new ProjectLockedError("11111111-1111-4111-8111-111111111111"),
     );
 

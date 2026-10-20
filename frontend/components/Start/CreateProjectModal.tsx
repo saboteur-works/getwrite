@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { X, FolderPlus } from "lucide-react";
 import type { Project as CanonicalProject } from "../../src/lib/models/types";
-import { listProjectTypes } from "../../src/lib/api/project-types";
+import {
+  listProjectTypeEntries,
+  projectTypeListNotice,
+} from "../../src/lib/api/project-types";
 import { createProject } from "../../src/lib/api/projects";
 import Button from "../common/UI/Button/Button";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
@@ -53,11 +56,13 @@ export default function CreateProjectModal({
         id: string;
         name: string;
         description?: string;
+        source: "built-in" | "saved";
         // client-side validation error for this template (friendly message)
         validationError?: string | null;
       }[]
     | null
   >(null);
+  const [listNotice, setListNotice] = useState<string | null>(null);
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
   const [filter, setFilter] = useState<string>("");
   const [typesError, setTypesError] = useState<string | null>(null);
@@ -68,10 +73,13 @@ export default function CreateProjectModal({
   const loadTypes = useCallback(async () => {
     setIsLoadingTypes(true);
     setTypesError(null);
+    setListNotice(null);
     try {
-      const list = await listProjectTypes();
+      const resolved = await listProjectTypeEntries();
+      const list = resolved.entries.map((e) => e.spec);
       // Lightweight client-side validation to surface common template issues
-      const processed = list.map((t) => {
+      const processed = list.map((t, index) => {
+        const source = resolved.entries[index].source;
         const id = t.id ?? "";
         const name = t.name ?? id ?? "Unnamed";
         const description = t.description;
@@ -85,10 +93,12 @@ export default function CreateProjectModal({
           id,
           name,
           description,
+          source,
           validationError: errors.length > 0 ? errors.join(" ") : null,
         };
       });
       setTypes(processed);
+      setListNotice(projectTypeListNotice(resolved));
       if (!defaultType && list.length > 0) setProjectType(processed[0].id);
     } catch (err) {
       setTypes([]);
@@ -227,6 +237,7 @@ export default function CreateProjectModal({
                     .map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
+                        {t.source === "saved" ? " (Saved)" : ""}
                         {t.description ? ` — ${t.description}` : ""}
                       </option>
                     ))
@@ -244,6 +255,11 @@ export default function CreateProjectModal({
             {selectedType?.validationError && (
               <div className="project-modal-error">
                 Template validation: {selectedType.validationError}
+              </div>
+            )}
+            {listNotice && (
+              <div role="status" className="project-modal-hint">
+                {listNotice}
               </div>
             )}
             {typesError && (

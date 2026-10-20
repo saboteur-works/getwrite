@@ -1,16 +1,18 @@
 "use client";
 
 import React from "react";
-import type {
-  ProjectTypeDefinition,
-  ProjectTypeTemplateFile,
-} from "../../src/types/project-types";
-import { listProjectTypes } from "../../src/lib/api/project-types";
+import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
+import {
+  listProjectTypeEntries,
+  projectTypeListNotice,
+} from "../../src/lib/api/project-types";
 
 export interface ShellProjectTypeLoaderState {
   projectTypeTemplates: ProjectTypeTemplateFile[];
   isProjectTypesLoading: boolean;
   projectTypesLoadError: string | null;
+  /** One-line notice when saved types were unusable or unreadable; null otherwise. */
+  projectTypesNotice: string | null;
 }
 
 export interface ShellProjectTypeLoaderProps {
@@ -27,6 +29,9 @@ export default function ShellProjectTypeLoader({
   >([]);
   const [isProjectTypesLoading, setIsProjectTypesLoading] =
     React.useState<boolean>(false);
+  const [projectTypesNotice, setProjectTypesNotice] = React.useState<
+    string | null
+  >(null);
   const [projectTypesLoadError, setProjectTypesLoadError] = React.useState<
     string | null
   >(null);
@@ -41,31 +46,29 @@ export default function ShellProjectTypeLoader({
     const loadProjectTypes = async (): Promise<void> => {
       setIsProjectTypesLoading(true);
       setProjectTypesLoadError(null);
+      setProjectTypesNotice(null);
 
       try {
-        const definitions = await listProjectTypes();
+        const list = await listProjectTypeEntries();
 
         if (isCancelled) {
           return;
         }
 
-        const templates: ProjectTypeTemplateFile[] = definitions.map(
-          (definition, index) => {
-            return {
-              fileName:
-                definition.id?.trim().length > 0
-                  ? `${definition.id}.json`
-                  : `template-${index + 1}.json`,
-              definition: {
-                ...definition,
-                folders: definition.folders ?? [],
-                defaultResources: definition.defaultResources ?? [],
-              },
-            };
-          },
+        const templates: ProjectTypeTemplateFile[] = list.entries.map(
+          (entry) => ({
+            fileName: entry.fileName,
+            source: entry.source,
+            definition: {
+              ...entry.spec,
+              folders: entry.spec.folders ?? [],
+              defaultResources: entry.spec.defaultResources ?? [],
+            },
+          }),
         );
 
         setProjectTypeTemplates(templates);
+        setProjectTypesNotice(projectTypeListNotice(list));
       } catch (error) {
         if (isCancelled) {
           return;
@@ -75,6 +78,7 @@ export default function ShellProjectTypeLoader({
           error instanceof Error
             ? error.message
             : "Failed to load project types";
+        setProjectTypeTemplates([]);
         setProjectTypesLoadError(message);
       } finally {
         if (!isCancelled) {
@@ -96,6 +100,7 @@ export default function ShellProjectTypeLoader({
         projectTypeTemplates,
         isProjectTypesLoading,
         projectTypesLoadError,
+        projectTypesNotice,
       })}
     </>
   );

@@ -115,6 +115,7 @@ export const MenuBar = ({
                   options={item.options}
                   initialValue={item.initialValue}
                   rotate={item.rotate}
+                  validate={item.validate}
                   onChange={(event) => {
                     item.onChange(event.currentTarget.value);
                   }}

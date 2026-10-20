@@ -16,7 +16,7 @@ This guide covers what controls the look of the writing surface and what you can
 
 Not yet in a release (merged after 2.2.0).
 
-The editor toolbar also has a **Line Height** field. It accepted 1.2 and 0.5 and the paragraph's line height changed to match.
+The editor toolbar also has a **Line Height** field. A paragraph's line height is unset until you set one from this field; an unset paragraph follows the project's body line height. The field shows the value in effect: the paragraph's own line height if it has one, otherwise the project's body line height (1.8 if the project sets none). It accepts any number greater than 0, with no 1.8 minimum; text that is empty, not a number, zero or negative is refused with "Line height must be a number greater than 0." and the paragraph is left as it was. The message stays under the field, and when you leave the field the box goes back to showing the value in effect rather than the refused text.
 
 ## Body text defaults
 
@@ -24,17 +24,17 @@ A new Blank project's body text:
 
 - **Typeface:** IBM Plex Serif
 - **Font size:** 15px
-- **Line height:** the paragraphs rendered at 1.5, and the toolbar's Line Height field read 1.5. The project's stored body setting reads 1.8.
+- **Line height:** 1.8. Paragraphs have no line height of their own, so they follow this value, and the toolbar's Line Height field shows it.
 - **Paragraph spacing:** a 16px gap between paragraphs
 
-A project type's template sets the body text when a project is created (checked by creating a project from a custom template file with the command-line tool). A template with Lato, 18px and a 40px paragraph spacing gave a project with 18px Lato and a 40px gap; a template line height of 2.4 was stored, and the paragraphs rendered at 1.5.
+A project type's template sets the body text when a project is created (checked by creating a project from a custom template file with the command-line tool). A template with Lato, 18px and a 40px paragraph spacing gave a project with 18px Lato and a 40px gap; a template line height of 2.4 was stored (before this change the paragraphs still rendered at 1.5; paragraphs now follow the body line height).
 
 Text color follows the light or dark theme: paragraph text read rgb(26, 25, 22) in the light theme and rgb(245, 244, 240) after switching to dark.
 
 ## Warnings and limits
 
-- The **Body Text Styles** line height is stored (1 and 2.2 were saved) but did not change the rendered line height, which stayed at 1.5. The toolbar **Line Height** field did change it, down to 0.5 (10px at 20px).
+- The **Body Text Styles** line height must be a plain number of at least 1.8 (no upper limit), or empty to use 1.8. Anything lower, or a value such as `normal`, a percentage, or one with `em` or `px`, is refused with "Line height must be a number of at least 1.8."; the value you typed stays in the field, the message is announced as an alert, and nothing is saved. The value is refused, not rounded up.
+- A paragraph with a line height of its own keeps it when the body line height changes. A stored paragraph line height of "1.5" (what older versions stamped on every paragraph) is read as unset, so those paragraphs now follow the body line height.
 - Saving **Body Text Styles** after saving **Heading Styles** left project.json with an empty `headings` set (two runs); see [Headings](headings.md).
-- The project's stored line height (1.8) and the rendered line height (1.5) differed in a new Blank project. No cause was established.
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a.
+Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a. The line height behaviour above (Feature 90) was read from the code in `paragraph-leading.ts`, `editor-body-settings.ts` and `BodySettingsModal.tsx`. In a packaged build (Task 39 record in experiments.md), Body Text Styles refused "1.2" and "0" with the alert and saved nothing, and the toolbar Line Height field, after "0" was refused and the field was left (blur and Tab), showed 1.8 again with the message still shown and the paragraphs unchanged. The rest was not re-measured.

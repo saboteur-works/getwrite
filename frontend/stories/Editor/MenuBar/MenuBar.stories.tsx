@@ -1,6 +1,9 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { Editor } from "@tiptap/core";
+import { Provider } from "react-redux";
+import { makeStore } from "../../../src/store/store";
+import { setEditorConfig } from "../../../src/store/editorConfigSlice";
 import { MenuBar } from "../../../components/Editor/MenuBar/MenuBar";
 import type { MenuBarState } from "../../../components/Editor/MenuBar/menuBarState";
 
@@ -207,7 +210,7 @@ const defaultState: MenuBarState = {
   // so the story drove the font-family control with a missing value.
   fontFamily: "Domine",
   isDomine: true,
-  getWriteParagraphLeading: "1.5",
+  getWriteParagraphLeading: null,
   isInsideTable: false,
 };
 
@@ -292,5 +295,37 @@ export const Interactive: Story = {
         </div>
       </div>
     );
+  },
+};
+
+function withProjectLineHeight(lineHeight: string) {
+  const store = makeStore();
+  store.dispatch(setEditorConfig({ headings: {}, body: { lineHeight } }));
+  return store;
+}
+
+/** Unset paragraph: the Line Height control shows the project's 2.2 and writes nothing. */
+export const LineHeightUnsetFollowsProject: Story = {
+  render: (args: React.ComponentProps<typeof MenuBar>) => (
+    <Provider store={withProjectLineHeight("2.2")}>
+      <MenuBar {...args} />
+    </Provider>
+  ),
+  args: {
+    editor: defaultEditor,
+    stateOverride: { ...defaultState, getWriteParagraphLeading: null },
+  },
+};
+
+/** Explicit leading: the control shows the paragraph's own 1.2, not the project's 2.2. */
+export const LineHeightExplicit: Story = {
+  render: (args: React.ComponentProps<typeof MenuBar>) => (
+    <Provider store={withProjectLineHeight("2.2")}>
+      <MenuBar {...args} />
+    </Provider>
+  ),
+  args: {
+    editor: defaultEditor,
+    stateOverride: { ...defaultState, getWriteParagraphLeading: 1.2 },
   },
 };

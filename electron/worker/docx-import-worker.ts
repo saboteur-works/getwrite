@@ -49,6 +49,8 @@ async function runImport(request: ImportRequest): Promise<ImportOutcomeData> {
         name: request.name,
         splitLevel: request.splitLevel,
         projectType: request.projectType,
+        // The import worker is never hosted (FR-27).
+        hostedAuthActive: false,
       }),
   );
 

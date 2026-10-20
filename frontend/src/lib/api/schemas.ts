@@ -31,8 +31,16 @@
  * - `CreateResourceResponseSchema` — the same wrapper for create, which also
  *   accepts a folder.
  */
+import {
+  getLineHeightError,
+  LINE_HEIGHT_FLOOR_MESSAGE,
+} from "../editor-body-settings";
 import { z } from "zod";
-import { AnyResourceSchema, TipTapDocumentSchema } from "../models/schemas";
+import {
+  AnyResourceSchema,
+  ProjectTypeSchema,
+  TipTapDocumentSchema,
+} from "../models/schemas";
 import { UNUSABLE_PROJECT_REASONS } from "../models/unusable-project-reason";
 import {
   ENTITY_KIND_COLOR_SLOTS,
@@ -84,7 +92,12 @@ const ApiEditorHeadingSchema = z.object({
 const ApiEditorBodySchema = z.object({
   fontFamily: z.string().optional(),
   fontSize: z.string().optional(),
-  lineHeight: z.string().optional(),
+  lineHeight: z
+    .string()
+    .optional()
+    .refine((v) => getLineHeightError(v) === undefined, {
+      message: LINE_HEIGHT_FLOOR_MESSAGE,
+    }),
   paragraphSpacing: z.string().optional(),
 });
 
@@ -862,3 +875,66 @@ export const SharingLimitsResponseSchema = z.discriminatedUnion("role", [
     }),
   }),
 ]);
+
+/**
+ * Body of `GET /api/project-types` (Feature 90, FR-6): the merged list with
+ * each entry's source, the saved files that could not be used (name and short
+ * reason only) and the saved-directory status.
+ */
+export const ProjectTypeListResponseSchema = z.object({
+  entries: z.array(
+    z.object({
+      spec: ProjectTypeSchema,
+      fileName: z.string(),
+      source: z.enum(["built-in", "saved"]),
+    }),
+  ),
+  unusable: z.array(
+    z.object({
+      fileName: z.string(),
+      reason: z.enum(["unparseable", "invalid", "unreadable"]),
+    }),
+  ),
+  savedStatus: z.enum(["ok", "not-configured", "unreadable"]),
+});
+
+/**
+ * Success body of `POST`/`PUT /api/project-types` (Feature 90, FR-8): the file
+ * written and the spec as stored. Carries no `ok` field.
+ */
+export const ProjectTypeWriteSuccessSchema = z.object({
+  fileName: z.string(),
+  spec: ProjectTypeSchema,
+});
+
+/** Success body of `DELETE /api/project-types/<id>`: the file removed. */
+export const ProjectTypeDeleteSuccessSchema = z.object({
+  fileName: z.string(),
+});
+
+/**
+ * Refusal body of the project-type write routes: `{ error, reason,
+ * conflictsWith? }`, where `conflictsWith` names the existing type a clash is
+ * with.
+ */
+export const ProjectTypeWriteRefusalSchema = z.object({
+  error: z.string(),
+  reason: z.enum([
+    "saving-unavailable",
+    "invalid",
+    "id-clash",
+    "name-clash",
+    "built-in",
+    "not-found",
+    "unreadable",
+    "write-failed",
+  ]),
+  conflictsWith: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      source: z.enum(["built-in", "saved"]),
+    })
+    .optional(),
+  fieldErrors: z.record(z.string(), z.string()).optional(),
+});

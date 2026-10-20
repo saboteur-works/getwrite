@@ -1,6 +1,11 @@
 /**
  * @module projectTypes
  *
+ * Imports nothing server-only (FR-27): the CLI and the Electron import workers
+ * load it without a bundler alias. Whether hosted auth is active is therefore
+ * an explicit, required input (`hostedAuthActive`) with no default: server
+ * callers pass `isHostedAuthActive()`, the CLI and the workers pass `false`.
+ *
  * Loads, validates, caches, and queries project-type template specifications.
  *
  * Project-type templates are JSON files stored under
@@ -27,6 +32,24 @@ export type ProjectTypeEntry = {
   filePath: string;
   /** File name (basename) of the template JSON file. */
   fileName: string;
+  /** Where the entry came from: the bundled directory or the saved store. */
+  source: "built-in" | "saved";
+};
+
+/** Why a saved file could not be used. Never carries file content or parser text. */
+type UnusableSavedReason = "unparseable" | "invalid" | "unreadable";
+
+/** A saved file that was skipped, by name and short reason only. */
+type UnusableSavedFile = { fileName: string; reason: UnusableSavedReason };
+
+/** State of the saved-types directory as seen by the last resolution. */
+type SavedDirectoryStatus = "ok" | "not-configured" | "unreadable";
+
+/** Merged result of one resolution: built-in then saved entries, plus saved-side diagnostics. */
+export type ProjectTypeResolution = {
+  entries: ProjectTypeEntry[];
+  unusable: UnusableSavedFile[];
+  savedStatus: SavedDirectoryStatus;
 };
 
 /**
@@ -51,22 +74,28 @@ const ALT_TEMPLATES_DIR = path.join(
 );
 
 /**
- * Resolves the first accessible project-type templates directory.
+ * Resolves the built-in project-type directory. This is the one function that
+ * decides it, so the server, the worker and the CLI cannot disagree.
  *
  * Resolution order:
- * 1. `DEFAULT_TEMPLATES_DIR`
- * 2. `ALT_TEMPLATES_DIR`
+ * 1. `GETWRITE_PROJECT_TYPES_DIR`, if set and non-empty
+ * 2. `GETWRITE_TEMPLATES_DIR`, if set and non-empty
+ * 3. `DEFAULT_TEMPLATES_DIR`
+ * 4. `ALT_TEMPLATES_DIR`
  *
  * If neither directory is readable, returns `DEFAULT_TEMPLATES_DIR` so callers
  * can handle missing-directory behavior in one place.
  *
  * @returns Relative path to the selected templates directory.
  */
-async function resolveTemplatesDir(): Promise<string> {
+export async function resolveBuiltInProjectTypesDir(): Promise<string> {
   // An explicit override wins (used by tests to point at a temp dir, and
-  // available to deployments that relocate the bundled templates).
+  // available to deployments that relocate the bundled templates). The
+  // desktop main process sets GETWRITE_TEMPLATES_DIR for the server.
   const override = process.env.GETWRITE_PROJECT_TYPES_DIR;
   if (override) return override;
+  const templatesEnv = process.env.GETWRITE_TEMPLATES_DIR;
+  if (templatesEnv) return templatesEnv;
   // Try the default first, then the alt.
   try {
     await readdir(DEFAULT_TEMPLATES_DIR, { withFileTypes: true });
@@ -82,45 +111,36 @@ async function resolveTemplatesDir(): Promise<string> {
   }
 }
 
+/**
+ * Built-in entries only. Saved entries are never held here (FR-13): the saved
+ * directory is read on every resolution, so a write is visible on the next call.
+ */
 let _cache: ProjectTypeEntry[] | null = null;
 
-/**
- * Lists available project-type templates from disk.
- *
- * Behavior:
- * - Uses an in-memory cache unless `forceRefresh` is true.
- * - Reads template directory entries and keeps only `.json` files.
- * - Parses each file and validates content with `validateProjectType`.
- * - Skips invalid/unreadable JSON files.
- * - Returns `[]` if the directory is missing or unreadable.
- *
- * @param forceRefresh - When true, bypasses in-memory cache and rescans disk.
- * @returns Validated template entries.
- *
- * @example
- * const templates = await listProjectTypes();
- * const freshTemplates = await listProjectTypes(true);
- */
-export async function listProjectTypes(
-  forceRefresh = false,
-): Promise<ProjectTypeEntry[]> {
-  if (_cache && !forceRefresh) return _cache;
+/** True only for "this path does not exist"; a permissions or I/O error is not a missing directory. */
+function isMissingEntryError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
+}
 
+/**
+ * Reads the built-in directory. Invalid or unreadable built-in files are
+ * skipped silently; a missing/unreadable directory yields `[]`.
+ */
+async function readBuiltInEntries(): Promise<ProjectTypeEntry[]> {
   try {
-    const dir = await resolveTemplatesDir();
-    const entries = (await readdir(dir, { withFileTypes: true })) as
-      | string[]
-      | import("node:fs").Dirent[];
-    const filenames = (entries as (string | import("node:fs").Dirent)[]).map(
-      (entry) => (typeof entry === "string" ? entry : entry.name),
-    );
+    const dir = await resolveBuiltInProjectTypesDir();
+    const dirents = await readdir(dir, { withFileTypes: true });
     const results: ProjectTypeEntry[] = [];
-    for (const filename of filenames) {
+    for (const dirent of dirents) {
+      const filename = dirent.name;
       if (!filename.endsWith(".json")) continue;
       const filePath = path.join(dir, filename);
       try {
-        const raw = await readFile(filePath, "utf8");
-        const parsed = JSON.parse(raw);
+        const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
         const validationResult = validateProjectType(parsed);
         if (
           validationResult.success &&
@@ -131,43 +151,139 @@ export async function listProjectTypes(
             spec: validationResult.value,
             filePath,
             fileName: filename,
+            source: "built-in",
           });
         }
-      } catch (err) {
+      } catch (_) {
         // skip invalid JSON/files
         continue;
       }
     }
-    // cache
-    _cache = results;
     return results;
-  } catch (err) {
-    // Directory missing or unreadable — return empty list
-    _cache = [];
+  } catch (_) {
+    // Directory missing or unreadable — built-in list is empty
     return [];
   }
+}
+
+/** Result of reading the saved directory once. */
+type SavedRead = Omit<ProjectTypeResolution, "entries"> & {
+  entries: ProjectTypeEntry[];
+};
+
+/**
+ * Reads the saved-types directory named by `GETWRITE_SAVED_PROJECT_TYPES_DIR`.
+ * Fails closed: an unset/empty variable or active hosted auth reads nothing
+ * (no cwd, repository, built-in or projects-directory fallback). Never cached.
+ */
+async function readSavedEntries(hostedAuthActive: boolean): Promise<SavedRead> {
+  const dir = process.env.GETWRITE_SAVED_PROJECT_TYPES_DIR;
+  if (!dir || dir.trim() === "" || hostedAuthActive) {
+    return { entries: [], unusable: [], savedStatus: "not-configured" };
+  }
+  let names: { name: string }[];
+  try {
+    names = await readdir(dir, { withFileTypes: true });
+  } catch (err) {
+    // ENOENT is the one benign case: nothing has been saved yet.
+    return {
+      entries: [],
+      unusable: [],
+      savedStatus: isMissingEntryError(err) ? "ok" : "unreadable",
+    };
+  }
+  const entries: ProjectTypeEntry[] = [];
+  const unusable: UnusableSavedFile[] = [];
+  const files = names
+    .map((d) => d.name)
+    .filter((n) => n.endsWith(".json"))
+    .sort();
+  for (const fileName of files) {
+    const filePath = path.join(dir, fileName);
+    let raw: string;
+    try {
+      raw = await readFile(filePath, "utf8");
+    } catch {
+      unusable.push({ fileName, reason: "unreadable" });
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      if (!(err instanceof SyntaxError)) throw err;
+      unusable.push({ fileName, reason: "unparseable" });
+      continue;
+    }
+    const result = validateProjectType(parsed);
+    if (result.success && "value" in result && result.value) {
+      entries.push({ spec: result.value, filePath, fileName, source: "saved" });
+    } else {
+      unusable.push({ fileName, reason: "invalid" });
+    }
+  }
+  return { entries, unusable, savedStatus: "ok" };
+}
+
+/**
+ * Resolves every project type: built-in entries (cached in memory unless
+ * `forceRefresh`) followed by saved entries (read from disk on every call).
+ * A built-in id wins over a saved entry with the same id in `getProjectType`.
+ *
+ * @param hostedAuthActive - Whether hosted auth is active. Required, no default:
+ *   when true the saved directory is not read (FR-5, fail closed).
+ * @param forceRefresh - When true, rescans the built-in directory too.
+ * @returns Entries, unusable saved files and the saved-directory status.
+ */
+export async function resolveProjectTypes(
+  hostedAuthActive: boolean,
+  forceRefresh = false,
+): Promise<ProjectTypeResolution> {
+  if (!_cache || forceRefresh) _cache = await readBuiltInEntries();
+  const saved = await readSavedEntries(hostedAuthActive);
+  return {
+    entries: [..._cache, ...saved.entries],
+    unusable: saved.unusable,
+    savedStatus: saved.savedStatus,
+  };
+}
+
+/**
+ * Lists available project-type entries (built-in first, then saved).
+ *
+ * @param hostedAuthActive - Whether hosted auth is active (required, no default).
+ * @param forceRefresh - When true, also rescans the built-in directory.
+ * @returns Validated entries; see `resolveProjectTypes` for diagnostics.
+ */
+export async function listProjectTypes(
+  hostedAuthActive: boolean,
+  forceRefresh = false,
+): Promise<ProjectTypeEntry[]> {
+  return (await resolveProjectTypes(hostedAuthActive, forceRefresh)).entries;
 }
 
 /**
  * Finds a single project-type template by its `spec.id`.
  *
  * @param id - Project-type identifier to find.
+ * @param hostedAuthActive - Whether hosted auth is active (required, no default).
  * @param forceRefresh - When true, rescans templates before lookup.
  * @returns Matching template entry, or `undefined` when not found.
  *
  * @example
- * const novel = await getProjectType("novel");
+ * const novel = await getProjectType("novel", false);
  */
 export async function getProjectType(
   id: string,
+  hostedAuthActive: boolean,
   forceRefresh = false,
 ): Promise<ProjectTypeEntry | undefined> {
-  const list = await listProjectTypes(forceRefresh);
+  const list = await listProjectTypes(hostedAuthActive, forceRefresh);
   return list.find((entry) => entry.spec.id === id);
 }
 
 /**
- * Clears the in-memory project-type template cache.
+ * Clears the in-memory built-in project-type cache (saved entries are never cached).
  *
  * Use this when templates may have changed on disk and callers need to force
  * subsequent reads to hit filesystem state.
@@ -179,4 +295,9 @@ export function clearProjectTypeCache() {
 /**
  * Convenience default export for grouped project-type helper access.
  */
-export default { listProjectTypes, getProjectType, clearProjectTypeCache };
+export default {
+  resolveProjectTypes,
+  listProjectTypes,
+  getProjectType,
+  clearProjectTypeCache,
+};

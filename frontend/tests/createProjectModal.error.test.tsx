@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import CreateProjectModal from "../components/Start/CreateProjectModal";
+import { projectTypesListBody } from "./helpers/projectTypesListBody";
 
 describe("CreateProjectModal - types load error and retry", () => {
   afterEach(() => {
@@ -22,9 +23,10 @@ describe("CreateProjectModal - types load error and retry", () => {
       .mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
-          json: async () => [
-            { id: "novel", name: "Novel", folders: [{ name: "Manuscript" }] },
-          ],
+          json: async () =>
+            projectTypesListBody([
+              { id: "novel", name: "Novel", folders: [{ name: "Manuscript" }] },
+            ]),
         }),
       );
 

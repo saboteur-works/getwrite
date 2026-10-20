@@ -9,10 +9,12 @@ import {
   NoDocxFilesFoundError,
   NoTxtFilesFoundError,
   PlainTextDestinationNotEmptyError,
+  resolveProjectTypes,
   runForTenant,
   UnknownProjectTypeError,
   UnsupportedScrivenerProjectError,
   type ImportDocxProjectOptions,
+  type ProjectTypeResolution,
 } from "@gw/core";
 
 /**
@@ -39,6 +41,67 @@ function parseSplitLevelOption(raw: string): SplitLevelOption | undefined {
   return undefined;
 }
 
+/**
+ * One line saying whether saved project types took part in a resolution, or
+ * `undefined` when they did. The CLI reads saved types only from
+ * `GETWRITE_SAVED_PROJECT_TYPES_DIR` (no flag, no desktop-app path), so an unset
+ * variable must be said aloud rather than shown as a shorter list.
+ *
+ * @param resolution - Result of {@link resolveProjectTypes}.
+ * @returns The notice text, or `undefined` when saved types were included.
+ */
+function savedTypesNotice(
+  resolution: ProjectTypeResolution,
+): string | undefined {
+  if (resolution.savedStatus === "not-configured") {
+    return (
+      "Saved project types were not included: GETWRITE_SAVED_PROJECT_TYPES_DIR " +
+      "is not set. Export it to the saved project types folder to include them."
+    );
+  }
+  if (resolution.savedStatus === "unreadable") {
+    return (
+      "Saved project types were not included: the folder named by " +
+      "GETWRITE_SAVED_PROJECT_TYPES_DIR could not be read."
+    );
+  }
+  return undefined;
+}
+
+/**
+ * Lines naming saved files that were skipped (file name and short reason only).
+ *
+ * @param resolution - Result of {@link resolveProjectTypes}.
+ * @returns One line per skipped saved file.
+ */
+function unusableLines(resolution: ProjectTypeResolution): string[] {
+  return resolution.unusable.map(
+    (u) => `Skipped saved project type file ${u.fileName} (${u.reason}).`,
+  );
+}
+
+/**
+ * Builds the refusal text for an id that matches no visible project type:
+ * the ids the CLI could see, plus the saved-types notice when it applies.
+ *
+ * @param id - The id the writer passed.
+ * @param resolution - Result of {@link resolveProjectTypes}.
+ * @returns The multi-line message.
+ */
+function unknownProjectTypeMessage(
+  id: string,
+  resolution: ProjectTypeResolution,
+): string {
+  const ids = resolution.entries.map((e) => e.spec.id).join(", ");
+  const lines = [
+    `Unknown project type "${id}". Available project type ids: ${ids || "(none)"}.`,
+  ];
+  const notice = savedTypesNotice(resolution);
+  if (notice) lines.push(notice);
+  lines.push(...unusableLines(resolution));
+  return lines.join("\n");
+}
+
 export default function registerProject(program: Command): void {
   const cmd = program
     .command("project")
@@ -53,22 +116,48 @@ export default function registerProject(program: Command): void {
       "-s, --spec <specPath>",
       "Path to project-type JSON spec (or object not supported on CLI)",
     )
+    .option(
+      "-t, --project-type <id>",
+      "Project-type id (built-in, or saved when GETWRITE_SAVED_PROJECT_TYPES_DIR is set); exclusive with --spec",
+    )
     .option("-n, --name <name>", "Optional project name")
     .action(async (projectRoot = ".", options) => {
       try {
-        if (!options?.spec) {
+        if (options?.spec && options?.projectType) {
           console.error(
-            "--spec <path> is required to create a project from a spec file",
+            "--project-type and --spec cannot be used together; choose one.",
           );
           process.exit(2);
+          return;
+        }
+        if (!options?.spec && !options?.projectType) {
+          console.error(
+            "--spec <path> or --project-type <id> is required to create a project",
+          );
+          process.exit(2);
+          return;
         }
 
-        const specPath = String(options.spec);
+        let spec: Parameters<typeof createProjectFromType>[0]["spec"];
+        if (options.projectType) {
+          // Resolved before any write: an unknown id leaves nothing on disk.
+          const id = String(options.projectType);
+          const resolution = await resolveProjectTypes(false);
+          const entry = resolution.entries.find((e) => e.spec.id === id);
+          if (!entry) {
+            console.error(unknownProjectTypeMessage(id, resolution));
+            process.exit(2);
+            return;
+          }
+          spec = entry.spec;
+        } else {
+          spec = String(options.spec);
+        }
 
         const result = await runForTenant(projectRoot as string, () =>
           createProjectFromType({
             projectRoot: projectRoot as string,
-            spec: specPath,
+            spec,
             name: options.name,
           }),
         );
@@ -80,6 +169,27 @@ export default function registerProject(program: Command): void {
         process.exit(0);
       } catch (err) {
         console.error("Failed to create project:", err);
+        process.exit(2);
+      }
+    });
+
+  cmd
+    .command("types")
+    .description(
+      "List the project types the CLI can see (built-in, and saved when GETWRITE_SAVED_PROJECT_TYPES_DIR is set)",
+    )
+    .action(async () => {
+      try {
+        const resolution = await resolveProjectTypes(false);
+        for (const e of resolution.entries) {
+          console.log(`${e.spec.id}\t${e.spec.name}\t${e.source}`);
+        }
+        const notice = savedTypesNotice(resolution);
+        if (notice) console.log(notice);
+        for (const line of unusableLines(resolution)) console.log(line);
+        process.exit(0);
+      } catch (err) {
+        console.error("Failed to list project types:", err);
         process.exit(2);
       }
     });
@@ -176,6 +286,8 @@ export default function registerProject(program: Command): void {
             name: options?.name,
             splitLevel,
             projectType: options?.projectType,
+            // The CLI is never hosted (FR-27).
+            hostedAuthActive: false,
           }),
         );
 
@@ -185,8 +297,14 @@ export default function registerProject(program: Command): void {
         );
         process.exit(0);
       } catch (err) {
+        if (err instanceof UnknownProjectTypeError) {
+          console.error(err.message);
+          const notice = savedTypesNotice(await resolveProjectTypes(false));
+          if (notice) console.error(notice);
+          process.exit(2);
+          return;
+        }
         if (
-          err instanceof UnknownProjectTypeError ||
           err instanceof DocxDestinationNotEmptyError ||
           err instanceof NoDocxFilesFoundError
         ) {
@@ -212,6 +330,7 @@ export default function registerProject(program: Command): void {
             sourcePath: source,
             projectRoot,
             name: options?.name,
+            hostedAuthActive: false,
           }),
         );
 
