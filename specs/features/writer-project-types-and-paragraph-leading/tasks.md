@@ -238,7 +238,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 17
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-14, FR-6 (notice). Safety: the e2e run is Storybook-only (in-memory data), run per Task 28's rules.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Desktop import dialog loads the list and the worker refuses a deleted id
 **What:** Replace the hard-coded type list in `ImportDocxDialog` with the transport list and keep the worker's refusal of an id that disappeared.

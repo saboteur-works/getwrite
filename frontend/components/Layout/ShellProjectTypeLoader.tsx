@@ -1,10 +1,7 @@
 "use client";
 
 import React from "react";
-import type {
-  ProjectTypeDefinition,
-  ProjectTypeTemplateFile,
-} from "../../src/types/project-types";
+import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
 import {
   listProjectTypeEntries,
   projectTypeListNotice,
@@ -53,26 +50,21 @@ export default function ShellProjectTypeLoader({
 
       try {
         const list = await listProjectTypeEntries();
-        const definitions = list.entries.map((entry) => entry.spec);
 
         if (isCancelled) {
           return;
         }
 
-        const templates: ProjectTypeTemplateFile[] = definitions.map(
-          (definition, index) => {
-            return {
-              fileName:
-                definition.id?.trim().length > 0
-                  ? `${definition.id}.json`
-                  : `template-${index + 1}.json`,
-              definition: {
-                ...definition,
-                folders: definition.folders ?? [],
-                defaultResources: definition.defaultResources ?? [],
-              },
-            };
-          },
+        const templates: ProjectTypeTemplateFile[] = list.entries.map(
+          (entry) => ({
+            fileName: entry.fileName,
+            source: entry.source,
+            definition: {
+              ...entry.spec,
+              folders: entry.spec.folders ?? [],
+              defaultResources: entry.spec.defaultResources ?? [],
+            },
+          }),
         );
 
         setProjectTypeTemplates(templates);
@@ -86,6 +78,7 @@ export default function ShellProjectTypeLoader({
           error instanceof Error
             ? error.message
             : "Failed to load project types";
+        setProjectTypeTemplates([]);
         setProjectTypesLoadError(message);
       } finally {
         if (!isCancelled) {

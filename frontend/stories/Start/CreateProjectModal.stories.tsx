@@ -14,6 +14,11 @@ export default meta;
 
 type Story = StoryObj<typeof CreateProjectModal>;
 
+/** Sets what the mocked `/api/project-types` returns for the next render. */
+function setProjectTypesMode(mode: "ok" | "notice" | "error"): void {
+  (window as any).__storybookProjectTypesMode = mode;
+}
+
 export const Open: Story = {
   args: {
     isOpen: true,
@@ -23,6 +28,7 @@ export const Open: Story = {
     onCreate: (payload: CreateProjectPayload) => console.log("create", payload),
   },
   render: (args: CreateProjectModalProps) => {
+    setProjectTypesMode("ok");
     // Install a lightweight fetch mock synchronously so the modal's
     // `loadTypes` effect sees mocked responses immediately when it runs.
     if (
@@ -36,27 +42,54 @@ export const Open: Story = {
       window.fetch = async (input: RequestInfo, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.url;
         if (url.endsWith("/api/project-types")) {
+          const mode = (window as any).__storybookProjectTypesMode;
+          if (mode === "error") {
+            return new Response(null, { status: 500 });
+          }
           return new Response(
-            // Must satisfy `ProjectTypeSchema` (`src/lib/models/schemas.ts`),
-            // which is `.strict()` and requires a non-empty `folders` array.
-            // Feature 48 made `listProjectTypes` validate its response and
-            // reject on failure, so a mock missing `folders` — as this one was
-            // — leaves the select with no options at all rather than the two
-            // it declares.
-            JSON.stringify([
-              {
-                id: "novel",
-                name: "Novel (default)",
-                description: "Long form",
-                folders: [{ name: "Manuscript" }],
-              },
-              {
-                id: "short",
-                name: "Short Story",
-                description: "Short form",
-                folders: [{ name: "Manuscript" }],
-              },
-            ]),
+            // Must satisfy `ProjectTypeListResponseSchema`: entries of
+            // `{ spec, fileName, source }` (specs are `ProjectTypeSchema`,
+            // `.strict()` with a non-empty `folders` array), `unusable` and
+            // `savedStatus`. A body of any other shape is rejected by the
+            // transport, leaving the select with no options.
+            JSON.stringify({
+              entries: [
+                {
+                  spec: {
+                    id: "novel",
+                    name: "Novel (default)",
+                    description: "Long form",
+                    folders: [{ name: "Manuscript" }],
+                  },
+                  fileName: "novel.json",
+                  source: "built-in",
+                },
+                {
+                  spec: {
+                    id: "short",
+                    name: "Short Story",
+                    description: "Short form",
+                    folders: [{ name: "Manuscript" }],
+                  },
+                  fileName: "short.json",
+                  source: "built-in",
+                },
+                {
+                  spec: {
+                    id: "my-saved",
+                    name: "My Saved Type",
+                    folders: [{ name: "Notes" }],
+                  },
+                  fileName: "my-saved.json",
+                  source: "saved",
+                },
+              ],
+              unusable:
+                mode === "notice"
+                  ? [{ fileName: "broken.json", reason: "invalid" }]
+                  : [],
+              savedStatus: "ok",
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -115,5 +148,27 @@ export const Open: Story = {
     };
 
     return <Wrapper />;
+  },
+};
+
+/** A saved file that could not be used: the notice shows under the select. */
+export const WithUnusableSavedFile: Story = {
+  ...Open,
+  render: (args: CreateProjectModalProps) => {
+    const base = Open.render as (a: CreateProjectModalProps) => JSX.Element;
+    const element = base(args);
+    setProjectTypesMode("notice");
+    return element;
+  },
+};
+
+/** The list could not be loaded: the error and Retry show, with no stale list. */
+export const LoadError: Story = {
+  ...Open,
+  render: (args: CreateProjectModalProps) => {
+    const base = Open.render as (a: CreateProjectModalProps) => JSX.Element;
+    const element = base(args);
+    setProjectTypesMode("error");
+    return element;
   },
 };
