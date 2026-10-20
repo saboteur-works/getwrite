@@ -164,6 +164,8 @@ behaviour. There is no `Back Matter` folder in any shipped template.
 ## Validation & Runtime
 
 - Runtime validation is provided by the Zod schema in `frontend/src/lib/models/schemas.ts`. Use the exported helpers `validateProjectType()` and `validateProjectTypeFile()` to check a JSON object or file before scaffolding.
+- Entry rules (Feature 90, FR-28): the type `name`, folder, subfolder (`defaultFolders[].name`, `.folder`) and starter document names are trimmed and must not be blank. `statuses` and `relationshipTypes` are trimmed, with no blank entries and no duplicates under `normalizeSubtypeLabel`. Sibling `folders` names, and `defaultFolders` names within one parent, must differ under `slugify` ("Folder name “Chapter 1!” is too similar to “Chapter 1”."). Starter documents with equal slugs are allowed (they are written as separate resources). Each refusal is an issue with a path; `projectTypeFieldErrors()` keys them by the path joined with "." and the write core returns them as `fieldErrors` on a 400 `invalid` refusal so the manager places each message at its field.
+- A saved file that breaks these rules is reported in `unusable` as `invalid`, so the CLI skips it as well.
 - The scaffolding entrypoint `createProjectFromType()` (in `frontend/src/lib/models/project-creator.ts`) validates incoming specs and throws a descriptive error if validation fails.
 
 ## Usage Notes & Best Practices
@@ -225,7 +227,7 @@ Under `frontend/app/api/project-types/` (not wrapped by `withStorageContext`: ap
 - `PUT /api/project-types/[id]` replaces one; the body `id` must equal the path id (200).
 - `DELETE /api/project-types/[id]` deletes exactly `<id>.json` (200 `{ fileName }`).
 
-Bodies are capped at 256 KiB, refused before parsing, and validated with the strict schema. A refusal is `{ error, reason, conflictsWith? }`: 400 `invalid`, 403 `built-in`, 404 `not-found`, 409 `id-clash` / `name-clash`, 503 `saving-unavailable`, 500 `unreadable` / `write-failed`. The core is `frontend/src/lib/project-types-write-core.ts`; creation is exclusive and replacement is an atomic rename.
+Bodies are capped at 256 KiB, refused before parsing, and validated with the strict schema. A refusal is `{ error, reason, conflictsWith?, fieldErrors? }`: 400 `invalid`, 403 `built-in`, 404 `not-found`, 409 `id-clash` / `name-clash`, 503 `saving-unavailable`, 500 `unreadable` / `write-failed`. The core is `frontend/src/lib/project-types-write-core.ts`; creation is exclusive and replacement is an atomic rename.
 
 ### The clash rule
 
@@ -235,7 +237,7 @@ A save is refused when its **id** equals any existing type's id (built-in or sav
 
 - A built-in type offers **Save as copy** only. Saved types offer **Save**, **Save as copy** and **Delete** (after a confirmation). A new draft offers **Save** and its id can be edited until it is saved; after that the id is read-only.
 - **Save as copy** writes the edited content as a new saved type with a new id and name; the original is unchanged.
-- The manager shows one line when the list lost saved types: "Saved project types could not be read." (`unreadable`) or "N saved project type file(s) could not be used." (unusable files). There is **no notice** when the store is `not-configured`: that is not a failure. The new-project dialog and the Word import dialog show the same lines.
+- The manager shows one line when the list lost saved types: "Saved project types could not be read." (`unreadable`) or "1 saved project type file could not be used." or "N saved project type files could not be used." (unusable files; singular for one). There is **no notice** when the store is `not-configured`: that is not a failure. The new-project dialog and the Word import dialog show the same lines.
 - **Unsaved-changes prompt** (`UnsavedChangesPrompt.tsx`): leaving the manager (close, browser back) or selecting another item while any item has edits opens "Unsaved changes", naming the items, with **Keep editing**, **Discard** and **Save**. Escape or an outside click means Keep editing. Save writes the item and then carries on with the exit; a refused save keeps the writer in the manager.
 
 The new-project dialog and the Word import dialog load their list from the resolver, so a saved type is offered wherever a built-in is. The Word import dialog refuses an id that was deleted after the dialog loaded, before anything is written.

@@ -58,8 +58,8 @@ What it does: Controls the vertical space between lines in body text. Also appli
 Paragraphs and the project line height:
 
 - A paragraph with no leading of its own (unset) follows the project line height.
-- An explicit per-paragraph leading, set from the editor toolbar Line Height field, has no 1.8 floor and may go below 1.8. The toolbar rejects a value that is not a number greater than 0.
-- The 1.8 minimum applies to the project line height (Body Text Styles, the project type manager, and the validator). Body Text Styles shows "Line height must be a number of at least 1.8." for a lower value.
+- An explicit per-paragraph leading, set from the editor toolbar Line Height field, has no 1.8 floor and may go below 1.8. The toolbar rejects a value that is not a number greater than 0; the message stays after the field loses focus, and the field then shows the effective leading again, not the refused text.
+- The 1.8 minimum applies to the project line height (Body Text Styles, the project type manager, and the validator). Body Text Styles shows "Line height must be a number of at least 1.8." for a lower value, as an alert beside the field; the typed text stays and nothing is saved.
 - A stored paragraph leading of `"1.5"` (the legacy value) reads as unset, so that paragraph follows the project line height.
 - A paragraph with its own spacing keeps it when the project line height changes.
 
