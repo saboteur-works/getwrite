@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import ProseDiagnosticsSection from "../components/Sidebar/ProseDiagnosticsSection";
 import { makeStore } from "../src/store/store";
@@ -70,13 +70,19 @@ describe("ProseDiagnosticsSection", () => {
       </Provider>,
     );
 
-    expect(await screen.findByText(/dialogue ratio/i)).toBeInTheDocument();
-    expect(screen.getByText(/25%/)).toBeInTheDocument();
-    expect(screen.getByText(/average sentence length/i)).toBeInTheDocument();
-    expect(screen.getByText(/14\.2/)).toBeInTheDocument();
-    expect(screen.getByText(/top repeated words/i)).toBeInTheDocument();
-    expect(screen.getByText(/the \(40\)/)).toBeInTheDocument();
-    expect(screen.getByText(/and \(22\)/)).toBeInTheDocument();
+    // Each figure is laid out like the other sidebar fields: the label above
+    // its value (LabeledField), not "Label: value" run together in one line.
+    const ratio = await screen.findByRole("group", { name: "Dialogue ratio" });
+    expect(within(ratio).getByText("25%")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Average sentence length" }),
+      ).getByText(/14\.2/),
+    ).toBeInTheDocument();
+    const words = screen.getByRole("group", { name: "Top repeated words" });
+    expect(within(words).getByText(/the \(40\)/)).toBeInTheDocument();
+    expect(within(words).getByText(/and \(22\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/dialogue ratio:/i)).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -228,9 +234,16 @@ describe("ProseDiagnosticsSection", () => {
       </Provider>,
     );
 
-    expect(await screen.findByText(/dialogue ratio/i)).toBeInTheDocument();
-    expect(screen.getByText(/dialogue ratio:\s*0%/i)).toBeInTheDocument();
-    expect(screen.getByText(/top repeated words:\s*none/i)).toBeInTheDocument();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Dialogue ratio" }),
+      ).getByText("0%"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Top repeated words" }),
+      ).getByText("None"),
+    ).toBeInTheDocument();
     // Distinguishable from the error state: no alert role anywhere.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
