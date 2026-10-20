@@ -10,7 +10,7 @@
  * - Resolve dark/light mode from selected project metadata.
  */
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useAppSelector from "../../src/store/hooks";
 import {
@@ -393,6 +393,21 @@ export default function ProjectTypesManagerPage({
     return () => registerCloseGuard?.(null);
   }, [registerCloseGuard]);
 
+  // Escape on the full page with unsaved edits asks first instead of leaving
+  // edits unguarded. In a modal the dialog host owns Escape (via the close
+  // guard), so the page does not also handle it. An Escape the prompt or the
+  // delete confirmation already took (React events bubble out of their portals)
+  // is not handled a second time.
+  const handleEscape = (event: React.KeyboardEvent<HTMLElement>): void => {
+    if (event.key !== "Escape" || renderInModal) return;
+    if (event.defaultPrevented || pendingExit !== null || isConfirmingDelete) {
+      return;
+    }
+    if (!hasAnyChanges) return;
+    event.preventDefault();
+    requestExit({ kind: "close" });
+  };
+
   // Bound the manager to a definite height so the list and editor panes scroll
   // internally instead of growing the page. In a modal `main` has no flex
   // parent to stretch into, so it needs an explicit viewport-relative height;
@@ -401,6 +416,7 @@ export default function ProjectTypesManagerPage({
 
   const content = (
     <main
+      onKeyDown={handleEscape}
       className={`mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10 ${heightClass}`}
     >
       <header className="flex items-start justify-between gap-4">

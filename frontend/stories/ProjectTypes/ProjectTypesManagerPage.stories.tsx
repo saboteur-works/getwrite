@@ -243,3 +243,33 @@ export const UnsavedChangesPromptOnSelect: Story = {
     ).toBeInTheDocument();
   },
 };
+
+export const EscapeOnPromptKeepsEditing: Story = {
+  args: {
+    initialTemplates: [savedTemplate, ...builtInTemplates],
+    renderInModal: true,
+    resolveTransport: fakeTransport((spec) => ({
+      ok: true,
+      fileName: `${spec.id}.json`,
+      spec,
+    })),
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.clear(await canvas.findByLabelText("Name"));
+    await userEvent.type(canvas.getByLabelText("Name"), "My Novel 2");
+    await userEvent.click(canvas.getByRole("button", { name: /Short Story/ }));
+    await within(document.body).findByRole("dialog", {
+      name: "Unsaved changes",
+    });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        within(document.body).queryByRole("dialog", {
+          name: "Unsaved changes",
+        }),
+      ).toBeNull(),
+    );
+    await expect(canvas.getByLabelText("Name")).toHaveValue("My Novel 2");
+  },
+};

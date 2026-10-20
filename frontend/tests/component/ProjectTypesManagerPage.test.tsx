@@ -468,6 +468,51 @@ describe("ProjectTypesManagerPage unsaved-changes prompt on every exit path", ()
     expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
   });
 
+  it("Escape on the page with unsaved changes opens the prompt, keeps the manager and the draft", async () => {
+    renderWith(makeTransport());
+    startDraft("fresh", "Fresh");
+    const name = screen.getByLabelText("Name");
+    name.focus();
+    fireEvent.keyDown(name, { key: "Escape" });
+
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+  });
+
+  it("Escape on the page does nothing new when nothing has changed", () => {
+    const onClose = vi.fn();
+    renderWith(makeTransport(), { onClose });
+    const name = screen.getByLabelText("Name");
+    fireEvent.keyDown(name, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Escape on the prompt closes only the prompt: the manager stays, the draft is intact, focus returns to the control that held it", async () => {
+    const onClose = vi.fn();
+    renderWith(makeTransport(), { onClose });
+    startDraft("fresh", "Fresh");
+    const name = screen.getByLabelText("Name");
+    name.focus();
+    fireEvent.keyDown(name, { key: "Escape" });
+    const dialog = await screen.findByRole("dialog", { name: promptName });
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(screen.getByLabelText("Name")).toHaveValue("Fresh");
+    expect(onClose).not.toHaveBeenCalled();
+    // The same keystroke is not handled a second time by the manager.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("page Close: prompts when changed and calls onClose only after Discard", async () => {
     const onClose = vi.fn();
     renderWith(makeTransport(), { onClose });

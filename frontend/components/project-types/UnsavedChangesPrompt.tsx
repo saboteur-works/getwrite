@@ -67,6 +67,11 @@ export default function UnsavedChangesPrompt({
       <DialogContent
         maxWidth="max-w-[480px]"
         className="p-6"
+        onKeyDown={(event) => {
+          // Escape here means Keep editing (handled by the dialog); it must
+          // not bubble through the React tree to the manager behind.
+          if (event.key === "Escape") event.stopPropagation();
+        }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           returnFocusTo?.focus();

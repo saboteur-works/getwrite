@@ -302,4 +302,29 @@ describe("ShellModalCoordinator — project types modal dismissal (FR-17)", () =
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
     await waitFor(() => expect(setOpen).toHaveBeenCalledWith(false));
   });
+
+  it("Escape on the prompt closes only the prompt: the modal stays open, the draft is intact, focus returns", async () => {
+    const setOpen = vi.fn();
+    renderOpen(setOpen);
+    const name = screen.getByLabelText("Name");
+    fireEvent.change(name, { target: { value: "Mine edited" } });
+    name.focus();
+    fireEvent.keyDown(name, { key: "Escape" });
+    const prompt = await screen.findByRole("dialog", {
+      name: /unsaved changes/i,
+    });
+    await waitFor(() =>
+      expect(prompt.contains(document.activeElement)).toBe(true),
+    );
+
+    fireEvent.keyDown(prompt, { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /unsaved changes/i }),
+      ).toBeNull(),
+    );
+    expect(setOpen).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Name")).toHaveValue("Mine edited");
+    await waitFor(() => expect(document.activeElement).toBe(name));
+  });
 });
