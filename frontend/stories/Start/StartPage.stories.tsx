@@ -721,7 +721,7 @@ function removeScrivenerBridge(): void {
 }
 
 /**
- * The "Import from Scrivener" launcher renders only when a desktop bridge is
+ * The "Import Scrivener 3 Project" launcher renders only when a desktop bridge is
  * present (Task 9, Feature 43) — this story installs a fake one.
  */
 export const ImportButtonVisible: Story = {
@@ -732,7 +732,7 @@ export const ImportButtonVisible: Story = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("button", { name: /Import from Scrivener/i });
+    await canvas.findByRole("button", { name: "Import Scrivener 3 Project" });
   },
 };
 
@@ -751,7 +751,7 @@ export const ImportButtonAbsent: Story = {
     // Wait a tick for StartPage's render to settle, then assert absence.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(
-      canvas.queryByRole("button", { name: /Import from Scrivener/i }),
+      canvas.queryByRole("button", { name: "Import Scrivener 3 Project" }),
     ).not.toBeInTheDocument();
   },
 };

@@ -795,7 +795,7 @@ export default function StartPage({
                   </Card>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col items-start gap-3">
                   <Button
                     variant="default"
                     onClick={() => setIsModalOpen(true)}
@@ -805,27 +805,23 @@ export default function StartPage({
                   </Button>
 
                   {desktopBridge ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsImportDialogOpen(true)}
-                      title="Import from Scrivener"
-                      aria-label="Import from Scrivener"
-                    >
-                      <Import size={16} aria-hidden="true" />
-                      Import
-                    </Button>
-                  ) : null}
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setIsImportDialogOpen(true)}
+                      >
+                        <Import size={16} aria-hidden="true" />
+                        Import Scrivener 3 Project
+                      </Button>
 
-                  {desktopBridge ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsDocxImportDialogOpen(true)}
-                      title="Import Word Document"
-                      aria-label="Import Word Document"
-                    >
-                      <Import size={16} aria-hidden="true" />
-                      Import Word Document
-                    </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setIsDocxImportDialogOpen(true)}
+                      >
+                        <Import size={16} aria-hidden="true" />
+                        Import Word Document
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
               </div>

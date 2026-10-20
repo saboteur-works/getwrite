@@ -84,7 +84,7 @@ node cli/dist/bin/getwrite-cli.cjs project create ./my-novel \
 
 ### `project import-scrivener`
 
-Imports a Scrivener 3, Mac-authored `.scriv` project into a new, complete GetWrite project (Feature 31). One-shot, never writes to the source project. The desktop app also exposes this pipeline as an "Import" flow on the Start Page (Feature 43) — this CLI command is no longer the only way to run it.
+Imports a Scrivener 3, Mac-authored `.scriv` project into a new, complete GetWrite project (Feature 31). One-shot, never writes to the source project. The desktop app also exposes this pipeline as an "Import Scrivener 3 Project" flow on the Start Page (Feature 43) — this CLI command is no longer the only way to run it.
 
 ```sh
 getwrite-cli project import-scrivener <scrivPath> [projectRoot] [--name <name>]
@@ -143,7 +143,7 @@ getwrite-cli project types
 
 ### `project import-docx`
 
-Imports a single `.docx` file or a folder of `.docx` files into a new, complete GetWrite project (Feature 45). One-shot, never writes to the source. The desktop app also exposes this pipeline as an "Import Word Document" flow on the Start Page, alongside the existing Scrivener "Import" button.
+Imports a single `.docx` file or a folder of `.docx` files into a new, complete GetWrite project (Feature 45). One-shot, never writes to the source. The desktop app also exposes this pipeline as an "Import Word Document" flow on the Start Page, alongside the "Import Scrivener 3 Project" button.
 
 ```sh
 getwrite-cli project import-docx <source> [projectRoot] [--name <name>] [-s, --split-level <1-6|none>] [-t, --project-type <id>]
