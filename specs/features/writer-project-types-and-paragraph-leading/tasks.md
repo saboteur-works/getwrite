@@ -175,7 +175,7 @@ Measurements go in `specs/features/writer-project-types-and-paragraph-leading/ex
 **Depends on:** 16
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-6 (client side). The notice UI is added with the manager (Task 22) and the dialogs (Tasks 24, 25).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Saved-types write core: clash rules, atomic and exclusive write, delete
 **What:** Create the server-side write core for create, replace and delete of saved types, with clash detection, exclusive creation, atomic replacement and built-in protection.

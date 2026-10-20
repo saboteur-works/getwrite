@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CreateProjectModal from "../../components/Start/CreateProjectModal";
+import { projectTypesListBody } from "../helpers/projectTypesListBody";
 
 describe("a11y: CreateProjectModal keyboard navigation (T018)", () => {
   beforeEach(() => {
@@ -19,9 +20,14 @@ describe("a11y: CreateProjectModal keyboard navigation (T018)", () => {
         if (url.endsWith("/api/project-types")) {
           return Promise.resolve({
             ok: true,
-            json: async () => [
-              { id: "novel", name: "Novel", folders: [{ name: "Workspace" }] },
-            ],
+            json: async () =>
+              projectTypesListBody([
+                {
+                  id: "novel",
+                  name: "Novel",
+                  folders: [{ name: "Workspace" }],
+                },
+              ]),
           });
         }
         return Promise.resolve({ ok: true, json: async () => ({}) });

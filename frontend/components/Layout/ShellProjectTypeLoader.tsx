@@ -5,12 +5,17 @@ import type {
   ProjectTypeDefinition,
   ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
-import { listProjectTypes } from "../../src/lib/api/project-types";
+import {
+  listProjectTypeEntries,
+  projectTypeListNotice,
+} from "../../src/lib/api/project-types";
 
 export interface ShellProjectTypeLoaderState {
   projectTypeTemplates: ProjectTypeTemplateFile[];
   isProjectTypesLoading: boolean;
   projectTypesLoadError: string | null;
+  /** One-line notice when saved types were unusable or unreadable; null otherwise. */
+  projectTypesNotice: string | null;
 }
 
 export interface ShellProjectTypeLoaderProps {
@@ -27,6 +32,9 @@ export default function ShellProjectTypeLoader({
   >([]);
   const [isProjectTypesLoading, setIsProjectTypesLoading] =
     React.useState<boolean>(false);
+  const [projectTypesNotice, setProjectTypesNotice] = React.useState<
+    string | null
+  >(null);
   const [projectTypesLoadError, setProjectTypesLoadError] = React.useState<
     string | null
   >(null);
@@ -41,9 +49,11 @@ export default function ShellProjectTypeLoader({
     const loadProjectTypes = async (): Promise<void> => {
       setIsProjectTypesLoading(true);
       setProjectTypesLoadError(null);
+      setProjectTypesNotice(null);
 
       try {
-        const definitions = await listProjectTypes();
+        const list = await listProjectTypeEntries();
+        const definitions = list.entries.map((entry) => entry.spec);
 
         if (isCancelled) {
           return;
@@ -66,6 +76,7 @@ export default function ShellProjectTypeLoader({
         );
 
         setProjectTypeTemplates(templates);
+        setProjectTypesNotice(projectTypeListNotice(list));
       } catch (error) {
         if (isCancelled) {
           return;
@@ -96,6 +107,7 @@ export default function ShellProjectTypeLoader({
         projectTypeTemplates,
         isProjectTypesLoading,
         projectTypesLoadError,
+        projectTypesNotice,
       })}
     </>
   );

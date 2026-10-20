@@ -14,7 +14,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { httpProjectTypesTransport } from "../../src/lib/api/project-types";
+import {
+  httpProjectTypesTransport,
+  projectTypeListNotice,
+  type ProjectTypeList,
+} from "../../src/lib/api/project-types";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
@@ -32,6 +36,20 @@ const validProjectType = {
   folders: [{ name: "Workspace" }, { name: "Chapters" }],
 };
 
+const listBody = (over: Record<string, unknown> = {}) => ({
+  entries: [
+    { spec: validProjectType, fileName: "novel.json", source: "built-in" },
+    {
+      spec: { ...validProjectType, id: "mine", name: "Mine" },
+      fileName: "mine.json",
+      source: "saved",
+    },
+  ],
+  unusable: [{ fileName: "broken.json", reason: "unparseable" }],
+  savedStatus: "ok",
+  ...over,
+});
+
 describe("httpProjectTypesTransport.list", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -43,36 +61,35 @@ describe("httpProjectTypesTransport.list", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns the parsed list on a well-formed 2xx response", async () => {
-    fetchMock = vi.fn().mockResolvedValue(jsonResponse([validProjectType]));
+  it("returns entries, unusable files and saved status from a well-formed response", async () => {
+    fetchMock = vi.fn().mockResolvedValue(jsonResponse(listBody()));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await httpProjectTypesTransport.list();
 
-    expect(result).toEqual([validProjectType]);
+    expect(
+      result.entries.map((e) => [e.spec.id, e.source, e.fileName]),
+    ).toEqual([
+      ["novel", "built-in", "novel.json"],
+      ["mine", "saved", "mine.json"],
+    ]);
+    expect(result.unusable).toEqual([
+      { fileName: "broken.json", reason: "unparseable" },
+    ]);
+    expect(result.savedStatus).toBe("ok");
     expect(reportTransportValidationFailure).not.toHaveBeenCalled();
   });
 
-  it("returns the specs from the list-object response (Feature 90 route shape)", async () => {
-    fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        jsonResponse({
-          entries: [
-            {
-              spec: validProjectType,
-              fileName: "novel.json",
-              source: "built-in",
-            },
-          ],
-          unusable: [],
-          savedStatus: "ok",
-        }),
+  it("carries a not-configured and an unreadable status through", async () => {
+    for (const savedStatus of ["not-configured", "unreadable"]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(jsonResponse(listBody({ savedStatus }))),
       );
-    vi.stubGlobal("fetch", fetchMock);
-
-    expect(await httpProjectTypesTransport.list()).toEqual([validProjectType]);
-    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+      expect((await httpProjectTypesTransport.list()).savedStatus).toBe(
+        savedStatus,
+      );
+    }
   });
 
   it("throws on a non-ok HTTP response without validating the body", async () => {
@@ -85,10 +102,24 @@ describe("httpProjectTypesTransport.list", () => {
     expect(reportTransportValidationFailure).not.toHaveBeenCalled();
   });
 
-  it("reports and throws on a malformed body despite a 2xx response", async () => {
-    const malformed = [{ id: "Bad ID!", name: "Bad", folders: [] }];
-    fetchMock = vi.fn().mockResolvedValue(jsonResponse(malformed));
-    vi.stubGlobal("fetch", fetchMock);
+  it.each([
+    ["a bare array (the old shape)", [validProjectType]],
+    [
+      "an entry that fails the spec schema",
+      listBody({
+        entries: [
+          {
+            spec: { id: "Bad ID!", name: "Bad", folders: [] },
+            fileName: "x.json",
+            source: "saved",
+          },
+        ],
+      }),
+    ],
+    ["a missing savedStatus", { entries: [], unusable: [] }],
+    ["an unknown savedStatus", listBody({ savedStatus: "weird" })],
+  ])("reports and throws on %s, never an empty list", async (_label, body) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(body)));
 
     await expect(httpProjectTypesTransport.list()).rejects.toThrow(
       "Invalid project types response shape",
@@ -97,6 +128,42 @@ describe("httpProjectTypesTransport.list", () => {
     expect(reportTransportValidationFailure).toHaveBeenCalledWith(
       "project-types.list",
       expect.any(Array),
+    );
+  });
+});
+
+describe("projectTypeListNotice", () => {
+  const base: ProjectTypeList = {
+    entries: [],
+    unusable: [],
+    savedStatus: "ok",
+  };
+
+  it("is null when nothing is wrong", () => {
+    expect(projectTypeListNotice(base)).toBeNull();
+    expect(
+      projectTypeListNotice({ ...base, savedStatus: "not-configured" }),
+    ).toBeNull();
+  });
+
+  it("names unusable files by count and an unreadable saved directory", () => {
+    expect(
+      projectTypeListNotice({
+        ...base,
+        unusable: [{ fileName: "a.json", reason: "invalid" }],
+      }),
+    ).toBe("1 saved project type file could not be used.");
+    expect(
+      projectTypeListNotice({
+        ...base,
+        unusable: [
+          { fileName: "a.json", reason: "invalid" },
+          { fileName: "b.json", reason: "unreadable" },
+        ],
+      }),
+    ).toBe("2 saved project type files could not be used.");
+    expect(projectTypeListNotice({ ...base, savedStatus: "unreadable" })).toBe(
+      "Saved project types could not be read.",
     );
   });
 });

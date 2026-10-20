@@ -25,7 +25,10 @@
  */
 import { listStaticProjectTypes } from "../../lib/models/project-types-static";
 import type { ProjectTypeDefinition } from "../../types/project-types";
-import type { ProjectTypesTransport } from "../../lib/api/project-types";
+import type {
+  ProjectTypeList,
+  ProjectTypesTransport,
+} from "../../lib/api/project-types";
 
 /**
  * Builds the in-process project-types transport for a native build. Takes
@@ -33,8 +36,18 @@ import type { ProjectTypesTransport } from "../../lib/api/project-types";
  */
 export function createNativeProjectTypesTransport(): ProjectTypesTransport {
   return {
-    async list() {
-      return listStaticProjectTypes() as unknown as ProjectTypeDefinition[];
+    async list(): Promise<ProjectTypeList> {
+      const specs =
+        listStaticProjectTypes() as unknown as ProjectTypeDefinition[];
+      return {
+        entries: specs.map((spec) => ({
+          spec,
+          fileName: `${spec.id}.json`,
+          source: "built-in" as const,
+        })),
+        unusable: [],
+        savedStatus: "not-configured",
+      };
     },
   };
 }

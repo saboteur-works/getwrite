@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import StartPage from "../components/Start/StartPage";
 import CreateProjectModal from "../components/Start/CreateProjectModal";
+import { projectTypesListBody } from "./helpers/projectTypesListBody";
 
 describe("Create project flow (integration) - modal calls API and adds project", () => {
   afterEach(() => {
@@ -35,13 +36,14 @@ describe("Create project flow (integration) - modal calls API and adds project",
         if (url.endsWith("/api/project-types")) {
           return Promise.resolve({
             ok: true,
-            json: async () => [
-              {
-                id: "novel",
-                name: "Novel",
-                folders: [{ name: "Workspace", defaultResources: [] }],
-              },
-            ],
+            json: async () =>
+              projectTypesListBody([
+                {
+                  id: "novel",
+                  name: "Novel",
+                  folders: [{ name: "Workspace", defaultResources: [] }],
+                },
+              ]),
           });
         }
         if (url.endsWith("/api/projects") && init && init.method === "POST") {
@@ -141,14 +143,19 @@ describe("Create project modal — project-type list parity (T027)", () => {
         if (url.endsWith("/api/project-types")) {
           return Promise.resolve({
             ok: true,
-            json: async () => [
-              {
-                id: "screenplay",
-                name: "Screenplay",
-                folders: [{ name: "Workspace" }],
-              },
-              { id: "essay", name: "Essay", folders: [{ name: "Workspace" }] },
-            ],
+            json: async () =>
+              projectTypesListBody([
+                {
+                  id: "screenplay",
+                  name: "Screenplay",
+                  folders: [{ name: "Workspace" }],
+                },
+                {
+                  id: "essay",
+                  name: "Essay",
+                  folders: [{ name: "Workspace" }],
+                },
+              ]),
           });
         }
         return Promise.resolve({ ok: true, json: async () => [] });
