@@ -655,6 +655,17 @@ html.gw-theme-dark {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
+    /* A thin scrollbar, invisible at rest and shown in the border colour
+       while the row is hovered or holds focus (below). The bottom padding
+       gives an overlay scrollbar room beneath the tabs instead of over them. */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    padding-bottom: 6px;
+  }
+
+  .workarea-view-tabs-frame:hover .workarea-view-tabs-scroll,
+  .workarea-view-tabs-frame:focus-within .workarea-view-tabs-scroll {
+    scrollbar-color: var(--color-gw-border-md) transparent;
   }
 
   /* Tab button — D9: no blue fill */
