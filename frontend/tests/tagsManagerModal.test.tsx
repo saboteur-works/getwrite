@@ -185,7 +185,7 @@ describe("TagsManagerModal", () => {
   describe("new tag preview", () => {
     function previewChips(): HTMLElement[] {
       const preview = screen.getByRole("group", { name: "Preview" });
-      return [...preview.querySelectorAll<HTMLElement>(".chip")];
+      return Array.from(preview.querySelectorAll(".chip")) as HTMLElement[];
     }
 
     it("shows the typed name as it will look unassigned and assigned", async () => {
