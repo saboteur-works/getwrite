@@ -241,9 +241,9 @@ export default function LimitSwitches({
                   {isUnlocking ? (
                     <div
                       id={warningId}
-                      // A Level 2 surface (STYLING.md §6) indented to the label,
-                      // so the warning reads as part of this switch.
-                      className="ml-11 flex flex-col gap-1 rounded-sm border-hairline border-gw-border bg-gw-chrome2 px-3 py-2"
+                      // A Level 2 surface (STYLING.md §6), left-aligned with
+                      // the switches like the "Sharing is on" panel.
+                      className="flex flex-col gap-1 rounded-sm border-hairline border-gw-border bg-gw-chrome2 px-3 py-2"
                     >
                       <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_TYPED}
