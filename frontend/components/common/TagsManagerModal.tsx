@@ -390,6 +390,38 @@ export default function TagsManagerModal({
               />
             ) : null}
           </div>
+          {/* How the tag will look in the sidebar's Tags section, off and
+              on, using the same Chip props TagsSection passes. Not
+              interactive: no onClick, so each Chip is a plain span. */}
+          <div
+            role="group"
+            aria-labelledby="new-tag-preview-label"
+            className="flex flex-col gap-2"
+          >
+            <span
+              id="new-tag-preview-label"
+              className="text-sm text-gw-secondary"
+            >
+              Preview
+            </span>
+            <div className="flex flex-wrap items-start gap-4">
+              {[false, true].map((isAssigned) => (
+                <div key={String(isAssigned)} className="flex flex-col gap-1">
+                  <Chip
+                    label={newName.trim() || "Tag name"}
+                    shape="sharp"
+                    size="sm"
+                    color={shouldUseColor ? newColor : undefined}
+                    active={isAssigned && shouldUseColor}
+                    tagActive={isAssigned && !shouldUseColor}
+                  />
+                  <span className="text-gw-label text-gw-secondary">
+                    {isAssigned ? "Assigned" : "Not assigned"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
           <Button
             type="submit"
             variant="secondary"

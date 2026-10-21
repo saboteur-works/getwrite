@@ -182,6 +182,77 @@ describe("TagsManagerModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  describe("new tag preview", () => {
+    function previewChips(): HTMLElement[] {
+      const preview = screen.getByRole("group", { name: "Preview" });
+      return [...preview.querySelectorAll<HTMLElement>(".chip")];
+    }
+
+    it("shows the typed name as it will look unassigned and assigned", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      fireEvent.change(screen.getByLabelText("New tag name"), {
+        target: { value: "  Flashback " },
+      });
+
+      const [off, on] = previewChips();
+      expect(off).toHaveTextContent("Flashback");
+      expect(on).toHaveTextContent("Flashback");
+      expect(off).not.toHaveClass("chip--tag-active");
+      expect(on).toHaveClass("chip--tag-active");
+      expect(screen.getByText("Not assigned")).toBeInTheDocument();
+      expect(screen.getByText("Assigned")).toBeInTheDocument();
+    });
+
+    it("fills the assigned chip with the chosen color", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      fireEvent.change(screen.getByLabelText("New tag name"), {
+        target: { value: "Flashback" },
+      });
+      fireEvent.click(screen.getByLabelText("Set tag color"));
+      fireEvent.change(screen.getByLabelText("Tag color"), {
+        target: { value: "#336699" },
+      });
+
+      const [off, on] = previewChips();
+      expect(off.style.borderColor).toBe("rgb(51, 102, 153)");
+      expect(off.style.backgroundColor).toBe("");
+      expect(on.style.backgroundColor).toBe("rgb(51, 102, 153)");
+    });
+
+    it("shows a placeholder name until one is typed", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      const [off, on] = previewChips();
+      expect(off).toHaveTextContent("Tag name");
+      expect(on).toHaveTextContent("Tag name");
+    });
+
+    it("is not interactive", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      const preview = screen.getByRole("group", { name: "Preview" });
+      expect(preview.querySelector("button")).toBeNull();
+    });
+  });
+
   describe("creating a tag", () => {
     function createBodies(fetchStub: ReturnType<typeof setupFetchStub>) {
       return fetchStub.mock.calls
