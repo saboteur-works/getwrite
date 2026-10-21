@@ -5,7 +5,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
   dialogueSpans,
   type DialogueQuoteStyle,
-} from "../../../src/lib/models/prose-diagnostics";
+} from "../../../src/lib/models/dialogue-spans";
 import { buildPlainTextIndex } from "../offset-resolver";
 
 /**
