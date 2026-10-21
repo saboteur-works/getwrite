@@ -240,13 +240,13 @@ export default function LimitSwitches({
                   </div>
                   {isUnlocking ? (
                     <div id={warningId} className="flex flex-col gap-1">
-                      <p className="text-sm text-gw-secondary">
+                      <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_TYPED}
                       </p>
-                      <p className="text-sm text-gw-secondary">
+                      <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_UNENCRYPTED}
                       </p>
-                      <p className="text-sm text-gw-secondary">
+                      <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_RECORDED}
                       </p>
                     </div>
