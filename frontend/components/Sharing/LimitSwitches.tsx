@@ -2,6 +2,7 @@
 
 import React from "react";
 import ConfirmDialog from "../common/ConfirmDialog";
+import Switch from "../common/UI/Switch";
 import {
   getDesktopBridge,
   type DesktopBridge,
@@ -222,11 +223,9 @@ export default function LimitSwitches({
               return (
                 <li key={key} className="flex flex-col gap-1">
                   <div className="flex items-center gap-3">
-                    <input
+                    <Switch
                       id={inputId}
                       ref={isUnlocking ? unlockingRef : undefined}
-                      type="checkbox"
-                      role="switch"
                       checked={limits.limits[key]}
                       disabled={isBusy}
                       aria-describedby={isUnlocking ? warningId : undefined}

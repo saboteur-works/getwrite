@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Switch from "../common/UI/Switch";
 import {
   getDesktopBridge,
   type DesktopBridge,
@@ -90,10 +91,8 @@ export default function KeepRunningSetting(): JSX.Element | null {
       {setting ? (
         <>
           <div className="flex items-center gap-3">
-            <input
+            <Switch
               id={switchId}
-              type="checkbox"
-              role="switch"
               checked={setting.enabled}
               disabled={isSaving}
               onChange={(e) => void handleToggle(e.target.checked)}

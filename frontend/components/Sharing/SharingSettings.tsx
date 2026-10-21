@@ -2,6 +2,7 @@
 
 import React from "react";
 import Button from "../common/UI/Button/Button";
+import Switch from "../common/UI/Switch";
 import LimitSwitches from "./LimitSwitches";
 import PairedDevices from "./PairedDevices";
 import {
@@ -198,10 +199,8 @@ export default function SharingSettings(): JSX.Element | null {
       {status ? (
         <>
           <div className="flex items-center gap-3">
-            <input
+            <Switch
               id={switchId}
-              type="checkbox"
-              role="switch"
               checked={isEnabled}
               disabled={isRestarting}
               onChange={(e) => void handleToggle(e.target.checked)}
