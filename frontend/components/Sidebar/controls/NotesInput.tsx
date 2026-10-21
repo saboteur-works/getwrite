@@ -24,7 +24,7 @@ export default function NotesInput({
     <LabeledField label="Notes" className={className}>
       <Textarea
         aria-label={ariaLabel}
-        className="block w-full mt-2"
+        className="block w-full mt-2 text-gw-label"
         placeholder={placeholder}
         value={text}
         onChange={(e) => setText(e.target.value)}

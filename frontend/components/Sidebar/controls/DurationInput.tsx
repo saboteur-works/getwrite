@@ -68,7 +68,7 @@ export default function DurationInput({
         <input
           type="number"
           aria-label="story-duration-quantity"
-          className="w-full p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
           min={0}
           value={quantity}
           onChange={(e) => {
@@ -78,7 +78,7 @@ export default function DurationInput({
         />
         <select
           aria-label="story-duration-unit"
-          className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
+          className="p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
           value={unit}
           onChange={(e) => {
             const u = e.target.value as DurationUnit;

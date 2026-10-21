@@ -29,7 +29,7 @@ export default function StatusSelector({
     <LabeledField label="Status" className={className}>
       <select
         aria-label={ariaLabel}
-        className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
         value={status}
         onChange={(e) => setStatus(e.target.value)}
       >

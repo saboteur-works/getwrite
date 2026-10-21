@@ -22,7 +22,7 @@ export const WithInput: Story = {
         // instead of rendering an unlabelled input.
         aria-label="Example Field"
         defaultValue="Example"
-        className="w-full mt-2 p-2 border rounded text-sm"
+        className="w-full mt-2 p-2 border rounded text-gw-label"
       />
     ),
   },

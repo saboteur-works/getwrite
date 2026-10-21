@@ -28,7 +28,7 @@ import {
  * bordered, on the nested surface, at body size.
  */
 const FIELD_CONTROL_CLASS =
-  "w-full mt-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary placeholder:text-gw-secondary outline-none focus:border-gw-border-md transition-colors duration-150";
+  "w-full mt-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary placeholder:text-gw-secondary outline-none focus:border-gw-border-md transition-colors duration-150";
 
 /** A hint or notice under a field, in the sidebar's small secondary text. */
 const FIELD_NOTE_CLASS = "mt-1 text-gw-label text-gw-secondary";

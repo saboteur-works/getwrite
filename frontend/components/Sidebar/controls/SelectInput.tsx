@@ -77,7 +77,7 @@ export default function SelectInput({
     <LabeledField label={label} className={className}>
       <Select
         aria-label={ariaLabel}
-        className="w-full mt-2"
+        className="w-full mt-2 text-gw-label"
         value={displayValue}
         onChange={handleChange}
         multiple={multiple}

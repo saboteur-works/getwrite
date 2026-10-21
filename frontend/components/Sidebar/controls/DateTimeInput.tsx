@@ -46,7 +46,7 @@ export default function DateTimeInput({
       <input
         type="date"
         aria-label={ariaLabel}
-        className="w-full mt-2 mb-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full mt-2 mb-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
         value={date}
         onChange={(e) => {
           setDate(e.target.value);
@@ -56,7 +56,7 @@ export default function DateTimeInput({
       <input
         type="time"
         aria-label={`${ariaLabel}-time`}
-        className="w-full mt-1 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full mt-1 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
         value={time}
         onChange={(e) => {
           setTime(e.target.value);
