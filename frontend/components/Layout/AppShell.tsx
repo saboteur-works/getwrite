@@ -1376,14 +1376,12 @@ export default function AppShell({
                               "Entities are off. Turn them on in Project Settings → Entities.",
                           }}
                         />
-                        {/* Search on its own row under the view switcher,
-                            aligned right. */}
-                        <div className="flex justify-end px-4 py-2">
-                          <div className="w-full min-w-0 sm:w-80">
-                            <SearchBar
-                              onSelect={(id) => onResourceSelect?.(id)}
-                            />
-                          </div>
+                        {/* Search keeps its width on the right of the
+                            switcher's row; the switcher scrolls. */}
+                        <div className="w-56 shrink-0 pr-4 sm:w-80">
+                          <SearchBar
+                            onSelect={(id) => onResourceSelect?.(id)}
+                          />
                         </div>
                       </div>
                     </div>

@@ -607,10 +607,30 @@ html.gw-theme-dark {
 
   /* ── WORKAREA ── */
 
-  /* The view switcher row, then the search row (aligned right) beneath it. */
+  /* One row: the view switcher takes the remaining width and scrolls
+     horizontally; search keeps its own width on the right. */
   .workarea-header {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: nowrap;
+  }
+
+  /* Wraps the view switcher's scroll row (ViewSwitcher.tsx) so it can shrink
+     beside search. `data-more-right` is set while tabs are hidden past the
+     right edge, which fades that edge. */
+  .workarea-view-tabs-frame {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .workarea-view-tabs-frame[data-more-right] .workarea-view-tabs-scroll {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      black calc(100% - 32px),
+      transparent
+    );
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
   }
 
   .workarea-view-tabs {
@@ -635,25 +655,6 @@ html.gw-theme-dark {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-  }
-
-  /* On phones the ~5 tabs overflow the full-width pane; fade the right edge to
-     signal the row scrolls. Scoped to phones only: on tablet/desktop the tabs
-     fit, so a fade there would wrongly dim the last (Timeline) tab. (The editor
-     menubar, which is far wider, keeps its own tablet-inclusive fade.) */
-  @media (max-width: 767px) {
-    .workarea-view-tabs-scroll {
-      -webkit-mask-image: linear-gradient(
-        to right,
-        black calc(100% - 24px),
-        transparent
-      );
-      mask-image: linear-gradient(
-        to right,
-        black calc(100% - 24px),
-        transparent
-      );
-    }
   }
 
   /* Tab button — D9: no blue fill */
