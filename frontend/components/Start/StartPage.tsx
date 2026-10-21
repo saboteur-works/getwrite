@@ -539,7 +539,7 @@ export default function StartPage({
   return (
     <section
       aria-labelledby="start-projects"
-      className="min-h-full text-gw-primary bg-gw-chrome px-6 pt-8 pb-24"
+      className="shrink-0 min-h-full text-gw-primary bg-gw-chrome px-6 pt-8 pb-24"
     >
       {isUnlockPromptOpen ? (
         <UnlockModal
