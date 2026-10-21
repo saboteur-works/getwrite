@@ -202,7 +202,7 @@ export default function ProseDiagnosticsSection({
             ).map(([style, styleLabel]) => (
               <label
                 key={style}
-                className="cursor-pointer rounded-md border border-gw-border bg-transparent px-3 py-1.5 text-gw-small font-medium text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 has-checked:border-gw-border-md has-checked:bg-gw-chrome2 has-checked:text-gw-primary has-focus-visible:ring-1 has-focus-visible:ring-gw-secondary"
+                className="cursor-pointer rounded-md border border-gw-border bg-transparent px-2 py-1 text-gw-label font-medium text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 has-checked:border-gw-border-md has-checked:bg-gw-chrome2 has-checked:text-gw-primary has-focus-visible:ring-1 has-focus-visible:ring-gw-secondary"
               >
                 <input
                   type="radio"
