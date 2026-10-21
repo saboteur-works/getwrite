@@ -7,6 +7,11 @@ import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import type { ProseDiagnosticsSummary } from "../src/lib/api/prose-diagnostics";
+import userEvent from "@testing-library/user-event";
+import {
+  getDialogueHighlightSettings,
+  resetDialogueHighlightSettings,
+} from "../components/Editor/dialogue-highlight-store";
 
 const PROJECT_PATH = "/tmp/test-project";
 const PROJECT_ID = "proj-diagnostics-1";
@@ -215,7 +220,9 @@ describe("ProseDiagnosticsSection", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/couldn't load/i);
     // Not the ready state's zero-metrics rendering.
-    expect(screen.queryByText(/dialogue ratio/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Dialogue ratio" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -246,5 +253,64 @@ describe("ProseDiagnosticsSection", () => {
     ).toBeInTheDocument();
     // Distinguishable from the error state: no alert role anywhere.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  describe("dialogue highlight controls", () => {
+    function renderSection() {
+      vi.mocked(getProseDiagnosticsOrThrow).mockImplementation(
+        () => new Promise(() => {}),
+      );
+      render(
+        <Provider store={setupStore()}>
+          <ProseDiagnosticsSection
+            resource={createTextResource({ name: "Chapter One" })}
+          />
+        </Provider>,
+      );
+    }
+
+    afterEach(() => resetDialogueHighlightSettings());
+
+    it("starts off, with double quotes chosen", () => {
+      renderSection();
+
+      expect(
+        screen.getByRole("switch", { name: "Highlight dialogue" }),
+      ).not.toBeChecked();
+      expect(
+        screen.getByRole("radio", { name: /Double quotes/ }),
+      ).toBeChecked();
+    });
+
+    it("turns the highlight on for this window", async () => {
+      renderSection();
+
+      await userEvent.click(
+        screen.getByRole("switch", { name: "Highlight dialogue" }),
+      );
+
+      expect(getDialogueHighlightSettings().isEnabled).toBe(true);
+      expect(
+        screen.getByRole("switch", { name: "Highlight dialogue" }),
+      ).toBeChecked();
+    });
+
+    it("switches the highlight to single quotes", async () => {
+      renderSection();
+
+      await userEvent.click(
+        screen.getByRole("radio", { name: /Single quotes/ }),
+      );
+
+      expect(getDialogueHighlightSettings().quoteStyle).toBe("single");
+    });
+
+    it("says the ratio still counts double quotes", () => {
+      renderSection();
+
+      expect(
+        screen.getByText(/The dialogue ratio counts double quotes/),
+      ).toBeInTheDocument();
+    });
   });
 });

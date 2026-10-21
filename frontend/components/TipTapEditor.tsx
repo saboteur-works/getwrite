@@ -53,6 +53,13 @@ import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import GetWriteImage from "./Editor/Extensions/GetWriteImage";
 import MentionJumpHighlightExtension from "./Editor/Extensions/MentionJumpHighlightExtension";
+import DialogueHighlightExtension, {
+  DIALOGUE_HIGHLIGHT_KEY,
+} from "./Editor/Extensions/DialogueHighlightExtension";
+import {
+  getDialogueHighlightSettings,
+  subscribeDialogueHighlight,
+} from "./Editor/dialogue-highlight-store";
 import EntityHighlightDecoration, {
   ENTITY_HIGHLIGHT_DECORATION_KEY,
 } from "./Editor/Extensions/EntityHighlightDecorationExtension";
@@ -368,6 +375,9 @@ export default function TipTapEditor({
         MediaDropExtension.configure({
           getProjectId: () => projectIdRef.current,
         }),
+        DialogueHighlightExtension.configure({
+          getSettings: getDialogueHighlightSettings,
+        }),
         EntityHighlightDecoration.configure({
           isEnabled: () => entityHighlightingActiveRef.current,
           getAliasTable: () => entityAliasTableRef.current,
@@ -531,6 +541,20 @@ export default function TipTapEditor({
     () => debounce(commitSourceMarkdown, SOURCE_AUTOSAVE_DEBOUNCE_MS),
     [commitSourceMarkdown],
   );
+
+  /**
+   * Recomputes the dialogue highlight whenever the sidebar changes its
+   * session-only settings (on/off, quote style). Decoration-only, like the
+   * entity highlight signal below: the document is not changed.
+   */
+  useEffect(() => {
+    if (!editor) return;
+    return subscribeDialogueHighlight(() => {
+      editor.view.dispatch(
+        editor.state.tr.setMeta(DIALOGUE_HIGHLIGHT_KEY, true),
+      );
+    });
+  }, [editor]);
 
   /**
    * Forces `EntityHighlightDecoration`'s plugin state to recompute when a

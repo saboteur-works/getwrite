@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import useAppSelector from "../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import {
@@ -10,6 +10,11 @@ import {
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import ProseDiagnosticsDetailDialog from "./ProseDiagnosticsDetailDialog";
 import LabeledField from "./controls/LabeledField";
+import Switch from "../common/UI/Switch";
+import {
+  setDialogueHighlightSettings,
+  useDialogueHighlightSettings,
+} from "../Editor/dialogue-highlight-store";
 import type { TextResource } from "../../src/lib/models/types";
 
 // ---------------------------------------------------------------------------
@@ -82,6 +87,8 @@ export default function ProseDiagnosticsSection({
   const [state, setState] = useState<DiagnosticsState>({ status: "loading" });
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const showDetailButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogueHighlight = useDialogueHighlightSettings();
+  const dialogueControlsId = useId();
 
   const resourceId = resource.id;
   const resourceUpdatedAt = resource.updatedAt;
@@ -161,6 +168,58 @@ export default function ProseDiagnosticsSection({
       >
         {SHOW_DETAIL_LABEL}
       </button>
+      {/* Session-only: the highlight settings live in memory for this window
+          (dialogue-highlight-store.ts) and are never saved. */}
+      <div className="mt-3 flex flex-col gap-2 border-t border-gw-border pt-3">
+        <div className="flex items-center gap-3">
+          <Switch
+            id={`${dialogueControlsId}-switch`}
+            checked={dialogueHighlight.isEnabled}
+            onChange={(e) =>
+              setDialogueHighlightSettings({ isEnabled: e.target.checked })
+            }
+          />
+          <label
+            htmlFor={`${dialogueControlsId}-switch`}
+            className="text-gw-small text-gw-primary"
+          >
+            Highlight dialogue
+          </label>
+        </div>
+        <fieldset className="flex flex-col gap-1">
+          <legend className="text-gw-micro font-medium font-mono uppercase tracking-label text-brand-mid">
+            Dialogue quotes
+          </legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {(
+              [
+                ["double", "Double quotes “ ”"],
+                ["single", "Single quotes ‘ ’"],
+              ] as const
+            ).map(([style, styleLabel]) => (
+              <label
+                key={style}
+                className="flex items-center gap-2 text-gw-small text-gw-primary cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  name={`${dialogueControlsId}-quotes`}
+                  value={style}
+                  checked={dialogueHighlight.quoteStyle === style}
+                  onChange={() =>
+                    setDialogueHighlightSettings({ quoteStyle: style })
+                  }
+                />
+                {styleLabel}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="text-gw-label text-gw-secondary">
+          Highlights quoted speech in the editor for this window. The dialogue
+          ratio counts double quotes.
+        </p>
+      </div>
       {projectId && (
         <ProseDiagnosticsDetailDialog
           isOpen={isDetailOpen}

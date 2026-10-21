@@ -13,6 +13,7 @@ import {
   HEURISTIC_VERSION,
   averageSentenceLength,
   dialogueRatio,
+  dialogueSpans,
   topRepeatedWords,
 } from "../../src/lib/models/prose-diagnostics";
 
@@ -88,5 +89,53 @@ describe("topRepeatedWords", () => {
 describe("HEURISTIC_VERSION", () => {
   it("starts at 1", () => {
     expect(HEURISTIC_VERSION).toBe(1);
+  });
+});
+
+describe("dialogueSpans", () => {
+  const spanText = (text: string, style: "double" | "single") =>
+    dialogueSpans(text, style).map(({ start, end }) => text.slice(start, end));
+
+  it("finds straight and curly double-quoted speech, marks included", () => {
+    expect(spanText('He said "go home" and “stay there”.', "double")).toEqual([
+      '"go home"',
+      "“stay there”",
+    ]);
+  });
+
+  it("covers exactly the characters dialogueRatio counts", () => {
+    const text = 'A "b c" d “e” f';
+    const covered = dialogueSpans(text, "double").reduce(
+      (sum, { start, end }) => sum + (end - start),
+      0,
+    );
+    expect(covered / text.length).toBe(dialogueRatio(text));
+  });
+
+  it("finds single-quoted speech, straight or curly", () => {
+    expect(spanText("‘Go home,’ she said. 'Now,' he added.", "single")).toEqual(
+      ["‘Go home,’", "'Now,'"],
+    );
+  });
+
+  it("does not end single-quoted speech at an apostrophe inside it", () => {
+    expect(spanText("‘I don’t know,’ she said.", "single")).toEqual([
+      "‘I don’t know,’",
+    ]);
+  });
+
+  it("does not treat contractions or possessives outside speech as quotes", () => {
+    expect(spanText("It isn’t the dogs’ bowl, it's mine.", "single")).toEqual(
+      [],
+    );
+  });
+
+  it("does not carry single-quoted speech across a paragraph break", () => {
+    expect(spanText("‘Unclosed\nnext paragraph’ text", "single")).toEqual([]);
+  });
+
+  it("ignores double quotes in single mode and single quotes in double mode", () => {
+    expect(spanText('"Double" only', "single")).toEqual([]);
+    expect(spanText("‘Single’ only", "double")).toEqual([]);
   });
 });

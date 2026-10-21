@@ -81,11 +81,15 @@ function visitNode(
 }
 
 /**
- * Builds the full plain-text-character-to-ProseMirror-position mapping for
- * `doc`, trimmed of trailing synthetic newlines to match
- * `tiptapToPlainText`'s own trim.
+ * `doc`'s plain text (the `tiptapToPlainText` model above, trailing
+ * newlines trimmed) with the ProseMirror position of each of its
+ * characters: `positions[i]` is where `text[i]` sits in the document.
+ * Shared by mention jumps and the dialogue highlight.
  */
-function buildOffsetPositionTable(doc: ProseMirrorNode): number[] {
+export function buildPlainTextIndex(doc: ProseMirrorNode): {
+  text: string;
+  positions: number[];
+} {
   const chars: string[] = [];
   const positions: number[] = [];
 
@@ -98,7 +102,16 @@ function buildOffsetPositionTable(doc: ProseMirrorNode): number[] {
     positions.pop();
   }
 
-  return positions;
+  return { text: chars.join(""), positions };
+}
+
+/**
+ * Builds the full plain-text-character-to-ProseMirror-position mapping for
+ * `doc`, trimmed of trailing synthetic newlines to match
+ * `tiptapToPlainText`'s own trim.
+ */
+function buildOffsetPositionTable(doc: ProseMirrorNode): number[] {
+  return buildPlainTextIndex(doc).positions;
 }
 
 /**

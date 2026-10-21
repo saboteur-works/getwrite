@@ -280,3 +280,15 @@
   font-weight: 400;
   font-style: normal;
 }
+
+/* Dialogue highlight (`DialogueHighlightExtension`): quoted speech, switched
+ * on from the sidebar's Prose Diagnostics section for the current window.
+ * Its own teal `--color-gw-dialogue-highlight` token (`getwrite-utilities.css`),
+ * distinct from the entity, mention-jump and diff tints so they can overlap
+ * and still be told apart; never the reserved red. */
+.tiptap .dialogue-highlight {
+  background-color: var(--color-gw-dialogue-highlight);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
