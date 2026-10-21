@@ -277,9 +277,7 @@ describe("ProseDiagnosticsSection", () => {
       expect(
         screen.getByRole("switch", { name: "Highlight dialogue" }),
       ).not.toBeChecked();
-      expect(
-        screen.getByRole("radio", { name: /Double quotes/ }),
-      ).toBeChecked();
+      expect(screen.getByRole("radio", { name: /Double/ })).toBeChecked();
     });
 
     it("turns the highlight on for this window", async () => {
@@ -298,9 +296,7 @@ describe("ProseDiagnosticsSection", () => {
     it("switches the highlight to single quotes", async () => {
       renderSection();
 
-      await userEvent.click(
-        screen.getByRole("radio", { name: /Single quotes/ }),
-      );
+      await userEvent.click(screen.getByRole("radio", { name: /Single/ }));
 
       expect(getDialogueHighlightSettings().quoteStyle).toBe("single");
     });

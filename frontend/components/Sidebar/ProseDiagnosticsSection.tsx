@@ -190,19 +190,23 @@ export default function ProseDiagnosticsSection({
           <legend className="text-gw-micro font-medium font-mono uppercase tracking-label text-brand-mid">
             Dialogue quotes
           </legend>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {/* Styled like the User Preferences colour-mode choice (bordered
+              buttons, the chosen one raised), but still a native radio group
+              underneath, so arrow keys and screen readers work as before. */}
+          <div className="flex gap-2">
             {(
               [
-                ["double", "Double quotes “ ”"],
-                ["single", "Single quotes ‘ ’"],
+                ["double", "Double “ ”"],
+                ["single", "Single ‘ ’"],
               ] as const
             ).map(([style, styleLabel]) => (
               <label
                 key={style}
-                className="flex items-center gap-2 text-gw-small text-gw-primary cursor-pointer"
+                className="cursor-pointer rounded-md border border-gw-border bg-transparent px-3 py-1.5 text-gw-small font-medium text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 has-checked:border-gw-border-md has-checked:bg-gw-chrome2 has-checked:text-gw-primary has-focus-visible:ring-1 has-focus-visible:ring-gw-secondary"
               >
                 <input
                   type="radio"
+                  className="sr-only"
                   name={`${dialogueControlsId}-quotes`}
                   value={style}
                   checked={dialogueHighlight.quoteStyle === style}
