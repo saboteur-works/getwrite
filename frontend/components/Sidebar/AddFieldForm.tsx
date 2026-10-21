@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import Button from "../common/UI/Button/Button";
+import LabeledField from "./controls/LabeledField";
 import { useAppDispatch } from "../../src/store/hooks";
 import { addMetadataField } from "../../src/store/projectsSlice";
 import type {
@@ -21,6 +22,16 @@ import {
   findExisting,
   fuzzyMatch,
 } from "../../src/lib/models/field-dedup";
+
+/**
+ * The sidebar's standard input/select look (as in EntityRelationshipsSection):
+ * bordered, on the nested surface, at body size.
+ */
+const FIELD_CONTROL_CLASS =
+  "w-full mt-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary placeholder:text-gw-secondary outline-none focus:border-gw-border-md transition-colors duration-150";
+
+/** A hint or notice under a field, in the sidebar's small secondary text. */
+const FIELD_NOTE_CLASS = "mt-1 text-gw-label text-gw-secondary";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -66,6 +77,7 @@ export interface AddFieldFormProps {
   onCancel: () => void;
   /** Called when autocomplete or exact match routes to an already-declared field. */
   onFieldFocused: (fieldKey: string) => void;
+
   /** Called after the new field is successfully persisted. */
   onCreated: (fieldKey: string) => void;
 }
@@ -202,93 +214,85 @@ export default function AddFieldForm({
   const isExactMatch = Boolean(exactMatch) && !isDeprecatedMatch;
 
   return (
-    <div ref={formRef} className="pt-3 border-t border-gw-border">
+    <div ref={formRef} className="border-t border-gw-border px-4 py-3">
       <form
+        className="flex flex-col gap-3"
         onSubmit={(e) => {
           void handleSubmit(e);
         }}
       >
-        {/* Name row with autocomplete */}
-        <div className="mb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-10 flex-shrink-0 text-[9px] font-mono uppercase tracking-[0.14em] text-gw-dim">
-              Name
-            </span>
-            <div className="relative flex-1 min-w-0">
-              <input
-                ref={nameInputRef}
-                type="text"
-                className="w-full bg-transparent border-b border-gw-border text-[11px] font-mono text-gw-primary placeholder:text-gw-dim outline-none focus:border-gw-border-md py-0.5 transition-colors duration-150"
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                onFocus={() => {
-                  if (name.trim()) setIsShowingSuggestions(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    if (isShowingSuggestions) {
-                      e.stopPropagation();
-                      setIsShowingSuggestions(false);
-                    } else {
-                      onCancel();
-                    }
+        <LabeledField label="Name">
+          <div className="relative">
+            <input
+              ref={nameInputRef}
+              type="text"
+              className={FIELD_CONTROL_CLASS}
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onFocus={() => {
+                if (name.trim()) setIsShowingSuggestions(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  if (isShowingSuggestions) {
+                    e.stopPropagation();
+                    setIsShowingSuggestions(false);
+                  } else {
+                    onCancel();
                   }
-                }}
-                autoComplete="off"
-                placeholder="e.g. tension"
-                aria-label="field-name"
-                // `aria-expanded` is not allowed on the implicit `textbox`
-                // role of a plain text input, which axe-core flags as
-                // `aria-allowed-attr`. The input genuinely is a combobox —
-                // it owns the suggestion listbox below — so it takes that
-                // role explicitly rather than dropping the attribute.
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={isShowingSuggestions && suggestions.length > 0}
-                aria-controls={
-                  isShowingSuggestions && suggestions.length > 0
-                    ? suggestionsListboxId
-                    : undefined
                 }
-              />
-              {isShowingSuggestions && suggestions.length > 0 && (
-                <div
-                  id={suggestionsListboxId}
-                  className="absolute left-0 top-full mt-0.5 w-full bg-gw-chrome2 border border-gw-border-md rounded-sm z-50 max-h-36 overflow-y-auto shadow-sm"
-                  role="listbox"
-                  aria-label="Existing fields"
-                >
-                  {suggestions.map((s) => (
-                    <button
-                      key={s.key}
-                      type="button"
-                      role="option"
-                      aria-selected={false}
-                      className="flex items-center justify-between w-full px-2 py-1.5 text-left hover:bg-gw-chrome3 transition-colors duration-100 gap-2"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSuggestionClick(s.key);
-                      }}
-                    >
-                      <span className="text-[10px] font-mono uppercase tracking-[0.10em] text-gw-secondary truncate">
-                        {s.key}
-                      </span>
-                      <span className="text-[9px] font-mono text-gw-dim truncate flex-shrink-0">
-                        {s.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              }}
+              autoComplete="off"
+              placeholder="e.g. tension"
+              aria-label="field-name"
+              // `aria-expanded` is not allowed on the implicit `textbox`
+              // role of a plain text input, which axe-core flags as
+              // `aria-allowed-attr`. The input genuinely is a combobox —
+              // it owns the suggestion listbox below — so it takes that
+              // role explicitly rather than dropping the attribute.
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={isShowingSuggestions && suggestions.length > 0}
+              aria-controls={
+                isShowingSuggestions && suggestions.length > 0
+                  ? suggestionsListboxId
+                  : undefined
+              }
+            />
+            {isShowingSuggestions && suggestions.length > 0 && (
+              <div
+                id={suggestionsListboxId}
+                className="absolute left-0 top-full mt-0.5 w-full bg-gw-chrome2 border border-gw-border-md rounded-sm z-50 max-h-36 overflow-y-auto"
+                role="listbox"
+                aria-label="Existing fields"
+              >
+                {suggestions.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    className="flex items-center justify-between w-full px-3 py-2 text-left hover:bg-gw-chrome3 transition-colors duration-100 gap-2"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSuggestionClick(s.key);
+                    }}
+                  >
+                    <span className="text-gw-label font-mono uppercase tracking-label text-gw-primary truncate">
+                      {s.key}
+                    </span>
+                    <span className="text-gw-label text-gw-secondary truncate flex-shrink-0">
+                      {s.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Deprecated match notice: exists, hidden, nothing to go to */}
           {isDeprecatedMatch && (
-            <p
-              role="status"
-              className="text-[9px] font-mono text-gw-secondary pl-12 mb-1"
-            >
+            <p role="status" className={FIELD_NOTE_CLASS}>
               {exactMatch!.field.key} already exists and is deprecated, so it is
               hidden from the sidebar. Its values are kept.
             </p>
@@ -296,40 +300,35 @@ export default function AddFieldForm({
 
           {/* Exact match notice */}
           {isExactMatch && (
-            <p className="text-[9px] font-mono text-gw-secondary pl-12 mb-1">
-              Already exists in {exactMatch!.groupLabel} — press Add to go
-              there.
+            <p className={FIELD_NOTE_CLASS}>
+              Already exists in {exactMatch!.groupLabel} — press Go to field to
+              go there.
             </p>
           )}
 
           {/* Fuzzy match warning */}
           {fuzzyCandidate && !isExactMatch && (
-            <div className="flex items-center gap-1 pl-12 mb-1">
-              <span className="text-[9px] font-mono text-gw-dim">
-                Did you mean
-              </span>
+            <p className={FIELD_NOTE_CLASS}>
+              Did you mean{" "}
               <button
                 type="button"
-                className="text-[9px] font-mono text-gw-secondary underline decoration-gw-border hover:text-gw-primary transition-colors duration-150"
+                className="font-mono text-gw-primary underline decoration-gw-border-md hover:decoration-gw-primary transition-colors duration-150"
                 onClick={() => onFieldFocused(fuzzyCandidate.field.key)}
               >
                 {fuzzyCandidate.field.key}
               </button>
-              <span className="text-[9px] font-mono text-gw-dim">?</span>
-            </div>
+              ?
+            </p>
           )}
-        </div>
+        </LabeledField>
 
         {/* Label / Type / Group — only shown when creating a new field */}
         {!isExactMatch && !isDeprecatedMatch && (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-10 flex-shrink-0 text-[9px] font-mono uppercase tracking-[0.14em] text-gw-dim">
-                Label
-              </span>
+            <LabeledField label="Label">
               <input
                 type="text"
-                className="flex-1 min-w-0 bg-transparent border-b border-gw-border text-[11px] font-mono text-gw-primary placeholder:text-gw-dim outline-none focus:border-gw-border-md py-0.5 transition-colors duration-150"
+                className={FIELD_CONTROL_CLASS}
                 value={label}
                 onChange={(e) => {
                   setLabel(e.target.value);
@@ -338,14 +337,11 @@ export default function AddFieldForm({
                 placeholder="Display label"
                 aria-label="field-label"
               />
-            </div>
+            </LabeledField>
 
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-10 flex-shrink-0 text-[9px] font-mono uppercase tracking-[0.14em] text-gw-dim">
-                Type
-              </span>
+            <LabeledField label="Type">
               <select
-                className="flex-1 min-w-0 bg-transparent border-b border-gw-border text-[11px] font-mono text-gw-primary outline-none focus:border-gw-border-md py-0.5 transition-colors duration-150 cursor-pointer"
+                className={`${FIELD_CONTROL_CLASS} cursor-pointer`}
                 value={type}
                 onChange={(e) => setType(e.target.value as MetadataFieldType)}
                 aria-label="field-type"
@@ -361,14 +357,11 @@ export default function AddFieldForm({
                   </option>
                 ))}
               </select>
-            </div>
+            </LabeledField>
 
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-10 flex-shrink-0 text-[9px] font-mono uppercase tracking-[0.14em] text-gw-dim">
-                Group
-              </span>
+            <LabeledField label="Group">
               <select
-                className="flex-1 min-w-0 bg-transparent border-b border-gw-border text-[11px] font-mono text-gw-primary outline-none focus:border-gw-border-md py-0.5 transition-colors duration-150 cursor-pointer"
+                className={`${FIELD_CONTROL_CLASS} cursor-pointer`}
                 value={groupId}
                 onChange={(e) => setGroupId(e.target.value)}
                 aria-label="field-group"
@@ -379,12 +372,16 @@ export default function AddFieldForm({
                   </option>
                 ))}
               </select>
-            </div>
+            </LabeledField>
           </>
         )}
 
+        {/* Red is reserved for position markers; a refusal is shown in the
+            primary text colour at medium weight, as elsewhere. */}
         {error && (
-          <p className="text-[9px] font-mono text-gw-red mb-2">{error}</p>
+          <p role="alert" className="text-gw-small font-medium text-gw-primary">
+            {error}
+          </p>
         )}
 
         <div className="flex items-center justify-end gap-2">
