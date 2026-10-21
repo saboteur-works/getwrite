@@ -174,13 +174,14 @@ export class TagNotFoundError extends Error {
 }
 
 /**
- * Thrown by {@link updateTag} when the requested name or colour is refused.
+ * Thrown by {@link createCheckedTag} and {@link updateTag} when the requested
+ * name or colour is refused.
  * The message is written for the writer and is safe to show as-is.
  */
-export class TagUpdateRefusedError extends Error {
+export class TagRefusedError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "TagUpdateRefusedError";
+    this.name = "TagRefusedError";
   }
 }
 
@@ -191,6 +192,63 @@ export interface TagChanges {
 }
 
 const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/**
+ * Applies the writer-facing rules to a tag's fields: the name is trimmed and
+ * must not be blank or match another tag's name (trimmed, ignoring capitals);
+ * a colour must be a `#rgb` or `#rrggbb` hex string. `exceptTagId` is the tag
+ * being edited, which may keep its own name.
+ *
+ * @returns The trimmed name and colour to store.
+ * @throws {TagRefusedError} If the name or colour is refused.
+ */
+function checkTagFields(
+  tags: Tag[],
+  changes: TagChanges,
+  exceptTagId?: string,
+): TagChanges {
+  const name = changes.name.trim();
+  if (name === "") {
+    throw new TagRefusedError("Tag name must not be blank.");
+  }
+  const clash = tags.find(
+    (t) =>
+      t.id !== exceptTagId &&
+      t.name.trim().toLowerCase() === name.toLowerCase(),
+  );
+  if (clash) {
+    throw new TagRefusedError(
+      `A tag named \u201c${clash.name.trim()}\u201d already exists.`,
+    );
+  }
+  const color = changes.color?.trim();
+  if (color !== undefined && !HEX_COLOR.test(color)) {
+    throw new TagRefusedError(
+      "Tag color must be a hex color such as #3366cc.", // GW-HEX-EXEMPT: example in a writer-facing message, not a style
+    );
+  }
+  return color ? { name, color } : { name };
+}
+
+/**
+ * Creates a tag from the writer's input, applying the same rules as
+ * {@link updateTag}: the name is trimmed and must not be blank or match an
+ * existing tag's name (ignoring capitals), and a colour must be hex.
+ *
+ * {@link createTag} stays unchecked: Scrivener import calls it with keyword
+ * names, which may differ only in capitals.
+ *
+ * @throws {TagRefusedError} If the name or colour is refused.
+ * @throws {Error} If the project file cannot be read or written.
+ */
+export async function createCheckedTag(
+  projectRoot: string,
+  changes: TagChanges,
+): Promise<Tag> {
+  const project = await readProject(projectRoot);
+  const checked = checkTagFields(project.config?.tags ?? [], changes);
+  return createTag(projectRoot, checked.name, checked.color);
+}
 
 /**
  * Renames and recolours a tag in place. The tag keeps its id, so every
@@ -206,7 +264,7 @@ const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
  * @param changes     - The new name and optional colour.
  * @returns The updated {@link Tag}.
  * @throws {TagNotFoundError} If no tag has `tagId`.
- * @throws {TagUpdateRefusedError} If the name or colour is refused.
+ * @throws {TagRefusedError} If the name or colour is refused.
  * @throws {Error} If the project file cannot be read or written.
  *
  * @example
@@ -223,24 +281,7 @@ export async function updateTag(
   const index = tags.findIndex((t) => t.id === tagId);
   if (index === -1) throw new TagNotFoundError(tagId);
 
-  const name = changes.name.trim();
-  if (name === "") {
-    throw new TagUpdateRefusedError("Tag name must not be blank.");
-  }
-  const clash = tags.find(
-    (t) => t.id !== tagId && t.name.trim().toLowerCase() === name.toLowerCase(),
-  );
-  if (clash) {
-    throw new TagUpdateRefusedError(
-      `A tag named “${clash.name.trim()}” already exists.`,
-    );
-  }
-  const color = changes.color?.trim();
-  if (color !== undefined && !HEX_COLOR.test(color)) {
-    throw new TagUpdateRefusedError(
-      "Tag color must be a hex color such as #3366cc.", // GW-HEX-EXEMPT: example in a writer-facing message, not a style
-    );
-  }
+  const { name, color } = checkTagFields(tags, changes, tagId);
 
   const updated: Tag = color ? { id: tagId, name, color } : { id: tagId, name };
   tags[index] = updated;
@@ -338,6 +379,7 @@ export async function listResourcesByTag(
 const tagOperations = {
   listTags,
   createTag,
+  createCheckedTag,
   deleteTag,
   updateTag,
   assignTagToResource,

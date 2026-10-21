@@ -351,7 +351,26 @@ describe("POST /api/project/tags — update action", () => {
 
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({
-        error: "Tag update refused",
+        error: "Tag refused",
+        details: "A tag named \u201cKey Event\u201d already exists.",
+      });
+    });
+  });
+
+  it("refuses to create a tag with an existing tag's name", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await post({ action: "create", projectId, name: "Key Event" });
+
+      const res = await post({
+        action: "create",
+        projectId,
+        name: "key event",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: "Tag refused",
         details: "A tag named \u201cKey Event\u201d already exists.",
       });
     });
@@ -590,7 +609,7 @@ describe("httpTagsTransport.update", () => {
           ok: false,
           status: 400,
           json: async () => ({
-            error: "Tag update refused",
+            error: "Tag refused",
             details: "Tag name must not be blank.",
           }),
         } as Response),
@@ -610,5 +629,29 @@ describe("httpTagsTransport.update", () => {
     const attempt = httpTagsTransport.update("p", "t", { name: "Draft" });
     await expect(attempt).rejects.toThrow(/update the tag \(500\)/);
     await expect(attempt).rejects.not.toBeInstanceOf(TagChangeRefusedError);
+  });
+});
+
+describe("httpTagsTransport.create refusal", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("rejects with TagChangeRefusedError carrying the server's message on a 400", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: async () => ({
+            error: "Tag refused",
+            details: "A tag named \u201cDraft\u201d already exists.",
+          }),
+        } as Response),
+    );
+
+    const attempt = httpTagsTransport.create("p", "draft");
+    await expect(attempt).rejects.toBeInstanceOf(TagChangeRefusedError);
+    await expect(attempt).rejects.toThrow("already exists");
   });
 });

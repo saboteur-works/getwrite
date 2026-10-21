@@ -11,8 +11,9 @@ import {
   deleteTag,
   unassignTagFromResource,
   updateTag,
+  createCheckedTag,
   TagNotFoundError,
-  TagUpdateRefusedError,
+  TagRefusedError,
 } from "../../src/lib/models/tags";
 
 async function makeTmpProject() {
@@ -94,7 +95,7 @@ describe("updateTag", () => {
     const tag = await createTag(dir, "Draft");
 
     await expect(updateTag(dir, tag.id, { name: "   " })).rejects.toThrow(
-      new TagUpdateRefusedError("Tag name must not be blank."),
+      new TagRefusedError("Tag name must not be blank."),
     );
     expect((await listTags(dir))[0].name).toBe("Draft");
   });
@@ -107,9 +108,7 @@ describe("updateTag", () => {
     await expect(
       updateTag(dir, tag.id, { name: " key event " }),
     ).rejects.toThrow(
-      new TagUpdateRefusedError(
-        "A tag named \u201cKey Event\u201d already exists.",
-      ),
+      new TagRefusedError("A tag named \u201cKey Event\u201d already exists."),
     );
   });
 
@@ -131,7 +130,7 @@ describe("updateTag", () => {
         name: "Draft",
         color: "red; background: url(x)",
       }),
-    ).rejects.toThrow(TagUpdateRefusedError);
+    ).rejects.toThrow(TagRefusedError);
   });
 
   it("throws TagNotFoundError for an unknown id", async () => {
@@ -140,5 +139,57 @@ describe("updateTag", () => {
     await expect(
       updateTag(dir, "missing", { name: "Draft" }),
     ).rejects.toBeInstanceOf(TagNotFoundError);
+  });
+});
+
+describe("createCheckedTag", () => {
+  it("creates a tag with a trimmed name and a colour", async () => {
+    const { dir } = await makeTmpProject();
+
+    const tag = await createCheckedTag(dir, {
+      name: "  Flashback ",
+      color: "#336699",
+    });
+
+    expect(tag).toEqual({ id: tag.id, name: "Flashback", color: "#336699" });
+    expect(await listTags(dir)).toEqual([tag]);
+  });
+
+  it("refuses a blank name", async () => {
+    const { dir } = await makeTmpProject();
+
+    await expect(createCheckedTag(dir, { name: "  " })).rejects.toThrow(
+      new TagRefusedError("Tag name must not be blank."),
+    );
+    expect(await listTags(dir)).toEqual([]);
+  });
+
+  it("refuses an existing tag's name, ignoring capitals and spaces", async () => {
+    const { dir } = await makeTmpProject();
+    await createTag(dir, "Key Event");
+
+    await expect(
+      createCheckedTag(dir, { name: " KEY EVENT " }),
+    ).rejects.toThrow(
+      new TagRefusedError("A tag named \u201cKey Event\u201d already exists."),
+    );
+    expect(await listTags(dir)).toHaveLength(1);
+  });
+
+  it("refuses a colour that is not a hex colour", async () => {
+    const { dir } = await makeTmpProject();
+
+    await expect(
+      createCheckedTag(dir, { name: "Draft", color: "red" }),
+    ).rejects.toThrow(TagRefusedError);
+  });
+
+  it("leaves createTag, which Scrivener import uses, unchecked", async () => {
+    const { dir } = await makeTmpProject();
+    await createTag(dir, "Hero");
+
+    await createTag(dir, "hero");
+
+    expect((await listTags(dir)).map((t) => t.name)).toEqual(["Hero", "hero"]);
   });
 });

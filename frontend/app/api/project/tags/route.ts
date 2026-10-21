@@ -11,10 +11,11 @@
  *
  * Expected body (create tag):
  * - `{ action: "create", projectId: string, name: string, color?: string }`
+ *   Refused like `update` below when the name is blank or already used.
  *
  * Expected body (rename/recolour tag; an absent `color` clears it):
  * - `{ action: "update", projectId: string, tagId: string, name: string, color?: string }`
- *   A refused name or colour is 400 `{ error: "Tag update refused", details }`
+ *   A refused name or colour is 400 `{ error: "Tag refused", details }`
  *   with a message for the writer; an unknown `tagId` is 404.
  *
  * Expected body (get tag IDs assigned to a resource):
@@ -31,7 +32,7 @@ import {
 } from "../../../../src/lib/models/tags-crud-core";
 import {
   TagNotFoundError,
-  TagUpdateRefusedError,
+  TagRefusedError,
 } from "../../../../src/lib/models/tags";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
@@ -100,6 +101,12 @@ async function handlePost(req: NextRequest): Promise<Response> {
     }
 
     if (body.action === "create") {
+      if (typeof body.name !== "string") {
+        return NextResponse.json(
+          { error: "Invalid request", details: "'name' must be a string" },
+          { status: 400 },
+        );
+      }
       const tag = await createTagCore(body.projectId, body.name, body.color);
       return NextResponse.json({ tag });
     }
@@ -140,9 +147,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     if (isLockedAccessError(error)) {
       throw error;
     }
-    if (error instanceof TagUpdateRefusedError) {
+    if (error instanceof TagRefusedError) {
       return NextResponse.json(
-        { error: "Tag update refused", details: error.message },
+        { error: "Tag refused", details: error.message },
         { status: 400 },
       );
     }

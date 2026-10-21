@@ -36,7 +36,7 @@ import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import {
   assignTagToResource,
-  createTag,
+  createCheckedTag,
   deleteTag,
   listTags,
   unassignTagFromResource,
@@ -103,11 +103,12 @@ export async function listTagAssignmentsCore(
 }
 
 /**
- * Creates a new project-level tag.
- *
- * Lifted verbatim from `POST /api/project/tags`'s `"create"` action body.
+ * Creates a new project-level tag from the writer's input, refusing a blank
+ * name, an existing tag's name (ignoring capitals) or a non-hex colour; see
+ * `tags.ts`'s `createCheckedTag`.
  *
  * @throws {InvalidProjectIdCoreError} When `projectId` is not a well-formed UUID.
+ * @throws {TagRefusedError} When the name or colour is refused.
  */
 export async function createTagCore(
   projectId: string,
@@ -115,7 +116,7 @@ export async function createTagCore(
   color?: string,
 ): Promise<Tag> {
   const projectRoot = resolveTagsProjectRootOrThrow(projectId);
-  return createTag(projectRoot, name, color);
+  return createCheckedTag(projectRoot, { name, color });
 }
 
 /**
@@ -138,7 +139,7 @@ export async function deleteTagCore(
  *
  * @throws {InvalidProjectIdCoreError} When `projectId` is not a well-formed UUID.
  * @throws {TagNotFoundError} When no tag has `tagId`.
- * @throws {TagUpdateRefusedError} When the name or colour is refused.
+ * @throws {TagRefusedError} When the name or colour is refused.
  */
 export async function updateTagCore(
   projectId: string,

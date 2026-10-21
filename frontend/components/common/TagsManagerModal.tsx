@@ -74,6 +74,8 @@ export default function TagsManagerModal({
   const [newColor, setNewColor] = useState<string>("#000000"); // GW-HEX-EXEMPT: color picker initial value — user-selected arbitrary colors
   const [shouldUseColor, setShouldUseColor] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [newError, setNewError] = useState<string | null>(null);
+  const newErrorId = "tag-new-error";
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [edit, setEdit] = useState<TagEdit | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -124,6 +126,11 @@ export default function TagsManagerModal({
     e.preventDefault();
     const trimmed = newName.trim();
     if (!trimmed || isSubmitting) return;
+    const problem = tagNameProblem(trimmed, "", tags);
+    if (problem) {
+      setNewError(problem);
+      return;
+    }
     setIsSubmitting(true);
     try {
       await createTag(
@@ -135,11 +142,15 @@ export default function TagsManagerModal({
       setShouldUseColor(false);
       loadTags();
       nameInputRef.current?.focus();
-    } catch {
+    } catch (err) {
       // `createTag` rejects on a failed write now that the transport checks
       // the response. The typed name is deliberately left in the field: the
       // tag does not exist, and clearing the input would suggest it does.
-      toastService.error("Could not create that tag.");
+      if (err instanceof TagChangeRefusedError) {
+        setNewError(err.message);
+      } else {
+        toastService.error("Could not create that tag.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -341,10 +352,24 @@ export default function TagsManagerModal({
             className="w-full"
             placeholder="Tag name"
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e) => {
+              setNewName(e.target.value);
+              setNewError(null);
+            }}
             aria-label="New tag name"
+            aria-invalid={newError ? true : undefined}
+            aria-describedby={newError ? newErrorId : undefined}
             maxLength={64}
           />
+          {newError ? (
+            <p
+              id={newErrorId}
+              role="alert"
+              className="text-gw-small font-medium text-gw-primary"
+            >
+              {newError}
+            </p>
+          ) : null}
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-sm text-gw-secondary cursor-pointer select-none">
               <input

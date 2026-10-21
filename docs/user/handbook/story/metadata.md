@@ -89,7 +89,7 @@ The section was not red and flagged nothing as wrong in any case tried. An abbre
 
 ## Tags
 
-Tags are project-scoped labels you can assign to any resource: a second new project had none of the first project's tags, and tags were switched on for text, image and audio resources. Assign or remove them from the **Tags** section of the Metadata sidebar (one button per tag, pressed or not). Create and delete tags in Project Settings → **Manage Tags**: a **New tag name** box (Enter or **Add Tag**) and a **Delete tag** button per tag, with no confirmation.
+Tags are project-scoped labels you can assign to any resource: a second new project had none of the first project's tags, and tags were switched on for text, image and audio resources. Assign or remove them from the **Tags** section of the Metadata sidebar (one button per tag, pressed or not). Create and delete tags in Project Settings → **Manage Tags**: a **New tag name** box (Enter or **Add Tag**) and a **Delete tag** button per tag, with no confirmation. Not yet in a release: a new tag with the name of an existing tag (capitals and surrounding spaces ignored) is refused with a message under the box; checked in component tests, not in the running app.
 
 Not yet in a release: each tag in **Manage Tags** also has an **Edit tag** button. It opens the tag's name and a **Color** checkbox with a color picker; **Save** keeps the change and **Cancel** or Escape drops it. Unticking **Color** clears the tag's color. The tag keeps its assignments, so every resource that had it shows the new name. A blank name, or the name of another tag (capitals and surrounding spaces ignored), is refused with a message under the name box. These behaviours were checked in component tests, not in the running app.
 

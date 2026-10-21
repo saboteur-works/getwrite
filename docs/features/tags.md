@@ -37,14 +37,15 @@ Tags are stored in `project.json`:
 
 `frontend/src/lib/models/tags.ts` provides CRUD operations for tags and assignments:
 
-| Function                 | Description                                                                                                                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Create tag               | Generates a UUID, appends to `config.tags`, writes `project.json`                                                                                                                    |
-| Update tag (`updateTag`) | Finds tag by ID, sets the trimmed `name` and the `color` (absent clears it), writes `project.json`; refuses a blank name, another tag's name (ignoring capitals) or a non-hex colour |
-| Delete tag               | Removes from `config.tags` and all entries in `config.tagAssignments`                                                                                                                |
-| Assign tag to resource   | Adds tag UUID to `config.tagAssignments[resourceId]`                                                                                                                                 |
-| Remove tag from resource | Removes tag UUID from `config.tagAssignments[resourceId]`                                                                                                                            |
-| List tags for resource   | Reads `config.tagAssignments[resourceId]` and resolves tag objects                                                                                                                   |
+| Function                                | Description                                                                                                                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create tag                              | Generates a UUID, appends to `config.tags`, writes `project.json`                                                                                                                                  |
+| Create checked tag (`createCheckedTag`) | The writer-facing create (route and native transport): same rules as Update tag, then Create tag. Scrivener import calls the unchecked Create tag, since keyword names may differ only in capitals |
+| Update tag (`updateTag`)                | Finds tag by ID, sets the trimmed `name` and the `color` (absent clears it), writes `project.json`; refuses a blank name, another tag's name (ignoring capitals) or a non-hex colour               |
+| Delete tag                              | Removes from `config.tags` and all entries in `config.tagAssignments`                                                                                                                              |
+| Assign tag to resource                  | Adds tag UUID to `config.tagAssignments[resourceId]`                                                                                                                                               |
+| Remove tag from resource                | Removes tag UUID from `config.tagAssignments[resourceId]`                                                                                                                                          |
+| List tags for resource                  | Reads `config.tagAssignments[resourceId]` and resolves tag objects                                                                                                                                 |
 
 All operations read the current `project.json`, apply the change, and write back atomically.
 

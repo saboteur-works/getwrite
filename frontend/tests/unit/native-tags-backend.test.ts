@@ -168,4 +168,19 @@ describe("native tags transport — in-process backend reuses the shared tags CR
 
     fetchMock.restore();
   });
+
+  it("create refuses an existing tag's name as TagChangeRefusedError", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeTagsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    await transport.create(projectId, "Draft");
+
+    const refused = transport.create(projectId, " DRAFT ");
+
+    await expect(refused).rejects.toBeInstanceOf(TagChangeRefusedError);
+    expect(await transport.list(projectId)).toHaveLength(1);
+  });
 });

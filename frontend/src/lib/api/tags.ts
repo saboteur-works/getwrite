@@ -47,7 +47,9 @@ export interface TagsTransport {
   /** Lists the tag ids assigned to a resource. Degrades to `[]` on failure. */
   listAssignments(projectId: string, resourceId: string): Promise<string[]>;
   /**
-   * Creates a new project-level tag.
+   * Creates a new project-level tag. A blank name, an existing tag's name
+   * (ignoring capitals) or a non-hex colour rejects with
+   * {@link TagChangeRefusedError}.
    *
    * REJECTS on failure. These three writes used to be fire-and-forget: no
    * response check, no throw, so a failed write resolved exactly like a
@@ -97,6 +99,19 @@ export class TagChangeRefusedError extends Error {
 
 const TagUpdateResponseSchema = z.object({ tag: ApiTagSchema });
 const TagRefusalResponseSchema = z.object({ details: z.string() });
+
+/**
+ * Throws {@link TagChangeRefusedError} when the route refused a tag create or
+ * update (400 with a `details` reason). The refusal body carries only the
+ * route's own message, never project content, so it is safe to show.
+ */
+async function throwIfRefused(response: Response): Promise<void> {
+  if (response.status !== 400) return;
+  const refusal = TagRefusalResponseSchema.safeParse(
+    await response.json().catch(() => null),
+  );
+  if (refusal.success) throw new TagChangeRefusedError(refusal.data.details);
+}
 
 /**
  * Throws when a tag write did not succeed.
@@ -178,6 +193,7 @@ export const httpTagsTransport: TagsTransport = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "create", projectId, name, color }),
     });
+    await throwIfRefused(response);
     throwIfWriteFailed(response, "create the tag");
   },
 
@@ -196,15 +212,7 @@ export const httpTagsTransport: TagsTransport = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "update", projectId, tagId, ...changes }),
     });
-    if (response.status === 400) {
-      // The route's refusal body carries only its own message, never project
-      // content, so it is safe to show.
-      const refusal = TagRefusalResponseSchema.safeParse(
-        await response.json().catch(() => null),
-      );
-      if (refusal.success)
-        throw new TagChangeRefusedError(refusal.data.details);
-    }
+    await throwIfRefused(response);
     throwIfWriteFailed(response, "update the tag");
     const result = TagUpdateResponseSchema.safeParse(await response.json());
     if (!result.success) {

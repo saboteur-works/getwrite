@@ -371,8 +371,8 @@ with the app without hand-rewriting it (see OQ-90).
   edited (name and colour, including clearing the colour), assigned to and
   removed from resources, and deleted, with management UI in the sidebar
   and a tag manager modal. An edited tag keeps its id, so its resource
-  assignments are kept; a blank name or another tag's name (trimmed,
-  ignoring capitals) is refused. [US-7]
+  assignments are kept. Creating or editing a tag refuses a blank name or
+  another tag's name (trimmed, ignoring capitals). [US-7]
 - FR-19: Users MUST be able to save, create from, duplicate, and list
   resource templates via the CLI, producing reusable scaffolds for new
   resources; this capability is CLI-and-model-only — there is no UI and no

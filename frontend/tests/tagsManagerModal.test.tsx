@@ -182,6 +182,71 @@ describe("TagsManagerModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  describe("creating a tag", () => {
+    function createBodies(fetchStub: ReturnType<typeof setupFetchStub>) {
+      return fetchStub.mock.calls
+        .map(([, init]) =>
+          JSON.parse(((init as RequestInit)?.body as string) ?? "{}"),
+        )
+        .filter((b) => b.action === "create");
+    }
+
+    it("refuses an existing tag's name beside the field without saving", async () => {
+      const fetchStub = setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      const input = screen.getByLabelText("New tag name");
+      fireEvent.change(input, { target: { value: " key event " } });
+      fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "A tag named \u201cKey Event\u201d already exists.",
+      );
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(createBodies(fetchStub)).toHaveLength(0);
+    });
+
+    it("shows the project's refusal beside the field", async () => {
+      const fetchStub = setupFetchStub();
+      const stubbed = fetchStub.getMockImplementation()!;
+      fetchStub.mockImplementation(async (input, init) => {
+        const body = JSON.parse(
+          ((init as RequestInit)?.body as string) ?? "{}",
+        );
+        if (body.action === "create") {
+          return {
+            ok: false,
+            status: 400,
+            json: async () => ({
+              error: "Tag refused",
+              details: "A tag named \u201cFlashback\u201d already exists.",
+            }),
+          } as Response;
+        }
+        return stubbed(input, init);
+      });
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      fireEvent.change(screen.getByLabelText("New tag name"), {
+        target: { value: "Flashback" },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+      });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "A tag named \u201cFlashback\u201d already exists.",
+      );
+      expect(screen.getByLabelText("New tag name")).toHaveValue("Flashback");
+    });
+  });
+
   describe("editing a tag", () => {
     function updateBodies(fetchStub: ReturnType<typeof setupFetchStub>) {
       return fetchStub.mock.calls
@@ -287,7 +352,7 @@ describe("TagsManagerModal", () => {
             ok: false,
             status: 400,
             json: async () => ({
-              error: "Tag update refused",
+              error: "Tag refused",
               details: "Tag color must be a hex color such as #3366cc.",
             }),
           } as Response;
