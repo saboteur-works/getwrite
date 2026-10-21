@@ -557,49 +557,52 @@ export default function ProjectTypesManagerPage({
               <div
                 role="group"
                 aria-label="Project type actions"
-                className="mb-4 flex flex-wrap items-center gap-2"
+                className="mb-4 flex flex-wrap items-center justify-between gap-2"
               >
                 <span className="text-sm font-medium text-gw-primary">
                   {origin}
                 </span>
-                {origin === "Built-in" ? (
-                  <Button
-                    size="sm"
-                    disabled={isWriting}
-                    onClick={() => void runSave(true)}
-                  >
-                    {isWriting ? "Saving\u2026" : "Save as copy"}
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled={isWriting}
-                    aria-busy={isWriting}
-                    onClick={() => void runSave(false)}
-                  >
-                    {isWriting ? "Saving\u2026" : "Save"}
-                  </Button>
-                )}
-                {origin === "Saved" ? (
-                  <>
+                {/* The actions sit on the right, the origin label on the left. */}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {origin === "Built-in" ? (
                     <Button
                       size="sm"
-                      variant="secondary"
                       disabled={isWriting}
                       onClick={() => void runSave(true)}
                     >
-                      Save as copy
+                      {isWriting ? "Saving\u2026" : "Save as copy"}
                     </Button>
+                  ) : (
                     <Button
                       size="sm"
-                      variant="secondary"
                       disabled={isWriting}
-                      onClick={() => setIsConfirmingDelete(true)}
+                      aria-busy={isWriting}
+                      onClick={() => void runSave(false)}
                     >
-                      Delete
+                      {isWriting ? "Saving\u2026" : "Save"}
                     </Button>
-                  </>
-                ) : null}
+                  )}
+                  {origin === "Saved" ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={isWriting}
+                        onClick={() => void runSave(true)}
+                      >
+                        Save as copy
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={isWriting}
+                        onClick={() => setIsConfirmingDelete(true)}
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
               </div>
               {shownFeedback && shownFeedback.messages.length > 0 ? (
                 <div role="alert" className="mb-4 text-sm text-gw-primary">
