@@ -139,6 +139,8 @@ export const WithPairedDevices: Story = {
         storeDirectory: "/Users/you/store",
       }),
       setSharingLimit: async () => ({ kind: "ok" }),
+      getKeepRunningSetting: async () => ({ supported: true, enabled: false }),
+      setKeepRunningSetting: async () => undefined,
     };
     return () => {
       target.getwriteDesktop = original;

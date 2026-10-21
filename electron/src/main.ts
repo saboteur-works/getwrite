@@ -43,6 +43,7 @@ import {
   ensureProjectsDir,
   legacyProjectsDirs,
   migrateLegacyProjectsDir,
+  readKeepRunningWhenWindowClosed,
   readSharingEnabled,
   writeSharingEnabled,
   resolveProjectsDir,
@@ -54,6 +55,11 @@ import {
   createGlobalNoiseWordsHandlers,
   type GlobalNoiseWordsSetResult,
 } from "./noise-words-ipc";
+import {
+  createKeepRunningHandlers,
+  shouldQuitWhenAllWindowsClosed,
+  type KeepRunningSetting,
+} from "./keep-running";
 import { createSelectionHandleRegistry } from "./scrivener-import/selection-handles";
 import { createImportGuard } from "./scrivener-import/import-guard";
 import {
@@ -462,6 +468,28 @@ function registerGlobalNoiseWordsHandlers(): void {
   );
 }
 
+/**
+ * Registers the App Settings switch that keeps GetWrite running after its
+ * window closes (macOS only; see `keep-running.ts`). The setting is read
+ * again at each close, so a change applies without a restart.
+ */
+function registerKeepRunningHandlers(): void {
+  const keepRunning = createKeepRunningHandlers({
+    userDataDir: app.getPath("userData"),
+    platform: process.platform,
+    isTrustedSender: (url) => isTrustedSender(url, localOrigin(PORT)),
+  });
+
+  ipcMain.handle(
+    "getwrite:keep-running-get",
+    (event): KeepRunningSetting => keepRunning.get(event),
+  );
+
+  ipcMain.handle("getwrite:keep-running-set", (event, enabled: unknown): void =>
+    keepRunning.set(event, enabled),
+  );
+}
+
 // The one active `.scriv` selection (FR-1, FR-3) and the one-in-flight-import
 // guard (FR-6's main-process half). Both are process-wide singletons for the
 // same reason: only one import can meaningfully be in flight at a time, and a
@@ -835,6 +863,7 @@ if (!app.requestSingleInstanceLock()) {
     log(`resourcesPath: ${process.resourcesPath}`);
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
+    registerKeepRunningHandlers();
     registerSharingHandlers();
     registerScrivenerImportHandlers();
     registerDocxImportHandlers();
@@ -890,8 +919,8 @@ if (!app.requestSingleInstanceLock()) {
     });
   });
 
-  // macOS: the app stays alive after its window closes (window-all-closed below
-  // only quits on other platforms). Recreate the window when the dock icon is
+  // macOS with "keep running" on: the app stays alive after its window closes
+  // (see window-all-closed below). Recreate the window when the dock icon is
   // clicked — the spawned server is still running, so it reloads immediately.
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -905,6 +934,11 @@ app.on("before-quit", () => {
   logStream?.end();
 });
 
+// Closing the window quits, unless the writer turned on "keep running" in App
+// Settings (macOS only). Read at each close so a change needs no restart.
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  const keepRunning = readKeepRunningWhenWindowClosed(app.getPath("userData"));
+  if (shouldQuitWhenAllWindowsClosed(process.platform, keepRunning)) {
+    app.quit();
+  }
 });

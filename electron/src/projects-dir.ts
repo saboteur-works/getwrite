@@ -226,6 +226,11 @@ interface WorkspaceConfigFile {
    * Absent means off. Independent of the workspace folder (FR-5).
    */
   sharingEnabled?: boolean;
+  /**
+   * Whether GetWrite keeps running on macOS after its window is closed,
+   * instead of quitting. Absent means off.
+   */
+  keepRunningWhenWindowClosed?: boolean;
 }
 
 /**
@@ -462,6 +467,39 @@ export function writeSharingEnabled(
 ): void {
   const config = readWorkspaceConfig(userDataDir);
   writeWorkspaceConfig(userDataDir, { ...config, sharingEnabled: enabled });
+}
+
+/**
+ * Reads whether GetWrite should keep running after its window is closed.
+ *
+ * Only a literal `true` reads as on; a missing or corrupt file, or any other
+ * value, reads as off, so closing the window quits by default.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @returns `true` only when the setting was explicitly recorded as on.
+ */
+export function readKeepRunningWhenWindowClosed(userDataDir: string): boolean {
+  return readWorkspaceConfig(userDataDir).keepRunningWhenWindowClosed === true;
+}
+
+/**
+ * Records whether GetWrite should keep running after its window is closed.
+ *
+ * Read-modify-write: any other field already recorded in `workspace.json`
+ * is preserved.
+ *
+ * @param userDataDir - Electron's per-user data directory.
+ * @param enabled - Whether to keep running from now on.
+ */
+export function writeKeepRunningWhenWindowClosed(
+  userDataDir: string,
+  enabled: boolean,
+): void {
+  const config = readWorkspaceConfig(userDataDir);
+  writeWorkspaceConfig(userDataDir, {
+    ...config,
+    keepRunningWhenWindowClosed: enabled,
+  });
 }
 
 /**

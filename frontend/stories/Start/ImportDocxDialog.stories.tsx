@@ -159,6 +159,8 @@ function installDocxBridge(overrides: {
       storeDirectory: "/tmp",
     }),
     setSharingLimit: async () => ({ kind: "ok" as const }),
+    getKeepRunningSetting: async () => ({ supported: true, enabled: false }),
+    setKeepRunningSetting: async () => undefined,
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }
