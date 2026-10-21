@@ -89,7 +89,9 @@ The section was not red and flagged nothing as wrong in any case tried. An abbre
 
 ## Tags
 
-Tags are project-scoped labels you can assign to any resource: a second new project had none of the first project's tags, and tags were switched on for text, image and audio resources. Assign or remove them from the **Tags** section of the Metadata sidebar (one button per tag, pressed or not). Create and delete tags in Project Settings → **Manage Tags**: a **New tag name** box (Enter or **Add Tag**) and a **Delete tag** button per tag, with no confirmation. There is no control to rename a tag. Tags created or deleted there did not show in the open sidebar until the page was reloaded.
+Tags are project-scoped labels you can assign to any resource: a second new project had none of the first project's tags, and tags were switched on for text, image and audio resources. Assign or remove them from the **Tags** section of the Metadata sidebar (one button per tag, pressed or not). Create and delete tags in Project Settings → **Manage Tags**: a **New tag name** box (Enter or **Add Tag**) and a **Delete tag** button per tag, with no confirmation.
+
+Not yet in a release: each tag in **Manage Tags** also has an **Edit tag** button. It opens the tag's name and a **Color** checkbox with a color picker; **Save** keeps the change and **Cancel** or Escape drops it. Unticking **Color** clears the tag's color. The tag keeps its assignments, so every resource that had it shows the new name. A blank name, or the name of another tag (capitals and surrounding spaces ignored), is refused with a message under the name box. These behaviours were checked in component tests, not in the running app.
 
 ## Linking resources
 
@@ -108,7 +110,7 @@ Two settings that apply beyond a single resource live in different places. The w
 - In the runs this page was verified from, a Status chosen after typing set the resource's stored `wordCount` to 0 while the footer still read the real count (two resources, ten and five words). A later change (unreleased) stops the sidebar write from storing that 0; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked. The footer shows the live count.
 - A custom Date field's sidebar label read "Story Date / Time", not the field's own label.
 - Renaming a built-in field in the Metadata Fields manager did not change the sidebar heading.
-- Tags created or deleted in Project Settings did not show in the open sidebar until the page was reloaded.
+- Tags created or deleted in Project Settings did not show in the open sidebar until the page was reloaded. A later change (unreleased) makes the open sidebar reload its tags after a tag is created, edited or deleted in **Manage Tags**; this was checked in component tests, not in the running app.
 - The Status options box in the Metadata Fields manager was empty, and typing into it changed nothing in the sidebar.
 - Subtypes and prose diagnostics (each marked above as not yet in a release): the sidebar's Prose diagnostics figures can lag a save, and an abbreviation such as "Mr." counts as the end of a sentence.
 

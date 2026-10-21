@@ -59,6 +59,14 @@ export interface TagsTransport {
   /** Deletes a project-level tag. Rejects on failure — see {@link create}. */
   remove(projectId: string, tagId: string): Promise<void>;
   /**
+   * Renames and recolours a tag; an absent `changes.color` clears the colour.
+   * Resolves the updated tag. A refused name or colour (blank, a duplicate
+   * name, a non-hex colour) rejects with {@link TagChangeRefusedError}, whose
+   * message is written for the writer; any other failure rejects with a
+   * plain `Error`.
+   */
+  update(projectId: string, tagId: string, changes: TagChanges): Promise<Tag>;
+  /**
    * Assigns or unassigns a tag to/from a resource. Rejects on failure — see
    * {@link create}.
    */
@@ -69,6 +77,26 @@ export interface TagsTransport {
     assign: boolean,
   ): Promise<void>;
 }
+
+/** The editable fields of a tag. An absent `color` means no colour. */
+export interface TagChanges {
+  name: string;
+  color?: string;
+}
+
+/**
+ * A tag change the project refused, such as a blank or duplicate name. The
+ * message is the project's own refusal, written for the writer.
+ */
+export class TagChangeRefusedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TagChangeRefusedError";
+  }
+}
+
+const TagUpdateResponseSchema = z.object({ tag: ApiTagSchema });
+const TagRefusalResponseSchema = z.object({ details: z.string() });
 
 /**
  * Throws when a tag write did not succeed.
@@ -162,6 +190,30 @@ export const httpTagsTransport: TagsTransport = {
     throwIfWriteFailed(response, "delete the tag");
   },
 
+  async update(projectId, tagId, changes) {
+    const response = await fetch("/api/project/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update", projectId, tagId, ...changes }),
+    });
+    if (response.status === 400) {
+      // The route's refusal body carries only its own message, never project
+      // content, so it is safe to show.
+      const refusal = TagRefusalResponseSchema.safeParse(
+        await response.json().catch(() => null),
+      );
+      if (refusal.success)
+        throw new TagChangeRefusedError(refusal.data.details);
+    }
+    throwIfWriteFailed(response, "update the tag");
+    const result = TagUpdateResponseSchema.safeParse(await response.json());
+    if (!result.success) {
+      reportTransportValidationFailure("tags.update", result.error.issues);
+      throw new Error("Malformed tag update response.");
+    }
+    return result.data.tag;
+  },
+
   async assign(projectId, resourceId, tagId, assign) {
     const response = await fetch("/api/project/tags/assign", {
       method: "POST",
@@ -186,6 +238,25 @@ export const resolveTagsTransport: () => Promise<TagsTransport> =
       ({ createNativeTagsTransport }) => createNativeTagsTransport(),
     ),
   );
+
+type TagsChangedListener = (projectId: string) => void;
+const tagsChangedListeners = new Set<TagsChangedListener>();
+
+/**
+ * Subscribes to successful tag-list changes (create, update, delete) made
+ * through this module, so a view holding its own copy of the list, such as
+ * the sidebar Tags section, can reload it. Returns the unsubscribe function.
+ */
+export function onTagsChanged(listener: TagsChangedListener): () => void {
+  tagsChangedListeners.add(listener);
+  return () => {
+    tagsChangedListeners.delete(listener);
+  };
+}
+
+function notifyTagsChanged(projectId: string): void {
+  tagsChangedListeners.forEach((listener) => listener(projectId));
+}
 
 /**
  * Fetches all project-level tags.
@@ -244,6 +315,25 @@ export async function createTag(
 ): Promise<void> {
   const transport = await resolveTagsTransport();
   await transport.create(projectId, name, color);
+  notifyTagsChanged(projectId);
+}
+
+/**
+ * Renames and recolours a project-level tag; leaving out `changes.color`
+ * clears its colour. The tag keeps its id, so its assignments are unchanged.
+ * Rejects with {@link TagChangeRefusedError} when the change is refused.
+ *
+ * @param projectId - The project's on-disk directory basename.
+ */
+export async function updateTag(
+  projectId: string,
+  tagId: string,
+  changes: TagChanges,
+): Promise<Tag> {
+  const transport = await resolveTagsTransport();
+  const tag = await transport.update(projectId, tagId, changes);
+  notifyTagsChanged(projectId);
+  return tag;
 }
 
 /**
@@ -260,6 +350,7 @@ export async function deleteTag(
 ): Promise<void> {
   const transport = await resolveTagsTransport();
   await transport.remove(projectId, tagId);
+  notifyTagsChanged(projectId);
 }
 
 /**

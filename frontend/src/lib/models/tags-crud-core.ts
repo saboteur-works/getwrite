@@ -40,6 +40,8 @@ import {
   deleteTag,
   listTags,
   unassignTagFromResource,
+  updateTag,
+  type TagChanges,
 } from "./tags";
 import { PROJECT_FILENAME } from "./project-config";
 import type { Project, Tag } from "./types";
@@ -129,6 +131,22 @@ export async function deleteTagCore(
 ): Promise<boolean> {
   const projectRoot = resolveTagsProjectRootOrThrow(projectId);
   return deleteTag(projectRoot, tagId);
+}
+
+/**
+ * Renames and recolours a project-level tag; see `tags.ts`'s `updateTag`.
+ *
+ * @throws {InvalidProjectIdCoreError} When `projectId` is not a well-formed UUID.
+ * @throws {TagNotFoundError} When no tag has `tagId`.
+ * @throws {TagUpdateRefusedError} When the name or colour is refused.
+ */
+export async function updateTagCore(
+  projectId: string,
+  tagId: string,
+  changes: TagChanges,
+): Promise<Tag> {
+  const projectRoot = resolveTagsProjectRootOrThrow(projectId);
+  return updateTag(projectRoot, tagId, changes);
 }
 
 /**

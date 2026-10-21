@@ -11,6 +11,7 @@ import {
   listTags,
   listTagAssignments,
   assignTag,
+  onTagsChanged,
 } from "../../src/lib/api/tags";
 import Chip from "../common/UI/Chip";
 
@@ -35,12 +36,20 @@ export default function TagsSection(): JSX.Element | null {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [assignedTagIds, setAssignedTagIds] = useState<string[]>([]);
 
-  // Load project tag list when projectId becomes available
+  // Load project tag list when projectId becomes available, and again
+  // whenever a tag in this project is created, edited or deleted (the tags
+  // manager in Project Settings writes through the same module).
   useEffect(() => {
     if (!projectId) return;
-    listTags(projectId)
-      .then(setAllTags)
-      .catch(() => setAllTags([]));
+    const load = () => {
+      listTags(projectId)
+        .then(setAllTags)
+        .catch(() => setAllTags([]));
+    };
+    load();
+    return onTagsChanged((changedProjectId) => {
+      if (changedProjectId === projectId) load();
+    });
   }, [projectId]);
 
   // Load assignments for the selected resource whenever it changes

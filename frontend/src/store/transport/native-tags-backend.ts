@@ -42,8 +42,10 @@ import {
   deleteTagCore,
   listTagAssignmentsCore,
   listTagsCore,
+  updateTagCore,
 } from "../../lib/models/tags-crud-core";
-import type { TagsTransport } from "../../lib/api/tags";
+import { TagUpdateRefusedError } from "../../lib/models/tags";
+import { TagChangeRefusedError, type TagsTransport } from "../../lib/api/tags";
 
 /**
  * Builds the in-process tags transport for a native build.
@@ -97,6 +99,21 @@ export function createNativeTagsTransport(
     async remove(projectId, tagId) {
       await run(async () => {
         await deleteTagCore(projectId, tagId);
+      });
+    },
+
+    // A refusal is re-thrown as the client-side error class, matching what
+    // the HTTP transport throws for the route's 400.
+    async update(projectId, tagId, changes) {
+      return run(async () => {
+        try {
+          return await updateTagCore(projectId, tagId, changes);
+        } catch (error) {
+          if (error instanceof TagUpdateRefusedError) {
+            throw new TagChangeRefusedError(error.message);
+          }
+          throw error;
+        }
       });
     },
 

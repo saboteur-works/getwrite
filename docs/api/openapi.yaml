@@ -954,11 +954,18 @@ paths:
 
   /api/project/tags:
     post:
-      summary: List, create, or query tag assignments
+      summary: List, create, or update tags, or query tag assignments
       description: |
         Action-discriminated:
         - `list` `{ action, projectId }` → `{ tags }`
         - `create` `{ action, projectId, name, color? }` → `{ tag }`
+        - `update` `{ action, projectId, tagId, name, color? }` → `{ tag }`.
+          Renames and recolours the tag in place; it keeps its id and
+          assignments. The name is trimmed and must not be blank or match
+          another tag's name (ignoring capitals); `color` must be `#rgb` or
+          `#rrggbb`, and leaving it out clears the colour. A refusal is 400
+          with `error: "Tag update refused"` and the reason in `details`;
+          an unknown `tagId` is 404.
         - `assignments` `{ action, projectId, resourceId }` → `{ tagIds }`
       requestBody:
         required: true
@@ -970,9 +977,11 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [list, create, assignments]
+                  enum: [list, create, update, assignments]
                 projectId:
                   $ref: "#/components/schemas/UUID"
+                tagId:
+                  type: string
                 name:
                   type: string
                 color:
@@ -981,7 +990,7 @@ paths:
                   type: string
       responses:
         "200":
-          description: Tags, the created tag, or tag IDs assigned to a resource
+          description: Tags, the created or updated tag, or tag IDs assigned to a resource
           content:
             application/json:
               schema:
@@ -1003,7 +1012,13 @@ paths:
                         items:
                           type: string
         "400":
-          description: Invalid action
+          description: Invalid action, or a refused tag update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Tag not found (update)
           content:
             application/json:
               schema:

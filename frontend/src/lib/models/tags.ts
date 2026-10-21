@@ -165,6 +165,89 @@ export async function deleteTag(
   return project.config.tags.length < countBefore;
 }
 
+/** Thrown by {@link updateTag} when no tag has the given id. */
+export class TagNotFoundError extends Error {
+  constructor(tagId: string) {
+    super(`Tag not found: "${tagId}"`);
+    this.name = "TagNotFoundError";
+  }
+}
+
+/**
+ * Thrown by {@link updateTag} when the requested name or colour is refused.
+ * The message is written for the writer and is safe to show as-is.
+ */
+export class TagUpdateRefusedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TagUpdateRefusedError";
+  }
+}
+
+/** The editable fields of a tag. An absent `color` means no colour. */
+export interface TagChanges {
+  name: string;
+  color?: string;
+}
+
+const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/**
+ * Renames and recolours a tag in place. The tag keeps its id, so every
+ * resource assignment and saved query that refers to it follows the change.
+ *
+ * The name is trimmed. It must not be blank and must not match another tag's
+ * name (trimmed, ignoring capitals). `changes.color` replaces the tag's
+ * colour; leaving it out clears the colour. A colour must be a `#rgb` or
+ * `#rrggbb` hex string.
+ *
+ * @param projectRoot - Absolute path to the project's root directory.
+ * @param tagId       - UUID of the tag to change.
+ * @param changes     - The new name and optional colour.
+ * @returns The updated {@link Tag}.
+ * @throws {TagNotFoundError} If no tag has `tagId`.
+ * @throws {TagUpdateRefusedError} If the name or colour is refused.
+ * @throws {Error} If the project file cannot be read or written.
+ *
+ * @example
+ * await updateTag("/projects/my-project", "abc123", { name: "First draft" });
+ * // => { id: "abc123", name: "First draft" } (colour cleared)
+ */
+export async function updateTag(
+  projectRoot: string,
+  tagId: string,
+  changes: TagChanges,
+): Promise<Tag> {
+  const project = await readProject(projectRoot);
+  const tags = project.config?.tags ?? [];
+  const index = tags.findIndex((t) => t.id === tagId);
+  if (index === -1) throw new TagNotFoundError(tagId);
+
+  const name = changes.name.trim();
+  if (name === "") {
+    throw new TagUpdateRefusedError("Tag name must not be blank.");
+  }
+  const clash = tags.find(
+    (t) => t.id !== tagId && t.name.trim().toLowerCase() === name.toLowerCase(),
+  );
+  if (clash) {
+    throw new TagUpdateRefusedError(
+      `A tag named “${clash.name.trim()}” already exists.`,
+    );
+  }
+  const color = changes.color?.trim();
+  if (color !== undefined && !HEX_COLOR.test(color)) {
+    throw new TagUpdateRefusedError(
+      "Tag color must be a hex color such as #3366cc.", // GW-HEX-EXEMPT: example in a writer-facing message, not a style
+    );
+  }
+
+  const updated: Tag = color ? { id: tagId, name, color } : { id: tagId, name };
+  tags[index] = updated;
+  await writeProject(projectRoot, project);
+  return updated;
+}
+
 /**
  * Assigns a tag to a resource, creating the assignment map entry if needed.
  *
@@ -256,6 +339,7 @@ const tagOperations = {
   listTags,
   createTag,
   deleteTag,
+  updateTag,
   assignTagToResource,
   unassignTagFromResource,
   listResourcesByTag,
