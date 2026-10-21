@@ -238,3 +238,33 @@ function AppShellAfterOpenStory(): JSX.Element {
  * contents, and editor content-switch in one place.
  */
 export const Default: Story = { render: () => <AppShellAfterOpenStory /> };
+
+/**
+ * Installs a minimal desktop bridge reporting home-network sharing in
+ * effect, so the "Sharing is on" banner shows above the view switcher.
+ * Only the methods the open-project shell calls are filled.
+ */
+function installSharingOnBridge(): void {
+  (window as unknown as Record<string, unknown>).getwriteDesktop = {
+    chooseWorkspaceDir: async () => ({ ok: false, cancelled: true }),
+    getSharingStatus: async () => ({
+      enabled: true,
+      effective: true,
+      blockedByHostedAuth: false,
+      addresses: ["http://192.168.1.20:7340"],
+      credentialStore: "ok",
+      port: 7340,
+    }),
+  };
+}
+
+/**
+ * An open project on the desktop with sharing in effect: the banner, then
+ * the view switcher, then search, at the top of the work area.
+ */
+export const SharingOn: Story = {
+  render: () => {
+    installSharingOnBridge();
+    return <AppShellAfterOpenStory />;
+  },
+};

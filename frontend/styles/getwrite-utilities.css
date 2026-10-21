@@ -607,13 +607,10 @@ html.gw-theme-dark {
 
   /* ── WORKAREA ── */
 
+  /* The view switcher row, then the search row (aligned right) beneath it. */
   .workarea-header {
     display: flex;
-    /* align-items: center; */
-    justify-content: space-between;
-    gap: 16px;
-    /* margin-bottom: 24px; */
-    flex-wrap: wrap;
+    flex-direction: column;
   }
 
   .workarea-view-tabs {

@@ -1313,7 +1313,9 @@ export default function AppShell({
                       project. With no project the Start Page is this shell's
                       child and shows its own (note_b1b217db). */}
                   {resources ? (
-                    <div className="shrink-0 w-full">
+                    // `empty:hidden`: no space when the banner renders
+                    // nothing (sharing off, web, native).
+                    <div className="shrink-0 w-full p-4 empty:hidden">
                       <SharingStatus />
                     </div>
                   ) : null}
@@ -1374,10 +1376,14 @@ export default function AppShell({
                               "Entities are off. Turn them on in Project Settings → Entities.",
                           }}
                         />
-                        <div className="w-full min-w-0 sm:w-80 sm:flex-none">
-                          <SearchBar
-                            onSelect={(id) => onResourceSelect?.(id)}
-                          />
+                        {/* Search on its own row under the view switcher,
+                            aligned right. */}
+                        <div className="flex justify-end px-4 py-2">
+                          <div className="w-full min-w-0 sm:w-80">
+                            <SearchBar
+                              onSelect={(id) => onResourceSelect?.(id)}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
