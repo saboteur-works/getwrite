@@ -221,15 +221,17 @@ export default function SharingSettings(): JSX.Element | null {
           ) : null}
 
           {shouldShowStatements ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-gw-secondary">
+            // A Level 2 surface (STYLING.md §6), matching the Limit unlocking
+            // warning in LimitSwitches.tsx.
+            <div className="flex flex-col gap-1 rounded-sm border-hairline border-gw-border bg-gw-chrome2 px-3 py-2">
+              <p className="text-gw-small text-gw-secondary">
                 {SHARING_STATEMENT_UNENCRYPTED}
               </p>
-              <p className="text-sm text-gw-secondary">
+              <p className="text-gw-small text-gw-secondary">
                 {SHARING_STATEMENT_AVAILABILITY}
               </p>
               {summary ? (
-                <p className="text-sm text-gw-secondary">{summary}</p>
+                <p className="text-gw-small text-gw-secondary">{summary}</p>
               ) : null}
             </div>
           ) : null}
