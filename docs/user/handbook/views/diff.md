@@ -10,6 +10,8 @@ The Diff View compares two versions of a document. With a text document selected
 
 Differences are marked in both panes. In a test where "cat" was changed to "dog" and a sentence was replaced by another, the changed word and sentence were struck through with a blue-gray tint in the canonical pane, and the words they differ from had a green tint in the historical pane; unchanged text stayed plain. A changed passage showed as one marked span in each pane; there was no separate marking for "modified".
 
+Not yet in a release: the marks now run from the older revision to the canonical one, the usual direction for a comparison. Text that is in the compared revision but no longer in the canonical text is struck through with a blue-gray tint in the **Historical** pane, and text that is new in the canonical text has a green tint in the **Canonical** pane. A key above the panes says so ("Struck through in Historical: not in the canonical text. Tinted in Canonical: new since that revision.") while a revision is being compared. Checked in component tests and in Storybook, not in the running app.
+
 Every document has a [revision history](../protect-and-finish/revisions.md): a new text document listed one revision, **Initial Draft** (v1, canonical), in the Diff tab. Selecting an earlier revision shows its wording next to the current text.
 
 ## Warnings and limits

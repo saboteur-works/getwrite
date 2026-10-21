@@ -87,7 +87,9 @@ describe("DiffView", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("renders diff spans with correct classes from diffChunks", () => {
+  test("marks removed text in Historical and added text in Canonical", () => {
+    // Chunks run from the historical revision to the canonical one:
+    // "hello" was in the old revision only, "world" is new in canonical.
     const chunks: DiffChunk[] = [
       { value: "hello ", removed: true },
       { value: "world ", added: true },
@@ -96,8 +98,8 @@ describe("DiffView", () => {
 
     render(
       <DiffView
-        canonicalContent="hello foo"
-        selectedContent="world foo"
+        canonicalContent="world foo"
+        selectedContent="hello foo"
         diffChunks={chunks}
         selectedRevisionId="r1"
       />,
@@ -106,8 +108,37 @@ describe("DiffView", () => {
     const canonicalPane = screen.getByLabelText("canonical-pane");
     const historicalPane = screen.getByLabelText("historical-pane");
 
-    expect(canonicalPane.querySelector(".diff-removed")).toBeInTheDocument();
-    expect(historicalPane.querySelector(".diff-added")).toBeInTheDocument();
+    expect(canonicalPane.querySelector(".diff-added")).toHaveTextContent(
+      "world",
+    );
+    expect(canonicalPane.querySelector(".diff-removed")).toBeNull();
+    expect(canonicalPane).not.toHaveTextContent("hello");
+    expect(historicalPane.querySelector(".diff-removed")).toHaveTextContent(
+      "hello",
+    );
+    expect(historicalPane.querySelector(".diff-added")).toBeNull();
+    expect(historicalPane).not.toHaveTextContent("world");
+  });
+
+  test("shows a key to the marks while two revisions are compared", () => {
+    render(
+      <DiffView
+        canonicalContent="world foo"
+        selectedContent="hello foo"
+        diffChunks={[{ value: "foo" }]}
+        selectedRevisionId="r1"
+      />,
+    );
+
+    expect(screen.getByTestId("diff-key")).toHaveTextContent(
+      "Struck through in Historical: not in the canonical text. Tinted in Canonical: new since that revision.",
+    );
+  });
+
+  test("shows no key before a revision is compared", () => {
+    render(<DiffView canonicalContent="world foo" />);
+
+    expect(screen.queryByTestId("diff-key")).not.toBeInTheDocument();
   });
 
   test("shows loading placeholder in left pane when isLoadingCanonical", () => {

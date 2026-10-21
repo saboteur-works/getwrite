@@ -251,4 +251,39 @@ describe("DiffViewController", () => {
     });
     expect(historicalPane.textContent ?? "").not.toContain(Y_CONTENT);
   });
+
+  it("marks text gone since the old revision in Historical and new text in Canonical", async () => {
+    // Y ("the brand new canonical body") is canonical; X ("the old
+    // canonical body") is the older revision being compared.
+    mockState.canonicalRevisionId = Y_REVISION_ID;
+    const store = makeStore(Y_REVISION_ID);
+    render(
+      <Provider store={store}>
+        <DiffViewController />
+      </Provider>,
+    );
+    const canonicalPane = await screen.findByLabelText("canonical-pane");
+    await waitFor(() => {
+      expect(canonicalPane.textContent ?? "").toContain(Y_CONTENT);
+    });
+
+    act(() => {
+      screen.getByRole("button", { name: /compare/i }).click();
+    });
+
+    const historicalPane = screen.getByLabelText("historical-pane");
+    await waitFor(() => {
+      expect(historicalPane.textContent ?? "").toContain(X_CONTENT);
+    });
+    const added = [...canonicalPane.querySelectorAll(".diff-added")]
+      .map((el) => el.textContent)
+      .join("");
+    const removed = [...historicalPane.querySelectorAll(".diff-removed")]
+      .map((el) => el.textContent)
+      .join("");
+    expect(added).toContain("brand new");
+    expect(removed).toContain("old");
+    expect(canonicalPane.querySelector(".diff-removed")).toBeNull();
+    expect(historicalPane.querySelector(".diff-added")).toBeNull();
+  });
 });

@@ -227,7 +227,10 @@ export default function DiffViewController() {
   const diffChunks = useMemo(() => {
     if (!canonicalPlain || !selectedPlain) return undefined;
     if (!selectedRevisionId) return undefined;
-    return diffWords(canonicalPlain, selectedPlain);
+    // Old to new: from the compared (historical) revision to the canonical
+    // one, so "removed" is text gone since that revision and "added" is
+    // text new in the canonical version (the usual diff direction).
+    return diffWords(selectedPlain, canonicalPlain);
   }, [canonicalPlain, selectedPlain, selectedRevisionId]);
 
   const isLoadingCanonical =
