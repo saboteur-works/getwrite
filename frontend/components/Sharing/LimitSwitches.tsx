@@ -221,7 +221,7 @@ export default function LimitSwitches({
               const inputId = `${headingId}-${key}`;
               const isUnlocking = key === "unlocking";
               return (
-                <li key={key} className="flex flex-col gap-1">
+                <li key={key} className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
                     <Switch
                       id={inputId}
