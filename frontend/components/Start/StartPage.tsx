@@ -721,7 +721,11 @@ export default function StartPage({
 
       <div className=" mx-auto">
         <div className="bg-gw-chrome start-page-fade-in px-6 py-8 lg:px-10 lg:py-10">
-          <SharingStatus />
+          {/* Space below the sharing banner; `empty:hidden` drops the
+              wrapper when the banner renders nothing (sharing off, web). */}
+          <div className="mb-6 empty:hidden">
+            <SharingStatus />
+          </div>
           <div className="start-page-hero-grid">
             <div className="flex flex-col">
               <div className="inline-flex items-center gap-2 font-mono text-gw-micro tracking-label uppercase text-gw-secondary border border-gw-border px-2 py-1 w-fit">
