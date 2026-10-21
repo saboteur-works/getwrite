@@ -131,7 +131,7 @@ describe("DiffView", () => {
     );
 
     expect(screen.getByTestId("diff-key")).toHaveTextContent(
-      "Struck through in Historical: not in the canonical text. Tinted in Canonical: new since that revision.",
+      "Tinted in Canonical: new since that revision. Struck through in Historical: not in the canonical text.",
     );
   });
 

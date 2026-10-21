@@ -193,10 +193,9 @@ export default function DiffView({
       <div className="flex flex-col gap-4">
         {diffChunks ? (
           <p data-testid="diff-key" className="text-gw-small text-gw-secondary">
-            <span className="diff-removed">Struck through</span> in Historical:
-            not in the canonical text.{" "}
             <span className="diff-added">Tinted</span> in Canonical: new since
-            that revision.
+            that revision. <span className="diff-removed">Struck through</span>{" "}
+            in Historical: not in the canonical text.
           </p>
         ) : null}
         <div className="flex gap-4">
