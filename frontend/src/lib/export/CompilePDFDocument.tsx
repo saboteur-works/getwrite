@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import React from "react";
 import {
   Document,
@@ -9,36 +10,72 @@ import {
 } from "@react-pdf/renderer";
 import type { CompileSection } from "./compile-text";
 
+/**
+ * Server and desktop builds resolve the asset reference to a `file:` URL,
+ * which becomes a local path. The static native client bundle has no `node:url`
+ * `fileURLToPath` (its polyfill lacks it) and resolves the reference to the
+ * app's own `/_next/static/media/...` path, which is kept as that same-origin
+ * path. No remote URL is produced on either route.
+ */
+function localFontPath(url: URL): string {
+  return url.protocol === "file:" ? fileURLToPath(url) : url.pathname;
+}
+
+/**
+ * Local file paths of the bundled @fontsource faces the PDF export embeds.
+ * Each `new URL(literal, import.meta.url)` is an asset reference the bundler
+ * and the standalone file tracer follow; no font host is contacted (FR-4).
+ */
+function plexFontFiles(): {
+  serifRegular: string;
+  serifItalic: string;
+  sansRegular: string;
+  sansBold: string;
+} {
+  return {
+    serifRegular: localFontPath(
+      new URL(
+        "../../../node_modules/@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-400-normal.woff2",
+        import.meta.url,
+      ),
+    ),
+    serifItalic: localFontPath(
+      new URL(
+        "../../../node_modules/@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-400-italic.woff2",
+        import.meta.url,
+      ),
+    ),
+    sansRegular: localFontPath(
+      new URL(
+        "../../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2",
+        import.meta.url,
+      ),
+    ),
+    sansBold: localFontPath(
+      new URL(
+        "../../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2",
+        import.meta.url,
+      ),
+    ),
+  };
+}
+
 export function registerIBMPlexFonts() {
+  const files = plexFontFiles();
+
   Font.register({
     family: "IBM Plex Serif",
     fonts: [
-      {
-        src: "https://fonts.gstatic.com/s/ibmplexserif/v19/jizAREVNn1dOx-zrZ2X3pZvkTiUa4542.woff2",
-        fontWeight: 400,
-        fontStyle: "normal",
-      },
-      {
-        src: "https://fonts.gstatic.com/s/ibmplexserif/v19/jizHREVNn1dOx-zrZ2X3pZvkTiUa2zgRnF0.woff2",
-        fontWeight: 400,
-        fontStyle: "italic",
-      },
+      { src: files.serifRegular, fontWeight: 400, fontStyle: "normal" },
+      { src: files.serifItalic, fontWeight: 400, fontStyle: "italic" },
     ],
   });
 
   Font.register({
     family: "IBM Plex Sans",
     fonts: [
-      {
-        src: "https://fonts.gstatic.com/s/ibmplexsans/v19/zYX9KVElMYYaJe8bpLHnCwDKhdHeFQ.woff2",
-        fontWeight: 400,
-        fontStyle: "normal",
-      },
-      {
-        src: "https://fonts.gstatic.com/s/ibmplexsans/v19/zYX8KVElMYYaJe8bpLHnCwDKhdTmrINce_fuJGl18QRY.woff2",
-        fontWeight: 700,
-        fontStyle: "normal",
-      },
+      { src: files.sansRegular, fontWeight: 400, fontStyle: "normal" },
+      { src: files.sansBold, fontWeight: 700, fontStyle: "normal" },
     ],
   });
 }

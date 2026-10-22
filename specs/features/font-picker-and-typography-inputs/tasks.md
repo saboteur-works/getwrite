@@ -214,7 +214,7 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Depends on:** 17, 18, 19, 20
 **Estimate:** 5 (L; the PDF font change and its render test are added to the cleanup)
 **Notes:** Satisfies FR-4 (deletion, test, searches, PDF export path), FR-5 (Domine removal), FR-8 (`FontFamilyInput` and `WEB_SAFE_FONTS` deleted), FR-21. The PDF part was added at Gate 5 (2026-10-22); `THIRD_PARTY_FONTS.txt` already covers Plex, so Task 22 is unchanged. The existing no-Google-host test already scans `frontend/src` and fails while `CompilePDFDocument.tsx` names `fonts.gstatic.com`. `frontend/.next-qa/` build leftovers match the search; they are generated and excluded.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: THIRD_PARTY_FONTS.txt shipped with the app
 **What:** Create the licence file listing every shipped family with its copyright line and the SIL OFL text, and make it ship in each output alongside the fonts.

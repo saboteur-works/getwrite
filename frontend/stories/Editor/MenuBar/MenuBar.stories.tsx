@@ -137,7 +137,7 @@ function createEditorDouble(
       if (name === "textStyle") {
         return {
           fontSize: "14px",
-          fontFamily: "Domine",
+          fontFamily: "Garamond",
           color: "#111827",
           backgroundColor: "#fff8b3",
         };
@@ -208,7 +208,7 @@ const defaultState: MenuBarState = {
   fontSize: "14px",
   // `fontFamily` was added to `MenuBarState` after this fixture was written,
   // so the story drove the font-family control with a missing value.
-  fontFamily: "Domine",
+  fontFamily: "Garamond",
   getWriteParagraphLeading: null,
   isInsideTable: false,
 };
@@ -240,7 +240,7 @@ const { editor: activeEditor } = createEditorDouble({
   bold: true,
   italic: true,
   'heading:{"level":1}': true,
-  'textStyle:{"fontFamily":"Domine"}': true,
+  'textStyle:{"fontFamily":"Garamond"}': true,
   '{"textAlign":"center"}': true,
 });
 
@@ -348,7 +348,7 @@ export const FontFamilyUnsetFollowsProject: Story = {
   },
 };
 
-/** A stored name outside the fixed list ("Domine") shows as a read-only extra entry. */
+/** A stored name outside the fixed list ("Garamond") shows as a read-only extra entry. */
 export const FontFamilyUnlistedStoredName: Story = {
   render: (args: React.ComponentProps<typeof MenuBar>) => (
     <Provider store={makeStore()}>
@@ -357,6 +357,6 @@ export const FontFamilyUnlistedStoredName: Story = {
   ),
   args: {
     editor: defaultEditor,
-    stateOverride: { ...defaultState, fontFamily: "Domine" },
+    stateOverride: { ...defaultState, fontFamily: "Garamond" },
   },
 };

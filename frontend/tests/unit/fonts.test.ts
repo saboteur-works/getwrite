@@ -2,11 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import * as fontsModule from "../../src/lib/fonts/fonts";
-import {
-  FONT_FAMILY_LIST,
-  FONT_OPTIONS,
-  OTHER_FONT_OPTION,
-} from "../../src/lib/fonts/fonts";
+import { FONT_FAMILY_LIST, OTHER_FONT_OPTION } from "../../src/lib/fonts/fonts";
 
 const EXPECTED_LIST: readonly string[] = [
   "Inter",
@@ -136,14 +132,5 @@ describe("font catalogue", () => {
     ]) {
       expect(source).not.toContain(token);
     }
-  });
-
-  it("keeps FONT_OPTIONS exported and unchanged until Task 21", () => {
-    expect(FONT_OPTIONS).toHaveLength(7);
-    expect(FONT_OPTIONS[1]).toEqual({
-      label: "Merriweather",
-      value: "Merriweather",
-      weights: "400;700",
-    });
   });
 });

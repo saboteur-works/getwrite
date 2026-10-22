@@ -79,7 +79,7 @@ export const ValueSet: Story = {
 export const UnlistedFamily: Story = {
   args: {
     initial: {
-      fontFamily: "Domine",
+      fontFamily: "Garamond",
       fontSize: "1.5rem",
       fontWeight: "lighter",
       color: "red",
@@ -90,7 +90,7 @@ export const UnlistedFamily: Story = {
     const canvas = within(canvasElement);
     await expect(
       canvas.getByRole("textbox", { name: "H2 Font Family other name" }),
-    ).toHaveValue("Domine");
+    ).toHaveValue("Garamond");
     await expect(canvas.getByText("Current value: 1.5rem")).toBeVisible();
   },
 };
