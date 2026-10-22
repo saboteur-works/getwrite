@@ -209,7 +209,6 @@ const defaultState: MenuBarState = {
   // `fontFamily` was added to `MenuBarState` after this fixture was written,
   // so the story drove the font-family control with a missing value.
   fontFamily: "Domine",
-  isDomine: true,
   getWriteParagraphLeading: null,
   isInsideTable: false,
 };
@@ -327,5 +326,37 @@ export const LineHeightExplicit: Story = {
   args: {
     editor: defaultEditor,
     stateOverride: { ...defaultState, getWriteParagraphLeading: 1.2 },
+  },
+};
+
+function withProjectBodyFont(fontFamily: string) {
+  const store = makeStore();
+  store.dispatch(setEditorConfig({ headings: {}, body: { fontFamily } }));
+  return store;
+}
+
+/** No explicit family: the Font Family control shows the project's body font and writes nothing. */
+export const FontFamilyUnsetFollowsProject: Story = {
+  render: (args: React.ComponentProps<typeof MenuBar>) => (
+    <Provider store={withProjectBodyFont("Merriweather")}>
+      <MenuBar {...args} />
+    </Provider>
+  ),
+  args: {
+    editor: defaultEditor,
+    stateOverride: { ...defaultState, fontFamily: undefined },
+  },
+};
+
+/** A stored name outside the fixed list ("Domine") shows as a read-only extra entry. */
+export const FontFamilyUnlistedStoredName: Story = {
+  render: (args: React.ComponentProps<typeof MenuBar>) => (
+    <Provider store={makeStore()}>
+      <MenuBar {...args} />
+    </Provider>
+  ),
+  args: {
+    editor: defaultEditor,
+    stateOverride: { ...defaultState, fontFamily: "Domine" },
   },
 };

@@ -96,7 +96,7 @@ function resolveGroup(
           inputType: item.inputType,
           tooltipContent: item.tooltipContent,
           initialValue: item.getValue(context) ?? item.initialValue ?? "",
-          options: item.options ?? [],
+          options: item.getOptions?.(context) ?? item.options ?? [],
           onChange: (value: string) => {
             item.onChange(context, value);
           },
