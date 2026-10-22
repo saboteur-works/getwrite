@@ -271,3 +271,64 @@ Max minus min: **0.00**.
 - The script's read of the selected tab's text content returned `Edit` (not `Editor`); the H1 and body fields were present and measured, so the measured content was the Editor tab's. The cause of the shortened text was not investigated.
 - Controls were measured with no field focused, no value typed (placeholders only) and no validation message showing.
 - Not measured: other heading levels, other viewport widths (the settings grid is 3 columns at 1400 px by its `md`/`xl` classes; not read from the render), non-default zoom or root font size, Safari/Firefox, the Electron window.
+
+## Package justifications (Task 5)
+
+Recorded 2026-10-22. `docs/standards/package-selection.md` was opened before this section was written. The 11 packages were added to `frontend/package.json` by the owner running `pnpm add` (this task ran no package-manager command). Observed facts only; where a value could not be read offline it is UNMEASURED.
+
+### Existing dependencies (observed by search)
+
+- `git show HEAD:frontend/package.json` matched case-insensitively for "font": 0 lines. `git show HEAD:pnpm-lock.yaml` matched case-insensitively for "fontsource": 0 lines. A search of every `package.json` outside `node_modules` found `fontsource` only in the 11 new entries in `frontend/package.json`. No font package existed before.
+
+### Install facts (reported by the owner's run, recorded as given)
+
+- Peer-dependency warnings named better-auth, drizzle and valibot, not `@fontsource`. pnpm reported ignored build scripts for `@parcel/watcher`, `@prisma/client`, `better-sqlite3` and `sharp`; none of these come from the new packages. No action taken.
+- Every installed `@fontsource/*` `package.json` has `peerDependencies` `{}` and `dependencies` `{}`. The lockfile entries are `'@fontsource/<name>@<version>': {}` in `snapshots` (no dependencies).
+
+### Per package (version = installed and lockfile; licence read from installed `package.json` `license` field, and a `LICENSE` file is present in each package directory)
+
+Size is the registry `dist.unpackedSize` from pnpm's local metadata cache (`~/Library/Caches/pnpm/metadata-v1.3/registry.npmjs.org/@fontsource/<name>.json`), in bytes; the on-disk size of the installed directory (`du -sk`, KB) follows in brackets. Registry release date of the version: UNMEASURED (the cached metadata is the abbreviated form and holds no per-version `time`). The cache's `modified` field is the package document's last-modified time, not the version's publish date, and is given as that. The cache's `dist-tags.latest` equals the installed version for all 11. "Exists in registry" evidence: the lockfile `packages:` entry has `resolution: {integrity: sha512-...}` for `name@version`, and the registry metadata cache lists that version.
+
+- `@fontsource/inter` 5.3.0: Inter 400/500/700 (files imported by the app, FR-2); no existing dependency supplies fonts; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 4268538 B [5192 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/merriweather` 5.3.0: Merriweather 400/700; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 4831299 B [5360 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/playfair-display` 5.3.0: Playfair Display 400/700; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 1534344 B [1924 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/lato` 5.3.0: Lato 400/700; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 533388 B [736 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/source-serif-4` 5.3.1: Source Serif 4 400/600; none existing; OFL-1.1; latest = 5.3.1, packument modified 2026-10-11; unpacked 2794277 B [3572 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/playwrite-ie` 5.3.0: Playwrite IE 100/200/300/400 as discrete files (OQ-8, see below); none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 415879 B [492 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/fascinate-inline` 5.3.0: Fascinate Inline 400; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 81550 B [136 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/ibm-plex-sans` 5.3.0: IBM Plex Sans 400/700; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 2485844 B [3148 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/ibm-plex-sans-condensed` 5.3.0: IBM Plex Sans Condensed 400/700; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 1299047 B [1780 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/ibm-plex-mono` 5.3.0: IBM Plex Mono 400/500; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 1489824 B [2072 KB]; peers none; in lockfile and registry cache.
+- `@fontsource/ibm-plex-serif` 5.3.0: IBM Plex Serif 400/500/700 and 400 italic; none existing; OFL-1.1; latest = 5.3.0, packument modified 2026-07-19; unpacked 1849426 B [2404 KB]; peers none; in lockfile and registry cache.
+
+All 11 are `@fontsource` packages; no `@fontsource-variable` package was added or is installed (`frontend/node_modules/@fontsource-variable` does not exist).
+
+### OQ-8: Playwrite IE at discrete 100/200/300/400
+
+`@fontsource/playwrite-ie` 5.3.0 supplies them as discrete static files (its `metadata.json` lists weights 100,200,300,400, styles normal, `variable` key present). Files in `files/`: `playwrite-ie-latin-100-normal.woff2`, `-200-`, `-300-`, `-400-` (WOFF2; each with a `.woff` counterpart; 8 files in total). The weight CSS files `100.css`, `200.css`, `300.css`, `400.css` and `latin-100.css` to `latin-400.css` are present. No variable package is needed for the select to offer 100/200/300/400.
+
+### Subset finding that differs from the Task 5 done-when text
+
+The installed `@fontsource/playwrite-ie` 5.3.0 has `subsets: ["latin"]` in `metadata.json` and no `latin-ext` file at any weight (the listing below shows MISSING for each). Every other package has both `latin` and `latin-ext`. Whether Playwrite IE needs `latin-ext` is not decided here; the Task 6 / Task 9 owner should note that FR-2 says Latin and Latin Extended and this package ships Latin only.
+
+### WOFF2 listing (latin and latin-ext, weight and style FR-2 lists; read from `files/` in each installed package)
+
+- inter: latin-400-normal, latin-ext-400-normal, latin-500-normal, latin-ext-500-normal, latin-700-normal, latin-ext-700-normal (all `.woff2`, all present)
+- merriweather: latin-400, latin-ext-400, latin-700, latin-ext-700 (normal; all present)
+- playfair-display: latin-400, latin-ext-400, latin-700, latin-ext-700 (normal; all present)
+- lato: latin-400, latin-ext-400, latin-700, latin-ext-700 (normal; all present)
+- source-serif-4: latin-400, latin-ext-400, latin-600, latin-ext-600 (normal; all present)
+- playwrite-ie: latin-100, latin-200, latin-300, latin-400 (normal; present); latin-ext-100/200/300/400 MISSING (not in package)
+- fascinate-inline: latin-400, latin-ext-400 (normal; present)
+- ibm-plex-sans: latin-400, latin-ext-400, latin-700, latin-ext-700 (normal; all present)
+- ibm-plex-sans-condensed: latin-400, latin-ext-400, latin-700, latin-ext-700 (normal; all present)
+- ibm-plex-mono: latin-400, latin-ext-400, latin-500, latin-ext-500 (normal; all present)
+- ibm-plex-serif: latin-400, latin-ext-400, latin-500, latin-ext-500, latin-700, latin-ext-700 (normal) and latin-400-italic, latin-ext-400-italic (all present)
+
+File names are `<package>-<subset>-<weight>-<style>.woff2` under `frontend/node_modules/@fontsource/<package>/files/`.
+
+### Checks run
+
+- `pnpm typecheck` (from `frontend/`): `tsc --noEmit` printed no errors.
+- `pnpm knip` (repo root): exits 1 on findings that include pre-existing ones (49 unused files, 161 unused exports, etc.). Under "Unused dependencies (12)" it lists all 11 new `@fontsource/*` packages (`frontend/package.json:36` to `:46`) plus `typedoc`. Recorded as expected for the 11 until Task 9 imports them. No other knip line mentions fontsource.
+- `git diff --stat` before this section was written: `frontend/package.json` (11 insertions) and `pnpm-lock.yaml` (88 insertions) only.
