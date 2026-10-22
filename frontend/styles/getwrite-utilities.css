@@ -2886,10 +2886,12 @@ html.gw-theme-dark {
     color: var(--color-gw-primary);
   }
 
-  /* Assigned-tag active state: red border + text, never red fill (FR 6). */
+  /* Assigned tag with no colour: outlined in the primary ink, unfilled, so it
+     reads apart from a filled filter-active chip without using red (owner
+     decision 2026-10-22, amending the second-pass spec's requirement 6). */
   .chip--tag-active {
-    border-color: var(--color-gw-red-border);
-    color: var(--color-gw-red);
+    border-color: var(--color-gw-primary);
+    color: var(--color-gw-primary);
     background-color: transparent;
   }
 
