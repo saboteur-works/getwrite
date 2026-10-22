@@ -1,5 +1,6 @@
 import "./globals.css";
 import "react-tooltip/dist/react-tooltip.css";
+import "../styles/bundled-fonts.css";
 import type { Metadata, Viewport } from "next";
 import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
@@ -30,18 +31,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap"
-        />
-      </head>
       <body>
         <ClientProvider>
           {/* ADR-021 Phase 2 (FR6): binds the native StorageContext exactly

@@ -332,3 +332,13 @@ File names are `<package>-<subset>-<weight>-<style>.woff2` under `frontend/node_
 - `pnpm typecheck` (from `frontend/`): `tsc --noEmit` printed no errors.
 - `pnpm knip` (repo root): exits 1 on findings that include pre-existing ones (49 unused files, 161 unused exports, etc.). Under "Unused dependencies (12)" it lists all 11 new `@fontsource/*` packages (`frontend/package.json:36` to `:46`) plus `typedoc`. Recorded as expected for the 11 until Task 9 imports them. No other knip line mentions fontsource.
 - `git diff --stat` before this section was written: `frontend/package.json` (11 insertions) and `pnpm-lock.yaml` (88 insertions) only.
+
+## Bundled faces in the build (Task 9)
+
+Recorded 2026-10-22. Observed facts only.
+
+- `frontend/styles/bundled-fonts.css` holds one `@import "@fontsource/<slug>/<subset>-<weight>[-italic].css"` per shipped file. Playwrite IE imports `latin` only (the package has no `latin-ext` file; see "Subset finding" above); every other family imports `latin` and `latin-ext`.
+- `pnpm build` (frontend, run outside the sandbox after the final edit): exit 0. Before it, `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` printed nothing.
+- WOFF2 files under `frontend/.next/static` after the build: 68 in total, 20 of them `KaTeX_*`, 48 from the bundled families. Per family: fascinate-inline 2, ibm-plex-mono 4, ibm-plex-sans 4, ibm-plex-sans-condensed 4, ibm-plex-serif 8 (latin and latin-ext at 400, 500, 700 and 400 italic), inter 6, lato 4, merriweather 4, playfair-display 4, playwrite-ie 4 (latin 100, 200, 300, 400), source-serif-4 4. Files whose name matches domine, cyrillic, greek or vietnamese: 0.
+- A search of `frontend/.next/static` for `fonts.googleapis` / `fonts.gstatic` matched one chunk, `chunks/0dqch9lobt6ga.js`, containing the template `https://fonts.googleapis.com/css2?family=${n}:wght@${t}&display=`. A search of `frontend/app/layout.tsx` for those hosts and for Domine matches nothing. The `.domine-400` rule and the toolbar loader are untouched here (Task 21).
+- `pnpm knip` (repo root): the 11 `@fontsource/*` packages are not listed under unused dependencies (the one listed is `typedoc`). The command exits non-zero on other pre-existing findings.
