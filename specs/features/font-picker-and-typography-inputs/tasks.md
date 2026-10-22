@@ -241,7 +241,7 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Depends on:** 16, 18, 19
 **Estimate:** 2 (S)
 **Notes:** Satisfies FR-22, FR-14, FR-15, FR-16, FR-21. Inserted at Gate 5 as Task 24 (former Tasks 24-28 are now 25-29, none started); it runs after Task 19 and before Tasks 25 and 29. Shares `BodySettingsModal.tsx`, `ProjectTypeEditorForm.tsx` and `TypographyFields.tsx` with Tasks 16, 18 and 19: serialise after them.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Built-output check: web build with the network blocked, and WOFF2 plus licence in the outputs
 **What:** Run the built web server against throwaway data with all non-origin hosts blocked and assert the fonts report loaded, and list WOFF2 files and `THIRD_PARTY_FONTS.txt` in the web, Electron-server and native outputs.

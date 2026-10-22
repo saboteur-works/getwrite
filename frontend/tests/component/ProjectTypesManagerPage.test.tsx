@@ -232,6 +232,20 @@ describe("ProjectTypesManagerPage Save", () => {
     expect(transport.create).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Line Height")).toHaveValue("1.7");
   });
+
+  it("blocks Save while a Line Height is refused and saves once it is valid (Task 24)", async () => {
+    const transport = makeTransport();
+    renderManager(transport);
+    startDraft("fresh", "Fresh");
+    const field = screen.getByLabelText("Line Height");
+    fireEvent.change(field, { target: { value: "1.79" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(field).toHaveValue("1.79");
+    fireEvent.change(field, { target: { value: "1.8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
+  });
 });
 
 describe("ProjectTypesManagerPage refusals", () => {

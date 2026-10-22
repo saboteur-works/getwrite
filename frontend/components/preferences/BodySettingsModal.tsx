@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
-import {
-  getLineHeightError,
-  sanitizeEditorBody,
-} from "../../src/lib/editor-body-settings";
+import { sanitizeEditorBody } from "../../src/lib/editor-body-settings";
 import { buildFontFamilyValue } from "../../src/lib/fonts/font-family-stack";
 import TypographyFields, {
+  useRefusedFields,
   type TypographyFieldKey,
 } from "../typography/TypographyFields";
 import Button from "../common/UI/Button/Button";
@@ -49,7 +47,7 @@ export default function BodySettingsModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Bumped on Discard so the fields drop any refused text they hold locally.
   const [resetKey, setResetKey] = useState<number>(0);
-  const fieldsRef = useRef<HTMLDivElement>(null);
+  const { isBlocked: hasRefusal, report: reportRefusal } = useRefusedFields();
   // Embedded in Project Settings (`closeOnSave` false), the secondary button
   // discards this section's unsaved edits and leaves the dialog open; closing
   // the whole dialog from here dropped every other section's unsaved edits
@@ -73,12 +71,9 @@ export default function BodySettingsModal({
 
   const handleSave = async (): Promise<void> => {
     // Refuse, never clamp: the typed value stays and no request is sent. The
-    // shared line-height field keeps a refused typed value to itself (it never
-    // reaches the draft) and shows the linked alert; `aria-invalid` is how
-    // this form learns of it. A refused stored value is caught from the draft.
-    const hasTypedRefusal =
-      fieldsRef.current?.querySelector('[aria-invalid="true"]') != null;
-    if (hasTypedRefusal || getLineHeightError(draft.lineHeight)) {
+    // shared fields report a refused value (typed or stored) through
+    // `onRefusalChange`.
+    if (hasRefusal) {
       setErrorMessage(null);
       return;
     }
@@ -125,7 +120,7 @@ export default function BodySettingsModal({
       </header>
 
       <Card as="section" padding="lg">
-        <div ref={fieldsRef} className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2">
           <TypographyFields
             key={resetKey}
             className="contents"
@@ -134,6 +129,7 @@ export default function BodySettingsModal({
             fields={BODY_FIELDS}
             values={draft}
             allowOther
+            onRefusalChange={reportRefusal}
             onChange={(key, value) => {
               if (isBodyFieldKey(key)) handleFieldChange(key, value);
             }}

@@ -23,10 +23,12 @@ function Harness({
   initial,
   onDefinition,
   fieldErrors,
+  onRefusalChange,
 }: {
   initial: ProjectTypeDefinition;
   onDefinition?: (d: ProjectTypeDefinition) => void;
   fieldErrors?: Record<string, string>;
+  onRefusalChange?: (field: string, refused: boolean) => void;
 }): JSX.Element {
   const [definition, setDefinition] = React.useState(initial);
   const noop = vi.fn();
@@ -34,6 +36,7 @@ function Harness({
     <ProjectTypeEditorForm
       definition={definition}
       fieldErrors={fieldErrors}
+      onRefusalChange={onRefusalChange}
       onChange={(d) => {
         setDefinition(d);
         onDefinition?.(d);
@@ -56,8 +59,13 @@ describe("ProjectTypeEditorForm Line Height floor (FR-23)", () => {
   it.each(["1.7", "normal"])(
     "shows the floor message linked to the field for %j and keeps the value",
     (value) => {
-      let latest: ProjectTypeDefinition = base;
-      render(<Harness initial={base} onDefinition={(d) => (latest = d)} />);
+      const reports: boolean[] = [];
+      render(
+        <Harness
+          initial={base}
+          onRefusalChange={(_f, refused) => reports.push(refused)}
+        />,
+      );
 
       const field = screen.getByLabelText("Line Height");
       fireEvent.change(field, { target: { value } });
@@ -66,8 +74,8 @@ describe("ProjectTypeEditorForm Line Height floor (FR-23)", () => {
       expect(field).toHaveAttribute("aria-describedby", message.id);
       expect(field).toHaveAttribute("aria-invalid", "true");
       expect(field).toHaveValue(value);
-      // The draft the manager would save is refused by validateDraft too.
-      expect(validateDraft(latest).valid).toBe(false);
+      // The form reports the refusal to its parent, which blocks Save.
+      expect(reports.at(-1)).toBe(true);
     },
   );
 
@@ -422,34 +430,63 @@ describe("ProjectTypeEditorForm patches editorConfig as before (FR-15)", () => {
 
 describe("ProjectTypeEditorForm line height floor in the shared field (FR-16)", () => {
   it.each([
-    ["1.8", true],
-    ["1.79", false],
-    ["normal", false],
-    ["", true],
-  ])("typed %j: draft valid is %s and the typed value stays", (value, ok) => {
-    let latest: ProjectTypeDefinition = {
-      ...base,
-      editorConfig: { body: { lineHeight: "2" } },
-    };
-    render(<Harness initial={latest} onDefinition={(d) => (latest = d)} />);
+    ["1.8", false],
+    ["1.79", true],
+    ["normal", true],
+    ["", false],
+  ])("typed %j: refused is %s and the typed value stays", (value, refused) => {
+    const reports: [string, boolean][] = [];
+    render(
+      <Harness
+        initial={{ ...base, editorConfig: { body: { lineHeight: "2" } } }}
+        onRefusalChange={(field, r) => reports.push([field, r])}
+      />,
+    );
     const field = screen.getByLabelText("Body Line Height");
     fireEvent.change(field, { target: { value } });
     expect(field).toHaveValue(value);
-    // Save is refused through validateDraft exactly when the value is refused.
-    expect(validateDraft(latest).valid).toBe(ok);
-    if (!ok) {
+    const last = reports.filter(([f]) => f === "lineHeight").at(-1);
+    expect(last?.[1] ?? false).toBe(refused);
+    if (refused) {
       expect(screen.getByText(LINE_HEIGHT_FLOOR_MESSAGE)).toBeInTheDocument();
-      expect(latest.editorConfig?.body?.lineHeight).toBe(value);
     }
   });
 
   it("keeps the typed value after a refusal is followed by an accepted edit", () => {
     let latest: ProjectTypeDefinition = base;
-    render(<Harness initial={base} onDefinition={(d) => (latest = d)} />);
+    const reports: boolean[] = [];
+    render(
+      <Harness
+        initial={base}
+        onDefinition={(d) => (latest = d)}
+        onRefusalChange={(_f, r) => reports.push(r)}
+      />,
+    );
     const field = screen.getByLabelText("Body Line Height");
     fireEvent.change(field, { target: { value: "1.7" } });
     fireEvent.change(field, { target: { value: "1.9" } });
     expect(latest.editorConfig?.body?.lineHeight).toBe("1.9");
     expect(screen.queryByText(LINE_HEIGHT_FLOOR_MESSAGE)).toBeNull();
+    expect(reports.at(-1)).toBe(false);
+  });
+
+  it("does not put the refused text in the draft and has no wrapper onChange patch", () => {
+    let latest: ProjectTypeDefinition = {
+      ...base,
+      editorConfig: { body: { lineHeight: "2" } },
+    };
+    render(<Harness initial={latest} onDefinition={(d) => (latest = d)} />);
+    fireEvent.change(screen.getByLabelText("Body Line Height"), {
+      target: { value: "1.7" },
+    });
+    expect(latest.editorConfig?.body?.lineHeight).toBe("2");
+    const source = fs.readFileSync(
+      path.join(
+        __dirname,
+        "../../components/project-types/ProjectTypeEditorForm.tsx",
+      ),
+      "utf8",
+    );
+    expect(source).not.toMatch(/handleBodyLineHeightRefusal|<div onChange/);
   });
 });

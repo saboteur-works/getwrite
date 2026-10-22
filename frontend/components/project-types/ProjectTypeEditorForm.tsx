@@ -9,7 +9,7 @@
  * mutation semantics to callbacks supplied by the parent orchestrator.
  */
 
-import { useId, type ChangeEvent } from "react";
+import { useId } from "react";
 import Button from "../common/UI/Button/Button";
 import Input from "../common/UI/Input/Input";
 import Textarea from "../common/UI/Textarea/Textarea";
@@ -21,7 +21,6 @@ import type {
   ProjectTypeResourceKind,
 } from "../../src/types/project-types";
 import type { EditorHeading } from "../../src/lib/models/types";
-import { getLineHeightError } from "../../src/lib/editor-body-settings";
 import TypographyFields, {
   type TypographyFieldKey,
 } from "../typography/TypographyFields";
@@ -96,6 +95,11 @@ export interface ProjectTypeEditorFormProps {
    * lists them in the action bar.
    */
   fieldErrors?: Record<string, string>;
+  /**
+   * Optional. Reports a typography field's refused/valid state (the body
+   * line height) so the parent can block Save while one is refused.
+   */
+  onRefusalChange?: (field: TypographyFieldKey, refused: boolean) => void;
 }
 
 export default function ProjectTypeEditorForm({
@@ -115,6 +119,7 @@ export default function ProjectTypeEditorForm({
   idError,
   nameError,
   fieldErrors,
+  onRefusalChange,
 }: ProjectTypeEditorFormProps): JSX.Element {
   const patchDefinition = (updates: Partial<ProjectTypeDefinition>): void => {
     onChange({ ...definition, ...updates });
@@ -182,19 +187,6 @@ export default function ProjectTypeEditorForm({
         body: { ...definition.editorConfig?.body, ...updates },
       },
     });
-  };
-
-  const handleBodyLineHeightRefusal = (
-    event: ChangeEvent<HTMLElement>,
-  ): void => {
-    const target = event.target;
-    if (
-      target instanceof HTMLInputElement &&
-      target.id === "type-body-lineHeight" &&
-      getLineHeightError(target.value)
-    ) {
-      patchBody({ lineHeight: target.value });
-    }
   };
 
   return (
@@ -545,26 +537,20 @@ export default function ProjectTypeEditorForm({
 
           <p className="project-type-editor-subsection-title">Body</p>
           <div className="project-type-editor-card">
-            {/* TypographyFields keeps a refused line height to itself and never
-                reports it, so the draft would still hold the last accepted
-                value and Save would store that instead of the typed text. The
-                bubbled change event is how this form sees the refused text:
-                it puts it in the draft, where validateDraft refuses Save. */}
-            <div onChange={handleBodyLineHeightRefusal}>
-              <TypographyFields
-                className="project-type-editor-form-grid project-type-editor-form-grid--four-column"
-                label="Body"
-                idPrefix="type-body"
-                fields={BODY_FIELDS}
-                values={definition.editorConfig?.body ?? {}}
-                allowOther
-                onChange={(key, value) => {
-                  if (isBodyField(key)) {
-                    patchBody({ [key]: value || undefined });
-                  }
-                }}
-              />
-            </div>
+            <TypographyFields
+              className="project-type-editor-form-grid project-type-editor-form-grid--four-column"
+              label="Body"
+              idPrefix="type-body"
+              fields={BODY_FIELDS}
+              values={definition.editorConfig?.body ?? {}}
+              allowOther
+              onRefusalChange={onRefusalChange}
+              onChange={(key, value) => {
+                if (isBodyField(key)) {
+                  patchBody({ [key]: value || undefined });
+                }
+              }}
+            />
           </div>
         </div>
       </section>

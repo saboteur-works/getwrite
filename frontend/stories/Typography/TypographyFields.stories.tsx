@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, within } from "storybook/test";
 import TypographyFields, {
+  useRefusedFields,
   type TypographyFieldKey,
   type TypographyValues,
 } from "../../components/typography/TypographyFields";
@@ -159,5 +160,39 @@ export const LineHeightError: Story = {
     await expect(canvas.getByRole("alert")).toHaveTextContent(
       "Line height must be a number of at least 1.8.",
     );
+  },
+};
+
+function RefusalReportHarness(): JSX.Element {
+  const [values, setValues] = useState<TypographyValues>({ lineHeight: "2" });
+  const { isBlocked, report } = useRefusedFields();
+  return (
+    <div className="p-4">
+      <TypographyFields
+        label="Body"
+        idPrefix="body"
+        fields={["lineHeight"]}
+        values={values}
+        onChange={(key, value) => setValues((v) => ({ ...v, [key]: value }))}
+        onRefusalChange={report}
+      />
+      <p role="status">{isBlocked ? "Save blocked" : "Save allowed"}</p>
+    </div>
+  );
+}
+
+/** The optional refusal callback lets a parent block Save while a field is refused. */
+export const ReportsRefusalToParent: Story = {
+  render: () => <RefusalReportHarness />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const field = canvas.getByRole("textbox", { name: "Body Line Height" });
+    await expect(canvas.getByRole("status")).toHaveTextContent("Save allowed");
+    await userEvent.clear(field);
+    await userEvent.type(field, "1.79");
+    await expect(canvas.getByRole("status")).toHaveTextContent("Save blocked");
+    await userEvent.clear(field);
+    await userEvent.type(field, "1.8");
+    await expect(canvas.getByRole("status")).toHaveTextContent("Save allowed");
   },
 };

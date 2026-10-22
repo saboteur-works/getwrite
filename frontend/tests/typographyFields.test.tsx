@@ -258,4 +258,75 @@ describe("TypographyFields", () => {
       expect(screen.queryByLabelText(/Paragraph Spacing/)).toBeNull();
     });
   });
+  describe("refusal callback (Task 24, FR-22)", () => {
+    function setupWithCallback(values: TypographyValues = { lineHeight: "2" }) {
+      const onChange = vi.fn();
+      const onRefusalChange = vi.fn();
+      render(
+        <TypographyFields
+          label="Body"
+          idPrefix="body"
+          fields={["lineHeight", "fontSize"]}
+          values={values}
+          onChange={onChange}
+          onRefusalChange={onRefusalChange}
+        />,
+      );
+      return {
+        onChange,
+        onRefusalChange,
+        line: screen.getByRole("textbox", {
+          name: "Body Line Height",
+        }) as HTMLInputElement,
+      };
+    }
+
+    it("reports the field as refused when line height becomes refused, and valid again", () => {
+      const { onRefusalChange, line } = setupWithCallback();
+      onRefusalChange.mockClear();
+      fireEvent.change(line, { target: { value: "1.79" } });
+      expect(onRefusalChange).toHaveBeenLastCalledWith("lineHeight", true);
+      fireEvent.change(line, { target: { value: "1.8" } });
+      expect(onRefusalChange).toHaveBeenLastCalledWith("lineHeight", false);
+      expect(onRefusalChange).toHaveBeenCalledTimes(2);
+    });
+
+    it("reports a refused stored value on mount", () => {
+      const { onRefusalChange } = setupWithCallback({ lineHeight: "1.2" });
+      expect(onRefusalChange).toHaveBeenCalledWith("lineHeight", true);
+    });
+
+    it("reports empty as valid and does not report other fields", () => {
+      const { onRefusalChange, line } = setupWithCallback();
+      fireEvent.change(line, { target: { value: "normal" } });
+      fireEvent.change(line, { target: { value: "" } });
+      expect(onRefusalChange).toHaveBeenLastCalledWith("lineHeight", false);
+      onRefusalChange.mockClear();
+      fireEvent.change(screen.getByLabelText("Body Font Size"), {
+        target: { value: "20" },
+      });
+      expect(onRefusalChange).not.toHaveBeenCalled();
+    });
+
+    it("is unaffected when the callback is not passed", () => {
+      const onChange = vi.fn();
+      render(
+        <TypographyFields
+          label="Body"
+          idPrefix="body"
+          fields={["lineHeight"]}
+          values={{ lineHeight: "2" }}
+          onChange={onChange}
+        />,
+      );
+      const line = screen.getByRole("textbox", {
+        name: "Body Line Height",
+      }) as HTMLInputElement;
+      fireEvent.change(line, { target: { value: "1.5" } });
+      expect(onChange).not.toHaveBeenCalled();
+      expect(line.value).toBe("1.5");
+      fireEvent.change(line, { target: { value: "1.9" } });
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "1.9");
+    });
+  });
 });

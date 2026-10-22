@@ -31,6 +31,7 @@ import {
 import Button from "../common/UI/Button/Button";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ProjectTypeEditorForm from "./ProjectTypeEditorForm";
+import { useRefusedFields } from "../typography/TypographyFields";
 import ProjectTypeListPane from "./ProjectTypeListPane";
 import UnsavedChangesPrompt from "./UnsavedChangesPrompt";
 import {
@@ -228,6 +229,8 @@ export default function ProjectTypesManagerPage({
     discardChanges,
   } = useProjectTypeDraftService(initialTemplates, resolveTransport);
 
+  const { isBlocked: hasRefusedField, report: reportRefusedField } =
+    useRefusedFields();
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
   const [status, setStatus] = useState<string>("");
   const [refreshNotice, setRefreshNotice] = useState<{
@@ -283,7 +286,7 @@ export default function ProjectTypesManagerPage({
   };
 
   const runSave = async (asCopy: boolean): Promise<void> => {
-    if (!selectedItem) return;
+    if (!selectedItem || hasRefusedField) return;
     const { definition, fileName } = selectedItem;
     const result = await (asCopy ? handleSaveAsCopy() : handleSave());
     const isCopy = result?.ok === true && "copied" in result && result.copied;
@@ -382,6 +385,10 @@ export default function ProjectTypesManagerPage({
 
   const saveAndExit = async (): Promise<void> => {
     if (!selectedItem) return;
+    if (hasRefusedField) {
+      keepEditing();
+      return;
+    }
     const { definition, fileName } = selectedItem;
     const result = await handleSave();
     if (result === null) return;
@@ -612,6 +619,8 @@ export default function ProjectTypesManagerPage({
                 </div>
               ) : null}
               <ProjectTypeEditorForm
+                key={selectedKey}
+                onRefusalChange={reportRefusedField}
                 idReadOnly={origin !== "Draft"}
                 idError={shownFeedback?.idMessage}
                 nameError={shownFeedback?.nameMessage}

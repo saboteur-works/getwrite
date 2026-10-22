@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -263,6 +265,48 @@ describe("BodySettingsModal", () => {
 
       await waitFor(() => expect(onSave).toHaveBeenCalledWith(expected));
       expect(screen.queryByText(LINE_HEIGHT_FLOOR_MESSAGE)).toBeNull();
+    });
+
+    it("blocks Save while a line height is refused and saves again once it is valid (Task 24)", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          onClose={vi.fn()}
+          onSave={onSave}
+          closeOnSave={false}
+        />,
+      );
+      const field = screen.getByLabelText("Body Line Height");
+      fireEvent.change(field, { target: { value: "1.79" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+      expect(field).toHaveValue("1.79");
+      fireEvent.change(field, { target: { value: "1.8" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await waitFor(() =>
+        expect(onSave).toHaveBeenCalledWith({ lineHeight: "1.8" }),
+      );
+    });
+
+    it("blocks Save for a refused stored line height", () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={{ lineHeight: "1.2" }}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("has no aria-invalid query in its save path (Task 24)", () => {
+      const source = fs.readFileSync(
+        path.join(__dirname, "../components/preferences/BodySettingsModal.tsx"),
+        "utf8",
+      );
+      expect(source).not.toMatch(/aria-invalid|querySelector|fieldsRef/);
     });
 
     it("clears the message once the value is edited", async () => {

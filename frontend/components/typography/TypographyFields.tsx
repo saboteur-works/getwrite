@@ -63,6 +63,13 @@ export interface TypographyFieldsProps {
   values: TypographyValues;
   /** Called with the field and its new stored-form value; "" clears the field. */
   onChange: (key: TypographyFieldKey, value: string) => void;
+  /**
+   * Optional. Reports a field's refused/valid state to the parent whenever it
+   * changes (and once on mount for the line height field). A parent uses it to
+   * block Save while any field is refused; a refused value is still never
+   * passed to `onChange`.
+   */
+  onRefusalChange?: (key: TypographyFieldKey, refused: boolean) => void;
   /** Show "Other..." in the family dropdown (settings forms). */
   allowOther?: boolean;
   disabled?: boolean;
@@ -108,6 +115,7 @@ interface LineHeightFieldProps {
   stored: string;
   disabled: boolean;
   onAccept: (value: string) => void;
+  onRefusalChange?: (refused: boolean) => void;
 }
 
 /**
@@ -120,10 +128,23 @@ function LineHeightField({
   stored,
   disabled,
   onAccept,
+  onRefusalChange,
 }: LineHeightFieldProps): JSX.Element {
   const [typed, setTyped] = React.useState<string | null>(null);
   const shown = typed ?? stored;
   const error = getLineHeightError(shown);
+  const isRefused = Boolean(error);
+  const reportRef = React.useRef(onRefusalChange);
+  reportRef.current = onRefusalChange;
+  React.useEffect(() => {
+    reportRef.current?.(isRefused);
+  }, [isRefused]);
+  React.useEffect(
+    () => () => {
+      reportRef.current?.(false);
+    },
+    [],
+  );
   const errorId = `${id}-error`;
   return (
     <FieldShell id={id} label={FIELD_LABELS.lineHeight}>
@@ -164,12 +185,37 @@ function colourInputValue(stored: string): string {
   return HEX6.test(expanded) ? expanded.toLowerCase() : COLOUR_PLACEHOLDER;
 }
 
+/**
+ * Parent-side bookkeeping for `onRefusalChange`: which fields are refused now.
+ * `isBlocked` is true while any field is refused.
+ */
+export function useRefusedFields(): {
+  isBlocked: boolean;
+  report: (key: TypographyFieldKey, refused: boolean) => void;
+} {
+  const [refused, setRefused] = React.useState<readonly TypographyFieldKey[]>(
+    [],
+  );
+  const report = React.useCallback(
+    (key: TypographyFieldKey, isRefused: boolean): void => {
+      setRefused((prev) => {
+        const has = prev.includes(key);
+        if (has === isRefused) return prev;
+        return isRefused ? [...prev, key] : prev.filter((k) => k !== key);
+      });
+    },
+    [],
+  );
+  return { isBlocked: refused.length > 0, report };
+}
+
 export default function TypographyFields({
   label,
   idPrefix,
   fields,
   values,
   onChange,
+  onRefusalChange,
   allowOther = false,
   disabled = false,
   className,
@@ -266,6 +312,12 @@ export default function TypographyFields({
           stored={stored("lineHeight")}
           disabled={disabled}
           onAccept={(value: string): void => onChange("lineHeight", value)}
+          onRefusalChange={
+            onRefusalChange
+              ? (refused: boolean): void =>
+                  onRefusalChange("lineHeight", refused)
+              : undefined
+          }
         />
       ) : null}
       {shows("paragraphSpacing") ? (
