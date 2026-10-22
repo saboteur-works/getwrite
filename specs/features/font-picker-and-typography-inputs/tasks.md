@@ -277,7 +277,7 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Depends on:** 2, 25
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-19. Builds fail in worktrees: main checkout, outside the sandbox. The numbers are for the owner to read.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Final suites
 **What:** Run every final suite on the branch and record observed results next to the Task 1 baselines.

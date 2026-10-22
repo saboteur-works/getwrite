@@ -484,3 +484,78 @@ Searches run from the repo root with `/usr/bin/grep`; results are what was obser
 - Tests: `frontend/tests/helpProjectTypesCopy.test.ts` gained one test for the Editor-tab help text (3 tests pass).
 - `docs/user/` for `font|typeface` (not edited; for the scribe): `docs/user/handbook/write/headings.md` (line 24 lists a free-text field suggesting 17 typefaces including Garamond, Helvetica, Palatino, Tahoma; line 25 says Font Weight is Use default, Normal or Bold), `docs/user/handbook/write/editor-appearance.md` (lines 13 to 15 name font and Font Family fields), `docs/user/handbook/views/timeline.md` (matched `font`; not inspected).
 - Gates (frontend/): `pnpm typecheck` exit 0; `pnpm lint` 392 problems, 0 errors, 392 warnings; `pnpm exec vitest run tests/helpProjectTypesCopy.test.ts` 3 passed.
+
+## Size after (Task 28)
+
+Date: 2026-10-22. Commit measured: `git rev-parse HEAD` = `f84c028ec38f4f5f9e4e866cd344c8da348734a8` (branch `feat/font-picker-and-typography-inputs`; `git status --short` empty before the builds). Task 2 base commit: `5af5f49132f5328fd8963e2b045150c0252a2e34`. The "before" values are copied from "Size before (Task 2)". Same commands and script as Task 2 (`scripts/measure-build-size.sh`, run from the repo root); all builds ran outside the command sandbox in the main checkout with `GETWRITE_PROJECTS_DIR` set to a `mktemp -d` throwaway folder. Before the builds, `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` showed only the owner's GetWrite app on 7340 (pid 65645); it was not touched and nothing was started. No threshold is applied; differences are observed values.
+
+### (a) Web build
+
+Command: `pnpm build` (cwd `frontend/`), exit 0. Then `scripts/measure-build-size.sh frontend/.next/static frontend/.next/standalone`.
+
+| Output | | apparent bytes | disk bytes | files | `*.woff2` |
+| --- | --- | --- | --- | --- | --- |
+| `frontend/.next/static` | before | 4372400 | 4673536 | 124 | 20 |
+| | after | 6798894 | 7278592 | 220 | 68 |
+| | difference | +2426494 | +2605056 | +96 | +48 |
+| `frontend/.next/standalone` | before | 107213394 | 132898816 | 5380 | 27 |
+| | after | 110584482 | 136507392 | 5509 | 79 |
+| | difference | +3371088 | +3608576 | +129 | +52 |
+
+`frontend/.next/standalone` contains `frontend/storybook-static` (copied in by the build, as in Task 2). Observed split, same script:
+
+| Part of standalone | | apparent bytes | files | `*.woff2` |
+| --- | --- | --- | --- | --- |
+| `standalone/frontend/storybook-static` | before | 16778861 | 558 | 27 |
+| | after | 19287379 | 657 | 75 |
+| | difference | +2508518 | +99 | +48 |
+| standalone excluding `storybook-static` (total minus that folder) | before | 90434533 | 4822 | 0 |
+| | after | 91297103 | 4852 | 4 |
+| | difference | +862570 | +30 | +4 |
+
+`frontend/storybook-static` (outside standalone) measured after: 19287379 apparent bytes, 657 files, 75 `*.woff2`, equal to the copy in standalone. It was rebuilt between Task 2 and now (by the e2e runs of later tasks), so its content differs from Task 2's. `standalone/projects`: 7808070 apparent bytes, 1027 files, equal to before. The four `*.woff2` in standalone outside `storybook-static` are `frontend/.next/server/assets/ibm-plex-{serif-latin-400-italic,sans-latin-400-normal,sans-latin-700-normal,serif-latin-400-normal}.*.woff2`; before there were none outside `storybook-static`. The standalone copy has no `.next/static` of its own, so the 48 added `static/media` woff2 files are counted in the `static` row, not the standalone row.
+
+### (b) Electron bundle
+
+Command: `pnpm electron:build` (repo root), exit 0. Then `scripts/measure-build-size.sh frontend/.next/static frontend/.next/standalone electron/dist`.
+
+| Output | | apparent bytes | disk bytes | files | `*.woff2` |
+| --- | --- | --- | --- | --- | --- |
+| `frontend/.next/static` | before / after | 4372400 / 6798894 | 4673536 / 7278592 | 124 / 220 | 20 / 68 |
+| | difference | +2426494 | +2605056 | +96 | +48 |
+| `frontend/.next/standalone` | before / after | 107213394 / 110584482 | 132898816 / 136507392 | 5380 / 5509 | 27 / 79 |
+| | difference | +3371088 | +3608576 | +129 | +52 |
+| `electron/dist` | before | 4277186 | 4366336 | 37 | 0 |
+| | after | 4277584 | 4366336 | 37 | 0 |
+| | difference | +398 | 0 | 0 | 0 |
+
+Static and standalone equal the (a) values.
+
+Packaged app (unpacked, arm64), command as in Task 2: `cd electron && CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --config electron-builder.yml --dir --mac --arm64 -c.directories.output=<mktemp -d folder>`, exit 0 (code signing skipped). Then `scripts/measure-build-size.sh <out>/mac-arm64/GetWrite.app <out>/mac-arm64/GetWrite.app/Contents/Resources/frontend`:
+
+| Output | | apparent bytes | disk bytes | files | `*.woff2` |
+| --- | --- | --- | --- | --- | --- |
+| `GetWrite.app` | before | 359677196 | 386805760 | 5607 | 47 |
+| | after | 365475176 | 393134080 | 5832 | 147 |
+| | difference | +5797980 | +6328320 | +225 | +100 |
+| `GetWrite.app/Contents/Resources/frontend` | before | 111585794 | 138293248 | 5504 | 47 |
+| | after | 117383376 | 144621568 | 5729 | 147 |
+| | difference | +5797582 | +6328320 | +225 | +100 |
+
+Installer size: UNMEASURED, same reason as Task 2 (`--dir` produces no dmg; the dmg targets were not attempted). The x64 packaged app: not measured. The throwaway electron-builder output folder was removed by literal path after measuring.
+
+### (c) Native output
+
+Command: `pnpm build:native` (cwd `frontend/`), exit 1; `ls frontend/out`: No such file or directory. Error, as in Task 2:
+
+```
+./stories/Start/CreateProjectModal.stories.tsx:6:8
+Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal' or its corresponding type declarations.
+[build-native-static] ERROR: `next build` exited with status 1.
+```
+
+(c) is UNMEASURED, same reason as Task 2. `*.woff2` count for `frontend/out`: not applicable, no output.
+
+### Left behind
+
+Gitignored build artifacts rewritten: `frontend/.next`, `electron/dist`. Existing and untouched: `frontend/storybook-static`, `frontend/.native-build`. Empty `mktemp -d` projects folders remain under the system temp dir. `git status --short` after the runs showed only this file modified. Not measured: installer size, x64 packaged app, `frontend/out`.
