@@ -78,6 +78,8 @@ export interface TypographyFieldsProps {
 
 const COLOUR_PLACEHOLDER = "#000000"; // GW-HEX-EXEMPT: color picker placeholder, user-selected arbitrary colors
 const HEX6 = /^#[0-9a-f]{6}$/i;
+/** One shared height for every control in a row (FR-17); rem so it follows the root font size. */
+const CONTROL_HEIGHT = "h-[2.625rem]";
 
 const FIELD_LABELS: Readonly<Record<TypographyFieldKey, string>> = {
   fontFamily: "Font Family",
@@ -150,6 +152,7 @@ function LineHeightField({
     <FieldShell id={id} label={FIELD_LABELS.lineHeight}>
       <Input
         id={id}
+        className={CONTROL_HEIGHT}
         aria-label={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
@@ -239,6 +242,7 @@ export default function TypographyFields({
       <FieldShell id={idOf(key)} label={FIELD_LABELS[key]}>
         <Input
           id={idOf(key)}
+          className={CONTROL_HEIGHT}
           aria-label={nameOf(key)}
           aria-describedby={isUnparsed ? noteId : undefined}
           type="number"
@@ -279,6 +283,7 @@ export default function TypographyFields({
           <FontFamilySelect
             id={idOf("fontFamily")}
             aria-label={nameOf("fontFamily")}
+            className={CONTROL_HEIGHT}
             value={values.fontFamily}
             allowOther={allowOther}
             disabled={disabled}
@@ -291,6 +296,7 @@ export default function TypographyFields({
           <FontWeightSelect
             id={idOf("fontWeight")}
             aria-label={nameOf("fontWeight")}
+            className={CONTROL_HEIGHT}
             family={values.fontFamily}
             value={values.fontWeight}
             disabled={disabled}
@@ -327,6 +333,7 @@ export default function TypographyFields({
         >
           <Input
             id={idOf("paragraphSpacing")}
+            className={CONTROL_HEIGHT}
             aria-label={nameOf("paragraphSpacing")}
             type="text"
             placeholder="e.g. 1em"
@@ -350,7 +357,7 @@ export default function TypographyFields({
               onChange={(event: React.ChangeEvent<HTMLInputElement>): void =>
                 onChange("color", normalizeEditedColour(event.target.value))
               }
-              className="h-8 w-10 cursor-pointer border border-gw-border bg-gw-chrome2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${CONTROL_HEIGHT} w-10 cursor-pointer border border-gw-border bg-gw-chrome2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gw-secondary disabled:cursor-not-allowed disabled:opacity-50`}
             />
             <span className="font-mono text-xs text-gw-secondary">
               {stored("color")}

@@ -1,4 +1,4 @@
-import { fileURLToPath } from "node:url";
+import nodeUrl from "node:url";
 import React from "react";
 import {
   Document,
@@ -18,7 +18,7 @@ import type { CompileSection } from "./compile-text";
  * path. No remote URL is produced on either route.
  */
 function localFontPath(url: URL): string {
-  return url.protocol === "file:" ? fileURLToPath(url) : url.pathname;
+  return url.protocol === "file:" ? nodeUrl.fileURLToPath(url) : url.pathname;
 }
 
 /**

@@ -259,7 +259,7 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Depends on:** 4, 17, 18, 19
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-17 (after half, both places), FR-21. Safety as Task 23 (`pnpm test:e2e` outside the sandbox, 6006 free, never start `pnpm storybook`). A styling fix lives in the shared component (`TypographyFields.tsx`): rerun its tests and `pnpm build`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Documentation
 **What:** Update the docs for the fixed list, "Other...", the toolbar's fixed-names-only control, the bundled fonts, and the references this feature removes.

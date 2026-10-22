@@ -436,3 +436,39 @@ MEASURED, unpacked mac arm64 app: `cd electron && CSC_IDENTITY_AUTO_DISCOVERY=fa
 ### Left behind
 
 Gitignored build output rewritten: `frontend/.next`, `electron/dist`, `frontend/.native-build/.next`. No `frontend/out` was created. Created and removed: the electron-builder throwaway output folder, the harness runtime and projects folders. Empty `mktemp -d` projects folders for the builds remain in the system temp dir (no data). Source files changed: none.
+
+## FR-17 heights after (Task 26)
+
+Values only; no cause is stated. Test: `frontend/e2e/typography-row-heights.e2e.spec.ts` (new file: no existing e2e covered these stories), Chromium 148 via Playwright, viewport 1280 x 720 (Desktop Chrome), root font size asserted `16px`, `getBoundingClientRect().height` in CSS px of the control with id `<prefix>-<field>`. Stories: `Preferences/HeadingSettingsModal` Default (prefix `h1`), `Preferences/BodySettingsModal` Default (`body`), `ProjectTypes/ProjectTypeEditorForm` Interactive (`type-h1`, `type-body`). Tolerance asserted: max minus min <= 1.
+
+Note on comparability: the Task 4 values were measured on the web build before the shared component existed (`FontFamilyInput`, bordered colour wrapper), at 1400 x 900; the first-run and after values below are on the Storybook stories of the shared `TypographyFields`, at 1280 x 720, and the colour measured is the `<input type="color">` itself.
+
+### First run (before any styling change; test failed, 3 of 3)
+
+| Row | family | size | weight | colour | letter spacing | line height | para spacing | spread |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Settings H1 row | 38 | 42 | 38 | 32 | 42 | - | - | 10 |
+| Settings body | 38 | 42 | - | - | - | 42 | 42 | 4 |
+| Type Manager H1 row | 38 | 42 | 38 | 32 | 42 | - | - | 10 |
+| Type Manager body | not measured (the test stopped at the failing H1 assertion) | | | | | | | |
+
+### Change
+
+`frontend/components/typography/TypographyFields.tsx`: one constant `CONTROL_HEIGHT = "h-[2.625rem]"` passed as `className` to every control (number and text `Input`s, line height, paragraph spacing, both selects) and used for the colour input in place of `h-8`. No change to `Input` or `Select`.
+
+### After (test passes, 3 of 3)
+
+| Row | family | size | weight | colour | letter spacing | line height | para spacing | spread | Task 4 spread (before, different harness/component) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Settings H1 row | 42 | 42 | 42 | 42 | 42 | - | - | 0 | 10.00 (colour wrapper 46.00; select 36.00) |
+| Settings body | 42 | 42 | - | - | - | 42 | 42 | 0 | 0.00 (all 42.00) |
+| Type Manager H1 row | 42 | 42 | 42 | 42 | 42 | - | - | 0 | 7.50 (colour row 30.00; select 31.00; inputs 37.50) |
+| Type Manager body | 42 | 42 | - | - | - | 42 | 42 | 0 | 0.00 (all 37.50) |
+
+Task 4 absolute values in the Type Manager form were 37.50 (inputs) and are 42.00 now; Task 4 in Project Settings was 42.00 (inputs), 36.00 (select), 46.00 (colour wrapper), now all 42.00.
+
+### Other findings and gates
+
+- `pnpm run build-storybook` (which `pnpm test:e2e` runs) failed at the start of this task: Vite/Rollup reported `"fileURLToPath" is not exported by "__vite-browser-external"` for `src/lib/export/CompilePDFDocument.tsx:1` (introduced in Task 21; Task 25 did not run the Storybook build). Minimal change so the build runs: `import nodeUrl from "node:url"` and `nodeUrl.fileURLToPath(url)` (same call, same `file:` branch). Not tested at runtime in a PDF export in this task; Task 21's server `pnpm build` check is re-confirmed below.
+- After the change: `pnpm build` exit 0; `pnpm typecheck` exit 0; `pnpm lint` 392 problems, 0 errors, 392 warnings; Vitest `typographyFields`, `typographyFields.a11y`, `fontFamilySelect`, `bodySettingsModal`, `headingSettingsModal`: 108 passed. Full `pnpm test:e2e`: 227 passed, 1 skipped, 0 failed (Task 1 baseline 222 passed, 1 skipped; difference is the Task 23 and Task 26 specs).
+
