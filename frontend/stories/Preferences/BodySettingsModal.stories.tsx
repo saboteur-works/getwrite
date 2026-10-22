@@ -86,3 +86,13 @@ export const LineHeightBelowFloor: Story = {
     save?.click();
   },
 };
+
+export const StoredNonPxSize: Story = {
+  args: {
+    initialBody: { fontSize: "1.5rem", fontFamily: "Garamond" },
+    onClose: () => console.log("close"),
+    onSave: async (body: EditorBodyConfig) => {
+      console.log("save", body);
+    },
+  },
+};

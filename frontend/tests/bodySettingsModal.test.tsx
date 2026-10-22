@@ -14,6 +14,17 @@ function renderInDialog(ui: React.ReactElement) {
   );
 }
 
+const SIZE_INPUT = "18";
+const FAMILY_LABEL = "IBM Plex Serif";
+function typeFamily(name: string): void {
+  fireEvent.change(screen.getByLabelText("Body Font Family"), {
+    target: { value: "__other__" },
+  });
+  fireEvent.change(screen.getByLabelText("Body Font Family other name"), {
+    target: { value: name },
+  });
+}
+
 describe("BodySettingsModal", () => {
   it("qualifies the scope and states the 1.8 minimum and own-spacing rule", () => {
     renderInDialog(
@@ -38,10 +49,10 @@ describe("BodySettingsModal", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Font Family")).toBeInTheDocument();
-    expect(screen.getByLabelText("Font Size")).toBeInTheDocument();
-    expect(screen.getByLabelText("Line Height")).toBeInTheDocument();
-    expect(screen.getByLabelText("Paragraph Spacing")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Font Family")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Font Size")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Line Height")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Paragraph Spacing")).toBeInTheDocument();
   });
 
   it("populates fields from initialBody", () => {
@@ -53,8 +64,8 @@ describe("BodySettingsModal", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Font Family")).toHaveValue("Georgia");
-    expect(screen.getByLabelText("Font Size")).toHaveValue("18px");
+    expect(screen.getByLabelText("Body Font Family")).toHaveValue("Georgia");
+    expect(screen.getByLabelText("Body Font Size")).toHaveValue(18);
   });
 
   it("calls onSave with sanitized values and closes on success", async () => {
@@ -63,7 +74,7 @@ describe("BodySettingsModal", () => {
 
     renderInDialog(<BodySettingsModal onClose={onClose} onSave={onSave} />);
 
-    fireEvent.change(screen.getByLabelText("Font Family"), {
+    fireEvent.change(screen.getByLabelText("Body Font Family"), {
       target: { value: "IBM Plex Serif" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -103,7 +114,7 @@ describe("BodySettingsModal", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Font Family"), {
+    fireEvent.change(screen.getByLabelText("Body Font Family"), {
       target: { value: "Arial" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -155,7 +166,7 @@ describe("BodySettingsModal", () => {
         />,
       );
 
-      fireEvent.change(screen.getByLabelText("Font Family"), {
+      fireEvent.change(screen.getByLabelText("Body Font Family"), {
         target: { value: "Merriweather" },
       });
 
@@ -173,7 +184,7 @@ describe("BodySettingsModal", () => {
         />,
       );
 
-      fireEvent.change(screen.getByLabelText("Line Height"), {
+      fireEvent.change(screen.getByLabelText("Body Line Height"), {
         target: { value: "2.0" },
       });
 
@@ -204,7 +215,7 @@ describe("BodySettingsModal", () => {
         const onClose = vi.fn();
         renderInDialog(<BodySettingsModal onClose={onClose} onSave={onSave} />);
 
-        const field = screen.getByLabelText("Line Height");
+        const field = screen.getByLabelText("Body Line Height");
         fireEvent.change(field, { target: { value } });
         fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
@@ -224,7 +235,7 @@ describe("BodySettingsModal", () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
       renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
 
-      const field = screen.getByLabelText("Line Height");
+      const field = screen.getByLabelText("Body Line Height");
       fireEvent.change(field, { target: { value: "1.2" } });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
@@ -245,7 +256,7 @@ describe("BodySettingsModal", () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
       renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
 
-      fireEvent.change(screen.getByLabelText("Line Height"), {
+      fireEvent.change(screen.getByLabelText("Body Line Height"), {
         target: { value },
       });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -261,7 +272,7 @@ describe("BodySettingsModal", () => {
           onSave={vi.fn().mockResolvedValue(undefined)}
         />,
       );
-      const field = screen.getByLabelText("Line Height");
+      const field = screen.getByLabelText("Body Line Height");
       fireEvent.change(field, { target: { value: "1.7" } });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
       await screen.findByText(LINE_HEIGHT_FLOOR_MESSAGE);
@@ -279,7 +290,7 @@ describe("BodySettingsModal", () => {
           onSave={vi.fn().mockResolvedValue(undefined)}
         />,
       );
-      fireEvent.change(screen.getByLabelText("Line Height"), {
+      fireEvent.change(screen.getByLabelText("Body Line Height"), {
         target: { value: "1.7" },
       });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -287,5 +298,85 @@ describe("BodySettingsModal", () => {
 
       await runAxe(container);
     });
+  });
+
+  describe("stored output per field (FR-14, expectations captured from the pre-change component, green before the swap)", () => {
+    async function saveFrom(
+      initialBody: Record<string, string>,
+      edit: () => void,
+    ): Promise<unknown> {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={initialBody}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+      edit();
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      return onSave.mock.calls[0][0];
+    }
+
+    it("size 18 is stored as 18px", async () => {
+      expect(
+        await saveFrom({}, () =>
+          fireEvent.change(screen.getByLabelText("Body Font Size"), {
+            target: { value: SIZE_INPUT },
+          }),
+        ),
+      ).toEqual({ fontSize: "18px" });
+    });
+
+    it("a stored non-px size is saved unchanged when untouched", async () => {
+      expect(await saveFrom({ fontSize: "1.5rem" }, () => undefined)).toEqual({
+        fontSize: "1.5rem",
+      });
+    });
+
+    it("paragraph spacing is stored as typed", async () => {
+      expect(
+        await saveFrom({}, () =>
+          fireEvent.change(screen.getByLabelText("Body Paragraph Spacing"), {
+            target: { value: "1.2em" },
+          }),
+        ),
+      ).toEqual({ paragraphSpacing: "1.2em" });
+    });
+
+    it("a family chosen from the list is stored as its label", async () => {
+      expect(
+        await saveFrom({}, () =>
+          fireEvent.change(screen.getByLabelText("Body Font Family"), {
+            target: { value: FAMILY_LABEL },
+          }),
+        ),
+      ).toEqual({ fontFamily: "IBM Plex Serif" });
+    });
+
+    it("a typed family name is stored as typed", async () => {
+      expect(await saveFrom({}, () => typeFamily("Garamond"))).toEqual({
+        fontFamily: "Garamond",
+      });
+    });
+  });
+
+  it("shows a stored non-px size as stored and Discard drops a refused typed line height", () => {
+    renderInDialog(
+      <BodySettingsModal
+        initialBody={{ fontSize: "1.5rem" }}
+        closeOnSave={false}
+        onClose={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.getByText("Current value: 1.5rem")).toBeInTheDocument();
+
+    const field = screen.getByLabelText("Body Line Height");
+    fireEvent.change(field, { target: { value: "1.2" } });
+    expect(field).toHaveValue("1.2");
+    fireEvent.click(screen.getByRole("button", { name: /discard changes/i }));
+    expect(screen.getByLabelText("Body Line Height")).toHaveValue("");
   });
 });

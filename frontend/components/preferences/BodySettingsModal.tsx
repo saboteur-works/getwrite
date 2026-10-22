@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import {
-  BODY_FIELD_DEFINITIONS,
   getLineHeightError,
   sanitizeEditorBody,
 } from "../../src/lib/editor-body-settings";
 import { buildFontFamilyValue } from "../../src/lib/fonts/font-family-stack";
-import HeadingStyleField from "./HeadingStyleField";
-import FontFamilyInput from "./FontFamilyInput";
+import TypographyFields, {
+  type TypographyFieldKey,
+} from "../typography/TypographyFields";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
-import Input from "../common/UI/Input/Input";
 
 interface BodySettingsModalProps {
   initialBody?: EditorBodyConfig;
@@ -26,6 +25,19 @@ interface BodySettingsModalProps {
   closeOnSave?: boolean;
 }
 
+const BODY_FIELDS: readonly (keyof EditorBodyConfig)[] = [
+  "fontFamily",
+  "fontSize",
+  "lineHeight",
+  "paragraphSpacing",
+];
+
+function isBodyFieldKey(
+  key: TypographyFieldKey,
+): key is keyof EditorBodyConfig {
+  return (BODY_FIELDS as readonly string[]).includes(key);
+}
+
 export default function BodySettingsModal({
   initialBody,
   onClose,
@@ -35,9 +47,9 @@ export default function BodySettingsModal({
   const [draft, setDraft] = useState<EditorBodyConfig>(initialBody ?? {});
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lineHeightError, setLineHeightError] = useState<string | undefined>(
-    undefined,
-  );
+  // Bumped on Discard so the fields drop any refused text they hold locally.
+  const [resetKey, setResetKey] = useState<number>(0);
+  const fieldsRef = useRef<HTMLDivElement>(null);
   // Embedded in Project Settings (`closeOnSave` false), the secondary button
   // discards this section's unsaved edits and leaves the dialog open; closing
   // the whole dialog from here dropped every other section's unsaved edits
@@ -48,23 +60,25 @@ export default function BodySettingsModal({
 
   const handleDiscard = (): void => {
     setDraft(savedBody);
+    setResetKey((n) => n + 1);
     setErrorMessage(null);
-    setLineHeightError(undefined);
   };
 
   const handleFieldChange = (
     key: keyof EditorBodyConfig,
     value: string,
   ): void => {
-    if (key === "lineHeight") setLineHeightError(undefined);
     setDraft((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async (): Promise<void> => {
-    const refused = getLineHeightError(draft.lineHeight);
-    if (refused) {
-      // Refuse, never clamp: the typed value stays and no request is sent.
-      setLineHeightError(refused);
+    // Refuse, never clamp: the typed value stays and no request is sent. The
+    // shared line-height field keeps a refused typed value to itself (it never
+    // reaches the draft) and shows the linked alert; `aria-invalid` is how
+    // this form learns of it. A refused stored value is caught from the draft.
+    const hasTypedRefusal =
+      fieldsRef.current?.querySelector('[aria-invalid="true"]') != null;
+    if (hasTypedRefusal || getLineHeightError(draft.lineHeight)) {
       setErrorMessage(null);
       return;
     }
@@ -111,50 +125,19 @@ export default function BodySettingsModal({
       </header>
 
       <Card as="section" padding="lg">
-        <div className="grid gap-3 md:grid-cols-2">
-          {BODY_FIELD_DEFINITIONS.map(({ key, label, placeholder }) => {
-            const fieldError =
-              key === "lineHeight" ? lineHeightError : undefined;
-            const errorId = `body-${key}-error`;
-            return (
-              <div key={key} className="flex flex-col gap-1">
-                <HeadingStyleField id={`body-${key}`} label={label}>
-                  {key === "fontFamily" ? (
-                    <FontFamilyInput
-                      id={`body-${key}`}
-                      aria-label={label}
-                      value={draft[key] ?? ""}
-                      placeholder={placeholder}
-                      onChange={(event) =>
-                        handleFieldChange(key, event.target.value)
-                      }
-                    />
-                  ) : (
-                    <Input
-                      id={`body-${key}`}
-                      aria-label={label}
-                      value={draft[key] ?? ""}
-                      placeholder={placeholder}
-                      aria-invalid={fieldError ? true : undefined}
-                      aria-describedby={fieldError ? errorId : undefined}
-                      onChange={(event) =>
-                        handleFieldChange(key, event.target.value)
-                      }
-                    />
-                  )}
-                </HeadingStyleField>
-                {fieldError ? (
-                  <p
-                    id={errorId}
-                    role="alert"
-                    className="text-sm text-gw-secondary"
-                  >
-                    {fieldError}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
+        <div ref={fieldsRef} className="grid gap-3 md:grid-cols-2">
+          <TypographyFields
+            key={resetKey}
+            className="contents"
+            label="Body"
+            idPrefix="body"
+            fields={BODY_FIELDS}
+            values={draft}
+            allowOther
+            onChange={(key, value) => {
+              if (isBodyFieldKey(key)) handleFieldChange(key, value);
+            }}
+          />
 
           <div className="mt-4 border-t border-gw-border pt-4">
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
