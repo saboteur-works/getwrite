@@ -472,3 +472,15 @@ Task 4 absolute values in the Type Manager form were 37.50 (inputs) and are 42.0
 - `pnpm run build-storybook` (which `pnpm test:e2e` runs) failed at the start of this task: Vite/Rollup reported `"fileURLToPath" is not exported by "__vite-browser-external"` for `src/lib/export/CompilePDFDocument.tsx:1` (introduced in Task 21; Task 25 did not run the Storybook build). Minimal change so the build runs: `import nodeUrl from "node:url"` and `nodeUrl.fileURLToPath(url)` (same call, same `file:` branch). Not tested at runtime in a PDF export in this task; Task 21's server `pnpm build` check is re-confirmed below.
 - After the change: `pnpm build` exit 0; `pnpm typecheck` exit 0; `pnpm lint` 392 problems, 0 errors, 392 warnings; Vitest `typographyFields`, `typographyFields.a11y`, `fontFamilySelect`, `bodySettingsModal`, `headingSettingsModal`: 108 passed. Full `pnpm test:e2e`: 227 passed, 1 skipped, 0 failed (Task 1 baseline 222 passed, 1 skipped; difference is the Task 23 and Task 26 specs).
 
+
+## Documentation searches (Task 27)
+
+Searches run from the repo root with `/usr/bin/grep`; results are what was observed.
+
+- `docs/features/` for `font` (case-insensitive, file names): 16 files. Those describing editor fonts: `docs/features/editor/settings.md` (Body Text and Headings Font Family sections, Font Weight note) and `docs/features/editor/headings.md` (field table naming `fontFamily` only; no change needed). The others are older feature-specification folders and `home-network-sharing.md` (a request-kind mention, unrelated). No dedicated typography page exists, so a "Fonts" section was added to `docs/features/editor/settings.md`, and its Font Family and Font Weight rows were updated.
+- `frontend/CLAUDE.md` for `FontFamilyInput|loadGoogleFont|google`: no matches. Not changed.
+- `frontend/components/help/help-content.ts` for `font|domine|typeface`: one match, line 171 (the Project Settings "Editor" tip-card item). Updated to describe the list, Other..., and the toolbar without it.
+- `STYLING.md` for `font|domine|plex`: the font table (lines 117-120) lists IBM Plex Sans Condensed, Sans, Mono and Serif; no change to it is made by this feature. Not changed.
+- Tests: `frontend/tests/helpProjectTypesCopy.test.ts` gained one test for the Editor-tab help text (3 tests pass).
+- `docs/user/` for `font|typeface` (not edited; for the scribe): `docs/user/handbook/write/headings.md` (line 24 lists a free-text field suggesting 17 typefaces including Garamond, Helvetica, Palatino, Tahoma; line 25 says Font Weight is Use default, Normal or Bold), `docs/user/handbook/write/editor-appearance.md` (lines 13 to 15 name font and Font Family fields), `docs/user/handbook/views/timeline.md` (matched `font`; not inspected).
+- Gates (frontend/): `pnpm typecheck` exit 0; `pnpm lint` 392 problems, 0 errors, 392 warnings; `pnpm exec vitest run tests/helpProjectTypesCopy.test.ts` 3 passed.

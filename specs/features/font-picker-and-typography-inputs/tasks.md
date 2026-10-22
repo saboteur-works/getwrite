@@ -267,8 +267,8 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Done when:** the docs page states the fixed list, that "Other..." exists in the settings forms only with the fixed hint and no installed-font detection, that the toolbar control lists only the fixed names and arbitrary names are set in Project Settings or a project type, that the bundled fonts need no network and where the licence file is; the search results (docs, `frontend/CLAUDE.md`, help-content, STYLING.md) are recorded; help-content tests updated and pass. `pnpm typecheck`, `pnpm lint` and `pnpm exec vitest run` on the help-content test pass.
 **Depends on:** 21
 **Estimate:** 2 (S)
-**Notes:** Satisfies FR-20. Wording is a working copy, not owner-reviewed. Handbook pages naming fonts, if any: listed here at completion.
-**Done:** [ ]
+**Notes:** Satisfies FR-20. Wording is a working copy, not owner-reviewed. Handbook pages naming fonts, if any: listed here at completion. At completion: `docs/user/handbook/write/headings.md` (lines 24-25: 17 typefaces, weight Normal/Bold), `docs/user/handbook/write/editor-appearance.md` (lines 13-15), `docs/user/handbook/views/timeline.md` (matched "font"; not inspected). Not edited.
+**Done:** [x]
 
 ### Task 28: FR-19 "after" sizes
 **What:** Build the three outputs on the same commit base plus this feature and record the added bytes next to the Task 2 values.
