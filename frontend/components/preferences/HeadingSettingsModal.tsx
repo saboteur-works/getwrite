@@ -13,6 +13,7 @@ import {
   type EditorHeadingFieldKey,
   type EditorHeadingMap,
 } from "../../src/lib/editor-heading-settings";
+import { buildFontFamilyValue } from "../../src/lib/fonts/font-family-stack";
 import HeadingStyleField from "./HeadingStyleField";
 import FontFamilyInput from "./FontFamilyInput";
 import Button from "../common/UI/Button/Button";
@@ -342,7 +343,7 @@ export default function HeadingSettingsModal({
                   aria-label={`${label} preview`}
                   className="mt-2 leading-snug"
                   style={{
-                    fontFamily: heading.fontFamily || undefined,
+                    fontFamily: buildFontFamilyValue(heading.fontFamily),
                     fontSize: heading.fontSize || undefined,
                     fontWeight: heading.fontWeight || undefined,
                     letterSpacing: heading.letterSpacing || undefined,

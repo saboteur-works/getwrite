@@ -139,7 +139,10 @@ describe("BodySettingsModal", () => {
       );
 
       const preview = screen.getByLabelText("Body text preview") as HTMLElement;
-      expect(preview.style.fontFamily).toBe("Georgia");
+      // Feature 91 rule: previews use buildFontFamilyValue (quoted + fallback).
+      expect(preview.style.fontFamily).toBe(
+        '"Georgia", "IBM Plex Serif", serif',
+      );
       expect(preview.style.fontSize).toBe("18px");
       expect(preview.style.lineHeight).toBe("1.9");
     });
@@ -157,7 +160,9 @@ describe("BodySettingsModal", () => {
       });
 
       const preview = screen.getByLabelText("Body text preview") as HTMLElement;
-      expect(preview.style.fontFamily).toBe("Merriweather");
+      expect(preview.style.fontFamily).toBe(
+        '"Merriweather", "IBM Plex Serif", serif',
+      );
     });
 
     it("preview updates when line height field changes", () => {

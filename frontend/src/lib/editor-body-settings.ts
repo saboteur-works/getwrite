@@ -1,3 +1,4 @@
+import { buildFontFamilyValue } from "./fonts/font-family-stack";
 import type { EditorBodyConfig } from "./models/types";
 
 export type { EditorBodyConfig };
@@ -29,6 +30,21 @@ export const BODY_FIELD_DEFINITIONS: EditorBodyFieldDefinition[] = [
     placeholder: "e.g. 1em",
   },
 ];
+
+/**
+ * CSS custom properties for the editor body. The family goes through
+ * `buildFontFamilyValue` (Feature 91, FR-9); an empty family sets nothing.
+ */
+export function buildEditorBodyStyleVariables(
+  body: EditorBodyConfig | undefined,
+): Record<string, string | undefined> {
+  return {
+    "--gw-body-font-family": buildFontFamilyValue(body?.fontFamily),
+    "--gw-body-font-size": body?.fontSize,
+    "--gw-body-line-height": body?.lineHeight,
+    "--gw-paragraph-spacing": body?.paragraphSpacing,
+  };
+}
 
 /** The one message shown and returned for every refused project line height. */
 export const LINE_HEIGHT_FLOOR_MESSAGE =

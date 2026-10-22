@@ -7,6 +7,7 @@ import {
   getLineHeightError,
   sanitizeEditorBody,
 } from "../../src/lib/editor-body-settings";
+import { buildFontFamilyValue } from "../../src/lib/fonts/font-family-stack";
 import HeadingStyleField from "./HeadingStyleField";
 import FontFamilyInput from "./FontFamilyInput";
 import Button from "../common/UI/Button/Button";
@@ -163,7 +164,7 @@ export default function BodySettingsModal({
               aria-label="Body text preview"
               className="mt-2 text-gw-ink"
               style={{
-                fontFamily: draft.fontFamily || undefined,
+                fontFamily: buildFontFamilyValue(draft.fontFamily),
                 fontSize: draft.fontSize || undefined,
                 lineHeight: draft.lineHeight || undefined,
               }}

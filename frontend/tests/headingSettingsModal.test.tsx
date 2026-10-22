@@ -237,6 +237,21 @@ describe("HeadingSettingsModal", () => {
       expect(preview.style.fontSize).toBe("40px");
     });
 
+    it("preview uses the same family value as the editor (FR-9)", () => {
+      renderInDialog(
+        <HeadingSettingsModal
+          initialHeadings={{ h1: { fontFamily: "Source Serif 4" } }}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
+
+      const preview = screen.getByLabelText("H1 preview") as HTMLElement;
+      expect(preview.style.fontFamily).toBe(
+        '"Source Serif 4", "IBM Plex Serif", serif',
+      );
+    });
+
     it("preview updates when font size field changes", () => {
       renderInDialog(
         <HeadingSettingsModal
