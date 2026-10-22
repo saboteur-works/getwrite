@@ -9,7 +9,7 @@
  * mutation semantics to callbacks supplied by the parent orchestrator.
  */
 
-import { useId } from "react";
+import { useId, type ChangeEvent } from "react";
 import Button from "../common/UI/Button/Button";
 import Input from "../common/UI/Input/Input";
 import Textarea from "../common/UI/Textarea/Textarea";
@@ -22,11 +22,46 @@ import type {
 } from "../../src/types/project-types";
 import type { EditorHeading } from "../../src/lib/models/types";
 import { getLineHeightError } from "../../src/lib/editor-body-settings";
+import TypographyFields, {
+  type TypographyFieldKey,
+} from "../typography/TypographyFields";
 
 const HEADING_LEVELS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
 type HeadingLevel = (typeof HEADING_LEVELS)[number];
 
-const FONT_WEIGHT_OPTIONS = ["normal", "bold", "lighter", "bolder"] as const;
+const HEADING_FIELDS: readonly TypographyFieldKey[] = [
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "letterSpacing",
+  "color",
+];
+const BODY_FIELDS: readonly TypographyFieldKey[] = [
+  "fontFamily",
+  "fontSize",
+  "lineHeight",
+  "paragraphSpacing",
+];
+
+type HeadingFieldKey =
+  | "fontFamily"
+  | "fontSize"
+  | "fontWeight"
+  | "letterSpacing"
+  | "color";
+type BodyFieldKey =
+  | "fontFamily"
+  | "fontSize"
+  | "lineHeight"
+  | "paragraphSpacing";
+
+function isHeadingField(key: TypographyFieldKey): key is HeadingFieldKey {
+  return (HEADING_FIELDS as readonly string[]).includes(key);
+}
+
+function isBodyField(key: TypographyFieldKey): key is BodyFieldKey {
+  return (BODY_FIELDS as readonly string[]).includes(key);
+}
 
 const METADATA_INPUT_TYPES = ["text", "multiselect", "autocomplete"] as const;
 type MetadataInputType = (typeof METADATA_INPUT_TYPES)[number];
@@ -147,6 +182,19 @@ export default function ProjectTypeEditorForm({
         body: { ...definition.editorConfig?.body, ...updates },
       },
     });
+  };
+
+  const handleBodyLineHeightRefusal = (
+    event: ChangeEvent<HTMLElement>,
+  ): void => {
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement &&
+      target.id === "type-body-lineHeight" &&
+      getLineHeightError(target.value)
+    ) {
+      patchBody({ lineHeight: target.value });
+    }
   };
 
   return (
@@ -478,113 +526,43 @@ export default function ProjectTypeEditorForm({
                 <p className="project-type-editor-subsection-title">
                   {level.toUpperCase()}
                 </p>
-                <div className="project-type-editor-form-grid project-type-editor-form-grid--headings-row">
-                  <LabeledInput
-                    label="Font Family"
-                    value={heading?.fontFamily ?? ""}
-                    placeholder="Georgia, serif"
-                    onChange={(value) =>
-                      patchHeading(level, { fontFamily: value || undefined })
+                <TypographyFields
+                  className="project-type-editor-form-grid project-type-editor-form-grid--headings-row"
+                  label={level.toUpperCase()}
+                  idPrefix={`type-${level}`}
+                  fields={HEADING_FIELDS}
+                  values={heading ?? {}}
+                  allowOther
+                  onChange={(key, value) => {
+                    if (isHeadingField(key)) {
+                      patchHeading(level, { [key]: value || undefined });
                     }
-                  />
-                  <LabeledNumberInput
-                    label="Size (px)"
-                    value={
-                      heading?.fontSize
-                        ? heading.fontSize.replace("px", "")
-                        : ""
-                    }
-                    placeholder="24"
-                    onChange={(value) => {
-                      const n = parseInt(value, 10);
-                      patchHeading(level, {
-                        fontSize: isNaN(n) ? undefined : `${n}px`,
-                      });
-                    }}
-                  />
-                  <label className="project-type-editor-field">
-                    <span className="project-type-editor-field-label">
-                      Weight
-                    </span>
-                    <select
-                      value={heading?.fontWeight ?? ""}
-                      onChange={(e) =>
-                        patchHeading(level, {
-                          fontWeight: e.target.value || undefined,
-                        })
-                      }
-                      className="project-type-editor-field-control"
-                    >
-                      <option value="">—</option>
-                      {FONT_WEIGHT_OPTIONS.map((w) => (
-                        <option key={w} value={w}>
-                          {w}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <LabeledInput
-                    label="Letter Spacing"
-                    value={heading?.letterSpacing ?? ""}
-                    placeholder="0.05em"
-                    onChange={(value) =>
-                      patchHeading(level, { letterSpacing: value || undefined })
-                    }
-                  />
-                  <LabeledColorInput
-                    label="Color"
-                    value={heading?.color ?? ""}
-                    onChange={(value) =>
-                      patchHeading(level, { color: value || undefined })
-                    }
-                  />
-                </div>
+                  }}
+                />
               </div>
             );
           })}
 
           <p className="project-type-editor-subsection-title">Body</p>
           <div className="project-type-editor-card">
-            <div className="project-type-editor-form-grid project-type-editor-form-grid--four-column">
-              <LabeledInput
-                label="Font Family"
-                value={definition.editorConfig?.body?.fontFamily ?? ""}
-                placeholder="IBM Plex Serif"
-                onChange={(value) =>
-                  patchBody({ fontFamily: value || undefined })
-                }
-              />
-              <LabeledNumberInput
-                label="Size (px)"
-                value={
-                  definition.editorConfig?.body?.fontSize
-                    ? definition.editorConfig.body.fontSize.replace("px", "")
-                    : ""
-                }
-                placeholder="15"
-                onChange={(value) => {
-                  const n = parseInt(value, 10);
-                  patchBody({ fontSize: isNaN(n) ? undefined : `${n}px` });
+            {/* TypographyFields keeps a refused line height to itself and never
+                reports it, so the draft would still hold the last accepted
+                value and Save would store that instead of the typed text. The
+                bubbled change event is how this form sees the refused text:
+                it puts it in the draft, where validateDraft refuses Save. */}
+            <div onChange={handleBodyLineHeightRefusal}>
+              <TypographyFields
+                className="project-type-editor-form-grid project-type-editor-form-grid--four-column"
+                label="Body"
+                idPrefix="type-body"
+                fields={BODY_FIELDS}
+                values={definition.editorConfig?.body ?? {}}
+                allowOther
+                onChange={(key, value) => {
+                  if (isBodyField(key)) {
+                    patchBody({ [key]: value || undefined });
+                  }
                 }}
-              />
-              <LabeledInput
-                label="Line Height"
-                value={definition.editorConfig?.body?.lineHeight ?? ""}
-                placeholder="1.8"
-                error={getLineHeightError(
-                  definition.editorConfig?.body?.lineHeight,
-                )}
-                onChange={(value) =>
-                  patchBody({ lineHeight: value || undefined })
-                }
-              />
-              <LabeledInput
-                label="Paragraph Spacing"
-                value={definition.editorConfig?.body?.paragraphSpacing ?? ""}
-                placeholder="1em"
-                onChange={(value) =>
-                  patchBody({ paragraphSpacing: value || undefined })
-                }
               />
             </div>
           </div>
@@ -774,36 +752,6 @@ function LabeledSelect({
           </option>
         ))}
       </select>
-    </label>
-  );
-}
-
-interface LabeledColorInputProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function LabeledColorInput({
-  label,
-  value,
-  onChange,
-}: LabeledColorInputProps): JSX.Element {
-  return (
-    <label className="project-type-editor-field">
-      <span className="project-type-editor-field-label">{label}</span>
-      <div className="project-type-editor-color-row">
-        <input
-          type="color"
-          value={
-            value ||
-            "#000000" /* GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors */
-          }
-          onChange={(e) => onChange(e.target.value)}
-          className="project-type-editor-color-input"
-        />
-        <span className="project-type-editor-color-value">{value || ""}</span>
-      </div>
     </label>
   );
 }

@@ -109,6 +109,30 @@ export const LineHeightBelowFloor: Story = {
   },
 };
 
+/**
+ * Stored values the shared typography fields show without rewriting them: a
+ * keyword weight ("bold" shows as 700), the Plex Serif 500 weight, and a font
+ * name that is not in the list ("Garamond" shows under "Other...").
+ */
+export const StoredTypographyValues: Story = {
+  render: Interactive.render,
+  args: {
+    ...Interactive.args,
+    definition: {
+      ...baseDefinition,
+      editorConfig: {
+        headings: {
+          h1: { fontFamily: "IBM Plex Serif", fontWeight: "bold" },
+          h2: { fontFamily: "IBM Plex Serif", fontWeight: "500" },
+          h3: { fontFamily: "Garamond", fontSize: "24px" },
+        },
+        body: { fontFamily: "IBM Plex Serif", lineHeight: "1.8" },
+      },
+    },
+  },
+  parameters: { a11y: { test: "error" } },
+};
+
 export const SavedIdReadOnlyWithRefusals: Story = {
   args: {
     ...Interactive.args,
