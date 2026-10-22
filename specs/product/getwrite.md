@@ -137,6 +137,7 @@ with the app without hand-rewriting it (see OQ-90).
 ## User Stories
 
 **Scrivener-frustrated novelists**
+
 - US-1: As a novelist, I want to scaffold a new project from a declarative
   project type so that I get a working folder structure immediately. [Shipped]
 - US-2: As a novelist, I want to compile a selected subtree of my project
@@ -157,6 +158,7 @@ with the app without hand-rewriting it (see OQ-90).
   its structure. [Later]
 
 **Plain-file-ownership writers**
+
 - US-5: As a plain-file writer, I want to have every resource stored as an
   inspectable file with a sidecar metadata file so that I can read or script
   my project outside GetWrite. [Shipped]
@@ -173,6 +175,7 @@ with the app without hand-rewriting it (see OQ-90).
   leaving the view. [Shipped]
 
 **Working writers on deadline**
+
 - US-9: As a writer on deadline, I want to autosave into a single canonical
   revision while retaining history so that I never lose work and can always
   see what changed. [Shipped]
@@ -242,6 +245,7 @@ with the app without hand-rewriting it (see OQ-90).
   part 5.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
+
 - US-29: As a maintainer of a repository that generates GetWrite's online user
   documentation, I want to take the handbook content from the GetWrite
   repository and publish it without rewriting it by hand, so that the online
@@ -364,10 +368,11 @@ with the app without hand-rewriting it (see OQ-90).
   via a type selector and file input in the create-resource flow, plus
   editor drag-and-drop; both feed a dedicated media viewer. [US-3]
 - FR-18: The product MUST support project-scoped tags that can be created,
-  assigned to and removed from resources, and deleted, with management UI
-  in the sidebar and a tag manager modal; tags cannot be renamed at any
-  layer (model or UI) — renaming a tag requires deleting and recreating it,
-  which drops its existing resource assignments. [US-7]
+  edited (name and colour, including clearing the colour), assigned to and
+  removed from resources, and deleted, with management UI in the sidebar
+  and a tag manager modal. An edited tag keeps its id, so its resource
+  assignments are kept. Creating or editing a tag refuses a blank name or
+  another tag's name (trimmed, ignoring capitals). [US-7]
 - FR-19: Users MUST be able to save, create from, duplicate, and list
   resource templates via the CLI, producing reusable scaffolds for new
   resources; this capability is CLI-and-model-only — there is no UI and no
@@ -545,7 +550,7 @@ with the app without hand-rewriting it (see OQ-90).
   Shipped: merged to main 2026-09-12 as `f12745de` ("Merge branch
   'feat/scrivener-cli-importer'"). The command is
   `getwrite-cli project import-scrivener <scrivPath> [projectRoot] [-n
-  <name>]`; its entry point is
+<name>]`; its entry point is
   `frontend/src/lib/models/scrivener/import-scrivener-project.ts`
   (`importScrivenerProject`). Its feature spec,
   `specs/features/scrivener-cli-importer.md`, is the authoritative record of
@@ -1798,6 +1803,7 @@ with the app without hand-rewriting it (see OQ-90).
   `lockSession` discards the reference rather than leaving a locked object
   in place; both are unverified and this spec does not assert intent behind
   either.
+
 - Progress and diagnostics (FR-46 to FR-50) must have no AI or network
   dependency. Red is reserved for canonical and position state and must not
   be used for goal progress or diagnostic flags; heuristic flags (for example
@@ -2283,7 +2289,7 @@ way anything ever leaves trash.
 **Evidence:** `frontend/src/lib/models/trash.ts`'s `purgeResource` takes one
 `resourceId` at a time; no `purgeAll`/`emptyTrash` function exists.
 `pruneExecutor.ts` (the one existing automatic-deletion mechanism in the
-product) prunes old non-canonical *revisions*, not trashed resources — there
+product) prunes old non-canonical _revisions_, not trashed resources — there
 is no analogous auto-purge job for `.trash/` anywhere in the codebase.
 
 **OQ-26: What does the product promise when a writer deletes a folder — are

@@ -162,6 +162,26 @@ describe("native metadata-schema transport — in-process backend reuses the sha
     fetchMock.restore();
   });
 
+  it("renameGroup updates the group label with no HTTP", async () => {
+    const fetchMock = guardAgainstFetch();
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    await seedProject(fs, projectId, baseSchema());
+
+    const transport = createNativeMetadataSchemaTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const schema = await transport.renameGroup(
+      { projectId },
+      GROUP_ID,
+      "Renamed Group",
+    );
+    expect(schema.groups[0]!.label).toBe("Renamed Group");
+
+    fetchMock.restore();
+  });
+
   it("updateFieldAppliesTo stores the restriction, rejects a built-in key, with no HTTP", async () => {
     const fetchMock = guardAgainstFetch();
     const fs = createFakeCapacitorFilesystem();

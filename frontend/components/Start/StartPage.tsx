@@ -10,7 +10,7 @@
  * and local optimistic updates for create/rename/delete interactions.
  */
 import { useEffect, useMemo, useState } from "react";
-import { FolderPlus, Plus, FolderOpen, Import, Settings } from "lucide-react";
+import { FolderPlus, Plus, FolderOpen, Import } from "lucide-react";
 import Card from "../common/UI/Card/Card";
 import type {
   Project as CanonicalProject,
@@ -26,7 +26,6 @@ import type { UnusableProjectReason } from "../../src/lib/models/unusable-projec
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import ImportScrivenerDialog from "./ImportScrivenerDialog";
 import ImportDocxDialog from "./ImportDocxDialog";
-import AppSettingsDialog from "../AppSettings/AppSettingsDialog";
 import { toastService } from "../../src/lib/toast-service";
 import { downloadFile } from "../../src/lib/compile/download-file";
 import {
@@ -341,7 +340,6 @@ export default function StartPage({
   /** Controls the DOCX import dialog's visibility. */
   const [isDocxImportDialogOpen, setIsDocxImportDialogOpen] =
     useState<boolean>(false);
-  const [isAppSettingsOpen, setIsAppSettingsOpen] = useState<boolean>(false);
   /**
    * Whether the user chose to carry on without unlocking this session.
    *
@@ -541,7 +539,7 @@ export default function StartPage({
   return (
     <section
       aria-labelledby="start-projects"
-      className="min-h-full text-gw-primary bg-gw-chrome px-6 py-8"
+      className="shrink-0 min-h-full text-gw-primary bg-gw-chrome px-6 pt-8 pb-24"
     >
       {isUnlockPromptOpen ? (
         <UnlockModal
@@ -598,14 +596,6 @@ export default function StartPage({
           }}
         />
       ) : null}
-
-      {/* Reachable with no login/account required (FR-14) — never gated on
-          `desktopBridge`/`isHostedAuthActive()`, unlike the import dialogs
-          above. */}
-      <AppSettingsDialog
-        isOpen={isAppSettingsOpen}
-        onClose={() => setIsAppSettingsOpen(false)}
-      />
 
       <CompilePreviewModal
         isOpen={compileTargetProjectId !== null}
@@ -731,7 +721,11 @@ export default function StartPage({
 
       <div className=" mx-auto">
         <div className="bg-gw-chrome start-page-fade-in px-6 py-8 lg:px-10 lg:py-10">
-          <SharingStatus />
+          {/* Space below the sharing banner; `empty:hidden` drops the
+              wrapper when the banner renders nothing (sharing off, web). */}
+          <div className="mb-6 empty:hidden">
+            <SharingStatus />
+          </div>
           <div className="start-page-hero-grid">
             <div className="flex flex-col">
               <div className="inline-flex items-center gap-2 font-mono text-gw-micro tracking-label uppercase text-gw-secondary border border-gw-border px-2 py-1 w-fit">
@@ -805,7 +799,7 @@ export default function StartPage({
                   </Card>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col items-start gap-3">
                   <Button
                     variant="default"
                     onClick={() => setIsModalOpen(true)}
@@ -815,38 +809,24 @@ export default function StartPage({
                   </Button>
 
                   {desktopBridge ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsImportDialogOpen(true)}
-                      title="Import from Scrivener"
-                      aria-label="Import from Scrivener"
-                    >
-                      <Import size={16} aria-hidden="true" />
-                      Import
-                    </Button>
-                  ) : null}
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setIsImportDialogOpen(true)}
+                      >
+                        <Import size={16} aria-hidden="true" />
+                        Import Scrivener 3 Project
+                      </Button>
 
-                  {desktopBridge ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsDocxImportDialogOpen(true)}
-                      title="Import Word Document"
-                      aria-label="Import Word Document"
-                    >
-                      <Import size={16} aria-hidden="true" />
-                      Import Word Document
-                    </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setIsDocxImportDialogOpen(true)}
+                      >
+                        <Import size={16} aria-hidden="true" />
+                        Import Word Document
+                      </Button>
+                    </div>
                   ) : null}
-
-                  <Button
-                    variant="secondary"
-                    onClick={() => setIsAppSettingsOpen(true)}
-                    title="App Settings"
-                    aria-label="App Settings"
-                  >
-                    <Settings size={16} aria-hidden="true" />
-                    App Settings
-                  </Button>
                 </div>
               </div>
             </aside>

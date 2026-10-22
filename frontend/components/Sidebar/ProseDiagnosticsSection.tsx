@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import useAppSelector from "../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import {
@@ -9,6 +9,12 @@ import {
 } from "../../src/lib/api/prose-diagnostics";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import ProseDiagnosticsDetailDialog from "./ProseDiagnosticsDetailDialog";
+import LabeledField from "./controls/LabeledField";
+import Switch from "../common/UI/Switch";
+import {
+  setDialogueHighlightSettings,
+  useDialogueHighlightSettings,
+} from "../Editor/dialogue-highlight-store";
 import type { TextResource } from "../../src/lib/models/types";
 
 // ---------------------------------------------------------------------------
@@ -81,6 +87,8 @@ export default function ProseDiagnosticsSection({
   const [state, setState] = useState<DiagnosticsState>({ status: "loading" });
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const showDetailButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogueHighlight = useDialogueHighlightSettings();
+  const dialogueControlsId = useId();
 
   const resourceId = resource.id;
   const resourceUpdatedAt = resource.updatedAt;
@@ -134,29 +142,88 @@ export default function ProseDiagnosticsSection({
         </p>
       )}
       {state.status === "ready" && (
-        <div className="flex flex-col gap-2 mb-4">
-          <p className="text-gw-label text-gw-primary">
-            {DIALOGUE_RATIO_LABEL}:{" "}
-            {formatDialogueRatio(state.summary.dialogueRatio)}
-          </p>
-          <p className="text-gw-label text-gw-primary">
-            {AVERAGE_SENTENCE_LENGTH_LABEL}:{" "}
-            {formatAverageSentenceLength(state.summary.averageSentenceLength)}
-          </p>
-          <p className="text-gw-label text-gw-primary">
-            {TOP_REPEATED_WORDS_LABEL}:{" "}
-            {formatTopRepeatedWords(state.summary.topRepeatedWords)}
-          </p>
+        <div className="flex flex-col gap-3 mb-3">
+          <LabeledField label={DIALOGUE_RATIO_LABEL}>
+            <p className="mt-1 text-gw-label text-gw-primary">
+              {formatDialogueRatio(state.summary.dialogueRatio)}
+            </p>
+          </LabeledField>
+          <LabeledField label={AVERAGE_SENTENCE_LENGTH_LABEL}>
+            <p className="mt-1 text-gw-label text-gw-primary">
+              {formatAverageSentenceLength(state.summary.averageSentenceLength)}
+            </p>
+          </LabeledField>
+          <LabeledField label={TOP_REPEATED_WORDS_LABEL}>
+            <p className="mt-1 text-gw-label text-gw-primary">
+              {formatTopRepeatedWords(state.summary.topRepeatedWords)}
+            </p>
+          </LabeledField>
         </div>
       )}
       <button
         ref={showDetailButtonRef}
         type="button"
         onClick={handleShowDetail}
-        className="text-gw-label text-gw-secondary hover:text-gw-primary transition-colors duration-150"
+        className="py-1 text-gw-label font-mono uppercase tracking-label text-gw-secondary hover:text-gw-primary transition-colors duration-150"
       >
         {SHOW_DETAIL_LABEL}
       </button>
+      {/* Session-only: the highlight settings live in memory for this window
+          (dialogue-highlight-store.ts) and are never saved. */}
+      <div className="mt-3 flex flex-col gap-2 border-t border-gw-border pt-3">
+        <div className="flex items-center gap-3">
+          <Switch
+            id={`${dialogueControlsId}-switch`}
+            checked={dialogueHighlight.isEnabled}
+            onChange={(e) =>
+              setDialogueHighlightSettings({ isEnabled: e.target.checked })
+            }
+          />
+          <label
+            htmlFor={`${dialogueControlsId}-switch`}
+            className="text-gw-small text-gw-primary"
+          >
+            Highlight dialogue
+          </label>
+        </div>
+        <fieldset className="flex flex-col gap-1">
+          <legend className="text-gw-micro font-medium font-mono uppercase tracking-label text-brand-mid">
+            Dialogue quotes
+          </legend>
+          {/* Styled like the User Preferences colour-mode choice (bordered
+              buttons, the chosen one raised), but still a native radio group
+              underneath, so arrow keys and screen readers work as before. */}
+          <div className="flex gap-2">
+            {(
+              [
+                ["double", "Double “ ”"],
+                ["single", "Single ‘ ’"],
+              ] as const
+            ).map(([style, styleLabel]) => (
+              <label
+                key={style}
+                className="cursor-pointer rounded-md border border-gw-border bg-transparent px-2 py-1 text-gw-label font-medium text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 has-checked:border-gw-border-md has-checked:bg-gw-chrome2 has-checked:text-gw-primary has-focus-visible:ring-1 has-focus-visible:ring-gw-secondary"
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={`${dialogueControlsId}-quotes`}
+                  value={style}
+                  checked={dialogueHighlight.quoteStyle === style}
+                  onChange={() =>
+                    setDialogueHighlightSettings({ quoteStyle: style })
+                  }
+                />
+                {styleLabel}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="text-gw-label text-gw-secondary">
+          Highlights quoted speech in the editor for this window. The dialogue
+          ratio counts double quotes.
+        </p>
+      </div>
       {projectId && (
         <ProseDiagnosticsDetailDialog
           isOpen={isDetailOpen}

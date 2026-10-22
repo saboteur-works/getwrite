@@ -42,8 +42,10 @@ import {
   deleteTagCore,
   listTagAssignmentsCore,
   listTagsCore,
+  updateTagCore,
 } from "../../lib/models/tags-crud-core";
-import type { TagsTransport } from "../../lib/api/tags";
+import { TagRefusedError } from "../../lib/models/tags";
+import { TagChangeRefusedError, type TagsTransport } from "../../lib/api/tags";
 
 /**
  * Builds the in-process tags transport for a native build.
@@ -88,15 +90,38 @@ export function createNativeTagsTransport(
     // now that it rejects rather than swallowing. Catching here would put
     // native back in the state the web path was just fixed out of: a write
     // that failed reported as one that succeeded.
+    // A refusal is re-thrown as the client-side error class, matching what
+    // the HTTP transport throws for the route's 400.
     async create(projectId, name, color) {
       await run(async () => {
-        await createTagCore(projectId, name, color);
+        try {
+          await createTagCore(projectId, name, color);
+        } catch (error) {
+          if (error instanceof TagRefusedError) {
+            throw new TagChangeRefusedError(error.message);
+          }
+          throw error;
+        }
       });
     },
 
     async remove(projectId, tagId) {
       await run(async () => {
         await deleteTagCore(projectId, tagId);
+      });
+    },
+
+    // As in create: a refusal becomes the client-side error class.
+    async update(projectId, tagId, changes) {
+      return run(async () => {
+        try {
+          return await updateTagCore(projectId, tagId, changes);
+        } catch (error) {
+          if (error instanceof TagRefusedError) {
+            throw new TagChangeRefusedError(error.message);
+          }
+          throw error;
+        }
       });
     },
 

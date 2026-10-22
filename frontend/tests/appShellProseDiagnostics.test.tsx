@@ -114,14 +114,14 @@ describe("AppShell prose diagnostics wiring (Feature 62, Task 9)", () => {
     expect(calledResourceId).toBe(resource.id);
 
     expect(
-      await screen.findByText(/Dialogue ratio:\s*42%/),
-    ).toBeInTheDocument();
+      await screen.findByRole("group", { name: "Dialogue ratio" }),
+    ).toHaveTextContent("42%");
     expect(
-      await screen.findByText(/Average sentence length:\s*12\.3/),
-    ).toBeInTheDocument();
+      screen.getByRole("group", { name: "Average sentence length" }),
+    ).toHaveTextContent("12.3");
     expect(
-      await screen.findByText(/Top repeated words:\s*the \(7\)/),
-    ).toBeInTheDocument();
+      screen.getByRole("group", { name: "Top repeated words" }),
+    ).toHaveTextContent("the (7)");
   });
 
   it("shows the loading state before the mocked transport resolves", async () => {

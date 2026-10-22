@@ -9,6 +9,7 @@ import { createProject } from "../../src/lib/models/project";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
 import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
 import { createNativeTagsTransport } from "../../src/store/transport/native-tags-backend";
+import { TagChangeRefusedError } from "../../src/lib/api/tags";
 
 const PROJECTS_DIR = "/projects";
 
@@ -139,5 +140,47 @@ describe("native tags transport — in-process backend reuses the shared tags CR
     await expect(transport.listOrThrow(projectId)).resolves.toHaveLength(1);
     await expect(transport.listOrThrow("not-a-uuid")).rejects.toThrow();
     await expect(transport.list("not-a-uuid")).resolves.toEqual([]);
+  });
+
+  it("update renames and recolours a tag, and a refusal arrives as TagChangeRefusedError", async () => {
+    const fetchMock = guardAgainstFetch();
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeTagsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    await transport.create(projectId, "Key Event");
+    await transport.create(projectId, "Draft", "#ff0000");
+    const draft = (await transport.list(projectId)).find(
+      (t) => t.name === "Draft",
+    )!;
+
+    await expect(
+      transport.update(projectId, draft.id, { name: "First draft" }),
+    ).resolves.toEqual({ id: draft.id, name: "First draft" });
+
+    const refused = transport.update(projectId, draft.id, {
+      name: "KEY EVENT",
+    });
+    await expect(refused).rejects.toBeInstanceOf(TagChangeRefusedError);
+    await expect(refused).rejects.toThrow(/already exists/);
+
+    fetchMock.restore();
+  });
+
+  it("create refuses an existing tag's name as TagChangeRefusedError", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeTagsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    await transport.create(projectId, "Draft");
+
+    const refused = transport.create(projectId, " DRAFT ");
+
+    await expect(refused).rejects.toBeInstanceOf(TagChangeRefusedError);
+    expect(await transport.list(projectId)).toHaveLength(1);
   });
 });

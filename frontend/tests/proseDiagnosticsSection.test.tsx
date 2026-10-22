@@ -1,12 +1,17 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import ProseDiagnosticsSection from "../components/Sidebar/ProseDiagnosticsSection";
 import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { createTextResource } from "../src/lib/models/resource";
 import type { ProseDiagnosticsSummary } from "../src/lib/api/prose-diagnostics";
+import userEvent from "@testing-library/user-event";
+import {
+  getDialogueHighlightSettings,
+  resetDialogueHighlightSettings,
+} from "../components/Editor/dialogue-highlight-store";
 
 const PROJECT_PATH = "/tmp/test-project";
 const PROJECT_ID = "proj-diagnostics-1";
@@ -70,13 +75,19 @@ describe("ProseDiagnosticsSection", () => {
       </Provider>,
     );
 
-    expect(await screen.findByText(/dialogue ratio/i)).toBeInTheDocument();
-    expect(screen.getByText(/25%/)).toBeInTheDocument();
-    expect(screen.getByText(/average sentence length/i)).toBeInTheDocument();
-    expect(screen.getByText(/14\.2/)).toBeInTheDocument();
-    expect(screen.getByText(/top repeated words/i)).toBeInTheDocument();
-    expect(screen.getByText(/the \(40\)/)).toBeInTheDocument();
-    expect(screen.getByText(/and \(22\)/)).toBeInTheDocument();
+    // Each figure is laid out like the other sidebar fields: the label above
+    // its value (LabeledField), not "Label: value" run together in one line.
+    const ratio = await screen.findByRole("group", { name: "Dialogue ratio" });
+    expect(within(ratio).getByText("25%")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Average sentence length" }),
+      ).getByText(/14\.2/),
+    ).toBeInTheDocument();
+    const words = screen.getByRole("group", { name: "Top repeated words" });
+    expect(within(words).getByText(/the \(40\)/)).toBeInTheDocument();
+    expect(within(words).getByText(/and \(22\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/dialogue ratio:/i)).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -209,7 +220,9 @@ describe("ProseDiagnosticsSection", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/couldn't load/i);
     // Not the ready state's zero-metrics rendering.
-    expect(screen.queryByText(/dialogue ratio/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Dialogue ratio" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -228,10 +241,72 @@ describe("ProseDiagnosticsSection", () => {
       </Provider>,
     );
 
-    expect(await screen.findByText(/dialogue ratio/i)).toBeInTheDocument();
-    expect(screen.getByText(/dialogue ratio:\s*0%/i)).toBeInTheDocument();
-    expect(screen.getByText(/top repeated words:\s*none/i)).toBeInTheDocument();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Dialogue ratio" }),
+      ).getByText("0%"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Top repeated words" }),
+      ).getByText("None"),
+    ).toBeInTheDocument();
     // Distinguishable from the error state: no alert role anywhere.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  describe("dialogue highlight controls", () => {
+    function renderSection() {
+      vi.mocked(getProseDiagnosticsOrThrow).mockImplementation(
+        () => new Promise(() => {}),
+      );
+      render(
+        <Provider store={setupStore()}>
+          <ProseDiagnosticsSection
+            resource={createTextResource({ name: "Chapter One" })}
+          />
+        </Provider>,
+      );
+    }
+
+    afterEach(() => resetDialogueHighlightSettings());
+
+    it("starts off, with double quotes chosen", () => {
+      renderSection();
+
+      expect(
+        screen.getByRole("switch", { name: "Highlight dialogue" }),
+      ).not.toBeChecked();
+      expect(screen.getByRole("radio", { name: /Double/ })).toBeChecked();
+    });
+
+    it("turns the highlight on for this window", async () => {
+      renderSection();
+
+      await userEvent.click(
+        screen.getByRole("switch", { name: "Highlight dialogue" }),
+      );
+
+      expect(getDialogueHighlightSettings().isEnabled).toBe(true);
+      expect(
+        screen.getByRole("switch", { name: "Highlight dialogue" }),
+      ).toBeChecked();
+    });
+
+    it("switches the highlight to single quotes", async () => {
+      renderSection();
+
+      await userEvent.click(screen.getByRole("radio", { name: /Single/ }));
+
+      expect(getDialogueHighlightSettings().quoteStyle).toBe("single");
+    });
+
+    it("says the ratio still counts double quotes", () => {
+      renderSection();
+
+      expect(
+        screen.getByText(/The dialogue ratio counts double quotes/),
+      ).toBeInTheDocument();
+    });
   });
 });

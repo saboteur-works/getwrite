@@ -482,16 +482,20 @@ export default function TrashView({
 
   return (
     <div className={className} data-testid="trash-view">
-      <h2 className="text-gw-h2 font-semibold text-gw-secondary">Trash</h2>
+      <h2 className="mb-4 text-gw-h2 font-semibold text-gw-secondary">Trash</h2>
 
       {isLoading && (
-        <p className="text-gw-nano text-gw-secondary" role="status">
+        <p className="mb-3 text-gw-small text-gw-secondary" role="status">
           Loading Trash&hellip;
         </p>
       )}
 
       {error && (
-        <p role="alert" data-testid="trash-error">
+        <p
+          role="alert"
+          data-testid="trash-error"
+          className="mb-3 text-gw-small font-medium text-gw-primary"
+        >
           {error}
         </p>
       )}
@@ -503,17 +507,29 @@ export default function TrashView({
           on the resulting "Trash is empty." screen rather than disappearing
           along with the now-gone list (FR-2's per-item outcome report). */}
       {report && (
-        <p role="status" data-testid="trash-batch-report">
+        <p
+          role="status"
+          data-testid="trash-batch-report"
+          className="mb-3 text-gw-small text-gw-secondary"
+        >
           {report}
         </p>
       )}
       {actionRefusal && (
-        <p role="status" data-testid="trash-batch-refusal">
+        <p
+          role="status"
+          data-testid="trash-batch-refusal"
+          className="mb-3 text-gw-small text-gw-secondary"
+        >
           {actionRefusal}
         </p>
       )}
       {actionError && (
-        <p role="alert" data-testid="trash-batch-error">
+        <p
+          role="alert"
+          data-testid="trash-batch-error"
+          className="mb-3 text-gw-small font-medium text-gw-primary"
+        >
           {actionError}
         </p>
       )}
@@ -533,7 +549,10 @@ export default function TrashView({
           the full notice text, so `getByRole("status")` finds the same
           accessible content as before. */}
       {restoreNotices.length > 0 && (
-        <ul data-testid="trash-restore-notices">
+        <ul
+          data-testid="trash-restore-notices"
+          className="mb-3 flex flex-col gap-1 text-gw-small text-gw-secondary"
+        >
           {restoreNotices.map((notice, index) => (
             <li
               key={`${notice.id}-${notice.kind}-${index}`}
@@ -546,7 +565,14 @@ export default function TrashView({
         </ul>
       )}
 
-      {isEmpty && <p data-testid="trash-empty-state">Trash is empty.</p>}
+      {isEmpty && (
+        <p
+          data-testid="trash-empty-state"
+          className="text-gw-small text-gw-secondary"
+        >
+          Trash is empty.
+        </p>
+      )}
 
       {!isLoading && !error && !isEmpty && (
         <>
@@ -559,7 +585,7 @@ export default function TrashView({
             {selectedIds.size} of {allTopLevelIds.length} item
             {allTopLevelIds.length === 1 ? "" : "s"} selected
           </div>
-          <div data-testid="trash-batch-toolbar" className="flex gap-2 mb-2">
+          <div data-testid="trash-batch-toolbar" className="flex gap-2 mb-3">
             <Button
               variant="outline"
               size="sm"

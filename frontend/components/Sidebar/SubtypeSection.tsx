@@ -105,7 +105,7 @@ export default function SubtypeSection(): JSX.Element | null {
         <Select
           aria-label="Subtype"
           aria-describedby={isEmptyAndUnset ? HINT_ID : undefined}
-          className="w-full mt-2"
+          className="w-full mt-2 text-gw-label"
           value={selectValue}
           disabled={isEmptyAndUnset}
           onChange={(e) => handleChange(e.target.value)}

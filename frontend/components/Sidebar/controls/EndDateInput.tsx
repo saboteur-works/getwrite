@@ -52,7 +52,7 @@ export default function EndDateInput({
           <input
             type="datetime-local"
             aria-label="story-end-date-input"
-            className="w-full p-2 border text-sm"
+            className="w-full p-2 border text-gw-label"
             value={inputValue}
             onChange={(e) => onChange?.(e.target.value)}
           />

@@ -50,6 +50,7 @@ import {
   postChangeFieldTypeWithMigration,
   postAddGroup,
   postRemoveGroup,
+  postRenameGroup,
   postReorderGroups,
   postRenameFieldKey,
   type MetadataSchemaRequestContext,
@@ -379,6 +380,14 @@ export const removeMetadataGroup = makeSchemaThunk<{
   groupId: string;
 }>("projects/removeMetadataGroup", (ctx, { groupId }) =>
   postRemoveGroup(ctx, groupId),
+);
+
+export const renameMetadataGroup = makeSchemaThunk<{
+  projectId: string;
+  groupId: string;
+  newLabel: string;
+}>("projects/renameMetadataGroup", (ctx, { groupId, newLabel }) =>
+  postRenameGroup(ctx, groupId, newLabel),
 );
 
 export const reorderMetadataGroups = makeSchemaThunk<{
@@ -757,6 +766,7 @@ const projectsSlice = createSlice({
       changeMetadataFieldTypeWithMigration,
       addMetadataGroup,
       removeMetadataGroup,
+      renameMetadataGroup,
       reorderMetadataGroups,
       renameMetadataFieldKey,
     ] as const;

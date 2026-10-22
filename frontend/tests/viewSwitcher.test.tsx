@@ -85,4 +85,55 @@ describe("ViewSwitcher", () => {
     fireEvent.click(trashTab);
     expect(onChange).toHaveBeenCalledWith("trash");
   });
+
+  describe("right-edge fade", () => {
+    function stubWidths(scrollWidth: number, clientWidth: number) {
+      const sw = vi
+        .spyOn(HTMLElement.prototype, "scrollWidth", "get")
+        .mockReturnValue(scrollWidth);
+      const cw = vi
+        .spyOn(HTMLElement.prototype, "clientWidth", "get")
+        .mockReturnValue(clientWidth);
+      return () => {
+        sw.mockRestore();
+        cw.mockRestore();
+      };
+    }
+
+    function frame(): HTMLElement {
+      return screen
+        .getByRole("tablist", { name: "Work area views" })
+        .closest("[data-view-tabs-frame]") as HTMLElement;
+    }
+
+    it("fades the right edge while tabs are hidden to the right", () => {
+      const restore = stubWidths(900, 400);
+      render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+
+      expect(frame()).toHaveAttribute("data-more-right");
+      restore();
+    });
+
+    it("drops the fade once the row is scrolled to its end", () => {
+      const restore = stubWidths(900, 400);
+      render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+      const scroller = frame().querySelector(
+        ".workarea-view-tabs-scroll",
+      ) as HTMLElement;
+
+      scroller.scrollLeft = 500;
+      fireEvent.scroll(scroller);
+
+      expect(frame()).not.toHaveAttribute("data-more-right");
+      restore();
+    });
+
+    it("does not fade when every tab fits", () => {
+      const restore = stubWidths(400, 400);
+      render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+
+      expect(frame()).not.toHaveAttribute("data-more-right");
+      restore();
+    });
+  });
 });

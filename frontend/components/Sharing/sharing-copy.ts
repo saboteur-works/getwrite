@@ -44,7 +44,7 @@ export const SHARING_STATEMENT_UNENCRYPTED =
 
 /** FR-7(b), spec. */
 export const SHARING_STATEMENT_AVAILABILITY =
-  "Your other devices can reach your projects only while GetWrite is open and awake on this computer, and the device is on the same network.";
+  "Your other devices can reach your projects only while GetWrite is running and this computer is awake, and the device is on the same network.";
 
 /** FR-6, spec: shown instead of a blank address list. */
 export const NO_NETWORK_ADDRESS = "No network address found.";

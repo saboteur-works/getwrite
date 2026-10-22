@@ -77,7 +77,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
             "Right-click a resource for copy, duplicate, delete, and export options.",
           ],
           [
-            "Use the settings menu (gear icon) to access preferences and project type management.",
+            "Use the settings menu (gear icon) to access User Preferences, App Settings and the Project Type Manager.",
           ],
         ],
       },

@@ -263,6 +263,7 @@ export default function AppShell({
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState<boolean>(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
     useState<boolean>(false);
+  const [isAppSettingsOpen, setIsAppSettingsOpen] = useState<boolean>(false);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] =
     useState<boolean>(false);
   const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =
@@ -869,6 +870,10 @@ export default function AppShell({
         setIsSettingsMenuOpen(false);
         setIsPreferencesModalOpen(true);
         break;
+      case "app-settings":
+        setIsSettingsMenuOpen(false);
+        setIsAppSettingsOpen(true);
+        break;
       case "project-settings":
         setIsSettingsMenuOpen(false);
         setIsProjectSettingsOpen(true);
@@ -1188,6 +1193,8 @@ export default function AppShell({
                     onSaveDefaultRevisionName={handleSaveDefaultRevisionName}
                     isPreferencesModalOpen={isPreferencesModalOpen}
                     setIsPreferencesModalOpen={setIsPreferencesModalOpen}
+                    isAppSettingsOpen={isAppSettingsOpen}
+                    setIsAppSettingsOpen={setIsAppSettingsOpen}
                     isHelpModalOpen={isHelpModalOpen}
                     setIsHelpModalOpen={setIsHelpModalOpen}
                     isProjectTypesModalOpen={isProjectTypesModalOpen}
@@ -1306,7 +1313,9 @@ export default function AppShell({
                       project. With no project the Start Page is this shell's
                       child and shows its own (note_b1b217db). */}
                   {resources ? (
-                    <div className="shrink-0 w-full">
+                    // `empty:hidden`: no space when the banner renders
+                    // nothing (sharing off, web, native).
+                    <div className="shrink-0 w-full p-4 empty:hidden">
                       <SharingStatus />
                     </div>
                   ) : null}
@@ -1367,7 +1376,9 @@ export default function AppShell({
                               "Entities are off. Turn them on in Project Settings → Entities.",
                           }}
                         />
-                        <div className="w-full min-w-0 sm:w-80 sm:flex-none">
+                        {/* Search keeps its width on the right of the
+                            switcher's row; the switcher scrolls. */}
+                        <div className="w-56 shrink-0 pr-4 sm:w-80">
                           <SearchBar
                             onSelect={(id) => onResourceSelect?.(id)}
                           />

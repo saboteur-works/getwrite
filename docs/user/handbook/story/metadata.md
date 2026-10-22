@@ -35,6 +35,8 @@ In the Metadata Fields manager, a built-in field other than Status can have its 
 
 Beyond these, you can add your own **custom fields**: **+ Add field** at the bottom of the sidebar asks for a name, a label, a type and a group. The types are Text, Number, Date, Boolean (yes/no), Select and Multi (single- or multiple-choice, with their options typed one per line in the manager), and Ref and Multi Ref (links to other resources). Each type took a value, and the values were still there after a reload.
 
+Not yet in a release: in the Metadata Fields manager, click a group's name to rename it, including the built-in groups. **Enter** or clicking away saves and **Escape** cancels. The name is saved without surrounding spaces; a blank name, or one another group already uses (ignoring capitals), is refused with a message beside the field. Renaming changes only the name shown, never the fields in the group. (Checked by unit tests, not in a running app.)
+
 Fields that link to other resources suggest resources by name. A **Ref** field suggests resources from the whole project. A **Multi Ref** field has a **Folder scope** setting in the Metadata Fields manager — **Any folder** by default, or one folder, with an **Include subfolders** option. With the scope set to a Characters folder, typing `a` offered only the resources in that folder (Elena and Mara); a Ref field has no such setting.
 
 Image and audio resources carry the same editable fields and tags as text documents, with a read-only technical section shown above them: for an image its dimensions and EXIF data (a test file with the EXIF tags Make and Model showed `64 × 48 px`, `Canon` and `TestCam`), and for audio its format and duration (an MP3 of two seconds showed `MP3` and `2s`).
@@ -83,11 +85,15 @@ Text resources also carry a read-only **Prose diagnostics** section in the sideb
 
 Select **Show detail** to open a window listing where each repeated word occurs, as character positions counted from 0 (`river (4)`, `Positions: 0, 6, 12, 18`). It showed the new positions each time it was opened after the text changed; the diagnostics file (`meta/index/diagnostics.json`) holds only the three figures, not the positions.
 
+Not yet in a release: below **Show detail**, the switch **Highlight dialogue** tints quoted speech in the editor, and **Dialogue quotes** chooses **Double “ ”** (the default) or **Single ‘ ’**. With double quotes the tint covers exactly the text the Dialogue ratio counts. With single quotes, an apostrophe inside a word (`don’t`) or after one (`the dogs’ bowl`) is not taken as a quote mark, and a single-quoted passage does not run past the end of its paragraph; a plural possessive inside single-quoted speech ends the tint early. The Dialogue ratio always counts double quotes, whichever is chosen. The highlight only changes how the text looks, not the text, and the choice is not saved: it lasts until GetWrite is reloaded. Checked in unit and component tests and in a browser with the real editor (Storybook), not in the running app.
+
 The section was not red and flagged nothing as wrong in any case tried. An abbreviation such as "Mr." counted as the end of a sentence: "Mr. Smith went home today." (five words) showed an average of 2.5, "Dr. Jones and Mrs. Lee met Prof. Gray." (eight words) showed 2.0, and "Smith went home today." (four words) showed 4.0. After typing and a save, the section still showed the previous figures about 6.5 seconds later in four of nine cases tried, and showed the saved figures after another resource was selected and this one selected again.
 
 ## Tags
 
-Tags are project-scoped labels you can assign to any resource: a second new project had none of the first project's tags, and tags were switched on for text, image and audio resources. Assign or remove them from the **Tags** section of the Metadata sidebar (one button per tag, pressed or not). Create and delete tags in Project Settings → **Manage Tags**: a **New tag name** box (Enter or **Add Tag**) and a **Delete tag** button per tag, with no confirmation. There is no control to rename a tag. Tags created or deleted there did not show in the open sidebar until the page was reloaded.
+Tags are project-scoped labels you can assign to any resource: a second new project had none of the first project's tags, and tags were switched on for text, image and audio resources. Assign or remove them from the **Tags** section of the Metadata sidebar (one button per tag, pressed or not). Create and delete tags in Project Settings → **Manage Tags**: a **New tag name** box (Enter or **Add Tag**) and a **Delete tag** button per tag, with no confirmation. Not yet in a release: a new tag with the name of an existing tag (capitals and surrounding spaces ignored) is refused with a message under the box; checked in component tests, not in the running app.
+
+Not yet in a release: each tag in **Manage Tags** also has an **Edit tag** button. It opens the tag's name and a **Color** checkbox with a color picker; **Save** keeps the change and **Cancel** or Escape drops it. Unticking **Color** clears the tag's color. The tag keeps its assignments, so every resource that had it shows the new name. A blank name, or the name of another tag (capitals and surrounding spaces ignored), is refused with a message under the name box. These behaviours were checked in component tests, not in the running app.
 
 ## Linking resources
 
@@ -106,7 +112,7 @@ Two settings that apply beyond a single resource live in different places. The w
 - In the runs this page was verified from, a Status chosen after typing set the resource's stored `wordCount` to 0 while the footer still read the real count (two resources, ten and five words). A later change (unreleased) stops the sidebar write from storing that 0; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked. The footer shows the live count.
 - A custom Date field's sidebar label read "Story Date / Time", not the field's own label.
 - Renaming a built-in field in the Metadata Fields manager did not change the sidebar heading.
-- Tags created or deleted in Project Settings did not show in the open sidebar until the page was reloaded.
+- Tags created or deleted in Project Settings did not show in the open sidebar until the page was reloaded. A later change (unreleased) makes the open sidebar reload its tags after a tag is created, edited or deleted in **Manage Tags**; this was checked in component tests, not in the running app.
 - The Status options box in the Metadata Fields manager was empty, and typing into it changed nothing in the sidebar.
 - Subtypes and prose diagnostics (each marked above as not yet in a release): the sidebar's Prose diagnostics figures can lag a save, and an abbreviation such as "Mr." counts as the end of a sentence.
 

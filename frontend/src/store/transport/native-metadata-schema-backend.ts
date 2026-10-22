@@ -120,6 +120,10 @@ export function createNativeMetadataSchemaTransport(
       return dispatch(context, { action: "remove-group", groupId });
     },
 
+    renameGroup(context, groupId, newLabel) {
+      return dispatch(context, { action: "rename-group", groupId, newLabel });
+    },
+
     reorderGroups(context, newGroupIdOrder) {
       return dispatch(context, { action: "reorder-groups", newGroupIdOrder });
     },

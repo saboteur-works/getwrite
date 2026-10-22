@@ -1,5 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, userEvent, within } from "storybook/test";
 import TagsManagerModal from "../../components/common/TagsManagerModal";
 import { Dialog } from "../../components/common/UI/Dialog/Dialog";
 
@@ -33,6 +34,17 @@ function mockFetch(
           ok: true,
           json: async () => ({ tags: currentTags }),
         } as Response;
+      }
+      if (body.action === "update") {
+        const updated = {
+          id: body.tagId,
+          name: body.name.trim(),
+          ...(body.color ? { color: body.color } : {}),
+        };
+        currentTags = currentTags.map((t) =>
+          t.id === body.tagId ? updated : t,
+        );
+        return { ok: true, json: async () => ({ tag: updated }) } as Response;
       }
       if (body.action === "create") {
         const newTag = {
@@ -71,3 +83,36 @@ type Story = StoryObj<typeof TagsManagerModal>;
 export const Default: Story = { beforeEach: () => mockFetch(sampleTags) };
 
 export const Empty: Story = { beforeEach: () => mockFetch([]) };
+
+/** A tag's row opened for editing: name, Color checkbox and color picker. */
+export const EditingTag: Story = {
+  beforeEach: () => mockFetch(sampleTags),
+  play: async () => {
+    // The dialog renders in a portal, outside the story's canvas element.
+    const screen = within(document.body);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit tag Key Event" }),
+    );
+    await expect(
+      screen.getByRole("textbox", { name: "Name for tag Key Event" }),
+    ).toBeInTheDocument();
+  },
+};
+
+/** Saving another tag's name (capitals ignored) is refused beside the field. */
+export const EditRefusedDuplicateName: Story = {
+  beforeEach: () => mockFetch(sampleTags),
+  play: async () => {
+    const screen = within(document.body);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit tag Draft" }),
+    );
+    const input = screen.getByRole("textbox", { name: "Name for tag Draft" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "pov scene");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await expect(await screen.findByRole("alert")).toHaveTextContent(
+      "already exists",
+    );
+  },
+};

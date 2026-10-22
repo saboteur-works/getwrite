@@ -78,6 +78,8 @@ describe("plaintext-output warning — reachable from a real caller", () => {
           onSaveDefaultRevisionName={async () => {}}
           isPreferencesModalOpen={false}
           setIsPreferencesModalOpen={() => {}}
+          isAppSettingsOpen={false}
+          setIsAppSettingsOpen={() => {}}
           isHelpModalOpen={false}
           setIsHelpModalOpen={() => {}}
           isProjectTypesModalOpen={false}

@@ -17,6 +17,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { ImportOutcome } from "./scrivener-import/handle-import-request";
 import type { ImportOutcome as DocxImportOutcomeType } from "./docx-import/handle-import-request";
+import type { KeepRunningSetting } from "./keep-running";
 
 /** What changing the workspace location can result in. */
 export interface WorkspaceChangeResult {
@@ -193,6 +194,10 @@ export interface GetWriteDesktopBridge {
     key: SharingLimitKey,
     value: boolean,
   ): Promise<SetSharingLimitResult>;
+  /** Whether GetWrite keeps running after its window closes (macOS only). */
+  getKeepRunningSetting(): Promise<KeepRunningSetting>;
+  /** Records the keep-running setting; it applies at the next close. */
+  setKeepRunningSetting(enabled: boolean): Promise<void>;
 }
 
 const bridge: GetWriteDesktopBridge = {
@@ -230,6 +235,9 @@ const bridge: GetWriteDesktopBridge = {
   getSharingLimits: () => ipcRenderer.invoke("getwrite:sharing-get-limits"),
   setSharingLimit: (key: SharingLimitKey, value: boolean) =>
     ipcRenderer.invoke("getwrite:sharing-set-limit", key, value),
+  getKeepRunningSetting: () => ipcRenderer.invoke("getwrite:keep-running-get"),
+  setKeepRunningSetting: (enabled: boolean) =>
+    ipcRenderer.invoke("getwrite:keep-running-set", enabled),
 };
 
 contextBridge.exposeInMainWorld("getwriteDesktop", bridge);

@@ -10,6 +10,7 @@ import {
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
 import { createTextResource } from "../src/lib/models/resource";
+import { createTag, deleteTag, updateTag } from "../src/lib/api/tags";
 
 const PROJECT_PATH = "/tmp/test-project";
 const PROJECT_ID = "proj-test-1";
@@ -182,6 +183,95 @@ describe("TagsSection", () => {
     );
 
     expect(await screen.findByText(/No tags yet/i)).toBeInTheDocument();
+  });
+});
+
+describe("TagsSection — a tag changed elsewhere", () => {
+  function stubTagWrites(initial: { id: string; name: string }[]) {
+    let tags = [...initial];
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        if (input.toString().includes("/delete")) {
+          tags = tags.filter((t) => t.id !== body.tagId);
+          return {
+            ok: true,
+            json: async () => ({ deleted: true }),
+          } as Response;
+        }
+        if (body.action === "create") {
+          const tag = { id: "tag-new", name: body.name };
+          tags = [...tags, tag];
+          return { ok: true, json: async () => ({ tag }) } as Response;
+        }
+        if (body.action === "list") {
+          return { ok: true, json: async () => ({ tags }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tagIds: [] }) } as Response;
+      },
+    );
+  }
+
+  function renderSection() {
+    render(
+      <Provider store={setupStore("res-abc")}>
+        <TagsSection />
+      </Provider>,
+    );
+  }
+
+  it("shows a tag created in the tags manager", async () => {
+    stubTagWrites([{ id: "tag-1", name: "Draft" }]);
+    renderSection();
+    await screen.findByText("Draft");
+
+    await createTag("test-project", "Flashback");
+
+    expect(await screen.findByText("Flashback")).toBeInTheDocument();
+  });
+
+  it("drops a tag deleted in the tags manager", async () => {
+    stubTagWrites([
+      { id: "tag-1", name: "Draft" },
+      { id: "tag-2", name: "Review" },
+    ]);
+    renderSection();
+    await screen.findByText("Review");
+
+    await deleteTag("test-project", "tag-2");
+
+    await waitFor(() =>
+      expect(screen.queryByText("Review")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows a tag's new name after it is edited in the tags manager", async () => {
+    let tags = [{ id: "tag-1", name: "Draft" }];
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        if (body.action === "update") {
+          tags = [{ id: body.tagId, name: body.name }];
+          return { ok: true, json: async () => ({ tag: tags[0] }) } as Response;
+        }
+        if (body.action === "list") {
+          return { ok: true, json: async () => ({ tags }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tagIds: [] }) } as Response;
+      },
+    );
+    const store = setupStore("res-abc");
+    render(
+      <Provider store={store}>
+        <TagsSection />
+      </Provider>,
+    );
+    await screen.findByText("Draft");
+
+    await updateTag("test-project", "tag-1", { name: "First draft" });
+
+    expect(await screen.findByText("First draft")).toBeInTheDocument();
+    expect(screen.queryByText("Draft")).not.toBeInTheDocument();
   });
 });
 

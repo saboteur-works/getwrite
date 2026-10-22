@@ -19,6 +19,7 @@ Paths are relative to `electron/` unless they start with `frontend/` or `docs/`.
 - Packaged: `resolveProjectsDir` = override in `userData/workspace.json` ?? `~/Documents/GetWrite`. Dev: the repo `projects/`. Never store projects inside the app bundle.
 - `migrateLegacyProjectsDir` drains each `legacyProjectsDirs()` entry on every packaged launch; never overwrites, never deletes on failure.
 - Changing the location needs a restart (`GETWRITE_PROJECTS_DIR` is fixed at fork).
+- Closing the window quits on every platform, except macOS with `keepRunningWhenWindowClosed` on in `workspace.json` (`keep-running.ts`, read at each close; App Settings switch via `getwrite:keep-running-get`/`-set`, sender-checked). Windows/Linux always quit: no tray icon yet.
 - `writeWorkspaceConfig` writes via temp file + rename (fsync file then directory), keeps an existing file's mode. `noise-words-ipc.ts` handlers take `app.getPath("userData")` in both builds. `getwrite:global-noise-words-get`/`-set` IPC backs the desktop global noise-word list.
 
 ## Home-network sharing (`src/sharing/`; see docs/features/home-network-sharing.md)

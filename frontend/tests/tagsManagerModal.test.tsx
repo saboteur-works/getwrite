@@ -62,6 +62,20 @@ function setupFetchStub(
               json: async () => ({ tags: currentTags }),
             } as Response;
           }
+          if (body.action === "update") {
+            const updated = {
+              id: body.tagId,
+              name: body.name,
+              ...(body.color ? { color: body.color } : {}),
+            };
+            currentTags = currentTags.map((t) =>
+              t.id === body.tagId ? updated : t,
+            );
+            return {
+              ok: true,
+              json: async () => ({ tag: updated }),
+            } as Response;
+          }
           if (body.action === "create") {
             const newTag = onCreate
               ? onCreate(body)
@@ -166,5 +180,287 @@ describe("TagsManagerModal", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  describe("new tag preview", () => {
+    function previewChips(): HTMLElement[] {
+      const preview = screen.getByRole("group", { name: "Preview" });
+      return Array.from(preview.querySelectorAll(".chip")) as HTMLElement[];
+    }
+
+    it("shows the typed name as it will look unassigned and assigned", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      fireEvent.change(screen.getByLabelText("New tag name"), {
+        target: { value: "  Flashback " },
+      });
+
+      const [off, on] = previewChips();
+      expect(off).toHaveTextContent("Flashback");
+      expect(on).toHaveTextContent("Flashback");
+      expect(off).not.toHaveClass("chip--tag-active");
+      expect(on).toHaveClass("chip--tag-active");
+      expect(screen.getByText("Not assigned")).toBeInTheDocument();
+      expect(screen.getByText("Assigned")).toBeInTheDocument();
+    });
+
+    it("fills the assigned chip with the chosen color", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      fireEvent.change(screen.getByLabelText("New tag name"), {
+        target: { value: "Flashback" },
+      });
+      fireEvent.click(screen.getByLabelText("Set tag color"));
+      fireEvent.change(screen.getByLabelText("Tag color"), {
+        target: { value: "#336699" },
+      });
+
+      const [off, on] = previewChips();
+      expect(off.style.borderColor).toBe("rgb(51, 102, 153)");
+      expect(off.style.backgroundColor).toBe("");
+      expect(on.style.backgroundColor).toBe("rgb(51, 102, 153)");
+    });
+
+    it("shows a placeholder name until one is typed", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      const [off, on] = previewChips();
+      expect(off).toHaveTextContent("Tag name");
+      expect(on).toHaveTextContent("Tag name");
+    });
+
+    it("is not interactive", async () => {
+      setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      const preview = screen.getByRole("group", { name: "Preview" });
+      expect(preview.querySelector("button")).toBeNull();
+    });
+  });
+
+  describe("creating a tag", () => {
+    function createBodies(fetchStub: ReturnType<typeof setupFetchStub>) {
+      return fetchStub.mock.calls
+        .map(([, init]) =>
+          JSON.parse(((init as RequestInit)?.body as string) ?? "{}"),
+        )
+        .filter((b) => b.action === "create");
+    }
+
+    it("refuses an existing tag's name beside the field without saving", async () => {
+      const fetchStub = setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      const input = screen.getByLabelText("New tag name");
+      fireEvent.change(input, { target: { value: " key event " } });
+      fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "A tag named \u201cKey Event\u201d already exists.",
+      );
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(createBodies(fetchStub)).toHaveLength(0);
+    });
+
+    it("shows the project's refusal beside the field", async () => {
+      const fetchStub = setupFetchStub();
+      const stubbed = fetchStub.getMockImplementation()!;
+      fetchStub.mockImplementation(async (input, init) => {
+        const body = JSON.parse(
+          ((init as RequestInit)?.body as string) ?? "{}",
+        );
+        if (body.action === "create") {
+          return {
+            ok: false,
+            status: 400,
+            json: async () => ({
+              error: "Tag refused",
+              details: "A tag named \u201cFlashback\u201d already exists.",
+            }),
+          } as Response;
+        }
+        return stubbed(input, init);
+      });
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+      await screen.findByText("Key Event");
+
+      fireEvent.change(screen.getByLabelText("New tag name"), {
+        target: { value: "Flashback" },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+      });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "A tag named \u201cFlashback\u201d already exists.",
+      );
+      expect(screen.getByLabelText("New tag name")).toHaveValue("Flashback");
+    });
+  });
+
+  describe("editing a tag", () => {
+    function updateBodies(fetchStub: ReturnType<typeof setupFetchStub>) {
+      return fetchStub.mock.calls
+        .map(([, init]) =>
+          JSON.parse(((init as RequestInit)?.body as string) ?? "{}"),
+        )
+        .filter((b) => b.action === "update");
+    }
+
+    async function openEditor(name: string) {
+      await screen.findByText(name);
+      fireEvent.click(screen.getByRole("button", { name: `Edit tag ${name}` }));
+      return screen.getByRole("textbox", { name: `Name for tag ${name}` });
+    }
+
+    it("renames and recolours a tag, keeping its id", async () => {
+      const fetchStub = setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+
+      const input = await openEditor("POV Scene");
+      fireEvent.change(input, { target: { value: "  Viewpoint  " } });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Use a color" }));
+      fireEvent.change(screen.getByLabelText("Color for tag POV Scene"), {
+        target: { value: "#336699" },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(await screen.findByText("Viewpoint")).toBeInTheDocument();
+      expect(screen.queryByText("POV Scene")).not.toBeInTheDocument();
+      expect(updateBodies(fetchStub)).toEqual([
+        expect.objectContaining({
+          tagId: "tag-1",
+          name: "Viewpoint",
+          color: "#336699",
+        }),
+      ]);
+    });
+
+    it("clears a tag's color when Use a color is unticked", async () => {
+      const fetchStub = setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+
+      await openEditor("Key Event");
+      const useColour = screen.getByRole("checkbox", { name: "Use a color" });
+      expect(useColour).toBeChecked();
+      fireEvent.click(useColour);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => expect(updateBodies(fetchStub)).toHaveLength(1));
+      expect(updateBodies(fetchStub)[0]).not.toHaveProperty("color");
+    });
+
+    it("refuses a blank name beside the field without saving", async () => {
+      const fetchStub = setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+
+      const input = await openEditor("POV Scene");
+      fireEvent.change(input, { target: { value: "   " } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Tag name must not be blank.",
+      );
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(updateBodies(fetchStub)).toHaveLength(0);
+    });
+
+    it("refuses another tag's name, ignoring capitals and spaces", async () => {
+      const fetchStub = setupFetchStub();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+
+      const input = await openEditor("POV Scene");
+      fireEvent.change(input, { target: { value: " key event " } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "A tag named \u201cKey Event\u201d already exists.",
+      );
+      expect(updateBodies(fetchStub)).toHaveLength(0);
+    });
+
+    it("shows the project's refusal beside the field", async () => {
+      const fetchStub = setupFetchStub();
+      const stubbed = fetchStub.getMockImplementation()!;
+      fetchStub.mockImplementation(async (input, init) => {
+        const body = JSON.parse(
+          ((init as RequestInit)?.body as string) ?? "{}",
+        );
+        if (body.action === "update") {
+          return {
+            ok: false,
+            status: 400,
+            json: async () => ({
+              error: "Tag refused",
+              details: "Tag color must be a hex color such as #3366cc.",
+            }),
+          } as Response;
+        }
+        return stubbed(input, init);
+      });
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={() => {}} />,
+      );
+
+      await openEditor("POV Scene");
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Tag color must be a hex color such as #3366cc.",
+      );
+    });
+
+    it("Escape cancels the edit without closing the manager", async () => {
+      const fetchStub = setupFetchStub();
+      const onClose = vi.fn();
+      renderInDialog(
+        <TagsManagerModal projectPath={PROJECT_PATH} onClose={onClose} />,
+      );
+
+      const input = await openEditor("POV Scene");
+      fireEvent.change(input, { target: { value: "Viewpoint" } });
+      fireEvent.keyDown(input, { key: "Escape" });
+
+      expect(
+        screen.queryByRole("textbox", { name: "Name for tag POV Scene" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("POV Scene")).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(updateBodies(fetchStub)).toHaveLength(0);
+    });
   });
 });

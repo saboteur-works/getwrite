@@ -45,7 +45,7 @@ const revisions: RevisionEntry[] = [
   makeRevision("r1", "Initial Draft", 1, false),
 ];
 
-const precomputedChunks = diffWords(canonicalText, historicalText);
+const precomputedChunks = diffWords(historicalText, canonicalText);
 
 export const Default: Story = {
   render: (args: DiffViewProps) => (
@@ -126,7 +126,7 @@ export const Interactive: Story = {
 
     const chunks =
       args.canonicalContent && selectedContent
-        ? diffWords(args.canonicalContent, selectedContent)
+        ? diffWords(selectedContent, args.canonicalContent)
         : undefined;
 
     return (

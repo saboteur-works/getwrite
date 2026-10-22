@@ -103,6 +103,13 @@ interface RemoveGroupRequest {
   groupId: string;
 }
 
+interface RenameGroupRequest {
+  action: "rename-group";
+  projectId: string;
+  groupId: string;
+  newLabel: string;
+}
+
 interface ReorderGroupsRequest {
   action: "reorder-groups";
   projectId: string;
@@ -176,6 +183,7 @@ type MetadataSchemaRequestBody =
   | UpdateFieldOptionsRequest
   | AddGroupRequest
   | RemoveGroupRequest
+  | RenameGroupRequest
   | ReorderGroupsRequest
   | RenameFieldKeyRequest
   | ChangeFieldTypeRequest
@@ -260,7 +268,8 @@ async function handlePost(req: NextRequest): Promise<Response> {
       /Invalid field key/i.test(message) ||
       /must contain exactly/i.test(message) ||
       /built-in/i.test(message) ||
-      /must be an array of strings/i.test(message);
+      /must be an array of strings/i.test(message) ||
+      /must not be blank/i.test(message);
 
     return NextResponse.json(
       { error: "Metadata schema operation failed", details: message },

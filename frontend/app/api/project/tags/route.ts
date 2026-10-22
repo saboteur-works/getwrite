@@ -11,6 +11,12 @@
  *
  * Expected body (create tag):
  * - `{ action: "create", projectId: string, name: string, color?: string }`
+ *   Refused like `update` below when the name is blank or already used.
+ *
+ * Expected body (rename/recolour tag; an absent `color` clears it):
+ * - `{ action: "update", projectId: string, tagId: string, name: string, color?: string }`
+ *   A refused name or colour is 400 `{ error: "Tag refused", details }`
+ *   with a message for the writer; an unknown `tagId` is 404.
  *
  * Expected body (get tag IDs assigned to a resource):
  * - `{ action: "assignments", projectId: string, resourceId: string }`
@@ -22,7 +28,12 @@ import {
   listTagAssignmentsCore,
   listTagsCore,
   resolveTagsProjectRootOrThrow,
+  updateTagCore,
 } from "../../../../src/lib/models/tags-crud-core";
+import {
+  TagNotFoundError,
+  TagRefusedError,
+} from "../../../../src/lib/models/tags";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
@@ -39,13 +50,25 @@ interface CreateTagRequest {
   color?: string;
 }
 
+interface UpdateTagRequest {
+  action: "update";
+  projectId: string;
+  tagId: string;
+  name: string;
+  color?: string;
+}
+
 interface AssignmentsRequest {
   action: "assignments";
   projectId: string;
   resourceId: string;
 }
 
-type TagsRequestBody = ListTagsRequest | CreateTagRequest | AssignmentsRequest;
+type TagsRequestBody =
+  | ListTagsRequest
+  | CreateTagRequest
+  | UpdateTagRequest
+  | AssignmentsRequest;
 
 async function handlePost(req: NextRequest): Promise<Response> {
   let body: TagsRequestBody;
@@ -78,7 +101,30 @@ async function handlePost(req: NextRequest): Promise<Response> {
     }
 
     if (body.action === "create") {
+      if (typeof body.name !== "string") {
+        return NextResponse.json(
+          { error: "Invalid request", details: "'name' must be a string" },
+          { status: 400 },
+        );
+      }
       const tag = await createTagCore(body.projectId, body.name, body.color);
+      return NextResponse.json({ tag });
+    }
+
+    if (body.action === "update") {
+      if (typeof body.tagId !== "string" || typeof body.name !== "string") {
+        return NextResponse.json(
+          {
+            error: "Invalid request",
+            details: "'tagId' and 'name' must be strings",
+          },
+          { status: 400 },
+        );
+      }
+      const tag = await updateTagCore(body.projectId, body.tagId, {
+        name: body.name,
+        color: typeof body.color === "string" ? body.color : undefined,
+      });
       return NextResponse.json({ tag });
     }
 
@@ -93,13 +139,25 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return NextResponse.json(
       {
         error: "Invalid action",
-        details: "Expected 'list', 'create', or 'assignments'",
+        details: "Expected 'list', 'create', 'update', or 'assignments'",
       },
       { status: 400 },
     );
   } catch (error) {
     if (isLockedAccessError(error)) {
       throw error;
+    }
+    if (error instanceof TagRefusedError) {
+      return NextResponse.json(
+        { error: "Tag refused", details: error.message },
+        { status: 400 },
+      );
+    }
+    if (error instanceof TagNotFoundError) {
+      return NextResponse.json(
+        { error: "Tag not found", details: error.message },
+        { status: 404 },
+      );
     }
     return NextResponse.json(
       { error: "Tags operation failed", details: (error as Error).message },

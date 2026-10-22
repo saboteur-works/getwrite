@@ -25,6 +25,7 @@ import {
   addGroup,
   removeGroup,
   reorderGroups,
+  renameGroup,
 } from "../../src/lib/models/metadata-schema";
 import type {
   MetadataField,
@@ -905,5 +906,69 @@ describe("getEffectiveResourceRefFieldKeys", () => {
   it("rejects when project.json is unreadable", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-mschema-"));
     await expect(getEffectiveResourceRefFieldKeys(dir)).rejects.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renameGroup
+// ---------------------------------------------------------------------------
+
+describe("renameGroup", () => {
+  function twoGroups(): MetadataSchema {
+    return {
+      groups: [
+        { id: GROUP_ID, label: "Test Group", fields: [FIELD] },
+        { id: "other", label: "Characters", fields: [] },
+      ],
+    };
+  }
+
+  it("changes the label, trimmed, keeps the id and persists it", async () => {
+    const { dir } = await makeTmpProject(twoGroups());
+    const schema = await renameGroup(dir, GROUP_ID, "  Places  ");
+    expect(schema.groups[0]).toMatchObject({ id: GROUP_ID, label: "Places" });
+    expect((await getSchema(dir)).groups[0].label).toBe("Places");
+  });
+
+  it("renames a built-in group's label", async () => {
+    const { dir } = await makeTmpProject();
+    const schema = await renameGroup(dir, "builtin-document", "Doc Info");
+    expect(schema.groups.find((g) => g.id === "builtin-document")?.label).toBe(
+      "Doc Info",
+    );
+  });
+
+  it.each(["", "   "])(
+    "refuses a blank name %j and leaves the label",
+    async (label) => {
+      const { dir } = await makeTmpProject(twoGroups());
+      await expect(renameGroup(dir, GROUP_ID, label)).rejects.toThrow(
+        "Group name must not be blank.",
+      );
+      expect((await getSchema(dir)).groups[0].label).toBe("Test Group");
+    },
+  );
+
+  it.each(["Characters", " characters "])(
+    "refuses %j, a name another group uses, ignoring case and spaces",
+    async (label) => {
+      const { dir } = await makeTmpProject(twoGroups());
+      await expect(renameGroup(dir, GROUP_ID, label)).rejects.toThrow(
+        "A group named \u201cCharacters\u201d already exists.",
+      );
+    },
+  );
+
+  it("allows a change of case to its own name", async () => {
+    const { dir } = await makeTmpProject(twoGroups());
+    const schema = await renameGroup(dir, GROUP_ID, "TEST GROUP");
+    expect(schema.groups[0].label).toBe("TEST GROUP");
+  });
+
+  it("throws when the group does not exist", async () => {
+    const { dir } = await makeTmpProject(twoGroups());
+    await expect(renameGroup(dir, "ghost", "X")).rejects.toThrow(
+      /Group not found/,
+    );
   });
 });

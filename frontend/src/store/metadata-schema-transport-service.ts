@@ -157,6 +157,12 @@ export interface MetadataSchemaTransport {
     groupId: string,
   ): Promise<MetadataSchema>;
 
+  renameGroup(
+    context: MetadataSchemaRequestContext,
+    groupId: string,
+    newLabel: string,
+  ): Promise<MetadataSchema>;
+
   reorderGroups(
     context: MetadataSchemaRequestContext,
     newGroupIdOrder: string[],
@@ -307,6 +313,16 @@ export const httpMetadataSchemaTransport: MetadataSchemaTransport = {
       action: "remove-group",
       projectId,
       groupId,
+    });
+  },
+
+  renameGroup(context, groupId, newLabel) {
+    const { projectId } = context;
+    return postToMetadataSchemaRoute({
+      action: "rename-group",
+      projectId,
+      groupId,
+      newLabel,
     });
   },
 
@@ -512,6 +528,15 @@ export async function postRemoveGroup(
 ): Promise<MetadataSchema> {
   const transport = await resolveMetadataSchemaTransport();
   return transport.removeGroup(context, groupId);
+}
+
+export async function postRenameGroup(
+  context: MetadataSchemaRequestContext,
+  groupId: string,
+  newLabel: string,
+): Promise<MetadataSchema> {
+  const transport = await resolveMetadataSchemaTransport();
+  return transport.renameGroup(context, groupId, newLabel);
 }
 
 export async function postReorderGroups(

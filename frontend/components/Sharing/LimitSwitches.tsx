@@ -2,6 +2,7 @@
 
 import React from "react";
 import ConfirmDialog from "../common/ConfirmDialog";
+import Switch from "../common/UI/Switch";
 import {
   getDesktopBridge,
   type DesktopBridge,
@@ -220,13 +221,11 @@ export default function LimitSwitches({
               const inputId = `${headingId}-${key}`;
               const isUnlocking = key === "unlocking";
               return (
-                <li key={key} className="flex flex-col gap-1">
+                <li key={key} className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
-                    <input
+                    <Switch
                       id={inputId}
                       ref={isUnlocking ? unlockingRef : undefined}
-                      type="checkbox"
-                      role="switch"
                       checked={limits.limits[key]}
                       disabled={isBusy}
                       aria-describedby={isUnlocking ? warningId : undefined}
@@ -240,14 +239,19 @@ export default function LimitSwitches({
                     </label>
                   </div>
                   {isUnlocking ? (
-                    <div id={warningId} className="flex flex-col gap-1">
-                      <p className="text-sm text-gw-secondary">
+                    <div
+                      id={warningId}
+                      // A Level 2 surface (STYLING.md §6), left-aligned with
+                      // the switches like the "Sharing is on" panel.
+                      className="flex flex-col gap-1 rounded-sm border-hairline border-gw-border bg-gw-chrome2 px-3 py-2"
+                    >
+                      <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_TYPED}
                       </p>
-                      <p className="text-sm text-gw-secondary">
+                      <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_UNENCRYPTED}
                       </p>
-                      <p className="text-sm text-gw-secondary">
+                      <p className="text-gw-small text-gw-secondary">
                         {LIMITS_UNLOCK_WARNING_RECORDED}
                       </p>
                     </div>

@@ -14,6 +14,7 @@ import {
   clearMetadataField,
   reorderMetadataFields,
   renameMetadataField,
+  renameMetadataGroup,
   updateMetadataFieldOptions,
   addMetadataGroup,
   removeMetadataGroup,
@@ -275,6 +276,12 @@ export default function SchemaManager({
     React.useState<KeyEditTarget | null>(null);
   const [keyEditValue, setKeyEditValue] = React.useState<string>("");
   const [keyEditError, setKeyEditError] = React.useState<string>("");
+  // Group rename: the group being renamed, the typed name and any refusal.
+  const [groupEditId, setGroupEditId] = React.useState<string | null>(null);
+  const [groupEditValue, setGroupEditValue] = React.useState<string>("");
+  const [groupEditError, setGroupEditError] = React.useState<string>("");
+  const groupEditCancelledRef = React.useRef(false);
+  const groupEditErrorId = React.useId();
   const [keyRenameConfirm, setKeyRenameConfirm] =
     React.useState<KeyRenameConfirm | null>(null);
 
@@ -370,8 +377,9 @@ export default function SchemaManager({
   // progress, which prevents Radix from closing the outer SchemaManager dialog.
   const inlineEditActiveRef = React.useRef(false);
   React.useLayoutEffect(() => {
-    inlineEditActiveRef.current = keyEditTarget !== null || editTarget !== null;
-  }, [keyEditTarget, editTarget]);
+    inlineEditActiveRef.current =
+      keyEditTarget !== null || editTarget !== null || groupEditId !== null;
+  }, [keyEditTarget, editTarget, groupEditId]);
   React.useEffect(() => {
     // Radix's useEscapeKeydown registers on document in capture phase and
     // calls onDismiss unless e.defaultPrevented. By calling preventDefault()
@@ -424,6 +432,64 @@ export default function SchemaManager({
   function cancelLabelEdit(): void {
     editCancelledRef.current = true;
     setEditTarget(null);
+  }
+
+  function beginGroupRename(groupId: string, currentLabel: string): void {
+    groupEditCancelledRef.current = false;
+    setGroupEditId(groupId);
+    setGroupEditValue(currentLabel);
+    setGroupEditError("");
+  }
+
+  function cancelGroupRename(): void {
+    groupEditCancelledRef.current = true;
+    setGroupEditId(null);
+    setGroupEditError("");
+  }
+
+  /**
+   * Saves the typed group name. A blank name, or one another group already
+   * uses (trimmed, case-insensitive), is refused beside the field and the
+   * edit stays open; the server applies the same rule.
+   */
+  function commitGroupRename(): void {
+    if (groupEditCancelledRef.current || !groupEditId || !projectId) {
+      setGroupEditId(null);
+      return;
+    }
+    const group = schema.groups.find((g) => g.id === groupEditId);
+    const label = groupEditValue.trim();
+    if (label === "") {
+      setGroupEditError("Group name must not be blank.");
+      return;
+    }
+    const clash = schema.groups.find(
+      (g) =>
+        g.id !== groupEditId &&
+        g.label.trim().toLowerCase() === label.toLowerCase(),
+    );
+    if (clash) {
+      setGroupEditError(
+        `A group named \u201c${clash.label.trim()}\u201d already exists.`,
+      );
+      return;
+    }
+    const groupId = groupEditId;
+    setGroupEditId(null);
+    setGroupEditError("");
+    if (label === group?.label) return;
+    dispatch(renameMetadataGroup({ projectId, groupId, newLabel: label }))
+      .unwrap()
+      .catch((caught: unknown) => {
+        toastService.error(
+          "Couldn't rename group",
+          caught instanceof Error
+            ? caught.message
+            : typeof caught === "string"
+              ? caught
+              : undefined,
+        );
+      });
   }
 
   function beginKeyEdit(
@@ -797,9 +863,51 @@ export default function SchemaManager({
               <Card key={group.id} padding="none">
                 {/* Group header */}
                 <div className="flex items-center gap-1 border-b border-gw-border px-4 py-3">
-                  <span className="flex-1 font-mono text-[11px] uppercase tracking-[0.12em] text-gw-secondary">
-                    {group.label}
-                  </span>
+                  {groupEditId === group.id ? (
+                    <div className="min-w-0 flex-1">
+                      <EditContextMenu>
+                        <input
+                          type="text"
+                          value={groupEditValue}
+                          onChange={(e) => {
+                            setGroupEditValue(e.target.value);
+                            setGroupEditError("");
+                          }}
+                          onBlur={commitGroupRename}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitGroupRename();
+                            if (e.key === "Escape") cancelGroupRename();
+                          }}
+                          autoFocus
+                          aria-label={`Group name for ${group.label}`}
+                          aria-invalid={groupEditError ? true : undefined}
+                          aria-describedby={
+                            groupEditError ? groupEditErrorId : undefined
+                          }
+                          className="w-full rounded border border-gw-border bg-transparent px-2 py-0.5 font-mono text-[11px] text-gw-primary focus:outline-none focus:ring-1 focus:ring-gw-border"
+                        />
+                      </EditContextMenu>
+                      {groupEditError ? (
+                        <p
+                          id={groupEditErrorId}
+                          role="alert"
+                          className="mt-1 font-mono text-[10px] text-gw-secondary"
+                        >
+                          {groupEditError}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => beginGroupRename(group.id, group.label)}
+                      aria-label={`Rename ${group.label} group`}
+                      title="Rename group"
+                      className="min-w-0 flex-1 truncate text-left font-mono text-[11px] uppercase tracking-[0.12em] text-gw-secondary"
+                    >
+                      {group.label}
+                    </button>
+                  )}
                   <Button
                     variant="ghost"
                     onClick={() => moveGroup(group.id, "up")}

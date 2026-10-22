@@ -77,13 +77,15 @@ export default function SharingStatus(): JSX.Element | null {
   return (
     <section
       aria-label={SHARING_IS_ON}
-      className="flex flex-col gap-2 border-hairline border-gw-border px-3 py-2"
+      // The Level 2 panel (STYLING.md §6) used for the sharing statements in
+      // App Settings, so the banner and the settings read alike.
+      className="flex flex-col gap-1 rounded-sm border-hairline border-gw-border bg-gw-chrome2 px-3 py-2"
     >
       <p role="status" className="text-sm font-semibold text-gw-primary">
         {SHARING_IS_ON}
       </p>
       {status.addresses.length === 0 ? (
-        <p className="text-sm text-gw-secondary">{NO_NETWORK_ADDRESS}</p>
+        <p className="text-gw-small text-gw-secondary">{NO_NETWORK_ADDRESS}</p>
       ) : (
         <ul className="list-disc pl-5">
           {status.addresses.map((address) => (
@@ -96,13 +98,15 @@ export default function SharingStatus(): JSX.Element | null {
           ))}
         </ul>
       )}
-      <p className="text-sm text-gw-secondary">
+      <p className="text-gw-small text-gw-secondary">
         {SHARING_STATEMENT_UNENCRYPTED}
       </p>
-      <p className="text-sm text-gw-secondary">
+      <p className="text-gw-small text-gw-secondary">
         {SHARING_STATEMENT_AVAILABILITY}
       </p>
-      <p className="text-sm text-gw-secondary">{SHARING_LIMITS_POINTER}</p>
+      <p className="text-gw-small text-gw-secondary">
+        {SHARING_LIMITS_POINTER}
+      </p>
     </section>
   );
 }

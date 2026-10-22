@@ -26,7 +26,10 @@ import {
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { Project, Tag } from "../../src/lib/models/types";
-import { httpTagsTransport } from "../../src/lib/api/tags";
+import {
+  httpTagsTransport,
+  TagChangeRefusedError,
+} from "../../src/lib/api/tags";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 
@@ -295,6 +298,99 @@ describe("POST /api/project/tags (projectId-based)", () => {
   });
 });
 
+describe("POST /api/project/tags — update action", () => {
+  async function post(body: unknown): Promise<Response> {
+    const { POST } = await import("../../app/api/project/tags/route");
+    return POST(
+      new Request("http://localhost/api/project/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }) as never,
+    );
+  }
+
+  it("renames and recolours a tag and returns it", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const created = (await (
+        await post({ action: "create", projectId, name: "Draft" })
+      ).json()) as { tag: Tag };
+
+      const res = await post({
+        action: "update",
+        projectId,
+        tagId: created.tag.id,
+        name: "First draft",
+        color: "#336699",
+      });
+
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { tag: Tag }).tag).toEqual({
+        id: created.tag.id,
+        name: "First draft",
+        color: "#336699",
+      });
+    });
+  });
+
+  it("returns 400 with the refusal message for a duplicate name", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await post({ action: "create", projectId, name: "Key Event" });
+      const created = (await (
+        await post({ action: "create", projectId, name: "Draft" })
+      ).json()) as { tag: Tag };
+
+      const res = await post({
+        action: "update",
+        projectId,
+        tagId: created.tag.id,
+        name: "key event",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: "Tag refused",
+        details: "A tag named \u201cKey Event\u201d already exists.",
+      });
+    });
+  });
+
+  it("refuses to create a tag with an existing tag's name", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      await post({ action: "create", projectId, name: "Key Event" });
+
+      const res = await post({
+        action: "create",
+        projectId,
+        name: "key event",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: "Tag refused",
+        details: "A tag named \u201cKey Event\u201d already exists.",
+      });
+    });
+  });
+
+  it("returns 404 for an unknown tag", async () => {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await post({
+        action: "update",
+        projectId,
+        tagId: "missing",
+        name: "Draft",
+      });
+
+      expect(res.status).toBe(404);
+    });
+  });
+});
+
 describe("POST /api/project/tags/assign (projectId-based)", () => {
   it("resolves projectId to the on-disk project and assigns a tag", async () => {
     const { projectsDir, projectId } = await makeTmpProjectsDir();
@@ -482,5 +578,80 @@ describe("httpTagsTransport.listOrThrow (Feature 86 Task 24)", () => {
       vi.fn(async () => jsonResponse({ tags: "nope" })),
     );
     await expect(httpTagsTransport.listOrThrow("p")).rejects.toThrow();
+  });
+});
+
+describe("httpTagsTransport.update", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("resolves the updated tag on a 200", async () => {
+    const tag = { id: "t", name: "First draft" };
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ tag }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      httpTagsTransport.update("p", "t", { name: "First draft" }),
+    ).resolves.toEqual(tag);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      action: "update",
+      projectId: "p",
+      tagId: "t",
+      name: "First draft",
+    });
+  });
+
+  it("rejects with TagChangeRefusedError carrying the server's message on a 400", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: async () => ({
+            error: "Tag refused",
+            details: "Tag name must not be blank.",
+          }),
+        } as Response),
+    );
+
+    const attempt = httpTagsTransport.update("p", "t", { name: " " });
+    await expect(attempt).rejects.toBeInstanceOf(TagChangeRefusedError);
+    await expect(attempt).rejects.toThrow("Tag name must not be blank.");
+  });
+
+  it("rejects with a plain error naming the action on any other failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response),
+    );
+
+    const attempt = httpTagsTransport.update("p", "t", { name: "Draft" });
+    await expect(attempt).rejects.toThrow(/update the tag \(500\)/);
+    await expect(attempt).rejects.not.toBeInstanceOf(TagChangeRefusedError);
+  });
+});
+
+describe("httpTagsTransport.create refusal", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("rejects with TagChangeRefusedError carrying the server's message on a 400", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: async () => ({
+            error: "Tag refused",
+            details: "A tag named \u201cDraft\u201d already exists.",
+          }),
+        } as Response),
+    );
+
+    const attempt = httpTagsTransport.create("p", "draft");
+    await expect(attempt).rejects.toBeInstanceOf(TagChangeRefusedError);
+    await expect(attempt).rejects.toThrow("already exists");
   });
 });

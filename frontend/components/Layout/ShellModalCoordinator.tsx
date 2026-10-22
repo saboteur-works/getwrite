@@ -18,6 +18,7 @@ import ExportPreviewModal, {
 } from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
+import AppSettingsDialog from "../AppSettings/AppSettingsDialog";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
 import HelpPage from "../help/HelpPage";
 import ProjectSettingsDialog, {
@@ -104,6 +105,9 @@ export interface ShellModalCoordinatorProps {
   initialMentionHighlightDurationSeconds?: number;
   isPreferencesModalOpen: boolean;
   setIsPreferencesModalOpen: (open: boolean) => void;
+  /** The standalone App Settings dialog, opened from the settings menu. */
+  isAppSettingsOpen: boolean;
+  setIsAppSettingsOpen: (open: boolean) => void;
   isHelpModalOpen: boolean;
   setIsHelpModalOpen: (open: boolean) => void;
   isProjectTypesModalOpen: boolean;
@@ -187,6 +191,8 @@ export default function ShellModalCoordinator({
   initialMentionHighlightDurationSeconds,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
+  isAppSettingsOpen,
+  setIsAppSettingsOpen,
   isHelpModalOpen,
   setIsHelpModalOpen,
   isProjectTypesModalOpen,
@@ -376,6 +382,13 @@ export default function ShellModalCoordinator({
           />
         </DialogContent>
       </Dialog>
+
+      {/* Reachable with no login/account required (FR-14), with or without
+          an open project. */}
+      <AppSettingsDialog
+        isOpen={isAppSettingsOpen}
+        onClose={() => setIsAppSettingsOpen(false)}
+      />
 
       <Dialog
         open={isHelpModalOpen}

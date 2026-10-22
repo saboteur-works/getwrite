@@ -224,6 +224,14 @@ export type SetSharingLimitResult =
   | { kind: "write-failed" }
   | { kind: "invalid-input" };
 
+/** Whether GetWrite keeps running after its window closes. */
+export interface KeepRunningSetting {
+  /** Whether this platform offers the setting (macOS only). */
+  supported: boolean;
+  /** The recorded setting; always `false` where unsupported. */
+  enabled: boolean;
+}
+
 /** The surface `preload.ts` exposes. Mirrors its `GetWriteDesktopBridge`. */
 export interface DesktopBridge {
   getWorkspaceDir(): Promise<string>;
@@ -273,6 +281,10 @@ export interface DesktopBridge {
     key: SharingLimitKey,
     value: boolean,
   ): Promise<SetSharingLimitResult>;
+  /** Whether GetWrite keeps running after its window closes (macOS only). */
+  getKeepRunningSetting(): Promise<KeepRunningSetting>;
+  /** Records the keep-running setting; it applies at the next close. */
+  setKeepRunningSetting(enabled: boolean): Promise<void>;
 }
 
 /**

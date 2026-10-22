@@ -33,14 +33,19 @@
  * `tokenize()`'s own filtering already applies it).
  */
 import { tokenize } from "./inverted-index";
+import { dialogueSpans } from "./dialogue-spans";
+
+export {
+  dialogueSpans,
+  type DialogueQuoteStyle,
+  type TextSpan,
+} from "./dialogue-spans";
 
 /** Version tag for the heuristics implemented in this module. Bump when an
  * algorithm here changes in a way that could alter a previously-computed
  * diagnostic's meaning, so a later feature can detect and recompute stale
  * results. */
 export const HEURISTIC_VERSION = 1;
-
-const QUOTED_SPAN_REGEX = /["“][^"”]*["”]/g;
 
 /**
  * The fraction of `text`'s characters that fall inside a quoted-speech span.
@@ -54,15 +59,10 @@ export function dialogueRatio(text: string): number {
   if (text.length === 0) {
     return 0;
   }
-  const regex = new RegExp(QUOTED_SPAN_REGEX);
-  let quotedChars = 0;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    quotedChars += match[0].length;
-    if (match[0].length === 0) {
-      regex.lastIndex += 1;
-    }
-  }
+  const quotedChars = dialogueSpans(text, "double").reduce(
+    (sum, { start, end }) => sum + (end - start),
+    0,
+  );
   return quotedChars / text.length;
 }
 

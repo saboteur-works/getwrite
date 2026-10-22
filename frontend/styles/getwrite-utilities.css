@@ -35,6 +35,7 @@
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.2);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.28);
   --color-gw-mention-jump-highlight: rgba(80, 160, 220, 0.3);
+  --color-gw-dialogue-highlight: rgba(40, 150, 150, 0.18);
 
   /* ── Timeline overrides ──
      * Placed here (not :root) so this class-selector wins over the :root defaults
@@ -114,6 +115,7 @@
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.26);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.36);
   --color-gw-mention-jump-highlight: rgba(100, 180, 240, 0.38);
+  --color-gw-dialogue-highlight: rgba(60, 180, 180, 0.24);
 
   /* POV palette — original softer values for dark surfaces */
   --timeline-pov-0: #6b8cae;
@@ -163,6 +165,7 @@ html.gw-theme-light {
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.2);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.28);
   --color-gw-mention-jump-highlight: rgba(80, 160, 220, 0.3);
+  --color-gw-dialogue-highlight: rgba(40, 150, 150, 0.18);
 }
 
 html.gw-theme-dark {
@@ -183,6 +186,7 @@ html.gw-theme-dark {
   --color-gw-entity-highlight-plain: rgba(196, 164, 84, 0.26);
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.36);
   --color-gw-mention-jump-highlight: rgba(100, 180, 240, 0.38);
+  --color-gw-dialogue-highlight: rgba(60, 180, 180, 0.24);
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */
@@ -607,13 +611,30 @@ html.gw-theme-dark {
 
   /* ── WORKAREA ── */
 
+  /* One row: the view switcher takes the remaining width and scrolls
+     horizontally; search keeps its own width on the right. */
   .workarea-header {
     display: flex;
-    /* align-items: center; */
-    justify-content: space-between;
+    align-items: center;
     gap: 16px;
-    /* margin-bottom: 24px; */
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+
+  /* Wraps the view switcher's scroll row (ViewSwitcher.tsx) so it can shrink
+     beside search. `data-more-right` is set while tabs are hidden past the
+     right edge, which fades that edge. */
+  .workarea-view-tabs-frame {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .workarea-view-tabs-frame[data-more-right] .workarea-view-tabs-scroll {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      black calc(100% - 32px),
+      transparent
+    );
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
   }
 
   .workarea-view-tabs {
@@ -638,25 +659,17 @@ html.gw-theme-dark {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
+    /* A thin scrollbar, invisible at rest and shown in the border colour
+       while the row is hovered or holds focus (below). The bottom padding
+       gives an overlay scrollbar room beneath the tabs instead of over them. */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    padding-bottom: 6px;
   }
 
-  /* On phones the ~5 tabs overflow the full-width pane; fade the right edge to
-     signal the row scrolls. Scoped to phones only: on tablet/desktop the tabs
-     fit, so a fade there would wrongly dim the last (Timeline) tab. (The editor
-     menubar, which is far wider, keeps its own tablet-inclusive fade.) */
-  @media (max-width: 767px) {
-    .workarea-view-tabs-scroll {
-      -webkit-mask-image: linear-gradient(
-        to right,
-        black calc(100% - 24px),
-        transparent
-      );
-      mask-image: linear-gradient(
-        to right,
-        black calc(100% - 24px),
-        transparent
-      );
-    }
+  .workarea-view-tabs-frame:hover .workarea-view-tabs-scroll,
+  .workarea-view-tabs-frame:focus-within .workarea-view-tabs-scroll {
+    scrollbar-color: var(--color-gw-border-md) transparent;
   }
 
   /* Tab button — D9: no blue fill */
@@ -2628,6 +2641,12 @@ html.gw-theme-dark {
     justify-content: space-between;
     width: 100%;
     gap: 8px;
+  }
+
+  .listbox-option-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-gw-secondary);
   }
 
   .listbox-option-label {

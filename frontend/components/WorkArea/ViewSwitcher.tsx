@@ -70,53 +70,89 @@ export default function ViewSwitcher({
     typeof disabledViews === "function" ? disabledViews() : disabledViews;
   const hasReason = resolvedDisabledViews.some((v) => disabledReasons[v]);
 
+  // Whether tabs are hidden past the right edge of the scrolling row; the
+  // frame then fades that edge (CSS keyed on `data-more-right`). Re-measured
+  // on scroll and whenever the row or its contents resize.
+  const frameRef = React.useRef<HTMLDivElement>(null);
+  const [hasMoreRight, setHasMoreRight] = React.useState(false);
+  React.useEffect(() => {
+    const scroller = frameRef.current?.querySelector<HTMLElement>(
+      ".workarea-view-tabs-scroll",
+    );
+    if (!scroller) return;
+    const measure = (): void => {
+      setHasMoreRight(
+        scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1,
+      );
+    };
+    measure();
+    scroller.addEventListener("scroll", measure, { passive: true });
+    const observer =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    observer?.observe(scroller);
+    if (scroller.firstElementChild) {
+      observer?.observe(scroller.firstElementChild);
+    }
+    return () => {
+      scroller.removeEventListener("scroll", measure);
+      observer?.disconnect();
+    };
+  }, []);
+
   return (
     <>
-      <Tabs
-        value={view}
-        onValueChange={(v) => onChange(v as ViewName)}
-        className="workarea-view-tabs-scroll"
-        /* This is a tab strip only — the view it selects is rendered by the
+      <div
+        ref={frameRef}
+        className="workarea-view-tabs-frame"
+        data-view-tabs-frame=""
+        data-more-right={hasMoreRight ? "" : undefined}
+      >
+        <Tabs
+          value={view}
+          onValueChange={(v) => onChange(v as ViewName)}
+          className="workarea-view-tabs-scroll"
+          /* This is a tab strip only — the view it selects is rendered by the
            work area, not by a TabsContent here — so a trigger has no panel to
            point `aria-controls` at. */
-        hasPanels={false}
-      >
-        <TabsList
-          aria-label="Work area views"
-          className={`workarea-view-tabs ${className}`}
+          hasPanels={false}
         >
-          {VIEW_OPTIONS.map((opt) => {
-            const isDisabled = resolvedDisabledViews.includes(opt.key);
-            const reason = isDisabled ? disabledReasons[opt.key] : undefined;
-            const trigger = (
-              <TabsTrigger
-                value={opt.key}
-                disabled={isDisabled}
-                className="workarea-tab-button border-b-hairline"
-              >
-                <opt.icon size={14} aria-hidden="true" />
-                {opt.key === "edit" ? editLabel : opt.label}
-              </TabsTrigger>
-            );
-            // A disabled <button> swallows pointer events, so wrap it in a
-            // hover target that carries the "why it's off" tooltip. The wrapper
-            // must stay layout-neutral: `self-stretch` fills the row's cross
-            // axis so the inner tab keeps the same height/position as the
-            // unwrapped (enabled) tabs.
-            return reason ? (
-              <span
-                key={opt.key}
-                className="inline-flex self-stretch"
-                {...hoverTipProps(VIEW_TOOLTIP_ID, reason)}
-              >
-                {trigger}
-              </span>
-            ) : (
-              <React.Fragment key={opt.key}>{trigger}</React.Fragment>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+          <TabsList
+            aria-label="Work area views"
+            className={`workarea-view-tabs ${className}`}
+          >
+            {VIEW_OPTIONS.map((opt) => {
+              const isDisabled = resolvedDisabledViews.includes(opt.key);
+              const reason = isDisabled ? disabledReasons[opt.key] : undefined;
+              const trigger = (
+                <TabsTrigger
+                  value={opt.key}
+                  disabled={isDisabled}
+                  className="workarea-tab-button border-b-hairline"
+                >
+                  <opt.icon size={14} aria-hidden="true" />
+                  {opt.key === "edit" ? editLabel : opt.label}
+                </TabsTrigger>
+              );
+              // A disabled <button> swallows pointer events, so wrap it in a
+              // hover target that carries the "why it's off" tooltip. The wrapper
+              // must stay layout-neutral: `self-stretch` fills the row's cross
+              // axis so the inner tab keeps the same height/position as the
+              // unwrapped (enabled) tabs.
+              return reason ? (
+                <span
+                  key={opt.key}
+                  className="inline-flex self-stretch"
+                  {...hoverTipProps(VIEW_TOOLTIP_ID, reason)}
+                >
+                  {trigger}
+                </span>
+              ) : (
+                <React.Fragment key={opt.key}>{trigger}</React.Fragment>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+      </div>
       {hasReason && <HoverTipSurface id={VIEW_TOOLTIP_ID} />}
     </>
   );

@@ -650,7 +650,7 @@ export const Interactive: Story = {
  * `tests/component/StartPage.test.tsx` and
  * `tests/component/ImportScrivenerDialog.test.tsx` both use.
  */
-function installScrivenerBridge(): void {
+function installScrivenerBridge(options: { isSharingOn?: boolean } = {}): void {
   const bridge: DesktopBridge = {
     getWorkspaceDir: async () => "/tmp",
     chooseWorkspaceDir: async () => ({ ok: false, cancelled: true }),
@@ -677,14 +677,24 @@ function installScrivenerBridge(): void {
     startDocxImport: () => new Promise<DocxImportOutcome>(() => {}),
     getGlobalNoiseWords: async () => [],
     setGlobalNoiseWords: async () => ({ ok: true }),
-    getSharingStatus: async () => ({
-      enabled: false,
-      effective: false,
-      blockedByHostedAuth: false,
-      addresses: [],
-      credentialStore: "missing",
-      port: 0,
-    }),
+    getSharingStatus: async () =>
+      options.isSharingOn
+        ? {
+            enabled: true,
+            effective: true,
+            blockedByHostedAuth: false,
+            addresses: ["http://192.168.1.20:7340"],
+            credentialStore: "ok" as const,
+            port: 7340,
+          }
+        : {
+            enabled: false,
+            effective: false,
+            blockedByHostedAuth: false,
+            addresses: [],
+            credentialStore: "missing" as const,
+            port: 0,
+          },
     setSharingEnabled: async () => {},
     generatePairingCode: async () => ({
       code: "",
@@ -711,6 +721,8 @@ function installScrivenerBridge(): void {
       storeDirectory: "/tmp",
     }),
     setSharingLimit: async () => ({ kind: "ok" as const }),
+    getKeepRunningSetting: async () => ({ supported: true, enabled: false }),
+    setKeepRunningSetting: async () => undefined,
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }
@@ -721,7 +733,7 @@ function removeScrivenerBridge(): void {
 }
 
 /**
- * The "Import from Scrivener" launcher renders only when a desktop bridge is
+ * The "Import Scrivener 3 Project" launcher renders only when a desktop bridge is
  * present (Task 9, Feature 43) — this story installs a fake one.
  */
 export const ImportButtonVisible: Story = {
@@ -732,7 +744,23 @@ export const ImportButtonVisible: Story = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("button", { name: /Import from Scrivener/i });
+    await canvas.findByRole("button", { name: "Import Scrivener 3 Project" });
+  },
+};
+
+/**
+ * Desktop with home-network sharing in effect: the "Sharing is on" banner
+ * shows at the top of the Start Page, above the hero.
+ */
+export const SharingOn: Story = {
+  args: { projects: [] },
+  render: (args: StartPageProps) => {
+    installScrivenerBridge({ isSharingOn: true });
+    return <StartPage {...args} />;
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("status");
   },
 };
 
@@ -751,7 +779,7 @@ export const ImportButtonAbsent: Story = {
     // Wait a tick for StartPage's render to settle, then assert absence.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(
-      canvas.queryByRole("button", { name: /Import from Scrivener/i }),
+      canvas.queryByRole("button", { name: "Import Scrivener 3 Project" }),
     ).not.toBeInTheDocument();
   },
 };

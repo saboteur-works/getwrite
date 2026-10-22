@@ -161,7 +161,7 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
       <LabeledField label="Related entity">
         <select
           aria-label="entity-relationship-target-select"
-          className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           value={targetEntityId}
           onChange={(e) => setTargetEntityId(e.target.value)}
           disabled={otherEntities.length === 0}
@@ -183,7 +183,7 @@ export default function EntityRelationshipsSection(): JSX.Element | null {
       <LabeledField label="Relationship type">
         <select
           aria-label="entity-relationship-type-select"
-          className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
           value={relationshipType}
           onChange={(e) => setRelationshipType(e.target.value)}
           disabled={!hasRelationshipTypes}

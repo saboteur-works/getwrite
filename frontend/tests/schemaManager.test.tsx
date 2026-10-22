@@ -1434,3 +1434,117 @@ describe("SchemaManager — subtype restriction control", () => {
     expect(stored).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Rename group
+// ---------------------------------------------------------------------------
+
+describe("SchemaManager — rename group", () => {
+  function startRename(label: string): HTMLInputElement {
+    fireEvent.click(
+      screen.getByRole("button", { name: `Rename ${label} group` }),
+    );
+    return screen.getByRole("textbox", {
+      name: `Group name for ${label}`,
+    }) as HTMLInputElement;
+  }
+
+  it("Enter saves the trimmed name with rename-group", async () => {
+    setup();
+    const renamed: MetadataSchema = {
+      groups: [
+        { ...CUSTOM_SCHEMA.groups[0], label: "Places" },
+        CUSTOM_SCHEMA.groups[1],
+      ],
+    };
+    const fetchSpy = mockFetchOk(renamed);
+
+    const input = startRename("Group A");
+    expect(input.value).toBe("Group A");
+    fireEvent.change(input, { target: { value: "  Places  " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0]![1] as RequestInit).body as string,
+    );
+    expect(body).toMatchObject({
+      action: "rename-group",
+      groupId: "group-a",
+      newLabel: "Places",
+    });
+    expect(await screen.findByText("Places")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["", "Group name must not be blank."],
+    ["  group b ", "A group named “Group B” already exists."],
+  ])(
+    "refuses %j beside the field, keeps editing and sends nothing",
+    (value, message) => {
+      setup();
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+      const input = startRename("Group A");
+      fireEvent.change(input, { target: { value } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(message);
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(input).toHaveAttribute("aria-describedby", alert.id);
+      expect(input).toBeInTheDocument();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it("Escape cancels without saving", () => {
+    setup();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    const input = startRename("Group A");
+    fireEvent.change(input, { target: { value: "Something" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(
+      screen.queryByRole("textbox", { name: /Group name for/ }),
+    ).toBeNull();
+    expect(screen.getByText("Group A")).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("offers rename on built-in groups too", () => {
+    setup(DEFAULT_METADATA_SCHEMA);
+    for (const group of DEFAULT_METADATA_SCHEMA.groups) {
+      expect(
+        screen.getByRole("button", { name: `Rename ${group.label} group` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("shows the server's refusal in a toast and keeps the old name", async () => {
+    setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: "Metadata schema operation failed",
+            details: "Group name must not be blank.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+
+    const input = startRename("Group A");
+    fireEvent.change(input, { target: { value: "Places" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(toastService.error).toHaveBeenCalledWith(
+        "Couldn't rename group",
+        expect.any(String),
+      ),
+    );
+    expect(screen.getByText("Group A")).toBeInTheDocument();
+  });
+});

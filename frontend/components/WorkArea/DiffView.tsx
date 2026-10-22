@@ -2,6 +2,11 @@ import type { RevisionEntry } from "../../src/store/revisionsSlice";
 
 export type { RevisionEntry };
 
+/**
+ * One word-level diff chunk, running from the historical (old) revision to
+ * the canonical (new) one: `removed` text is only in the historical
+ * revision, `added` text is only in the canonical one.
+ */
 export interface DiffChunk {
   value: string;
   added?: boolean;
@@ -41,19 +46,19 @@ function renderPaneContent(
 
   return chunks.map((chunk, i) => {
     if (side === "canonical") {
+      if (chunk.removed) return null;
+      return (
+        <span key={i} className={chunk.added ? "diff-added" : "diff-unchanged"}>
+          {chunk.value}
+        </span>
+      );
+    } else {
       if (chunk.added) return null;
       return (
         <span
           key={i}
           className={chunk.removed ? "diff-removed" : "diff-unchanged"}
         >
-          {chunk.value}
-        </span>
-      );
-    } else {
-      if (chunk.removed) return null;
-      return (
-        <span key={i} className={chunk.added ? "diff-added" : "diff-unchanged"}>
           {chunk.value}
         </span>
       );
@@ -186,6 +191,13 @@ export default function DiffView({
   return (
     <div className={className}>
       <div className="flex flex-col gap-4">
+        {diffChunks ? (
+          <p data-testid="diff-key" className="text-gw-small text-gw-secondary">
+            <span className="diff-added">Tinted</span> in Canonical: new since
+            that revision. <span className="diff-removed">Struck through</span>{" "}
+            in Historical: not in the canonical text.
+          </p>
+        ) : null}
         <div className="flex gap-4">
           <section className="flex-1 workarea-pane">
             <h3 className="workarea-pane-title">Canonical</h3>

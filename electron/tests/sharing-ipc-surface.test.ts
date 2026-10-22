@@ -33,6 +33,7 @@ const DEVICE = [
   "getwrite:sharing-revoke-device",
 ];
 const LIMITS = ["getwrite:sharing-get-limits", "getwrite:sharing-set-limit"];
+const KEEP_RUNNING = ["getwrite:keep-running-get", "getwrite:keep-running-set"];
 const limitsIpc = fs.readFileSync(
   path.resolve(__dirname, "../src/sharing/limits-ipc.ts"),
   "utf8",
@@ -49,10 +50,22 @@ function invokedChannels(source: string): string[] {
 }
 
 describe("preload sharing surface", () => {
-  it("invokes exactly the existing channels plus the four sharing ones, the three device ones and the two limits ones", () => {
+  it("invokes exactly the existing channels plus the four sharing ones, the three device ones, the two limits ones and the two keep-running ones", () => {
     expect(invokedChannels(preload).sort()).toEqual(
-      [...EXISTING, ...NEW, ...DEVICE, ...LIMITS].sort(),
+      [...EXISTING, ...NEW, ...DEVICE, ...LIMITS, ...KEEP_RUNNING].sort(),
     );
+  });
+
+  it("main registers each keep-running channel through createKeepRunningHandlers", () => {
+    for (const channel of KEEP_RUNNING) {
+      const at = main.indexOf(`ipcMain.handle(\n    "${channel}"`);
+      const inline = main.indexOf(`ipcMain.handle("${channel}"`);
+      const start = at >= 0 ? at : inline;
+      expect(start, channel).toBeGreaterThan(-1);
+      const call = main.slice(start, main.indexOf(");", start) + 2);
+      expect(call, channel).toMatch(/keepRunning\.(get|set)/);
+    }
+    expect(main).toContain("createKeepRunningHandlers(");
   });
 
   it("never invokes a non-literal channel (no passthrough)", () => {

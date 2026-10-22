@@ -203,7 +203,7 @@ describe("StartPage — Scrivener import launcher", () => {
     renderStartPage();
 
     expect(
-      screen.getByRole("button", { name: /Import from Scrivener/i }),
+      screen.getByRole("button", { name: "Import Scrivener 3 Project" }),
     ).toBeInTheDocument();
   });
 
@@ -213,7 +213,7 @@ describe("StartPage — Scrivener import launcher", () => {
     const user = userEvent.setup();
 
     await user.click(
-      screen.getByRole("button", { name: /Import from Scrivener/i }),
+      screen.getByRole("button", { name: "Import Scrivener 3 Project" }),
     );
 
     expect(
@@ -232,7 +232,7 @@ describe("StartPage — Scrivener import launcher", () => {
     const user = userEvent.setup();
 
     await user.click(
-      screen.getByRole("button", { name: /Import from Scrivener/i }),
+      screen.getByRole("button", { name: "Import Scrivener 3 Project" }),
     );
     await user.click(
       screen.getByRole("button", { name: /Choose Scrivener project/i }),
@@ -270,7 +270,7 @@ describe("StartPage — Scrivener import launcher", () => {
         </Provider>
       </SharingLimitsProvider>,
     );
-    expect(ssrMarkup).not.toContain('aria-label="Import from Scrivener"');
+    expect(ssrMarkup).not.toContain("Import Scrivener 3 Project");
 
     // A normal client render (with the same bridge stub present) must still
     // reveal the Import control once its mount effect resolves the bridge —
@@ -278,7 +278,7 @@ describe("StartPage — Scrivener import launcher", () => {
     renderStartPage();
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Import from Scrivener/i }),
+        screen.getByRole("button", { name: "Import Scrivener 3 Project" }),
       ).toBeInTheDocument();
     });
   });
@@ -298,7 +298,7 @@ describe("StartPage — DOCX import launcher (Task 17)", () => {
     renderStartPage();
 
     expect(
-      screen.getByRole("button", { name: /Import from Scrivener/i }),
+      screen.getByRole("button", { name: "Import Scrivener 3 Project" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Import Word Document/i }),
@@ -1156,5 +1156,48 @@ describe("StartPage — project list status (no false empty state)", () => {
   it("still says 'No projects yet' once an empty list has loaded", () => {
     renderStartPage({ projects: [], projectsStatus: "loaded" });
     expect(screen.getByText("No projects yet")).toBeInTheDocument();
+  });
+});
+
+describe("StartPage — App Settings moved to the settings menu", () => {
+  it("has no App Settings button", () => {
+    renderStartPage();
+    expect(
+      screen.queryByRole("button", { name: "App Settings" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("StartPage — import buttons sit beneath Start a New Project", () => {
+  it("names the Scrivener import with its version and shows nothing called just 'Import'", () => {
+    installBridge({});
+    renderStartPage();
+
+    const scrivener = screen.getByRole("button", {
+      name: "Import Scrivener 3 Project",
+    });
+    expect(scrivener).toHaveTextContent("Import Scrivener 3 Project");
+    expect(
+      screen.queryByRole("button", { name: "Import" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("puts both import buttons in a row below the create button, not beside it", () => {
+    installBridge({});
+    renderStartPage();
+
+    const create = screen.getByRole("button", { name: /Start a New Project/i });
+    const scrivener = screen.getByRole("button", {
+      name: "Import Scrivener 3 Project",
+    });
+    const word = screen.getByRole("button", { name: "Import Word Document" });
+
+    expect(scrivener.parentElement).toBe(word.parentElement);
+    expect(scrivener.parentElement).not.toBe(create.parentElement);
+    expect(scrivener.parentElement?.contains(create)).toBe(false);
+    expect(
+      create.compareDocumentPosition(scrivener) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

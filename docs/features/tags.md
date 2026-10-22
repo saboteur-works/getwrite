@@ -37,14 +37,15 @@ Tags are stored in `project.json`:
 
 `frontend/src/lib/models/tags.ts` provides CRUD operations for tags and assignments:
 
-| Function                 | Description                                                           |
-| ------------------------ | --------------------------------------------------------------------- |
-| Create tag               | Generates a UUID, appends to `config.tags`, writes `project.json`     |
-| Rename tag               | Finds tag by ID, updates `name`, writes `project.json`                |
-| Delete tag               | Removes from `config.tags` and all entries in `config.tagAssignments` |
-| Assign tag to resource   | Adds tag UUID to `config.tagAssignments[resourceId]`                  |
-| Remove tag from resource | Removes tag UUID from `config.tagAssignments[resourceId]`             |
-| List tags for resource   | Reads `config.tagAssignments[resourceId]` and resolves tag objects    |
+| Function                                | Description                                                                                                                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create tag                              | Generates a UUID, appends to `config.tags`, writes `project.json`                                                                                                                                  |
+| Create checked tag (`createCheckedTag`) | The writer-facing create (route and native transport): same rules as Update tag, then Create tag. Scrivener import calls the unchecked Create tag, since keyword names may differ only in capitals |
+| Update tag (`updateTag`)                | Finds tag by ID, sets the trimmed `name` and the `color` (absent clears it), writes `project.json`; refuses a blank name, another tag's name (ignoring capitals) or a non-hex colour               |
+| Delete tag                              | Removes from `config.tags` and all entries in `config.tagAssignments`                                                                                                                              |
+| Assign tag to resource                  | Adds tag UUID to `config.tagAssignments[resourceId]`                                                                                                                                               |
+| Remove tag from resource                | Removes tag UUID from `config.tagAssignments[resourceId]`                                                                                                                                          |
+| List tags for resource                  | Reads `config.tagAssignments[resourceId]` and resolves tag objects                                                                                                                                 |
 
 All operations read the current `project.json`, apply the change, and write back atomically.
 
@@ -64,7 +65,7 @@ Tags are part of `project.json` — they are project-scoped and not per-resource
 
 Tags are managed through the Tags section of the Metadata sidebar when a resource is selected. The app reads `config.tags` to populate available options and writes `config.tagAssignments` when the user assigns or removes a tag.
 
-Project-level tag management (create, rename, delete) is accessible from the project settings UI.
+Project-level tag management (create, edit name and colour, delete) is in Project Settings → **Manage Tags**. A tag keeps its id when edited, so its assignments and any saved query that names it follow the change. The sidebar Tags section reloads its list after any create, edit or delete made through `lib/api/tags.ts` (`onTagsChanged`).
 
 ---
 
