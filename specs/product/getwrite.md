@@ -1649,6 +1649,90 @@ with the app without hand-rewriting it (see OQ-90).
   document, and read the paragraph's inline style. No cause is stated here
   for the measured behaviour. READ: `TipTapEditor.tsx:483-491` stamps 1.5 on
   every editor creation. [US-9]
+- FR-72: Every font-family input for editor typography (Project Settings'
+  Editor tab heading and body styles, the Project Type Manager's typography
+  fields (FR-74) and the editor toolbar's font control) MUST offer a
+  dropdown of fonts GetWrite can render: the fonts bundled with the app
+  (FR-73) plus a list of common system fonts, and an "Other..." choice that
+  lets the writer type any font name. The list MUST be shown in full whether
+  or not a font is already set. GetWrite MUST NOT enumerate the fonts
+  Owner decision, 2026-10-21 (POS note
+  note_db7c7c58, "fix the inputs"; A1). Decisions (Owner decision, Gate 1,
+  2026-10-21; resolved: OQ-104, OQ-105, OQ-106): (a) System fonts (OQ-104):
+  the system-font part of the list is one cross-platform list on every
+  platform: Arial, Georgia, Times New Roman, Courier New, Verdana, Trebuchet
+  MS, plus the generic families serif, sans-serif and monospace; Garamond,
+  Helvetica, Palatino and Tahoma are not in the list (still reachable
+  through "Other..."). (b) "Other..." (OQ-105): a font named through
+  "Other..." MUST be rendered with a fallback stack ("<Name>", "IBM Plex
+  Serif", serif), and a fixed hint MUST be shown under the "Other..." field:
+  "If this font isn't installed on this device, text shows in IBM Plex
+  Serif." GetWrite does no detection of installed fonts. (c) Stored values
+  (OQ-106): a stored value that matches no list entry (case-insensitive, by
+  label) MUST be shown as "Other..." with the stored text filled in
+  unchanged, and MUST NOT be rewritten unless the writer edits it. Facts.
+  READ (code, not measured in the running app):
+  `components/preferences/FontFamilyInput.tsx` is an `Input` with a
+  `<datalist>`; browsers filter a datalist by the field's current value, so
+  with a font already set the suggestion list shows only that value. [US-9]
+- FR-73: The fonts in `FONT_OPTIONS` (`frontend/src/lib/fonts/fonts.ts`:
+  Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE,
+  Fascinate Inline) and the IBM Plex families (Sans, Sans Condensed, Mono,
+  Serif; the brand fonts named in `styles/saboteur-base.css`) MUST be
+  shipped with the app as bundled font files under the SIL Open Font
+  License, so that they render with no network access and GetWrite makes no
+  request to Google Fonts or any other font host for them. A font chosen in
+  Project Settings (heading or body styles) or by a project type MUST render
+  in the editor without the writer also choosing it in the toolbar. Owner
+  decision, 2026-10-21 (note_db7c7c58; B2 and C). Decisions (Owner
+  decision, Gate 1, 2026-10-21; resolved: OQ-103, OQ-107, OQ-108, OQ-109):
+  (a) Domine (OQ-103): Domine is removed as a font choice;
+  `app/layout.tsx` MUST stop linking it from Google Fonts; the editor
+  toolbar's fallback becomes the project's configured body font, else IBM
+  Plex Serif; no Domine file is bundled; a stored "Domine" value is handled
+  like any unlisted value (FR-72, OQ-106). (b) Files (OQ-107): WOFF2, Latin
+  plus Latin Extended subsets, the weights already in use (`FONT_OPTIONS`
+  weights; IBM Plex per STYLING.md: Sans 400/700, Sans Condensed 400/700,
+  Mono 400/500, Serif 400/500/700 and 400 italic; Playwrite IE as the
+  discrete weights 100/200/300/400; amended at Gate 3, 2026-10-21, feature
+  spec OQ-8 and OQ-10: built-in project types and the default H3 use Plex
+  Serif 500), obtained through the
+  `@fontsource` (or `@fontsource-variable` where a variable font is the
+  shipped form) npm packages, each with a one-line justification per
+  `docs/standards/package-selection.md`. The weight select MUST offer
+  exactly the weights shipped. No size budget is fixed in advance: the added
+  size for the web build, the Electron bundle and the native `out/` is
+  measured after the first build and recorded. (c) Targets (OQ-108): one
+  mechanism for web, desktop and native (Android): fonts imported in the
+  frontend (served from the app's own origin), so the Next build output
+  carries them to all three targets; no Electron-only `extraResources`.
+  (d) Licence notice (OQ-109): the SIL OFL licence text and per-font
+  copyright notices MUST ship with the app as a file (`THIRD_PARTY_FONTS.txt`
+  or equivalent alongside the fonts, and in the repo); an in-app Licences
+  view in Help is a later follow-up, out of this scope. Facts. READ (code,
+  not measured in the running app): fonts load from Google Fonts over the
+  network; `app/layout.tsx` links Domine, and
+  `src/lib/fonts/loadGoogleFont.ts` is called only from the editor toolbar's
+  font menu (`components/Editor/MenuBar/toolbar-command-schema.ts`), never
+  from Project Settings; no `@font-face`, package or stylesheet link for IBM
+  Plex exists in `frontend/styles/`, `frontend/app/layout.tsx` or
+  `frontend/package.json`, so the CSS that names it renders it only where it
+  is installed. Domine is linked in `app/layout.tsx` and is the toolbar's
+  fallback value but is not in `FONT_OPTIONS`. [US-9]
+- FR-74: The Project Type Manager's project type form MUST offer, for
+  heading and body styles, the same typography inputs as Project Settings'
+  Editor tab (font dropdown per FR-72, numeric size, weight select, colour
+  picker, and the other fields both already have such as letter spacing and
+  line height), implemented as one shared component used by both, instead of
+  free-text fields the writer must type correctly. The line-height floor of
+  FR-71 continues to apply to the form's line height field. Owner decision,
+  2026-10-21 (note_db7c7c58). [US-1]
+- FR-75: In Project Settings' Editor tab, typography inputs shown in one row
+  MUST have matching rendered heights (font, size, weight and colour
+  controls in a row are the same height). Owner decision, 2026-10-21
+  (note_db7c7c58). Facts. Reported by the owner, not measured: the heading
+  Colour field box is taller than the other inputs and the Font Weight
+  select is shorter. [US-9]
 
 ## Constraints
 
@@ -3307,6 +3391,48 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (2026-10-19): option (a). An already-stored paragraph leading of "1.5" is treated as unset on read, on the owner's statement that there are zero users; a writer who deliberately chose 1.5 before this change cannot be told apart, and this is accepted. After the change, unset is represented distinctly (absent attribute), so new explicit choices, including 1.5, are kept.
 **Evidence:** Owner decision, Gate 1, 2026-10-19. Read: `GetWriteParagraphLeading.ts:21,31,34,37` default/parse/render; `TipTapEditor.tsx:483-491` stamps 1.5 on every editor creation.
 **Impact:** FR-71; existing documents. The owner states there are zero users.
+**Owner:** Product owner.
+
+**OQ-103 (resolved): Is Domine kept, bundled, or removed?**
+**Resolution:** Resolved (2026-10-21, Gate 1): resolved from evidence, owner confirmed. Domine is removed as a font choice. `app/layout.tsx` stops linking it from Google Fonts; the editor toolbar's fallback becomes the project's configured body font, else IBM Plex Serif. No Domine file is bundled. A stored "Domine" value is handled like any unlisted value (OQ-106).
+**Evidence:** Owner confirmation, Gate 1, 2026-10-21. Read: `app/layout.tsx` links Domine and the toolbar uses it as its fallback value, but it is not in `FONT_OPTIONS`.
+**Impact:** FR-73; `app/layout.tsx` links Domine and the editor toolbar uses it as its fallback value, but it is not in `FONT_OPTIONS`.
+**Owner:** Product owner.
+
+**OQ-104 (resolved): Which common system fonts are in the dropdown list?**
+**Resolution:** Resolved (2026-10-21, Gate 1): option (b). The system-font part of the list is one cross-platform list on every platform: Arial, Georgia, Times New Roman, Courier New, Verdana, Trebuchet MS, plus the generic families serif, sans-serif and monospace. Garamond, Helvetica, Palatino and Tahoma are dropped from the list (still reachable through "Other...").
+**Evidence:** Owner decision, Gate 1, 2026-10-21.
+**Impact:** FR-72; the list content, and whether it differs per platform (web, desktop, Android).
+**Owner:** Product owner.
+
+**OQ-105 (resolved): What does "Other..." do with a font name that is not installed on the computer: what does the text render in, and is the writer shown a notice?**
+**Resolution:** Resolved (2026-10-21, Gate 1): option (b). A font named through "Other..." is rendered with a fallback stack ("<Name>", "IBM Plex Serif", serif), and a fixed hint is shown under the "Other..." field: "If this font isn't installed on this device, text shows in IBM Plex Serif." There is no detection of installed fonts.
+**Evidence:** Owner decision, Gate 1, 2026-10-21.
+**Impact:** FR-72; fallback behaviour and any notice in Project Settings, the Project Type Manager and the toolbar.
+**Owner:** Product owner.
+
+**OQ-106 (resolved): Is an existing stored font value that is not in the list shown as "Other..." with its text filled in?**
+**Resolution:** Resolved (2026-10-21, Gate 1): resolved from evidence, owner confirmed. A stored value that matches no list entry (case-insensitive, by label) is shown as "Other..." with the stored text filled in unchanged; it is never rewritten unless the writer edits it.
+**Evidence:** Owner confirmation, Gate 1, 2026-10-21.
+**Impact:** FR-72; existing project and project type files; round-tripping a stored value without changing it.
+**Owner:** Product owner.
+
+**OQ-107 (resolved): What font file format, weights and subsetting are used, and what added size to the app is acceptable?**
+**Resolution:** Resolved (2026-10-21, Gate 1): option (b). WOFF2, Latin plus Latin Extended subsets, the weights already in use (`FONT_OPTIONS` weights; IBM Plex per STYLING.md: Sans 400/700, Sans Condensed 400/700, Mono 400/500, Serif 400/500/700 and 400 italic; Playwrite IE as the discrete weights 100/200/300/400; amended at Gate 3, 2026-10-21, feature spec OQ-8 and OQ-10: built-in project types and the default H3 use Plex Serif 500), obtained through the `@fontsource` (or `@fontsource-variable` where a variable font is the shipped form) npm packages, each with a one-line justification per `docs/standards/package-selection.md`. The weight select offers exactly the weights shipped. No size budget is fixed in advance: the added size for the web build, the Electron bundle and the native `out/` is measured after the first build and recorded.
+**Evidence:** Owner decision, Gate 1, 2026-10-21.
+**Impact:** FR-73; installer and bundle size, load time, and which weights each family offers in the weight select.
+**Owner:** Product owner.
+
+**OQ-108 (resolved): Are the fonts bundled for web, desktop and native (Android) builds alike?**
+**Resolution:** Resolved (2026-10-21, Gate 1): resolved from evidence, owner confirmed. One mechanism for web, desktop and native (Android): fonts imported in the frontend (served from the app's own origin), so the Next build output carries them to all three targets; no Electron-only `extraResources`.
+**Evidence:** Owner confirmation, Gate 1, 2026-10-21.
+**Impact:** FR-73; the hosted web build, the Electron bundle and the Capacitor `build:native` output.
+**Owner:** Product owner.
+
+**OQ-109 (resolved): Where is the SIL Open Font License notice placed (an in-app about or licences view, a file shipped with the app, or both)?**
+**Resolution:** Resolved (2026-10-21, Gate 1): option (c). The SIL OFL licence text and per-font copyright notices ship with the app as a file (`THIRD_PARTY_FONTS.txt` or equivalent alongside the fonts, and in the repo). An in-app Licences view in Help is a later follow-up, out of this scope.
+**Evidence:** Owner decision, Gate 1, 2026-10-21.
+**Impact:** FR-73; licence compliance for redistributed font files.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)

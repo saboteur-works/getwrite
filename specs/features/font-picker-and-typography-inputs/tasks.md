@@ -1,0 +1,286 @@
+# Tasks: Font pickers that show every font, fonts that ship with the app, and one typography form (Feature 91)
+
+Source spec: `specs/features/font-picker-and-typography-inputs.md` (FR-1..FR-21, US-1..US-4; Gate 3 answers OQ-1..OQ-11 of 2026-10-21 are folded in). Parent: `specs/product/getwrite.features.md` Feature 91. Branch: `feat/font-picker-and-typography-inputs`, main checkout. Format precedent: `specs/features/writer-project-types-and-paragraph-leading/tasks.md`. Granularity: story points (1/2/3/5/8); sizes S = 1-2, M = 3, L = 5. Only Tasks 15 and 19 are L.
+
+Shape of the work: measure first, then packages, then data and pure functions, then the bundled faces, then the components, then the three consumers, then cleanup, browser checks, size, final suites.
+- Tasks 1-4: baselines and every "before" measurement (FR-1, FR-17 before, FR-19 before). No code or package changes happen before these are recorded.
+- Task 5: package installation (own task).
+- Tasks 6-11: font catalogue, value codecs, validated font-family helper, bundled faces, face checks, helper applied at every declaration (Part A: bundled fonts, FR-1..FR-7, FR-19).
+- Tasks 12-20: dropdown, "Other...", weight select, shared typography component, the three forms, toolbar control (Part B: shared dropdown and form, FR-8..FR-16, FR-18).
+- Task 21: cleanup of Google loader, Domine, `FontFamilyInput`. Task 22: licence file. Tasks 23-24: browser and built-output checks. Task 25: heights after (Part C, FR-17). Task 26: docs. Task 27: size after. Task 28: final suites.
+
+Parallelism: after Task 5, {6, 7} are independent; {12, 14} are independent of each other; {17, 18} are independent (Task 19 shares `ProjectTypeEditorForm.tsx` with nothing else in this list). Tasks that share a source file (Notes) are serialised by the orchestrator even where the graph allows parallel work.
+
+Measurements go in `specs/features/font-picker-and-typography-inputs/experiments.md`, in the style of `specs/features/writer-project-types-and-paragraph-leading/experiments.md` (environment record, method, observed values, what was not measured). Each item is MEASURED (observed in a run, stated as values) or UNMEASURED (not run, with the reason). A measurement states what was observed; no cause is written (CLAUDE.md: a measurement is a fact, a cause is a hypothesis). Task 1 creates the file.
+
+FR coverage (each FR is covered by at least one task; the Satisfies line of each task repeats its own):
+FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 24. FR-4: 9, 21. FR-5: 20, 21. FR-6: 11, 23, 24. FR-7: 22, 24. FR-8: 6, 12, 21. FR-9: 7, 11, 13. FR-10: 20. FR-11: 8, 14. FR-12: 8, 15, 16, 17, 18, 19. FR-13: 12, 13, 15. FR-14: 17, 18. FR-15: 19. FR-16: 16, 18, 19. FR-17: 4, 25. FR-18: 10, 20, 23. FR-19: 2, 27. FR-20: 26. FR-21: each test task, and 28.
+
+**Rules every task inherits (the implementor sees only its own task plus the spec):**
+- Work in the main checkout on branch `feat/font-picker-and-typography-inputs`. No worktrees; do not switch branches. Implementors do not commit and do not push; the orchestrator commits. The uncommitted edits to `specs/product/getwrite.features.md`, `specs/product/getwrite.md` and the spec are the pipeline's; leave them alone.
+- Throwaway data only. Every run of the app, a dev server, a built server, Storybook-backed e2e or the CLI that touches project data uses throwaway folders under `$TMPDIR` or the scratchpad (`GETWRITE_PROJECTS_DIR` set to a throwaway projects folder; `GETWRITE_SAVED_PROJECT_TYPES_DIR` to a throwaway folder). NEVER read, list or write the repo's `projects/`, `~/Library/Application Support/getwrite-electron/`, `~/Library/Application Support/GetWrite/`, `~/Documents/GetWrite`, or `~/Library/Logs/*`. A desktop (Electron) run uses a throwaway `--user-data-dir`, workspace and logs folder, and its first action reads `app.getPath("userData")` and `app.getPath("logs")` and stops ("not run") if either is under a protected folder. Tasks that run an app, server or the CLI repeat this constraint.
+- Before starting any app, dev server or Storybook, run `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` and record the output. If anything listens on 7340 the desktop app MUST NOT start. `pnpm test:e2e` builds and serves Storybook itself on :6006: never start `pnpm storybook` first; if 6006 is held, stop and report.
+- Never stop a process the task did not start. Record the pid (and descendants) of every process the task starts and stop only those, by pid; no `pkill`/`killall`, never by port or name. Confirm they exited.
+- Commands that start a server, the app, a build or Playwright run OUTSIDE the command sandbox, in the main checkout (builds fail in worktrees; `next dev` needs to run outside the sandbox). Unit suites, typecheck, lint, knip and read-only git run inside the sandbox. Installing packages (Task 5) needs the registry and is run with that host allowed. If a dev server of the user's blocks, report it; do not build workarounds.
+- No network at runtime for fonts: nothing this feature adds may fetch a font from any host. Never print, log or write credentials, cookies or secrets.
+- TDD (`docs/standards/testing.md`): write the named test first and show it failing for the stated reason, then passing after. Extend an existing test file before creating one. Never use a prop on an in-project component without opening its source and stories first (`Input`, `Select`, `LabeledInput`, `LabeledColorInput`). Code follows `docs/standards/typescript-implementation.md` (no `any`, explicit types, pure functions), `failure-visibility.md`, `security.md`, `accessibility.md`, `storybook-implementation.md`. Red is never used for actions or alerts (CLAUDE.md, Styling). Any new component that needs a React context gets a Storybook decorator in the same task, or `pnpm test:e2e` fails.
+- Verification vocabulary used below, all run from `frontend/` unless stated: `pnpm typecheck`; `pnpm lint`; targeted unit `pnpm exec vitest run <file>`; story `npx vitest run --config=vitest.storybook.config.ts --configLoader runner <story file>`; `pnpm test:ci`; `pnpm test:e2e`; `pnpm build` (next build); from the repo root `pnpm knip`. Vitest runs in Node and does NOT catch a Node-only import (`fs`, `path`, `server-only`, `node:*`) reached from client code: every task that adds or changes a client import therefore also runs `pnpm build` and the static import-graph guard `pnpm exec vitest run tests/unit/project-types-no-server-only.test.ts` (extended in Task 9 to cover the font modules), and records both results.
+- Halt rule: if a task cannot meet its done condition, leave it unticked, record why, and report; do not work around it.
+
+### Task 1: Baselines on the unchanged tree, and create experiments.md
+**What:** Record the process listing and the pre-change results of every final suite, and create `experiments.md` with an environment record and a "Baselines" section.
+**Files:** Creates `specs/features/font-picker-and-typography-inputs/experiments.md`. No source change.
+**Done when:** `experiments.md` states, each as an observed value with command and date: the `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` output (6006 confirmed free before the e2e run); from `frontend/`, `pnpm typecheck` (exit code), `pnpm lint` (error and warning counts), `pnpm test:ci` (passed / failed / skipped), `pnpm build` (exit code) and `pnpm test:e2e` (counts and names of any failures); from the repo root `pnpm knip` (finding count); from `electron/`, `pnpm typecheck`, `pnpm test` (counts) and `pnpm build:worker` (exit code); from `cli/`, `pnpm test` (counts); `git status --short` and `git rev-parse HEAD`. A command that cannot run is recorded as not run with the reason. `git status --short` shows no change outside `specs/`.
+**Depends on:** none
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-21 (baseline half). `pnpm test:e2e` and `pnpm build` run outside the sandbox with the lsof record and pids stopped by pid; no read or write of `projects/` or any real app-data folder. Earlier figures are reported, not current; measure.
+**Done:** [ ]
+
+### Task 2: FR-19 "before" sizes on the unchanged tree
+**What:** Build the web, Electron-server and native outputs on the unchanged commit and record their sizes in bytes with the commands used.
+**Files:** Appends a "Size before" section to `experiments.md`. Creates a small measuring script under `specs/features/font-picker-and-typography-inputs/scripts/` (read-only `du`/`stat` over build output). No source change.
+**Done when:** `experiments.md` records, for `git rev-parse HEAD` as in Task 1, each as bytes with the exact command: (a) the web build: total size of `frontend/.next/static` and of `frontend/.next/standalone` after `pnpm build`; (b) the Electron bundle: the output of the repo-root `pnpm electron:build` (standalone server output; and the packaged app and installer size only if an `electron-builder --dir` build into a throwaway output directory can be made without touching any app-data folder; otherwise that part is UNMEASURED with the reason); (c) the native output: total size of `frontend/out` after `pnpm build:native` (frontend/CLAUDE.md notes this build is known to fail at a type error in `stories/Start/CreateProjectModal.stories.tsx`; if it fails here the exit code and error are recorded and (c) is UNMEASURED). The file-count of `*.woff2` in each output is recorded (expected to be what Next already emits; observed). Artifacts are not committed.
+**Depends on:** 1
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-19 (before half; the "same commit base" requirement means this must precede Task 5). Builds fail in worktrees: main checkout, outside the sandbox. Record any build artifact directory left behind and remove only what this task created. Never package into or read `~/Library/Application Support/*`.
+**Done:** [ ]
+
+### Task 3: FR-1 loading-behaviour measurements on `main`
+**What:** Measure the current font loading behaviour in the running web build, before any change to loading code, and record observed values.
+**Files:** Appends a "FR-1 loading behaviour" section to `experiments.md`. Creates a harness under `specs/features/font-picker-and-typography-inputs/scripts/` (built or dev server plus a Playwright or CDP script). No source change.
+**Done when:** `experiments.md` records, with the lsof output, throwaway `GETWRITE_PROJECTS_DIR` asserted before the first request, and the date: (a) every request to `fonts.googleapis.com` and `fonts.gstatic.com` on first load of a text resource; (b) the same after choosing each toolbar font in turn; (c) the computed `font-family` and the rendered font (browser rendered-fonts readout) for a paragraph set to IBM Plex Serif where it is not installed, or UNMEASURED with the reason if no such machine is available; (d) whether a body font family "Merriweather" set in Project Settings renders as Merriweather in the editor before the toolbar has ever loaded it; (e) whether a heading and a body font family "Source Serif 4" compute and render as Source Serif 4 or fall back. Observed values only; no cause. The record states which of the READ rows of the spec's evidence table it confirms, contradicts or leaves unobserved. Processes started are recorded and stopped by pid; nothing outside the throwaway folder was touched.
+**Depends on:** 1
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-1 (US-3). Safety: dev or production server outside the sandbox, port 3000/3100 free first, throwaway projects folder under `$TMPDIR`; the harness asserts the resolved folder before the first request. Needs outbound network to observe the Google requests; if offline, (a) and (b) are recorded as observed-with-no-network (the request attempts and their failures), not as zero requests. This result decides labels only; it does not change FR-2 to FR-7.
+**Done:** [ ]
+
+### Task 4: FR-17 "before" heights in Project Settings' Editor tab
+**What:** Measure the rendered height of every control in each heading row and the body grid in the running web build and record the values.
+**Files:** Appends a "FR-17 heights before" section to `experiments.md`. Creates or reuses a harness under `scripts/` (Playwright, Chromium, default zoom and root font size). No source change.
+**Done when:** `experiments.md` records, with the lsof output, throwaway projects folder asserted, the Chromium version and viewport: `getBoundingClientRect().height` (CSS px, to two decimals) of each control in one heading row (font family, size, weight, colour, letter spacing) for H1, and of the four body controls, plus the same for one heading row of the Project Type Manager form; the max-min spread per row. Values only; no cause is stated (the spec's padding hypothesis is not asserted or refuted here). Processes started are stopped by pid.
+**Depends on:** 1
+**Estimate:** 2 (S)
+**Notes:** Satisfies FR-17 (before half). Can run in the same server session as Task 3 but is recorded separately; serialise if the harness is shared. Safety as Task 3.
+**Done:** [ ]
+
+### Task 5: Install the @fontsource packages with per-package justification
+**What:** Add the `@fontsource` / `@fontsource-variable` packages for the fixed list to `frontend/package.json`, with a justification per package, and confirm which package supplies Playwrite IE at 100, 200, 300 and 400.
+**Files:** Modifies `frontend/package.json` and `pnpm-lock.yaml`. Appends a "Package justifications" section to `experiments.md`. No source import yet.
+**Done when:** `docs/standards/package-selection.md` was opened first (recorded). For each package added (expected: Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono, IBM Plex Serif; the exact package set is decided here), `experiments.md` has a one-line justification stating purpose, why no existing dependency satisfies it (the repo has none for fonts: observed by search), licence (OFL expected; read from the installed package), maintenance (latest stable version and its registry date), unpacked size, peer-dependency check (none expected), and that the package and version exist in the registry (verified, not guessed). It states which package supplies Playwrite IE as discrete 100/200/300/400 files (OQ-8) and, if only a variable package does, records that and that the weight select still offers 100/200/300/400 as discrete choices per FR-2/FR-11; if neither can supply them the task halts and reports. Latest stable versions only; no existing dependency is upgraded; `pnpm install` leaves `git diff --stat` showing only `frontend/package.json` and `pnpm-lock.yaml` (plus specs). Each package's installed directory contains WOFF2 for the `latin` and `latin-ext` subsets at every weight FR-2 lists (file listing recorded; Plex Serif 400/500/700 and 400 italic; Plex Mono 400/500; Source Serif 4 400/600; Inter 400/500/700). `pnpm typecheck` from `frontend/` passes; `pnpm knip` from the root is run and any "unused dependency" for the new packages is recorded as expected until Task 9.
+**Depends on:** 2, 3, 4
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-2 (package half; OQ-8). Run `pnpm add` outside the sandbox with the registry host allowed; pnpm@10.28.0 is pinned, do not change it. Do not modify other lockfile entries beyond what the add requires. The PR body carries the same justification lines (the orchestrator copies them). `pnpm build` is not needed here (no import added).
+**Done:** [ ]
+
+### Task 6: Font catalogue: per-family weights and the single exported list
+**What:** Replace the data role of `FONT_OPTIONS` with one per-family catalogue holding label, kind (bundled, system, generic), shipped weights and their plain labels, and the single exported ordered list of FR-8.
+**Files:** Modifies `frontend/src/lib/fonts/fonts.ts` (keeps `FONT_OPTIONS` exported, unchanged, until Task 21 deletes it); extends or creates `frontend/tests/unit/fonts.test.ts` (check for an existing fonts test first).
+**Done when:** tests that fail first (module exports absent) and then pass: the exported list constant equals, in order, Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono, IBM Plex Serif, Arial, Georgia, Times New Roman, Courier New, Verdana, Trebuchet MS, serif, sans-serif, monospace (and "Other..." is a separate exported constant, not an entry of the list); Garamond, Helvetica, Palatino, Tahoma, Domine are absent; the shipped weights per family are exactly Inter 400/500/700, Merriweather 400/700, Playfair Display 400/700, Lato 400/700, Source Serif 4 400/600, Playwrite IE 100/200/300/400, Fascinate Inline 400, Plex Sans 400/700, Sans Condensed 400/700, Mono 400/500, Serif 400/500/700 plus 400 italic; a test asserts there is one exported list constant and no function reading installed fonts or the platform. `pnpm typecheck`, `pnpm lint` and `pnpm exec vitest run tests/unit/fonts.test.ts` from `frontend/` pass; `pnpm build` and the import-graph guard pass (the module has no Node-only import).
+**Depends on:** 5
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-2 (the per-family structure), FR-8 (list constant and order), FR-21 (list constant and order). Generic and system families carry no shipped weights; their weight rule (400, 700) is Task 14's.
+**Done:** [ ]
+
+### Task 7: Pure validated font-family helper and name validator
+**What:** Add one pure helper that builds a font-family declaration value from a stored value, and a validator for newly typed "Other..." names.
+**Files:** Creates `frontend/src/lib/fonts/font-family-stack.ts` and `frontend/tests/unit/font-family-stack.test.ts`.
+**Done when:** tests that fail first and pass after: a name returns `"<Name>", "IBM Plex Serif", serif` (including "Source Serif 4" and "Garamond"); a generic keyword (serif, sans-serif, monospace) returns the bare keyword; a stored value containing a comma returns the value as stored; an empty or whitespace value returns nothing (no declaration); the validator refuses a newly typed name containing any of `"`, `'`, `;`, `{`, `}`, `\`, `(`, `)`, `<`, `>`, `,` or a control character, each tested individually, accepts "Garamond" and "Source Serif 4", trims, and treats an empty name as accepted-and-empty (clears); a stored value is never passed through the validator (a test shows a stored comma value is accepted by the helper while the same text typed is refused by the validator); the helper does not mutate or re-case its input (a stored "domine" and "Garamond" return byte-identical names inside the quotes). `pnpm typecheck`, `pnpm lint`, `pnpm exec vitest run tests/unit/font-family-stack.test.ts` pass.
+**Depends on:** 3
+**Estimate:** 2 (S)
+**Notes:** Satisfies FR-9 (helper, refused characters, comma rule), FR-21. Pure, no DOM, no Node-only import. Security: `docs/standards/security.md` section 6 (value reaches an inline style). The recorded Task 3 (e) result is cited in the test comment.
+**Done:** [ ]
+
+### Task 8: Value codecs for the shared typography component
+**What:** Add pure functions converting between the stored forms and the shared component's numeric/choice values, and the weight-offering function.
+**Files:** Creates `frontend/src/lib/typography-values.ts` and `frontend/tests/unit/typography-values.test.ts`.
+**Done when:** tests that fail first and pass after: size `"28px"` to number 28 and back to `"28px"`, a non-px stored size (for example `"1.5rem"`) is reported as unparseable and returned as stored, not rewritten; letter spacing `"0.05em"` to 0.05 and back; colour `#rrggbb` normalised only on edit, a stored `#FFF` or `red` is returned as stored; weight keywords normal to "400" and bold to "700" for display only, "lighter" and "bolder" reported as extras; `weightsForFamily(name)` returns, using Task 6's catalogue, the labelled options "Regular 400", "Bold 700" etc. exactly as FR-11 lists per family (Playwrite IE 100/200/300/400 as Thin, ExtraLight, Light, Regular; Source Serif 4 Regular 400 and Semibold 600; IBM Plex Serif 400, 500, 700; generic, system and unlisted names 400 and 700) and "Use default" is separate; a stored weight not offered for the family (stored "lighter", "bolder", 700 for Source Serif 4) is returned as an extra labelled entry and the stored string is unchanged. `pnpm typecheck`, `pnpm lint`, targeted vitest pass.
+**Depends on:** 6
+**Estimate:** 2 (S)
+**Notes:** Satisfies FR-11 (offering and extras), FR-12 (stored forms), FR-21. Round-trip tests here underlie the "no rewrite on open" tests in Tasks 17-19.
+**Done:** [ ]
+
+### Task 9: Bundled faces imported in the frontend; Google links dropped from the layout
+**What:** Import the @fontsource faces (latin and latin-ext, shipped weights only) so the Next build carries them from the app's own origin, and remove the Google preconnects and the Domine link from `app/layout.tsx`.
+**Files:** Creates `frontend/styles/bundled-fonts.css` (or per-family imports; decided by reading how `frontend/styles/saboteur-base.css` and `app/layout.tsx` import CSS); modifies `frontend/app/layout.tsx` (lines ~34-42), the Storybook preview (`frontend/.storybook/preview.*`) to import the same CSS, and `frontend/tests/unit/project-types-no-server-only.test.ts` (extend the import-graph guard to cover `src/lib/fonts/*` and `src/lib/typography-values.ts`). Adds `frontend/tests/unit/bundled-fonts-css.test.ts`.
+**Done when:** the new test fails first and passes: the CSS imports only `@fontsource*` subset/weight files for exactly the Task 6 catalogue (no other weight, no other subset, no Domine, no Cyrillic/Greek/Vietnamese), and contains no `url(http` / `https://` / `//` remote reference and no `@font-face` pointing at a remote URL; `app/layout.tsx` contains no `fonts.googleapis.com`, `fonts.gstatic.com` or Domine `<link>`. From `frontend/`: `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build` (exit 0) and the import-graph guard pass; after `pnpm build` a file search of `.next/static` finds a WOFF2 file for each shipped family (listing recorded); `pnpm knip` from the root no longer flags the new packages as unused. `.domine-400` and the toolbar still reference Google until Task 21 (recorded; not touched here).
+**Depends on:** 3, 5, 6
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-2 (imports, subsets, weights), FR-3 (mechanism: frontend imports only, no `extraResources`, no Android asset copy), FR-4 (layout half), FR-21. Playwrite IE: import the discrete weight files recorded in Task 5. `pnpm build` runs outside the sandbox in the main checkout. Open `app/layout.tsx` fully before editing; keep the change a minimal patch (`docs/standards/template-integrity.md`).
+**Done:** [ ]
+
+### Task 10: Bundled-face resolution check and loud runtime failure
+**What:** Add a test that every bundled face resolves to a file present in the build inputs, and report a face that fails at runtime with `console.error` naming the family.
+**Files:** Adds `frontend/tests/unit/bundled-fonts-resolve.test.ts`; adds a small client module (for example `frontend/src/lib/fonts/report-font-failures.ts`, name decided by reading) and mounts it where the app shell mounts global client effects (found by reading; a new context requirement needs a Storybook decorator).
+**Done when:** the test fails first (resolution check absent) and passes: for each family and weight in the Task 6 catalogue, the CSS from Task 9 references a file that exists under `node_modules/@fontsource*` (the test removes none; it deletes a path in a temp copy or uses a fake resolver to show it fails loudly when a file is missing); a unit test with a mocked `document.fonts` shows a `loadingerror` for a face calls `console.error` with a message containing the family name and no URL or network text, and a successful load logs nothing. `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build` and the import-graph guard pass (the reporter uses only browser APIs, guarded for SSR).
+**Depends on:** 6, 9
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-18 (face resolution and runtime report), FR-21. Do not swallow errors with an empty catch (`failure-visibility.md`).
+**Done:** [ ]
+
+### Task 11: Apply the helper at every font-family declaration
+**What:** Build the editor body variable, the heading style attribute and the previews through the Task 7 helper, so no call site concatenates a family.
+**Files:** Modifies `frontend/src/lib/editor-heading-settings.ts` (~158-162), `frontend/components/Editor/TipTapEditor.tsx` (~720), `frontend/components/preferences/HeadingSettingsModal.tsx` and `BodySettingsModal.tsx` (preview `fontFamily`), and any further call site found by a recorded search of `frontend/` for `fontFamily`; extends their existing tests (`frontend/tests/headingSettingsModal.test.tsx`, the editor heading and TipTapEditor tests found by reading); adds `frontend/tests/unit/font-family-call-sites.test.ts`.
+**Done when:** tests that fail first and pass after: a heading with family "Source Serif 4" renders the style attribute with the quoted stack; a body family "Garamond" sets the editor body variable to `"Garamond", "IBM Plex Serif", serif`; a stored comma value is applied as stored; an empty family sets no declaration; the previews use the same value; the source-tree test fails if any non-test file under `frontend/app`, `components`, `src` builds a `font-family` / `fontFamily` value from a family string without the helper (the search result and the list of call sites checked are recorded in the task notes). Existing tests that asserted the unquoted value are updated with the rule they now follow, stated. `pnpm typecheck`, `pnpm lint`, targeted vitest files, `pnpm build` and the import-graph guard pass.
+**Depends on:** 7, 9
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-9 (single helper, call-site test), FR-6 (the faces exist at load and the declaration names them), FR-21. Shares `HeadingSettingsModal.tsx` and `BodySettingsModal.tsx` with Tasks 17 and 18: serialise.
+**Done:** [ ]
+
+### Task 12: Font-family dropdown component
+**What:** Build the one font-family dropdown that always shows the full list, each entry in its own face, with case-insensitive matching and a read-only extra entry for an unlisted value.
+**Files:** Creates `frontend/components/preferences/FontFamilySelect.tsx` (final path decided by reading), its stories `frontend/stories/Preferences/FontFamilySelect.stories.tsx`, and tests `frontend/tests/fontFamilySelect.test.tsx` and `frontend/tests/fontFamilySelect.a11y.test.tsx` (convention: `create-project-modal.a11y.test.tsx`).
+**Done when:** the tests fail first and pass after: with a value set, opening the control shows every Task 6 list entry; with no value, the same; an entry is styled in its own face where bundled or generic; a stored "arial" shows Arial selected and calls no change; a stored "Domine" or "Garamond" shows the stored text as an extra entry and calls no change on open or close; choosing an entry calls the change callback with the label; Esc closes without changing the value; keyboard open, move through all entries and choose work; a visible focus state exists (class asserted, and a story that shows it). The component records in its header comment which pattern it follows (native `<select>` or WAI-ARIA combobox/listbox) after opening `docs/standards/accessibility.md`. An axe test passes. Stories: default, value set, no value, unlisted value; each passes `npx vitest run --config=vitest.storybook.config.ts --configLoader runner stories/Preferences/FontFamilySelect.stories.tsx`. `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build` and the import-graph guard pass.
+**Depends on:** 6, 9
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-8 (full list, own face, no installed-font data), FR-9 (case-insensitive match, no rewrite), FR-13 (keyboard, focus, pattern), FR-18 (unlisted shown as entry, not folded to empty), FR-21. Open `Select` source and stories before using its props. The "Other..." field is Task 13; this task renders the "Other..." option but not the field. Toolbar variant (no "Other...") is a prop used by Task 20.
+**Done:** [ ]
+
+### Task 13: "Other..." field, fixed hint and refusal
+**What:** Add the "Other..." text field, the fixed hint and the character refusal to the dropdown for the settings forms.
+**Files:** Modifies `frontend/components/preferences/FontFamilySelect.tsx`, `frontend/stories/Preferences/FontFamilySelect.stories.tsx`, `frontend/tests/fontFamilySelect.test.tsx`, `frontend/tests/fontFamilySelect.a11y.test.tsx`.
+**Done when:** tests that fail first and pass after: choosing "Other..." reveals the name field and moves focus to it; the hint "If this font isn't installed on this device, text shows in IBM Plex Serif." is shown whenever the field is shown and linked by `aria-describedby`; a typed "Garamond" is stored trimmed; each refused character of Task 7's list, including the comma, shows a refusal in an element with `role="alert"` beside the field and writes nothing; an empty name stores nothing, is not an error and clears the family; an unlisted stored value opens as "Other..." with the text unchanged, shows the hint, and opening then closing the form writes nothing (stored "domine" and "Garamond" round-trip byte for byte; a stored comma value shows unchanged and is applied as stored). Without the prop for the settings forms (toolbar mode) the "Other..." entry is absent. axe passes in the "Other..." and error states. New stories: "Other..." with hint, error. Story command and `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 7, 12
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-9 (Other..., hint, refusal, round trip), FR-13 (focus, announcements), FR-21. Red is not used for the refusal (CLAUDE.md Styling); convey it by text and role.
+**Done:** [ ]
+
+### Task 14: Weight select component
+**What:** Build the weight select offering exactly the weights shipped for the chosen family, "Use default", and an extra entry for an unoffered stored weight.
+**Files:** Creates `frontend/components/preferences/FontWeightSelect.tsx` (path decided by reading), `frontend/stories/Preferences/FontWeightSelect.stories.tsx`, `frontend/tests/fontWeightSelect.test.tsx`.
+**Done when:** tests that fail first and pass after, using Task 8's `weightsForFamily`: Playwrite IE shows Thin 100, ExtraLight 200, Light 300, Regular 400; Source Serif 4 shows Regular 400 and Semibold 600 only; IBM Plex Serif shows 400, 500, 700; a generic or "Other..." name shows 400 and 700; each shows "Use default"; a stored "bold" displays as Bold 700 with no change callback; a stored "lighter", "bolder" and a stored 700 for Source Serif 4 show as a labelled extra entry and are not rewritten; the options change when the family prop changes while keeping an unoffered stored value as the extra. Stories (default, extra entry) pass the story command for the file. `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 6, 8
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-11, FR-21. Open `Select` source and stories first. Weights are stored as numeric strings.
+**Done:** [ ]
+
+### Task 15: Shared typography component: family, size, weight, colour, letter spacing
+**What:** Build the controlled shared typography component with a prop choosing which inputs show, covering family, size, weight, colour and letter spacing.
+**Files:** Creates `frontend/components/typography/TypographyFields.tsx` (path decided by reading), `frontend/stories/Typography/TypographyFields.stories.tsx`, `frontend/tests/typographyFields.test.tsx`, `frontend/tests/typographyFields.a11y.test.tsx`.
+**Done when:** tests that fail first and pass after: the component takes draft values and a change callback and holds no state beyond open/closed; a `fields` prop shows only the requested inputs; each input has a visible label and programmatic name including the level ("H2 Font Size"); size is a numeric px input and emits `"<n>px"`, letter spacing a numeric em input (step 0.01, min 0) emitting `"<n>em"`, colour a native `<input type="color">` not hidden from assistive technology with the `#rrggbb` value shown as text, family via Tasks 12-13 and weight via Task 14 (family change updates the offered weights); a stored value outside the codec (Task 8) is shown and not rewritten on mount. axe passes. Stories: default, value set, unlisted family, "Other..." with hint, error, disabled if the inputs support it (recorded). Story command for the file, `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 8, 13, 14
+**Estimate:** 5 (L; composes three inputs and the value codecs, each with its own failing-first test)
+**Notes:** Satisfies FR-12 (component, stored forms, prop for which inputs), FR-13 (labels, colour control, axe), FR-21. Open `Input`, `Select`, `LabeledInput` and `LabeledColorInput` source and stories first. Any new context requirement needs a Storybook decorator (checked again in Task 28).
+**Done:** [ ]
+
+### Task 16: Shared typography component: line height with the 1.8 floor, paragraph spacing
+**What:** Add the body-only line-height and paragraph-spacing inputs to the shared component, with the FR-71 floor.
+**Files:** Modifies `frontend/components/typography/TypographyFields.tsx`, its stories, `frontend/tests/typographyFields.test.tsx`, `frontend/tests/typographyFields.a11y.test.tsx`.
+**Done when:** tests that fail first and pass after: line height uses `getLineHeightError` and the message "Line height must be a number of at least 1.8." in an element with `role="alert"`, `aria-describedby` and `aria-invalid`; 1.8 is accepted, 1.79 refused, "normal" refused, empty accepted; a refusal keeps the typed value and does not call the change callback with the refused value as accepted; the field stays free text; paragraph spacing is free text emitting the stored form read today; headings (the `fields` prop without line height) show no line-height input. axe passes in the error state; a story shows the error state. Story command, `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 15
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-12, FR-16 (component half), FR-21. The server-side floor gates of Feature 90 are not changed. Open `editor-body-settings.ts` for `getLineHeightError` before use.
+**Done:** [ ]
+
+### Task 17: Project Settings heading modal uses the shared component
+**What:** Replace the heading modal's field markup with the shared component and prove the stored output is unchanged.
+**Files:** Modifies `frontend/components/preferences/HeadingSettingsModal.tsx`; extends `frontend/tests/headingSettingsModal.test.tsx`, `frontend/stories/Preferences/HeadingSettingsModal.stories.tsx`.
+**Done when:** tests that fail first and pass after: for a fixed set of inputs, per field (family label, typed name, size, weight 400/700/"500", letter spacing, colour), the value passed to the save callback equals what `sanitizeEditorHeadingMap` produced before the change (the before expectations are captured in the test from the unchanged component first and shown passing, then kept); a stored heading weight other than 400/700 shows as the extra entry and is not rewritten on open; "Use default", unsaved-changes handling, "Add H4 to H6", removal of optional levels, previews and Discard behave as the existing tests assert (all existing tests green, any changed assertion listed with the reason); the previews use the Task 11 helper. Story command for `stories/Preferences/HeadingSettingsModal.stories.tsx`, `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 11, 15
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-14, FR-12, FR-21. Shares the file with Task 11 and Task 18's tests only through `HeadingSettingsModal.tsx`; serialise with Task 11.
+**Done:** [ ]
+
+### Task 18: Project Settings body modal uses the shared component
+**What:** Replace the body modal's four free-text inputs with the shared component's body fields and prove the stored output is unchanged.
+**Files:** Modifies `frontend/components/preferences/BodySettingsModal.tsx`; extends `frontend/tests/bodySettingsModal.test.tsx`, `frontend/stories/Preferences/BodySettingsModal.stories.tsx`.
+**Done when:** tests that fail first and pass after: per field, the saved value equals what `sanitizeEditorBody` produced before for a fixed set of inputs (family label or typed name, size now a numeric px input emitting `"<n>px"` where the stored form was free text; a stored non-px size is shown as stored and not rewritten), the Feature 90 floor tests still pass (1.8 accepted, 1.79 refused, "normal" refused, empty accepted, message with `role="alert"`, typed value kept, no request sent), existing tests green with any changed assertion listed. Story command, `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 11, 16
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-14, FR-16 (Project Settings half), FR-12, FR-21. Parallel with Task 17 except where both touch the Editor-tab stories; serialise if so.
+**Done:** [ ]
+
+### Task 19: Project Type Manager form uses the shared component
+**What:** Replace the Type Manager form's heading and body typography fields with the shared component and prove the six built-in types open without rewrite.
+**Files:** Modifies `frontend/components/project-types/ProjectTypeEditorForm.tsx` (heading/body fields ~29, ~519-539 and `patchHeading`/`patchBody`), extends the form's existing test (find under `frontend/tests/`) and `frontend/stories/` form stories; adds a test reading `getwrite-config/templates/project-types/*.json`.
+**Done when:** tests that fail first and pass after: editing a field patches `editorConfig` as `patchHeading`/`patchBody` do today (per field, before/after comparison for a fixed input set); `validateDraft` is unchanged and its existing tests pass; all six built-in files validate and, loaded into the form, no field changes on open (a test asserts the draft deep-equals the loaded spec), including keyword weights such as "bold" (displays 700, not rewritten) and the "500" Plex Serif weight (offered); line height shows the floor message in the form (1.8 accepted, 1.79 refused, "normal" refused, empty accepted; Save refused and typed value kept); no preview is added; the Type Manager Font Family and Letter Spacing free-text fields and the weight keyword select are gone. Story command for the form stories, `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 11, 16
+**Estimate:** 5 (L; heading and body, six-type round trip, floor in the second place)
+**Notes:** Satisfies FR-15, FR-16 (Type Manager half), FR-12, FR-21. Do not change the form's list inputs, status, folder or name fields. Open `LabeledInput`/`LabeledColorInput` stories first. No project data is read; the test reads only `getwrite-config/`.
+**Done:** [ ]
+
+### Task 20: Editor toolbar font control: fixed names, effective family, no network
+**What:** Make the toolbar font control list the fixed names only, show the effective family without writing it, show an unlisted selection as a read-only extra entry, and remove the Domine fallback.
+**Files:** Modifies `frontend/components/Editor/MenuBar/toolbar-command-schema.ts` (~236-252), `frontend/components/Editor/MenuBar/menuBarState.tsx` (~57, removes `isDomine`), the control's component if needed; extends `frontend/tests/editorMenuBar.test.tsx` and `frontend/stories/Editor/MenuBar/MenuBar.stories.tsx`.
+**Done when:** tests that fail first and pass after: the control lists the Task 6 list without "Other..." and without a hint; choosing an entry calls `setFontFamily` with the label and makes no network call or loader call; with no explicit family it shows the project's configured body font, else IBM Plex Serif, and the document is unchanged; a selection whose font is unlisted (stored "Domine") shows its stored name as a read-only extra entry, unchanged and not written; the "Domine" fallback and `isDomine` are gone. Story command for `stories/Editor/MenuBar/MenuBar.stories.tsx`, `pnpm typecheck`, `pnpm lint`, targeted vitest, `pnpm build`, import-graph guard pass.
+**Depends on:** 6, 9, 12
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-10, FR-5 (fallback, `isDomine`), FR-18 (extra entry), FR-21. The toolbar's `loadGoogleFont` import is removed here; the file itself is deleted in Task 21. `EditorMenuInput.tsx` is shared by other toolbar controls: do not change their behaviour (existing tests stay green).
+**Done:** [ ]
+
+### Task 21: Remove the Google loader, Domine, the old input and the Google-style FONT_OPTIONS fields
+**What:** Delete the dead code and add the no-Google-host and no-Domine tests.
+**Files:** Deletes `frontend/src/lib/fonts/loadGoogleFont.ts`, its test, `frontend/components/preferences/FontFamilyInput.tsx` (with `WEB_SAFE_FONTS`); modifies `frontend/src/lib/fonts/fonts.ts` (drop `FONT_OPTIONS` `value` and `weights`), `frontend/styles/editor.css` (~277-282 `.domine-400`), `frontend/stories/Editor/MenuBar/MenuBar.stories.tsx`, `frontend/tests/headingSettingsModal.test.tsx` and any other test, story or type naming them; adds `frontend/tests/unit/no-google-fonts.test.ts`.
+**Done when:** the new test fails first and passes: the strings `fonts.googleapis.com` and `fonts.gstatic.com` appear in no source file under `frontend/app`, `frontend/components` or `frontend/src` other than the test that names them, and `Domine` / `domine` / `isDomine` appear nowhere in non-test source. Recorded in `experiments.md` or the Notes: the result of a search of `frontend/` (excluding `node_modules`, `.next*`, `out`) for `loadGoogleFont`, `FontFamilyInput`, `WEB_SAFE_FONTS`, `Domine`, `googleapis`, listing zero hits; and `pnpm knip` from the root with no new findings. `pnpm typecheck`, `pnpm lint`, `pnpm test:ci`, `pnpm build` and the import-graph guard from `frontend/` pass.
+**Depends on:** 17, 18, 19, 20
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-4 (deletion, test, searches), FR-5 (Domine removal), FR-8 (`FontFamilyInput` and `WEB_SAFE_FONTS` deleted), FR-21. `frontend/.next-qa/` build leftovers match the search; they are generated and excluded.
+**Done:** [ ]
+
+### Task 22: THIRD_PARTY_FONTS.txt shipped with the app
+**What:** Create the licence file listing every shipped family with its copyright line and the SIL OFL text, and make it ship in each output alongside the fonts.
+**Files:** Creates `THIRD_PARTY_FONTS.txt` at the repo root and a copy path under `frontend/public/` (mechanism decided by reading how `public/` reaches the standalone server, the Electron bundle and `out/`; if a script generates the public copy from the root file it is added under `frontend/scripts/`); adds `frontend/tests/unit/third-party-fonts.test.ts`.
+**Done when:** the test fails first and passes: every family in the Task 6 catalogue that is bundled appears by name in the file with a copyright line taken from the installed package's licence or metadata (source recorded per family), and the OFL text is present once; the file is present at the repo root and at the public path. Presence in the three build outputs is checked by Task 24 (this task records the mechanism it expects). `pnpm typecheck`, `pnpm lint`, targeted vitest pass.
+**Depends on:** 5, 6
+**Estimate:** 2 (S)
+**Notes:** Satisfies FR-7 (file, per-family notice, test), FR-21. The Help menu is unchanged. Copyright lines are copied as the packages carry them, not composed.
+**Done:** [ ]
+
+### Task 23: Storybook e2e with the network blocked for font hosts
+**What:** Add a story and Playwright test showing project fonts render in the editor with every non-origin host blocked and without toolbar interaction.
+**Files:** Extends or creates a story for the editor with a body family "Merriweather" and an h1 family "Playfair Display" (open `TipTapEditor`/`EditView` stories first), and extends `frontend/e2e/editor-formatting.e2e.spec.ts` or a new `frontend/e2e/bundled-fonts.e2e.spec.ts` (extend an existing editor e2e before creating one; recorded).
+**Done when:** the e2e fails first (against the pre-Task 11/9 state, or recorded as such) and passes: with Playwright routing every request not to the Storybook origin to abort, a paragraph and a heading in a freshly opened resource compute those families and `document.fonts.check` is true for each, with no toolbar interaction; no request to `fonts.googleapis.com`/`fonts.gstatic.com` is attempted (route log empty for those hosts); a face request that is blocked or missing fails the test and the `console.error` of Task 10 is asserted absent. `pnpm test:e2e` passes for the new spec (6006 free first; do not start `pnpm storybook`).
+**Depends on:** 9, 10, 11
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-3 (blocked-network check, Storybook half), FR-6, FR-18 (runtime), FR-21. Storybook is not the web build; Task 24 repeats the check against the built output. Safety: `pnpm test:e2e` builds and serves Storybook itself outside the sandbox; in-memory story data only; no read or write of `projects/` or any app-data folder; stop only pids this task started.
+**Done:** [ ]
+
+### Task 24: Built-output check: web build with the network blocked, and WOFF2 plus licence in the outputs
+**What:** Run the built web server against throwaway data with all non-origin hosts blocked and assert the fonts report loaded, and list WOFF2 files and `THIRD_PARTY_FONTS.txt` in the web, Electron-server and native outputs.
+**Files:** Creates a harness under `specs/features/font-picker-and-typography-inputs/scripts/`; appends a "Built-output checks" section to `experiments.md`. No source change unless a missing file (for example the licence not reaching an output) is a genuine gap, which is fixed in Task 22's mechanism and recorded.
+**Done when:** `experiments.md` records, after `pnpm build` from `frontend/` outside the sandbox: with the standalone server started on a free port using a throwaway `GETWRITE_PROJECTS_DIR` (asserted before the first request) and a project whose body family is "Merriweather" and h1 family "Playfair Display", Playwright with every host except the server origin blocked, each listed bundled font reports loaded via `document.fonts.check` after a paragraph in it renders (a result per family, observed values), and the Google hosts received zero requests; a file search lists the shipped WOFF2 files and `THIRD_PARTY_FONTS.txt` in `frontend/.next` (static and standalone), in the Electron server output from `pnpm electron:build` (root), and in `frontend/out` from `pnpm build:native`; any output that cannot be built or run is recorded UNMEASURED with the reason (the known `CreateProjectModal.stories.tsx` type error for `build:native` is reported as observed, not worked around). Server pid recorded and stopped by pid; ports free before and after.
+**Depends on:** 21, 22
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-3 (build acceptance, file search in three outputs), FR-6 (browser-level), FR-7 (file present in three outputs). Safety: outside the sandbox in the main checkout; throwaway projects folder; never read or write the repo's `projects/` or any real app-data folder; the Electron app itself is not launched.
+**Done:** [ ]
+
+### Task 25: Playwright height test for Project Settings rows and the Type Manager rows
+**What:** Add the after-change height assertions: controls in one row differ by no more than 1 CSS pixel, in Project Settings' Editor tab and the Project Type Manager form, and record the after values.
+**Files:** Extends or creates an e2e spec under `frontend/e2e/` (extend `editor-config-and-switching.e2e.spec.ts` or the existing preferences e2e found by reading before creating one); uses the existing Storybook stories for the heading and body modals and the form (Tasks 17-19); appends a "FR-17 heights after" section to `experiments.md`.
+**Done when:** the e2e test reads `getBoundingClientRect().height` of every control in one heading row (family, size, weight, colour, letter spacing) and of the four body controls in Project Settings, and of the heading row and body controls in the Type Manager form, and asserts max minus min is at most 1 CSS px at the default root font size; it fails first on a state where a row is out of tolerance, or the first-run failure is recorded as observed values (the Task 4 values are the reference); it passes after. If a row is out of tolerance the control styling is adjusted in the shared component or its `Input`/`Select` use (observed heights recorded, no cause stated) until it passes. `experiments.md` states the after values next to the Task 4 values. `pnpm test:e2e`, `pnpm typecheck`, `pnpm lint` pass.
+**Depends on:** 4, 17, 18, 19
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-17 (after half, both places), FR-21. Safety as Task 23 (`pnpm test:e2e` outside the sandbox, 6006 free, never start `pnpm storybook`). A styling fix lives in the shared component (`TypographyFields.tsx`): rerun its tests and `pnpm build`.
+**Done:** [ ]
+
+### Task 26: Documentation
+**What:** Update the docs for the fixed list, "Other...", the toolbar's fixed-names-only control, the bundled fonts, and the references this feature removes.
+**Files:** Modifies the relevant `docs/features/` page found by a recorded search (editor typography or fonts page; if none exists, add a short section to the nearest editor or settings page), `frontend/CLAUDE.md` (only if it names `FontFamilyInput` or `loadGoogleFont`; recorded by grep), `frontend/components/help/help-content.ts` (the Project Settings Editor-tab font text), `STYLING.md` only if its font table changes (expected not). Records in the Notes any `docs/user/handbook` page naming fonts (the scribe reconciles; do not edit `docs/user/`).
+**Done when:** the docs page states the fixed list, that "Other..." exists in the settings forms only with the fixed hint and no installed-font detection, that the toolbar control lists only the fixed names and arbitrary names are set in Project Settings or a project type, that the bundled fonts need no network and where the licence file is; the search results (docs, `frontend/CLAUDE.md`, help-content, STYLING.md) are recorded; help-content tests updated and pass. `pnpm typecheck`, `pnpm lint` and `pnpm exec vitest run` on the help-content test pass.
+**Depends on:** 21
+**Estimate:** 2 (S)
+**Notes:** Satisfies FR-20. Wording is a working copy, not owner-reviewed. Handbook pages naming fonts, if any: listed here at completion.
+**Done:** [ ]
+
+### Task 27: FR-19 "after" sizes
+**What:** Build the three outputs on the same commit base plus this feature and record the added bytes next to the Task 2 values.
+**Files:** Appends a "Size after" section to `experiments.md` using the Task 2 script. No source change.
+**Done when:** `experiments.md` records, with the same commands as Task 2, the bytes for (a) `frontend/.next/static` and `frontend/.next/standalone`, (b) the Electron bundle (the same artifact kind as Task 2: standalone server output, and the packaged app and installer only if measured in Task 2), (c) `frontend/out`, each as before, after and difference, with the WOFF2 file counts; anything not run is UNMEASURED with the reason (the same reason as Task 2 if the same build failed). No threshold is applied and no pass/fail is written. The base commit and the commit measured are both recorded. Build artifacts are not committed.
+**Depends on:** 2, 24
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-19. Builds fail in worktrees: main checkout, outside the sandbox. The numbers are for the owner to read.
+**Done:** [ ]
+
+### Task 28: Final suites
+**What:** Run every final suite on the branch and record observed results next to the Task 1 baselines.
+**Files:** Appends a "Final suites" section to `experiments.md`. Modifies only stories, decorators or tests needed to make a genuine gap pass (each recorded), including a Storybook decorator for any new context requirement.
+**Done when:** `experiments.md` records, as observed values with command and date, compared with Task 1: from `frontend/`, `pnpm test:ci` (passed / failed / skipped), `pnpm typecheck` (exit code), `pnpm lint` (counts), `pnpm test:e2e` (counts and names of failures; 6006 confirmed free first; Storybook built and served by the command itself, `pnpm storybook` never started) and `pnpm build` (exit code, with the import-graph guard `pnpm exec vitest run tests/unit/project-types-no-server-only.test.ts`); from the repo root, `pnpm knip` (no new findings); from `electron/`, `pnpm typecheck`, `pnpm test` and `pnpm build:worker`; from `cli/`, `pnpm test`. `lsof` before and after (6006, 3000, 7340 not held by anything this task started). A suite that cannot run is recorded as not run with the reason and never as passing; a failing suite is recorded, not worked around. `git status --short` shows only intended changes; no commit is made by the task.
+**Depends on:** 20, 21, 23, 25, 26, 27
+**Estimate:** 3 (M)
+**Notes:** Satisfies FR-21 (final suites), FR-19 and FR-3 closure. Safety: `pnpm test:e2e` and `pnpm build` outside the sandbox in the main checkout; stop only processes started here, by pid; no read or write of `projects/` or any real app-data folder.
+**Done:** [ ]
+
+## Summary
+- Total tasks: 28
+- Total estimated effort: 83 story points (S = 2 or less, M = 3, L = 5 for Tasks 15 and 19 only)
+- Critical path: 1, 3, 5, 6, 8, 14, 15, 16, 19, 21, 24, 27, 28
+- Risks: Task 5 (the package set and the source of Playwrite IE at discrete 100/200/300/400 are decided there; if no package supplies them the task halts, which blocks Tasks 6-28); Task 2 and Tasks 24 and 27 (`pnpm build:native` is documented to fail at a type error in `stories/Start/CreateProjectModal.stories.tsx`, so the native output may be UNMEASURED; the Electron packaged-app size may also be UNMEASURED); Task 3 (needs outbound network to observe Google requests; offline is recorded as such); Tasks 9, 10, 12-16 (client imports that Vitest cannot validate: each runs `pnpm build` and the import-graph guard); Task 15 and Task 19 (L sizes; Task 19 shares `ProjectTypeEditorForm.tsx`, which Feature 90 tasks also edited, so it must be serialised against anything else touching it); Tasks 11, 17 and 18 (share `HeadingSettingsModal.tsx` / `BodySettingsModal.tsx`; serialise); Task 25 (a height fix may need styling changes in the shared component, with no cause assumed; its rerun costs a build); Task 22 (the mechanism for getting the licence file into all three outputs is unknown until read; Task 24 is where a gap shows).
