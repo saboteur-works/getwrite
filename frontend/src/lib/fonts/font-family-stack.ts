@@ -11,7 +11,8 @@
  * `validateTypedFontName`.
  */
 
-const FALLBACK_STACK = '"IBM Plex Serif", serif';
+const FALLBACK_FAMILY = "IBM Plex Serif";
+const FALLBACK_STACK = `"${FALLBACK_FAMILY}", serif`;
 const GENERIC_KEYWORDS: ReadonlySet<string> = new Set([
   "serif",
   "sans-serif",
@@ -29,7 +30,8 @@ export type TypedFontNameResult =
 /**
  * Build the `font-family` value for a stored family, or undefined when there
  * is nothing to declare. A generic keyword is bare; a value containing a comma
- * is returned as stored; any other name is quoted with the Plex Serif fallback.
+ * is returned as stored; any other name is quoted with the Plex Serif fallback,
+ * which is not repeated when the name is Plex Serif itself.
  * The name is never re-cased.
  */
 export function buildFontFamilyValue(
@@ -39,6 +41,9 @@ export function buildFontFamilyValue(
   if (value === "") return undefined;
   if (GENERIC_KEYWORDS.has(value)) return value;
   if (value.includes(",")) return value;
+  if (value.toLowerCase() === FALLBACK_FAMILY.toLowerCase()) {
+    return `"${value}", serif`;
+  }
   return `"${value}", ${FALLBACK_STACK}`;
 }
 

@@ -44,6 +44,15 @@ describe("buildFontFamilyValue", () => {
     },
   );
 
+  it("does not repeat IBM Plex Serif when it is the stored family", () => {
+    expect(buildFontFamilyValue("IBM Plex Serif")).toBe(
+      '"IBM Plex Serif", serif',
+    );
+    expect(buildFontFamilyValue("ibm plex serif")).toBe(
+      '"ibm plex serif", serif',
+    );
+  });
+
   it("does not re-case the name", () => {
     expect(buildFontFamilyValue("domine")).toBe(
       '"domine", "IBM Plex Serif", serif',
