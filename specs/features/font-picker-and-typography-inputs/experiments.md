@@ -191,3 +191,83 @@ MEASURED. Neither rendered as Source Serif 4; both fell back.
 - A machine with IBM Plex Serif installed.
 - The toolbar select's displayed value and the Project Settings dialog itself (the editor config was written through the same API endpoint).
 - The production Electron server or the native build (this run used the web `next start` build).
+
+## FR-17 heights before
+
+Task 4. Values only; no cause is stated and the spec's padding hypothesis is neither asserted nor refuted. No source changed.
+
+Harness: `specs/features/font-picker-and-typography-inputs/scripts/fr17-heights.mjs` (run from the repo root outside the command sandbox; pattern of the Task 3 harness). Run date: Wed Oct 21 2026 21:27 MDT. Code under test: branch `feat/font-picker-and-typography-inputs` at `5f6067fd`, the existing web build (`next start` from `frontend/`), no source change.
+
+### Safety record
+
+- Port 3100. Before the run `lsof -nP -iTCP:3100 -sTCP:LISTEN` printed nothing. The owner's listener seen on the machine was `Code Helper` on 127.0.0.1:60066 (not touched); nothing held 3000, 6006 or 7340.
+- Throwaway projects folder: `/private/var/folders/qk/x8z53mfn36q33gbbzrhmpws00000gn/T/fr17-projects-F0NNFl`, created empty by `mkdtemp`, asserted before the first request: not under `<repo>/projects`, `~/Library` or `~/Documents`, and empty. The live server process env was read with `ps -Eww -p 61404` before it listened and before any request: `GETWRITE_PROJECTS_DIR=/private/var/folders/qk/x8z53mfn36q33gbbzrhmpws00000gn/T/fr17-projects-F0NNFl` (matches). After seeding the folder held one entry, `466cd220-df07-480e-8fa7-f7f545e53344`.
+- lsof while running:
+  ```
+  COMMAND   PID          USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+  node    61404 jedaisaboteur   12u  IPv4 0xf18f58038b38a13b      0t0  TCP 127.0.0.1:3100 (LISTEN)
+  ```
+  The process tree started was pid 61404 only (no child process found by `pgrep -P`); it was the listener.
+- Stopped by pid: SIGTERM to 61404; the harness then reported 61404 `exited`, `lsof` on 3100 afterwards printed nothing, and a later `ps -p 61404` showed it gone. The throwaway folder was removed afterwards.
+
+### Environment
+
+- Chromium 148.0.7778.96 (Playwright, headless, clean profile), viewport 1400 x 900, `devicePixelRatio` 1, root font size `16px` (computed, both pages), default zoom.
+- Height is `getBoundingClientRect().height` in CSS px. Controls are named by the visible control of each field. Where a field has more than one candidate element, all are listed and the spread is given for the stated choice and for the alternative.
+
+### A. Project Settings, Editor tab (project "FR17 sample", blank type, empty editor config), H1 row
+
+| Field | Element | Height (CSS px) |
+| --- | --- | --- |
+| Font family | `input` text `#h1-fontFamily` (`FontFamilyInput`) | 42.00 |
+| Font size | `input` number `#h1-fontSize` | 42.00 |
+| Font weight | `select` `#h1-fontWeight` | 36.00 |
+| Colour | `div` bordered wrapper (`flex items-center gap-3 rounded-md border ... px-3 py-2`) | 46.00 |
+| Colour (inside the wrapper) | `button` "Choose H1 color" | 28.00 |
+| Colour (inside the wrapper) | `input` type color `#h1-color`, class `hidden` | 0.00 (`display: none`) |
+| Letter spacing | `input` number `#h1-letterSpacing` | 42.00 |
+
+Max minus min, five fields with the colour wrapper (46.00): 46.00 - 36.00 = **10.00**. With the colour button (28.00) instead: 42.00 - 28.00 = **14.00**.
+
+### B. Project Settings, Editor tab, body controls
+
+| Field | Element | Height (CSS px) |
+| --- | --- | --- |
+| Font family | `input` text `#body-fontFamily` (`FontFamilyInput`) | 42.00 |
+| Font size | `input` text `#body-fontSize` | 42.00 |
+| Line height | `input` text `#body-lineHeight` | 42.00 |
+| Paragraph spacing | `input` text `#body-paragraphSpacing` | 42.00 |
+
+Max minus min: 42.00 - 42.00 = **0.00**.
+
+### C. Project Type Manager form (`/project-types`, template "Article" selected), H1 heading row
+
+Six heading rows were present; the first (H1) was measured. Each field's `label` wrapper measured 58.50 px in every case.
+
+| Field | Element | Height (CSS px) |
+| --- | --- | --- |
+| Font Family | `input` text | 37.50 |
+| Size (px) | `input` number | 37.50 |
+| Weight | `select` (class `project-type-editor-field-control`) | 31.00 |
+| Letter Spacing | `input` text | 37.50 |
+| Color | `div` `.project-type-editor-color-row` | 30.00 |
+| Color (inside the row) | `input` type color `.project-type-editor-color-input` | 28.00 |
+
+Max minus min, five fields with the colour row (30.00): 37.50 - 30.00 = **7.50**. With the colour input (28.00) instead: 37.50 - 28.00 = **9.50**.
+
+### D. Project Type Manager form, body row (four-column grid; recorded in addition to the Task 4 minimum)
+
+| Field | Element | Height (CSS px) |
+| --- | --- | --- |
+| Font Family | `input` text | 37.50 |
+| Size (px) | `input` number | 37.50 |
+| Line Height | `input` text | 37.50 |
+| Paragraph Spacing | `input` text | 37.50 |
+
+Max minus min: **0.00**.
+
+### Observations on the run itself
+
+- The script's read of the selected tab's text content returned `Edit` (not `Editor`); the H1 and body fields were present and measured, so the measured content was the Editor tab's. The cause of the shortened text was not investigated.
+- Controls were measured with no field focused, no value typed (placeholders only) and no validation message showing.
+- Not measured: other heading levels, other viewport widths (the settings grid is 3 columns at 1400 px by its `md`/`xl` classes; not read from the render), non-default zoom or root font size, Safari/Firefox, the Electron window.
