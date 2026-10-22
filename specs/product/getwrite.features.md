@@ -275,8 +275,8 @@ sidebar tag management UI, tag manager modal.
 **Notes:** Shipped. As shipped, tags could not be renamed at any layer;
 renaming meant deleting and recreating, which dropped assignments. Editing a
 tag's name and colour in the tag manager (FR-18 as amended) was added later
-as release polish on `fix/start-page-bottom-padding`, outside a pipeline run;
-it is not yet merged or released.
+as release polish outside a pipeline run, merged to `main` as PR #282 (not
+released).
 
 ### Feature 17: Resource templates via CLI — Shipped
 
