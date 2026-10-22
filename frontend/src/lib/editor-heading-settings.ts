@@ -1,9 +1,10 @@
+import { buildFontFamilyValue } from "./fonts/font-family-stack";
 import type { EditorHeading, EditorHeadings } from "./models/types";
 
 export type EditorHeadingMap = Partial<Record<EditorHeadings, EditorHeading>>;
 export type EditorHeadingFieldKey = keyof EditorHeading;
 
-export interface EditorHeadingFieldDefinition {
+interface EditorHeadingFieldDefinition {
   key: EditorHeadingFieldKey;
   label: string;
   placeholder: string;
@@ -35,7 +36,7 @@ export const DEFAULT_VISIBLE_HEADING_LEVELS: EditorHeadings[] = [
   "h3",
 ];
 
-export const HEADING_FIELD_DEFINITIONS: EditorHeadingFieldDefinition[] = [
+const HEADING_FIELD_DEFINITIONS: EditorHeadingFieldDefinition[] = [
   { key: "fontSize", label: "Font Size", placeholder: "e.g. 32px" },
   {
     key: "fontFamily",
@@ -157,7 +158,10 @@ export function buildHeadingStyleAttribute(
 
   const declarations = (
     Object.entries(sanitizedHeading) as [EditorHeadingFieldKey, string][]
-  ).map(([key, value]) => `${CSS_PROPERTY_NAMES[key]}: ${value}`);
+  ).flatMap(([key, value]) => {
+    const declared = key === "fontFamily" ? buildFontFamilyValue(value) : value;
+    return declared ? [`${CSS_PROPERTY_NAMES[key]}: ${declared}`] : [];
+  });
 
   return declarations.length > 0 ? `${declarations.join("; ")};` : undefined;
 }

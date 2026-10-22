@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import type { EditorHeading, EditorHeadings } from "../../src/lib/models/types";
-import { Pipette } from "lucide-react";
 import {
   buildHeadingDraft,
   DEFAULT_VISIBLE_HEADING_LEVELS,
@@ -13,12 +12,13 @@ import {
   type EditorHeadingFieldKey,
   type EditorHeadingMap,
 } from "../../src/lib/editor-heading-settings";
-import HeadingStyleField from "./HeadingStyleField";
-import FontFamilyInput from "./FontFamilyInput";
+import { buildFontFamilyValue } from "../../src/lib/fonts/font-family-stack";
+import TypographyFields, {
+  useRefusedFields,
+  type TypographyFieldKey,
+} from "../typography/TypographyFields";
 import Button from "../common/UI/Button/Button";
 import Card from "../common/UI/Card/Card";
-import Input from "../common/UI/Input/Input";
-import Select from "../common/UI/Select/Select";
 
 interface HeadingSettingsModalProps {
   initialHeadings?: EditorHeadingMap;
@@ -36,38 +36,18 @@ function getHeadingLabel(level: EditorHeadings): string {
   return level.toUpperCase();
 }
 
-const FONT_WEIGHT_OPTIONS: Array<{ label: string; value: string }> = [
-  { label: "Normal", value: "400" },
-  { label: "Bold", value: "700" },
+const HEADING_FIELDS: readonly EditorHeadingFieldKey[] = [
+  "fontSize",
+  "fontFamily",
+  "fontWeight",
+  "letterSpacing",
+  "color",
 ];
 
-function toFontSizeInputValue(fontSize: string | undefined): string {
-  const n = Number.parseInt(fontSize ?? "", 10);
-  return Number.isNaN(n) ? "" : String(n);
-}
-
-function toFontWeightSelectValue(fontWeight: string | undefined): string {
-  const normalized = fontWeight?.trim().toLowerCase();
-  if (normalized === "bold" || normalized === "700") return "700";
-  if (normalized === "normal" || normalized === "400") return "400";
-  return "";
-}
-
-function toLetterSpacingInputValue(letterSpacing: string | undefined): string {
-  const n = Number.parseFloat(letterSpacing ?? "");
-  return Number.isNaN(n) ? "" : String(n);
-}
-
-function toColorInputValue(color: string | undefined): string {
-  const normalizedColor = color?.trim();
-
-  if (!normalizedColor) {
-    return "#000000"; // GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors
-  }
-
-  const isHexColor = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(normalizedColor);
-
-  return isHexColor ? normalizedColor : "#000000"; // GW-HEX-EXEMPT: color picker placeholder — user-selected arbitrary colors
+function isHeadingFieldKey(
+  key: TypographyFieldKey,
+): key is EditorHeadingFieldKey {
+  return (HEADING_FIELDS as readonly string[]).includes(key);
 }
 
 export default function HeadingSettingsModal({
@@ -83,6 +63,7 @@ export default function HeadingSettingsModal({
     getVisibleHeadingLevels(initialHeadings),
   );
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const { isBlocked: hasRefusal, report: reportRefusal } = useRefusedFields();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Embedded in Project Settings (`closeOnSave` false), the secondary button
   // discards this section's unsaved edits and leaves the dialog open; closing
@@ -92,7 +73,11 @@ export default function HeadingSettingsModal({
     EditorHeadingMap | undefined
   >(initialHeadings);
 
+  // Bumped on Discard so the fields drop any refused text they hold locally.
+  const [resetKey, setResetKey] = useState<number>(0);
+
   const handleDiscard = (): void => {
+    setResetKey((key) => key + 1);
     setDraftHeadings(buildHeadingDraft(savedHeadings));
     setVisibleLevels(getVisibleHeadingLevels(savedHeadings));
     setErrorMessage(null);
@@ -145,6 +130,10 @@ export default function HeadingSettingsModal({
   };
 
   const handleSave = async (): Promise<void> => {
+    // Refuse, never clamp: a typed font name that was refused keeps Save inert.
+    if (hasRefusal) {
+      return;
+    }
     setIsSaving(true);
     setErrorMessage(null);
 
@@ -165,21 +154,6 @@ export default function HeadingSettingsModal({
       setIsSaving(false);
     }
   };
-
-  const handleColorPickerClick = (level: EditorHeadings): void => {
-    const colorInput = document.getElementById(
-      `${level}-color`,
-    ) as HTMLInputElement | null;
-
-    colorInput?.click();
-  };
-
-  const makeUnitChangeHandler =
-    (level: EditorHeadings, key: EditorHeadingFieldKey, unit: string) =>
-    (event: React.ChangeEvent<HTMLInputElement>): void => {
-      const { value } = event.target;
-      handleFieldChange(level, key, value ? `${value}${unit}` : "");
-    };
 
   return (
     <section className="flex w-full flex-col gap-6">
@@ -236,103 +210,23 @@ export default function HeadingSettingsModal({
                 ) : null}
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <HeadingStyleField id={`${level}-fontSize`} label="Font Size">
-                  <Input
-                    id={`${level}-fontSize`}
-                    aria-label={`${label} Font Size`}
-                    type="number"
-                    step="1"
-                    min="1"
-                    value={toFontSizeInputValue(heading.fontSize)}
-                    placeholder="e.g. 32"
-                    onChange={makeUnitChangeHandler(level, "fontSize", "px")}
-                  />
-                </HeadingStyleField>
-
-                <HeadingStyleField
-                  id={`${level}-fontFamily`}
-                  label="Font Family"
-                >
-                  <FontFamilyInput
-                    id={`${level}-fontFamily`}
-                    aria-label={`${label} Font Family`}
-                    value={heading.fontFamily ?? ""}
-                    placeholder="e.g. IBM Plex Sans"
-                    onChange={(event) =>
-                      handleFieldChange(level, "fontFamily", event.target.value)
-                    }
-                  />
-                </HeadingStyleField>
-
-                <HeadingStyleField
-                  id={`${level}-fontWeight`}
-                  label="Font Weight"
-                >
-                  <Select
-                    id={`${level}-fontWeight`}
-                    aria-label={`${label} Font Weight`}
-                    value={toFontWeightSelectValue(heading.fontWeight)}
-                    onChange={(event) =>
-                      handleFieldChange(level, "fontWeight", event.target.value)
-                    }
-                  >
-                    <option value="">Use default</option>
-                    {FONT_WEIGHT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </HeadingStyleField>
-
-                <HeadingStyleField
-                  id={`${level}-letterSpacing`}
-                  label="Letter Spacing"
-                >
-                  <Input
-                    id={`${level}-letterSpacing`}
-                    aria-label={`${label} Letter Spacing`}
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={toLetterSpacingInputValue(heading.letterSpacing)}
-                    placeholder="e.g. 0.08"
-                    onChange={makeUnitChangeHandler(
-                      level,
-                      "letterSpacing",
-                      "em",
-                    )}
-                  />
-                </HeadingStyleField>
-
-                <HeadingStyleField label="Color">
-                  <div className="flex items-center gap-3 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2">
-                    <button
-                      type="button"
-                      aria-label={`Choose ${label} color`}
-                      onClick={() => handleColorPickerClick(level)}
-                      className="inline-flex items-center justify-center rounded-sm border border-gw-border px-2 py-1 transition-colors duration-150 hover:bg-gw-surface"
-                    >
-                      <Pipette
-                        size={18}
-                        className="text-gw-secondary"
-                        fill={toColorInputValue(heading.color)}
-                      />
-                    </button>
-                    <input
-                      id={`${level}-color`}
-                      aria-label={`${label} Color`}
-                      type="color"
-                      value={toColorInputValue(heading.color)}
-                      onChange={(event) =>
-                        handleFieldChange(level, "color", event.target.value)
-                      }
-                      className="hidden"
-                    />
-                  </div>
-                </HeadingStyleField>
-              </div>
+              <TypographyFields
+                key={resetKey}
+                className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+                label={label}
+                idPrefix={level}
+                fields={HEADING_FIELDS}
+                values={heading}
+                allowOther
+                onRefusalChange={(key, refused) =>
+                  reportRefusal(`${level}.${key}`, refused)
+                }
+                onChange={(key, value) => {
+                  if (isHeadingFieldKey(key)) {
+                    handleFieldChange(level, key, value);
+                  }
+                }}
+              />
 
               <div className="mt-4 border-t border-gw-border pt-4">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-gw-secondary">
@@ -342,7 +236,7 @@ export default function HeadingSettingsModal({
                   aria-label={`${label} preview`}
                   className="mt-2 leading-snug"
                   style={{
-                    fontFamily: heading.fontFamily || undefined,
+                    fontFamily: buildFontFamilyValue(heading.fontFamily),
                     fontSize: heading.fontSize || undefined,
                     fontWeight: heading.fontWeight || undefined,
                     letterSpacing: heading.letterSpacing || undefined,

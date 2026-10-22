@@ -39,3 +39,22 @@ describe("Project Types help copy (FR-25)", () => {
     expect(text).toMatch(/ignoring capitals and surrounding spaces/);
   });
 });
+
+describe("Project Settings Editor-tab font help copy (Feature 91, FR-20)", () => {
+  it("describes the font list, Other..., and the toolbar without it", () => {
+    const tab = HELP_TABS.find((t) => t.id === "projects");
+    if (!tab) throw new Error("projects help tab missing");
+    const chunks: string[] = [];
+    for (const block of tab.blocks) {
+      if (block.type !== "tip-card") continue;
+      for (const item of block.items) chunks.push(partsToText(item));
+    }
+    const text = chunks.join("\n");
+    expect(text).toMatch(
+      /pick from the list, or choose Other\.\.\. and type a name/,
+    );
+    expect(text).toMatch(
+      /editor toolbar lists the same fonts without Other\.\.\./,
+    );
+  });
+});

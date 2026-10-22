@@ -19,6 +19,8 @@ import {
 } from "../components/Sharing/SharingLimitsContext";
 // @ts-expect-error Storybook side-effect CSS import is resolved by bundler at runtime.
 import "../app/globals.css";
+// @ts-expect-error Storybook side-effect CSS import is resolved by bundler at runtime.
+import "../styles/bundled-fonts.css";
 import { AnyResource, Folder, Project } from "../src/lib/models";
 
 const project: Project = {

@@ -1,10 +1,12 @@
 import "./globals.css";
 import "react-tooltip/dist/react-tooltip.css";
+import "../styles/bundled-fonts.css";
 import type { Metadata, Viewport } from "next";
 import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
 import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
+import FontFailureReporter from "../components/preferences/FontFailureReporter";
 import NativeBootstrap from "../components/native/NativeBootstrap";
 import DeviceNotPairedGuard from "../components/Sharing/DeviceNotPairedGuard";
 import SharingLimitsProvider from "../components/Sharing/SharingLimitsContext";
@@ -30,18 +32,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap"
-        />
-      </head>
       <body>
         <ClientProvider>
           {/* ADR-021 Phase 2 (FR6): binds the native StorageContext exactly
@@ -52,6 +42,7 @@ export default function RootLayout({
             <NativeBootstrap />
           ) : null}
           <AppearanceRuntime />
+          <FontFailureReporter />
           {/* Feature 75 FR-20: inert on native (no gate there) and with sharing off. */}
           {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native" ? null : (
             <DeviceNotPairedGuard />

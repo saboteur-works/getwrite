@@ -12,15 +12,15 @@ Heading style configuration is stored in each project's `project.json` under `co
 
 ### Heading Attributes
 
-| Attribute       | Type                  | Required | Example           |
-| --------------- | --------------------- | -------- | ----------------- |
-| `fontSize`      | Pixel size string     | No       | `"20px"`          |
-| `fontFamily`    | Font family name      | No       | `"IBM Plex Sans"` |
-| `fontWeight`    | Numeric weight string | No       | `"700"`           |
-| `letterSpacing` | Em unit string        | No       | `"0.05em"`        |
-| `color`         | Hex color string      | No       | `"#D44040"`       |
+| Attribute       | Type                  | Required | Example            |
+| --------------- | --------------------- | -------- | ------------------ |
+| `fontSize`      | Pixel size string     | No       | `"20px"`           |
+| `fontFamily`    | Font family name      | No       | `"IBM Plex Serif"` |
+| `fontWeight`    | Numeric weight string | No       | `"700"`            |
+| `letterSpacing` | Em unit string        | No       | `"0.05em"`         |
+| `color`         | Hex color string      | No       | `"#D44040"`        |
 
-All attributes are optional. Empty or whitespace-only values are stripped before persisting.
+All attributes are optional. Empty or whitespace-only values are stripped before persisting. An unset `fontFamily` renders in IBM Plex Serif; see [settings.md](settings.md#fonts) for the font list and defaults.
 
 #### Example
 

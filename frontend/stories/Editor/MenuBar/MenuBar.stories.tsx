@@ -137,7 +137,7 @@ function createEditorDouble(
       if (name === "textStyle") {
         return {
           fontSize: "14px",
-          fontFamily: "Domine",
+          fontFamily: "Garamond",
           color: "#111827",
           backgroundColor: "#fff8b3",
         };
@@ -208,8 +208,7 @@ const defaultState: MenuBarState = {
   fontSize: "14px",
   // `fontFamily` was added to `MenuBarState` after this fixture was written,
   // so the story drove the font-family control with a missing value.
-  fontFamily: "Domine",
-  isDomine: true,
+  fontFamily: "Garamond",
   getWriteParagraphLeading: null,
   isInsideTable: false,
 };
@@ -241,7 +240,7 @@ const { editor: activeEditor } = createEditorDouble({
   bold: true,
   italic: true,
   'heading:{"level":1}': true,
-  'textStyle:{"fontFamily":"Domine"}': true,
+  'textStyle:{"fontFamily":"Garamond"}': true,
   '{"textAlign":"center"}': true,
 });
 
@@ -327,5 +326,37 @@ export const LineHeightExplicit: Story = {
   args: {
     editor: defaultEditor,
     stateOverride: { ...defaultState, getWriteParagraphLeading: 1.2 },
+  },
+};
+
+function withProjectBodyFont(fontFamily: string) {
+  const store = makeStore();
+  store.dispatch(setEditorConfig({ headings: {}, body: { fontFamily } }));
+  return store;
+}
+
+/** No explicit family: the Font Family control shows the project's body font and writes nothing. */
+export const FontFamilyUnsetFollowsProject: Story = {
+  render: (args: React.ComponentProps<typeof MenuBar>) => (
+    <Provider store={withProjectBodyFont("Merriweather")}>
+      <MenuBar {...args} />
+    </Provider>
+  ),
+  args: {
+    editor: defaultEditor,
+    stateOverride: { ...defaultState, fontFamily: undefined },
+  },
+};
+
+/** A stored name outside the fixed list ("Garamond") shows as a read-only extra entry. */
+export const FontFamilyUnlistedStoredName: Story = {
+  render: (args: React.ComponentProps<typeof MenuBar>) => (
+    <Provider store={makeStore()}>
+      <MenuBar {...args} />
+    </Provider>
+  ),
+  args: {
+    editor: defaultEditor,
+    stateOverride: { ...defaultState, fontFamily: "Garamond" },
   },
 };

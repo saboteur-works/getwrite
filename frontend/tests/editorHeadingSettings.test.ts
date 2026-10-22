@@ -36,6 +36,25 @@ describe("editor heading settings helpers", () => {
     ).toBe("font-size: 28px; font-weight: 700;");
   });
 
+  // Feature 91 (FR-9): the family goes through buildFontFamilyValue. Rule now
+  // followed: a name is quoted with the Plex Serif fallback; a comma value is
+  // applied as stored; an empty family adds no declaration.
+  it("quotes a heading family through the font-family helper", () => {
+    expect(buildHeadingStyleAttribute({ fontFamily: "Source Serif 4" })).toBe(
+      'font-family: "Source Serif 4", "IBM Plex Serif", serif;',
+    );
+  });
+
+  it("applies a stored comma family as stored", () => {
+    expect(
+      buildHeadingStyleAttribute({ fontFamily: "Georgia, 'Times', serif" }),
+    ).toBe("font-family: Georgia, 'Times', serif;");
+  });
+
+  it("adds no font-family declaration for an empty family", () => {
+    expect(buildHeadingStyleAttribute({ fontFamily: "  " })).toBeUndefined();
+  });
+
   it("returns the next available heading level", () => {
     expect(getNextHeadingLevel(["h1", "h2", "h3"])).toBe("h4");
     expect(

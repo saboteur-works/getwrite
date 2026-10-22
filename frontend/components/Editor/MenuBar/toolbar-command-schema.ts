@@ -11,12 +11,11 @@ import type {
   EditorHeading,
   EditorHeadings,
 } from "../../../src/lib/models/types";
-import { FONT_OPTIONS } from "../../../src/lib/fonts/fonts";
+import { FONT_FAMILY_LIST } from "../../../src/lib/fonts/fonts";
 import {
   displayedParagraphLeading,
   validateParagraphLeadingInput,
 } from "../../../src/lib/paragraph-leading";
-import { loadGoogleFont } from "../../../src/lib/fonts/loadGoogleFont";
 
 export interface ToolbarCommandContext {
   editor: Editor;
@@ -54,6 +53,8 @@ export interface ToolbarInputCommand extends ToolbarCommandItemBase {
   icon: EditorMenuInputIconName;
   inputType: EditorMenuInputType;
   options?: string[];
+  /** Options computed from the context; takes precedence over `options`. */
+  getOptions?: (context: ToolbarCommandContext) => string[];
   getValue: (context: ToolbarCommandContext) => string;
   /** Returns a visible message for refused typed input, or null when valid. */
   validate?: (value: string) => string | null;
@@ -78,6 +79,26 @@ export type ToolbarCommandItem =
   | ToolbarIconCommand
   | ToolbarInputCommand
   | ToolbarColorCommand;
+
+const DEFAULT_TOOLBAR_FONT = "IBM Plex Serif";
+
+function findFontLabel(name: string): string | undefined {
+  const lower = name.toLowerCase();
+  return FONT_FAMILY_LIST.find((entry) => entry.label.toLowerCase() === lower)
+    ?.label;
+}
+
+/**
+ * The family the font control shows (FR-10): the selection's explicit family,
+ * else the project's configured body font, else IBM Plex Serif. Display only;
+ * nothing here writes to the document.
+ */
+function effectiveFontFamily(context: ToolbarCommandContext): string {
+  const explicit = context.state.fontFamily?.trim();
+  if (explicit) return explicit;
+  const body = context.editorConfig?.body?.fontFamily?.trim();
+  return body ? body : DEFAULT_TOOLBAR_FONT;
+}
 
 // GW-HEX-EXEMPT-START: TipTap editor text/highlight color palettes — user-selectable arbitrary colors, not brand tokens
 const TEXT_COLOR_OPTIONS = [
@@ -238,14 +259,23 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         icon: "fontStyle",
         inputType: "select",
         tooltipContent: "Font Family",
-        options: FONT_OPTIONS.map((option) => option.label),
-        getValue: ({ state }) => state.fontFamily ?? "Domine",
+        options: FONT_FAMILY_LIST.map((entry) => entry.label),
+        getOptions: (context) => {
+          const shown = effectiveFontFamily(context);
+          const labels = FONT_FAMILY_LIST.map((entry) => entry.label);
+          return findFontLabel(shown) === undefined
+            ? [...labels, shown]
+            : labels;
+        },
+        getValue: (context) => {
+          const shown = effectiveFontFamily(context);
+          return findFontLabel(shown) ?? shown;
+        },
         onChange: ({ editor }, value) => {
-          // editor.chain().focus().setFontFamily(value).run();
-          const selected = FONT_OPTIONS.find((f) => f.label === value);
+          // Only a listed name is written; the read-only extra entry for an
+          // unlisted stored name is never written back.
+          const selected = FONT_FAMILY_LIST.find((f) => f.label === value);
           if (!selected) return;
-
-          loadGoogleFont(selected.value.replace(/\+/g, " "), selected.weights);
 
           editor.chain().focus().setFontFamily(selected.label).run();
         },

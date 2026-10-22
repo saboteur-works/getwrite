@@ -1,0 +1,332 @@
+import React, { useState } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import TypographyFields, {
+  type TypographyFieldKey,
+  type TypographyValues,
+} from "../components/typography/TypographyFields";
+
+const ALL: readonly TypographyFieldKey[] = [
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "color",
+  "letterSpacing",
+];
+
+function setup(
+  values: TypographyValues,
+  fields: readonly TypographyFieldKey[] = ALL,
+) {
+  const onChange = vi.fn();
+  const utils = render(
+    <TypographyFields
+      label="H2"
+      idPrefix="h2"
+      fields={fields}
+      values={values}
+      onChange={onChange}
+      allowOther
+    />,
+  );
+  return { onChange, ...utils };
+}
+
+describe("TypographyFields", () => {
+  it("shows only the requested inputs", () => {
+    setup({}, ["fontSize", "letterSpacing"]);
+    expect(
+      screen.getByRole("spinbutton", { name: "H2 Font Size" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("spinbutton", { name: "H2 Letter Spacing" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByLabelText("H2 Color")).toBeNull();
+  });
+
+  it("names every input with the level and shows visible labels", () => {
+    setup({});
+    for (const name of ["H2 Font Family", "H2 Font Weight"]) {
+      expect(screen.getByRole("combobox", { name })).toBeTruthy();
+    }
+    expect(screen.getByLabelText("H2 Color")).toBeTruthy();
+    for (const text of [
+      "Font Size",
+      "Font Family",
+      "Font Weight",
+      "Letter Spacing",
+      "Color",
+    ]) {
+      expect(screen.getByText(text)).toBeTruthy();
+    }
+  });
+
+  it("emits size as <n>px and letter spacing as <n>em with the specified steps", () => {
+    const { onChange } = setup({ fontSize: "28px", letterSpacing: "0.05em" });
+    const size = screen.getByRole("spinbutton", {
+      name: "H2 Font Size",
+    }) as HTMLInputElement;
+    const spacing = screen.getByRole("spinbutton", {
+      name: "H2 Letter Spacing",
+    }) as HTMLInputElement;
+    expect(size.value).toBe("28");
+    expect(spacing.value).toBe("0.05");
+    expect(spacing.getAttribute("step")).toBe("0.01");
+    expect(spacing.getAttribute("min")).toBe("0");
+    fireEvent.change(size, { target: { value: "30" } });
+    expect(onChange).toHaveBeenLastCalledWith("fontSize", "30px");
+    fireEvent.change(spacing, { target: { value: "0.1" } });
+    expect(onChange).toHaveBeenLastCalledWith("letterSpacing", "0.1em");
+    fireEvent.change(size, { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith("fontSize", "");
+  });
+
+  it("shows a colour input not hidden from assistive tech, with the value as text", () => {
+    const { onChange } = setup({ color: "#112233" });
+    const colour = screen.getByLabelText("H2 Color") as HTMLInputElement;
+    expect(colour.type).toBe("color");
+    expect(colour.getAttribute("aria-hidden")).toBeNull();
+    expect(colour.getAttribute("tabindex")).not.toBe("-1");
+    expect(colour.value).toBe("#112233");
+    expect(screen.getByText("#112233")).toBeTruthy();
+    fireEvent.change(colour, { target: { value: "#abcdef" } });
+    expect(onChange).toHaveBeenLastCalledWith("color", "#abcdef");
+  });
+
+  it("changing the family updates the offered weights", async () => {
+    const user = userEvent.setup();
+    function Harness(): JSX.Element {
+      const [values, setValues] = useState<TypographyValues>({
+        fontFamily: "Playwrite IE",
+      });
+      return (
+        <TypographyFields
+          label="H2"
+          idPrefix="h2"
+          fields={ALL}
+          values={values}
+          onChange={(key, value) => setValues((v) => ({ ...v, [key]: value }))}
+          allowOther
+        />
+      );
+    }
+    render(<Harness />);
+    const weightOptions = (): string[] =>
+      Array.from<HTMLOptionElement>(
+        screen
+          .getByRole("combobox", { name: "H2 Font Weight" })
+          .querySelectorAll("option"),
+      ).map((o) => o.textContent ?? "");
+    expect(weightOptions()).toContain("Thin 100");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "H2 Font Family" }),
+      "Source Serif 4",
+    );
+    expect(weightOptions()).toEqual([
+      "Use default",
+      "Regular 400",
+      "Semibold 600",
+    ]);
+  });
+
+  it("shows the Other... field and hint for an unlisted family", () => {
+    setup({ fontFamily: "Garamond" });
+    expect(
+      screen.getByRole("textbox", { name: "H2 Font Family other name" }),
+    ).toHaveProperty("value", "Garamond");
+    expect(
+      screen.getByText(
+        "If this font isn't installed on this device, text shows in IBM Plex Serif.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows stored values outside the codec and does not rewrite them on mount", () => {
+    const { onChange } = setup({
+      fontFamily: "Domine",
+      fontSize: "1.5rem",
+      fontWeight: "lighter",
+      color: "red",
+      letterSpacing: "2px",
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText(/1\.5rem/)).toBeTruthy();
+    expect(screen.getByText(/2px/)).toBeTruthy();
+    expect(screen.getByText("red")).toBeTruthy();
+    expect(screen.getByText(/lighter/)).toBeTruthy();
+    expect(
+      screen.getByRole("textbox", { name: "H2 Font Family other name" }),
+    ).toHaveProperty("value", "Domine");
+  });
+
+  it("disables every input when disabled", () => {
+    render(
+      <TypographyFields
+        label="Body"
+        idPrefix="body"
+        fields={ALL}
+        values={{}}
+        onChange={() => undefined}
+        disabled
+      />,
+    );
+    for (const el of screen.getAllByRole("spinbutton")) {
+      expect((el as HTMLInputElement).disabled).toBe(true);
+    }
+    for (const el of screen.getAllByRole("combobox")) {
+      expect((el as HTMLSelectElement).disabled).toBe(true);
+    }
+    expect(
+      (screen.getByLabelText("Body Color") as HTMLInputElement).disabled,
+    ).toBe(true);
+  });
+
+  describe("line height and paragraph spacing (Task 16)", () => {
+    const BODY: readonly TypographyFieldKey[] = [
+      "lineHeight",
+      "paragraphSpacing",
+    ];
+    const MESSAGE = "Line height must be a number of at least 1.8.";
+
+    function setupBody(values: TypographyValues = {}) {
+      const onChange = vi.fn();
+      render(
+        <TypographyFields
+          label="Body"
+          idPrefix="body"
+          fields={BODY}
+          values={values}
+          onChange={onChange}
+        />,
+      );
+      return {
+        onChange,
+        line: screen.getByRole("textbox", {
+          name: "Body Line Height",
+        }) as HTMLInputElement,
+      };
+    }
+
+    it("accepts 1.8 and empty, and stays free text", () => {
+      const { onChange, line } = setupBody({ lineHeight: "2" });
+      expect(line.type).toBe("text");
+      fireEvent.change(line, { target: { value: "1.8" } });
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "1.8");
+      fireEvent.change(line, { target: { value: "" } });
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "");
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it.each(["1.79", "normal"])(
+      "refuses %s with a linked alert, keeps the typed value, and does not call onChange",
+      (typed) => {
+        const { onChange, line } = setupBody({ lineHeight: "2" });
+        fireEvent.change(line, { target: { value: typed } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(line.value).toBe(typed);
+        const alert = screen.getByRole("alert");
+        expect(alert.textContent).toBe(MESSAGE);
+        expect(line.getAttribute("aria-invalid")).toBe("true");
+        expect(line.getAttribute("aria-describedby")).toBe(alert.id);
+      },
+    );
+
+    it("recovers from a refusal when a valid value is typed", () => {
+      const { onChange, line } = setupBody({ lineHeight: "2" });
+      fireEvent.change(line, { target: { value: "1.5" } });
+      fireEvent.change(line, { target: { value: "1.9" } });
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "1.9");
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("paragraph spacing is free text emitting what was typed", () => {
+      const { onChange } = setupBody({ paragraphSpacing: "16px" });
+      const spacing = screen.getByRole("textbox", {
+        name: "Body Paragraph Spacing",
+      }) as HTMLInputElement;
+      expect(spacing.value).toBe("16px");
+      fireEvent.change(spacing, { target: { value: "1.5em" } });
+      expect(onChange).toHaveBeenLastCalledWith("paragraphSpacing", "1.5em");
+    });
+
+    it("headings (no lineHeight in fields) show no line-height input", () => {
+      setup({}, ["fontSize"]);
+      expect(screen.queryByLabelText(/Line Height/)).toBeNull();
+      expect(screen.queryByLabelText(/Paragraph Spacing/)).toBeNull();
+    });
+  });
+  describe("refusal callback (Task 24, FR-22)", () => {
+    function setupWithCallback(values: TypographyValues = { lineHeight: "2" }) {
+      const onChange = vi.fn();
+      const onRefusalChange = vi.fn();
+      render(
+        <TypographyFields
+          label="Body"
+          idPrefix="body"
+          fields={["lineHeight", "fontSize"]}
+          values={values}
+          onChange={onChange}
+          onRefusalChange={onRefusalChange}
+        />,
+      );
+      return {
+        onChange,
+        onRefusalChange,
+        line: screen.getByRole("textbox", {
+          name: "Body Line Height",
+        }) as HTMLInputElement,
+      };
+    }
+
+    it("reports the field as refused when line height becomes refused, and valid again", () => {
+      const { onRefusalChange, line } = setupWithCallback();
+      onRefusalChange.mockClear();
+      fireEvent.change(line, { target: { value: "1.79" } });
+      expect(onRefusalChange).toHaveBeenLastCalledWith("lineHeight", true);
+      fireEvent.change(line, { target: { value: "1.8" } });
+      expect(onRefusalChange).toHaveBeenLastCalledWith("lineHeight", false);
+      expect(onRefusalChange).toHaveBeenCalledTimes(2);
+    });
+
+    it("reports a refused stored value on mount", () => {
+      const { onRefusalChange } = setupWithCallback({ lineHeight: "1.2" });
+      expect(onRefusalChange).toHaveBeenCalledWith("lineHeight", true);
+    });
+
+    it("reports empty as valid and does not report other fields", () => {
+      const { onRefusalChange, line } = setupWithCallback();
+      fireEvent.change(line, { target: { value: "normal" } });
+      fireEvent.change(line, { target: { value: "" } });
+      expect(onRefusalChange).toHaveBeenLastCalledWith("lineHeight", false);
+      onRefusalChange.mockClear();
+      fireEvent.change(screen.getByLabelText("Body Font Size"), {
+        target: { value: "20" },
+      });
+      expect(onRefusalChange).not.toHaveBeenCalled();
+    });
+
+    it("is unaffected when the callback is not passed", () => {
+      const onChange = vi.fn();
+      render(
+        <TypographyFields
+          label="Body"
+          idPrefix="body"
+          fields={["lineHeight"]}
+          values={{ lineHeight: "2" }}
+          onChange={onChange}
+        />,
+      );
+      const line = screen.getByRole("textbox", {
+        name: "Body Line Height",
+      }) as HTMLInputElement;
+      fireEvent.change(line, { target: { value: "1.5" } });
+      expect(onChange).not.toHaveBeenCalled();
+      expect(line.value).toBe("1.5");
+      fireEvent.change(line, { target: { value: "1.9" } });
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "1.9");
+    });
+  });
+});

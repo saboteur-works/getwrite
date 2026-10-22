@@ -1,6 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import BodySettingsModal from "../components/preferences/BodySettingsModal";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
 import { runAxe } from "./a11y/helpers/axe";
@@ -12,6 +15,17 @@ function renderInDialog(ui: React.ReactElement) {
       {ui}
     </Dialog>,
   );
+}
+
+const SIZE_INPUT = "18";
+const FAMILY_LABEL = "IBM Plex Serif";
+function typeFamily(name: string): void {
+  fireEvent.change(screen.getByLabelText("Body Font Family"), {
+    target: { value: "__other__" },
+  });
+  fireEvent.change(screen.getByLabelText("Body Font Family other name"), {
+    target: { value: name },
+  });
 }
 
 describe("BodySettingsModal", () => {
@@ -38,10 +52,10 @@ describe("BodySettingsModal", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Font Family")).toBeInTheDocument();
-    expect(screen.getByLabelText("Font Size")).toBeInTheDocument();
-    expect(screen.getByLabelText("Line Height")).toBeInTheDocument();
-    expect(screen.getByLabelText("Paragraph Spacing")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Font Family")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Font Size")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Line Height")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body Paragraph Spacing")).toBeInTheDocument();
   });
 
   it("populates fields from initialBody", () => {
@@ -53,8 +67,8 @@ describe("BodySettingsModal", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Font Family")).toHaveValue("Georgia");
-    expect(screen.getByLabelText("Font Size")).toHaveValue("18px");
+    expect(screen.getByLabelText("Body Font Family")).toHaveValue("Georgia");
+    expect(screen.getByLabelText("Body Font Size")).toHaveValue(18);
   });
 
   it("calls onSave with sanitized values and closes on success", async () => {
@@ -63,7 +77,7 @@ describe("BodySettingsModal", () => {
 
     renderInDialog(<BodySettingsModal onClose={onClose} onSave={onSave} />);
 
-    fireEvent.change(screen.getByLabelText("Font Family"), {
+    fireEvent.change(screen.getByLabelText("Body Font Family"), {
       target: { value: "IBM Plex Serif" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -103,7 +117,7 @@ describe("BodySettingsModal", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Font Family"), {
+    fireEvent.change(screen.getByLabelText("Body Font Family"), {
       target: { value: "Arial" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -139,7 +153,10 @@ describe("BodySettingsModal", () => {
       );
 
       const preview = screen.getByLabelText("Body text preview") as HTMLElement;
-      expect(preview.style.fontFamily).toBe("Georgia");
+      // Feature 91 rule: previews use buildFontFamilyValue (quoted + fallback).
+      expect(preview.style.fontFamily).toBe(
+        '"Georgia", "IBM Plex Serif", serif',
+      );
       expect(preview.style.fontSize).toBe("18px");
       expect(preview.style.lineHeight).toBe("1.9");
     });
@@ -152,12 +169,14 @@ describe("BodySettingsModal", () => {
         />,
       );
 
-      fireEvent.change(screen.getByLabelText("Font Family"), {
+      fireEvent.change(screen.getByLabelText("Body Font Family"), {
         target: { value: "Merriweather" },
       });
 
       const preview = screen.getByLabelText("Body text preview") as HTMLElement;
-      expect(preview.style.fontFamily).toBe("Merriweather");
+      expect(preview.style.fontFamily).toBe(
+        '"Merriweather", "IBM Plex Serif", serif',
+      );
     });
 
     it("preview updates when line height field changes", () => {
@@ -168,7 +187,7 @@ describe("BodySettingsModal", () => {
         />,
       );
 
-      fireEvent.change(screen.getByLabelText("Line Height"), {
+      fireEvent.change(screen.getByLabelText("Body Line Height"), {
         target: { value: "2.0" },
       });
 
@@ -199,7 +218,7 @@ describe("BodySettingsModal", () => {
         const onClose = vi.fn();
         renderInDialog(<BodySettingsModal onClose={onClose} onSave={onSave} />);
 
-        const field = screen.getByLabelText("Line Height");
+        const field = screen.getByLabelText("Body Line Height");
         fireEvent.change(field, { target: { value } });
         fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
@@ -219,7 +238,7 @@ describe("BodySettingsModal", () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
       renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
 
-      const field = screen.getByLabelText("Line Height");
+      const field = screen.getByLabelText("Body Line Height");
       fireEvent.change(field, { target: { value: "1.2" } });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
@@ -240,13 +259,101 @@ describe("BodySettingsModal", () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
       renderInDialog(<BodySettingsModal onClose={vi.fn()} onSave={onSave} />);
 
-      fireEvent.change(screen.getByLabelText("Line Height"), {
+      fireEvent.change(screen.getByLabelText("Body Line Height"), {
         target: { value },
       });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
       await waitFor(() => expect(onSave).toHaveBeenCalledWith(expected));
       expect(screen.queryByText(LINE_HEIGHT_FLOOR_MESSAGE)).toBeNull();
+    });
+
+    it("blocks Save while a line height is refused and saves again once it is valid (Task 24)", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          onClose={vi.fn()}
+          onSave={onSave}
+          closeOnSave={false}
+        />,
+      );
+      const field = screen.getByLabelText("Body Line Height");
+      fireEvent.change(field, { target: { value: "1.79" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+      expect(field).toHaveValue("1.79");
+      fireEvent.change(field, { target: { value: "1.8" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await waitFor(() =>
+        expect(onSave).toHaveBeenCalledWith({ lineHeight: "1.8" }),
+      );
+    });
+
+    it("blocks Save while a typed font name is refused, keeps the draft, and saves once corrected (Defect 1)", async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={{ fontFamily: "IBM Plex Serif" }}
+          onClose={vi.fn()}
+          onSave={onSave}
+          closeOnSave={false}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText("Body Font Family"), {
+        target: { value: "__other__" },
+      });
+      const name = screen.getByLabelText("Body Font Family other name");
+      await user.clear(name);
+      await user.type(name, "Bad;Name");
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(name).toHaveValue("Bad;Name");
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+      fireEvent.change(name, { target: { value: "Garamond" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await waitFor(() =>
+        expect(onSave).toHaveBeenCalledWith({ fontFamily: "Garamond" }),
+      );
+    });
+
+    it("a pasted refused font name leaves the draft's family at its previous value (Defect 1)", async () => {
+      const user = userEvent.setup();
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={{ fontFamily: "Garamond" }}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+          closeOnSave={false}
+        />,
+      );
+      const name = screen.getByLabelText("Body Font Family other name");
+      await user.clear(name);
+      await user.click(name);
+      await user.paste("Bad;Name");
+      const preview = screen.getByLabelText(/body.*preview/i);
+      expect(preview.style.fontFamily).not.toContain("Bad");
+    });
+
+    it("blocks Save for a refused stored line height", () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={{ lineHeight: "1.2" }}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("has no aria-invalid query in its save path (Task 24)", () => {
+      const source = fs.readFileSync(
+        path.join(__dirname, "../components/preferences/BodySettingsModal.tsx"),
+        "utf8",
+      );
+      expect(source).not.toMatch(/aria-invalid|querySelector|fieldsRef/);
     });
 
     it("clears the message once the value is edited", async () => {
@@ -256,7 +363,7 @@ describe("BodySettingsModal", () => {
           onSave={vi.fn().mockResolvedValue(undefined)}
         />,
       );
-      const field = screen.getByLabelText("Line Height");
+      const field = screen.getByLabelText("Body Line Height");
       fireEvent.change(field, { target: { value: "1.7" } });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
       await screen.findByText(LINE_HEIGHT_FLOOR_MESSAGE);
@@ -274,7 +381,7 @@ describe("BodySettingsModal", () => {
           onSave={vi.fn().mockResolvedValue(undefined)}
         />,
       );
-      fireEvent.change(screen.getByLabelText("Line Height"), {
+      fireEvent.change(screen.getByLabelText("Body Line Height"), {
         target: { value: "1.7" },
       });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -282,5 +389,85 @@ describe("BodySettingsModal", () => {
 
       await runAxe(container);
     });
+  });
+
+  describe("stored output per field (FR-14, expectations captured from the pre-change component, green before the swap)", () => {
+    async function saveFrom(
+      initialBody: Record<string, string>,
+      edit: () => void,
+    ): Promise<unknown> {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={initialBody}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+      edit();
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      return onSave.mock.calls[0][0];
+    }
+
+    it("size 18 is stored as 18px", async () => {
+      expect(
+        await saveFrom({}, () =>
+          fireEvent.change(screen.getByLabelText("Body Font Size"), {
+            target: { value: SIZE_INPUT },
+          }),
+        ),
+      ).toEqual({ fontSize: "18px" });
+    });
+
+    it("a stored non-px size is saved unchanged when untouched", async () => {
+      expect(await saveFrom({ fontSize: "1.5rem" }, () => undefined)).toEqual({
+        fontSize: "1.5rem",
+      });
+    });
+
+    it("paragraph spacing is stored as typed", async () => {
+      expect(
+        await saveFrom({}, () =>
+          fireEvent.change(screen.getByLabelText("Body Paragraph Spacing"), {
+            target: { value: "1.2em" },
+          }),
+        ),
+      ).toEqual({ paragraphSpacing: "1.2em" });
+    });
+
+    it("a family chosen from the list is stored as its label", async () => {
+      expect(
+        await saveFrom({}, () =>
+          fireEvent.change(screen.getByLabelText("Body Font Family"), {
+            target: { value: FAMILY_LABEL },
+          }),
+        ),
+      ).toEqual({ fontFamily: "IBM Plex Serif" });
+    });
+
+    it("a typed family name is stored as typed", async () => {
+      expect(await saveFrom({}, () => typeFamily("Garamond"))).toEqual({
+        fontFamily: "Garamond",
+      });
+    });
+  });
+
+  it("shows a stored non-px size as stored and Discard drops a refused typed line height", () => {
+    renderInDialog(
+      <BodySettingsModal
+        initialBody={{ fontSize: "1.5rem" }}
+        closeOnSave={false}
+        onClose={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.getByText("Current value: 1.5rem")).toBeInTheDocument();
+
+    const field = screen.getByLabelText("Body Line Height");
+    fireEvent.change(field, { target: { value: "1.2" } });
+    expect(field).toHaveValue("1.2");
+    fireEvent.click(screen.getByRole("button", { name: /discard changes/i }));
+    expect(screen.getByLabelText("Body Line Height")).toHaveValue("");
   });
 });

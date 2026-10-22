@@ -6,6 +6,9 @@ import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
 import { setEditorConfig } from "../src/store/editorConfigSlice";
 import { MenuBar } from "../components/Editor/MenuBar/MenuBar";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { FONT_FAMILY_LIST } from "../src/lib/fonts/fonts";
 
 const mockUseEditorState = vi.fn();
 
@@ -219,7 +222,6 @@ beforeEach(() => {
     textColor: "#111827",
     backgroundColor: "#fff8b3",
     fontSize: "14px",
-    isDomine: true,
   });
 });
 
@@ -398,7 +400,6 @@ describe("MenuBar", () => {
       textColor: "#111827",
       backgroundColor: "#fff8b3",
       fontSize: "14px",
-      isDomine: true,
     });
 
     const { editor } = createEditorDouble();
@@ -447,7 +448,6 @@ describe("MenuBar", () => {
       textColor: "#111827",
       backgroundColor: "#fff8b3",
       fontSize: "14px",
-      isDomine: true,
     });
 
     const { editor } = createEditorDouble();
@@ -609,7 +609,6 @@ describe("useToolbarCommands parity", () => {
     backgroundColor: "#fff8b3",
     fontSize: "14px",
     fontFamily: "Domine",
-    isDomine: true,
     getWriteParagraphLeading: null,
     isInsideTable: false,
   };
@@ -860,5 +859,104 @@ describe("Line Height schema entry", () => {
     )!;
     const item = group.items.find((i) => i.id === "line-height")!;
     expect("initialValue" in item).toBe(false);
+  });
+});
+
+describe("Font Family control (Feature 91, Task 20: FR-5, FR-10, FR-18)", () => {
+  function renderFontControl(
+    state: Record<string, unknown>,
+    bodyFontFamily?: string,
+  ) {
+    mockUseEditorState.mockReturnValue({ ...mockUseEditorState(), ...state });
+    const store = makeStore();
+    if (bodyFontFamily !== undefined) {
+      store.dispatch(
+        setEditorConfig({ headings: {}, body: { fontFamily: bodyFontFamily } }),
+      );
+    }
+    const { editor, actions } = createEditorDouble();
+    render(
+      <Provider store={store}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+    const select = screen.getByRole("combobox", {
+      name: /Font Family/i,
+    }) as HTMLSelectElement;
+    return { actions, select };
+  }
+
+  const optionLabels = (select: HTMLSelectElement): string[] =>
+    Array.from(select.options).map((o) => o.textContent ?? "");
+
+  it("lists the fixed names only: no Other... and no hint", () => {
+    const { select } = renderFontControl({ fontFamily: "Merriweather" });
+    expect(optionLabels(select)).toEqual(
+      FONT_FAMILY_LIST.map((entry) => entry.label),
+    );
+    expect(screen.queryByText("Other...")).toBeNull();
+    expect(screen.queryByText(/isn't installed on this device/i)).toBeNull();
+  });
+
+  it("calls setFontFamily with the label and makes no network or loader call", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const linksBefore = document.head.querySelectorAll("link").length;
+    const { select, actions } = renderFontControl({
+      fontFamily: "Merriweather",
+    });
+    fireEvent.change(select, { target: { value: "Playfair Display" } });
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "setFontFamily",
+          payload: "Playfair Display",
+        }),
+      ]),
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(document.head.querySelectorAll("link").length).toBe(linksBefore);
+    fetchSpy.mockRestore();
+  });
+
+  it("shows IBM Plex Serif when no family is set and no project body font, writing nothing", () => {
+    const { select, actions } = renderFontControl({ fontFamily: undefined });
+    expect(select.value).toBe("IBM Plex Serif");
+    expect(actions.filter((a) => a.name === "setFontFamily")).toEqual([]);
+  });
+
+  it("shows the project's configured body font when no family is set, writing nothing", () => {
+    const { select, actions } = renderFontControl(
+      { fontFamily: undefined },
+      "Merriweather",
+    );
+    expect(select.value).toBe("Merriweather");
+    expect(actions.filter((a) => a.name === "setFontFamily")).toEqual([]);
+  });
+
+  it("shows an unlisted stored name as a read-only extra entry, unchanged and not written", () => {
+    const { select, actions } = renderFontControl({ fontFamily: "Domine" });
+    expect(select.value).toBe("Domine");
+    expect(optionLabels(select)).toEqual([
+      ...FONT_FAMILY_LIST.map((entry) => entry.label),
+      "Domine",
+    ]);
+    fireEvent.change(select, { target: { value: "Domine" } });
+    expect(actions.filter((a) => a.name === "setFontFamily")).toEqual([]);
+  });
+
+  it("no longer carries isDomine, the Domine fallback or the Google loader import", () => {
+    const schema = readFileSync(
+      resolve(
+        __dirname,
+        "../components/Editor/MenuBar/toolbar-command-schema.ts",
+      ),
+      "utf8",
+    );
+    const state = readFileSync(
+      resolve(__dirname, "../components/Editor/MenuBar/menuBarState.tsx"),
+      "utf8",
+    );
+    expect(schema).not.toMatch(/Domine|loadGoogleFont/);
+    expect(state).not.toMatch(/isDomine|Domine/);
   });
 });

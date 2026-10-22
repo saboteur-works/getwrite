@@ -21,8 +21,8 @@ Not yet in a release (merged after 2.2.0).
 For each heading level you can set:
 
 - **Font Size** — the size of the heading, in pixels.
-- **Font Family** — the typeface, typed into a text field that suggests 17 typefaces (Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, Arial, Courier New, Garamond, Georgia, Helvetica, Palatino, Tahoma, Times New Roman, Trebuchet MS, Verdana).
-- **Font Weight** — Use default, Normal or Bold.
+- **Font Family** — the typeface, chosen from a dropdown. It lists the bundled fonts (Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono, IBM Plex Serif), then Arial, Georgia, Times New Roman, Courier New, Verdana, Trebuchet MS, serif, sans-serif and monospace, then **Other...**. **Other...** shows a text field for a font name; if that font is not installed on the device, text shows in IBM Plex Serif. A typed name containing a quote, apostrophe, semicolon, brace, backslash, parenthesis, angle bracket, comma or control character is refused with a message beside the field, and **Save Changes** does nothing while any heading level holds a refused name (the refused text stays in the field until you correct it, choose a font from the dropdown, or click **Discard changes**). A saved family that is not in the list (for example Domine, which is no longer offered) appears as an extra entry and is not changed unless you edit it. The bundled fonts ship with GetWrite and load without a network request.
+- **Font Weight** — Use default, or a numeric weight offered for the chosen font (for example Regular 400, Medium 500 and Bold 700 for IBM Plex Serif; 400 and 700 for a system, generic or typed font). A saved weight the select does not offer appears as an extra entry.
 - **Letter Spacing** — spacing between letters, in `em`.
 - **Color** — a custom heading color, set with the color control next to the pipette button.
 
@@ -40,4 +40,4 @@ A heading with a custom color kept that color when the theme was switched to dar
 - An added level with nothing set is not kept when you save; the section says so ("No styles set, so this level is not kept when you save.") until you set a style. After saving with H4 set to 22 and H5 left empty, a reload listed H1 to H4 only.
 - The toolbar showed buttons Heading 1 to Heading 6 from the start, whether or not H4 to H6 had been added.
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a.
+Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a. The **Font Family** and **Font Weight** entries (Feature 91, unreleased) were read from the code in `fonts.ts`, `FontFamilySelect.tsx` and `FontWeightSelect.tsx`, not checked in the running app.

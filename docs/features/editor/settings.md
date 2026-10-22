@@ -17,14 +17,14 @@ Applies to all `<p>` elements in the editor. Settings are stored under `config.e
 
 What it does: Sets the typeface for body text paragraphs.
 
-|                       |                                                 |
-| --------------------- | ----------------------------------------------- |
-| Type                  | CSS `font-family` string                        |
-| Example values        | `"IBM Plex Serif"`, `"Georgia, serif"`          |
-| Default               | `IBM Plex Serif` (resolved from `--font-serif`) |
-| Config key            | `config.editorConfig.body.fontFamily`           |
-| User config           | Not currently exposed in the UI                 |
-| Project type template | Yes — `editorConfig.body.fontFamily`            |
+|                       |                                                                           |
+| --------------------- | ------------------------------------------------------------------------- |
+| Type                  | CSS `font-family` string (a label from the font list, or a typed name)    |
+| Example values        | `"IBM Plex Serif"`, `"Georgia"`, `"Garamond"`                             |
+| Default               | `IBM Plex Serif` (resolved from `--font-serif`)                           |
+| Config key            | `config.editorConfig.body.fontFamily`                                     |
+| User config           | Yes — font dropdown in the Body Text Styles section (see [Fonts](#fonts)) |
+| Project type template | Yes — `editorConfig.body.fontFamily`                                      |
 
 ### Font Size
 
@@ -93,6 +93,27 @@ Text color is theme-aware and cannot currently be set via editor config. Adding 
 
 ---
 
+## Fonts
+
+One font-family dropdown is used in the Heading Styles and Body Text Styles sections of Project Settings, in the Project Type Manager form, and (without "Other...") in the editor toolbar. The list is the single constant `FONT_FAMILY_LIST` in `frontend/src/lib/fonts/fonts.ts`, in this order:
+
+- Bundled: Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono, IBM Plex Serif.
+- System: Arial, Georgia, Times New Roman, Courier New, Verdana, Trebuchet MS.
+- Generic: serif, sans-serif, monospace.
+- "Other..." (settings forms only).
+
+The list is the same on every platform; GetWrite does not detect which fonts are installed. A system or generic name that the device lacks is rendered by the browser's fallback.
+
+**Other...** exists in the settings forms only (Project Settings and the Project Type Manager). Choosing it shows a text field for a font name, with the fixed hint "If this font isn't installed on this device, text shows in IBM Plex Serif." A typed name is stored as typed (trimmed) and applied as a quoted stack with IBM Plex Serif and `serif` as fallbacks. A newly typed name containing any of `" ' ; { } \ ( ) < > ,` or a control character is refused, with the message shown beside the field. A stored value that matches no list entry shows as "Other..." with the stored text unchanged and is not rewritten unless the writer edits it. A stored value that matches an entry in another case (for example `arial`) shows that entry as selected and is not rewritten. A stored value containing a comma is treated as an existing font stack, applied as stored.
+
+**Editor toolbar.** The toolbar font control lists only the fixed names above, with no "Other..." and no hint. With no explicit family on the selection it shows the effective family (the project's body font, else IBM Plex Serif) without writing it. A selection whose font is not in the list shows its stored name as a read-only extra entry. To use a name that is not in the list, set it in Project Settings (Editor tab) or in a project type.
+
+**Bundled fonts.** The bundled families are shipped as WOFF2 files from `@fontsource` packages, served from the app's own origin, so they need no network and GetWrite makes no request to Google Fonts or any font host. The same mechanism serves the web build, the Electron bundle and the native build. Weights shipped per family are held beside each label in `FONT_FAMILY_LIST`. Playwrite IE ships Latin only; the other families ship Latin and Latin Extended. PDF export registers the bundled IBM Plex Serif and IBM Plex Sans faces from the installed packages, not from remote URLs. Domine is no longer a font choice; a stored `Domine` shows as an unlisted value.
+
+**Licence file.** The SIL Open Font License text and each family's copyright notice are in `frontend/public/THIRD_PARTY_FONTS.txt`, which is served with the app. In the Electron package it is present as the standalone copy at `Contents/Resources/frontend/.next/standalone/frontend/public/THIRD_PARTY_FONTS.txt` (observed in the built-output check, `specs/features/font-picker-and-typography-inputs/experiments.md`, Task 25).
+
+---
+
 ## Headings
 
 Applies to `<h1>` through `<h6>` elements. Each heading level is independently configurable. Settings are stored under `config.editorConfig.headings.<level>` (e.g. `headings.h1`).
@@ -132,29 +153,29 @@ What it does: Sets the rendered size of the heading.
 
 What it does: Sets the typeface for the heading.
 
-|                       |                                                   |
-| --------------------- | ------------------------------------------------- |
-| Type                  | CSS `font-family` string                          |
-| Example values        | `"IBM Plex Serif"`, `"IBM Plex Sans"`             |
-| Default               | `IBM Plex Serif` (all levels)                     |
-| Config key            | `config.editorConfig.headings.<level>.fontFamily` |
-| User config           | Yes — free-text input in the Heading Styles tab   |
-| Project type template | Yes — `editorConfig.headings.<level>.fontFamily`  |
+|                       |                                                                        |
+| --------------------- | ---------------------------------------------------------------------- |
+| Type                  | CSS `font-family` string (a label from the font list, or a typed name) |
+| Example values        | `"IBM Plex Serif"`, `"IBM Plex Sans"`                                  |
+| Default               | `IBM Plex Serif` (all levels)                                          |
+| Config key            | `config.editorConfig.headings.<level>.fontFamily`                      |
+| User config           | Yes — font dropdown in the Heading Styles tab (see [Fonts](#fonts))    |
+| Project type template | Yes — `editorConfig.headings.<level>.fontFamily`                       |
 
 ### Font Weight
 
 What it does: Sets the weight of the heading text.
 
-|                       |                                                        |
-| --------------------- | ------------------------------------------------------ |
-| Type                  | CSS `font-weight` string                               |
-| Accepted values       | `"400"` (Normal), `"500"` (Medium), `"700"` (Bold)     |
-| Defaults              | H1: `700`, H2: `700`, H3: `500`                        |
-| Config key            | `config.editorConfig.headings.<level>.fontWeight`      |
-| User config           | Yes — select in the Heading Styles tab (Normal / Bold) |
-| Project type template | Yes — `editorConfig.headings.<level>.fontWeight`       |
+|                       |                                                           |
+| --------------------- | --------------------------------------------------------- |
+| Type                  | CSS `font-weight` string                                  |
+| Accepted values       | `"400"` (Normal), `"500"` (Medium), `"700"` (Bold)        |
+| Defaults              | H1: `700`, H2: `700`, H3: `500`                           |
+| Config key            | `config.editorConfig.headings.<level>.fontWeight`         |
+| User config           | Yes — select in the Heading Styles tab (weights per font) |
+| Project type template | Yes — `editorConfig.headings.<level>.fontWeight`          |
 
-Note: The Heading Styles tab currently offers Normal (`400`) and Bold (`700`) only. Medium (`500`) is settable via project type template or direct config edit but is not currently selectable in the UI.
+Note: the weight select offers the weights shipped for the chosen font family (see [Fonts](#fonts)), for example Regular 400, Medium 500 and Bold 700 for IBM Plex Serif. For a system, generic or typed font it offers 400 and 700. A stored weight the select does not offer (such as `lighter`, `bolder`, or `700` for Source Serif 4) is shown as an extra entry and is not rewritten.
 
 ### Letter Spacing
 

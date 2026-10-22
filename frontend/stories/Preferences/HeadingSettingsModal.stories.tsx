@@ -53,3 +53,15 @@ export const Default: Story = {
     },
   },
 };
+
+export const UnlistedFamilyAndExtraWeight: Story = {
+  args: {
+    initialHeadings: {
+      h1: { fontFamily: "Garamond", fontWeight: "500", fontSize: "32px" },
+    },
+    onClose: () => console.log("close heading settings"),
+    onSave: async (headings: EditorHeadingMap) => {
+      console.log("save headings", headings);
+    },
+  },
+};

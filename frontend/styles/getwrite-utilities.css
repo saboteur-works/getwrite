@@ -572,12 +572,18 @@ html.gw-theme-dark {
     color: var(--color-gw-secondary);
   }
 
-  .project-type-editor-form-grid--four-column {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+  /* Typography rows (Feature 91, FR-17): columns wrap by the card's own width
+     and may shrink (min-width 0), so a row never scrolls the pane sideways.
+     Items start-align so controls sharing a line share a top. */
+  .project-type-editor-form-grid--four-column,
+  .project-type-editor-form-grid--headings-row {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+    align-items: start;
   }
 
-  .project-type-editor-form-grid--headings-row {
-    grid-template-columns: 2fr 1fr 1fr 1fr 100px;
+  .project-type-editor-form-grid--four-column > *,
+  .project-type-editor-form-grid--headings-row > * {
+    min-width: 0;
   }
 
   .project-type-editor-status-list {
