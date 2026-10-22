@@ -381,3 +381,58 @@ MEASURED.
 - Changed existing assertions: `ProjectTypeEditorForm.test.tsx`, FR-23 block "shows the floor message ... keeps the value": `expect(validateDraft(latest).valid).toBe(false)` became "the form reported the refusal (`onRefusalChange` last value true)", because the refused text is no longer written into the draft. FR-16 block: the `it.each` table was inverted from "draft valid" to "refused" (1.8 false, 1.79 true, normal true, empty false) and no longer asserts `latest...lineHeight` equals the refused text, for the same reason; the "keeps the typed value after a refusal" test now also asserts the last report is false. The FR-23 "shows no message" test still uses `validateDraft(latest).valid` (unchanged). All Task 16 and 18 tests (`typographyFields`, `bodySettingsModal`) unchanged and green.
 - Behaviour: Save stays clickable and does nothing while a field is refused (as before); 1.8 accepted, 1.79 and "normal" refused, empty accepted, typed value kept.
 - Gates: `pnpm typecheck` clean; `pnpm lint` 0 errors, 392 warnings (one naming-convention error found and fixed); stories `TypographyFields` 8 (new `ReportsRefusalToParent`), `ProjectTypeEditorForm` 5, `BodySettingsModal` 6, `ProjectTypesRoutePage` 1, `ProjectTypesManagerPage` 9 passed; `pnpm build` completed; `pnpm knip` 411 findings excluding the 6 configuration hints (417 with them), the same as with the change stashed.
+
+## Built-output checks (Task 25)
+
+Date: Thu Oct 22 2026 (MDT). Commit `a2ead62b` (HEAD; `git status --short` clean before the run). Observed values only; no cause is stated. All builds and the server run ran outside the command sandbox in the main checkout.
+
+Safety record: `lsof -nP -iTCP:3000 -iTCP:6006 -iTCP:7340 -sTCP:LISTEN` before and after all runs: empty, exit 1 (nothing listening). `GETWRITE_PROJECTS_DIR` was a `mktemp -d` folder for the builds and a separate empty `mkdtemp` folder for the server. No protected folder or the repo `projects/` was read or listed (the runtime copy below excluded `standalone/projects`).
+
+Harness: `specs/features/font-picker-and-typography-inputs/scripts/built-output-fonts.mjs` (run from the repo root: `node specs/features/font-picker-and-typography-inputs/scripts/built-output-fonts.mjs`). The standalone output has no `.next/static` of its own, so the harness rsyncs `frontend/.next/standalone` (excluding `projects` and `storybook-static`) and `frontend/.next/static` into a throwaway runtime folder and runs `node server.js` there (`PORT` a free port from `net.listen(0)`, `HOSTNAME=127.0.0.1`, `NODE_ENV=production`). The build output itself was not modified.
+
+### Web build
+
+`pnpm build` (`frontend/`): exit 0.
+
+Server: pid 58674, port 59691 (free: the harness listened on port 0 and released it). Asserted before the first request, from the live process env (`ps -Eww -p 58674`): `GETWRITE_PROJECTS_DIR` equals the realpath of the throwaway folder `.../T/t25-projects-P0FUqY`, which was empty and not under `projects/`, `~/Library` or `~/Documents`. lsof: `node 58674 ... TCP 127.0.0.1:59691 (LISTEN)`. Seeded through the app API: one project (blank type) with one text resource (h1 plus paragraph); editor config `body.fontFamily` "Merriweather", `headings.h1` fontFamily "Playfair Display" (40px, 700). The project folder listing held one entry. Chromium 148.0.7778.96, fresh context, viewport 1400x900; `context.route("**/*")` continued only requests to `http://127.0.0.1:59691` (plus `data:`/`blob:`) and aborted every other.
+
+Results:
+- Requests to `fonts.googleapis.com` / `fonts.gstatic.com`: 0 (route log empty, and no `request` event for those hosts). Aborted (non-origin) requests: 0. Font files (`.woff2`/`.woff`) served by the origin: 29.
+- Editor, no toolbar interaction: paragraph computed `font-family` `Merriweather, "IBM Plex Serif", serif`, weight 400, rendered platform font "Merriweather Light 18pt" (`MerriweatherLight18pt-Regular`), custom true, 43 glyphs, `document.fonts.check('16px Merriweather')` true. h1 computed `"Playfair Display", "IBM Plex Serif", serif`, weight 700, rendered `PlayfairDisplay-Bold`, custom true, 18 glyphs; `document.fonts.check('16px "Playfair Display"')` was **false** at that point (the 400 face of Playfair Display was not yet loaded; only the 700 face the h1 uses was; the same check returned true after the probe paragraph below loaded the 400 face).
+- Per bundled family, a paragraph (20px) set to that family was appended to the page, `document.fonts.ready` awaited, then `document.fonts.check('20px "<family>"')` and the CDP rendered-fonts readout. `check` was true for all 11 families. Rendered platform font (all `isCustomFont` true): Inter `Inter-Regular`; Merriweather `MerriweatherLight18pt-Regular`; Playfair Display `PlayfairDisplay-Regular`; Lato `Lato-Regular`; Source Serif 4 `SourceSerif4-Regular`; Playwrite IE `PlaywriteIE-Regular`; Fascinate Inline `FascinateInline-Regular`; IBM Plex Sans `IBMPlexSans-Regular`; IBM Plex Sans Condensed `IBMPlexSansCond-Regular`; IBM Plex Mono `IBMPlexMono-Regular`; IBM Plex Serif `IBMPlexSerif-Regular`.
+- `FontFace` status after the probes (faces listed per family; latin and latin-ext are separate entries): the 400 faces were `loaded` for every family (Fascinate Inline 400 both `loaded`); the other weights were `loaded` for Playfair Display 700, IBM Plex Sans 700, IBM Plex Sans Condensed 700, IBM Plex Mono 500; `unloaded` for Inter 500/700, Merriweather 700, Lato 700, Source Serif 4 600, Playwrite IE 100/200/300, IBM Plex Serif 500/700/400 italic.
+- Page `console.error` messages: 1, "Failed to load resource: the server responded with a status of 404 (Not Found)" (resource not identified; the Task 10 face-failure `console.error` text did not appear).
+- Server log tail: `Ready in 0ms`, `Couldn't load fs`, `Couldn't load zlib` (the same two lines seen in Task 21).
+- Stopped by pid: SIGTERM to 58674; `process.kill(58674, 0)` afterwards: exited. The runtime and projects folders were deleted by the harness.
+
+### File search (WOFF2 and THIRD_PARTY_FONTS.txt)
+
+Commands: `find <dir> -name '*.woff2'` and `find <dir> -name THIRD_PARTY_FONTS.txt`. `cmp` of the repo-root file against `frontend/public/` and against `frontend/.next/standalone/frontend/public/`: identical.
+
+| Output | `*.woff2` | `THIRD_PARTY_FONTS.txt` |
+| --- | --- | --- |
+| `frontend/.next/static` (after `pnpm build`) | 68 (all in `static/media`; 20 `KaTeX_*`, 48 bundled-family) | 0 |
+| `frontend/.next/server` | 4 (`server/assets`: `ibm-plex-sans-latin-400-normal`, `ibm-plex-sans-latin-700-normal`, `ibm-plex-serif-latin-400-italic`, `ibm-plex-serif-latin-400-normal`, each with a hash in the name) | 0 |
+| `frontend/.next/standalone` | 79 (4 under `standalone/frontend/.next/server/assets`, the same four; 75 under `standalone/frontend/storybook-static`; 0 under a standalone `.next/static`) | 2: `standalone/frontend/public/THIRD_PARTY_FONTS.txt` and `standalone/frontend/storybook-static/THIRD_PARTY_FONTS.txt` |
+| Electron server output (root `pnpm electron:build`, exit 0): `frontend/.next/standalone` and `frontend/.next/static` as above, `electron/dist` | `electron/dist`: 0 | `electron/dist`: 0 |
+| `frontend/out` (`pnpm build:native`) | UNMEASURED: no `frontend/out` | UNMEASURED: no `frontend/out` |
+
+PDF export fonts (`ibm-plex-*.woff2`), outside `storybook-static`: `frontend/.next/standalone/frontend/.next/server/assets/` holds `ibm-plex-sans-latin-400-normal.0l-vv37ssd90w.woff2`, `ibm-plex-sans-latin-700-normal.0~z9rsupns3rv.woff2`, `ibm-plex-serif-latin-400-italic.05kbjpod~yaff.woff2`, `ibm-plex-serif-latin-400-normal.0g.lpi2bn3_dp.woff2`; `frontend/.next/server/assets/` holds the same four names. No other `ibm-plex-*.woff2` file in `.next/standalone` outside `storybook-static`.
+
+The standalone tree is the pre-existing one that also contains `storybook-static` (present in `frontend/` before this task); the 75 woff2 there are not from the Next server output proper.
+
+### Native output
+
+`pnpm build:native` (`frontend/`): exit 1. `frontend/out` does not exist (`ls frontend/out`: No such file or directory), so the native part of the search is UNMEASURED. Observed error: `./stories/Start/CreateProjectModal.stories.tsx:6:8 Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal' or its corresponding type declarations.` then `[build-native-static] ERROR: next build exited with status 1.` Not worked around. The compile step printed `Compiled successfully in 8.6s` before the type check. What it emitted: `frontend/.native-build/.next` (the shadow tree's dist dir, not `out`) holds 68 `*.woff2` in `.next/static/media` (the same count as the web build) and no `THIRD_PARTY_FONTS.txt`; `frontend/.native-build/public` is a symlink to `frontend/public` (which holds the file). `.native-build` pre-existed and is gitignored.
+
+### Does THIRD_PARTY_FONTS.txt reach the Electron package?
+
+MEASURED, unpacked mac arm64 app: `cd electron && CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --config electron-builder.yml --dir --mac --arm64 -c.directories.output=<mktemp -d folder>`, exit 0 (electron-builder 25.1.8, electron 34.5.8, signing skipped). `electron/electron-builder.yml` `extraResources` has no `frontend/public` entry and none for the repo-root file (entries: `../frontend/.next/standalone`, `../frontend/.next/static`, `../getwrite-config`, the two import workers).
+- `find GetWrite.app -name THIRD_PARTY_FONTS.txt` listed 2: `Contents/Resources/frontend/.next/standalone/frontend/public/THIRD_PARTY_FONTS.txt` and `Contents/Resources/frontend/.next/standalone/frontend/storybook-static/THIRD_PARTY_FONTS.txt`. `ls Contents/Resources/frontend/.next/standalone/frontend/public`: `THIRD_PARTY_FONTS.txt`. No copy at `Contents/Resources/` top level.
+- `*.woff2` in the app: 147 in total; outside `storybook-static` under `Resources/frontend`: 68 in `standalone/frontend/.next/static/media` and 4 in `standalone/frontend/.next/server/assets`.
+- Observed: the file is present in the package at the path above, inside the nested standalone copy that `extraResources` ships; it is not at a top-level `Resources/` path. Installer (dmg) contents: UNMEASURED (`--dir` builds no dmg). The throwaway output folder was deleted.
+- Suggested change, not made (outside Task 25's Files): none is needed for presence. If a visible top-level copy is wanted, add an `extraResources` entry `from: ../THIRD_PARTY_FONTS.txt`, `to: THIRD_PARTY_FONTS.txt`.
+
+### Left behind
+
+Gitignored build output rewritten: `frontend/.next`, `electron/dist`, `frontend/.native-build/.next`. No `frontend/out` was created. Created and removed: the electron-builder throwaway output folder, the harness runtime and projects folders. Empty `mktemp -d` projects folders for the builds remain in the system temp dir (no data). Source files changed: none.

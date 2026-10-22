@@ -250,7 +250,7 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Depends on:** 21, 22, 24
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-3 (build acceptance, file search in three outputs), FR-6 (browser-level), FR-7 (file present in three outputs). Safety: outside the sandbox in the main checkout; throwaway projects folder; never read or write the repo's `projects/` or any real app-data folder; the Electron app itself is not launched.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Playwright height test for Project Settings rows and the Type Manager rows
 **What:** Add the after-change height assertions: controls in one row differ by no more than 1 CSS pixel, in Project Settings' Editor tab and the Project Type Manager form, and record the after values.
