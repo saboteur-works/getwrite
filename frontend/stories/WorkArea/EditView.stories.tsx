@@ -9,6 +9,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import { createTextResource } from "../../src/lib/models/resource";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
+import FontFailureReporter from "../../components/preferences/FontFailureReporter";
 
 const meta: Meta<typeof EditView> = {
   title: "WorkArea/EditView",
@@ -523,4 +524,38 @@ export const LoadInFlight: Story = {
   render: () => (
     <SelectedResourceEditView installFetch={installNeverAnsweringRead} />
   ),
+};
+
+function BundledProjectFontsStory(): JSX.Element {
+  const dispatch = useDispatch();
+  const [isReady, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    dispatch(
+      setEditorConfig({
+        headings: { h1: { fontFamily: "Playfair Display" } },
+        body: { fontFamily: "Merriweather" },
+      }),
+    );
+    setReady(true);
+  }, [dispatch]);
+
+  if (!isReady) return <div data-testid="seeding">Seeding…</div>;
+  return (
+    <>
+      <FontFailureReporter />
+      <EditView initialContent="<h1>Bundled heading</h1><p>Bundled body text.</p>" />
+    </>
+  );
+}
+
+/**
+ * Feature 91 (FR-6, FR-18): a project whose body family is "Merriweather" and
+ * h1 family is "Playfair Display". The faces come from the bundled
+ * `@fontsource` CSS, so they render with no toolbar interaction and no network
+ * beyond the Storybook origin. Mounts the font failure reporter so a face that
+ * fails to load is reported through `console.error`.
+ */
+export const BundledProjectFonts: Story = {
+  render: () => <BundledProjectFontsStory />,
 };
