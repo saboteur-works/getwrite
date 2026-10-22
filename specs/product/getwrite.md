@@ -1709,7 +1709,15 @@ with the app without hand-rewriting it (see OQ-90).
   (d) Licence notice (OQ-109): the SIL OFL licence text and per-font
   copyright notices MUST ship with the app as a file (`THIRD_PARTY_FONTS.txt`
   or equivalent alongside the fonts, and in the repo); an in-app Licences
-  view in Help is a later follow-up, out of this scope. Facts. READ (code,
+  view in Help is a later follow-up, out of this scope. Amended at Gate 5
+  (Owner decision, 2026-10-22; feature spec OQ-12 and OQ-13): (e) Playwrite
+  IE is an accepted exception to the Latin plus Latin Extended rule in (b):
+  the `@fontsource/playwrite-ie` 5.3.0 package ships only Latin files
+  (`latin-{100,200,300,400}-normal.woff2`), so Playwrite IE ships Latin
+  only; every other font ships Latin and Latin Extended. (f) The
+  no-font-host rule covers the compile PDF export path too: IBM Plex Serif
+  and Sans for PDF export are supplied from the bundled `@fontsource`
+  packages, not from remote URLs. Facts. READ (code,
   not measured in the running app): fonts load from Google Fonts over the
   network; `app/layout.tsx` links Domine, and
   `src/lib/fonts/loadGoogleFont.ts` is called only from the editor toolbar's
