@@ -104,3 +104,23 @@ export const ActiveWithColor: Story = {
     </div>
   ),
 };
+
+/**
+ * Assigned tags with no colour (`tagActive`) stay outlined in the primary ink,
+ * unfilled, so they read apart from a filled filter-active chip.
+ */
+export const TagAssigned: Story = {
+  args: {
+    label: "Fiction",
+    shape: "sharp",
+    size: "sm",
+    onClick: () => console.log("chip clicked"),
+  },
+  render: (args: React.ComponentProps<typeof Chip>) => (
+    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <Chip {...args} label="Unassigned" />
+      <Chip {...args} tagActive label="Assigned tag" />
+      <Chip {...args} active label="Filter active" />
+    </div>
+  ),
+};
