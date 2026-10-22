@@ -286,7 +286,7 @@ FR-1: 3. FR-2: 5, 6, 9. FR-3: 9, 23, 25. FR-4: 9, 21 (including the PDF export p
 **Depends on:** 20, 21, 23, 26, 27, 28, 24
 **Estimate:** 3 (M)
 **Notes:** Satisfies FR-21 (final suites), FR-19 and FR-3 closure. Safety: `pnpm test:e2e` and `pnpm build` outside the sandbox in the main checkout; stop only processes started here, by pid; no read or write of `projects/` or any real app-data folder.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 29

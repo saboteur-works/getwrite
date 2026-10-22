@@ -559,3 +559,32 @@ Type error: Cannot find module '../../../frontend/components/Start/CreateProject
 ### Left behind
 
 Gitignored build artifacts rewritten: `frontend/.next`, `electron/dist`. Existing and untouched: `frontend/storybook-static`, `frontend/.native-build`. Empty `mktemp -d` projects folders remain under the system temp dir. `git status --short` after the runs showed only this file modified. Not measured: installer size, x64 packaged app, `frontend/out`.
+
+## Final suites (Task 29)
+
+Date: 2026-10-22 (local, MDT). Branch `feat/font-picker-and-typography-inputs`, main checkout, tree clean at start. `pnpm test:ci`, `pnpm build`, `pnpm build:native`, `pnpm test:e2e`, electron and CLI tests ran outside the command sandbox; typecheck, lint and knip ran inside it. Each build/e2e/test:ci run used a throwaway `GETWRITE_PROJECTS_DIR` (`mktemp -d`). No process was started that needed stopping. Suites were run one at a time, never `test:ci` concurrently with `test:e2e`; `pnpm storybook` was never started.
+
+Listeners before and after (`lsof -nP -iTCP:3000 -iTCP:6006 -iTCP:7340 -sTCP:LISTEN`): before and after, only `GetWrite pid 65645 *:7340 (LISTEN)` (the owner's app; differs from Task 1, where 7340 was empty). 3000 and 6006 empty. `lsof -iTCP:6006` run immediately before `pnpm test:e2e`: empty, exit 1. The desktop app was not started.
+
+| Item | Command (cwd) | Final observed | Task 1 baseline |
+| --- | --- | --- | --- |
+| frontend tests | `pnpm test:ci` (`frontend/`) | exit 0; 651 files passed; 7868 passed, 2 expected fail, 1 skipped (7871), 0 failed. No known-flaky re-run needed (no failures). | 637 files; 7646 passed, 2 expected fail, 1 skipped; 0 failed |
+| typecheck | `pnpm typecheck` | exit 0 | exit 0 |
+| lint | `pnpm lint` | exit 0; 392 problems: 0 errors, 392 warnings | 0 errors, 393 warnings |
+| build | `pnpm build` | exit 0 | exit 0 |
+| import-graph guard | `pnpm exec vitest run tests/unit/project-types-no-server-only.test.ts` | 1 file, 3 passed | not recorded separately |
+| e2e | `pnpm test:e2e` | exit 0; 227 passed, 1 skipped, 0 failed (skipped: `e2e/editor-tier4.e2e.spec.ts:123` "Column resize > Dragging a column-resize handle changes the column width") | 222 passed, 1 skipped, 0 failed |
+| knip | `pnpm knip` (repo root) | exit 1; 411 findings: unused files 49, unused dependencies 1, unused devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 160, unused exported types 173, duplicate exports 14 (plus 6 configuration hints, not counted) | exit 1; 412 (unused exports 161) |
+| electron typecheck | `pnpm typecheck` (`electron/`) | exit 0 | exit 0 |
+| electron tests | `pnpm test` | exit 0; 34 files, 528 passed, 0 failed | 34 files, 528 passed |
+| electron worker | `pnpm build:worker` | exit 0 (`dist/docx-import-worker.cjs` 2.0mb) | exit 0 |
+| cli tests | `pnpm test` (`cli/`) | exit 0; 23 files, 153 passed, 0 failed (stderr lines "missing required argument 'source'" and "unknown option '--saved-types-dir'" are printed by tests of argument refusal) | 23 files, 153 passed |
+| native build | `pnpm build:native` (`frontend/`) | exit 1; `./stories/Start/CreateProjectModal.stories.tsx:6:8 Type error: Cannot find module '../../../frontend/components/Start/CreateProjectModal'`; recorded only, known as in Tasks 2 and 28 | exit 1 (same error, Task 2) |
+
+knip: 411 findings, not above the 412 baseline; no new finding category. Per-category comparison with Task 1: unused exports 160 against 161, all other counts equal. The finding lists were not diffed item by item.
+
+Task 7 (find via `git log --grep='^Task-Id: 7$'`, commit 8f3c57b7 "pure validated font-family helper and name validator"): files `frontend/src/lib/fonts/font-family-stack.ts` and `frontend/tests/unit/font-family-stack.test.ts`. `pnpm exec vitest run tests/unit/font-family-stack.test.ts`: 1 file, 30 passed, 0 failed; the file is also within the `pnpm test:ci` run (exit 0). Full `pnpm lint` ran over the frontend with `tests/unit/` and `src/lib/` files in its output; the lint output contains no line naming `font-family-stack`, so neither Task 7 file produced an error or warning.
+
+Not run: the story-runner (`vitest.storybook.config.ts`) suite, as in Task 1 (not part of the Task 29 contract); the four App Settings dialog stories known to fail there were therefore not exercised. No test, story or decorator was modified by this task.
+
+Left behind: gitignored build artifacts rewritten (`frontend/.next`, `frontend/storybook-static`, `electron/dist`); empty `mktemp -d` projects folders under the system temp dir.
