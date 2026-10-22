@@ -19,6 +19,10 @@ extraResources:
     to: getwrite-config
     filter:
       - "**/*"
+  # Licences for the bundled fonts (Feature 91), at the top of the Resources
+  # folder. The same file also ships inside the standalone server's public/.
+  - from: ../THIRD_PARTY_FONTS.txt
+    to: THIRD_PARTY_FONTS.txt
   # Ships the forked Scrivener import worker bundle outside app.asar, since
   # utilityProcess.fork cannot fork a script packed inside an asar archive
   # (the same reason the Next standalone server above ships as extraResources
