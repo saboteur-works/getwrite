@@ -24,7 +24,12 @@ test("metadata sidebar interactive tracks changes", async ({ page }) => {
   await page.goto("/iframe.html?id=sidebar-metadatasidebar--interactive");
 
   const lastChangeProbe = page.locator('[data-testid="last-change"]');
-  const firstInput = page.locator("input, textarea").first();
+  // The first text field, not merely the first input: switches (such as
+  // Prose Diagnostics' "Highlight dialogue") are inputs too and cannot be
+  // typed into.
+  const firstInput = page
+    .locator('input[type="text"], input:not([type]), textarea')
+    .first();
 
   await expect(firstInput).toBeVisible();
   const currentValue = await firstInput.inputValue();
