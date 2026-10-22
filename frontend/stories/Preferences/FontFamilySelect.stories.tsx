@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import FontFamilySelect from "../../components/preferences/FontFamilySelect";
-import { FONT_FAMILY_LIST } from "../../src/lib/fonts/fonts";
+import { FONT_FAMILY_LIST, OTHER_FONT_OPTION } from "../../src/lib/fonts/fonts";
 
 interface HarnessProps {
   initial: string | undefined;
@@ -55,7 +55,51 @@ export const UnlistedValue: Story = {
     const select = within(canvasElement).getByRole("combobox", {
       name: "Body Font Family",
     }) as HTMLSelectElement;
+    await expect(select.selectedOptions[0].textContent).toBe(OTHER_FONT_OPTION);
+    await expect(within(canvasElement).getByRole("textbox")).toHaveValue(
+      "Garamond",
+    );
+  },
+};
+
+export const UnlistedValueToolbar: Story = {
+  args: { initial: "Garamond", allowOther: false },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const select = within(canvasElement).getByRole("combobox", {
+      name: "Body Font Family",
+    }) as HTMLSelectElement;
     await expect(select.selectedOptions[0].textContent).toBe("Garamond");
+    await expect(within(canvasElement).queryByRole("textbox")).toBeNull();
+  },
+};
+
+export const OtherWithHint: Story = {
+  args: { initial: "Lato", allowOther: true },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(
+      canvas.getByRole("combobox", { name: "Body Font Family" }),
+      OTHER_FONT_OPTION,
+    );
+    const field = canvas.getByRole("textbox");
+    await expect(field).toHaveFocus();
+    const hint = canvas.getByText(
+      "If this font isn't installed on this device, text shows in IBM Plex Serif.",
+    );
+    await expect(field.getAttribute("aria-describedby")).toContain(hint.id);
+  },
+};
+
+export const Error: Story = {
+  args: { initial: "Lato", allowOther: true },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(
+      canvas.getByRole("combobox", { name: "Body Font Family" }),
+      OTHER_FONT_OPTION,
+    );
+    await userEvent.type(canvas.getByRole("textbox"), "Gar,amond");
+    await expect(canvas.getByRole("alert")).toBeInTheDocument();
   },
 };
 

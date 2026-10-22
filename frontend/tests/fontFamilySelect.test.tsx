@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FontFamilySelect from "../components/preferences/FontFamilySelect";
 import { FONT_FAMILY_LIST, OTHER_FONT_OPTION } from "../src/lib/fonts/fonts";
+import { buildFontFamilyValue } from "../src/lib/fonts/font-family-stack";
 
 const LABELS: string[] = FONT_FAMILY_LIST.map((f) => f.label);
 
@@ -131,5 +132,124 @@ describe("FontFamilySelect", () => {
     await user.selectOptions(select, OTHER_FONT_OPTION);
     expect(onOther).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  describe("Other... name field", () => {
+    const HINT =
+      "If this font isn't installed on this device, text shows in IBM Plex Serif.";
+    const nameField = (): HTMLInputElement =>
+      screen.getByRole("textbox") as HTMLInputElement;
+
+    it("reveals the name field and moves focus to it when Other... is chosen", async () => {
+      const user = userEvent.setup();
+      const { select } = setup({ value: "Lato", allowOther: true });
+      expect(screen.queryByRole("textbox")).toBeNull();
+      await user.selectOptions(select, OTHER_FONT_OPTION);
+      expect(nameField()).toHaveFocus();
+    });
+
+    it("shows the fixed hint whenever the field is shown, linked by aria-describedby", async () => {
+      const user = userEvent.setup();
+      const { select } = setup({ value: "Lato", allowOther: true });
+      expect(screen.queryByText(HINT)).toBeNull();
+      await user.selectOptions(select, OTHER_FONT_OPTION);
+      const hint = screen.getByText(HINT);
+      expect(nameField().getAttribute("aria-describedby")).toContain(hint.id);
+    });
+
+    it("stores a typed name trimmed", async () => {
+      const user = userEvent.setup();
+      const { select, onChange } = setup({ value: "Lato", allowOther: true });
+      await user.selectOptions(select, OTHER_FONT_OPTION);
+      await user.type(nameField(), "  Garamond  ");
+      expect(onChange).toHaveBeenLastCalledWith("Garamond");
+      expect(onChange.mock.calls.every((c) => c[0] === c[0].trim())).toBe(true);
+    });
+
+    it.each(['"', "'", ";", "{", "}", "\\", "(", ")", "<", ">", ","])(
+      "refuses %s with a role=alert message and writes nothing",
+      async (ch) => {
+        const user = userEvent.setup();
+        const { select, onChange } = setup({ value: "Lato", allowOther: true });
+        await user.selectOptions(select, OTHER_FONT_OPTION);
+        await user.type(nameField(), `Gar${ch === "{" ? "{{" : ch}`);
+        const alert = screen.getByRole("alert");
+        expect(alert.textContent).toMatch(/cannot contain/);
+        expect(nameField().getAttribute("aria-describedby")).toContain(
+          alert.id,
+        );
+        expect(nameField()).toHaveAttribute("aria-invalid", "true");
+        expect(onChange.mock.calls.map((c) => c[0])).not.toContain(`Gar${ch}`);
+      },
+    );
+
+    it("clears the refusal once the text is valid again", async () => {
+      const user = userEvent.setup();
+      const { select } = setup({ value: "Lato", allowOther: true });
+      await user.selectOptions(select, OTHER_FONT_OPTION);
+      await user.type(nameField(), "A,");
+      expect(screen.getByRole("alert")).toBeTruthy();
+      await user.type(nameField(), "{Backspace}");
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("an empty name is not an error and clears the family", async () => {
+      const user = userEvent.setup();
+      const { onChange } = setup({ value: "Garamond", allowOther: true });
+      await user.clear(nameField());
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(onChange).toHaveBeenLastCalledWith("");
+      expect(nameField()).toBeVisible();
+    });
+
+    it.each(["domine", "Garamond", "Foo, Bar"])(
+      "opens an unlisted stored %s as Other... with the text unchanged and writes nothing",
+      async (stored) => {
+        const user = userEvent.setup();
+        const { select, onChange } = setup({ value: stored, allowOther: true });
+        expect(select.selectedOptions[0].textContent).toBe(OTHER_FONT_OPTION);
+        expect(nameField().value).toBe(stored);
+        expect(screen.getByText(HINT)).toBeTruthy();
+        expect(screen.queryByRole("alert")).toBeNull();
+        await user.click(select);
+        await user.keyboard("{Escape}");
+        expect(onChange).not.toHaveBeenCalled();
+        expect(buildFontFamilyValue(stored)).toBe(
+          stored.includes(",")
+            ? stored
+            : `"${stored}", "IBM Plex Serif", serif`,
+        );
+      },
+    );
+
+    it("keeps the extra entry and no name field without allowOther (toolbar mode)", () => {
+      const { optionTexts } = setup({ value: "Garamond" });
+      expect(optionTexts()).toContain("Garamond");
+      expect(optionTexts()).not.toContain(OTHER_FONT_OPTION);
+      expect(screen.queryByRole("textbox")).toBeNull();
+    });
+
+    it("hides the field and writes the label when a list entry is chosen afterwards", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      function Harness(): JSX.Element {
+        const [v, setV] = React.useState<string | undefined>("Garamond");
+        return (
+          <FontFamilySelect
+            aria-label="Body Font Family"
+            value={v}
+            onChange={(next) => {
+              onChange(next);
+              setV(next);
+            }}
+            allowOther
+          />
+        );
+      }
+      render(<Harness />);
+      await user.selectOptions(screen.getByRole("combobox"), "Lato");
+      expect(onChange).toHaveBeenCalledWith("Lato");
+      expect(screen.queryByRole("textbox")).toBeNull();
+    });
   });
 });
