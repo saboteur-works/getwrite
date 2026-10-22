@@ -835,7 +835,9 @@ describe("ProjectTypesManagerPage field errors (FR-28 f, g)", () => {
       container.querySelectorAll('[role="alert"][id]').length,
     ).toBeGreaterThanOrEqual(5);
     await runAxe(container);
-  });
+    // Run alone this takes about 1.5s (about 0.95s on main, before the
+    // typography fields); it exceeded the 5s default twice on loaded CI.
+  }, 15000);
 });
 
 describe("ProjectTypesManagerPage Delete", () => {
