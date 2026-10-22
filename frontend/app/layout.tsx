@@ -6,6 +6,7 @@ import React from "react";
 import ClientProvider from "../src/store/ClientProvider";
 import AppToaster from "../components/notifications/Toaster";
 import AppearanceRuntime from "../components/preferences/AppearanceRuntime";
+import FontFailureReporter from "../components/preferences/FontFailureReporter";
 import NativeBootstrap from "../components/native/NativeBootstrap";
 import DeviceNotPairedGuard from "../components/Sharing/DeviceNotPairedGuard";
 import SharingLimitsProvider from "../components/Sharing/SharingLimitsContext";
@@ -41,6 +42,7 @@ export default function RootLayout({
             <NativeBootstrap />
           ) : null}
           <AppearanceRuntime />
+          <FontFailureReporter />
           {/* Feature 75 FR-20: inert on native (no gate there) and with sharing off. */}
           {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native" ? null : (
             <DeviceNotPairedGuard />
