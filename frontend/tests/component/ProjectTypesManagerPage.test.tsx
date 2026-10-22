@@ -117,6 +117,22 @@ function startDraft(id: string, name: string): void {
   fireEvent.change(screen.getByLabelText("Name"), { target: { value: name } });
 }
 
+describe("ProjectTypesManagerPage draft typing keeps focus", () => {
+  it.each(["ID", "Name"])(
+    "typing a new draft's %s key by key keeps the field focused",
+    async (label) => {
+      const user = userEvent.setup();
+      renderManager(makeTransport());
+      fireEvent.click(screen.getByRole("button", { name: "New Project Type" }));
+      const field = screen.getByLabelText(label);
+      await user.click(field);
+      await user.keyboard("novel_two");
+      expect(screen.getByLabelText(label)).toHaveValue("novel_two");
+      expect(screen.getByLabelText(label)).toHaveFocus();
+    },
+  );
+});
+
 describe("ProjectTypesManagerPage labels and controls", () => {
   it("built-in: labelled Built-in, Save reads Save as copy, no Delete, id read-only", () => {
     renderManager(makeTransport());

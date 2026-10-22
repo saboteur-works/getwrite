@@ -619,7 +619,7 @@ export default function ProjectTypesManagerPage({
                 </div>
               ) : null}
               <ProjectTypeEditorForm
-                key={selectedKey}
+                key={selectedItem?.formKey ?? selectedKey}
                 onRefusalChange={reportRefusedField}
                 idReadOnly={origin !== "Draft"}
                 idError={shownFeedback?.idMessage}

@@ -45,6 +45,12 @@ import type {
 export interface ProjectTypeListItem {
   /** Stable key for list rendering and selection. */
   key: string;
+  /**
+   * Identity of this item for the editor form's React key. Unlike `key`, it
+   * does not change when a draft's id or name is edited, so typing does not
+   * remount the form. Absent on items built outside this service.
+   */
+  formKey?: string;
   /** Source file name, if this entry came from disk. */
   fileName?: string;
   /** Editable project type definition. */
@@ -154,6 +160,14 @@ export function createEmptyProjectType(): ProjectTypeDefinition {
  * @param definition - Project type definition.
  * @returns Stable key string.
  */
+let formKeyCounter = 0;
+
+/** A fresh {@link ProjectTypeListItem.formKey}. */
+function newFormKey(): string {
+  formKeyCounter += 1;
+  return `form-${formKeyCounter}`;
+}
+
 export function toItemKey(
   fileName: string | undefined,
   definition: ProjectTypeDefinition,
@@ -269,6 +283,7 @@ export function mergeListIntoItems(
     const definition = normalizeDefinition(entry.spec);
     return {
       key: toItemKey(entry.fileName, definition),
+      formKey: newFormKey(),
       fileName: entry.fileName,
       definition,
       baseline: definition,
@@ -370,6 +385,7 @@ function savedItemFrom(
   const definition = normalizeDefinition(spec);
   return {
     key: toItemKey(fileName, definition),
+    formKey: newFormKey(),
     fileName,
     definition,
     baseline: definition,
@@ -576,6 +592,7 @@ export function useProjectTypeDraftService(
       const normalized = normalizeDefinition(template.definition);
       return {
         key: toItemKey(template.fileName, normalized),
+        formKey: newFormKey(),
         fileName: template.fileName,
         definition: normalized,
         baseline: normalized,
@@ -627,7 +644,12 @@ export function useProjectTypeDraftService(
     const timestamp = Date.now();
     const key = `draft:new-${timestamp}`;
 
-    const nextItem: ProjectTypeListItem = { key, definition, hasChanges: true };
+    const nextItem: ProjectTypeListItem = {
+      key,
+      formKey: newFormKey(),
+      definition,
+      hasChanges: true,
+    };
 
     setItems((previous) => [nextItem, ...previous]);
     setSelectedKey(key);
