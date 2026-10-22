@@ -60,6 +60,13 @@ export interface FontFamilySelectProps {
   allowOther?: boolean;
   /** Called when "Other..." is chosen (the name field opens regardless). */
   onOther?: () => void;
+  /**
+   * Optional. Reports whether the typed "Other..." name is refused: on every
+   * change, once on mount, and `false` on unmount. A parent uses it to block
+   * Save while the name is refused (the refused text is never passed to
+   * `onChange`; the last accepted value stays in the parent's draft).
+   */
+  onRefusalChange?: (refused: boolean) => void;
   /** Label of the empty entry; `null` omits it (toolbar shows an effective value). */
   emptyLabel?: string | null;
   id?: string;
@@ -87,6 +94,7 @@ export default function FontFamilySelect({
   onChange,
   allowOther = false,
   onOther,
+  onRefusalChange,
   emptyLabel = "Use default",
   className,
   ...rest
@@ -107,6 +115,19 @@ export default function FontFamilySelect({
   const shouldShowExtra = !allowOther && isUnlisted;
   const fieldText = draft ?? (isUnlisted ? stored : "");
   const baseLabel = rest["aria-label"] ?? "Font family";
+
+  const isRefused = error !== null;
+  const reportRef = useRef(onRefusalChange);
+  reportRef.current = onRefusalChange;
+  useEffect(() => {
+    reportRef.current?.(isRefused);
+  }, [isRefused]);
+  useEffect(
+    () => () => {
+      reportRef.current?.(false);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (shouldShowField && focusRequested.current) {

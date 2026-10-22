@@ -99,7 +99,7 @@ export interface ProjectTypeEditorFormProps {
    * Optional. Reports a typography field's refused/valid state (the body
    * line height) so the parent can block Save while one is refused.
    */
-  onRefusalChange?: (field: TypographyFieldKey, refused: boolean) => void;
+  onRefusalChange?: (field: string, refused: boolean) => void;
 }
 
 export default function ProjectTypeEditorForm({
@@ -525,6 +525,12 @@ export default function ProjectTypeEditorForm({
                   fields={HEADING_FIELDS}
                   values={heading ?? {}}
                   allowOther
+                  onRefusalChange={
+                    onRefusalChange
+                      ? (key, refused) =>
+                          onRefusalChange(`${level}.${key}`, refused)
+                      : undefined
+                  }
                   onChange={(key, value) => {
                     if (isHeadingField(key)) {
                       patchHeading(level, { [key]: value || undefined });

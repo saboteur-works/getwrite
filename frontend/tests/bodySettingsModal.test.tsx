@@ -3,6 +3,7 @@ import path from "node:path";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import BodySettingsModal from "../components/preferences/BodySettingsModal";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
 import { runAxe } from "./a11y/helpers/axe";
@@ -286,6 +287,52 @@ describe("BodySettingsModal", () => {
       await waitFor(() =>
         expect(onSave).toHaveBeenCalledWith({ lineHeight: "1.8" }),
       );
+    });
+
+    it("blocks Save while a typed font name is refused, keeps the draft, and saves once corrected (Defect 1)", async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={{ fontFamily: "IBM Plex Serif" }}
+          onClose={vi.fn()}
+          onSave={onSave}
+          closeOnSave={false}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText("Body Font Family"), {
+        target: { value: "__other__" },
+      });
+      const name = screen.getByLabelText("Body Font Family other name");
+      await user.clear(name);
+      await user.type(name, "Bad;Name");
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(name).toHaveValue("Bad;Name");
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+      fireEvent.change(name, { target: { value: "Garamond" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      await waitFor(() =>
+        expect(onSave).toHaveBeenCalledWith({ fontFamily: "Garamond" }),
+      );
+    });
+
+    it("a pasted refused font name leaves the draft's family at its previous value (Defect 1)", async () => {
+      const user = userEvent.setup();
+      renderInDialog(
+        <BodySettingsModal
+          initialBody={{ fontFamily: "Garamond" }}
+          onClose={vi.fn()}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+          closeOnSave={false}
+        />,
+      );
+      const name = screen.getByLabelText("Body Font Family other name");
+      await user.clear(name);
+      await user.click(name);
+      await user.paste("Bad;Name");
+      const preview = screen.getByLabelText(/body.*preview/i);
+      expect(preview.style.fontFamily).not.toContain("Bad");
     });
 
     it("blocks Save for a refused stored line height", () => {

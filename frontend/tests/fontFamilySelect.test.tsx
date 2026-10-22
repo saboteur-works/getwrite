@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FontFamilySelect from "../components/preferences/FontFamilySelect";
 import { FONT_FAMILY_LIST, OTHER_FONT_OPTION } from "../src/lib/fonts/fonts";
@@ -251,5 +251,28 @@ describe("FontFamilySelect", () => {
       expect(onChange).toHaveBeenCalledWith("Lato");
       expect(screen.queryByRole("textbox")).toBeNull();
     });
+  });
+});
+
+describe("FontFamilySelect refusal callback (Defect 1)", () => {
+  it("reports on mount, on a refused name, on a valid name after it, and clears on unmount; onChange never fires for the refused text", () => {
+    const onRefusalChange = vi.fn();
+    const { onChange } = setup({ allowOther: true, onRefusalChange });
+    expect(onRefusalChange).toHaveBeenLastCalledWith(false);
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "__other__" },
+    });
+    const name = screen.getByLabelText("Body Font Family other name");
+    fireEvent.change(name, { target: { value: "Bad;Name" } });
+    expect(onRefusalChange).toHaveBeenLastCalledWith(true);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(name).toHaveValue("Bad;Name");
+    fireEvent.change(name, { target: { value: "Garamond" } });
+    expect(onRefusalChange).toHaveBeenLastCalledWith(false);
+    expect(onChange).toHaveBeenCalledWith("Garamond");
+    fireEvent.change(name, { target: { value: "a,b" } });
+    expect(onRefusalChange).toHaveBeenLastCalledWith(true);
+    cleanup();
+    expect(onRefusalChange).toHaveBeenLastCalledWith(false);
   });
 });

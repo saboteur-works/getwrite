@@ -65,7 +65,7 @@ export interface TypographyFieldsProps {
   onChange: (key: TypographyFieldKey, value: string) => void;
   /**
    * Optional. Reports a field's refused/valid state to the parent whenever it
-   * changes (and once on mount for the line height field). A parent uses it to
+   * changes (and once on mount for the line height and family fields). A parent uses it to
    * block Save while any field is refused; a refused value is still never
    * passed to `onChange`.
    */
@@ -194,21 +194,19 @@ function colourInputValue(stored: string): string {
  */
 export function useRefusedFields(): {
   isBlocked: boolean;
-  report: (key: TypographyFieldKey, refused: boolean) => void;
+  report: (key: string, refused: boolean) => void;
 } {
-  const [refused, setRefused] = React.useState<readonly TypographyFieldKey[]>(
-    [],
-  );
-  const report = React.useCallback(
-    (key: TypographyFieldKey, isRefused: boolean): void => {
-      setRefused((prev) => {
-        const has = prev.includes(key);
-        if (has === isRefused) return prev;
-        return isRefused ? [...prev, key] : prev.filter((k) => k !== key);
-      });
-    },
-    [],
-  );
+  const [refused, setRefused] = React.useState<readonly string[]>([]);
+  // Keys are strings so a form with several sections can scope a field by
+  // section (`h2.fontFamily`) and one section's valid report never clears
+  // another's refusal.
+  const report = React.useCallback((key: string, isRefused: boolean): void => {
+    setRefused((prev) => {
+      const has = prev.includes(key);
+      if (has === isRefused) return prev;
+      return isRefused ? [...prev, key] : prev.filter((k) => k !== key);
+    });
+  }, []);
   return { isBlocked: refused.length > 0, report };
 }
 
@@ -288,6 +286,12 @@ export default function TypographyFields({
             allowOther={allowOther}
             disabled={disabled}
             onChange={(next: string): void => onChange("fontFamily", next)}
+            onRefusalChange={
+              onRefusalChange
+                ? (refused: boolean): void =>
+                    onRefusalChange("fontFamily", refused)
+                : undefined
+            }
           />
         </FieldShell>
       ) : null}

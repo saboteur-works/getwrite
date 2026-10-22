@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import HeadingSettingsModal from "../components/preferences/HeadingSettingsModal";
 import { Dialog } from "../components/common/UI/Dialog/Dialog";
 
@@ -30,6 +31,63 @@ describe("HeadingSettingsModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /add h4/i }));
 
     expect(screen.getByText("H4")).toBeInTheDocument();
+  });
+
+  it("blocks Save while any level's typed font name is refused; a valid level does not clear it (Defect 1)", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("H2 Font Family"), {
+      target: { value: "__other__" },
+    });
+    const h2 = screen.getByLabelText("H2 Font Family other name");
+    await user.type(h2, "Bad;Name");
+    // H1 reports a valid family afterwards; H2 stays refused.
+    fireEvent.change(screen.getByLabelText("H1 Font Family"), {
+      target: { value: "IBM Plex Sans" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(h2).toHaveValue("Bad;Name");
+    fireEvent.change(h2, { target: { value: "Garamond" } });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({
+        h1: { fontFamily: "IBM Plex Sans" },
+        h2: { fontFamily: "Garamond" },
+      }),
+    );
+  });
+
+  it("Discard clears a refused typed name and unblocks Save (Defect 1)", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderInDialog(
+      <HeadingSettingsModal
+        initialHeadings={{}}
+        onClose={vi.fn()}
+        onSave={onSave}
+        closeOnSave={false}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("H1 Font Family"), {
+      target: { value: "__other__" },
+    });
+    await user.type(screen.getByLabelText("H1 Font Family other name"), "a;b");
+    fireEvent.click(screen.getByRole("button", { name: /discard changes/i }));
+    fireEvent.change(screen.getByLabelText("H1 Font Size"), {
+      target: { value: "20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({ h1: { fontSize: "20px" } }),
+    );
   });
 
   it("removes optional heading levels from the draft", () => {

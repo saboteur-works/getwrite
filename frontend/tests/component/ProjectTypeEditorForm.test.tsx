@@ -490,3 +490,41 @@ describe("ProjectTypeEditorForm line height floor in the shared field (FR-16)", 
     expect(source).not.toMatch(/handleBodyLineHeightRefusal|<div onChange/);
   });
 });
+
+describe("ProjectTypeEditorForm refused font names (Defect 1)", () => {
+  it("reports a refused typed family scoped per heading level and per body, and clears on correction", () => {
+    const reports: [string, boolean][] = [];
+    render(
+      <Harness
+        initial={base}
+        onRefusalChange={(field, r) => reports.push([field, r])}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("H3 Font Family"), {
+      target: { value: "__other__" },
+    });
+    const h3 = screen.getByLabelText("H3 Font Family other name");
+    fireEvent.change(h3, { target: { value: "Q;R" } });
+    expect(reports.filter(([f]) => f === "h3.fontFamily").at(-1)).toEqual([
+      "h3.fontFamily",
+      true,
+    ]);
+    expect(reports.some(([f, r]) => f.startsWith("h1.") && r)).toBe(false);
+    fireEvent.change(h3, { target: { value: "Garamond" } });
+    expect(reports.filter(([f]) => f === "h3.fontFamily").at(-1)?.[1]).toBe(
+      false,
+    );
+  });
+
+  it("a pasted refused name leaves the draft's family unchanged", () => {
+    let latest: ProjectTypeDefinition = {
+      ...base,
+      editorConfig: { headings: { h3: { fontFamily: "Garamond" } } },
+    };
+    render(<Harness initial={latest} onDefinition={(d) => (latest = d)} />);
+    fireEvent.change(screen.getByLabelText("H3 Font Family other name"), {
+      target: { value: "Q;R" },
+    });
+    expect(latest.editorConfig?.headings?.h3?.fontFamily).toBe("Garamond");
+  });
+});

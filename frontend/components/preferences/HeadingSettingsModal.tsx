@@ -14,6 +14,7 @@ import {
 } from "../../src/lib/editor-heading-settings";
 import { buildFontFamilyValue } from "../../src/lib/fonts/font-family-stack";
 import TypographyFields, {
+  useRefusedFields,
   type TypographyFieldKey,
 } from "../typography/TypographyFields";
 import Button from "../common/UI/Button/Button";
@@ -62,6 +63,7 @@ export default function HeadingSettingsModal({
     getVisibleHeadingLevels(initialHeadings),
   );
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const { isBlocked: hasRefusal, report: reportRefusal } = useRefusedFields();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Embedded in Project Settings (`closeOnSave` false), the secondary button
   // discards this section's unsaved edits and leaves the dialog open; closing
@@ -71,7 +73,11 @@ export default function HeadingSettingsModal({
     EditorHeadingMap | undefined
   >(initialHeadings);
 
+  // Bumped on Discard so the fields drop any refused text they hold locally.
+  const [resetKey, setResetKey] = useState<number>(0);
+
   const handleDiscard = (): void => {
+    setResetKey((key) => key + 1);
     setDraftHeadings(buildHeadingDraft(savedHeadings));
     setVisibleLevels(getVisibleHeadingLevels(savedHeadings));
     setErrorMessage(null);
@@ -124,6 +130,10 @@ export default function HeadingSettingsModal({
   };
 
   const handleSave = async (): Promise<void> => {
+    // Refuse, never clamp: a typed font name that was refused keeps Save inert.
+    if (hasRefusal) {
+      return;
+    }
     setIsSaving(true);
     setErrorMessage(null);
 
@@ -201,12 +211,16 @@ export default function HeadingSettingsModal({
               </div>
 
               <TypographyFields
+                key={resetKey}
                 className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"
                 label={label}
                 idPrefix={level}
                 fields={HEADING_FIELDS}
                 values={heading}
                 allowOther
+                onRefusalChange={(key, refused) =>
+                  reportRefusal(`${level}.${key}`, refused)
+                }
                 onChange={(key, value) => {
                   if (isHeadingFieldKey(key)) {
                     handleFieldChange(level, key, value);

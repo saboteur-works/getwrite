@@ -8,6 +8,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ProjectTypesManagerPage from "../../components/project-types/ProjectTypesManagerPage";
 import { LINE_HEIGHT_FLOOR_MESSAGE } from "../../src/lib/editor-body-settings";
 import type {
@@ -246,6 +247,29 @@ describe("ProjectTypesManagerPage Save", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
   });
+});
+
+describe("ProjectTypesManagerPage refused font names (Defect 1)", () => {
+  it.each(["H3", "Body"])(
+    "blocks Save while a typed %s font name is refused and saves once corrected",
+    async (level) => {
+      const user = userEvent.setup();
+      const transport = makeTransport();
+      renderManager(transport);
+      startDraft("fresh", "Fresh");
+      fireEvent.change(screen.getByLabelText(`${level} Font Family`), {
+        target: { value: "__other__" },
+      });
+      const name = screen.getByLabelText(`${level} Font Family other name`);
+      await user.type(name, "Q;R");
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(transport.create).not.toHaveBeenCalled();
+      expect(name).toHaveValue("Q;R");
+      fireEvent.change(name, { target: { value: "Garamond" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(transport.create).toHaveBeenCalledTimes(1));
+    },
+  );
 });
 
 describe("ProjectTypesManagerPage refusals", () => {
