@@ -127,3 +127,37 @@ export const Disabled: Story = {
     ).toBeDisabled();
   },
 };
+
+function BodyHarness(): JSX.Element {
+  const [values, setValues] = useState<TypographyValues>({
+    lineHeight: "1.8",
+    paragraphSpacing: "16px",
+  });
+  return (
+    <div className="p-4">
+      <TypographyFields
+        label="Body"
+        idPrefix="body"
+        fields={["lineHeight", "paragraphSpacing"]}
+        values={values}
+        onChange={(key, value) => setValues((v) => ({ ...v, [key]: value }))}
+      />
+    </div>
+  );
+}
+
+/** Body-only inputs; a line height below 1.8 shows the refusal and keeps the typed value. */
+export const LineHeightError: Story = {
+  render: () => <BodyHarness />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const field = canvas.getByRole("textbox", { name: "Body Line Height" });
+    await userEvent.clear(field);
+    await userEvent.type(field, "1.5");
+    await expect(field).toHaveValue("1.5");
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "Line height must be a number of at least 1.8.",
+    );
+  },
+};

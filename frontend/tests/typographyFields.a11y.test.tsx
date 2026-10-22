@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import TypographyFields, {
   type TypographyFieldKey,
 } from "../components/typography/TypographyFields";
@@ -48,6 +48,24 @@ describe("a11y: TypographyFields", () => {
         allowOther
       />,
     );
+    await runAxe(container);
+  });
+
+  it("has no axe violations in the line-height error state", async () => {
+    const { container } = render(
+      <TypographyFields
+        label="Body"
+        idPrefix="body"
+        fields={["lineHeight", "paragraphSpacing"]}
+        values={{ lineHeight: "2", paragraphSpacing: "16px" }}
+        onChange={() => undefined}
+      />,
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Body Line Height" }),
+      { target: { value: "1.5" } },
+    );
+    expect(screen.getByRole("alert")).toBeTruthy();
     await runAxe(container);
   });
 });

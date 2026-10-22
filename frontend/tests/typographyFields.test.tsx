@@ -182,4 +182,80 @@ describe("TypographyFields", () => {
       (screen.getByLabelText("Body Color") as HTMLInputElement).disabled,
     ).toBe(true);
   });
+
+  describe("line height and paragraph spacing (Task 16)", () => {
+    const BODY: readonly TypographyFieldKey[] = [
+      "lineHeight",
+      "paragraphSpacing",
+    ];
+    const MESSAGE = "Line height must be a number of at least 1.8.";
+
+    function setupBody(values: TypographyValues = {}) {
+      const onChange = vi.fn();
+      render(
+        <TypographyFields
+          label="Body"
+          idPrefix="body"
+          fields={BODY}
+          values={values}
+          onChange={onChange}
+        />,
+      );
+      return {
+        onChange,
+        line: screen.getByRole("textbox", {
+          name: "Body Line Height",
+        }) as HTMLInputElement,
+      };
+    }
+
+    it("accepts 1.8 and empty, and stays free text", () => {
+      const { onChange, line } = setupBody({ lineHeight: "2" });
+      expect(line.type).toBe("text");
+      fireEvent.change(line, { target: { value: "1.8" } });
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "1.8");
+      fireEvent.change(line, { target: { value: "" } });
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "");
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it.each(["1.79", "normal"])(
+      "refuses %s with a linked alert, keeps the typed value, and does not call onChange",
+      (typed) => {
+        const { onChange, line } = setupBody({ lineHeight: "2" });
+        fireEvent.change(line, { target: { value: typed } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(line.value).toBe(typed);
+        const alert = screen.getByRole("alert");
+        expect(alert.textContent).toBe(MESSAGE);
+        expect(line.getAttribute("aria-invalid")).toBe("true");
+        expect(line.getAttribute("aria-describedby")).toBe(alert.id);
+      },
+    );
+
+    it("recovers from a refusal when a valid value is typed", () => {
+      const { onChange, line } = setupBody({ lineHeight: "2" });
+      fireEvent.change(line, { target: { value: "1.5" } });
+      fireEvent.change(line, { target: { value: "1.9" } });
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenLastCalledWith("lineHeight", "1.9");
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("paragraph spacing is free text emitting what was typed", () => {
+      const { onChange } = setupBody({ paragraphSpacing: "16px" });
+      const spacing = screen.getByRole("textbox", {
+        name: "Body Paragraph Spacing",
+      }) as HTMLInputElement;
+      expect(spacing.value).toBe("16px");
+      fireEvent.change(spacing, { target: { value: "1.5em" } });
+      expect(onChange).toHaveBeenLastCalledWith("paragraphSpacing", "1.5em");
+    });
+
+    it("headings (no lineHeight in fields) show no line-height input", () => {
+      setup({}, ["fontSize"]);
+      expect(screen.queryByLabelText(/Line Height/)).toBeNull();
+      expect(screen.queryByLabelText(/Paragraph Spacing/)).toBeNull();
+    });
+  });
 });

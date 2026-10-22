@@ -11,8 +11,9 @@
  * by the picker (`#rrggbb`), weight a numeric string, family a label or typed
  * name. A stored value the codecs cannot parse (for example `"1.5rem"`, `red`)
  * is shown as text and is never rewritten: change callbacks fire only from a
- * writer edit, never on mount. Line height and paragraph spacing arrive in
- * Task 16.
+ * writer edit, never on mount. Task 16 adds the body-only free-text
+ * line height (refused below 1.8 via `getLineHeightError`; a refused value
+ * stays typed and is never passed to `onChange`) and paragraph spacing.
  *
  * Every input has a visible label and an accessible name that includes the
  * level (`aria-label` "H2 Font Size"). The colour input is a native
@@ -22,6 +23,7 @@ import React from "react";
 import Input from "../common/UI/Input/Input";
 import FontFamilySelect from "../preferences/FontFamilySelect";
 import FontWeightSelect from "../preferences/FontWeightSelect";
+import { getLineHeightError } from "../../src/lib/editor-body-settings";
 import {
   formatEmSpacing,
   formatPxSize,
@@ -36,7 +38,9 @@ export type TypographyFieldKey =
   | "fontSize"
   | "fontWeight"
   | "color"
-  | "letterSpacing";
+  | "letterSpacing"
+  | "lineHeight"
+  | "paragraphSpacing";
 
 export interface TypographyValues {
   fontFamily?: string;
@@ -44,6 +48,8 @@ export interface TypographyValues {
   fontWeight?: string;
   color?: string;
   letterSpacing?: string;
+  lineHeight?: string;
+  paragraphSpacing?: string;
 }
 
 export interface TypographyFieldsProps {
@@ -72,6 +78,8 @@ const FIELD_LABELS: Readonly<Record<TypographyFieldKey, string>> = {
   fontWeight: "Font Weight",
   color: "Color",
   letterSpacing: "Letter Spacing",
+  lineHeight: "Line Height",
+  paragraphSpacing: "Paragraph Spacing",
 };
 
 interface FieldShellProps {
@@ -91,6 +99,59 @@ function FieldShell({ id, label, children }: FieldShellProps): JSX.Element {
       </label>
       {children}
     </div>
+  );
+}
+
+interface LineHeightFieldProps {
+  id: string;
+  name: string;
+  stored: string;
+  disabled: boolean;
+  onAccept: (value: string) => void;
+}
+
+/**
+ * Free-text line height. A refused value stays in the box (local draft) with
+ * an alert and is not reported to the parent; an accepted or empty value is.
+ */
+function LineHeightField({
+  id,
+  name,
+  stored,
+  disabled,
+  onAccept,
+}: LineHeightFieldProps): JSX.Element {
+  const [typed, setTyped] = React.useState<string | null>(null);
+  const shown = typed ?? stored;
+  const error = getLineHeightError(shown);
+  const errorId = `${id}-error`;
+  return (
+    <FieldShell id={id} label={FIELD_LABELS.lineHeight}>
+      <Input
+        id={id}
+        aria-label={name}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        type="text"
+        placeholder="e.g. 1.8"
+        disabled={disabled}
+        value={shown}
+        onChange={(event: React.ChangeEvent<HTMLInputElement>): void => {
+          const raw = event.target.value;
+          if (getLineHeightError(raw)) {
+            setTyped(raw);
+            return;
+          }
+          setTyped(null);
+          onAccept(raw);
+        }}
+      />
+      {error ? (
+        <p id={errorId} role="alert" className="text-xs text-gw-secondary">
+          {error}
+        </p>
+      ) : null}
+    </FieldShell>
   );
 }
 
@@ -198,6 +259,33 @@ export default function TypographyFields({
             placeholder: "e.g. 0.08",
           })
         : null}
+      {shows("lineHeight") ? (
+        <LineHeightField
+          id={idOf("lineHeight")}
+          name={nameOf("lineHeight")}
+          stored={stored("lineHeight")}
+          disabled={disabled}
+          onAccept={(value: string): void => onChange("lineHeight", value)}
+        />
+      ) : null}
+      {shows("paragraphSpacing") ? (
+        <FieldShell
+          id={idOf("paragraphSpacing")}
+          label={FIELD_LABELS.paragraphSpacing}
+        >
+          <Input
+            id={idOf("paragraphSpacing")}
+            aria-label={nameOf("paragraphSpacing")}
+            type="text"
+            placeholder="e.g. 1em"
+            disabled={disabled}
+            value={stored("paragraphSpacing")}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>): void =>
+              onChange("paragraphSpacing", event.target.value)
+            }
+          />
+        </FieldShell>
+      ) : null}
       {shows("color") ? (
         <FieldShell id={idOf("color")} label={FIELD_LABELS.color}>
           <div className="flex items-center gap-2">
