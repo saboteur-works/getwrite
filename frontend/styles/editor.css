@@ -47,6 +47,35 @@
   color: var(--color-gw-ink);
 }
 
+/* H4-H6 fallback: the project heading defaults (DEFAULT_HEADING_CONFIG)
+   cover H1-H3 only, so an unstyled H4-H6 used to inherit the UI font
+   (IBM Plex Sans) at browser default sizes. These rules are rendering
+   fallbacks only, kept out of DEFAULT_HEADING_CONFIG so Heading Styles does
+   not show or save H4-H6 unless the writer adds them; a stored heading style
+   is applied inline by CustomHeading and wins. H5 and H6 follow the
+   project's body size. */
+.tiptap h4,
+.tiptap h5,
+.tiptap h6 {
+  font-family: var(--font-serif);
+}
+
+.tiptap h4 {
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.tiptap h5 {
+  font-size: var(--gw-body-font-size, var(--text-gw-editor));
+  font-weight: 700;
+}
+
+.tiptap h6 {
+  font-size: var(--gw-body-font-size, var(--text-gw-editor));
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
 .tiptap h1:first-child,
 .tiptap h2:first-child,
 .tiptap h3:first-child {

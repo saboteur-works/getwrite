@@ -6,6 +6,10 @@ The text editor supports user-defined heading styles, configurable per project. 
 
 By default, three heading levels are available (H1–H3). Up to six levels (H1–H6) can be enabled. H4–H6 are optional and can be added or removed individually.
 
+### Unstyled defaults
+
+H1–H3 defaults come from `DEFAULT_HEADING_CONFIG` (`src/lib/editor-heading-settings.ts`) and are merged into the resolved editor config: H1 40px/700 with 0.01em letter spacing, H2 28px/700, H3 20px/500, all IBM Plex Serif. H4–H6 have no entry there; their unstyled look comes from `styles/editor.css` as a rendering fallback: IBM Plex Serif for all three, H4 17px/500, H5 at the project body size/700, H6 at the project body size/500 with 0.04em letter spacing. Keeping H4–H6 out of `DEFAULT_HEADING_CONFIG` means Heading Styles neither shows nor saves them unless the writer adds them. A stored style for any level is applied inline by `CustomHeading` and overrides the fallback. Before this, unstyled H4–H6 inherited the UI font (IBM Plex Sans) at browser default sizes.
+
 ## Configuration
 
 Heading style configuration is stored in each project's `project.json` under `config.editorConfig.headings`.
