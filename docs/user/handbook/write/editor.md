@@ -18,7 +18,14 @@ On macOS, **Cmd+B**, **Cmd+I** and **Cmd+U** apply bold, italic and underline to
 
 A live word count appears in the footer as you type. For example, `Words: 8` after typing eight words.
 
+## Saving
+
+Your text is saved automatically about 2.5 seconds after you stop typing. If you open another document, close the project or reload the page before then, the waiting save is sent straight away to the document you typed in. If that save fails after you have moved on, a message says your last edits to the previous document were not saved; open it again to check.
+
 ## Warnings and limits
+
+- In Markdown source mode (**Edit as Markdown**), the last edits made within about half a second before opening another document are not saved.
+- Closing the desktop app's window within 2.5 seconds of typing was not tested; reloading the web app within that time was (the text was saved).
 
 - **Ctrl+B**, **Ctrl+I** and **Ctrl+U** applied no formatting on macOS (two runs each). Windows and Linux were not run.
 - The footer showed a word count only. No character count or paragraph count appeared in the footer or elsewhere in the window.
