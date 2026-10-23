@@ -24,6 +24,8 @@ const SCAN_DIRS = ["app", "components", "src"];
 const NON_BUILD_ALLOWLIST: Record<string, string> = {
   "components/Editor/MenuBar/menuBarState.tsx":
     "reads the textStyle mark attribute into toolbar state; Task 20 owns the toolbar",
+  "components/Editor/MenuBar/rendered-typography.ts":
+    "reads the browser's computed font-family at the cursor for toolbar display (FR-10, amended 2026-10-23)",
 };
 
 function walk(dir: string): string[] {
