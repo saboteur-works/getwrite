@@ -28,6 +28,8 @@ For each heading level you can set:
 
 The section lists H1 to H3 and an **Add H4** button; **Add H5** and **Add H6** appear in turn. Each added level has a **Remove** button (for example **Remove H4**). H1 to H3 have none.
 
+A heading level you have not styled still has a default look. H1 to H3 use the defaults shown in the section. H4 to H6 are in IBM Plex Serif: H4 at 17px, medium weight; H5 at the body text size, bold; H6 at the body text size, medium weight with slightly wider letter spacing. Adding a level and setting a style replaces its default.
+
 Changes are staged in the dialog as you edit: the editor does not change until you click **Save Changes**. **Discard changes** puts this section back to what was last saved and leaves Project Settings open; other sections keep their unsaved edits. **Body Text Styles** and **Default Revision Name** have the same button.
 
 A heading with a custom color kept that color when the theme was switched to dark; headings without one changed with the theme.

@@ -111,6 +111,44 @@ test.describe("Headings", () => {
     });
   }
 
+  // H4-H6 have no project defaults; editor.css gives them IBM Plex Serif
+  // (they used to inherit the UI's IBM Plex Sans), H4 at 17px and H5/H6 at
+  // the body size (15px with no project body config). The toolbar shows
+  // the rendered values.
+  for (const { level, size, weight } of [
+    { level: 4, size: "17px", weight: "500" },
+    { level: 5, size: "15px", weight: "700" },
+    { level: 6, size: "15px", weight: "500" },
+  ] as const) {
+    test(`unstyled Heading ${level} renders in IBM Plex Serif at ${size}`, async ({
+      page,
+    }) => {
+      await prepareEditor(page);
+      await clickToolbarButton(page, `Heading ${level}`);
+      const heading = contentScope(page).locator(`h${level}`);
+      await expect(heading).toHaveText(/hello world/i);
+      const style = await heading.evaluate((el) => {
+        const computed = getComputedStyle(el);
+        return {
+          family: computed.fontFamily,
+          size: computed.fontSize,
+          weight: computed.fontWeight,
+        };
+      });
+      expect(style.family).toMatch(/^"?IBM Plex Serif"?/);
+      expect(style.size).toBe(size);
+      expect(style.weight).toBe(weight);
+
+      await heading.click();
+      await expect(
+        page.getByRole("combobox", { name: /Font Family/i }),
+      ).toHaveValue("IBM Plex Serif");
+      await expect(
+        page.getByRole("spinbutton", { name: /Font Size/i }),
+      ).toHaveValue(size.replace("px", ""));
+    });
+  }
+
   test("Heading 1 toggles off when clicked again on an existing heading", async ({
     page,
   }) => {
