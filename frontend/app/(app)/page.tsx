@@ -256,6 +256,14 @@ export default function Home(): JSX.Element {
         ),
       ),
     );
+    // Load the new project's styles, as handleOpen does; without this the
+    // editor kept the previous project's (or the default) styles until reopen.
+    dispatch(
+      setEditorConfig({
+        headings: projectFiles.project.config?.editorConfig?.headings ?? {},
+        body: projectFiles.project.config?.editorConfig?.body,
+      }),
+    );
     dispatch(setSelectedProjectId(projectFiles.project.id));
     dispatch(setResources(projectFiles.resources));
     dispatch(setFolders(projectFiles.folders));
@@ -972,6 +980,7 @@ export default function Home(): JSX.Element {
   const handleCloseProject = (): void => {
     setSelectedProject(null);
     dispatch(setSelectedProjectId(null));
+    dispatch(setEditorConfig({ headings: {}, body: undefined }));
     dispatch(setResourceId(null));
     dispatch(setResources([]));
     dispatch(setFolders([]));
