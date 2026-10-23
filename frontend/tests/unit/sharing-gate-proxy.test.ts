@@ -100,7 +100,6 @@ const PAGE_PATHS = [
   "/",
   "/login",
   "/preferences",
-  "/project-types",
   "/reset-password",
   "/verify-email",
 ];

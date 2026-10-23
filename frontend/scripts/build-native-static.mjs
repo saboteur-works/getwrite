@@ -167,21 +167,6 @@ function runNativeBuild() {
       ...process.env,
       GETWRITE_BUILD_TARGET: "native",
       NEXT_PUBLIC_GETWRITE_RUNTIME: "native",
-      // app/project-types/page.tsx resolves its template directory as
-      // `path.join(process.cwd(), "..", "getwrite-config", "templates",
-      // "project-types")` by default, assuming `cwd` is `frontend/` (whose
-      // parent is the repo root). Since this build's `cwd` is one level
-      // deeper (`frontend/.native-build/`), that default would resolve to
-      // a nonexistent directory. The page already supports an explicit
-      // override for exactly this kind of situation — use it rather than
-      // touching the page's source.
-      GETWRITE_TEMPLATES_DIR: join(
-        frontendRoot,
-        "..",
-        "getwrite-config",
-        "templates",
-        "project-types",
-      ),
     },
   });
 
