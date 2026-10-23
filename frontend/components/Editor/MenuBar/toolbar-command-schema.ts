@@ -12,6 +12,7 @@ import type {
   EditorHeadings,
 } from "../../../src/lib/models/types";
 import { FONT_FAMILY_LIST } from "../../../src/lib/fonts/fonts";
+import { readRenderedTypography } from "./rendered-typography";
 import {
   displayedParagraphLeading,
   validateParagraphLeadingInput,
@@ -89,11 +90,15 @@ function findFontLabel(name: string): string | undefined {
 }
 
 /**
- * The family the font control shows (FR-10): the selection's explicit family,
- * else the project's configured body font, else IBM Plex Serif. Display only;
- * nothing here writes to the document.
+ * The family the font control shows (FR-10): the family the text at the
+ * cursor is rendered in, so headings, explicit marks and stylesheet fallbacks
+ * all show as drawn. When nothing rendered can be read: the selection's
+ * explicit family, else the project's configured body font, else IBM Plex
+ * Serif. Display only; nothing here writes to the document.
  */
 function effectiveFontFamily(context: ToolbarCommandContext): string {
+  const rendered = readRenderedTypography(context.editor).fontFamily;
+  if (rendered) return rendered;
   const explicit = context.state.fontFamily?.trim();
   if (explicit) return explicit;
   const body = context.editorConfig?.body?.fontFamily?.trim();
@@ -220,6 +225,11 @@ export const toolbarCommandSchema: ToolbarCommandGroup[] = [
         inputType: "number",
         tooltipContent: "Font Size",
         getValue: ({ editor, state, editorConfig }) => {
+          // FR-10: the size the text at the cursor is rendered in; the
+          // configured values below apply only when nothing can be read.
+          const rendered = readRenderedTypography(editor).fontSize;
+          if (rendered) return rendered;
+
           const explicit = editor.getAttributes("textStyle").fontSize;
           if (explicit) return explicit.replace("px", "");
 

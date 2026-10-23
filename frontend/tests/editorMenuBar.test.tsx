@@ -960,3 +960,86 @@ describe("Font Family control (Feature 91, Task 20: FR-5, FR-10, FR-18)", () => 
     expect(state).not.toMatch(/isDomine|Domine/);
   });
 });
+
+describe("Font controls read the rendered text at the cursor (FR-10, amended 2026-10-23)", () => {
+  function renderAtHeading(
+    headingStyle: { fontFamily: string; fontSize: string },
+    configuredBody?: string,
+  ) {
+    const heading = document.createElement("h2");
+    heading.style.fontFamily = headingStyle.fontFamily;
+    heading.style.fontSize = headingStyle.fontSize;
+    heading.textContent = "Chapter One";
+    document.body.append(heading);
+
+    mockUseEditorState.mockReturnValue({
+      ...mockUseEditorState(),
+      isParagraph: false,
+      isHeading2: true,
+      fontFamily: undefined,
+    });
+    const store = makeStore();
+    if (configuredBody !== undefined) {
+      store.dispatch(
+        setEditorConfig({
+          headings: {},
+          body: { fontFamily: configuredBody, fontSize: "15px" },
+        }),
+      );
+    }
+    const { editor, actions } = createEditorDouble({
+      attributes: { textStyle: {} },
+    });
+    Object.assign(editor, {
+      view: { domAtPos: () => ({ node: heading.firstChild, offset: 0 }) },
+    });
+    render(
+      <Provider store={store}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+    return { actions, heading };
+  }
+
+  it("shows a heading's rendered family and size over the configured body font", () => {
+    const { actions, heading } = renderAtHeading(
+      {
+        fontFamily: '"Playfair Display", "IBM Plex Serif", serif',
+        fontSize: "28px",
+      },
+      "Lora",
+    );
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: /Font Family/i,
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe("Playfair Display");
+    expect(screen.getByRole("spinbutton", { name: /Font Size/i })).toHaveValue(
+      28,
+    );
+    expect(
+      actions.filter(
+        (a) => a.name === "setFontFamily" || a.name === "setFontSize",
+      ),
+    ).toEqual([]);
+    heading.remove();
+  });
+
+  it("shows an unlisted rendered family as the read-only extra entry", () => {
+    const { heading } = renderAtHeading({
+      fontFamily: "Garamond, serif",
+      fontSize: "18.72px",
+    });
+    const select = screen.getByRole("combobox", {
+      name: /Font Family/i,
+    }) as HTMLSelectElement;
+    expect(select.value).toBe("Garamond");
+    expect(Array.from(select.options).at(-1)?.textContent).toBe("Garamond");
+    expect(screen.getByRole("spinbutton", { name: /Font Size/i })).toHaveValue(
+      18.7,
+    );
+    heading.remove();
+  });
+});
