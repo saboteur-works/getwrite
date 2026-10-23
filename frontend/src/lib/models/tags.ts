@@ -10,7 +10,8 @@
  * side-effect free beyond that single file, so callers do not need to
  * maintain in-memory state.
  */
-import { readFile, writeFile } from "./io";
+import { readFile } from "./io";
+import { updateProjectJson } from "./project-json-write";
 import path from "node:path";
 import { generateUUID } from "./uuid";
 import type { Project, Tag } from "./types";
@@ -33,31 +34,16 @@ async function readProject(projectRoot: string): Promise<Project> {
 }
 
 /**
- * Serialises a project object and writes it back to the project configuration
- * file on disk.
+ * Normalises `config.tagAssignments` before a write so that every value is an
+ * array of strings. Single-string values are wrapped in an array; anything
+ * else that is not already an array is replaced with an empty array. This
+ * guards against shapes left by an older code version.
  *
- * Before writing, the function normalises `config.tagAssignments` so that
- * every value is an array of strings. Single-string values are wrapped in an
- * array; anything else that is not already an array is replaced with an empty
- * array. This guards against accidental shape mismatches introduced by
- * callers.
- *
- * Strict Zod schema validation is deliberately skipped here so that
- * incremental writes from tag helpers do not fail when the broader project
- * config contains fields not yet covered by the schema.
- *
- * @param projectRoot - Absolute path to the project's root directory.
- * @param projectObj  - The in-memory {@link Project} object to persist.
- * @throws {Error} If the file cannot be written.
+ * Strict Zod schema validation is deliberately skipped so that incremental
+ * writes from tag helpers do not fail when the broader project config holds
+ * fields not yet covered by the schema.
  */
-async function writeProject(
-  projectRoot: string,
-  projectObj: Project,
-): Promise<void> {
-  const projectPath = path.join(projectRoot, PROJECT_FILENAME);
-  // Defensive normalisation: on-disk data may originate from an older code
-  // version where tagAssignment values were scalars. Cast to Record<string,
-  // unknown> so we can narrow safely before overwriting with the correct type.
+function normalizeTagAssignments(projectObj: Project): void {
   if (projectObj.config?.tagAssignments) {
     const rawAssignments = projectObj.config.tagAssignments as Record<
       string,
@@ -71,10 +57,31 @@ async function writeProject(
       }
     }
   }
-  // Intentionally skip strict schema validation here to allow flexible
-  // project.config augmentation (tags, assignments) without causing
-  // unexpected Zod errors during incremental writes from helpers.
-  await writeFile(projectPath, JSON.stringify(projectObj, null, 2), "utf8");
+}
+
+/**
+ * One tag change as a single locked, atomic read-modify-write of
+ * `project.json` (see `project-json-write.ts`). The check a change makes (a
+ * duplicate name, a missing tag) reads the same project it writes.
+ */
+function addTag(project: Project, name: string, color?: string): Tag {
+  const tag: Tag = { id: generateUUID(), name, color };
+  const config = project.config ?? { editorConfig: {} };
+  config.tags = config.tags ?? [];
+  config.tags.push(tag);
+  project.config = config;
+  return tag;
+}
+
+function mutateTags<T>(
+  projectRoot: string,
+  mutate: (project: Project) => { result: T; shouldWrite?: boolean },
+): Promise<T> {
+  return updateProjectJson(projectRoot, (project) => {
+    const outcome = mutate(project);
+    if (outcome.shouldWrite !== false) normalizeTagAssignments(project);
+    return outcome;
+  });
 }
 
 /**
@@ -116,14 +123,9 @@ export async function createTag(
   name: string,
   color?: string,
 ): Promise<Tag> {
-  const project = await readProject(projectRoot);
-  const tag: Tag = { id: generateUUID(), name, color };
-  const config = project.config ?? { editorConfig: {} };
-  config.tags = config.tags ?? [];
-  config.tags.push(tag);
-  project.config = config;
-  await writeProject(projectRoot, project);
-  return tag;
+  return mutateTags(projectRoot, (project) => ({
+    result: addTag(project, name, color),
+  }));
 }
 
 /**
@@ -147,22 +149,24 @@ export async function deleteTag(
   projectRoot: string,
   tagId: string,
 ): Promise<boolean> {
-  const project = await readProject(projectRoot);
-  if (!project.config?.tags) return false;
-  const countBefore = project.config.tags.length;
-  project.config.tags = project.config.tags.filter((t: Tag) => t.id !== tagId);
-  // Remove assignments referencing the tag
-  if (project.config?.tagAssignments) {
-    for (const [resourceId, tagIds] of Object.entries(
-      project.config.tagAssignments,
-    )) {
-      project.config.tagAssignments[resourceId] = tagIds.filter(
-        (id) => id !== tagId,
-      );
+  return mutateTags(projectRoot, (project) => {
+    if (!project.config?.tags) return { result: false, shouldWrite: false };
+    const countBefore = project.config.tags.length;
+    project.config.tags = project.config.tags.filter(
+      (t: Tag) => t.id !== tagId,
+    );
+    // Remove assignments referencing the tag
+    if (project.config?.tagAssignments) {
+      for (const [resourceId, tagIds] of Object.entries(
+        project.config.tagAssignments,
+      )) {
+        project.config.tagAssignments[resourceId] = tagIds.filter(
+          (id) => id !== tagId,
+        );
+      }
     }
-  }
-  await writeProject(projectRoot, project);
-  return project.config.tags.length < countBefore;
+    return { result: project.config.tags.length < countBefore };
+  });
 }
 
 /** Thrown by {@link updateTag} when no tag has the given id. */
@@ -245,9 +249,10 @@ export async function createCheckedTag(
   projectRoot: string,
   changes: TagChanges,
 ): Promise<Tag> {
-  const project = await readProject(projectRoot);
-  const checked = checkTagFields(project.config?.tags ?? [], changes);
-  return createTag(projectRoot, checked.name, checked.color);
+  return mutateTags(projectRoot, (project) => {
+    const checked = checkTagFields(project.config?.tags ?? [], changes);
+    return { result: addTag(project, checked.name, checked.color) };
+  });
 }
 
 /**
@@ -276,17 +281,19 @@ export async function updateTag(
   tagId: string,
   changes: TagChanges,
 ): Promise<Tag> {
-  const project = await readProject(projectRoot);
-  const tags = project.config?.tags ?? [];
-  const index = tags.findIndex((t) => t.id === tagId);
-  if (index === -1) throw new TagNotFoundError(tagId);
+  return mutateTags(projectRoot, (project) => {
+    const tags = project.config?.tags ?? [];
+    const index = tags.findIndex((t) => t.id === tagId);
+    if (index === -1) throw new TagNotFoundError(tagId);
 
-  const { name, color } = checkTagFields(tags, changes, tagId);
+    const { name, color } = checkTagFields(tags, changes, tagId);
 
-  const updated: Tag = color ? { id: tagId, name, color } : { id: tagId, name };
-  tags[index] = updated;
-  await writeProject(projectRoot, project);
-  return updated;
+    const updated: Tag = color
+      ? { id: tagId, name, color }
+      : { id: tagId, name };
+    tags[index] = updated;
+    return { result: updated };
+  });
 }
 
 /**
@@ -308,15 +315,16 @@ export async function assignTagToResource(
   resourceId: string,
   tagId: string,
 ): Promise<void> {
-  const project = await readProject(projectRoot);
-  const config = project.config ?? { editorConfig: {} };
-  config.tagAssignments = config.tagAssignments ?? {};
-  config.tagAssignments[resourceId] = config.tagAssignments[resourceId] ?? [];
-  if (!config.tagAssignments[resourceId].includes(tagId)) {
-    config.tagAssignments[resourceId].push(tagId);
-  }
-  project.config = config;
-  await writeProject(projectRoot, project);
+  await mutateTags(projectRoot, (project) => {
+    const config = project.config ?? { editorConfig: {} };
+    config.tagAssignments = config.tagAssignments ?? {};
+    config.tagAssignments[resourceId] = config.tagAssignments[resourceId] ?? [];
+    if (!config.tagAssignments[resourceId].includes(tagId)) {
+      config.tagAssignments[resourceId].push(tagId);
+    }
+    project.config = config;
+    return { result: undefined };
+  });
 }
 
 /**
@@ -339,12 +347,15 @@ export async function unassignTagFromResource(
   resourceId: string,
   tagId: string,
 ): Promise<void> {
-  const project = await readProject(projectRoot);
-  if (!project.config?.tagAssignments?.[resourceId]) return;
-  project.config.tagAssignments[resourceId] = project.config.tagAssignments[
-    resourceId
-  ].filter((id: string) => id !== tagId);
-  await writeProject(projectRoot, project);
+  await mutateTags(projectRoot, (project) => {
+    if (!project.config?.tagAssignments?.[resourceId]) {
+      return { result: undefined, shouldWrite: false };
+    }
+    project.config.tagAssignments[resourceId] = project.config.tagAssignments[
+      resourceId
+    ].filter((id: string) => id !== tagId);
+    return { result: undefined };
+  });
 }
 
 /**

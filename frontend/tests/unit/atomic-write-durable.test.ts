@@ -8,15 +8,27 @@ import {
 interface RecordingAdapter extends StorageAdapter {
   fsyncFile: (path: string) => Promise<void>;
   calls: string[];
+  /** Temporary paths as written, before normalizing. */
+  rawTemps: string[];
+}
+
+/**
+ * `atomicWriteFile` gives every write its own `<path>.<id>.tmp`; record it as
+ * `<path>.<id>.tmp` so the call order can be asserted exactly.
+ */
+function normalizeTemp(p: string): string {
+  return p.replace(/\.[a-z0-9]+\.tmp$/, ".<id>.tmp");
 }
 
 function makeRecordingAdapter(): RecordingAdapter {
   const calls: string[] = [];
+  const rawTemps: string[] = [];
   const files = new Map<string, string | Buffer>();
   const adapter: StorageAdapter = {
     mkdir: async () => undefined,
     writeFile: async (p, d) => {
-      calls.push(`writeFile:${p}`);
+      calls.push(`writeFile:${normalizeTemp(p)}`);
+      if (p.endsWith(".tmp")) rawTemps.push(p);
       files.set(p, d);
     },
     readFile: async (p) => {
@@ -35,7 +47,7 @@ function makeRecordingAdapter(): RecordingAdapter {
       files.delete(p);
     },
     rename: async (a, b) => {
-      calls.push(`rename:${a}->${b}`);
+      calls.push(`rename:${normalizeTemp(a)}->${normalizeTemp(b)}`);
       const v = files.get(a);
       if (v == null) throw new Error("ENOENT");
       files.set(b, v);
@@ -56,10 +68,10 @@ function makeRecordingAdapter(): RecordingAdapter {
       files.set(p, prev == null ? d : `${prev}${d}`);
     },
     fsyncFile: async (p) => {
-      calls.push(`fsyncFile:${p}`);
+      calls.push(`fsyncFile:${normalizeTemp(p)}`);
     },
   };
-  return Object.assign(adapter as RecordingAdapter, { calls });
+  return Object.assign(adapter as RecordingAdapter, { calls, rawTemps });
 }
 
 describe("atomicWriteFile durability", () => {
@@ -77,8 +89,8 @@ describe("atomicWriteFile durability", () => {
   it("writes via temp file then renames (no fsync by default)", async () => {
     await atomicWriteFile("/out.json", "data", "utf8");
     expect(adapter.calls).toEqual([
-      "writeFile:/out.json.tmp",
-      "rename:/out.json.tmp->/out.json",
+      "writeFile:/out.json.<id>.tmp",
+      "rename:/out.json.<id>.tmp->/out.json",
     ]);
   });
 
@@ -88,9 +100,9 @@ describe("atomicWriteFile durability", () => {
       durable: true,
     });
     expect(adapter.calls).toEqual([
-      "writeFile:/out.json.tmp",
-      "fsyncFile:/out.json.tmp",
-      "rename:/out.json.tmp->/out.json",
+      "writeFile:/out.json.<id>.tmp",
+      "fsyncFile:/out.json.<id>.tmp",
+      "rename:/out.json.<id>.tmp->/out.json",
     ]);
   });
 
@@ -98,7 +110,7 @@ describe("atomicWriteFile durability", () => {
     // Passing a string opts argument (legacy signature) should still work and
     // not be interpreted as AtomicWriteOptions.
     await atomicWriteFile("/legacy.txt", "hello", "utf8");
-    expect(adapter.calls).toContain("writeFile:/legacy.txt.tmp");
+    expect(adapter.calls).toContain("writeFile:/legacy.txt.<id>.tmp");
   });
 
   it("ignores fsync failures and still completes the rename", async () => {
@@ -117,6 +129,15 @@ describe("atomicWriteFile durability", () => {
     ).resolves.toBeUndefined();
 
     expect(warnSpy).toHaveBeenCalledOnce();
-    expect(adapter.calls).toContain("rename:/out.json.tmp->/out.json");
+    expect(adapter.calls).toContain("rename:/out.json.<id>.tmp->/out.json");
+  });
+
+  it("gives two writes to the same path different temporary files", async () => {
+    await Promise.all([
+      atomicWriteFile("/same.json", "a", "utf8"),
+      atomicWriteFile("/same.json", "b", "utf8"),
+    ]);
+    const temps = adapter.rawTemps;
+    expect(new Set(temps).size).toBe(2);
   });
 });

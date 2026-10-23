@@ -28,7 +28,7 @@
  * the pre-lift route, not "fixed" to the basename convention.
  */
 import path from "node:path";
-import { readFile, readdir, writeFile, rm } from "./io";
+import { readFile, readdir, rm } from "./io";
 import { readProjectMarker } from "./crypto/project-marker";
 import { isLockedAccessError } from "./locked-access";
 import { getSessionKeyring } from "./crypto/keyring-session";
@@ -52,6 +52,7 @@ import { getStaticProjectType } from "./project-types-static";
 import { reindexMissingResources } from "./inverted-index";
 import { repairMissingInitialRevisions } from "./revision-repair";
 import type { AnyResource, Folder, Project } from "./types";
+import { updateProjectJson } from "./project-json-write";
 
 /** One entry of `listProjectsCore`'s result — mirrors `GET /api/projects`'s payload shape. */
 export interface ProjectListEntry {
@@ -527,15 +528,10 @@ export async function renameProjectCore(
   newName: string,
 ): Promise<unknown> {
   const projectRoot = resolveProjectRootOrThrow(projectId);
-  const projectFilePath = path.join(projectRoot, "project.json");
-  const projectFileContent = await readFile(projectFilePath, "utf-8");
-  const projectData = JSON.parse(projectFileContent);
-  projectData.name = newName;
-  await writeFile(
-    projectFilePath,
-    JSON.stringify(projectData, null, 2),
-    "utf-8",
-  );
+  const projectData = await updateProjectJson(projectRoot, (project) => {
+    project.name = newName;
+    return { result: project };
+  });
   await syncEncryptedProjectName(projectId, projectRoot, newName);
   return projectData;
 }

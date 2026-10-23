@@ -518,7 +518,8 @@ export interface AtomicWriteOptions {
 }
 
 /**
- * Writes file data atomically: writes to `<path>.tmp` then renames into place.
+ * Writes file data atomically: writes to a uniquely named `<path>.<id>.tmp`
+ * then renames into place.
  *
  * On POSIX systems rename is atomic within a filesystem, so a crash between
  * the write and the rename leaves the original file intact rather than
@@ -533,12 +534,23 @@ export interface AtomicWriteOptions {
  * @param opts - Either underlying write options or {@link AtomicWriteOptions}.
  * @returns Resolves when the rename completes.
  */
+let atomicWriteSequence = 0;
+
 export async function atomicWriteFile(
   p: string,
   data: string | Buffer,
   opts?: string | object | AtomicWriteOptions,
 ): Promise<void> {
-  const tmp = `${p}.tmp`;
+  // A temporary name of its own per write. With one fixed `<path>.tmp`, two
+  // writers not serialized by the same lock wrote into the same temporary
+  // file, so the renamed result could still be a mix of both. The name still
+  // ends in `.tmp`, which the encryption conversion and plaintext export
+  // treat as a leftover to skip or clean up.
+  atomicWriteSequence += 1;
+  const unique = `${atomicWriteSequence.toString(36)}${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const tmp = `${p}.${unique}.tmp`;
   const normalized = normalizeAtomicWriteOptions(opts);
   await writeFile(tmp, data, normalized.writeOptions);
   if (normalized.durable) {
