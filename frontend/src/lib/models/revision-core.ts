@@ -18,7 +18,8 @@
  * messages so that mapping continues to work unmodified.
  */
 import path from "node:path";
-import { readFile, writeFile, rm } from "./io";
+import { atomicWriteFile, readFile, writeFile, rm } from "./io";
+import { acquireLock } from "./locks";
 import {
   listRevisions,
   revisionDir,
@@ -111,7 +112,11 @@ async function writeRevisionContent(
     revisionDir(projectPath, resourceId, versionNumber),
     "content.bin",
   );
-  await writeFile(contentPath, content, "utf8");
+  // Written to a temporary file and renamed into place, so a reader or a
+  // crash never sees a half-written file. Concurrent writers are serialized by
+  // the per-resource lock in {@link updateRevisionInPlace}; the temporary name
+  // is fixed, so this alone would not keep two overlapping writes apart.
+  await atomicWriteFile(contentPath, content, "utf8");
 }
 
 /**
@@ -420,6 +425,39 @@ async function logCanonicalSave(
  *   when the target revision is not canonical.
  */
 export async function updateRevisionInPlace(
+  projectRoot: string,
+  resourceId: string,
+  revisionId: string,
+  content: string,
+): Promise<
+  Revision & {
+    updatedAt: string;
+    snapshotCreated: boolean;
+    writingLog?: WritingLogSignal;
+  }
+> {
+  // One save per resource at a time. Two saves released 0-5 ms apart used to
+  // interleave their writes: content.bin ended as the start of the shorter
+  // document followed by the tail of the longer one (note_5f0521e0; 36 of 200
+  // runs in the app, reproduced in tests/unit/revision-concurrent-saves).
+  // The lock is per process, which covers the desktop app and a single web
+  // server; it does not coordinate several server instances.
+  const release = await acquireLock(
+    `revision-content:${path.resolve(projectRoot)}:${resourceId}`,
+  );
+  try {
+    return await updateRevisionInPlaceLocked(
+      projectRoot,
+      resourceId,
+      revisionId,
+      content,
+    );
+  } finally {
+    release();
+  }
+}
+
+async function updateRevisionInPlaceLocked(
   projectRoot: string,
   resourceId: string,
   revisionId: string,
