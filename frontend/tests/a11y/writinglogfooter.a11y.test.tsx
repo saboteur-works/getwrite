@@ -6,6 +6,13 @@ import { runAxe } from "./helpers/axe";
 import WritingLogFooterDisplay from "../../components/WorkArea/WritingLogFooterDisplay";
 import { flushPendingEffects } from "../helpers/flushEffects";
 
+// react-tooltip's own setTimeout called setState after the jsdom environment
+// was torn down ("window is not defined" in resolveUpdatePriority, stack in
+// react-tooltip.min.mjs), failing a CI run on PR #289 although every test
+// passed. No assertion here needs the rendered tooltip: the copy test reads
+// the anchor's data-tooltip-content, set by hoverTipProps.
+vi.mock("react-tooltip", () => ({ Tooltip: () => null }));
+
 vi.mock("../../src/lib/api/writing-log", () => ({
   getTodayWritingLog: vi
     .fn()
