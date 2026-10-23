@@ -450,6 +450,42 @@ export default function Home(): JSX.Element {
    * @param updater    - Pure function that receives the current resource and
    *   returns the updated version.
    */
+  /**
+   * Restores, in Redux and the local copies, the top-level keys an
+   * unsaved edit changed, to their values from before the edit. Only those
+   * keys are touched, so values updated elsewhere in the meantime (the
+   * canonical save's word count, for example) are kept.
+   */
+  const revertUnsavedChange = (
+    resourceId: string,
+    before: AnyResource,
+    sent: AnyResource,
+  ): void => {
+    const previous = before as unknown as Record<string, unknown>;
+    const changed = sent as unknown as Record<string, unknown>;
+    const restore: Record<string, unknown> = {};
+    for (const key of new Set([
+      ...Object.keys(previous),
+      ...Object.keys(changed),
+    ])) {
+      if (key === "id" || key === "wordCount") continue;
+      if (previous[key] !== changed[key]) restore[key] = previous[key];
+    }
+    if (Object.keys(restore).length === 0) return;
+    const patch = { ...restore, id: resourceId } as Partial<AnyResource> & {
+      id: string;
+    };
+    dispatch(updateResourceInStore(patch));
+    const restoreIn = (r: AnyResource): AnyResource =>
+      r.id === resourceId ? ({ ...r, ...restore } as AnyResource) : r;
+    setProjects((prev) =>
+      prev.map((p) => ({ ...p, resources: p.resources.map(restoreIn) })),
+    );
+    setSelectedProject((prev) =>
+      prev ? { ...prev, resources: prev.resources.map(restoreIn) } : prev,
+    );
+  };
+
   const updateResource = (
     resourceId: string,
     updater: (r: AnyResource) => AnyResource,
@@ -496,12 +532,17 @@ export default function Home(): JSX.Element {
     };
 
     if (activeProjectDirectoryId) {
-      updateSidecar(
-        resourceId,
-        activeProjectDirectoryId,
-        applyUpdate(resource),
-      ).catch((err) => {
+      const sent = applyUpdate(resource);
+      updateSidecar(resourceId, activeProjectDirectoryId, sent).catch((err) => {
         console.error("Error updating resource metadata:", err);
+        // The change is already on screen; a failed save used to leave it
+        // there with no message, and it was gone after a reload (measured,
+        // note_13ae633c). Put back the keys this edit changed and say so.
+        revertUnsavedChange(resourceId, resource, sent);
+        toastService.error(
+          "Change not saved",
+          `Your change to \u201C${resource.name}\u201D could not be saved and was undone. Try again.`,
+        );
       });
     } else {
       console.error(
