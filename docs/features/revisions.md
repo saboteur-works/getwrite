@@ -53,6 +53,10 @@ Each `metadata.json` contains a `Revision` object:
 - When `setCanonicalRevision(projectRoot, resourceId, versionNumber)` is called, it rewrites every `metadata.json` under `revisions/<resourceId>/`: the target version is set to `isCanonical: true`, all others to `isCanonical: false`.
 - The Redux layer enforces this invariant client-side via `revision-canonical-guards.ts`, which provides `applyCanonicalRevision` (marks one entry canonical, clears all others) and `isStaleCanonicalUpdate` (guards against out-of-order updates).
 
+### Autosave timing
+
+`components/WorkArea/useCanonicalAutosave.ts` writes the canonical revision 2500 ms after the last edit (lodash `debounce`). The debounced saver is rebuilt when the selected resource or revision changes and on unmount; its cleanup calls `flush()`, so a save still waiting is sent with the closure it was queued under (the resource it was typed into), and a `beforeunload` listener also calls `flush()` without `preventDefault` (Electron has no `will-prevent-unload` handler, so a cancelling handler would block the window close silently). A flushed save that finishes after the selection changed does not touch the new selection's status or `failedSaveDoc`; if it fails it raises a toast instead, because retry would otherwise write the old document into the new resource. Before this, the cleanup called `cancel()`, and text typed 300 ms before a switch or reload never reached disk (measured, note_f13a655b). Markdown source mode (`TipTapEditor.tsx`, 400 ms debounce) still cancels its pending commit on a swap, because that commit goes through the editor's `onChange`, which by then belongs to the new resource.
+
 The `revision-transport-service.ts` resolves revision operations through the transport seam (HTTP on web/desktop, in-process on native; ADR-021) and feeds normalized `RevisionEntry` objects to the Redux slice via `revision-normalization.ts`.
 
 ---

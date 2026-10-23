@@ -57,6 +57,21 @@ export function useCanonicalAutosave({
   // autosave mid-keystroke.
   const onSnapshotCreatedRef = React.useRef(onSnapshotCreated);
   onSnapshotCreatedRef.current = onSnapshotCreated;
+  // Which resource and revision the editor shows now. A save started for an
+  // earlier selection (the flush on switch below) still writes to that
+  // earlier resource, but must not touch this selection's status or retry
+  // state: a failed save of resource A stored as `failedSaveDoc` would be
+  // retried into resource B.
+  const selectionKey = `${selectedResourceId ?? ""}:${currentRevisionId ?? ""}`;
+  const selectionKeyRef = React.useRef(selectionKey);
+  selectionKeyRef.current = selectionKey;
+  const isMountedRef = React.useRef(true);
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const persistCanonicalRevisionContent = React.useCallback(
     async (
@@ -85,13 +100,17 @@ export function useCanonicalAutosave({
 
   const saveCanonicalRevisionNow = React.useCallback(
     async (doc: TipTapDocument): Promise<void> => {
-      setSaveStatus("saving");
+      const isForShownSelection = (): boolean =>
+        isMountedRef.current && selectionKeyRef.current === selectionKey;
+      if (isForShownSelection()) setSaveStatus("saving");
 
       try {
         const result = await persistCanonicalRevisionContent(doc);
-        setSaveStatus("saved");
-        setLastSavedAt(new Date());
-        setFailedSaveDoc(null);
+        if (isForShownSelection()) {
+          setSaveStatus("saved");
+          setLastSavedAt(new Date());
+          setFailedSaveDoc(null);
+        }
         if (result?.snapshotCreated) {
           // The save just overwrote most of the resource's content. The
           // previous state was preserved as a revision first, but a writer who
@@ -116,11 +135,24 @@ export function useCanonicalAutosave({
         }
       } catch (error) {
         console.error("Failed to persist canonical revision content", error);
-        setSaveStatus("error");
-        setFailedSaveDoc(doc);
+        if (isForShownSelection()) {
+          setSaveStatus("error");
+          setFailedSaveDoc(doc);
+        } else {
+          // The writer has moved on, so the footer's retry cannot apply here.
+          toastService.error(
+            "Your last edits to the previous document were not saved",
+            "Open it again to check its content.",
+          );
+        }
       }
     },
-    [persistCanonicalRevisionContent, selectedResourceId, dispatch],
+    [
+      persistCanonicalRevisionContent,
+      selectedResourceId,
+      selectionKey,
+      dispatch,
+    ],
   );
 
   const debouncedPersistCanonicalRevisionContent = React.useMemo(
@@ -131,10 +163,27 @@ export function useCanonicalAutosave({
     [saveCanonicalRevisionNow],
   );
 
+  // On a resource or revision switch the saver is rebuilt, and on unmount it
+  // goes away. Either way a save still waiting out the debounce is sent now
+  // rather than dropped: cancelling here lost up to the last 2.5 s of typing
+  // (measured, note_f13a655b). The flushed call keeps the closure it was
+  // queued with, so it writes to the resource it was typed into.
   React.useEffect(() => {
     return () => {
-      debouncedPersistCanonicalRevisionContent.cancel();
+      debouncedPersistCanonicalRevisionContent.flush();
     };
+  }, [debouncedPersistCanonicalRevisionContent]);
+
+  // Reload or window close: start the pending save before the page goes.
+  // The page is not held open (no preventDefault): in the desktop app a
+  // beforeunload that cancels would silently block the close, because
+  // Electron shows no prompt of its own.
+  React.useEffect(() => {
+    const sendPendingSave = (): void => {
+      debouncedPersistCanonicalRevisionContent.flush();
+    };
+    window.addEventListener("beforeunload", sendPendingSave);
+    return () => window.removeEventListener("beforeunload", sendPendingSave);
   }, [debouncedPersistCanonicalRevisionContent]);
 
   React.useEffect(() => {
