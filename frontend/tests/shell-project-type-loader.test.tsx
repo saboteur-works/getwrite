@@ -73,6 +73,19 @@ describe("ShellProjectTypeLoader", () => {
     expect(state.projectTypesNotice).toMatch(/1 saved project type file/);
   });
 
+  it("carries the saved-types status so the manager can turn saving off", async () => {
+    stubList({
+      entries: [
+        { spec: spec("novel"), fileName: "novel.json", source: "built-in" },
+      ],
+      unusable: [],
+      savedStatus: "not-configured",
+    });
+    const state = await loaded();
+    expect(state.projectTypesSavedStatus).toBe("not-configured");
+    expect(state.projectTypesNotice).toBeNull();
+  });
+
   it("shows the error and an empty list on a load failure", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,

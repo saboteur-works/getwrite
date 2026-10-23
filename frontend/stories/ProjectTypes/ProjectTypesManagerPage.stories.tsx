@@ -212,6 +212,30 @@ export const SavingUnavailable: Story = {
   },
 };
 
+/**
+ * The list reported no saved-types store (`not-configured`: the web app
+ * without `GETWRITE_SAVED_PROJECT_TYPES_DIR`, hosted auth, or Android): a note
+ * says why, and Save, Save as copy and Delete are off before any attempt.
+ */
+export const SavingNotConfigured: Story = {
+  args: {
+    initialTemplates: [savedTemplate, ...builtInTemplates],
+    renderInModal: true,
+    savedStatus: "not-configured",
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByText(/Saving project types isn't available/),
+    ).toBeInTheDocument();
+    for (const button of canvas.getAllByRole("button", {
+      name: /^(Save|Save as copy|Delete)$/,
+    })) {
+      await expect(button).toBeDisabled();
+    }
+  },
+};
+
 export const WithNotice: Story = {
   args: {
     initialTemplates: [savedTemplate, ...builtInTemplates],
