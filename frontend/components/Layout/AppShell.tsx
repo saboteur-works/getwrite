@@ -1165,6 +1165,7 @@ export default function AppShell({
                   isProjectTypesLoading,
                   projectTypesLoadError,
                   projectTypesNotice,
+                  projectTypesSavedStatus,
                 }) => (
                   <ShellModalCoordinator
                     isProjectEncrypted={isActiveProjectEncrypted}
@@ -1216,6 +1217,7 @@ export default function AppShell({
                     isProjectTypesLoading={isProjectTypesLoading}
                     projectTypesLoadError={projectTypesLoadError}
                     projectTypesNotice={projectTypesNotice}
+                    projectTypesSavedStatus={projectTypesSavedStatus}
                     projectTypeTemplates={projectTypeTemplates}
                     resources={resources}
                     folders={liveFolders}

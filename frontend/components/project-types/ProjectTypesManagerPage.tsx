@@ -24,9 +24,12 @@ import type {
   ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
 import {
+  isSavingAvailable,
   projectTypeListNotice,
   resolveProjectTypesTransport,
+  SAVING_UNAVAILABLE_NOTE,
   type ProjectTypesTransport,
+  type SavedProjectTypesStatus,
 } from "../../src/lib/api/project-types";
 import Button from "../common/UI/Button/Button";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -62,6 +65,13 @@ interface ProjectTypesManagerPageProps {
    * shown as an alert while non-empty. Replaced by the notice of each refresh.
    */
   listNotice?: string | null;
+  /**
+   * Status of the saved-types store from the loader's list. `not-configured`
+   * turns Save, Save as copy and Delete off and shows why. Replaced by the
+   * status of each refresh. Defaults to "ok"; the server still refuses a write
+   * it cannot make.
+   */
+  savedStatus?: SavedProjectTypesStatus;
   /** Resolves the transport used to save, delete and re-read the list. */
   resolveTransport?: () => Promise<ProjectTypesTransport>;
   /**
@@ -186,6 +196,7 @@ export default function ProjectTypesManagerPage({
   onClose,
   renderInModal = false,
   listNotice = null,
+  savedStatus = "ok",
   resolveTransport = resolveProjectTypesTransport,
   registerCloseGuard,
 }: ProjectTypesManagerPageProps): JSX.Element {
@@ -237,9 +248,15 @@ export default function ProjectTypesManagerPage({
     value: string | null;
   } | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshedStatus, setRefreshedStatus] =
+    useState<SavedProjectTypesStatus | null>(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const shownNotice = refreshNotice ? refreshNotice.value : listNotice;
+  const canSave = isSavingAvailable(refreshedStatus ?? savedStatus);
+  const unavailableNoteId = canSave
+    ? undefined
+    : "project-types-saving-unavailable";
   const origin = selectedItem ? describeItemOrigin(selectedItem) : null;
   const shownFeedback =
     feedback && selectedItem && feedback.definition === selectedItem.definition
@@ -258,6 +275,7 @@ export default function ProjectTypesManagerPage({
       const list = await transport.list();
       refreshFromList(list);
       setRefreshNotice({ value: projectTypeListNotice(list) });
+      setRefreshedStatus(list.savedStatus);
       setRefreshError(null);
     } catch (error) {
       setRefreshError(
@@ -538,6 +556,14 @@ export default function ProjectTypesManagerPage({
           {shownNotice}
         </p>
       ) : null}
+      {canSave ? null : (
+        <p
+          id="project-types-saving-unavailable"
+          className="rounded-sm border-hairline border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-secondary"
+        >
+          {SAVING_UNAVAILABLE_NOTE}
+        </p>
+      )}
       {refreshError ? (
         <p role="alert" className="text-sm text-gw-primary">
           {refreshError}
@@ -574,7 +600,8 @@ export default function ProjectTypesManagerPage({
                   {origin === "Built-in" ? (
                     <Button
                       size="sm"
-                      disabled={isWriting}
+                      disabled={isWriting || !canSave}
+                      aria-describedby={unavailableNoteId}
                       onClick={() => void runSave(true)}
                     >
                       {isWriting ? "Saving\u2026" : "Save as copy"}
@@ -582,8 +609,9 @@ export default function ProjectTypesManagerPage({
                   ) : (
                     <Button
                       size="sm"
-                      disabled={isWriting}
+                      disabled={isWriting || !canSave}
                       aria-busy={isWriting}
+                      aria-describedby={unavailableNoteId}
                       onClick={() => void runSave(false)}
                     >
                       {isWriting ? "Saving\u2026" : "Save"}
@@ -594,7 +622,8 @@ export default function ProjectTypesManagerPage({
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={isWriting}
+                        disabled={isWriting || !canSave}
+                        aria-describedby={unavailableNoteId}
                         onClick={() => void runSave(true)}
                       >
                         Save as copy
@@ -602,7 +631,8 @@ export default function ProjectTypesManagerPage({
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={isWriting}
+                        disabled={isWriting || !canSave}
+                        aria-describedby={unavailableNoteId}
                         onClick={() => setIsConfirmingDelete(true)}
                       >
                         Delete
@@ -666,6 +696,7 @@ export default function ProjectTypesManagerPage({
             "Untitled",
         )}
         isSaving={isWriting}
+        isSaveDisabled={!canSave}
         returnFocusTo={openerRef.current}
         onSave={() => void saveAndExit()}
         onDiscard={discardAndExit}

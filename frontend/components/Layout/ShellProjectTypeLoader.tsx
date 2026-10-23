@@ -5,6 +5,7 @@ import type { ProjectTypeTemplateFile } from "../../src/types/project-types";
 import {
   listProjectTypeEntries,
   projectTypeListNotice,
+  type SavedProjectTypesStatus,
 } from "../../src/lib/api/project-types";
 
 export interface ShellProjectTypeLoaderState {
@@ -13,6 +14,8 @@ export interface ShellProjectTypeLoaderState {
   projectTypesLoadError: string | null;
   /** One-line notice when saved types were unusable or unreadable; null otherwise. */
   projectTypesNotice: string | null;
+  /** The saved-types store's status from the last list; "ok" until loaded. */
+  projectTypesSavedStatus: SavedProjectTypesStatus;
 }
 
 export interface ShellProjectTypeLoaderProps {
@@ -32,6 +35,8 @@ export default function ShellProjectTypeLoader({
   const [projectTypesNotice, setProjectTypesNotice] = React.useState<
     string | null
   >(null);
+  const [projectTypesSavedStatus, setProjectTypesSavedStatus] =
+    React.useState<SavedProjectTypesStatus>("ok");
   const [projectTypesLoadError, setProjectTypesLoadError] = React.useState<
     string | null
   >(null);
@@ -69,6 +74,7 @@ export default function ShellProjectTypeLoader({
 
         setProjectTypeTemplates(templates);
         setProjectTypesNotice(projectTypeListNotice(list));
+        setProjectTypesSavedStatus(list.savedStatus);
       } catch (error) {
         if (isCancelled) {
           return;
@@ -101,6 +107,7 @@ export default function ShellProjectTypeLoader({
         isProjectTypesLoading,
         projectTypesLoadError,
         projectTypesNotice,
+        projectTypesSavedStatus,
       })}
     </>
   );

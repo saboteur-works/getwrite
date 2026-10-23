@@ -30,7 +30,7 @@ import { reportTransportValidationFailure } from "./transport-validation";
 
 export type ProjectTypeSource = "built-in" | "saved";
 type ProjectTypeUnusableReason = "unparseable" | "invalid" | "unreadable";
-type SavedProjectTypesStatus = "ok" | "not-configured" | "unreadable";
+export type SavedProjectTypesStatus = "ok" | "not-configured" | "unreadable";
 
 /** One listed project type with where it came from (Feature 90, FR-6). */
 export interface ProjectTypeListEntry {
@@ -65,6 +65,20 @@ export function projectTypeListNotice(list: ProjectTypeList): string | null {
     return `${n} saved project type ${n === 1 ? "file" : "files"} could not be used.`;
   }
   return null;
+}
+
+/**
+ * Shown in the Project Type Manager when the list reports `not-configured`:
+ * no saved-types store here (the web app without
+ * `GETWRITE_SAVED_PROJECT_TYPES_DIR`, hosted auth, or the Android app), so
+ * every save and delete would be refused with `saving-unavailable`.
+ */
+export const SAVING_UNAVAILABLE_NOTE =
+  "Saving project types isn't available in this version of GetWrite, so Save, Save as copy and Delete are turned off. You can still view every type and create projects from it. To save your own types, use the GetWrite desktop app.";
+
+/** Whether saves and deletes can succeed, from the list's `savedStatus`. */
+export function isSavingAvailable(status: SavedProjectTypesStatus): boolean {
+  return status !== "not-configured";
 }
 
 /** Why a write was refused or failed (Feature 90, FR-8; the route's `reason`). */

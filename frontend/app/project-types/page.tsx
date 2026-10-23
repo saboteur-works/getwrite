@@ -12,21 +12,28 @@ import type {
   ProjectTypeDefinition,
   ProjectTypeTemplateFile,
 } from "../../src/types/project-types";
+import type { SavedProjectTypesStatus } from "../../src/lib/api/project-types";
 
 /**
  * Reads all project types through the single resolver (FR-3).
  *
- * @returns Validated template files sorted by filename.
+ * @returns Validated template files sorted by filename, and the saved-types
+ *   store's status.
  */
-async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
-  const { entries } = await resolveProjectTypes(isHostedAuthActive());
-  return entries
+async function loadProjectTypeTemplates(): Promise<{
+  templates: ProjectTypeTemplateFile[];
+  savedStatus: SavedProjectTypesStatus;
+}> {
+  const { entries, savedStatus } =
+    await resolveProjectTypes(isHostedAuthActive());
+  const templates = entries
     .map(({ fileName, spec, source }) => ({
       fileName,
       definition: spec as ProjectTypeDefinition,
       source,
     }))
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
+  return { templates, savedStatus };
 }
 
 /**
@@ -35,7 +42,12 @@ async function loadProjectTypeTemplates(): Promise<ProjectTypeTemplateFile[]> {
  * @returns Project type manager page element.
  */
 export default async function ProjectTypesPage(): Promise<JSX.Element> {
-  const initialTemplates = await loadProjectTypeTemplates();
+  const { templates, savedStatus } = await loadProjectTypeTemplates();
 
-  return <ProjectTypesManagerPage initialTemplates={initialTemplates} />;
+  return (
+    <ProjectTypesManagerPage
+      initialTemplates={templates}
+      savedStatus={savedStatus}
+    />
+  );
 }

@@ -20,6 +20,7 @@ import CompilePreviewModal from "../common/CompilePreviewModal";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import AppSettingsDialog from "../AppSettings/AppSettingsDialog";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
+import type { SavedProjectTypesStatus } from "../../src/lib/api/project-types";
 import HelpPage from "../help/HelpPage";
 import ProjectSettingsDialog, {
   type ProjectGoalSavedHandler,
@@ -119,6 +120,8 @@ export interface ShellModalCoordinatorProps {
   projectTypeTemplates: ProjectTypeTemplateFile[];
   /** Notice for unusable saved project types; shown in the manager. */
   projectTypesNotice?: string | null;
+  /** Saved-types store status; `not-configured` turns saving off in the manager. */
+  projectTypesSavedStatus?: SavedProjectTypesStatus;
   resources?: AnyResource[];
   folders?: Folder[];
   project?: CanonicalProject | null;
@@ -203,6 +206,7 @@ export default function ShellModalCoordinator({
   projectTypesLoadError,
   projectTypeTemplates,
   projectTypesNotice = null,
+  projectTypesSavedStatus = "ok",
   resources,
   folders,
   project,
@@ -427,6 +431,7 @@ export default function ShellModalCoordinator({
             <ProjectTypesManagerPage
               initialTemplates={projectTypeTemplates}
               listNotice={projectTypesNotice}
+              savedStatus={projectTypesSavedStatus}
               renderInModal
               registerCloseGuard={registerProjectTypesCloseGuard}
               onClose={() => setIsProjectTypesModalOpen(false)}

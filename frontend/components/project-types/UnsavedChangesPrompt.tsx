@@ -28,6 +28,11 @@ export interface UnsavedChangesPromptProps {
   itemNames: string[];
   /** True while a save is in flight; Save and Discard are disabled. */
   isSaving: boolean;
+  /**
+   * True where saving is not available (the saved-types store is not
+   * configured); Save is turned off and Discard or Keep editing remain.
+   */
+  isSaveDisabled?: boolean;
   /** Save the item with edits, then carry on with the exit. */
   onSave: () => void;
   /** Drop the edits, then carry on with the exit. */
@@ -51,6 +56,7 @@ export default function UnsavedChangesPrompt({
   isOpen,
   itemNames,
   isSaving,
+  isSaveDisabled = false,
   returnFocusTo,
   onSave,
   onDiscard,
@@ -90,7 +96,11 @@ export default function UnsavedChangesPrompt({
           <Button variant="secondary" onClick={onDiscard} disabled={isSaving}>
             Discard
           </Button>
-          <Button onClick={onSave} disabled={isSaving} aria-busy={isSaving}>
+          <Button
+            onClick={onSave}
+            disabled={isSaving || isSaveDisabled}
+            aria-busy={isSaving}
+          >
             {isSaving ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>

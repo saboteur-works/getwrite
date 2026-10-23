@@ -96,7 +96,10 @@ function makeTransport(
 
 function renderManager(
   transport: ProjectTypesTransport,
-  props: { listNotice?: string | null } = {},
+  props: {
+    listNotice?: string | null;
+    savedStatus?: ProjectTypeList["savedStatus"];
+  } = {},
 ): ReturnType<typeof render> {
   return render(
     <ProjectTypesManagerPage
@@ -1243,4 +1246,59 @@ describe("ProjectTypesManagerPage unsaved-changes prompt on every exit path", ()
     await screen.findByRole("dialog", { name: promptName });
     await runAxe(document.body);
   });
+});
+
+describe("ProjectTypesManagerPage when saving is not available", () => {
+  const note =
+    /Saving project types isn't available in this version of GetWrite/;
+
+  it("explains why and turns Save, Save as copy and Delete off on every kind of item", () => {
+    const transport = makeTransport();
+    renderManager(transport, { savedStatus: "not-configured" });
+    const shown = screen.getByText(note);
+
+    select("Novel");
+    const copy = screen.getByRole("button", { name: "Save as copy" });
+    expect(copy).toBeDisabled();
+    expect(copy).toHaveAttribute("aria-describedby", shown.id);
+
+    select("Mine");
+    for (const name of ["Save", "Save as copy", "Delete"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("aria-describedby", shown.id);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "New Project Type" }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(transport.create).not.toHaveBeenCalled();
+  });
+
+  it("shows no note and leaves the buttons on when saving is available", () => {
+    renderManager(makeTransport(), { savedStatus: "ok" });
+    expect(screen.queryByText(note)).toBeNull();
+    select("Mine");
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
+  });
+
+  it("the unsaved-changes prompt offers Discard and Keep editing but not Save", async () => {
+    renderManager(makeTransport(), { savedStatus: "not-configured" });
+    startDraft("fresh", "Fresh");
+    fireEvent.click(screen.getByRole("button", { name: /Novel/ }));
+    const dialog = await screen.findByRole("dialog", {
+      name: /unsaved changes/i,
+    });
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    ).toBeEnabled();
+  });
+
+  it("has no axe violations with the note shown", async () => {
+    const { container } = renderManager(makeTransport(), {
+      savedStatus: "not-configured",
+    });
+    await runAxe(container);
+  }, 15000);
 });
