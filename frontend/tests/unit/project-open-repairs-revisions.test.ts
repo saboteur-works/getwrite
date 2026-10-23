@@ -109,3 +109,23 @@ describe("loadProjectCore — revision-less text resources", () => {
     expect(await listRevisions(projectRoot, resourceId)).toEqual(first);
   });
 });
+
+describe("loadProjectCore — a text resource with no content.txt", () => {
+  it("still opens the project, keeping the resource and its stored word count", async () => {
+    const { projectId, projectRoot, resourceId } =
+      await projectWithRevisionlessResource();
+    await loadProjectCore(projectId); // gives it a revision first
+    await fs.rm(path.join(projectRoot, "resources", resourceId, "content.txt"));
+
+    const loaded = await loadProjectCore(projectId);
+
+    const resource = loaded.resources.find((r) => r.id === resourceId) as
+      | { plaintext?: string }
+      | undefined;
+    expect(resource).toBeDefined();
+    // Falls back to the resource's TipTap document when that is there.
+    expect(resource?.plaintext).toContain(
+      "Words written before copies had revisions.",
+    );
+  });
+});
