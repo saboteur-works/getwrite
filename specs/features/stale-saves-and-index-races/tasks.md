@@ -176,7 +176,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Satisfies FR-14, AC-8, F93-3 option b. Do not widen the route or request contract. Estimate is gated-in; N/A costs 1.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Class B race tests in the suite
 **What:** Add a suite race test for every E-8 and E-9 pair, in the manner of `inverted-index.test.ts:169` and `:183`, red for pairs that reproduced and kept as labelled regression guards for those that did not.
