@@ -16,7 +16,7 @@
  * that bump is reserved for the one-time load migration.
  */
 import { z } from "zod";
-import { readFile, writeFile } from "./io";
+import { atomicWriteFile, readFile } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
@@ -127,7 +127,14 @@ export async function updateFeatureConfig(
       updatedAt: new Date().toISOString(),
     };
     // NOTE: intentionally no metadataRevision bump — see module docstring.
-    await writeFile(filePath, JSON.stringify(nextProject, null, 2), "utf8");
+    // Atomic: this writer holds locks.ts's lock, not withMetaLock, so it is
+    // not serialized with the other project.json writers; a plain write could
+    // interleave with theirs and leave the file unparseable.
+    await atomicWriteFile(
+      filePath,
+      JSON.stringify(nextProject, null, 2),
+      "utf8",
+    );
 
     return {
       features: config.features ?? {},

@@ -24,7 +24,7 @@ Your text is saved automatically about 2.5 seconds after you stop typing. If you
 
 ## Warnings and limits
 
-- In Markdown source mode (**Edit as Markdown**), the last edits made within about half a second before opening another document are not saved.
+- In Markdown source mode (**Edit as Markdown**), edits made just before opening another document are saved to the document you typed them in (unreleased). Before this change the last half-second of typing was lost; checked in the web app with text typed 100 ms before a switch.
 - Closing the desktop app's window within 2.5 seconds of typing was not tested; reloading the web app within that time was (the text was saved).
 
 - **Ctrl+B**, **Ctrl+I** and **Ctrl+U** applied no formatting on macOS (two runs each). Windows and Linux were not run.

@@ -1,4 +1,4 @@
-import { atomicWriteFile, mkdir, readFile, writeFile } from "./io";
+import { atomicWriteFile, mkdir, readFile } from "./io";
 import path from "node:path";
 import type { UUID, MetadataValue } from "./types";
 import { withMetaLock } from "./meta-locks";
@@ -35,7 +35,11 @@ async function bumpMetadataRevision(projectRoot: string): Promise<void> {
     if (!project.config) project.config = {};
     project.config.metadataRevision =
       (project.config.metadataRevision ?? 0) + 1;
-    await writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
+    await atomicWriteFile(
+      projectPath,
+      JSON.stringify(project, null, 2),
+      "utf8",
+    );
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
     throw err;
