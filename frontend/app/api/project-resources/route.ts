@@ -6,6 +6,7 @@ import {
 import { respondInvalidProjectId } from "../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 import { withStorageContext } from "../_tenant/with-storage-context";
+import { toRevisionSummaries } from "../../../src/lib/models/revision-summary";
 import {
   isResourceId,
   respondInvalidResourceId,
@@ -41,7 +42,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return NextResponse.json({
       message: "Project resources endpoint",
       resourceContent,
-      revisions,
+      revisions: toRevisionSummaries(revisions),
     });
   } catch (err) {
     if (isLockedAccessError(err)) {

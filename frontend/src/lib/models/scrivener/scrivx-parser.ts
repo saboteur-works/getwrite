@@ -63,6 +63,7 @@ import type {
   ScrivxParsed,
   ScrivxStatus,
 } from "./scrivx-types";
+import { isPlainFileName } from "../media-validation";
 
 /**
  * Thrown by {@link parseScrivxFile} when the file at `scrivxPath` is not
@@ -289,6 +290,19 @@ function readBinderItem(
       title || "(untitled)",
       joinPath(parentPath, title),
       '<BinderItem> is missing a required "UUID" attribute',
+    );
+    return null;
+  }
+  // The UUID names the item's folder under `Files/Data/`
+  // (`binder-mapper.ts` `contentRtfPath`), so it must be one path segment;
+  // otherwise its content.rtf, synopsis.txt and notes.rtf would be read from
+  // outside the package (note_11985346). Real Scrivener UUIDs always are.
+  if (!isPlainFileName(uuid)) {
+    recordSkip(
+      context,
+      title || "(untitled)",
+      joinPath(parentPath, title),
+      '<BinderItem> has a "UUID" attribute that is not a single path segment',
     );
     return null;
   }

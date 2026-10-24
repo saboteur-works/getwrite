@@ -92,6 +92,30 @@ describe("parseScrivxFile — malformed input", () => {
     });
   });
 
+  // note_11985346: the UUID names the item's folder under Files/Data/, so a
+  // value that is not a single path segment would point the import at
+  // content.rtf, synopsis.txt and notes.rtf outside the package.
+  it.each(["../outside", "a/b", "..", "a\\b"])(
+    "records a skip for a BinderItem whose UUID %j is not a single path segment",
+    async (badUuid) => {
+      tmpDir = mkdtempSync(path.join(os.tmpdir(), "scrivx-parser-test-"));
+      const scrivxPath = path.join(tmpDir, "bad-uuid.scrivx");
+      writeFileSync(
+        scrivxPath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n<ScrivenerProject Creator="SCRMAC-3.5.2-17487"><Binder><BinderItem UUID="${badUuid}" Type="Text"><Title>Bad</Title></BinderItem><BinderItem UUID="ok-1" Type="Text"><Title>Fine</Title></BinderItem></Binder></ScrivenerProject>`,
+        "utf8",
+      );
+
+      const parsed = await parseScrivxFile(scrivxPath);
+      expect(parsed.binder.map((item) => item.uuid)).toEqual(["ok-1"]);
+      expect(parsed.fragmentErrors).toHaveLength(1);
+      expect(parsed.fragmentErrors[0]).toMatchObject({
+        itemTitle: "Bad",
+        reason: expect.stringContaining('"UUID"'),
+      });
+    },
+  );
+
   it("records a skip, and continues parsing, when a MetaDataItem is missing FieldID", async () => {
     tmpDir = mkdtempSync(path.join(os.tmpdir(), "scrivx-parser-test-"));
     const missingFieldIdPath = path.join(tmpDir, "missing-field-id.scrivx");

@@ -47,7 +47,6 @@ function makeRevision(
     resourceId: RESOURCE_ID,
     versionNumber,
     createdAt: new Date(2024, 0, versionNumber).toISOString(),
-    filePath: `/tmp/${id}.json`,
     isCanonical,
     displayName: `Revision ${versionNumber}`,
     isProtected: false,

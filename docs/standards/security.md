@@ -55,6 +55,8 @@ If you cannot determine that an operation is permitted, deny it.
   `[resource-id]` route). A saved query id must be a UUID. A media resource's
   stored `file` must be a bare file name (`isPlainFileName`) and only upload
   sets it. A folder slug that is not a plain name falls back to the folder id.
+- Do not send server paths to clients. Revision objects keep an absolute
+  `filePath` on disk; routes return them through `toRevisionSummary`.
 
 ---
 
