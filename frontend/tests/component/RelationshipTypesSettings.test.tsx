@@ -10,7 +10,13 @@
  * or when the `entities` feature flag is off.
  */
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import RelationshipTypesSettings from "../../components/preferences/RelationshipTypesSettings";
 import { makeStore } from "../../src/store/store";
@@ -188,5 +194,118 @@ describe("RelationshipTypesSettings", () => {
   it("renders nothing when the entities feature flag is off", () => {
     const { container } = setup({ features: {} });
     expect(container).toBeEmptyDOMElement();
+  });
+
+  describe("in-flight guard (Feature 93, E-5)", () => {
+    /**
+     * Fake features route: stores the request's list at once (the write is on
+     * disk), but holds each response until `release()` is called.
+     */
+    function holdingRoute() {
+      const server = {
+        stored: null as string[] | null,
+        bodies: [] as string[][],
+      };
+      const releases: Array<() => void> = [];
+      const spy = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (_url, init) => {
+          const list = (
+            JSON.parse((init as RequestInit).body as string) as {
+              relationshipTypes: string[];
+            }
+          ).relationshipTypes;
+          server.bodies.push(list);
+          server.stored = list;
+          await new Promise<void>((resolve) => releases.push(resolve));
+          return new Response(
+            JSON.stringify({
+              features: { entities: true },
+              organizerCardBody: null,
+              relationshipTypes: list,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        });
+      return { server, spy, release: () => releases.shift()?.() };
+    }
+
+    it("does not send a second edit until the first has settled; the stored list holds both", async () => {
+      for (let rep = 0; rep < 20; rep += 1) {
+        const { store } = setup({ relationshipTypes: ["Mentor"] });
+        const { server, spy, release } = holdingRoute();
+
+        fireEvent.change(newTypeInput(), { target: { value: "Alpha" } });
+        fireEvent.click(addButton());
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+
+        // Second edit attempted while the first is pending.
+        fireEvent.change(newTypeInput(), { target: { value: "Beta" } });
+        expect(addButton()).toBeDisabled();
+        fireEvent.click(addButton());
+        fireEvent.keyDown(newTypeInput(), { key: "Enter" });
+        fireEvent.click(screen.getByRole("button", { name: /remove mentor/i }));
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        release();
+        await waitFor(() => expect(addButton()).not.toBeDisabled());
+        expect(
+          store.getState().projects.projects["test-project-id"]
+            .relationshipTypes,
+        ).toEqual(["Mentor", "Alpha"]);
+
+        fireEvent.click(addButton());
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+        release();
+        await waitFor(() => expect(addButton()).toBeDisabled());
+        await waitFor(() =>
+          expect(
+            store.getState().projects.projects["test-project-id"]
+              .relationshipTypes,
+          ).toEqual(["Mentor", "Alpha", "Beta"]),
+        );
+        expect(server.stored).toEqual(["Mentor", "Alpha", "Beta"]);
+        vi.restoreAllMocks();
+        cleanup();
+      }
+    });
+
+    it("marks the section busy and disables the controls while saving", async () => {
+      setup({ relationshipTypes: ["Mentor", "Rival"] });
+      const { release } = holdingRoute();
+
+      fireEvent.click(screen.getByRole("button", { name: /move rival up/i }));
+      await waitFor(() =>
+        expect(
+          screen.getByRole("region", { name: /relationship types/i }),
+        ).toHaveAttribute("aria-busy", "true"),
+      );
+      expect(
+        screen.getByRole("button", { name: /remove mentor/i }),
+      ).toBeDisabled();
+      release();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: /remove mentor/i }),
+        ).not.toBeDisabled(),
+      );
+    });
+
+    it("shows the error of a failed first save and re-enables the controls", async () => {
+      setup({ relationshipTypes: ["Mentor"] });
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /remove mentor/i }));
+
+      await waitFor(() => expect(toastService.error).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: /remove mentor/i }),
+        ).not.toBeDisabled(),
+      );
+      expect(screen.getByText("Mentor")).toBeInTheDocument();
+    });
   });
 });

@@ -158,7 +158,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 4, 14
 **Estimate:** 3
 **Notes:** Satisfies FR-12, FR-13, AC-7, FR-2. Open the component's source and stories before editing. Estimate is the gated-in size; N/A costs 1.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Gated: in-flight guards for ProjectFeatureToggles and OrganizerCardBodySettings
 **What:** For each of these two senders where E-5 reproduced a lost edit, add the same in-flight guard; leave the other unchanged and record its counts.

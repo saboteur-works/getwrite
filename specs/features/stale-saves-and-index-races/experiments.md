@@ -369,3 +369,15 @@ Nine of nine runs passed; 0 failed tests in any run.
 | E-3 stale `dismissedNoiseTerms` after `setNoiseTermDismissedCore` | stored list lacked "hello" in 20 of 20; held it in 0 of 20; unparseable 0, rejected 0 | the Task 9 file has no repetition-counted test of the E-3 construction (dismiss, load copy, dismiss another term, stale send). It has the table row `(a) ignores a client dismissedNoiseTerms: stored value unchanged and the call succeeds`, which passed in 9 of 9 runs (single call, no repetitions). The E-3 construction was not re-run after the change. |
 
 Unparseable and rejected counts are not measured in the Task 13 runs (the Task 9 tests do not count them); the runs recorded no failing test.
+
+### E-1..E-3 re-run after the allowlist change (MEASURED, orchestrator, 2026-10-24 15:04 MDT)
+
+Command, from `frontend/`: `E123_RESULT_OUT=<scratchpad>/e123-after.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e123.config.ts`. Run after the Part A allowlist change. E-1: stored `name` equals the renamed value in 20 of 20 (stale 0, unparseable 0, rejected 0). E-2: stored `updatedAt` newer in 100 of 100 (stale 0, unparseable 0, rejected 0). E-3: stored list holds "hello" in 20 of 20 (stale 0, unparseable 0, rejected 0). This closes the caveat above that the E-3 construction was not re-run.
+
+## Task 15 gate decision (E-5, RelationshipTypesSettings)
+
+Gate: MET. The E-5 section records a reproduced loss for `RelationshipTypesSettings` (stored block holds both edits in 0 of 20 at both hold points), so Task 15 is gated in (FR-12, FR-13, AC-7). The commit names E-5.
+
+Files changed: `frontend/components/preferences/RelationshipTypesSettings.tsx` (`isSaving` state set around `persist`; `handleAdd`, `handleRemove`, `handleMove` return early while saving; move/remove/Add buttons disabled while saving; section has `aria-labelledby` and `aria-busy`), `frontend/tests/component/RelationshipTypesSettings.test.tsx` (new describe "in-flight guard (Feature 93, E-5)"). No story or decorator change: the component needs no new context. The route and transport contract are unchanged.
+
+MEASURED (TDD): on the unchanged tree the new 20-repetition test and the busy-state test failed (2 failed, 10 passed; the failed-save test passed). After the change all 12 tests in the file pass. The 20-repetition test (first save held after the route has written it, second edit attempted by clicking Add, pressing Enter and clicking Remove while pending, then the first released, then the second edit sent) asserted in each of 20 repetitions that only 1 request was sent while pending, that the client store held the first edit before the second was sent, and that the final stored list and client-store list held both edits: 20 of 20. A failed first save (HTTP 500) showed the error toast and re-enabled the controls. Construction limit: this component test uses a fetch stub with a held response, not the real route; the real-route E-5 script was not re-run in this task.
