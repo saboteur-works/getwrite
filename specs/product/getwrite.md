@@ -258,6 +258,16 @@ with the app without hand-rewriting it (see OQ-90).
   order; values a client sends are stored as sent, so a save carrying an
   older copy of a value stores that value (a recorded follow-up, not
   promised here).
+- US-32: As a writer on deadline who edits a resource's metadata, project
+  settings or entity details in the app, or whose resource is saved,
+  indexed or deleted while I do, I want to be sure that a save never puts
+  back an older value I or the app had already replaced, and that two
+  things the app does at the same time never drop each other's change, so
+  that I do not find a
+  tag, status, setting, mention or backlink silently reverted or missing.
+  [Next] (Added 2026-10-24; FR-77. Owner-chosen scope, 2026-10-24. Scope
+  decided Gate 1, 2026-10-24: OQ-115 to OQ-119; covers two devices, newest
+  write per key wins.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1839,6 +1849,113 @@ with the app without hand-rewriting it (see OQ-90).
   canonical save, 20 of 20 kept, two runs) used a different construction
   and fewer repetitions. Resolved: OQ-110 to OQ-114 (OQ-110 revised at
   Gate 5). [US-31]
+- FR-77: A save MUST NOT put back an older value for a key it did not
+  change, and two server-side writers of the same stored data that overlap
+  in time MUST NOT drop each other's change. Added 2026-10-24 (owner-chosen
+  scope; the same reliability and data-loss group as FR-76). This covers two
+  different defect classes, kept apart here: (A) a stale client copy: a
+  request carries an older value inside its own body, so no lock can
+  prevent it (the value arrives already stale); (B) two server writers
+  overlapping: each loads, changes and saves a file and one overwrites the
+  other's change (the class FR-76 addressed for `project.json` and
+  sidecars). Relation to FR-76 / Feature 92 (PR #296): FR-76 promised that
+  overlapping read-modify-writes of `project.json` and sidecars keep every
+  change, and Narrowed (feature OQ-9 option a) metadata to "values a client
+  sends are stored as sent", leaving a stale whole-object client save out by
+  decision as a recorded follow-up. FR-77 is that follow-up for class (A)
+  and, for class (B), changes OQ-110's "unknown, not promised" for two
+  files only conditionally (see Class B below); the other `meta/` files
+  named in OQ-110 (`relationships.json`, writing-log files, other indexes)
+  stay unknown, not promised, unless a later decision adds them.
+  Decided (Owner decision, Gate 1, 2026-10-24; OQ-115 to OQ-119). Class A,
+  sidecars (OQ-115, OQ-116): the server accepts only an allowlist of keys a
+  client may write through `updateSidecarCore` (fail-closed, per
+  `docs/standards/security.md`), instead of the current denylist
+  (`SERVER_DERIVED_SIDECAR_KEYS`). `updatedAt`, `name` and
+  `dismissedNoiseTerms` are server-owned: a client value is ignored by
+  `updateSidecarCore`, and each has a dedicated server writer (canonical
+  save in `revision-core.ts`; `renameResourceSidecarCore`; the noise-term
+  route). Condition carried into this requirement: before dropping them,
+  check that no caller relies on `updateSidecarCore` to rename or to set
+  `updatedAt` or `dismissedNoiseTerms` (not yet searched). Writer-owned,
+  stored as sent: `entityKind`, `aliases`, `wordCountGoal`,
+  `resourceSubtype`, `userMetadata`. Consequence, not decided away: a stale
+  `userMetadata` (writer-owned, replaced wholesale by `{...existing,
+  ...update}`) is not fixed by this decision; that remains a known gap.
+  The owner chose the allowlist alone, without a key-by-key `userMetadata`
+  merge, a client sending only changed keys, or a version check. Settings
+  routes (OQ-117): `POST /api/project/features` (`features`,
+  `relationshipTypes`, `subtypes`, `organizerCardBody`) is promised now.
+  Editor config (`editor-config-core.ts`) and entity-graph settings
+  (`entity-graph-settings-core.ts`) are carried checks: measured first, and
+  brought into the promise only if a reverted or lost setting reproduces.
+  Two devices (OQ-118): the promise covers two devices under home-network
+  sharing (FR-66 to FR-68): per key, the newest write wins, with no
+  conflict UI, consistent with Feature 79's last-save-wins for content. A
+  conflict answer (a version check, OQ-115 option c) is a recorded
+  follow-up, not part of this requirement. A stale whole block on the
+  features route (for example relationship types) sent between devices is
+  still last-write-wins for that block unless the fix makes it per item;
+  the mechanism is left to the feature spec. Class B (OQ-119): the mention
+  index and backlinks stay in this requirement as a conditional section:
+  race-test first (like PR #300's), and fix only what reproduces.
+  `relationships.json`, writing-log files and other indexes stay unknown,
+  not promised. Caveat: `computeBacklinks` reads every resource before
+  `persistBacklinks` takes the lock, so one locked load, change and save
+  makes the write safe but does not make a whole recompute atomic. The doc
+  comments in `mention-index.ts` and `backlinks.ts` claim "inside one
+  `withMetaLock`", which is inaccurate (the lock is only inside
+  `persist*`). Facts. (1) Measured 2026-10-23
+  (Feature 92 Task 5, `specs/features/project-json-single-lock/experiments.md`,
+  "OQ-9"): a client copy of a sidecar read before a canonical save, then
+  sent through `updateSidecarCore` after that save completed (sequential,
+  no overlap), left the stored `updatedAt` equal to the older client value
+  in 100 of 100 repetitions; the save had advanced it in all 100; 0
+  unparseable, 0 rejected. (2) Read, not run (note_68454d5d):
+  `updateSidecarCore` (`frontend/src/lib/models/resource-crud-core.ts`)
+  shallow-merges the client's whole resource object over the stored sidecar
+  and drops only `SERVER_DERIVED_SIDECAR_KEYS` (`wordCount`, `file`), so
+  every other key passes through as sent; `app/(app)/page.tsx`
+  `updateResource` overlays only `resourceSubtype` and `wordCount` on the
+  client copy. Of the other keys, only `entityKind`, `aliases` and
+  `wordCountGoal` were measured, and they were kept when omitted. Feature
+  92's per-file lock cannot prevent this: the stale value is inside the
+  request. Not measured: which other keys a stale copy puts back, and how
+  often real UI paths send a stale copy. Triage evidence accepted at Gate 1
+  (read, not run; high confidence on attribution, medium on completeness):
+  `wordCount` and `file` are already dropped; `orderIndex` and `folderId`
+  are re-applied from the stored sidecar by `mergeSidecarUpdate` (closes
+  Feature 92 follow-up F-6 for existing sidecars); `metadataRevision` is a
+  `project.json` key, not a sidecar key; writer-owned keys are those listed
+  above. (3) Read, not run, not measured
+  (note_bd7bd1cd): `POST /api/project/features`
+  (`app/api/project/features/route.ts`, `project-features.ts`) replaces
+  `config.subtypes`, `config.relationshipTypes`, `features` and
+  `organizerCardBody` with the client's copy; senders are
+  `SubtypesSettings.tsx` and `RelationshipTypesSettings.tsx`. (4) Read, not
+  run, lower confidence (note_63613105): `editor-config-core.ts` replaces
+  `body` and `headings`, and `entity-graph-settings-core.ts` replaces its
+  settings, as whole blocks from the client; what the UI sends (whole block
+  or changed keys) has not been traced; a later read, not run, trace:
+  `RelationshipTypesSettings` sends the whole list with no in-flight guard,
+  `SubtypesSettings` guards with `isSaving`, `ProjectFeatureToggles` sends
+  the whole features map, the editor-config modals each send only their own
+  block, and the entity-graph panel loads once per mount. (5) Measured 2026-10-24 (PR #300,
+  merged, commit `b2771181`): in `inverted-index.ts`, `indexResource` and
+  `removeResourceFromIndex` loaded, changed and saved
+  `meta/index/inverted.json` with only the save under `withMetaLock`; two
+  concurrent calls lost one resource in 20 of 20 trials; PR #300 made the
+  load, change and save one locked step. (6) Read, not run, NOT measured:
+  the mention index (`mention-index.ts` `removeResourceFromMentionIndex`,
+  and the load and persist in `indexer-queue.ts` `runTask`) and backlinks
+  (`backlinks.ts` `removeResourceFromBacklinks`, and `persistBacklinks` via
+  `computeBacklinks`) have the same shape as the inverted index before the
+  fix; whether they lose a change is a hypothesis until a race test
+  reproduces it. The cause of any loss in (3) and (4) is likewise not
+  established. Resolved: OQ-115 to OQ-119. Carried to the feature spec: the
+  caller search before dropping `updatedAt`, `name` and
+  `dismissedNoiseTerms`; the editor-config and entity-graph measurements;
+  the class-B race tests. [US-32]
 
 ## Constraints
 
@@ -3570,6 +3687,37 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23; option c): every `project.json` read-modify-write goes through one narrow `project.json` lock (the shape of the existing `updateProjectJson` in `frontend/src/lib/models/project-json-write.ts`), including writers that hold `locks.ts`'s `acquireLock` (`metadata-schema.ts`, `project-features.ts`) and `sidecar.ts`'s `metadataRevision` bump. Migrations and other saves otherwise run as they do now. The feature spec must prove it with the race test that measured the loss (editor-config save against `addField`), and must show the lock order cannot deadlock. Applied in FR-76.
 **Evidence:** Owner decision, Gate 1, 2026-10-23. Read, not run: `changeFieldTypeWithMigration`, `renameFieldKey` and `updateFieldOptionsWithMigration` hold `acquireLock` for the whole sidecar rewrite, and `writeSidecar` takes `withMetaLock` inside it; locks are not reentrant. Not measured: migration duration on a large project, or that any deadlock occurs.
 **Impact:** FR-76; US-31; metadata schema editing.
+**Owner:** Product owner.
+
+**OQ-115 (resolved): How must
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-24; option a): the server accepts only an allowlist of keys a client may write through `updateSidecarCore` (fail-closed, per `docs/standards/security.md`), instead of the current denylist (`SERVER_DERIVED_SIDECAR_KEYS`). Option (a) alone: the lead's suggested addition of a key-by-key `userMetadata` merge was not chosen. Consequence, not decided away: a stale `userMetadata` (writer-owned, replaced wholesale by `{...existing, ...update}`) is not fixed by (a); that remains a known gap. Applied in FR-77. a save be kept from putting back an older value: the server drops more server-owned keys from what a client sends, the client sends only the keys it changed, or the server checks a version and answers a conflict when the stored value is newer?**
+**Options (not chosen):** (a) The server drops more keys from the client's object, extending `SERVER_DERIVED_SIDECAR_KEYS` (no route contract change; a writer-owned key still comes in as sent). (b) The client sends only changed keys (changes the callers and the `updateSidecarCore` contract; a changed key can still be stale). (c) A version check with a conflict response (a route contract change; what the UI shows on a conflict, and whether the writer's edit is kept, discarded or offered for merge, is a further decision). Not mutually exclusive.
+**Evidence:** Measured: a stale client `updatedAt` sent after a canonical save was stored in 100 of 100 repetitions (Feature 92 Task 5). Read, not run: `updateSidecarCore` drops only `wordCount` and `file`. No option has been tried; the effect of each on real UI paths is not measured.
+**Impact:** FR-77; US-32; `updateSidecarCore` and its callers; possibly the API route contract.
+**Owner:** Product owner.
+
+**OQ-116 (resolved): Which
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-24; option a): `updatedAt`, `name` and `dismissedNoiseTerms` become server-owned and a client value is ignored by `updateSidecarCore`; each has a dedicated server writer (canonical save in `revision-core.ts`; `renameResourceSidecarCore`; the noise-term route). Condition carried into FR-77: before dropping them, check that no caller relies on `updateSidecarCore` to rename or to set `updatedAt` or `dismissedNoiseTerms` (not yet searched). Triage evidence accepted (read, not run; high confidence on attribution, medium on completeness): `wordCount` and `file` are already dropped; `orderIndex` and `folderId` are re-applied from the stored sidecar by `mergeSidecarUpdate` (closes Feature 92 follow-up F-6 for existing sidecars); `metadataRevision` is a `project.json` key, not a sidecar key; writer-owned: `entityKind`, `aliases`, `wordCountGoal`, `resourceSubtype`, `userMetadata`. Applied in FR-77. sidecar keys are server-owned (a client value is ignored or never trusted) and which are writer-owned (a client value is stored as sent)?**
+**Evidence:** Today only `wordCount` and `file` are server-derived. `updatedAt` is stored as sent (measured). Whether `metadataRevision`, revision-related keys, `orderIndex`/`folderId` (see Feature 92 follow-up F-6), `entityKind`, `aliases`, `wordCountGoal` and `userMetadata` are server-owned has not been decided; only `entityKind`, `aliases` and `wordCountGoal` were measured, and were kept when omitted.
+**Impact:** FR-77; US-32; the answer to OQ-115 (a); a key classification the feature spec would need to test per key.
+**Owner:** Product owner.
+
+**OQ-117 (resolved): Are
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-24; option c): the features route (`POST /api/project/features`: `features`, `relationshipTypes`, `subtypes`, `organizerCardBody`) is promised now; editor config (`editor-config-core.ts`) and entity-graph settings (`entity-graph-settings-core.ts`) are carried checks, measured first and brought into the promise only if a reverted or lost setting reproduces. Triage trace (read, not run): `RelationshipTypesSettings` sends the whole list with no in-flight guard; `SubtypesSettings` guards with `isSaving`; `ProjectFeatureToggles` sends the whole features map; editor-config modals each send only their own block; the entity-graph panel loads once per mount. Applied in FR-77. the settings routes (`POST /api/project/features`; the editor-config and entity-graph settings cores) promised in FR-77 before they are measured, or measured first and included only if a lost or reverted setting is reproduced (the "carried check" pattern Feature 92 used)?**
+**Evidence:** Not measured for `POST /api/project/features`. Not traced for editor config and entity graph settings: what the UI sends (whole block or changed keys) is unknown. Read, not run: the features route replaces four config blocks from the client's copy.
+**Impact:** FR-77 facts (3) and (4); US-32; how wide the feature spec's experiments and fix must be.
+**Owner:** Product owner.
+
+**OQ-118 (resolved): Does
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-24; option b): the promise covers two devices (home-network sharing): per key, the newest write wins, with no conflict UI, consistent with Feature 79's last-save-wins for content. A conflict answer (version check, OQ-115 option c) is a recorded follow-up, not in FR-77. A stale whole block on the features route (for example relationship types) between devices is still last-write-wins for that block unless the fix makes it per item; the mechanism is left to the feature spec. Applied in FR-77. the FR-77 promise cover two devices (home-network sharing, FR-66 to FR-68) editing the same resource's metadata or the same settings, or one app window only?**
+**Evidence:** A second paired device is another client with its own copy, so class (A) can arise between devices; this has not been run. Content saves between devices are a separate last-save-wins promise (Feature 79). FR-76 is stated for one server process (OQ-111), which includes the desktop server serving several devices. Whether a metadata or settings conflict between devices should keep both, keep the newest, or report a conflict is not decided.
+**Impact:** FR-77; US-32; OQ-115 (a version check would be the visible case); home-network sharing.
+**Owner:** Product owner.
+
+**OQ-119 (resolved): Does
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-24; option c): the mention index and backlinks stay in FR-77 as a class-B section, conditional: race-test first (like PR #300's), and fix only what reproduces. `relationships.json`, writing-log files and other indexes stay unknown, not promised. Caveat (read, not run): `computeBacklinks` reads every resource before `persistBacklinks` takes the lock, so one locked load, change and save makes the write safe but does not make a whole recompute atomic. The doc comments in `mention-index.ts` and `backlinks.ts` claim "inside one `withMetaLock`", which is inaccurate (the lock is only inside `persist*`). Applied in FR-77. the mention index and backlinks fix (class B) belong in FR-77, or in its own requirement and feature?**
+**Evidence:** Different defect class from the stale client copy: two server writers overlapping, and the fix shape is the PR #300 one (load, change and save as one locked step), not a change to what a client sends. Not measured for the mention index or backlinks: a race test like PR #300's (20 of 20 lost for the inverted index) has not been run for them. Bringing them in changes OQ-110's "unknown, not promised" for those two files.
+**Impact:** FR-77 facts (5) and (6); US-32; whether the feature breakdown has one feature or two for this scope.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)
