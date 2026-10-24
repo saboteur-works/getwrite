@@ -144,3 +144,14 @@ export function validateMediaFile(
     mime: resolved.mime,
   };
 }
+
+/**
+ * True when `name` is a bare file name: one path segment, not `.` or `..`,
+ * with no `/`, `\` or NUL. A media resource's stored `file` is joined under
+ * `resources/<id>/`, so anything else could name a file outside it.
+ */
+export function isPlainFileName(name: string): boolean {
+  return (
+    name.length > 0 && name !== "." && name !== ".." && !/[/\\\0]/.test(name)
+  );
+}

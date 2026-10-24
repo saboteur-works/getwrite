@@ -34,6 +34,10 @@ import {
 import { resolveProjectPath } from "../../../../../../src/lib/models/project-path";
 import { checkLimit } from "../../../../../../src/lib/sharing/limits-check";
 import { withStorageContext } from "../../../../_tenant/with-storage-context";
+import {
+  areResourceIds,
+  respondInvalidResourceId,
+} from "../../../../../../src/lib/models/resource-id";
 
 interface PurgeBatchBody {
   ids?: string[];
@@ -76,6 +80,10 @@ async function handlePost(
       },
       { status: 400 },
     );
+  }
+
+  if ("ids" in selection && !areResourceIds(selection.ids)) {
+    return respondInvalidResourceId();
   }
 
   const results = await purgeBatchCore(projectPath, selection);

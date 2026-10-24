@@ -71,6 +71,19 @@ export type SavedQueryDispatchResult =
  * @throws {UnknownSavedQueryActionError} When `action` is not one of
  *   `list` / `read` / `write` / `delete`.
  */
+/**
+ * A saved query's id becomes its file name (`<id>.query.json`), so read and
+ * delete refuse anything but a UUID, as write already does through
+ * `SavedQuerySchema`.
+ */
+function requireQueryId(id: string | undefined): string {
+  const parsed = SavedQuerySchema.shape.id.safeParse(id);
+  if (!parsed.success) {
+    throw new InvalidSavedQueryError("Saved query id must be a UUID.");
+  }
+  return parsed.data;
+}
+
 export async function dispatchSavedQueryAction(
   projectRoot: string,
   request: SavedQueryDispatchRequest,
@@ -82,7 +95,7 @@ export async function dispatchSavedQueryAction(
     }
 
     case "read": {
-      const query = await readQuery(projectRoot, request.id ?? "");
+      const query = await readQuery(projectRoot, requireQueryId(request.id));
       return { query };
     }
 
@@ -96,7 +109,10 @@ export async function dispatchSavedQueryAction(
     }
 
     case "delete": {
-      const didDelete = await deleteQuery(projectRoot, request.id ?? "");
+      const didDelete = await deleteQuery(
+        projectRoot,
+        requireQueryId(request.id),
+      );
       return { deleted: didDelete };
     }
 

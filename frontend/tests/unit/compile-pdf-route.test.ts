@@ -85,7 +85,7 @@ describe("POST /api/compile/pdf", () => {
     const projectPath = path.join(projectsDir, projectId);
     await writeResource(
       projectPath,
-      "r1",
+      "00000000-0000-4000-8000-000000000001",
       paragraphDoc("hello there"),
       "hello there",
     );
@@ -94,8 +94,14 @@ describe("POST /api/compile/pdf", () => {
       POST(
         compileRequest({
           projectId,
-          resourceIds: ["r1"],
-          resources: [{ id: "r1", name: "Chapter One", type: "text" }],
+          resourceIds: ["00000000-0000-4000-8000-000000000001"],
+          resources: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Chapter One",
+              type: "text",
+            },
+          ],
           includeHeaders: true,
           projectName: "My Novel",
         }) as never,

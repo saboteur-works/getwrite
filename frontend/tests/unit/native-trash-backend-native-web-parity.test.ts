@@ -315,7 +315,7 @@ describe("native trash transport — native/web parity", () => {
       "content",
     );
 
-    const missingId = "does-not-exist";
+    const missingId = "00000000-0000-4000-8000-000000000001";
 
     const httpResults = await httpRestore(projectsDir, httpProjectId, [
       httpResourceId,
@@ -370,7 +370,7 @@ describe("native trash transport — native/web parity", () => {
       "content",
     );
 
-    const missingId = "does-not-exist";
+    const missingId = "00000000-0000-4000-8000-000000000001";
 
     const httpResults = await httpPurge(projectsDir, httpProjectId, [
       httpResourceId,

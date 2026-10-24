@@ -16,6 +16,10 @@ import { InvalidProjectIdCoreError } from "../../../../src/lib/models/resource-c
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { withStorageContext } from "../../_tenant/with-storage-context";
+import {
+  areResourceIds,
+  respondInvalidResourceId,
+} from "../../../../src/lib/models/resource-id";
 
 interface ExcerptsBody {
   projectId: string;
@@ -41,6 +45,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
       { status: 400 },
     );
   }
+  if (!areResourceIds(resourceIds)) return respondInvalidResourceId();
   if (resourceIds.length > MAX_RESOURCE_IDS) {
     return NextResponse.json(
       { error: `Too many resourceIds (max ${MAX_RESOURCE_IDS}).` },

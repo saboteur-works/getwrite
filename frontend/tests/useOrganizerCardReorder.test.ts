@@ -194,12 +194,11 @@ describe("useOrganizerCardReorder", () => {
     expect(persistCall).toBeDefined();
     const payload = persistCall![0].payload as {
       projectId: string;
-      projectRoot: string;
       folderOrder: Array<{ id: string; folderId?: string | null }>;
       resourceOrder: Array<{ id: string; folderId?: string | null }>;
     };
     expect(payload.projectId).toBe(projectDirectoryId);
-    expect(payload.projectRoot).toBe(currentProject.rootPath);
+    expect(payload).not.toHaveProperty("projectRoot");
     for (const f of payload.folderOrder) {
       expect(f.folderId).toBe(BROWSED_FOLDER_ID);
     }

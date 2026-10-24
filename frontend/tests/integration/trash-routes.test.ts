@@ -280,7 +280,7 @@ describe("POST /api/project/[project-id]/trash/restore", () => {
         await import("../../app/api/project/[project-id]/trash/restore/route");
       const res = await POST(
         jsonRequest(`http://localhost/api/project/${projectId}/trash/restore`, {
-          ids: [resource.id, "does-not-exist"],
+          ids: [resource.id, "00000000-0000-4000-8000-000000000001"],
         }) as never,
         { params: Promise.resolve({ "project-id": projectId }) },
       );
@@ -294,7 +294,9 @@ describe("POST /api/project/[project-id]/trash/restore", () => {
       const ok = body.results.find((r) => r.id === resource.id);
       expect(ok?.ok).toBe(true);
 
-      const failed = body.results.find((r) => r.id === "does-not-exist");
+      const failed = body.results.find(
+        (r) => r.id === "00000000-0000-4000-8000-000000000001",
+      );
       expect(failed?.ok).toBe(false);
       expect(failed?.error).toBeTruthy();
 

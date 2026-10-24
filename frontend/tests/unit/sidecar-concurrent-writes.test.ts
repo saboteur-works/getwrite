@@ -260,7 +260,6 @@ async function runFamily(family: Family, rep: Rep, i: number): Promise<void> {
       await reorderResourcesCore(rep.projectId, {
         folderOrder: [],
         resourceOrder: [{ id: rep.resourceId, orderIndex: 5 }],
-        projectRootOverride: rep.projectRoot,
       });
       return;
     case "rename":

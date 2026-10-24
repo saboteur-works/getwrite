@@ -84,6 +84,27 @@ describe("updateSidecarCore on the sidecar sink", () => {
     });
   });
 
+  it("keeps the stored media file name when an update sends another", async () => {
+    // The file route joins `file` into a path; only upload sets it.
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, {
+        name: "Pic",
+        type: "image",
+        file: "original.png",
+      });
+
+      await updateSidecarCore(projectId, resourceId, {
+        name: "Pic 2",
+        file: "../other.png",
+      });
+
+      expect(await readSidecar(projectPath, resourceId)).toMatchObject({
+        name: "Pic 2",
+        file: "original.png",
+      });
+    });
+  });
+
   it("applies clearKeys after the merge", async () => {
     await withProject(async ({ projectId, projectPath, resourceId }) => {
       await writeSidecar(projectPath, resourceId, {

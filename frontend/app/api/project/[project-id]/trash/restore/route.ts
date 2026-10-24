@@ -29,6 +29,10 @@ import {
 } from "../../../../../../src/lib/models/trash-core";
 import { resolveProjectPath } from "../../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../../_tenant/with-storage-context";
+import {
+  areResourceIds,
+  respondInvalidResourceId,
+} from "../../../../../../src/lib/models/resource-id";
 
 interface RestoreBatchBody {
   ids?: string[];
@@ -63,6 +67,8 @@ async function handlePost(
       { status: 400 },
     );
   }
+
+  if (!areResourceIds(body.ids)) return respondInvalidResourceId();
 
   const results: RestoreItemResult[] = [];
   for (const id of body.ids) {

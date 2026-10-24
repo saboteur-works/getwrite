@@ -90,7 +90,6 @@ export function useOrganizerCardReorder({
     dispatch(
       persistReorder({
         projectId: projectDirectoryId,
-        projectRoot: currentProject.rootPath,
         folderOrder: reorderPayload.folderOrder,
         resourceOrder: reorderPayload.resourceOrder,
       }),

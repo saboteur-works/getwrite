@@ -31,8 +31,11 @@ function queriesDir(projectRoot: string): string {
   return path.join(projectRoot, "meta", "queries");
 }
 
+// Throws for a non-UUID id, so no caller can build a path outside
+// `meta/queries/` from one.
 function queryFilePath(projectRoot: string, id: string): string {
-  return path.join(queriesDir(projectRoot), `${id}${QUERY_FILE_EXT}`);
+  const safeId = SavedQuerySchema.shape.id.parse(id);
+  return path.join(queriesDir(projectRoot), `${safeId}${QUERY_FILE_EXT}`);
 }
 
 async function ensureQueriesDir(projectRoot: string): Promise<void> {

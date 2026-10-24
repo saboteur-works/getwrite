@@ -6,6 +6,10 @@ import {
 } from "../../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../src/lib/models/resource-id";
 
 interface ResourceActionBody {
   projectId: string;
@@ -19,6 +23,7 @@ async function handlePost(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
 
   let body: ResourceActionBody;
   try {

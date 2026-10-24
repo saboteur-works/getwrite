@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { CreateResourceOpts } from "../../../src/lib/models";
 import {
   InvalidProjectIdCoreError,
+  InvalidResourceFileNameCoreError,
   ResourceProjectNotFoundError,
   createResourceCore,
 } from "../../../src/lib/models/resource-crud-core";
@@ -37,6 +38,12 @@ async function handlePost(req: Request): Promise<Response> {
     }
     if (error instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
+    }
+    if (error instanceof InvalidResourceFileNameCoreError) {
+      return NextResponse.json(
+        { error: "Invalid request", details: error.message },
+        { status: 400 },
+      );
     }
     if (error instanceof ResourceProjectNotFoundError) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });

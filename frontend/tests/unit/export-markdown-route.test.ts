@@ -94,14 +94,24 @@ describe("POST /api/export/markdown", () => {
         },
       ],
     };
-    await writeResource(projectPath, "r1", doc);
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      doc,
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         exportRequest({
           projectId,
-          resourceIds: ["r1"],
-          resources: [{ id: "r1", name: "My Note", type: "text" }],
+          resourceIds: ["00000000-0000-4000-8000-000000000001"],
+          resources: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "My Note",
+              type: "text",
+            },
+          ],
           exportName: "My Note",
         }) as never,
       ),
@@ -127,27 +137,39 @@ describe("POST /api/export/markdown", () => {
           type: "image",
           attrs: {
             src: "/api/resource/img1/file",
-            alt: "pic",
-            resourceId: "img1",
+            alt: "00000000-0000-4000-8000-000000000005",
+            resourceId: "00000000-0000-4000-8000-000000000004",
           },
         },
       ],
     };
-    await writeResource(projectPath, "r1", doc);
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      doc,
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         exportRequest({
           projectId,
-          resourceIds: ["r1"],
-          resources: [{ id: "r1", name: "Has Image", type: "text" }],
+          resourceIds: ["00000000-0000-4000-8000-000000000001"],
+          resources: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Has Image",
+              type: "text",
+            },
+          ],
           exportName: "Has Image",
         }) as never,
       ),
     );
     const json = await res.json();
 
-    expect(json.markdown).toContain('data-resource-id="img1"');
+    expect(json.markdown).toContain(
+      'data-resource-id="00000000-0000-4000-8000-000000000004"',
+    );
     expect(json.warnings).toHaveLength(1);
     expect(json.warnings[0].construct).toBe("image-link");
     expect(json.warnings[0].kind).toBe("html-fallback");
@@ -157,7 +179,7 @@ describe("POST /api/export/markdown", () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     const projectPath = path.join(projectsDir, projectId);
-    await writeResource(projectPath, "r1", {
+    await writeResource(projectPath, "00000000-0000-4000-8000-000000000001", {
       type: "doc",
       content: [
         { type: "paragraph", content: [{ type: "text", text: "keep" }] },
@@ -168,10 +190,21 @@ describe("POST /api/export/markdown", () => {
       POST(
         exportRequest({
           projectId,
-          resourceIds: ["r1", "img"],
+          resourceIds: [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000003",
+          ],
           resources: [
-            { id: "r1", name: "Text", type: "text" },
-            { id: "img", name: "Picture", type: "image" },
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Text",
+              type: "text",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000003",
+              name: "Picture",
+              type: "image",
+            },
           ],
           exportName: "Text",
         }) as never,

@@ -132,6 +132,28 @@ describe("GET /api/resource/[id]/file (projectId-based)", () => {
     });
   });
 
+  it("refuses a stored file name that is not a bare file name, with 500", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Bad File",
+        type: "image",
+        file: "../../project.json",
+      });
+
+      const res = await GET(makeGetRequest(resourceId, projectId), {
+        params: Promise.resolve({ "resource-id": resourceId }),
+      });
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        error: "Stored file name is not valid",
+      });
+    });
+  });
+
   it("returns 404 when the binary is missing from disk", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
@@ -154,7 +176,9 @@ describe("GET /api/resource/[id]/file (projectId-based)", () => {
   it("returns 400 when projectId is missing", async () => {
     const req = new NextRequest("http://localhost/api/resource/some-id/file");
     const res = await GET(req, {
-      params: Promise.resolve({ "resource-id": "some-id" }),
+      params: Promise.resolve({
+        "resource-id": "00000000-0000-4000-8000-000000000001",
+      }),
     });
     expect(res.status).toBe(400);
   });
@@ -162,9 +186,14 @@ describe("GET /api/resource/[id]/file (projectId-based)", () => {
   it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
     const { projectsDir } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      const res = await GET(makeGetRequest("some-id", "not-a-uuid"), {
-        params: Promise.resolve({ "resource-id": "some-id" }),
-      });
+      const res = await GET(
+        makeGetRequest("00000000-0000-4000-8000-000000000001", "not-a-uuid"),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000001",
+          }),
+        },
+      );
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toBe("Invalid projectId");

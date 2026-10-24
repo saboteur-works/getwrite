@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { deleteResourceCore } from "../../../../../src/lib/models/resource-crud-core";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 interface DeleteResourceBody {
   projectId: string;
@@ -12,6 +16,7 @@ async function handlePost(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
 
   let body: DeleteResourceBody;
   try {

@@ -44,6 +44,9 @@ async function readFolderDescriptorId(dir: string): Promise<string | null> {
   }
 }
 
+/** A folder slug as `slugify` produces it: letters, digits, `-` and `_`. */
+const SAFE_FOLDER_SLUG = /^[a-z0-9_-]+$/i;
+
 /**
  * Resolves the on-disk directory for a folder, guarding against slug
  * collisions. Folders are stored at `folders/<slug>/`, but two distinct folders
@@ -63,7 +66,11 @@ async function resolveFolderDir(
   folder: Folder,
 ): Promise<string> {
   const foldersRoot = path.join(projectPath, "folders");
-  const slug = folder.slug ?? folder.id;
+  // The slug names a directory, and a client can send one when creating a
+  // folder; anything but a plain `slugify`-shaped name (or a missing or
+  // empty one) falls back to the folder's UUID.
+  const slug =
+    folder.slug && SAFE_FOLDER_SLUG.test(folder.slug) ? folder.slug : folder.id;
 
   const preferred = path.join(foldersRoot, slug);
   const preferredOwner = await readFolderDescriptorId(preferred);

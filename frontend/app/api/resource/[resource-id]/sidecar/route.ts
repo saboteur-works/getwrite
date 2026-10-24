@@ -11,6 +11,10 @@ import {
   ResourceGoneError,
 } from "../../../../../src/lib/models/resource-gone-error";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 interface SidecarUpdateBody {
   projectId: string;
@@ -24,6 +28,7 @@ async function handlePost(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
 
   let body: SidecarUpdateBody;
   try {

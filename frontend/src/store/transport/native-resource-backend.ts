@@ -208,7 +208,7 @@ export function createNativeResourcesTransport(
       });
     },
 
-    async reorder(projectId, payload, projectRoot) {
+    async reorder(projectId, payload) {
       await run(async () => {
         await reorderResourcesCore(projectId, {
           folderOrder: payload.folderOrder.map((f) => ({
@@ -221,7 +221,6 @@ export function createNativeResourcesTransport(
             orderIndex: r.orderIndex ?? 0,
             folderId: r.folderId,
           })),
-          projectRootOverride: projectRoot,
         });
       });
     },

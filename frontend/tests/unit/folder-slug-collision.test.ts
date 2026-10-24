@@ -150,3 +150,26 @@ describe("folder slug collision no longer overwrites an existing descriptor", ()
     }
   });
 });
+
+describe("folder slug that is not a plain name", () => {
+  it.each(["../escape", "a/b", ""])(
+    "writes the folder under its id instead of slug %j",
+    async (slug) => {
+      const projectRoot = await fs.mkdtemp(
+        path.join(os.tmpdir(), "getwrite-folder-slug-guard-"),
+      );
+      try {
+        const folder = createFolderResource({ name: "F", slug });
+        await writeResourceToFile(projectRoot, folder);
+        const written = await fs.readFile(
+          path.join(projectRoot, "folders", folder.id, "folder.json"),
+          "utf8",
+        );
+        expect(JSON.parse(written).id).toBe(folder.id);
+        expect(await fs.readdir(projectRoot)).not.toContain("escape");
+      } finally {
+        await removeDirRetry(projectRoot);
+      }
+    },
+  );
+});

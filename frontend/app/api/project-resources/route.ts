@@ -6,6 +6,10 @@ import {
 import { respondInvalidProjectId } from "../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../src/lib/models/locked-access";
 import { withStorageContext } from "../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../src/lib/models/resource-id";
 
 interface ProjectResourcesRequestBody {
   projectId: string;
@@ -25,6 +29,8 @@ async function handlePost(req: NextRequest): Promise<Response> {
       { status: 400 },
     );
   }
+
+  if (!isResourceId(body.resourceId)) return respondInvalidResourceId();
 
   try {
     const { resourceContent, revisions } = await fetchResourceContentCore(

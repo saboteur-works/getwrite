@@ -85,17 +85,36 @@ describe("POST /api/compile/markdown", () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     const projectPath = path.join(projectsDir, projectId);
-    await writeResource(projectPath, "r1", paragraphDoc("first body"));
-    await writeResource(projectPath, "r2", paragraphDoc("second body"));
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      paragraphDoc("first body"),
+    );
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000002",
+      paragraphDoc("second body"),
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         compileRequest({
           projectId,
-          resourceIds: ["r1", "r2"],
+          resourceIds: [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+          ],
           resources: [
-            { id: "r1", name: "Chapter One", type: "text" },
-            { id: "r2", name: "Chapter Two", type: "text" },
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Chapter One",
+              type: "text",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000002",
+              name: "Chapter Two",
+              type: "text",
+            },
           ],
           includeHeaders: true,
           projectName: "My Novel",
@@ -120,14 +139,24 @@ describe("POST /api/compile/markdown", () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     const projectPath = path.join(projectsDir, projectId);
-    await writeResource(projectPath, "r1", paragraphDoc("body only"));
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      paragraphDoc("body only"),
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         compileRequest({
           projectId,
-          resourceIds: ["r1"],
-          resources: [{ id: "r1", name: "Solo", type: "text" }],
+          resourceIds: ["00000000-0000-4000-8000-000000000001"],
+          resources: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Solo",
+              type: "text",
+            },
+          ],
           includeHeaders: false,
           projectName: "Solo Project",
         }) as never,
@@ -150,24 +179,48 @@ describe("POST /api/compile/markdown", () => {
           type: "image",
           attrs: {
             src: "/api/resource/img1/file",
-            alt: "pic",
-            resourceId: "img1",
+            alt: "00000000-0000-4000-8000-000000000005",
+            resourceId: "00000000-0000-4000-8000-000000000004",
           },
         },
       ],
     };
-    await writeResource(projectPath, "r1", imageDoc);
-    await writeResource(projectPath, "r2", imageDoc);
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      imageDoc,
+    );
+    await writeResource(
+      projectPath,
+      "00000000-0000-4000-8000-000000000002",
+      imageDoc,
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         compileRequest({
           projectId,
-          resourceIds: ["r1", "r2", "pic"],
+          resourceIds: [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+            "00000000-0000-4000-8000-000000000005",
+          ],
           resources: [
-            { id: "r1", name: "One", type: "text" },
-            { id: "r2", name: "Two", type: "text" },
-            { id: "pic", name: "Picture", type: "image" },
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "One",
+              type: "text",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000002",
+              name: "Two",
+              type: "text",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000005",
+              name: "Picture",
+              type: "image",
+            },
           ],
           includeHeaders: true,
           projectName: "Gallery",

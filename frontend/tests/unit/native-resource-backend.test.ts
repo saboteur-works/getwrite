@@ -468,19 +468,13 @@ describe("native resources transport — in-process backend reuses the shared re
       text: { plainText: "b" },
     });
 
-    // reorder() resolves the project by internal id (the pre-lift route's
-    // legacy behavior) — passing the actual project.json internal id here.
-    await transport.reorder(
-      projectId,
-      {
-        folderOrder: [],
-        resourceOrder: [
-          { id: a.resource.id, orderIndex: 1 },
-          { id: b.resource.id, orderIndex: 0 },
-        ],
-      },
-      path.join(PROJECTS_DIR, projectId),
-    );
+    await transport.reorder(projectId, {
+      folderOrder: [],
+      resourceOrder: [
+        { id: a.resource.id, orderIndex: 1 },
+        { id: b.resource.id, orderIndex: 0 },
+      ],
+    });
 
     // No throw == success; the underlying core swallows per-item failures.
   });

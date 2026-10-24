@@ -22,35 +22,24 @@
  * errors and map them to their existing HTTP status codes; the native
  * backend lets them propagate directly to the caller.
  *
- * Every operation except {@link reorderResourcesCore} resolves a project's
- * on-disk root via {@link resolveProjectRoot} (directory-basename convention
- * — ADR-017/018) and throws the shared `InvalidProjectIdCoreError` (imported
- * from `project-crud-core.ts` rather than re-declared here) when the
- * supplied `projectId` is not a well-formed UUID.
- * {@link reorderResourcesCore} is a deliberate divergence, preserved exactly
- * from the pre-lift route: it resolves the project either from a
- * caller-supplied `projectRoot` override or by scanning every directory
- * under `resolveProjectsDir()` for a `project.json` whose *internal* `id`
- * matches `projectId` (`findProjectRootByInternalId`, reused from
- * `project-crud-core.ts` rather than re-implemented) — not the directory
- * basename convention every other operation here uses.
+ * Every operation resolves a project's on-disk root via
+ * {@link resolveProjectRoot} (directory-basename convention — ADR-017/018)
+ * and throws the shared `InvalidProjectIdCoreError` (imported from
+ * `project-crud-core.ts` rather than re-declared here) when the supplied
+ * `projectId` is not a well-formed UUID.
  */
 import path from "node:path";
 import type { Dirent } from "node:fs";
 import { cp, exists, readdir, readFile, stat, writeFile } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
-import {
-  InvalidProjectIdCoreError,
-  findProjectRootByInternalId,
-} from "./project-crud-core";
-import { resolveProjectsDir } from "./projects-dir";
+import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { withMetaLock } from "./meta-locks";
 import {
   createResourceOfType,
   writeResourceToFile,
   type CreateResourceOpts,
 } from ".";
-import { validateMediaFile } from "./media-validation";
+import { isPlainFileName, validateMediaFile } from "./media-validation";
 import { extractAudioMetadata, extractImageMetadata } from "./media-metadata";
 import { listRevisions } from "./revision";
 import {
@@ -158,6 +147,11 @@ export async function createResourceCore(
 ): Promise<AnyResource> {
   const projectPath = resolveResourceProjectRootOrThrow(projectId);
   await assertProjectExists(projectPath, projectId);
+  for (const name of [resourceData.image?.file, resourceData.audio?.file]) {
+    if (name !== undefined && !isPlainFileName(name)) {
+      throw new InvalidResourceFileNameCoreError();
+    }
+  }
 
   const resource = createResourceOfType(resourceData.type, resourceData);
   await writeResourceWithInitialRevision(projectPath, resource);
@@ -168,6 +162,17 @@ export async function createResourceCore(
 // ---------------------------------------------------------------------------
 // 2. Upload media resource
 // ---------------------------------------------------------------------------
+
+/**
+ * Thrown by {@link createResourceCore} when `image.file` or `audio.file` is
+ * not a bare file name ({@link isPlainFileName}). Routes map it to 400.
+ */
+export class InvalidResourceFileNameCoreError extends Error {
+  constructor() {
+    super("Media file name must be a bare file name.");
+    this.name = "InvalidResourceFileNameCoreError";
+  }
+}
 
 /** Thrown by {@link uploadMediaResourceCore} when the file fails validation. */
 export class MediaUploadValidationError extends Error {
@@ -380,13 +385,14 @@ export async function deleteResourceCore(
 
 /**
  * Sidecar keys derived by the server (the canonical save in
- * `revision-core.ts` writes `wordCount`). A client sidecar update never
+ * `revision-core.ts` writes `wordCount`; upload writes a media resource's
+ * `file`, which the file route joins into a path). A client sidecar update never
  * supplies them: they are dropped from the update before the merge, so the
  * stored value is left as the canonical save wrote it. `updatedAt` is not
  * listed: a client-sent `updatedAt` was read in the code path but not
  * observed (experiments.md, Part B).
  */
-const SERVER_DERIVED_SIDECAR_KEYS: readonly string[] = ["wordCount"];
+const SERVER_DERIVED_SIDECAR_KEYS: readonly string[] = ["wordCount", "file"];
 
 /**
  * Allowlist of sidecar keys {@link updateSidecarCore}'s `clearKeys` parameter
@@ -820,18 +826,11 @@ export interface ReorderResourceEntry {
 export interface ReorderResourcesInput {
   folderOrder: ReorderFolderEntry[];
   resourceOrder: ReorderResourceEntry[];
-  /**
-   * Legacy override: when supplied, used directly instead of scanning for a
-   * `project.json` whose internal `id` matches `projectId`. Mirrors the
-   * pre-lift route's `body.projectRoot ?? findProjectRoot(...)` fallback.
-   */
-  projectRootOverride?: string;
 }
 
 /**
- * Thrown by {@link reorderResourcesCore} when no project can be resolved —
- * neither `projectRootOverride` was supplied, nor did any project directory
- * under `resolveProjectsDir()` match `projectId` by internal id.
+ * Thrown by {@link reorderResourcesCore} when `projectId` is a well-formed
+ * UUID but the resolved directory has no `project.json`.
  */
 export class ReorderProjectNotFoundError extends Error {
   constructor() {
@@ -857,30 +856,22 @@ export class ReorderSaveError extends Error {
 /**
  * Persists a folder/resource reorder for a project.
  *
- * A deliberate divergence from every other operation in this module: this
- * route predates the ADR-017/018 tenant-route migration and still resolves
- * the project via `projectRootOverride ?? findProjectRootByInternalId(...)`
- * (a legacy fallback that scans every project directory and matches on
- * `project.json`'s *internal* `id`, not the directory basename) — preserved
- * exactly, reusing `findProjectRootByInternalId` from `project-crud-core.ts`
- * rather than re-implementing the scan.
+ * Resolves the project from `projectId` (the directory basename) like every
+ * other operation here. The route used to accept a client-sent `projectRoot`
+ * and write under it unchecked, and otherwise matched `projectId` against
+ * `project.json`'s internal `id`; both are gone.
  *
- * Lifted verbatim from `POST /api/projects/[projectId]/reorder`'s `reorder`
- * handler body (minus request-JSON parsing, which stays in the route).
- *
- * @throws {ReorderProjectNotFoundError} When no project can be resolved.
+ * @throws {InvalidProjectIdCoreError} When `projectId` is not a UUID.
+ * @throws {ReorderProjectNotFoundError} When no project exists at that id.
  */
 export async function reorderResourcesCore(
   projectId: string,
   input: ReorderResourcesInput,
 ): Promise<void> {
-  const { folderOrder, resourceOrder, projectRootOverride } = input;
+  const { folderOrder, resourceOrder } = input;
 
-  const projectsDir = resolveProjectsDir();
-  const projectRoot =
-    projectRootOverride ??
-    (await findProjectRootByInternalId(projectsDir, projectId));
-  if (!projectRoot) {
+  const projectRoot = resolveResourceProjectRootOrThrow(projectId);
+  if (!(await exists(path.join(projectRoot, "project.json")))) {
     throw new ReorderProjectNotFoundError();
   }
 

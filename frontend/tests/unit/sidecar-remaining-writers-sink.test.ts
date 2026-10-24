@@ -32,8 +32,12 @@ import { makeRefFixture } from "./helpers/f87-reference-delete-fixture";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const dirs: string[] = [];
+const originalProjectsDir = process.env.GETWRITE_PROJECTS_DIR;
 
 afterEach(async () => {
+  if (originalProjectsDir === undefined)
+    delete process.env.GETWRITE_PROJECTS_DIR;
+  else process.env.GETWRITE_PROJECTS_DIR = originalProjectsDir;
   while (dirs.length > 0) {
     const dir = dirs.pop();
     if (dir) await removeDirRetry(dir);
@@ -45,6 +49,23 @@ async function makeRoot(): Promise<string> {
   dirs.push(root);
   await fs.mkdir(path.join(root, "meta"), { recursive: true });
   return root;
+}
+
+/**
+ * A project the cores can resolve by id: a UUID-named directory with a
+ * `project.json`, under a projects dir named by `GETWRITE_PROJECTS_DIR`.
+ */
+async function makeProject(): Promise<{ root: string; projectId: string }> {
+  const projectsDir = await makeRoot();
+  process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  const projectId = generateUUID();
+  const root = path.join(projectsDir, projectId);
+  await fs.mkdir(path.join(root, "meta"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, "project.json"),
+    JSON.stringify({ id: projectId, name: "Reorder" }),
+  );
+  return { root, projectId };
 }
 
 /**
@@ -72,7 +93,7 @@ async function holdSidecar(
 
 describe("reorderResourcesCore sidecar loop on the sink", () => {
   it("keeps a racing change in 30 repetitions, and merges orderIndex and folderId as before", async () => {
-    const root = await makeRoot();
+    const { root, projectId } = await makeProject();
     const a = generateUUID();
     const b = generateUUID();
     const folder = generateUUID();
@@ -80,8 +101,7 @@ describe("reorderResourcesCore sidecar loop on the sink", () => {
     await writeSidecar(root, b, { name: "B", orderIndex: 1 });
     for (let i = 0; i < 30; i++) {
       await Promise.all([
-        reorderResourcesCore("unused", {
-          projectRootOverride: root,
+        reorderResourcesCore(projectId, {
           folderOrder: [],
           resourceOrder: [
             { id: a, orderIndex: 0, folderId: null },
@@ -108,14 +128,13 @@ describe("reorderResourcesCore sidecar loop on the sink", () => {
   it("updates the other sidecars, then rejects naming the one that failed", async () => {
     // note_51c813c1: a failed sidecar save used to be logged and skipped, and
     // the reorder reported success.
-    const root = await makeRoot();
+    const { root, projectId } = await makeProject();
     const bad = generateUUID();
     const good = generateUUID();
     // A directory where the sidecar file belongs makes the write fail.
     await fs.mkdir(sidecarPathForProject(root, bad), { recursive: true });
     await writeSidecar(root, good, { name: "Good", orderIndex: 5 });
-    const error = await reorderResourcesCore("unused", {
-      projectRootOverride: root,
+    const error = await reorderResourcesCore(projectId, {
       folderOrder: [],
       resourceOrder: [
         { id: bad, orderIndex: 0, folderId: null },

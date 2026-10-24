@@ -85,7 +85,7 @@ describe("POST /api/compile/text", () => {
     const projectPath = path.join(projectsDir, projectId);
     await writeResource(
       projectPath,
-      "r1",
+      "00000000-0000-4000-8000-000000000001",
       paragraphDoc("hello there"),
       "hello there",
     );
@@ -94,8 +94,14 @@ describe("POST /api/compile/text", () => {
       POST(
         compileRequest({
           projectId,
-          resourceIds: ["r1"],
-          resources: [{ id: "r1", name: "Chapter One", type: "text" }],
+          resourceIds: ["00000000-0000-4000-8000-000000000001"],
+          resources: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Chapter One",
+              type: "text",
+            },
+          ],
           includeHeaders: true,
           projectName: "My Novel",
         }) as never,
@@ -135,11 +141,24 @@ describe("POST /api/compile/text", () => {
     const plainPath = path.join(projectsDir, plainId);
     const subtypedPath = path.join(projectsDir, subtypedId);
     for (const projectPath of [plainPath, subtypedPath]) {
-      await writeResource(projectPath, "r1", paragraphDoc("one"), "one");
-      await writeResource(projectPath, "r2", paragraphDoc("two"), "two");
+      await writeResource(
+        projectPath,
+        "00000000-0000-4000-8000-000000000001",
+        paragraphDoc("one"),
+        "one",
+      );
+      await writeResource(
+        projectPath,
+        "00000000-0000-4000-8000-000000000002",
+        paragraphDoc("two"),
+        "two",
+      );
     }
     await fs.mkdir(path.join(subtypedPath, "meta"), { recursive: true });
-    for (const id of ["r1", "r2"]) {
+    for (const id of [
+      "00000000-0000-4000-8000-000000000001",
+      "00000000-0000-4000-8000-000000000002",
+    ]) {
       await fs.writeFile(
         path.join(subtypedPath, "meta", `resource-${id}.meta.json`),
         JSON.stringify({ id, type: "text", resourceSubtype: "Memoir" }),
@@ -152,10 +171,21 @@ describe("POST /api/compile/text", () => {
         POST(
           compileRequest({
             projectId,
-            resourceIds: ["r1", "r2"],
+            resourceIds: [
+              "00000000-0000-4000-8000-000000000001",
+              "00000000-0000-4000-8000-000000000002",
+            ],
             resources: [
-              { id: "r1", name: "Chapter One", type: "text" },
-              { id: "r2", name: "Chapter Two", type: "text" },
+              {
+                id: "00000000-0000-4000-8000-000000000001",
+                name: "Chapter One",
+                type: "text",
+              },
+              {
+                id: "00000000-0000-4000-8000-000000000002",
+                name: "Chapter Two",
+                type: "text",
+              },
             ],
             includeHeaders: true,
             projectName: "My Novel",
