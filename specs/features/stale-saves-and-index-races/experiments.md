@@ -128,11 +128,43 @@ Verdicts per sender (primary hold point `after-route`; `before-route` stated bes
 
 ## E-6 Editor config, overlapping and older-copy saves
 
-(empty; Task 5)
+Command (from `frontend/`, sandboxed): `E67_RESULT_OUT=<scratchpad>/e67-result.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e67.config.ts` (add `E67_REPS=<n>` to change the 20 repetitions). Script (not run by the suite): `scripts/e67-editor-config-entity-graph.test.ts`, config `scripts/vitest.e67.config.ts`. Run 2026-10-24 14:41 MDT (Task 5), branch `fix/stale-saves-and-index-races`, HEAD `2edcfcae`, unchanged source, Vitest 4.1.6, Node v24.15.0. Temp directory: `/tmp/claude-501/f93-e67-PIXT48` (mkdtemp under `$TMPDIR`; one fresh project per repetition; removed after the run). Result file: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/e67-result.json`. One run of the script, 20 repetitions per construction. Real cores called directly; stored values read from `project.json`. Unparseable = `project.json` failed `JSON.parse` after the calls; rejected = a core call threw. All constructions: unparseable 0 of 20, rejected 0 of 20.
+
+READ, not run: what each UI sender sends.
+- `HeadingSettingsModal.tsx` `handleSave` (`:132-155`) calls `onSave(sanitizeEditorHeadingMap(draftHeadings))`; `AppShell.tsx` `handleSaveHeadingSettings` (`:956-976`) calls `saveHeadingSettings(dirId, headings)`; the HTTP transport (`lib/api/editor-config.ts:54-76`) posts `{ projectId, headings }`. Only the `headings` key is sent. The draft is initialised from `initialHeadings` (`AppShell.tsx:1187`, the Redux value) when the modal mounts. The Save button is disabled while `isSaving` (`:277-289`).
+- `BodySettingsModal.tsx` `handleSave` (`:72-99`) calls `onSave(sanitizeEditorBody(draft) ?? {})`; `handleSaveBodySettings` (`AppShell.tsx:978-998`); transport posts `{ projectId, body }` (`editor-config.ts:79-101`). Only the `body` key is sent; Save disabled while `isSaving`.
+- Both handlers dispatch `setEditorConfig` with the response's `editorConfig.headings` and `.body`. The same two modals are also mounted from `ProjectSettingsDialog.tsx:218-224` and `ShellModalCoordinator.tsx:362`, with the same `onSave` shapes (the props, not the handlers, were read there).
+- `updateEditorConfigCore` (`editor-config-core.ts:96-125`) replaces `headings` or `body` only when the request carries it, inside the `updateProjectJson` mutate; the other key is taken from the stored value.
+
+MEASURED constructions (20 repetitions each; initial stored `editorConfig` = `headings {h1:{fontSize:"40px"}}`, `body {fontSize:"15px"}`):
+- 6a overlapping: `Promise.all` of `updateEditorConfigCore({headings: H1})` and `updateEditorConfigCore({body: B1})`. Stored config held both H1 and B1 in 20 of 20 repetitions; stored headings not H1 in 0 of 20; stored body not B1 in 0 of 20.
+- 6b older copy, modal-shaped: copy of the stored `editorConfig` read; `{body: B1}` completes; then `{headings: H1}` (the headings key only). Stored body not B1 in 0 of 20; stored headings not H1 in 0 of 20.
+- 6c older copy, whole-copy: as 6b, but the later send is `{headings: H1, body: <the older copy's body>}`. This is not a shape either modal sends (construction only). Stored body not B1 (equal to the older copy's body) in 20 of 20; stored headings not H1 in 0 of 20.
+
+Limits: the same-key case (a modal opened before another save of the same key, then saved) was not measured as a revert, since the later send is the later write by contract; the overlap in 6a is two in-process calls, not two HTTP requests; one ordering per construction.
+
+Closing lines:
+- E-6 overlapping saves of `headings` and `body` (6a): did not reproduce (0 of 20 lost a change).
+- E-6 older-copy save, shape the modals send (6b): did not reproduce (0 of 20 reverted).
+- E-6 older-copy save, whole-copy shape (6c, not sent by any read sender): reverted in 20 of 20.
 
 ## E-7 Entity-graph settings, older-copy save
 
-(empty; Task 5)
+Command (from `frontend/`, sandboxed): `E67_RESULT_OUT=<scratchpad>/e67-result.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e67.config.ts` (add `E67_REPS=<n>` to change the 20 repetitions). Script (not run by the suite): `scripts/e67-editor-config-entity-graph.test.ts`, config `scripts/vitest.e67.config.ts`. Run 2026-10-24 14:41 MDT (Task 5), branch `fix/stale-saves-and-index-races`, HEAD `2edcfcae`, unchanged source, Vitest 4.1.6, Node v24.15.0. Temp directory: `/tmp/claude-501/f93-e67-PIXT48` (mkdtemp under `$TMPDIR`; one fresh project per repetition; removed after the run). Result file: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/e67-result.json`. One run of the script, 20 repetitions per construction. Real cores called directly; stored values read from `project.json`. Unparseable = `project.json` failed `JSON.parse` after the calls; rejected = a core call threw. All constructions: unparseable 0 of 20, rejected 0 of 20.
+
+READ, not run: what the UI sender sends.
+- `EntityGraphSettingsPanel.tsx` `persist` (`:128-157`) calls `setEntityGraphSettings(projectId, nextConnectionTypes, nextHopRadius)`: always both values. `handleToggleConnectionType` (`:159-173`) builds `next` from the panel's own `connectionTypes` state with one key added or removed and sends the parsed hop-radius draft; `handleHopRadiusChange` (`:175-186`) sends the panel's `connectionTypes` state with the parsed radius. The panel's state is loaded once, on first open (`:103-126`), and replaced from each save response. The toggles and the radius input are `disabled={!isLoaded || isSaving}` (`:218`, `:259`). `EntityRelationshipGraphView.tsx` keeps its own copy of both values (`:346-354`, loaded `:430-431`) and updates it from `onSettingsSaved` (`:574-581`).
+- `setEntityGraphSettingsCore` (`entity-graph-settings-core.ts:116-143`) sets both `config.entityGraphConnectionTypes` and `config.entityGraphFocalHopRadius` from the request inside the `updateProjectJson` mutate, with no read of the stored values for either key. The route and `lib/api/entity-graph-settings.ts` pass the same three arguments (`entity-graph-settings.ts:146`; the route file was not read).
+
+MEASURED constructions (20 repetitions each; initial project has no stored entity-graph keys):
+- 7a older copy: copy S0 read with `getEntityGraphSettingsCore`; another save stores S1 = types `["authored","backlinks"]`, radius 3; then the panel-shaped send from S0 (S0 types plus `proximityMentions`, S0 radius) completes. Stored types differ from S1's in 20 of 20; stored radius differs from S1's in 20 of 20; either key reverted in 20 of 20.
+- 7b overlapping: two panel-shaped sends from the same S0 started together, (S0 types plus `backlinks`, S0 radius) and (S0 types, radius 4). Stored types lacked `backlinks` in 20 of 20; stored radius was not 4 in 0 of 20; either lost in 20 of 20.
+
+Limits: 7b is two in-process calls from one S0; the panel disables its controls while a save is in flight, so 7b is not a sequence the read panel produces from one mounted panel (not run against the component). 7a needs a second writer (another window, device, or the CLI/route) after the panel loaded.
+
+Closing lines:
+- E-7 older-copy save of `entityGraphConnectionTypes` and `entityGraphFocalHopRadius` (7a): reverted in 20 of 20 (either key; types 20 of 20, radius 20 of 20).
+- E-7 overlapping sends (7b, construction only): either key lost in 20 of 20.
 
 ## E-8 Mention index writer races
 
