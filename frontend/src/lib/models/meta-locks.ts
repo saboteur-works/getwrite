@@ -7,6 +7,8 @@
  * newly extended chain. Operations within the same project run in arrival order
  * with no concurrency.
  */
+import { getLockGuard } from "./lock-guard";
+
 const locks: Map<string, Promise<void>> = new Map();
 
 export async function withMetaLock<T>(
@@ -14,6 +16,7 @@ export async function withMetaLock<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   const key = projectRoot || "global";
+  getLockGuard()?.beforeLock("withMetaLock", key);
   const prev = locks.get(key) ?? Promise.resolve();
 
   // Chain the new operation after previous

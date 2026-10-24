@@ -20,6 +20,7 @@ import {
 import { acquireLock } from "../../src/lib/models/locks";
 import { withMetaLock } from "../../src/lib/models/meta-locks";
 import { countWords } from "../../src/lib/word-count";
+import { outsideFileLock } from "../helpers/lockOrderGuard";
 
 /**
  * A resource's `wordCount` lives in its sidecar and is what list views use to
@@ -154,10 +155,13 @@ describe("updateRevisionInPlace keeps the sidecar's wordCount in sync", () => {
         const result = await base.readFile(p, e);
         if (isArmed && p === sidecarPath) {
           isArmed = false;
-          edit = mutateSidecar(projectRoot, resourceId, (current) => ({
-            ...(current ?? {}),
-            userMetadata: { status: "draft" },
-          }));
+          // A separate request, not a call made from inside the sidecar lock.
+          edit = outsideFileLock(() =>
+            mutateSidecar(projectRoot, resourceId, (current) => ({
+              ...(current ?? {}),
+              userMetadata: { status: "draft" },
+            })),
+          );
           await new Promise((resolve) => setTimeout(resolve, 30));
         }
         return result;

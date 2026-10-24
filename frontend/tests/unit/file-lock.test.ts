@@ -2,11 +2,20 @@
  * Feature 92, Task 7: the per-file lock primitive (`withFileLock`).
  * Pure in-memory: paths are only keys, no file is touched.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as fileLockModule from "../../src/lib/models/file-lock";
 import { withFileLock } from "../../src/lib/models/file-lock";
 import { withMetaLock } from "../../src/lib/models/meta-locks";
 import { acquireLock } from "../../src/lib/models/locks";
+import {
+  getLockGuard,
+  installLockGuard,
+  LockOrderViolationError,
+} from "../../src/lib/models/lock-guard";
+import * as io from "../../src/lib/models/io";
+import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import { mutateSidecar, writeSidecar } from "../../src/lib/models/sidecar";
+import { createLockOrderGuard } from "../helpers/lockOrderGuard";
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve!: () => void;
@@ -183,5 +192,137 @@ describe("withFileLock", () => {
     await first.catch(() => undefined);
     await second;
     expect(fileLockModule.fileLockKeyCountForTests()).toBe(0);
+  });
+});
+
+describe("lock-order guard (Feature 92, FR-8, FR-9; installed by tests/setup.ts)", () => {
+  const PROJECT = "/g/project.json";
+  const SIDECAR = "/g/meta/resource-a.meta.json";
+  const OTHER = "/g/meta/resource-b.meta.json";
+
+  it("is installed for every test file", () => {
+    expect(getLockGuard()).not.toBeNull();
+  });
+
+  it("throws for withMetaLock taken inside a file lock", async () => {
+    await expect(
+      withFileLock(PROJECT, () => withMetaLock("/g", async () => "x")),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+  });
+
+  it("throws for acquireLock taken inside a file lock", async () => {
+    await expect(
+      withFileLock(PROJECT, async () => {
+        (await acquireLock("/g"))();
+      }),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+  });
+
+  it("throws for a nested file lock on the same file, and for another file", async () => {
+    await expect(
+      withFileLock(PROJECT, () => withFileLock(PROJECT, async () => 1)),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+    await expect(
+      withFileLock(SIDECAR, () => withFileLock(OTHER, async () => 1)),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+  });
+
+  it("throws for a sidecar lock inside the project.json lock and the reverse", async () => {
+    await expect(
+      withFileLock(PROJECT, () => withFileLock(SIDECAR, async () => 1)),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+    await expect(
+      withFileLock(SIDECAR, () => withFileLock(PROJECT, async () => 1)),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+  });
+
+  it("throws after an await inside the lock body, not only before it", async () => {
+    await expect(
+      withFileLock(PROJECT, async () => {
+        await tick();
+        await withMetaLock("/g", async () => 1);
+      }),
+    ).rejects.toBeInstanceOf(LockOrderViolationError);
+  });
+
+  it("names the lock taken and the file lock held", async () => {
+    await expect(
+      withFileLock(PROJECT, () => withMetaLock("/g", async () => 1)),
+    ).rejects.toThrow(/withMetaLock\(\/g\).*\/g\/project\.json/);
+  });
+
+  it("releases the file lock after a violation, so a later call runs", async () => {
+    await withFileLock(PROJECT, () => withMetaLock("/g", async () => 1)).catch(
+      () => undefined,
+    );
+    await expect(withFileLock(PROJECT, async () => "ok")).resolves.toBe("ok");
+    expect(fileLockModule.fileLockKeyCountForTests()).toBe(0);
+  });
+
+  it("allows acquireLock -> file lock and withMetaLock -> file lock", async () => {
+    const release = await acquireLock("/g");
+    await expect(withFileLock(PROJECT, async () => 1)).resolves.toBe(1);
+    release();
+    await expect(
+      withMetaLock("/g", () => withFileLock(PROJECT, async () => 2)),
+    ).resolves.toBe(2);
+  });
+
+  it("allows acquireLock(revision-content) -> withMetaLock", async () => {
+    const release = await acquireLock("revision-content:/g:a");
+    await expect(withMetaLock("/g", async () => 3)).resolves.toBe(3);
+    release();
+  });
+
+  it("allows withMetaLock -> sidecar lock, then withMetaLock -> project.json lock, in sequence", async () => {
+    await expect(
+      withMetaLock("/g", async () => {
+        await withFileLock(SIDECAR, async () => undefined);
+        await withFileLock(PROJECT, async () => undefined);
+        return "done";
+      }),
+    ).resolves.toBe("done");
+  });
+
+  describe("sidecar mutate callbacks", () => {
+    const previous = io.getStorageAdapter();
+    beforeEach(() => io.setStorageAdapter(createMemoryAdapter()));
+    afterEach(() => io.setStorageAdapter(previous));
+
+    it("throws when the callback calls writeSidecar", async () => {
+      await expect(
+        mutateSidecar("/g", "a", async () => {
+          await writeSidecar("/g", "b", { name: "x" });
+          return { name: "y" };
+        }),
+      ).rejects.toBeInstanceOf(LockOrderViolationError);
+    });
+
+    it("throws when the callback calls the sink", async () => {
+      await expect(
+        mutateSidecar("/g", "a", async () => {
+          await mutateSidecar("/g", "b", () => ({ name: "x" }));
+          return { name: "y" };
+        }),
+      ).rejects.toBeInstanceOf(LockOrderViolationError);
+    });
+
+    it("does not throw for the sink's own sequence (sidecar lock, then the revision bump)", async () => {
+      await expect(
+        writeSidecar("/g", "a", { name: "ok" }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("outside tests", () => {
+    afterEach(() => installLockGuard(createLockOrderGuard()));
+
+    it("does nothing when no guard is installed: the same nesting runs", async () => {
+      installLockGuard(null);
+      expect(getLockGuard()).toBeNull();
+      await expect(
+        withFileLock(PROJECT, () => withMetaLock("/g", async () => "ran")),
+      ).resolves.toBe("ran");
+    });
   });
 });

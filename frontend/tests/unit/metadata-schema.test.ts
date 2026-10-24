@@ -34,6 +34,7 @@ import type {
 } from "../../src/lib/models/types";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { withFileLock } from "../../src/lib/models/file-lock";
+import { outsideFileLock } from "../helpers/lockOrderGuard";
 import {
   changeFieldTypeWithMigration,
   updateFieldAppliesTo,
@@ -1129,7 +1130,7 @@ describe("the 13 withLockedSchema operations on the project.json file lock", () 
       let contentAfterWait = "";
       await withFileLock(file, async () => {
         heldContent = await fs.readFile(file, "utf8");
-        op = run(dir).finally(() => {
+        op = outsideFileLock(() => run(dir)).finally(() => {
           hasSettled = true;
         });
         // Time for the operation to take its outer lock and, if it does not
@@ -1224,7 +1225,7 @@ describe("the three migration operations write the schema on the project.json fi
       let contentAfterWait = "";
       await withFileLock(file, async () => {
         heldContent = await fs.readFile(file, "utf8");
-        op = run(dir).finally(() => {
+        op = outsideFileLock(() => run(dir)).finally(() => {
           hasSettled = true;
         });
         await new Promise((r) => setTimeout(r, 40));

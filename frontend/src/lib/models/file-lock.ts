@@ -28,8 +28,13 @@
  * `revision-content:` keys) and `withMetaLock -> file lock`. No edge leaves it.
  * The existing edge `acquireLock(revision-content) -> withMetaLock` is not
  * changed by this module.
+ *
+ * Under test, a guard (`lock-guard.ts`, installed by `tests/setup.ts`) throws
+ * `LockOrderViolationError` for any lock taken inside `fn`. In production the
+ * guard slot is `null` and this module behaves as if it were absent.
  */
 import path from "node:path";
+import { getLockGuard } from "./lock-guard";
 
 interface LockEntry {
   /** Settles (never rejects) when the most recent call for the key finishes. */
@@ -45,6 +50,8 @@ export async function withFileLock<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   const key = path.resolve(filePath);
+  const guard = getLockGuard();
+  guard?.beforeLock("withFileLock", key);
   const entry: LockEntry = entries.get(key) ?? {
     tail: Promise.resolve(),
     pending: 0,
@@ -52,7 +59,9 @@ export async function withFileLock<T>(
   entries.set(key, entry);
   entry.pending += 1;
 
-  const run: Promise<T> = entry.tail.then(() => fn());
+  const run: Promise<T> = entry.tail.then(() =>
+    guard ? guard.runInFileLock(key, fn) : fn(),
+  );
   entry.tail = run.then(
     () => undefined,
     () => undefined,
