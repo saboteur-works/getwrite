@@ -624,10 +624,13 @@ function readDismissedNoiseTerms(
  * (idempotent — dismissing the same term twice does not duplicate it);
  * `dismissed: false` removes it if present (also idempotent). Either way,
  * the resulting array — including an empty one, when the last dismissal is
- * cleared — is passed to `updateSidecarCore` as the new value of
- * `dismissedNoiseTerms`. An empty array is not `undefined`, so it survives
- * `JSON.stringify` and the merge intact; this is why no change to
- * `updateSidecarCore`'s `clearKeys` allowlist is needed here.
+ * cleared — is merged over the stored sidecar as the new value of
+ * `dismissedNoiseTerms` by `mergeSidecarUpdate`, the read-merge-write inside
+ * the sidecar sink. The array is computed from the sidecar read inside the
+ * sink. It does not go through `updateSidecarCore`, so that function's side
+ * effects (the entity-graph position cleanup) do not run here. An empty array
+ * is not `undefined`, so it survives the merge intact and no `clearKeys` entry
+ * is needed.
  */
 export async function setNoiseTermDismissedCore(
   projectId: string,
@@ -645,9 +648,7 @@ export async function setNoiseTermDismissedCore(
         ? current
         : [...current, normalized]
       : current.filter((entry) => entry !== normalized);
-    return omitServerDerivedKeys(
-      normalizeResourceSubtype({ dismissedNoiseTerms: next }),
-    );
+    return { dismissedNoiseTerms: next };
   });
 }
 
