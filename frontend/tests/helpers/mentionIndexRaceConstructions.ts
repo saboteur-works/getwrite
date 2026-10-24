@@ -38,14 +38,8 @@ export type PairId =
   | "removeVsRescan"
   | "rescanVsRunTask"
   | "persistVsPersist";
-export const PAIRS: PairId[] = [
-  "removeVsRunTask",
-  "removeVsRescan",
-  "rescanVsRunTask",
-  "persistVsPersist",
-];
 
-export const REP_TIMEOUT_MS = 5000;
+const REP_TIMEOUT_MS = 5000;
 const GATE_RELEASE_MS = 500;
 
 export interface Outcome {

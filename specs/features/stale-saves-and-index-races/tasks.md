@@ -32,7 +32,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (environment record), FR-22 (baseline half), AC-1 (file exists before the first fix commit). Earlier figures are reported, not current; measure.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-3 caller re-search and E-4 key inventory
 **What:** Search again for every caller of `updateSidecarCore`, and record the key inventory (E-4) for a real sidecar and a real page resource copy.
@@ -41,7 +41,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-3, FR-1 (E-4), AC-2, and the input to FR-20 and OQ-5. The 2026-10-24 finding was none, with two production callers (F93-2); this task confirms or contradicts it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Experiments E-1, E-2, E-3 (sidecar stale-copy before values)
 **What:** Run the three sidecar stale-copy measurements on unchanged `main` and record the counts.
@@ -50,7 +50,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (E-1..E-3), FR-9 (before values), AC-1. Gates nothing: the sidecar change is promised by decision and proceeds independently (FR-2); these supply the before values for Task 13. Reuse the construction of Feature 92's OQ-9 measurement (`specs/features/project-json-single-lock/experiments.md`).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Experiment E-5 (features-route senders)
 **What:** Measure whether two quick edits from one window lose one in `RelationshipTypesSettings`, `ProjectFeatureToggles` and `OrganizerCardBodySettings`.
@@ -59,7 +59,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (E-5), AC-1. Gate for Tasks 15 and 16 (FR-2, FR-12, OQ-4). Never use a prop on an in-project component without opening its source and stories first.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Experiments E-6 and E-7 (editor config and entity-graph settings)
 **What:** Measure whether overlapping or older-copy saves revert a setting in `editor-config-core.ts` and `entity-graph-settings-core.ts`.
@@ -68,7 +68,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (E-6, E-7), AC-1. Gate for Task 17 (FR-14, F93-3).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Experiment E-8 (mention index races)
 **What:** Measure the four mention-index writer pairs on unchanged `main`.
@@ -77,7 +77,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (E-8), AC-1. Gate for Task 20 (FR-15, per pair). Construction precedent: the pre-PR #300 `inverted-index.ts` race (20 of 20 lost).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Experiment E-9 (backlinks races)
 **What:** Measure the four backlinks writer pairs on unchanged `main`.
@@ -86,7 +86,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (E-9), AC-1. Gate for Task 21 (FR-16, per pair). An atomic `computeBacklinks` recompute stays a recorded follow-up unless the owner widens scope (F93-4).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: FR-17 caller audit for the class B writers
 **What:** List every caller of each candidate class B writer and record whether it already holds `withMetaLock` for the same project root, directly or through a callee.
@@ -95,7 +95,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (list half), AC-10 (list half), FR-20. Read-only; done before any code that takes `withMetaLock` around a whole load, change and save. `meta-locks.ts` is not reentrant: a nested call chains behind the outer `fn` and never starts.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Sidecar tests first: table-driven keys, stale copies, known gap, read-failure branches
 **What:** Write the failing sidecar tests for the allowlist, the stale-copy cases, the `userMetadata` known gap and the FR-23 read-failure branches.
@@ -104,7 +104,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-9, FR-10, FR-23 (test half). Red by design until Tasks 10 and 11; the orchestrator does not commit a red tree as done and Tasks 10-12 follow on the same branch. Sidecar work does not wait on E-1..E-3 (FR-2).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Allowlist in updateSidecarCore
 **What:** Make `updateSidecarCore` store only the five client-writable keys, replacing the `SERVER_DERIVED_SIDECAR_KEYS` denylist.
@@ -113,7 +113,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 9
 **Estimate:** 3
 **Notes:** Satisfies FR-4, FR-5, FR-6, FR-7, FR-8, AC-3, AC-4 (single run), AC-6, AC-15. Fail-closed per `docs/standards/security.md`. Tests (d), (e) turn green in Task 11. Existing tests that send unlisted keys go red here and are rewritten in Task 12.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: updateSidecarCore read-failure branches
 **What:** Act by cause when the stored sidecar cannot be read: replace on a JSON parse failure, reject on any other error.
@@ -122,7 +122,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 10
 **Estimate:** 3
 **Notes:** Satisfies FR-23, FR-20 (failure half). Same file as Task 10, so serial. `docs/standards/failure-visibility.md`: a failure must not render as absence.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: FR-20 existing-test rewrites
 **What:** Edit the existing tests whose assertions depend on a key that is now ignored, and list each edit.
@@ -140,7 +140,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 3, 12
 **Estimate:** 2
 **Notes:** Satisfies FR-9 (hard acceptance), AC-4.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Features route: document last-write-wins and add the server-side overlap regression test
 **What:** Document whole-block last-write-wins in the route doc comment and add a server-side test that two overlapping requests for different blocks keep both.
@@ -149,7 +149,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** Satisfies FR-11 (comment half), FR-13 (server test). Ungated: no behaviour change. The `docs/features/project-configuration.md` half is Task 23.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Gated: in-flight guard for RelationshipTypesSettings
 **What:** Only if E-5 reproduced a lost edit for `RelationshipTypesSettings`, stop it sending a second edit until the first has settled; otherwise record counts and mark N/A.
@@ -167,7 +167,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 4, 15
 **Estimate:** 3
 **Notes:** Satisfies FR-12, FR-13, FR-2. Serialised after Task 15 only to share the guard pattern and avoid divergent mechanisms; if Task 15 was N/A, copy the `SubtypesSettings` pattern directly.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Gated: editor config and entity-graph settings revert fix
 **What:** For each of E-6 and E-7 that reproduced a reverted setting, make a key-level merge inside the existing `updateProjectJson` mutate if it is small; otherwise record a follow-up with the counts and change nothing.
@@ -185,7 +185,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 6, 7
 **Estimate:** 5
 **Notes:** Satisfies FR-18, AC-9 (before half). Eight pairs, each with its own fixtures; a shared parametrised helper is allowed. Red by design for reproduced pairs until Tasks 20 and 21.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Nested withMetaLock test
 **What:** Add the new test (and test-only hook if needed) that fails on a `withMetaLock` call nested inside a `withMetaLock` callback, before any writer takes the lock around a whole load, change and save.
@@ -203,7 +203,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 8, 18, 19
 **Estimate:** 3
 **Notes:** Satisfies FR-15, FR-17, FR-20, AC-9, AC-10. Concurrent with Task 21 (disjoint files). Importers and `reindex` persist at the end without `withMetaLock`; change them only if a reproduced pair implicates them. Estimate is gated-in; N/A costs 1.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Gated: backlinks removal under one withMetaLock
 **What:** If an E-9 pair that includes `removeResourceFromBacklinks` reproduced a loss, make it load, change and save `backlinks.json` inside one `withMetaLock` call; record anything one locked step cannot close as a follow-up.
@@ -212,7 +212,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 8, 18, 19
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-17, FR-20, AC-9, AC-10. Concurrent with Task 20. Estimate is gated-in; N/A costs 1.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Correct the "inside one withMetaLock" comments
 **What:** Correct the inaccurate comments in `mention-index.ts` and `backlinks.ts` to state what is locked after this feature.
@@ -221,7 +221,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 20, 21
 **Estimate:** 1
 **Notes:** Satisfies FR-19, AC-11. Required whether or not Tasks 20 and 21 changed code.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Documentation
 **What:** Update the docs for the allowlist, the known gaps, last-write-wins per block and the lock notes.
@@ -230,7 +230,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 13, 14, 15, 16, 17, 22
 **Estimate:** 3
 **Notes:** Satisfies FR-21, FR-10 (doc half), FR-11 (doc half). Wording describes what was measured and changed, nothing more.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Final suites
 **What:** Run every final suite on the branch and record the results next to the Task 1 baselines.
@@ -239,7 +239,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 23
 **Estimate:** 3
 **Notes:** Satisfies FR-22, AC-12, AC-1 (every fix commit names its gating entry). `pnpm test:e2e` runs outside the sandbox; stop only pids this task started.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 24

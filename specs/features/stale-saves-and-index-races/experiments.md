@@ -513,3 +513,59 @@ frontend/src/lib/models/mention-index.ts:131: * cross-entry scan is needed. Load
 ```
 
 Each of the four sits on a function whose body does load, change and save inside a single `withMetaLock` (`updateBacklinks`, `updateMentionIndex`, `removeResourceFromBacklinks` via `updateBacklinks`, `removeResourceFromMentionIndex`).
+
+## Final suites (Task 24)
+
+MEASURED, 2026-10-24, branch `fix/stale-saves-and-index-races`, main checkout. Baselines are the Task 1 values.
+
+`lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN`: no output (exit 1) before the suites, before `pnpm test:e2e`, and after `pnpm test:e2e`. `pnpm storybook` was not started. No process was stopped.
+
+| Suite | Baseline (Task 1) | Observed |
+|---|---|---|
+| `pnpm typecheck` (frontend/) | exit 0 | exit 0 |
+| `pnpm lint` (frontend/) | 0 errors / 392 warnings | exit 0; 0 errors / 392 warnings |
+| `pnpm test:ci` (frontend/) | 675 files; 8217 passed / 1 failed (EntityGraphSettingsPanel) / 1 skipped / 2 expected fail | 678 files passed (678); 8268 passed / 0 failed / 1 skipped / 6 expected fail (8275) |
+| `pnpm test:e2e` (frontend/, outside the sandbox) | 230 passed / 1 skipped / 0 failed | 230 passed / 1 skipped / 0 failed; exit 0 (1.3m) |
+| `pnpm --filter getwrite-cli test` | 23 files / 153 tests | Run 1 (sandboxed, run with test:ci): 1 failed / 22 passed files; 1 failed / 152 passed tests. Failing test: `tests/qa/server.test.ts > startQaServer > when port 3000 is occupied it starts on a different port, sets GETWRITE_PROJECTS_DIR before start, serves valid JSON, and stops cleanly with no orphaned process`. Run 2 (outside the sandbox): 23 passed files; 153 passed tests. |
+| `pnpm --filter getwrite-electron test` | 34 files / 528 tests | 34 passed files; 528 passed tests |
+
+CLI and Electron were run because they import models that changed (indexer-queue, backlinks, mention-index, meta-locks, resource-crud-core).
+
+After CLI run 1, `git status --short` listed ` M frontend/tsconfig.json` (two `include` entries under `.next-qa/getwrite-cli-qa-server-UpzPsR/` added, `lib`/`types`/`plugins` arrays reformatted). The file was restored with `git checkout -- frontend/tsconfig.json`; after CLI run 2 `git status --short` was clean.
+
+### `pnpm knip` (repo root), by section
+
+Exit code 1 (baseline: exit code 1).
+
+| Section | Baseline | Observed |
+|---|---|---|
+| Unused files | 49 | 49 |
+| Unused dependencies | 1 | 1 |
+| Unused devDependencies | 4 | 4 |
+| Unlisted dependencies | 6 | 6 |
+| Unlisted binaries | 4 | 4 |
+| Unused exports | 160 | 167 (+7) |
+| Unused exported types | 174 | 174 |
+| Duplicate exports | 14 | 14 |
+| Sum of eight sections | 412 | 419 (+7) |
+| Configuration hints (not in the sum) | 6 | 6 |
+
+The 7 additional Unused exports entries, all in test helper files added by Task 18:
+- `frontend/tests/helpers/backlinksRaceConstructions.ts`: `PAIRS` (line 49), `REP_TIMEOUT_MS` (57), `X` (127), `Y` (128), `Z` (129)
+- `frontend/tests/helpers/mentionIndexRaceConstructions.ts`: `PAIRS` (41), `REP_TIMEOUT_MS` (48)
+
+No new findings in any other section; none for `updateMentionIndex`, `updateBacklinks`, `meta-locks.ts`, `indexer-queue.ts` or `resource-crud-core.ts`. Not fixed by this task (Task 24 modifies only tests needed to make a genuine gap pass). Result against the "no new findings" condition: NOT met (+7).
+
+#### knip delta closed (re-measured 2026-10-24)
+
+MEASURED, 2026-10-24, branch `fix/stale-saves-and-index-races`, main checkout. In `frontend/tests/helpers/backlinksRaceConstructions.ts` the `export` keyword was removed from `REP_TIMEOUT_MS`, `X`, `Y`, `Z`; in `frontend/tests/helpers/mentionIndexRaceConstructions.ts` from `REP_TIMEOUT_MS`. `PAIRS` in both files is referenced nowhere (grep over `frontend/tests` and `frontend/e2e`), and with `export` removed alone `pnpm lint` reported 394 warnings (`@typescript-eslint/no-unused-vars` on both `PAIRS`), so both `PAIRS` declarations were deleted. No test assertion changed; `PairId` and `Mode` types untouched.
+
+`pnpm knip` (repo root), exit code 1: Unused files 49; Unused dependencies 1; Unused devDependencies 4; Unlisted dependencies 6; Unlisted binaries 4; Unused exports 160; Unused exported types 174; Duplicate exports 14. Sum 412 (equals baseline).
+
+Also re-run from `frontend/`: `pnpm typecheck` exit 0; `pnpm lint` 0 errors / 392 warnings; `pnpm exec vitest run tests/unit/mention-index-concurrent-writes.test.ts tests/unit/backlinks-concurrent-writes.test.ts`: 2 files passed, 9 passed | 4 expected fail (13).
+
+### Task 9 and Task 18 tests, 9 consecutive runs
+
+Command (frontend/): `pnpm exec vitest run tests/unit/resource-crud-core-sidecar-sink.test.ts tests/unit/resource-sidecar-route.test.ts tests/unit/mention-index-concurrent-writes.test.ts tests/unit/backlinks-concurrent-writes.test.ts`
+
+Runs 1 to 9, each identical: Test Files 4 passed (4); Tests 65 passed | 4 expected fail (69).

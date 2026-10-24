@@ -46,15 +46,8 @@ export type PairId =
   | "watcherVsRunTask"
   | "removeVsRunTask"
   | "removeVsRecompute";
-export const PAIRS: PairId[] = [
-  "removeVsPersist",
-  "persistVsPersist",
-  "watcherVsRunTask",
-  "removeVsRunTask",
-  "removeVsRecompute",
-];
 
-export const REP_TIMEOUT_MS = 5000;
+const REP_TIMEOUT_MS = 5000;
 const GATE_RELEASE_MS = 500;
 
 export interface Outcome {
@@ -124,9 +117,9 @@ function installAdapter(gate: Gate | null): void {
 }
 
 /** Ids are UUIDs because computeBacklinks finds links by UUID in text. */
-export const X = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-export const Y = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-export const Z = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const X = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const Y = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const Z = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 async function addResource(
   root: string,
