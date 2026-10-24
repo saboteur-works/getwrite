@@ -4,8 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import {
   sidecarFilename,
+  sidecarPathForProject,
   readSidecar,
   writeSidecar,
+  mutateSidecar,
+  SIDECAR_UNCHANGED,
 } from "../../src/lib/models/sidecar";
 import type { MetadataValue } from "../../src/lib/models/types";
 import * as io from "../../src/lib/models/io";
@@ -44,6 +47,12 @@ vi.mock("../../src/lib/models/file-lock", async (importOriginal) => {
     await importOriginal<typeof import("../../src/lib/models/file-lock")>();
   return { ...actual, withFileLock: vi.fn(actual.withFileLock) };
 });
+vi.mock("../../src/lib/models/indexer-queue", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/indexer-queue")>();
+  return { ...actual, enqueueEntityRescan: vi.fn(actual.enqueueEntityRescan) };
+});
+import { enqueueEntityRescan } from "../../src/lib/models/indexer-queue";
 import { withMetaLock } from "../../src/lib/models/meta-locks";
 import { withFileLock } from "../../src/lib/models/file-lock";
 
@@ -263,11 +272,13 @@ describe("models/sidecar — metadataRevision bump lock order (Feature 92, Task 
     await writeSidecar(tmp, resourceId, { k: "v" });
 
     expect(await readMetadataRevision(tmp)).toBe(4);
-    expect(withFileLock).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(withFileLock).mock.calls[0][0]).toBe(projectPath);
+    expect(withFileLock).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(withFileLock).mock.calls[1][0]).toBe(projectPath);
     expect(events).toEqual([
       "meta:enter",
+      `file:enter:${sidecarFilename(resourceId)}`,
       `write:${sidecarFilename(resourceId)}`,
+      `file:exit:${sidecarFilename(resourceId)}`,
       "file:enter:project.json",
       "write:project.json",
       "file:exit:project.json",
@@ -365,5 +376,243 @@ describe("models/sidecar — writeSidecar's pre-write read under locked access",
     await expect(
       writeSidecar(plainProjectRoot, resourceId, { title: "New title" }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("models/sidecar — read-modify-write sink (Feature 92, Task 16)", () => {
+  let tmp = "";
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sidecar-rmw-"));
+    // Earlier describes replace these wrappers' implementations; start from the real ones.
+    const actualIo = await vi.importActual<typeof io>(
+      "../../src/lib/models/io",
+    );
+    const actualMeta = await vi.importActual<
+      typeof import("../../src/lib/models/meta-locks")
+    >("../../src/lib/models/meta-locks");
+    const actualFile = await vi.importActual<
+      typeof import("../../src/lib/models/file-lock")
+    >("../../src/lib/models/file-lock");
+    vi.mocked(io.atomicWriteFile).mockImplementation(actualIo.atomicWriteFile);
+    vi.mocked(withMetaLock).mockImplementation(actualMeta.withMetaLock);
+    vi.mocked(withFileLock).mockImplementation(actualFile.withFileLock);
+    vi.mocked(withMetaLock).mockClear();
+    vi.mocked(withFileLock).mockClear();
+    vi.mocked(io.atomicWriteFile).mockClear();
+    vi.mocked(enqueueEntityRescan).mockClear();
+  });
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await flushIndexer();
+    await removeDirRetry(tmp);
+  });
+
+  it("keeps both changes of two overlapping calls on one resource", async () => {
+    await makeProjectJson(tmp, 0);
+    const id = generateUUID();
+    await writeSidecar(tmp, id, { n: 0 });
+    const add = (key: string) =>
+      mutateSidecar(tmp, id, (cur) => ({ ...(cur ?? {}), [key]: true }));
+    await Promise.all([add("a"), add("b"), add("c")]);
+    expect(await readSidecar(tmp, id)).toEqual({
+      n: 0,
+      a: true,
+      b: true,
+      c: true,
+    });
+  });
+
+  it("does not block a call for another project while one waits in its mutate", async () => {
+    const other = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sidecar-"));
+    try {
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((r) => (release = r));
+      const first = mutateSidecar(tmp, generateUUID(), async () => {
+        await gate;
+        return { a: 1 };
+      });
+      await mutateSidecar(other, generateUUID(), () => ({ b: 2 }));
+      release();
+      await first;
+    } finally {
+      await removeDirRetry(other);
+    }
+  });
+
+  it("takes withMetaLock, the sidecar lock, reads, mutates, writes, releases the sidecar lock, then bumps under the project.json lock", async () => {
+    await makeProjectJson(tmp, 3);
+    const id = generateUUID();
+    await writeSidecar(tmp, id, { k: "old" });
+    await flushIndexer();
+    const events: string[] = [];
+    const realMeta = vi.mocked(withMetaLock).getMockImplementation()!;
+    const realFile = vi.mocked(withFileLock).getMockImplementation()!;
+    vi.mocked(withMetaLock).mockImplementation(((
+      root: string,
+      fn: () => Promise<unknown>,
+    ) =>
+      realMeta(root, async () => {
+        events.push("meta:enter");
+        try {
+          return await fn();
+        } finally {
+          events.push("meta:exit");
+        }
+      })) as typeof withMetaLock);
+    vi.mocked(withFileLock).mockImplementation(((
+      file: string,
+      fn: () => Promise<unknown>,
+    ) =>
+      realFile(file, async () => {
+        events.push(`file:enter:${path.basename(file)}`);
+        try {
+          return await fn();
+        } finally {
+          events.push(`file:exit:${path.basename(file)}`);
+        }
+      })) as typeof withFileLock);
+    const realWrite = vi.mocked(io.atomicWriteFile).getMockImplementation()!;
+    vi.mocked(io.atomicWriteFile).mockImplementation(((
+      file: string,
+      ...rest: unknown[]
+    ) => {
+      events.push(`write:${path.basename(file)}`);
+      return (realWrite as (...a: unknown[]) => Promise<void>)(file, ...rest);
+    }) as typeof io.atomicWriteFile);
+
+    await mutateSidecar(tmp, id, (cur) => {
+      events.push(`mutate:${String(cur?.["k"])}`);
+      return { k: "new" };
+    });
+
+    const sc = sidecarFilename(id);
+    await flushIndexer();
+    expect(events.slice(0, 9)).toEqual([
+      "meta:enter",
+      `file:enter:${sc}`,
+      "mutate:old",
+      `write:${sc}`,
+      `file:exit:${sc}`,
+      "file:enter:project.json",
+      "write:project.json",
+      "file:exit:project.json",
+      "meta:exit",
+    ]);
+    expect(await readMetadataRevision(tmp)).toBe(5);
+  });
+
+  it("writes and bumps nothing when mutate reports no change", async () => {
+    await makeProjectJson(tmp, 7);
+    const id = generateUUID();
+    await writeSidecar(tmp, id, { k: 1 });
+    vi.mocked(io.atomicWriteFile).mockClear();
+    const result = await mutateSidecar(tmp, id, () => SIDECAR_UNCHANGED);
+    expect(result).toEqual({ k: 1 });
+    expect(io.atomicWriteFile).not.toHaveBeenCalled();
+    expect(await readMetadataRevision(tmp)).toBe(8);
+  });
+
+  it("hands a missing sidecar to mutate as null, creates it, and returns the written value", async () => {
+    await makeProjectJson(tmp, 0);
+    const id = generateUUID();
+    let seen: unknown = "unset";
+    const result = await mutateSidecar(tmp, id, (cur) => {
+      seen = cur;
+      return { created: true };
+    });
+    expect(seen).toBeNull();
+    expect(result).toEqual({ created: true });
+    expect(await readMetadataRevision(tmp)).toBe(1);
+  });
+
+  it("returns null and writes nothing for a missing sidecar when mutate reports no change", async () => {
+    const id = generateUUID();
+    expect(await mutateSidecar(tmp, id, () => SIDECAR_UNCHANGED)).toBeNull();
+    await expect(fs.stat(sidecarPathForProject(tmp, id))).rejects.toMatchObject(
+      { code: "ENOENT" },
+    );
+  });
+
+  it("writes the same bytes as writeSidecar and ignores ENOENT on project.json", async () => {
+    const a = generateUUID();
+    const b = generateUUID();
+    const value = { title: "T", tags: ["x", "y"], n: 2 };
+    await mutateSidecar(tmp, a, () => value);
+    await writeSidecar(tmp, b, value);
+    const rawA = await fs.readFile(sidecarPathForProject(tmp, a), "utf8");
+    const rawB = await fs.readFile(sidecarPathForProject(tmp, b), "utf8");
+    expect(rawA).toBe(JSON.stringify(value, null, 2));
+    expect(rawA).toBe(rawB);
+  });
+
+  it("propagates a read error of the sidecar unchanged and does not write", async () => {
+    const id = generateUUID();
+    await fs.mkdir(path.join(tmp, "meta"), { recursive: true });
+    await fs.writeFile(sidecarPathForProject(tmp, id), "{bad", "utf8");
+    const mutate = vi.fn(() => ({ x: 1 }));
+    await expect(mutateSidecar(tmp, id, mutate)).rejects.toBeInstanceOf(
+      SyntaxError,
+    );
+    expect(mutate).not.toHaveBeenCalled();
+    expect(io.atomicWriteFile).not.toHaveBeenCalled();
+  });
+
+  it("propagates a throwing mutate, writes nothing and releases the lock", async () => {
+    const id = generateUUID();
+    const boom = new Error("boom");
+    await expect(
+      mutateSidecar(tmp, id, () => {
+        throw boom;
+      }),
+    ).rejects.toBe(boom);
+    expect(io.atomicWriteFile).not.toHaveBeenCalled();
+    await expect(mutateSidecar(tmp, id, () => ({ ok: true }))).resolves.toEqual(
+      { ok: true },
+    );
+  });
+
+  it("decides the entity rescan from the value read inside the lock", async () => {
+    const id = generateUUID();
+    const entity = { entityKind: "character", name: "Ann" };
+    await Promise.all([
+      writeSidecar(tmp, id, entity),
+      writeSidecar(tmp, id, entity),
+    ]);
+    await flushIndexer();
+    expect(enqueueEntityRescan).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes whole-object writeSidecar take the sidecar lock for its write", async () => {
+    const id = generateUUID();
+    await writeSidecar(tmp, id, { k: 1 });
+    const files = vi.mocked(withFileLock).mock.calls.map((c) => c[0]);
+    expect(files).toContain(sidecarPathForProject(tmp, id));
+  });
+});
+
+describe("models/sidecar — sink under locked access (Feature 92, Task 16)", () => {
+  const WORKSPACE = "/ws";
+  const previousAdapter = io.getStorageAdapter();
+  afterEach(() => {
+    io.setStorageAdapter(previousAdapter);
+  });
+
+  it("rejects with the locked-access error and does not write", async () => {
+    const base = createMemoryAdapter();
+    const projectId = generateUUID();
+    const projectRoot = `${WORKSPACE}/${projectId}`;
+    await base.mkdir(projectRoot, { recursive: true });
+    const keyring = await createKeyring("pass phrase here", TEST_ARGON2_PARAMS);
+    await keyring.addProject(projectId);
+    await writeProjectMarker(projectRoot, base);
+    keyring.lock();
+    io.setStorageAdapter(workspaceEncryptionAdapter(base, WORKSPACE, keyring));
+    vi.mocked(io.atomicWriteFile).mockClear();
+    const mutate = vi.fn(() => ({ x: 1 }));
+    await expect(
+      mutateSidecar(projectRoot, generateUUID(), mutate),
+    ).rejects.toSatisfy((err: unknown) => isLockedAccessError(err));
+    expect(mutate).not.toHaveBeenCalled();
+    expect(io.atomicWriteFile).not.toHaveBeenCalled();
   });
 });
