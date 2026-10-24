@@ -10,6 +10,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
+import { withFileLock } from "../../src/lib/models/file-lock";
+import { acquireLock } from "../../src/lib/models/locks";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { updateFeatureConfig } from "../../src/lib/models/project-features";
 import type { Project } from "../../src/lib/models/types";
@@ -382,6 +384,76 @@ describe("updateFeatureConfig — subtypes (Feature 72, FR-1/FR-2)", () => {
     try {
       await updateFeatureConfig(dir, { features: { pov: true } });
       expect((await readProject(dir)).config?.subtypes).toEqual(["Scene"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+});
+
+describe("updateFeatureConfig — lock order (Feature 92, Task 10)", () => {
+  const settle = () => new Promise<void>((r) => setTimeout(r, 50));
+
+  it("reads and writes inside the project.json file lock", async () => {
+    const dir = await makeTmpProject();
+    try {
+      const projectPath = path.join(dir, PROJECT_FILENAME);
+      let release!: () => void;
+      const held = new Promise<void>((r) => (release = r));
+      const holder = withFileLock(projectPath, () => held);
+      await settle();
+      let isDone = false;
+      const pending = updateFeatureConfig(dir, {
+        features: { pov: true },
+      }).then(() => {
+        isDone = true;
+      });
+      await settle();
+      expect(isDone).toBe(false);
+      expect((await readProject(dir)).config?.features).toBeUndefined();
+      release();
+      await holder;
+      await pending;
+      expect((await readProject(dir)).config?.features).toEqual({ pov: true });
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("keeps acquireLock(projectRoot) as the outer lock", async () => {
+    const dir = await makeTmpProject();
+    try {
+      const projectPath = path.join(dir, PROJECT_FILENAME);
+      let release!: () => void;
+      const held = new Promise<void>((r) => (release = r));
+      const holder = withFileLock(projectPath, () => held);
+      await settle();
+      const pending = updateFeatureConfig(dir, { features: { pov: true } });
+      await settle();
+      // The call is parked on the file lock, so it must already hold the outer lock.
+      let isOuterAcquired = false;
+      const outer = acquireLock(dir).then((rel) => {
+        isOuterAcquired = true;
+        rel();
+      });
+      await settle();
+      expect(isOuterAcquired).toBe(false);
+      release();
+      await holder;
+      await pending;
+      await outer;
+      expect(isOuterAcquired).toBe(true);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("sets updatedAt and does not bump metadataRevision", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, metadataRevision: 4 });
+    try {
+      await updateFeatureConfig(dir, { features: { pov: true } });
+      const saved = await readProject(dir);
+      expect(saved.config?.metadataRevision).toBe(4);
+      expect(typeof saved.updatedAt).toBe("string");
     } finally {
       await removeDirRetry(dir);
     }
