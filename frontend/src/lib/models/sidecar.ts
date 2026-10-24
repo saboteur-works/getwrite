@@ -1,8 +1,8 @@
 import { atomicWriteFile, mkdir, readFile } from "./io";
 import path from "node:path";
-import type { UUID, MetadataValue } from "./types";
+import type { UUID, MetadataValue, Project } from "./types";
 import { withMetaLock } from "./meta-locks";
-import { PROJECT_FILENAME } from "./project-config";
+import { updateProjectJson } from "./project-json-write";
 import { isLockedAccessError } from "./locked-access";
 
 /**
@@ -24,22 +24,20 @@ export function sidecarPathForProject(
   return path.join(projectRoot, "meta", sidecarFilename(resourceId));
 }
 
+/**
+ * Adds 1 to `config.metadataRevision` in `project.json` under the per-file
+ * lock. Called from `writeSidecar` inside `withMetaLock`, so the lock order is
+ * `withMetaLock -> project.json lock` (Feature 92, FR-8). A missing
+ * `project.json` is ignored; any other read, parse or write error propagates.
+ */
 async function bumpMetadataRevision(projectRoot: string): Promise<void> {
-  const projectPath = path.join(projectRoot, PROJECT_FILENAME);
   try {
-    const raw = await readFile(projectPath, "utf8");
-    const project = JSON.parse(raw) as {
-      config?: { metadataRevision?: number; [key: string]: unknown };
-      [key: string]: unknown;
-    };
-    if (!project.config) project.config = {};
-    project.config.metadataRevision =
-      (project.config.metadataRevision ?? 0) + 1;
-    await atomicWriteFile(
-      projectPath,
-      JSON.stringify(project, null, 2),
-      "utf8",
-    );
+    await updateProjectJson(projectRoot, (project) => {
+      project.config = project.config ?? ({} as Project["config"]);
+      const config = project.config as { metadataRevision?: number };
+      config.metadataRevision = (config.metadataRevision ?? 0) + 1;
+      return { result: undefined };
+    });
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
     throw err;
@@ -174,9 +172,10 @@ export async function writeSidecar(
   await withMetaLock(projectRoot, async () => {
     await mkdir(dir, { recursive: true });
     // Write-then-rename: readSidecar takes no lock, so an in-place write
-    // would let a concurrent reader parse a half-written file. The fixed
-    // `.tmp` name is safe because the meta lock serializes writers.
+    // would let a concurrent reader parse a half-written file.
     await atomicWriteFile(filePath, json, "utf8");
+    // Lock order: withMetaLock (held here) -> project.json file lock (taken
+    // inside the bump). The bump never takes withMetaLock itself.
     await bumpMetadataRevision(projectRoot);
   });
 

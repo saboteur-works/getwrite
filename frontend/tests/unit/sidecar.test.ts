@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -26,6 +26,26 @@ import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
 import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
+
+// Wrappers around the real functions, so the lock order and the write path of
+// the metadataRevision bump (Feature 92, Task 9) can be observed.
+vi.mock("../../src/lib/models/io", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/io")>();
+  return { ...actual, atomicWriteFile: vi.fn(actual.atomicWriteFile) };
+});
+vi.mock("../../src/lib/models/meta-locks", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/meta-locks")>();
+  return { ...actual, withMetaLock: vi.fn(actual.withMetaLock) };
+});
+vi.mock("../../src/lib/models/file-lock", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/file-lock")>();
+  return { ...actual, withFileLock: vi.fn(actual.withFileLock) };
+});
+import { withMetaLock } from "../../src/lib/models/meta-locks";
+import { withFileLock } from "../../src/lib/models/file-lock";
 
 async function makeProjectJson(dir: string, metadataRevision?: number) {
   const project = {
@@ -183,6 +203,113 @@ describe("models/sidecar — metadataRevision counter", () => {
     ).resolves.toBeUndefined();
     await flushIndexer();
     await removeDirRetry(tmp);
+  });
+});
+
+describe("models/sidecar — metadataRevision bump lock order (Feature 92, Task 9)", () => {
+  let tmp = "";
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-sidecar-lock-"));
+    vi.mocked(withMetaLock).mockClear();
+    vi.mocked(withFileLock).mockClear();
+    vi.mocked(io.atomicWriteFile).mockClear();
+  });
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await flushIndexer();
+    await removeDirRetry(tmp);
+  });
+
+  it("bumps by exactly 1 with the edge withMetaLock -> project.json lock, sidecar write inside withMetaLock", async () => {
+    await makeProjectJson(tmp, 3);
+    const events: string[] = [];
+    const projectPath = path.join(tmp, "project.json");
+    const realMeta = vi.mocked(withMetaLock).getMockImplementation()!;
+    const realFile = vi.mocked(withFileLock).getMockImplementation()!;
+    vi.mocked(withMetaLock).mockImplementation(((
+      root: string,
+      fn: () => Promise<unknown>,
+    ) =>
+      realMeta(root, async () => {
+        events.push("meta:enter");
+        try {
+          return await fn();
+        } finally {
+          events.push("meta:exit");
+        }
+      })) as typeof withMetaLock);
+    vi.mocked(withFileLock).mockImplementation(((
+      file: string,
+      fn: () => Promise<unknown>,
+    ) =>
+      realFile(file, async () => {
+        events.push(`file:enter:${path.basename(file)}`);
+        try {
+          return await fn();
+        } finally {
+          events.push(`file:exit:${path.basename(file)}`);
+        }
+      })) as typeof withFileLock);
+    const realWrite = vi.mocked(io.atomicWriteFile).getMockImplementation()!;
+    vi.mocked(io.atomicWriteFile).mockImplementation(((
+      file: string,
+      ...rest: unknown[]
+    ) => {
+      events.push(`write:${path.basename(file)}`);
+      return (realWrite as (...a: unknown[]) => Promise<void>)(file, ...rest);
+    }) as typeof io.atomicWriteFile);
+
+    const resourceId = generateUUID();
+    await writeSidecar(tmp, resourceId, { k: "v" });
+
+    expect(await readMetadataRevision(tmp)).toBe(4);
+    expect(withFileLock).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(withFileLock).mock.calls[0][0]).toBe(projectPath);
+    expect(events).toEqual([
+      "meta:enter",
+      `write:${sidecarFilename(resourceId)}`,
+      "file:enter:project.json",
+      "write:project.json",
+      "file:exit:project.json",
+      "meta:exit",
+    ]);
+  });
+
+  it("ignores ENOENT on project.json", async () => {
+    await expect(
+      writeSidecar(tmp, generateUUID(), { k: "v" }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("surfaces a parse error on project.json", async () => {
+    await fs.writeFile(path.join(tmp, "project.json"), "{not json", "utf8");
+    await expect(
+      writeSidecar(tmp, generateUUID(), { k: "v" }),
+    ).rejects.toBeInstanceOf(SyntaxError);
+  });
+
+  it("surfaces a read error other than ENOENT", async () => {
+    await fs.mkdir(path.join(tmp, "project.json"));
+    await expect(
+      writeSidecar(tmp, generateUUID(), { k: "v" }),
+    ).rejects.toMatchObject({ code: "EISDIR" });
+  });
+
+  it("surfaces a write error on project.json", async () => {
+    await makeProjectJson(tmp, 0);
+    const realWrite = vi.mocked(io.atomicWriteFile).getMockImplementation()!;
+    vi.mocked(io.atomicWriteFile).mockImplementation(((
+      file: string,
+      ...rest: unknown[]
+    ) => {
+      if (path.basename(file) === "project.json") {
+        return Promise.reject(new Error("disk full"));
+      }
+      return (realWrite as (...a: unknown[]) => Promise<void>)(file, ...rest);
+    }) as typeof io.atomicWriteFile);
+    await expect(writeSidecar(tmp, generateUUID(), { k: "v" })).rejects.toThrow(
+      "disk full",
+    );
   });
 });
 
