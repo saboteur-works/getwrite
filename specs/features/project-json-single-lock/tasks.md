@@ -209,8 +209,8 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Done when:** the three FR-15 pair tests (metadata save against `updateRevisionInPlace`, metadata save against `clearField`, `updateRevisionInPlace` against `forEachUserMetadata`) each pass at 100 of 100 repetitions with both changes kept in each of 9 consecutive runs of `pnpm exec vitest run <file>`; the per-family tests pass 20 of 20 in each run; the nine results are in `experiments.md` next to the Task 6 and Task 5 values. If any run loses a change, the task halts and reports the observed counts: that falsifies the read-outside-the-lock hypothesis for that pair.
 **Depends on:** 5, 6, 17, 18, 19, 20
 **Estimate:** 3
-**Notes:** Satisfies FR-22 (hard acceptance).
-**Done:** [ ]
+**Notes:** Satisfies FR-22 (hard acceptance). DONE 2026-10-23: 9 of 9 runs green, 0 lost in every test (experiments.md "FR-22 after").
+**Done:** [x]
 
 ### Task 22: Pairwise race tests
 **What:** Add a race test for each pair of writer families that can now overlap.

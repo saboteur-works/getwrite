@@ -263,3 +263,25 @@ Lost changes per run (entries in the list, of 100 repetitions; no unparseable fi
 - Not explained here. Hypothesis, untested: the single lost `updatedAt` in run 9 is the same read-outside-the-lock overlap as the other two pairs, rarer for this pair; an experiment that repeats test 3 with several hundred repetitions per run, or logs read and write order for that pair, would settle it. It is a measurement that `updateRevisionInPlace` vs `clearField` is not 0 on this tree in every run.
 - `tsc --noEmit` reported nothing for the file; ESLint reported nothing; Prettier was applied. Running this file with `metadata-concurrent-writes.test.ts`: the other two tests of that file pass, its Task 4 test fails (as recorded in "FR-10 before").
 - Status: red by design until Task 21.
+
+## FR-22 after
+
+Task 21. Run on 2026-10-23 on branch `fix/project-json-write-lock`, with Tasks 7-20 applied (no production source change in this task; only `frontend/tests/unit/sidecar-concurrent-writes.test.ts` was edited). Inside the sandbox, Vitest v4.1.6.
+
+- Test-file changes: the metadata-save writer of all tests is now the production `updateSidecarCore(projectId, resourceId, { marker: "after" })` (it was an in-test `readSidecar` then `writeSidecar`); projects use UUID directory names under the batch root with `GETWRITE_PROJECTS_DIR` set to it, so the `projectId` cores resolve them. Six tests added, one per remaining family, each 20 repetitions against that metadata save with distinct fields (constructions as in "FR-15 sidecar races, remaining families"): `reorderResourcesCore` sidecar loop (`orderIndex` 5), `renameResourceSidecarCore` (`name`), `setNoiseTermDismissedCore` (`dismissedNoiseTerms`), `nullifyResourceRefs` (`userMetadata.ref.id` null), `relinkResourceRefs` through `restoreResource` (`userMetadata.ref.id` restored), `applyDocumentMetadata` (`userMetadata.synopsis`). Each test collects `<rep>:unparseable`, `<rep>:rejected:<writer>`, `<rep>:<family>` and `<rep>:metadata` (change lost) and asserts the list is empty. Per-test timeout 120000 ms.
+- Command, from `frontend/`, 9 times consecutively: `timeout 600 npx vitest run tests/unit/sidecar-concurrent-writes.test.ts < /dev/null`. Logs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/fr22after-1.log` to `fr22after-9.log`.
+
+| Run | Exit | Test file result | Pair 1 metadata vs `updateRevisionInPlace` (lost of 100) | Pair 2 metadata vs `clearField` (lost of 100) | Pair 3 `updateRevisionInPlace` vs `clearField` (lost of 100) | Six family tests (lost of 20 each) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 2 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 3 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 4 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 5 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 6 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 7 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 8 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+| 9 | 0 | `Tests 9 passed (9)` | 0 | 0 | 0 | 0 |
+
+- The count per test is the length of the collected list, which the assertion requires to be empty; a passing test therefore means 0 lost, 0 unparseable, 0 rejected. No `AssertionError` in any log. Compared with "FR-22 before": pair 1 lost 43-49 and pair 2 lost 6-13 per run on the unchanged tree, pair 3 lost 1 in one of 9 runs; after, 0 in all 9 runs.
+- Not measured: the six family tests were not run on the unchanged tree in this file (their before values are the 100-repetition counts in "FR-15 sidecar races, remaining families"; `relinkResourceRefs` lost 0 of 100 there as well, so its test did not discriminate on the unchanged tree). The pair tests changed their metadata-save writer from the in-test read/write pair to `updateSidecarCore` after the "FR-22 before" runs; their before-values were measured with the earlier writer. `tsc --noEmit` reported nothing for the file, ESLint reported nothing, Prettier check clean.
