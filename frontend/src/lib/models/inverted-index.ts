@@ -82,14 +82,29 @@ async function loadIndex(projectRoot: string): Promise<InvertedIndex> {
   }
 }
 
+/** Writes the index file. Callers hold `withMetaLock` (see `updateIndex`). */
 async function saveIndex(projectRoot: string, index: InvertedIndex) {
   await ensureIndexDir(projectRoot);
   const p = path.join(projectRoot, INDEX_DIR, INDEX_FILE);
+  await atomicWriteFile(p, JSON.stringify(index, null, 2), {
+    writeOptions: "utf8",
+    durable: process.env.GETWRITE_DURABLE_META === "1",
+  });
+}
+
+/**
+ * Loads, changes and saves the index inside one `withMetaLock` call. Locking
+ * only the save let two writers on one project each load the old index and
+ * the later save drop the other's change.
+ */
+async function updateIndex(
+  projectRoot: string,
+  change: (index: InvertedIndex) => void,
+): Promise<void> {
   await withMetaLock(projectRoot, async () => {
-    await atomicWriteFile(p, JSON.stringify(index, null, 2), {
-      writeOptions: "utf8",
-      durable: process.env.GETWRITE_DURABLE_META === "1",
-    });
+    const index = await loadIndex(projectRoot);
+    change(index);
+    await saveIndex(projectRoot, index);
   });
 }
 
@@ -127,11 +142,7 @@ async function resolveBodyText(
 
 /** Index a resource's plain text into the project's inverted index. */
 export async function indexResource(projectRoot: string, res: TextResource) {
-  const index = await loadIndex(projectRoot);
-
-  // Remove previous entries for resource
-  purgeTermsForResource(index, res.id);
-
+  // Read the body before taking the lock; only the index file is shared.
   const text = await resolveBodyText(projectRoot, res);
   const counts: Record<string, number> = {};
 
@@ -145,17 +156,14 @@ export async function indexResource(projectRoot: string, res: TextResource) {
     counts[t] = (counts[t] ?? 0) + 1;
   }
 
-  if (Object.keys(counts).length === 0) {
-    await saveIndex(projectRoot, index);
-    return;
-  }
-
-  for (const [t, c] of Object.entries(counts)) {
-    index[t] = index[t] ?? {};
-    index[t][res.id] = (index[t][res.id] ?? 0) + c;
-  }
-
-  await saveIndex(projectRoot, index);
+  await updateIndex(projectRoot, (index) => {
+    // Remove previous entries for resource
+    purgeTermsForResource(index, res.id);
+    for (const [t, c] of Object.entries(counts)) {
+      index[t] = index[t] ?? {};
+      index[t][res.id] = (index[t][res.id] ?? 0) + c;
+    }
+  });
 }
 
 /** Remove a resource from the index fully. */
@@ -163,9 +171,9 @@ export async function removeResourceFromIndex(
   projectRoot: string,
   resourceId: string,
 ) {
-  const index = await loadIndex(projectRoot);
-  purgeTermsForResource(index, resourceId);
-  await saveIndex(projectRoot, index);
+  await updateIndex(projectRoot, (index) =>
+    purgeTermsForResource(index, resourceId),
+  );
 }
 
 /**
