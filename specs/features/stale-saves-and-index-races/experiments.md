@@ -203,7 +203,42 @@ Closing lines:
 
 ## E-9 Backlinks writer races
 
-(empty; Task 7)
+Command (from `frontend/`, sandboxed): `E9_RESULT_OUT=<scratchpad>/e9-result.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e9.config.ts` (add `E9_REPS=<n>` to change the 20 repetitions). Scripts (not run by the suite): `scripts/e9-constructions.ts` (reusable constructions, exports `runRepetition(pair, mode, root)`, `PAIRS`, `Outcome`; Tasks 18 and 21 can import it), `scripts/e9-backlinks-races.test.ts` (driver), `scripts/vitest.e9.config.ts`. Run 2026-10-24 14:47 MDT (Task 7), branch `fix/stale-saves-and-index-races`, HEAD `7189166f`, unchanged source, Vitest 4.1.6, Node v24.15.0. Temp directory: `/tmp/claude-501/f93-e9-uKkJGK` (mkdtemp under `$TMPDIR`; one fresh project per repetition; removed after the run). Result file: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/e9-result.json`. One run, 20 repetitions per pair per start mode (200 repetitions; a 2-repetition smoke run preceded it and is not counted). Real functions are called: `removeResourceFromBacklinks`, `persistBacklinks`, `computeBacklinks`, `loadBacklinks`, `enqueueIndex` (the only entry to `runTask`, which is not exported). The watcher is not started (`ensureBacklinkWatcher` skips under the test runner, `indexer-queue.ts:74`); the watcher callback body (`backlinks-watcher.ts:46-62`) is reproduced as `runForTenant(computeBacklinks, persistBacklinks)`. The real filesystem adapter is installed with `setStorageAdapter`; no source is changed. Each repetition is raced against a 20 s timer; unparseable = `meta/backlinks.json` failed `JSON.parse` after both writers settled; rejected = a writer's promise rejected; lost = an expected change absent from the stored file. All 200 repetitions: unparseable 0, rejected 0, hung 0.
+
+Resource ids are UUIDs (X `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`, Y `bbbbbbbb-...`, Z `cccccccc-...`) because `computeBacklinks` finds links by UUID in text. "X removal" means the stored file has no `X` key and no array holds `X`.
+
+Start modes:
+- natural: both writers started in the same tick (`Promise.all`).
+- gated, load pairs (1, 2, 4): the adapter's `readFile` of `meta/backlinks.json` reads the file at once and withholds the result from the caller until the gate opens (the other writer has finished; for pair 2 until two reads have arrived; 1.5 s release otherwise). The caller therefore holds a copy loaded before the other writer saved. Gate counts: pair 1 gated, reads seen min 1, snapshot equal to the seed file min 1 (20 of 20); pair 2 gated, reads seen min 2, snapshot equal to the seed min 2; pair 4 gated, reads seen min 1, seed snapshot min 1.
+- gated, compute pairs (3, 5): the construction runs `computeBacklinks` to completion, lets the other writer run to completion, then calls `persistBacklinks` with the older result (the watcher's and `runTask`'s compute-then-persist shape). No adapter gate.
+
+Pairs and expected final index:
+1. `removeResourceFromBacklinks(X)` against `persistBacklinks` of an index holding `Y -> Z`. Seed: X (folder absent, as after a trash move) and Y refer to each other. Expected: X removed and `Y -> Z` present.
+2. Two `persistBacklinks` callers, each in the load, change, persist shape (`loadBacklinks`, add `key-1` / `key-2`, `persistBacklinks`). Expected: both keys. (A pair of whole-index computed saves is pair 3.)
+3. The watcher body (`computeBacklinks` then `persistBacklinks`) against `runTask` (`enqueueIndex`) for Y, where Y gains a link to Z after the watcher compute has started (natural) or finished (gated). Expected: `Y -> Z`.
+4. `removeResourceFromBacklinks(X)` against `runTask` for Y, where Y already links to Z when both start. Seed: X in the index, folder absent. Expected: X removed and `Y -> Z`.
+5. Added construction (not one of the four asked for): a `computeBacklinks` recompute (the compute step of `runTask` and the watcher) whose snapshot lists X, against X's folder being deleted and `removeResourceFromBacklinks(X)`, with the recompute saving after the removal in the gated mode. Expected: X removed.
+
+MEASURED, repetitions that lost at least one expected change (of 20), with which change was missing (a repetition can lose one change; the by-change counts add to the total):
+
+| Pair | natural | gated |
+| --- | --- | --- |
+| 1 remove vs persist | 20 of 20 (`Y -> Z` missing 20) | 20 of 20 (`Y -> Z` missing 20) |
+| 2 persist vs persist | 20 of 20 (key-1 missing 13, key-2 missing 7) | 20 of 20 (key-1 missing 15, key-2 missing 5) |
+| 3 watcher persist vs runTask | 0 of 20 | 20 of 20 (`Y -> Z` missing 20) |
+| 4 remove vs runTask | 0 of 20 | 20 of 20 (`Y -> Z` missing 20) |
+| 5 remove vs recompute (added) | 20 of 20 (X removal missing 20) | 20 of 20 (X removal missing 20) |
+
+Limits: the gated modes force the order "older copy, then saved last"; they show what the writers do in that order, not how often production reaches it. The natural 0 of 20 for pairs 3 and 4 is a count for that construction only (in pair 3 the change is written after both writers start, in pair 4 before; `runTask` has a long run-up, index step, before its backlinks step) and is not evidence that the pairs are safe under other timing (FR-2). The natural 20 of 20 in pair 1 shows the ordering the same-tick start produced in this construction. Pair 2 is a construction of the load, change, persist shape, not a run of a production caller. The watcher itself was not run (see above).
+
+Observation on locking: in pairs 1, 2 and 4 the lost change is in a copy loaded before another save; a single `withMetaLock` around one writer's load, change and save would have that writer load after the other's save in these constructions. In pairs 3 and 5 the older copy is the result of `computeBacklinks` (a read of every resource) saved by `persistBacklinks` afterwards; in the gated runs that order produced the loss (pair 3: `Y -> Z` missing 20 of 20; pair 5: X removal missing 20 of 20), and a lock around `removeResourceFromBacklinks`'s load, change and save alone does not change which copy the recompute saves. A lock held across `computeBacklinks` and `persistBacklinks` together was not tried. This matches the case Task 7 and F93-4 describe (a recompute overlapping a removal); it is recorded as an observation.
+
+Closing lines:
+- `removeResourceFromBacklinks` against `persistBacklinks`: reproduced a loss (natural 20 of 20; gated 20 of 20).
+- `persistBacklinks` against `persistBacklinks`: reproduced a loss (natural 20 of 20; gated 20 of 20).
+- The watcher's `persistBacklinks` against `runTask`'s backlinks step: reproduced a loss (gated 20 of 20; natural 0 of 20).
+- `removeResourceFromBacklinks` against `runTask`: reproduced a loss (gated 20 of 20; natural 0 of 20).
+- Added: `removeResourceFromBacklinks` against a `computeBacklinks` recompute: reproduced a loss (natural 20 of 20; gated 20 of 20); not closed by locking the removal's load, change and save alone, as observed above.
 
 ## FR-3 callers of updateSidecarCore
 
