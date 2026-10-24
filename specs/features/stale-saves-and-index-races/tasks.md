@@ -194,7 +194,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 8, 6, 7
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (test half), AC-10. `tests/helpers/lockOrderGuard.ts` checks file locks only, so this is new work, not an extension of that guard. Gate: if neither Task 6 nor Task 7 reproduced a loss, no writer will change, the test is still added as a regression guard (FR-17 applies to any function that takes the lock) but no hook in `src/` is required; record that.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Gated: mention-index writers under one withMetaLock
 **What:** For each E-8 pair that reproduced a loss, make the implicated writers load, change and save the mention index inside one `withMetaLock` call.

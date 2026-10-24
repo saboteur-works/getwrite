@@ -6,6 +6,11 @@
  * of the previous one via `.then()`, and the map entry is replaced with the
  * newly extended chain. Operations within the same project run in arrival order
  * with no concurrency.
+ *
+ * Not reentrant: a call made from inside `fn` for the same key chains behind
+ * the outer call and never starts. Under test, the guard in `lock-guard.ts`
+ * throws `LockOrderViolationError` for such a nested call (Feature 93, FR-17);
+ * in production the guard slot is `null` and nothing changes.
  */
 import { getLockGuard } from "./lock-guard";
 
@@ -16,11 +21,14 @@ export async function withMetaLock<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   const key = projectRoot || "global";
-  getLockGuard()?.beforeLock("withMetaLock", key);
+  const guard = getLockGuard();
+  guard?.beforeLock("withMetaLock", key);
   const prev = locks.get(key) ?? Promise.resolve();
 
   // Chain the new operation after previous
-  const next = prev.then(() => fn());
+  const next = prev.then(() =>
+    guard?.runInMetaLock ? guard.runInMetaLock(key, fn) : fn(),
+  );
 
   // Store a void-settled promise so the map entry never carries a rejection.
   // If a caller ignores the returned promise, a rejected stored entry would

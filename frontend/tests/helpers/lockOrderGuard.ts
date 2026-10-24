@@ -16,20 +16,28 @@ import {
 } from "../../src/lib/models/lock-guard";
 
 const held = new AsyncLocalStorage<string>();
+/** Meta-lock keys held by the calling async context (Feature 93, FR-17). */
+const heldMeta = new AsyncLocalStorage<ReadonlySet<string>>();
 
 /**
  * Runs `fn` as a separate request would: outside the file lock whose body is
  * calling it. For a test that starts a second, independent operation from
- * inside a lock body (to race it against the lock holder). Production code
+ * inside a lock body (to race it against the lock holder). It also runs
+ * outside any `withMetaLock` callback marked by the guard (Feature 93, FR-17). Production code
  * has no such call; this is not a way around the rule for it.
  */
 export function outsideFileLock<T>(fn: () => T): T {
-  return held.exit(fn);
+  return held.exit(() => heldMeta.exit(fn));
 }
 
 export function createLockOrderGuard(): LockGuardHooks {
   return {
     beforeLock(kind, key) {
+      if (kind === "withMetaLock" && heldMeta.getStore()?.has(key)) {
+        throw new LockOrderViolationError(
+          `withMetaLock(${key}) taken inside a withMetaLock callback for the same key`,
+        );
+      }
       const heldKey = held.getStore();
       if (heldKey === undefined) return;
       throw new LockOrderViolationError(
@@ -38,6 +46,9 @@ export function createLockOrderGuard(): LockGuardHooks {
     },
     runInFileLock(key, fn) {
       return held.run(key, fn);
+    },
+    runInMetaLock(key, fn) {
+      return heldMeta.run(new Set([...(heldMeta.getStore() ?? []), key]), fn);
     },
   };
 }

@@ -401,3 +401,13 @@ E-7 (entity-graph settings): gate MET (7a: either key reverted in 20 of 20; type
 Follow-up (for the owner): make the panel send only the key it changed (route accepting either key, the core replacing only a present key, as `updateEditorConfigCore` does for `headings` and `body`), or add a version check to the PUT. Either is a contract change and needs an owner decision.
 
 Source files changed by Task 17: none.
+
+## Task 19: nested withMetaLock test
+
+Date 2026-10-24. Branch `fix/stale-saves-and-index-races`.
+- MEASURED, before: `frontend/tests/unit/meta-locks.test.ts` (new; no meta-lock test file existed): 2 of 6 tests failed (a nested same-key `withMetaLock` call, directly and after an await, did not throw; the 200 ms race resolved to the hang sentinel). After: 6 of 6 pass.
+- Hook: `lock-guard.ts` `LockGuardHooks` gained an optional `runInMetaLock(key, fn)`; `meta-locks.ts` calls it when a guard is installed (guard slot is `null` outside tests, so `withMetaLock` is unchanged). The `AsyncLocalStorage` that marks held meta keys is in `tests/helpers/lockOrderGuard.ts` (installed by `tests/setup.ts`); no `node:async_hooks` import in `src/`. `outsideFileLock` also exits the meta-lock mark.
+- The guard is on for every test file; one existing test (`revision-wordcount-sync.test.ts`, "keeps a metadata edit that lands while the sidecar update is in flight") started a separate request from inside a meta-lock body via `outsideFileLock` and was flagged; fixed by the helper change above, no test edit.
+- Task 8 flagged no caller holding `withMetaLock` for the same root, so no un-nesting is planned. Tasks 20/21 must not wrap `persistMentionIndex`/`persistBacklinks` callers in a new outer lock without an unlocked write helper.
+- Gate (Tasks 6/7 reproduction): not consulted; the test is added as a regression guard and the `src/` hook is test-inactive.
+- Verified from `frontend/`: `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings; `pnpm build` completed. `pnpm test:ci`: first full run 2 failed (the wordcount test above, fixed; and `projectFeatureToggles.test.tsx` in-flight guard timed out at 5000 ms), second full run 1 failed (the same toggles test, timeout); that file passes alone (16/16) before and after the change and does not reference locks. Cause of the timeout not established.
