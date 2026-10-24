@@ -12,7 +12,7 @@
  */
 
 /** Which lock a hook call is about. */
-export type GuardedLockKind = "withMetaLock" | "acquireLock" | "withFileLock";
+type GuardedLockKind = "withMetaLock" | "acquireLock" | "withFileLock";
 
 /** Thrown by an installed guard when a lock is taken against FR-8. */
 export class LockOrderViolationError extends Error {

@@ -50,7 +50,7 @@ const SIDECAR_WRITERS: readonly string[] = [
 ];
 
 /** Replaces comments with spaces (newlines kept) so line numbers survive. */
-export function stripComments(src: string): string {
+function stripComments(src: string): string {
   let out = "";
   let i = 0;
   while (i < src.length) {

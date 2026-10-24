@@ -311,3 +311,6 @@ The `/usr/bin/grep` search of the knip output found no finding for `fileLockKeyC
 Production bundle check: `grep async_hooks` over `lock-guard.ts`, `locks.ts` and `meta-locks.ts` matches only two comment lines in `lock-guard.ts` (lines 8 and 10); no import statement. `pnpm build` exited 0. `pnpm build:native` was not run (a known pre-existing failure per tasks.md).
 
 No test or story was modified by this task. `git worktree list` shows only the main checkout. `git status --short` after the runs (before this edit): empty.
+
+Follow-up (knip): removed the `export` keyword from `stripComments` (`frontend/tests/helpers/projectJsonLockScan.ts:53`) and from type `GuardedLockKind` (`frontend/src/lib/models/lock-guard.ts:15`); declarations kept. After the change: `pnpm typecheck` exit 0; `pnpm lint` 0 errors, 391 warnings; `vitest run tests/unit/project-json-lock-scan.test.ts tests/unit/file-lock.test.ts` 2 files, 38 tests passed.
+Follow-up knip re-run (repo root, exit 1), per-section counts observed: Unused files 49; Unused dependencies 1; Unused devDependencies 4; Unlisted dependencies 6; Unlisted binaries 4; Unused exports 160; Unused exported types 174; Duplicate exports 14; sum 412 (equals baseline); Configuration hints 6. The knip output contains no mention of `stripComments` or `GuardedLockKind`.
