@@ -168,7 +168,38 @@ Closing lines:
 
 ## E-8 Mention index writer races
 
-(empty; Task 6)
+Command (from `frontend/`, sandboxed): `E8_RESULT_OUT=<scratchpad>/e8-result.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e8.config.ts` (add `E8_REPS=<n>` to change the 20 repetitions). Scripts (not run by the suite): `scripts/e8-constructions.ts` (reusable constructions, exports `runRepetition(pair, mode, root)`, `PAIRS`, `Outcome`; Task 18 can import it), `scripts/e8-mention-index-races.test.ts` (driver), `scripts/vitest.e8.config.ts`. Run 2026-10-24 14:44 MDT (Task 6), branch `fix/stale-saves-and-index-races`, HEAD `e70b3396`, unchanged source, Vitest 4.1.6, Node v24.15.0. Temp directory: `/tmp/claude-501/f93-e8-rLGDLl` (mkdtemp under `$TMPDIR`; one fresh project per repetition; removed after the run). Result file: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/e8-result.json`. One run, 20 repetitions per pair per start mode (160 repetitions). Real functions are called: `removeResourceFromMentionIndex`, `enqueueIndex` (the only entry to `runTask`, which is not exported), `enqueueEntityRescan` (the only entry to `rescanEntityAcrossProject`, which runs outside the FIFO, `indexer-queue.ts:450-469`, OQ-6), `loadMentionIndex` + `persistMentionIndex`. The real filesystem adapter is installed with `setStorageAdapter`; no source is changed. Each repetition is raced against a 20 s timer; unparseable = `meta/index/mentions.json` failed `JSON.parse` after both writers settled; rejected = a writer's promise rejected; lost = an expected change absent from the stored file. All 160 repetitions: unparseable 0, rejected 0, hung 0.
+
+Layout per repetition: two entity resources (`ent-aldric` "Aldric", `ent-brynn` "Brynn", each with an `entityKind` sidecar) and plain resources with `content.txt` and a sidecar; the index file is seeded before the writers start.
+
+Start modes:
+- natural: both writers started in the same tick (`Promise.all`), the `inverted-index.test.ts` precedent.
+- gated: the storage adapter's `readFile` holds every read of `meta/index/mentions.json` until two reads have arrived (1.5 s release if the second never comes), so both writers hold an index loaded before either saved. The gate saw 2 reads in every gated repetition (minimum 2 of 2).
+
+Pairs and expected final index:
+1. `removeResourceFromMentionIndex(res-x)` against `runTask` for `res-y`. Seed: `res-x` has an Aldric record; `res-x`'s folder is absent (as after a trash move); `res-y` text mentions Brynn. Expected: `res-x` key gone and `res-y` has a Brynn record.
+2. `removeResourceFromMentionIndex(res-x)` against `rescanEntityAcrossProject(ent-aldric)`. Seed as above; `res-z` text mentions Aldric. Expected: `res-x` gone and `res-z` has an Aldric record.
+3. `rescanEntityAcrossProject(ent-aldric)` against `runTask` for `res-y`. Seed: empty index; `res-z` mentions Aldric, `res-y` mentions Brynn. Expected: `res-z` Aldric record and `res-y` Brynn record.
+4. Two `persistMentionIndex` callers, each in the load, change, persist shape `runTask`, the importers and `reindex` use, adding `key-1` and `key-2`. Expected: both keys.
+5. `runTask` against `runTask`: SKIPPED. The queue drains one task at a time (`indexer-queue.ts:329-334`), so two tasks cannot overlap.
+
+MEASURED, repetitions that lost at least one expected change (of 20), with which change was missing (a repetition can lose one change; the by-change counts add to the total):
+
+| Pair | natural | gated |
+| --- | --- | --- |
+| 1 remove vs runTask | 0 of 20 | 20 of 20 (res-y record missing 15, res-x removal missing 5) |
+| 2 remove vs rescan | 1 of 20 (res-x removal missing 1) | 20 of 20 (res-x removal missing 20) |
+| 3 rescan vs runTask | 0 of 20 | 20 of 20 (res-y record missing 20) |
+| 4 persist vs persist | 20 of 20 (key-1 missing 14, key-2 missing 6) | 20 of 20 (key-1 missing 2, key-2 missing 18) |
+
+Limits: the gated mode forces the order "both loaded, then both saved" with the adapter; it shows what the writers do in that order, not how often production reaches it. In natural mode pairs 1 and 3 have a long run-up in `runTask` (index, backlinks) before its mention step, which the same-tick start does not align; 0 of 20 there is a count for that construction only and is not evidence that the pairs are safe under other timing (FR-2). Pair 4 is a construction of the load, change, persist shape, not a run of an importer or `reindex`.
+
+Closing lines:
+- `removeResourceFromMentionIndex` against `runTask`'s mention step: reproduced a loss (gated 20 of 20; natural 0 of 20).
+- `removeResourceFromMentionIndex` against `rescanEntityAcrossProject`: reproduced a loss (gated 20 of 20; natural 1 of 20).
+- `rescanEntityAcrossProject` against `runTask`: reproduced a loss (gated 20 of 20; natural 0 of 20).
+- Two `persistMentionIndex` callers: reproduced a loss (gated 20 of 20; natural 20 of 20).
+- `runTask` against `runTask`: skipped.
 
 ## E-9 Backlinks writer races
 
