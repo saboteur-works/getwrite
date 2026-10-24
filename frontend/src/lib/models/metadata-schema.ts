@@ -8,10 +8,10 @@
  * Follow the same pattern as `tags.ts`: no optimistic in-memory state, direct
  * filesystem reads/writes, file locking for concurrent-write safety.
  */
-import { atomicWriteFile, readFile, readdir } from "./io";
+import { readFile, readdir } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
-import { withFileLock } from "./file-lock";
+import { updateProjectJson } from "./project-json-write";
 import { PROJECT_FILENAME } from "./project-config";
 import { SIDECAR_UNCHANGED, mutateSidecar, readSidecar } from "./sidecar";
 import { canonicalValueKey } from "./field-values";
@@ -50,19 +50,16 @@ async function readProject(projectRoot: string): Promise<Project> {
   return JSON.parse(raw) as Project;
 }
 
-async function writeProject(
-  projectRoot: string,
-  project: Project,
-): Promise<void> {
-  const p = path.join(projectRoot, PROJECT_FILENAME);
+/**
+ * Bumps `metadataRevision` on a project about to be written. Callers run it
+ * inside an {@link updateProjectJson} mutation, so the read the write is based
+ * on and the atomic write happen under the `project.json` file lock.
+ */
+function bumpMetadataRevision(project: Project): void {
   if (!project.config) {
     project.config = { editorConfig: {} };
   }
   project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
-  // Atomic, so a reader never sees a half-written file. Callers run this inside
-  // `withFileLock` for `project.json` (the same lock `updateProjectJson` takes),
-  // with the read the write is based on made inside that same acquisition.
-  await atomicWriteFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
 function getOrInitSchema(project: Project): MetadataSchema {
@@ -93,8 +90,9 @@ function allFieldKeys(schema: MetadataSchema): string[] {
 }
 
 /**
- * Acquires the project lock (`acquireLock`, outer), then the `project.json`
- * file lock (`withFileLock`, innermost). Inside the file lock it reads the
+ * Acquires the project lock (`acquireLock`, outer), then runs
+ * {@link updateProjectJson}, which takes the `project.json` file lock
+ * (`withFileLock`, innermost). Inside the file lock it reads the
  * project, initialises the schema (if absent), calls `mutate(schema, project)`
  * for in-place changes, writes the project (bumping `metadataRevision` once)
  * and returns the schema. A throw from `mutate` writes nothing. The `finally`
@@ -109,16 +107,12 @@ async function withLockedSchema(
 ): Promise<MetadataSchema> {
   const release = await acquireLock(projectRoot);
   try {
-    return await withFileLock(
-      path.join(projectRoot, PROJECT_FILENAME),
-      async () => {
-        const project = await readProject(projectRoot);
-        const schema = getOrInitSchema(project);
-        mutate(schema, project);
-        await writeProject(projectRoot, project);
-        return schema;
-      },
-    );
+    return await updateProjectJson(projectRoot, (project) => {
+      const schema = getOrInitSchema(project);
+      mutate(schema, project);
+      bumpMetadataRevision(project);
+      return { result: schema };
+    });
   } finally {
     release();
   }
@@ -411,48 +405,42 @@ export async function migrateProjectOnLoad(
 
   const release = await acquireLock(projectRoot);
   try {
-    return await withFileLock(
-      path.join(projectRoot, PROJECT_FILENAME),
-      async () => {
-        // The read the write is based on is repeated inside the file lock; the
-        // read above only decided whether to scan.
-        const project = await readProject(projectRoot);
-        if (!project.config) project.config = { editorConfig: {} };
-        let hasChanged = false;
+    // The read the write is based on is repeated inside the file lock; the
+    // read above only decided whether to scan.
+    return await updateProjectJson(projectRoot, (project) => {
+      if (!project.config) project.config = { editorConfig: {} };
+      let hasChanged = false;
 
-        if (project.config.metadataSchema) {
-          const result = applySchemaMigrations(project.config.metadataSchema);
-          if (result.changed) {
-            project.config.metadataSchema = result.schema;
-            hasChanged = true;
-          }
-        }
-
-        if (project.config.features === undefined && seeded !== undefined) {
-          project.config.features = seeded;
+      if (project.config.metadataSchema) {
+        const result = applySchemaMigrations(project.config.metadataSchema);
+        if (result.changed) {
+          project.config.metadataSchema = result.schema;
           hasChanged = true;
         }
+      }
 
-        // Backfill the view flag for projects migrated before the timeline
-        // fields and the Timeline view were split into separate toggles. The
-        // old `timeline` flag gated both, so a project that had it on keeps its
-        // view. Runs once — an already-defined `timelineView` is never
-        // overwritten.
-        if (
-          project.config.features !== undefined &&
-          project.config.features.timelineView === undefined &&
-          project.config.features.timeline === true
-        ) {
-          project.config.features.timelineView = true;
-          hasChanged = true;
-        }
+      if (project.config.features === undefined && seeded !== undefined) {
+        project.config.features = seeded;
+        hasChanged = true;
+      }
 
-        if (hasChanged) {
-          await writeProject(projectRoot, project);
-        }
-        return project;
-      },
-    );
+      // Backfill the view flag for projects migrated before the timeline
+      // fields and the Timeline view were split into separate toggles. The
+      // old `timeline` flag gated both, so a project that had it on keeps its
+      // view. Runs once — an already-defined `timelineView` is never
+      // overwritten.
+      if (
+        project.config.features !== undefined &&
+        project.config.features.timelineView === undefined &&
+        project.config.features.timeline === true
+      ) {
+        project.config.features.timelineView = true;
+        hasChanged = true;
+      }
+
+      if (hasChanged) bumpMetadataRevision(project);
+      return { result: project, shouldWrite: hasChanged };
+    });
   } finally {
     release();
   }
@@ -503,19 +491,17 @@ export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
   // the lock so a concurrent writer is not clobbered, then re-apply.
   const release = await acquireLock(projectRoot);
   try {
-    return await withFileLock(
-      path.join(projectRoot, PROJECT_FILENAME),
-      async () => {
-        const fresh = await readProject(projectRoot);
-        if (!fresh.config?.metadataSchema) return first.schema;
-        const result = applySchemaMigrations(fresh.config.metadataSchema);
-        if (result.changed) {
-          fresh.config.metadataSchema = result.schema;
-          await writeProject(projectRoot, fresh);
-        }
-        return result.schema;
-      },
-    );
+    return await updateProjectJson(projectRoot, (fresh) => {
+      if (!fresh.config?.metadataSchema) {
+        return { result: first.schema, shouldWrite: false };
+      }
+      const result = applySchemaMigrations(fresh.config.metadataSchema);
+      if (result.changed) {
+        fresh.config.metadataSchema = result.schema;
+        bumpMetadataRevision(fresh);
+      }
+      return { result: result.schema, shouldWrite: result.changed };
+    });
   } finally {
     release();
   }

@@ -51,13 +51,6 @@ const ALLOWED: readonly AllowedFinding[] = [
     scope: "sidecarFilename",
     reason: "The one definition of the sidecar file name; writes nothing.",
   },
-  {
-    file: "src/lib/models/metadata-schema.ts",
-    kind: "direct-write",
-    scope: "writeProject",
-    reason:
-      "In-lock helper: called only from withLockedSchema and the migration writers, inside withFileLock for project.json with the read made in the same acquisition.",
-  },
   // Creation and import: a new project root.
   {
     file: "src/lib/models/project-creator.ts",
