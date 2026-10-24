@@ -241,6 +241,11 @@ function enqueueAfterSidecarWrite(
  * locked-access error or a throw from `mutate` propagates unchanged and
  * nothing is written. Bytes, index enqueue and entity rescan enqueue match
  * {@link writeSidecar}; the rescan decision uses the value read in the lock.
+ *
+ * `options.isReadTolerant` (default false) makes a non-locked-access read
+ * error (for example an unparseable file) read as `null` so `mutate` can
+ * replace it, as {@link writeSidecar} does; a locked-access error still
+ * propagates. For callers whose pre-sink behaviour was that tolerance.
  */
 export async function mutateSidecar(
   projectRoot: string,
@@ -248,8 +253,14 @@ export async function mutateSidecar(
   mutate: (
     current: Record<string, MetadataValue> | null,
   ) => SidecarMutation | Promise<SidecarMutation>,
+  options: { isReadTolerant?: boolean } = {},
 ): Promise<Record<string, MetadataValue> | null> {
-  const outcome = await runSidecarWrite(projectRoot, resourceId, false, mutate);
+  const outcome = await runSidecarWrite(
+    projectRoot,
+    resourceId,
+    options.isReadTolerant ?? false,
+    mutate,
+  );
   if (outcome.isWritten && outcome.current) {
     enqueueAfterSidecarWrite(
       projectRoot,
