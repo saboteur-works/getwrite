@@ -51,7 +51,42 @@ Stated figures in the task text (0 errors / 392 warnings; knip 412) match the ob
 
 ## E-4 Key inventory
 
-(empty; Task 2)
+Recorded 2026-10-24 (Task 2), HEAD `fbee9209`, unchanged source. Scripts (not run by the suite): `scripts/e4-key-inventory.test.ts` (node), `scripts/e4-sender-payloads.test.tsx` (jsdom), config `scripts/vitest.e4.config.ts`. Command, from `frontend/`: `E4_RESULT_OUT=<scratchpad>/e4-result.json E4_PAGE_COPY_OUT=<scratchpad>/e4-page-copy.json E4_PAGE_COPY_IN=<scratchpad>/e4-page-copy.json E4_SENDERS_OUT=<scratchpad>/e4-senders.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e4.config.ts`. Temp directory: `mkdtemp` under `$TMPDIR` (`/tmp/claude-501/f93-e4-XXXXXX`, removed after each run). Result files: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/e4-result.json`, `e4-senders.json`, `e4-page-copy.json`.
+
+### E-4a Keys a stale whole-resource copy puts back (MEASURED)
+
+Construction, per repetition, on a fresh temp project and a real text resource: `createResourceCore` (stored sidecar S0); `loadProjectCore` (the object the page holds, "page copy"); then `updateRevisionInPlace` (canonical save), `renameResourceSidecarCore` ("Renamed Chapter"), `updateSidecarCore` of `entityKind`, `aliases`, `wordCountGoal`, `resourceSubtype`, `setNoiseTermDismissedCore` (stored sidecar S1); then the page save construction (`page.tsx` `applyUpdate`: the page copy with a `userMetadata.mood` edit, `wordCount` and `resourceSubtype` overlaid from S1) sent through `updateSidecarCore` (stored sidecar S2). Two variants, 5 repetitions each (10 total); every field below was identical across the 5 repetitions of its variant unless the timestamp is named.
+
+- Variant `fresh` (page copy loaded before any canonical save or dismissal): page copy has no `updatedAt` and no `dismissedNoiseTerms`. Keys changed by the send (S1 to S2): `name`, `plaintext`, `userMetadata`. Keys put back to the stale page-copy value: `name` ("Renamed Chapter" in S1, "Chapter One" in S2), 5 of 5.
+- Variant `warm` (page copy loaded after one canonical save and one dismissal of "alpha"): page copy holds `updatedAt` and `dismissedNoiseTerms: ["alpha"]`. Keys changed by the send: `dismissedNoiseTerms`, `name`, `plaintext`, `updatedAt`, `userMetadata`. Keys put back to the stale page-copy value: `dismissedNoiseTerms` (S1 `["alpha","hello"]`, S2 `["alpha"]`), `name`, `updatedAt` (S2 equals the page copy's value; S1 later than it), 5 of 5.
+- In both variants `wordCount`, `entityKind`, `aliases`, `wordCountGoal` and `resourceSubtype` were unchanged by the send (overlaid or absent from the copy); `orderIndex` and `folderId` unchanged.
+
+### E-4b Keys the page resource copy carries (MEASURED, same runs)
+
+- Stored sidecar S0 after `createResourceCore`, keys (9): `createdAt`, `folderId`, `id`, `name`, `orderIndex`, `slug`, `type`, `userMetadata`, `wordCount`.
+- Page copy from `loadProjectCore` (`fresh`), keys (10): the nine above plus `plaintext` (lower-case p). `warm` copy (12): those ten plus `updatedAt` and `dismissedNoiseTerms`.
+- Page copy keys not in S0: `plaintext` (both variants); `updatedAt`, `dismissedNoiseTerms` (`warm`).
+- `plainText` (capital T), `tiptap`, `charCount`: absent from S0, from the page copy, from S1 and from S2 in 10 of 10 repetitions.
+- `plaintext` is stored by today's `updateSidecarCore`: absent from S1, present in S2 as a string in 10 of 10 repetitions (the denylist drops only `wordCount` and `file`). After the allowlist change a save stops storing it (FR-20, accounted in the FR-20 section below).
+- READ, not run: `loadProjectFromDisk` (`project-loader.ts`, the `resources` map) returns `{...sidecar, plaintext: plaintext ?? "", wordCount}`, overriding any stored `plaintext` with the value read from `content.txt` (or the tiptap file); `AppShell.tsx:530` reads `plaintext` from the Redux resource. The only `.plaintext` reader found in `src/`, `app/`, `components/` outside `project-loader.ts` is `AppShell.tsx:530` (grep, medium confidence).
+
+### E-4c Keys each production sender sends (MEASURED)
+
+Construction: the real `app/(app)/page.tsx` mounted as in `tests/page-stale-sidecar-save.test.tsx` (`StartPage`, `TipTapEditor`, `openProject`, `listProjects`, `updateSidecar` mocked), with `openProject` returning the `warm` page copy above as the project's single resource. One run, five edits in turn, each call to `updateSidecar` recorded (1 repetition per sender; a second run of the same script, with both files run together, passed again; its payloads were not diffed). Passenger keys are those in the payload that the edit did not set.
+
+| Sender (file:line of the `updateSidecar` call) | Key the edit sets | Other keys in the payload (passengers) | `clearKeys` |
+| --- | --- | --- | --- |
+| `EntitySection.tsx:138` (entity kind input) | `entityKind` | `createdAt`, `dismissedNoiseTerms`, `folderId`, `id`, `name`, `orderIndex`, `plaintext`, `slug`, `type`, `updatedAt`, `userMetadata`, `wordCount` | none |
+| `page.tsx:537` (custom field, `userMetadata.mood`) | `userMetadata` | same twelve as above (no `entityKind`) | none |
+| `SubtypeSection.tsx:77` | `resourceSubtype` | none (payload is `{resourceSubtype}` only) | none (set); `["resourceSubtype"]` (clear, READ) |
+| `WordCountGoalSection.tsx:75` (goal "500") | `wordCountGoal` | the twelve above plus `entityKind`, `resourceSubtype` | none (set); `["wordCountGoal"]` (clear, READ at `:104`) |
+| `RemoveEntityControl.tsx:186` | none set (clears) | `createdAt`, `dismissedNoiseTerms`, `folderId`, `id`, `name`, `orderIndex`, `plaintext`, `resourceSubtype`, `slug`, `type`, `updatedAt`, `userMetadata`, `wordCount`, `wordCountGoal` (no `entityKind`, no `aliases`) | `["entityKind","aliases"]` |
+
+READ, not run: alias edits (`EntitySection.tsx:211`, `commitAliases` at `:217`, `:222`, `:230`) send `{...resource, aliases}` through the same `persist`, so the passengers match the `EntitySection` row and the key set is `aliases`. All eight `updateResource(...)` calls in `page.tsx` (`:588`, `:595`, `:612`, `:622`, `:635`, `:642`, `:652`, `:662`) set only `userMetadata` keys.
+
+### E-4 outcome
+
+Keys any sender sets: `entityKind`, `aliases`, `wordCountGoal`, `resourceSubtype`, `userMetadata`, plus `clearKeys` naming `entityKind`, `aliases`, `wordCountGoal` or `resourceSubtype`. No sender sets a sixth key. Of the passengers, `name`, `updatedAt`, `dismissedNoiseTerms` (server-owned), `wordCount` (already dropped), `orderIndex`, `folderId` (already re-applied), `id`, `slug`, `type`, `createdAt` (identity keys) and `plaintext` are not set by any edit. No stop-and-report condition found.
 
 ## E-5 Features-route senders, two quick edits
 
@@ -75,7 +110,36 @@ Stated figures in the task text (0 errors / 392 warnings; knip 412) match the ob
 
 ## FR-3 callers of updateSidecarCore
 
-(empty; Task 2)
+READ, not run. Recorded 2026-10-24 (Task 2), HEAD `fbee9209`. Search: `grep -rnE "updateSidecarCore|updateSidecar\b|/sidecar"` over `frontend/app`, `components`, `src`, `lib`, `hooks`, `stories`, `scripts`, `cli/`, `electron/`, `android/` (excluding `node_modules`, `.next*`, build output, `tests/`). Medium confidence for a name-based grep; the CLI, Electron and Android trees returned no match for `updateSidecar` or a `/sidecar` route string.
+
+Direct callers of `updateSidecarCore` (2 production, as at the 2026-10-24 finding F93-2):
+
+| file:line | Role |
+| --- | --- |
+| `frontend/app/api/resource/[resource-id]/sidecar/route.ts:44` | `POST /api/resource/[resource-id]/sidecar` handler: passes `body.updatedResource` and `body.clearKeys` through unchanged |
+| `frontend/src/store/transport/native-resource-backend.ts:129` | native in-process transport (`updateSidecar`, `:127`): passes `updatedResource` and `clearKeys` through |
+
+Definition: `frontend/src/lib/models/resource-crud-core.ts:556`.
+
+Callers of the transport (`updateSidecar` in `frontend/src/lib/api/resources.ts`: interface `:159`, web transport `:314`, wrapper `:585`), all production:
+
+| file:line | What it sends (E-4c) |
+| --- | --- |
+| `frontend/app/(app)/page.tsx:537` | whole page copy; edits only `userMetadata` keys |
+| `frontend/components/Sidebar/EntitySection.tsx:138` (`persist`; callers `:158`, `:211`) | whole Redux resource; edits `entityKind` or `aliases` |
+| `frontend/components/Sidebar/WordCountGoalSection.tsx:75` (`persist`; callers `:104`, `:115`) | whole Redux resource; edits `wordCountGoal` |
+| `frontend/components/Sidebar/SubtypeSection.tsx:77` | `{resourceSubtype}` or `{}` with `clearKeys` |
+| `frontend/components/Sidebar/RemoveEntityControl.tsx:186` | whole Redux resource without `entityKind`/`aliases`, `clearKeys: ["entityKind","aliases"]` |
+
+Test files naming `updateSidecarCore` or `updateSidecar` (not production; FR-20 covers the ones whose assertions change): 30 files under `frontend/tests/` per the first grep, including `tests/unit/resource-crud-core-sidecar-sink.test.ts`, `metadata-concurrent-writes.test.ts`, `resource-crud-core-entity-kind-omitted.test.ts`, `sidecar-concurrent-writes.test.ts`, `project-json-lock-pairs.test.ts`, `project-json-lock-deadlock.test.ts`.
+
+Question AC-2 asks, answered from the table and from E-4c:
+- Any caller that renames a resource through this path: none found. Every sender that sends a `name` carries the loaded or Redux copy's value as a passenger; no edit sets it. Rename has its own route (`renameResourceSidecarCore`).
+- Any caller that sets `updatedAt`: none found (passenger only, in the `EntitySection`, `page.tsx`, `WordCountGoalSection` and `RemoveEntityControl` payloads).
+- Any caller that sets `dismissedNoiseTerms`: none found (passenger only; dismissal goes through `setNoiseTermDismissed` / `setNoiseTermDismissedCore`, `EntitySection.tsx` `handleDismissNoiseTerm`).
+- Any production code reading back a client-written `updatedAt`, `name` or `dismissedNoiseTerms` from a response of this route: none; the route returns `{ message: "Sidecar updated." }` only.
+
+Result: the 2026-10-24 finding is confirmed (no caller relies on a to-be-dropped key; two production callers of the core). No blocker.
 
 ## FR-17 callers of the functions FR-15 and FR-16 change
 
@@ -83,4 +147,4 @@ Stated figures in the task text (0 errors / 392 warnings; knip 412) match the ob
 
 ## FR-20 test-edit list
 
-(empty; Tasks 8 and 12)
+Task 2 input (MEASURED, E-4b): a save through today's `updateSidecarCore` stores `plaintext` (lower-case) from the page copy in 10 of 10 repetitions; the allowlist stops storing it on the next save. `plainText`, `tiptap` and `charCount` were not carried by the page copy and were absent from every stored sidecar in the E-4 runs. Test edits: (empty; Tasks 8 and 12)
