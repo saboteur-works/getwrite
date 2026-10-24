@@ -167,6 +167,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 4, 15
 **Estimate:** 3
 **Notes:** Satisfies FR-12, FR-13, FR-2. Serialised after Task 15 only to share the guard pattern and avoid divergent mechanisms; if Task 15 was N/A, copy the `SubtypesSettings` pattern directly.
+**Outcome note (Gate 5, 2026-10-24):** The `OrganizerCardBodySettings` guard was built (5aad9c9a) and reverted by owner decision (240e5e40): nothing else writes `organizerCardBody` and each save carries the section's full state, while the guard disabled the length input during each save and dropped the keystrokes that followed. Follow-up: save the excerpt length on blur or after a typing pause. The `ProjectFeatureToggles` guard stays. Recorded at the end of `experiments.md`.
 **Done:** [x]
 
 ### Task 17: Gated: editor config and entity-graph settings revert fix
