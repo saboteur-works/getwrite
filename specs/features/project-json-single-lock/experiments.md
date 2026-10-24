@@ -152,3 +152,28 @@ No sidecar read-then-`writeSidecar` sequence beyond S1 to S4 was found. No `proj
 ### Closing line
 
 Cross-request or cross-function writers found: `project.json` 1 confirmed by reading (F-1) and 2 lower-confidence candidates (F-5 in two files); sidecars 3 (F-2, F-3, F-6) plus the trash paths (F-4). Spec S1 to S4 list confirmed, with one correction (S4 `setNoiseTermDismissedCore` has no production caller). Writers the spec does not list: `trash.ts:921` (direct restore write) and `resource-templates.ts:446` as a non-`writeSidecar` write; none for `project.json`. Nothing was run in this task.
+
+## FR-10 before
+
+Task 4. Run on 2026-10-23 on branch `fix/project-json-write-lock`, lock code unchanged (the only edited file is `frontend/tests/unit/metadata-concurrent-writes.test.ts`). Inside the sandbox, Vitest v4.1.6.
+
+- Test: `an editor-style save racing a schema change keeps both changes` (replaces `...never leaves project.json unparseable`). Per repetition (20): fresh temp project (`os.tmpdir()/gw-meta-race-*`, removed by the file's `afterEach`), `addGroup("custom-group")`, then `Promise.all([updateEditorConfigCore({ projectId, body: { fontSize: "19px" } }), addField(projectRoot, "custom-group", { key: "mood", ... })])`. It then records `<rep>:unparseable` if `project.json` does not parse, `<rep>:fontSize` if `config.editorConfig.body.fontSize !== "19px"`, and `<rep>:mood` if no group field has `key === "mood"`; it asserts the list is empty.
+- Command, from `frontend/`, 9 times: `timeout 300 npx vitest run tests/unit/metadata-concurrent-writes.test.ts < /dev/null`. Logs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/fr10b-1.log` to `fr10b-9.log`.
+- Observed failing assertion in all 9 runs: `AssertionError: expected [ '0:fontSize', ... ] to deeply equal []` (the list held 20 entries in every run).
+
+| Run | Exit | Test result | Repetitions that failed (of 20) | Entries `:fontSize` | Entries `:mood` | `:unparseable` |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 1 | failed | 20 | 18 | 2 | 0 |
+| 2 | 1 | failed | 20 | 18 | 2 | 0 |
+| 3 | 1 | failed | 20 | 17 | 3 | 0 |
+| 4 | 1 | failed | 20 | 18 | 2 | 0 |
+| 5 | 1 | failed | 20 | 17 | 3 | 0 |
+| 6 | 1 | failed | 20 | 19 | 1 | 0 |
+| 7 | 1 | failed | 20 | 20 | 0 | 0 |
+| 8 | 1 | failed | 20 | 18 | 2 | 0 |
+| 9 | 1 | failed | 20 | 16 | 4 | 0 |
+
+- Each failed repetition lost exactly one of the two changes (the two columns sum to 20 in every run); no repetition lost both or neither; no unparseable file. Totals over 9 runs: 161 `:fontSize` entries, 19 `:mood` entries, of 180 repetitions.
+- Other tests in the file (`a status change survives a canonical save of the same resource`, `concurrent heading and body saves both reach project.json`): passed in all 9 runs (`Tests 1 failed | 2 passed (3)`). `tsc --noEmit` and ESLint on the file reported nothing.
+- Difference from the comment this replaced (schema change lost in 20 of 20 repetitions in each of 9 runs): in these 9 runs the font size was the lost change in 161 of 180 repetitions and the field in 19. Not explained here. Hypothesis, untested: which writer reads first varies with scheduling; an experiment that logs read and write order per writer per repetition would settle it. The earlier comment's measurement may also have used a different assertion.
+- Status: red by design until Task 15.
