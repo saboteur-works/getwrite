@@ -792,10 +792,7 @@ async function renameFieldKeyInSchema(
   fieldKey: string,
   newKey: string,
 ): Promise<MetadataSchema> {
-  const release = await acquireLock(projectRoot);
-  try {
-    const project = await readProject(projectRoot);
-    const schema = getOrInitSchema(project);
+  return withLockedSchema(projectRoot, (schema) => {
     if (allFieldKeys(schema).includes(newKey)) {
       throw new Error(`Field key already exists: "${newKey}"`);
     }
@@ -805,11 +802,7 @@ async function renameFieldKeyInSchema(
     if (field.locked)
       throw new Error(`Cannot rename key of locked field: "${fieldKey}"`);
     field.key = newKey;
-    await writeProject(projectRoot, project);
-    return schema;
-  } finally {
-    release();
-  }
+  });
 }
 
 /**
@@ -967,12 +960,8 @@ export async function changeFieldTypeWithMigration(
   newOptions: string[],
   migrations: Record<string, TypeMigrationEntry>,
 ): Promise<MetadataSchema> {
-  const release = await acquireLock(projectRoot);
-  let schema: MetadataSchema;
-  try {
-    const project = await readProject(projectRoot);
-    schema = getOrInitSchema(project);
-    const group = findGroup(schema, groupId);
+  const schema = await withLockedSchema(projectRoot, (draft) => {
+    const group = findGroup(draft, groupId);
     const field = group.fields.find((f) => f.key === fieldKey);
     if (!field) throw new Error(`Field not found: "${fieldKey}"`);
     if (field.locked)
@@ -983,10 +972,7 @@ export async function changeFieldTypeWithMigration(
     } else {
       delete field.options;
     }
-    await writeProject(projectRoot, project);
-  } finally {
-    release();
-  }
+  });
   await migrateFieldTypeInSidecars(projectRoot, fieldKey, migrations);
   return schema;
 }
@@ -1111,13 +1097,9 @@ export async function updateFieldOptionsWithMigration(
   newOptions: string[],
   migrations: Record<string, OptionsMigrationEntry>,
 ): Promise<MetadataSchema> {
-  const release = await acquireLock(projectRoot);
-  let schema: MetadataSchema;
-  let fieldType: MetadataFieldType;
-  try {
-    const project = await readProject(projectRoot);
-    schema = getOrInitSchema(project);
-    const group = findGroup(schema, groupId);
+  let fieldType: MetadataFieldType = "select";
+  const schema = await withLockedSchema(projectRoot, (draft) => {
+    const group = findGroup(draft, groupId);
     const field = group.fields.find((f) => f.key === fieldKey);
     if (!field) throw new Error(`Field not found: "${fieldKey}"`);
     if (field.type !== "select" && field.type !== "multiselect") {
@@ -1130,10 +1112,7 @@ export async function updateFieldOptionsWithMigration(
       .filter(([, m]) => m.action === "add-to-options")
       .map(([v]) => v);
     field.options = [...newOptions, ...addToOptionsValues];
-    await writeProject(projectRoot, project);
-  } finally {
-    release();
-  }
+  });
   await migrateFieldOptionsInSidecars(
     projectRoot,
     fieldKey,
