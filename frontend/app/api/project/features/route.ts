@@ -16,6 +16,13 @@
  *
  * The underlying helper acquires the project lock and does NOT bump
  * `metadataRevision` — see `project-features.ts`.
+ *
+ * Concurrency: each block (`features`, `organizerCardBody`, `relationshipTypes`,
+ * `subtypes`) is replaced whole, so the write is last-write-wins per block.
+ * Overlapping requests for different blocks keep both (the `project.json` file
+ * lock). Between two devices the newest write to a block wins, so an item added
+ * to a list on the other device can be dropped when this device writes its
+ * older copy of that list.
  */
 
 import { NextRequest, NextResponse } from "next/server";

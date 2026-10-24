@@ -273,3 +273,46 @@ describe("POST /api/project/features — subtypes (Feature 72, FR-2/FR-3/FR-4)",
     expect(keyless.status).toBe(409);
   });
 });
+
+describe("POST /api/project/features — overlapping requests (Feature 93, Task 14, FR-13)", () => {
+  // Regression guard of Feature 92's project.json lock: it passes on the
+  // unchanged tree and is not evidence of a Feature 93 fix. Two requests to
+  // different blocks are in flight together; both blocks must be stored and
+  // the file must still parse.
+  it("keeps both blocks when two requests for different blocks overlap (20 repetitions)", async () => {
+    const projectsDir = await makeProjectsDir();
+    for (let i = 0; i < 20; i++) {
+      const projectId = generateUUID();
+      const projectPath = await writeProject(projectsDir, projectId);
+
+      const [a, b] = await withProjectsDir(projectsDir, () =>
+        Promise.all([
+          POST(
+            featuresRequest({
+              projectId,
+              features: { timeline: true },
+            }) as never,
+          ),
+          POST(
+            featuresRequest({
+              projectId,
+              subtypes: ["Scene", "Chapter"],
+            }) as never,
+          ),
+        ]),
+      );
+      expect(a.status).toBe(200);
+      expect(b.status).toBe(200);
+
+      const raw = await fs.readFile(
+        path.join(projectPath, PROJECT_FILENAME),
+        "utf8",
+      );
+      const stored = JSON.parse(raw) as {
+        config: { features?: { timeline?: boolean }; subtypes?: string[] };
+      };
+      expect(stored.config.features?.timeline).toBe(true);
+      expect(stored.config.subtypes).toEqual(["Scene", "Chapter"]);
+    }
+  });
+});
