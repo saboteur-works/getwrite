@@ -582,6 +582,19 @@ describe("models/sidecar — read-modify-write sink (Feature 92, Task 16)", () =
     expect(enqueueEntityRescan).toHaveBeenCalledTimes(1);
   });
 
+  it("rescans when mutate renames an entity in place and returns the same object", async () => {
+    const id = generateUUID();
+    await writeSidecar(tmp, id, { entityKind: "character", name: "Ann" });
+    await flushIndexer();
+    vi.mocked(enqueueEntityRescan).mockClear();
+    await mutateSidecar(tmp, id, (current) => {
+      current!["name"] = "Anna";
+      return current!;
+    });
+    await flushIndexer();
+    expect(enqueueEntityRescan).toHaveBeenCalledTimes(1);
+  });
+
   it("makes whole-object writeSidecar take the sidecar lock for its write", async () => {
     const id = generateUUID();
     await writeSidecar(tmp, id, { k: 1 });

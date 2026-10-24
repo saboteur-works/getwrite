@@ -188,7 +188,11 @@ async function runSidecarWrite(
         if (!isReadTolerant || isLockedAccessError(err)) throw err;
         previous = null;
       }
-      const next = await mutate(previous);
+      // `mutate` gets a copy: a callback that edits it in place and returns
+      // it must still differ from `previous`, which decides the entity rescan.
+      const next = await mutate(
+        previous === null ? null : structuredClone(previous),
+      );
       if (next === SIDECAR_UNCHANGED) {
         return { previous, current: previous, isWritten: false };
       }
@@ -235,7 +239,8 @@ function enqueueAfterSidecarWrite(
 /**
  * Read, mutate and write a sidecar as one step (the sink every sidecar writer
  * that derives its new value from the stored one must use). `mutate` receives
- * the stored value read inside the lock (`null` when absent) and returns the
+ * a copy of the stored value read inside the lock (`null` when absent), which
+ * it may edit in place, and returns the
  * value to write, or {@link SIDECAR_UNCHANGED} to write and bump nothing.
  * Returns the value now stored (`null` if none exists). A read error, a
  * locked-access error or a throw from `mutate` propagates unchanged and
