@@ -31,7 +31,7 @@ import {
 import { applyMentionJumpHighlight } from "../Editor/Extensions/MentionJumpHighlightExtension";
 import { resolveMentionHighlightDurationSeconds } from "../../src/lib/api/mention-highlight-duration";
 import { toastService } from "../../src/lib/toast-service";
-import { updateSidecar } from "../../src/lib/api/resources";
+import { setNoiseTermDismissed } from "../../src/lib/api/resources";
 import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 import {
@@ -44,7 +44,6 @@ import {
   POSSESSIVE_OR_PLURAL_SUFFIX,
   escapeRegExp,
 } from "../../src/lib/models/entity-detection";
-import type { AnyResource } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
 
 /**
@@ -592,19 +591,23 @@ export default function EntityMentionsSection(): JSX.Element | null {
     checkNoiseFlag(term, noiseCheckSources),
   );
 
-  // Dismisses one flagged term for this entity only, persisted via the same
-  // `updateSidecar` write path `EntitySection.tsx`'s own dismiss handler
-  // uses — no new transport.
+  // Dismisses one flagged term for this entity only. Only the term is sent;
+  // the server computes the list from the stored sidecar (note_8cfdc308),
+  // and the stored list it returns replaces the optimistic one.
   const handleDismissNoiseTerm = (term: string): void => {
     const normalized = normalizeNoiseTerm(term);
     if (dismissedNoiseTerms.includes(normalized)) return;
-    const updated: AnyResource = {
-      ...resource,
-      dismissedNoiseTerms: [...dismissedNoiseTerms, normalized],
-    };
-    dispatch(updateResource(updated));
-    void updateSidecar(updated.id, projectId, updated)
-      .then(() => {
+    dispatch(
+      updateResource({
+        id: resource.id,
+        dismissedNoiseTerms: [...dismissedNoiseTerms, normalized],
+      }),
+    );
+    void setNoiseTermDismissed(resource.id, projectId, term, true)
+      .then((stored) => {
+        dispatch(
+          updateResource({ id: resource.id, dismissedNoiseTerms: stored }),
+        );
         dispatch(fetchEntityAliasTable(projectId));
       })
       .catch(() => {

@@ -18,7 +18,10 @@ import {
   sidecarPathForProject,
   writeSidecar,
 } from "../../src/lib/models/sidecar";
-import { reorderResourcesCore } from "../../src/lib/models/resource-crud-core";
+import {
+  ReorderSaveError,
+  reorderResourcesCore,
+} from "../../src/lib/models/resource-crud-core";
 import {
   nullifyResourceRefs,
   restoreResource,
@@ -102,21 +105,28 @@ describe("reorderResourcesCore sidecar loop on the sink", () => {
     });
   });
 
-  it("logs and continues when one sidecar fails", async () => {
+  it("updates the other sidecars, then rejects naming the one that failed", async () => {
+    // note_51c813c1: a failed sidecar save used to be logged and skipped, and
+    // the reorder reported success.
     const root = await makeRoot();
     const bad = generateUUID();
     const good = generateUUID();
     // A directory where the sidecar file belongs makes the write fail.
     await fs.mkdir(sidecarPathForProject(root, bad), { recursive: true });
     await writeSidecar(root, good, { name: "Good", orderIndex: 5 });
-    await reorderResourcesCore("unused", {
+    const error = await reorderResourcesCore("unused", {
       projectRootOverride: root,
       folderOrder: [],
       resourceOrder: [
         { id: bad, orderIndex: 0, folderId: null },
         { id: good, orderIndex: 1, folderId: null },
       ],
-    });
+    }).then(
+      () => null,
+      (err: unknown) => err,
+    );
+    expect(error).toBeInstanceOf(ReorderSaveError);
+    expect((error as ReorderSaveError).failedIds).toEqual([bad]);
     expect((await readSidecar(root, good))?.["orderIndex"]).toBe(1);
   });
 });

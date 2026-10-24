@@ -62,6 +62,8 @@ describe("updateSidecarCore — entity-graph position cleanup on entity removal"
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
       await saveEntityGraphPosition(projectPath, resourceId, 10, 20, [
         "authored",
       ]);
@@ -80,6 +82,8 @@ describe("updateSidecarCore — entity-graph position cleanup on entity removal"
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
       const otherEntityId = generateUUID();
       const other = await saveEntityGraphPosition(
         projectPath,
@@ -106,6 +110,8 @@ describe("updateSidecarCore — entity-graph position cleanup on entity removal"
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
       const saved = await saveEntityGraphPosition(
         projectPath,
         resourceId,
@@ -125,6 +131,8 @@ describe("updateSidecarCore — entity-graph position cleanup on entity removal"
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       await expect(
         updateSidecarCore(projectId, resourceId, {}, ["entityKind"]),

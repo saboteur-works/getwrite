@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import {
   ReorderProjectNotFoundError,
+  ReorderSaveError,
   reorderResourcesCore,
 } from "../../../../../src/lib/models/resource-crud-core";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
@@ -34,6 +35,12 @@ async function reorder(
         status: 404,
       });
     }
+    if (err instanceof ReorderSaveError) {
+      return new Response(
+        JSON.stringify({ error: err.message, failedIds: err.failedIds }),
+        { status: 500 },
+      );
+    }
     throw err;
   }
 
@@ -42,4 +49,6 @@ async function reorder(
 
 export const POST = withStorageContext(reorder);
 
-export const GET = withStorageContext(() => new Response(null, { status: 200 }));
+export const GET = withStorageContext(
+  () => new Response(null, { status: 200 }),
+);

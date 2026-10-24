@@ -69,6 +69,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
 import { toastService } from "../../src/lib/toast-service";
+import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import { exportMarkdown, exportText } from "../../src/lib/api/export";
 import { useTrashRefresh } from "../../components/Layout/TrashRefreshContext";
@@ -534,6 +535,10 @@ export default function Home(): JSX.Element {
     if (activeProjectDirectoryId) {
       const sent = applyUpdate(resource);
       updateSidecar(resourceId, activeProjectDirectoryId, sent).catch((err) => {
+        // The resource was moved to Trash while this save was in flight; the
+        // server refused it rather than bring the resource back
+        // (note_131ecc62). The writer deleted it, so nothing is reported.
+        if (err instanceof ResourceGoneError) return;
         console.error("Error updating resource metadata:", err);
         // The change is already on screen; a failed save used to leave it
         // there with no message, and it was gone after a reload (measured,

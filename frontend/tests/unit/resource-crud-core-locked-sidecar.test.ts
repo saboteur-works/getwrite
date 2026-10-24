@@ -14,6 +14,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as io from "../../src/lib/models/io";
+import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import type { StorageAdapter } from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import {
@@ -72,9 +73,10 @@ describe("updateSidecarCore — locked-access propagation", () => {
     ).rejects.toSatisfy((err: unknown) => isLockedAccessError(err));
   });
 
-  it("still treats a genuine missing sidecar as absent for an unencrypted project", async () => {
-    // No marker written for this project id — same behavior as before the
-    // fix for the ordinary "brand new resource" case.
+  it("reports a genuine missing sidecar as gone, not locked, for an unencrypted project", async () => {
+    // No marker written for this project id. A missing sidecar is refused as
+    // ResourceGoneError (note_131ecc62; resources are created through
+    // writeResourceToFile, never here), not misreported as locked access.
     const plainProjectId = generateUUID();
     const plainProjectRoot = `${WORKSPACE}/${plainProjectId}`;
     await base.mkdir(plainProjectRoot, { recursive: true });
@@ -83,7 +85,7 @@ describe("updateSidecarCore — locked-access propagation", () => {
     const resourceId = generateUUID();
     await expect(
       updateSidecarCore(plainProjectId, resourceId, { title: "New title" }),
-    ).resolves.toBeUndefined();
+    ).rejects.toBeInstanceOf(ResourceGoneError);
   });
 });
 

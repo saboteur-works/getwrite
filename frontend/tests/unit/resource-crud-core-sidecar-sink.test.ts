@@ -19,6 +19,9 @@ import {
   sidecarPathForProject,
   writeSidecar,
 } from "../../src/lib/models/sidecar";
+import { softDeleteResource } from "../../src/lib/models/trash";
+import { withFileLock } from "../../src/lib/models/file-lock";
+import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
@@ -81,14 +84,9 @@ describe("updateSidecarCore on the sidecar sink", () => {
     });
   });
 
-  it("applies clearKeys and creates the sidecar when none exists", async () => {
+  it("applies clearKeys after the merge", async () => {
     await withProject(async ({ projectId, projectPath, resourceId }) => {
-      await updateSidecarCore(projectId, resourceId, {
-        name: "Fresh",
-        orderIndex: 4,
-        entityKind: "character",
-      });
-      expect(await readSidecar(projectPath, resourceId)).toMatchObject({
+      await writeSidecar(projectPath, resourceId, {
         name: "Fresh",
         orderIndex: 4,
         folderId: null,
@@ -99,6 +97,95 @@ describe("updateSidecarCore on the sidecar sink", () => {
       const stored = await readSidecar(projectPath, resourceId);
       expect(stored).not.toHaveProperty("entityKind");
       expect(stored?.name).toBe("Fresh");
+    });
+  });
+
+  it("refuses with ResourceGoneError and creates nothing when no sidecar exists", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await expect(
+        updateSidecarCore(projectId, resourceId, { name: "Ghost" }),
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+      expect(await readSidecar(projectPath, resourceId)).toBeNull();
+    });
+  });
+
+  it("refuses a save that arrives after the resource was moved to Trash", async () => {
+    // note_131ecc62: the late save used to recreate a live sidecar, and the
+    // trashed resource reappeared in the tree with no content.
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, {
+        name: "Ghost",
+        orderIndex: 0,
+        folderId: null,
+      });
+      await softDeleteResource(projectPath, resourceId);
+      await expect(
+        updateSidecarCore(projectId, resourceId, {
+          userMetadata: { status: "Draft" },
+        }),
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+      expect(await readSidecar(projectPath, resourceId)).toBeNull();
+    });
+  });
+
+  it("never leaves a live sidecar when a save overlaps the move to Trash", async () => {
+    await withProject(async ({ projectId, projectPath }) => {
+      const live: number[] = [];
+      for (let rep = 0; rep < 50; rep += 1) {
+        const id = generateUUID();
+        await writeSidecar(projectPath, id, {
+          name: `R${rep}`,
+          orderIndex: 0,
+          folderId: null,
+        });
+        const save = updateSidecarCore(projectId, id, {
+          userMetadata: { status: "Draft" },
+        }).catch((err: unknown) => {
+          if (!(err instanceof ResourceGoneError)) throw err;
+        });
+        const remove = softDeleteResource(projectPath, id);
+        // Alternate which starts first.
+        await (rep % 2 === 0
+          ? Promise.all([remove, save])
+          : Promise.all([save, remove]));
+        if ((await readSidecar(projectPath, id)) !== null) live.push(rep);
+      }
+      expect(live).toEqual([]);
+    });
+  }, 60000);
+
+  it("moves the sidecar to Trash only once a running sidecar write releases its lock", async () => {
+    await withProject(async ({ projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, {
+        name: "Held",
+        orderIndex: 0,
+        folderId: null,
+      });
+      const sidecarPath = sidecarPathForProject(projectPath, resourceId);
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let markEntered!: () => void;
+      const entered = new Promise<void>((resolve) => {
+        markEntered = resolve;
+      });
+      const holder = withFileLock(sidecarPath, async () => {
+        markEntered();
+        await held;
+      });
+      await entered;
+      const removal = softDeleteResource(projectPath, resourceId);
+      // Give the delete time to reach the move.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const isStillLive = await fs.access(sidecarPath).then(
+        () => true,
+        () => false,
+      );
+      release();
+      await Promise.all([holder, removal]);
+      expect(isStillLive).toBe(true);
+      expect(await readSidecar(projectPath, resourceId)).toBeNull();
     });
   });
 
@@ -140,6 +227,32 @@ describe("updateSidecarCore on the sidecar sink", () => {
 });
 
 describe("setNoiseTermDismissedCore on the sidecar sink", () => {
+  it("refuses with ResourceGoneError when no sidecar exists", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await expect(
+        setNoiseTermDismissedCore(projectId, resourceId, "case", true),
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+      expect(await readSidecar(projectPath, resourceId)).toBeNull();
+    });
+  });
+
+  it("returns the stored list, computed from the sidecar read inside the lock", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, {
+        name: "E",
+        orderIndex: 0,
+        folderId: null,
+        dismissedNoiseTerms: ["kept"],
+      });
+      expect(
+        await setNoiseTermDismissedCore(projectId, resourceId, " Case ", true),
+      ).toEqual(["kept", "case"]);
+      expect(
+        await setNoiseTermDismissedCore(projectId, resourceId, "kept", false),
+      ).toEqual(["case"]);
+    });
+  });
+
   it("keeps both terms when two different terms are dismissed at once", async () => {
     await withProject(async ({ projectId, projectPath, resourceId }) => {
       await writeSidecar(projectPath, resourceId, {

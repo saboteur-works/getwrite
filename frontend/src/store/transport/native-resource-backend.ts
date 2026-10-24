@@ -48,6 +48,7 @@ import {
   renameResourceSidecarCore,
   reorderResourcesCore,
   softDeleteFolderCore,
+  setNoiseTermDismissedCore,
   updateSidecarCore,
   uploadMediaResourceCore,
 } from "../../lib/models/resource-crud-core";
@@ -132,6 +133,12 @@ export function createNativeResourcesTransport(
           clearKeys,
         );
       });
+    },
+
+    async setNoiseTermDismissed(resourceId, projectId, term, dismissed) {
+      return run(() =>
+        setNoiseTermDismissedCore(projectId, resourceId, term, dismissed),
+      );
     },
 
     async rename(resourceId, projectId, newName, resourceType) {

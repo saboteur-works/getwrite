@@ -23,6 +23,7 @@ import { getEffectiveResourceRefFieldKeys } from "./metadata-schema";
 import { enqueueIndex } from "./indexer-queue";
 import { removeEntityRelationshipsForEntity } from "./entity-relationships";
 import { isLockedAccessError } from "./locked-access";
+import { withFileLock } from "./file-lock";
 import {
   FolderSchema,
   TrashRefRecordSchema,
@@ -333,16 +334,20 @@ export async function softDeleteResource(
   await removeResourceFromBacklinks(projectRoot, resourceId);
   await removeResourceFromMentionIndex(projectRoot, resourceId);
 
-  // Move sidecar if present
+  // Move sidecar if present, under the sidecar's file lock (innermost; nothing
+  // else is taken inside it), so a metadata save in progress finishes first
+  // and a later one finds no live sidecar and is refused (note_131ecc62).
   const sidecarSrc = sidecarPathForProject(projectRoot, resourceId);
   const sidecarName = sidecarFilename(resourceId);
   const sidecarDest = path.join(trashMetaDir, sidecarName);
-  try {
-    await rename(sidecarSrc, sidecarDest);
-  } catch (err: unknown) {
-    // If file does not exist, ignore; otherwise rethrow
-    if (!isEnoent(err)) throw err;
-  }
+  await withFileLock(sidecarSrc, async () => {
+    try {
+      await rename(sidecarSrc, sidecarDest);
+    } catch (err: unknown) {
+      // If file does not exist, ignore; otherwise rethrow
+      if (!isEnoent(err)) throw err;
+    }
+  });
 
   // Move any resource files matching the resourceId under `resources/`.
   const resourcesDir = path.join(projectRoot, "resources");
@@ -922,10 +927,13 @@ export async function restoreResource(
     };
 
     await mkdir(path.dirname(sidecarDest), { recursive: true });
-    await atomicWriteFile(
-      sidecarDest,
-      JSON.stringify(updatedSidecar, null, 2),
-      "utf8",
+    // Under the live sidecar's file lock, as every other sidecar write.
+    await withFileLock(sidecarDest, () =>
+      atomicWriteFile(
+        sidecarDest,
+        JSON.stringify(updatedSidecar, null, 2),
+        "utf8",
+      ),
     );
     await rm(sidecarSrc, { force: true });
   }

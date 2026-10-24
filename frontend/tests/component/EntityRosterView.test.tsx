@@ -28,7 +28,10 @@ vi.mock("../../src/lib/api/entity-alias-table", () => ({
 vi.mock("../../src/lib/api/entity-mention-counts", () => ({
   getEntityMentionCounts: vi.fn(),
 }));
-vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
+vi.mock("../../src/lib/api/resources", () => ({
+  updateSidecar: vi.fn(),
+  setNoiseTermDismissed: vi.fn(),
+}));
 vi.mock("../../src/lib/api/project-noise-words", () => ({
   getNoiseWordLists: vi.fn(),
 }));
@@ -38,11 +41,15 @@ vi.mock("../../src/lib/api/global-noise-words", () => ({
 
 import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
 import { getEntityMentionCounts } from "../../src/lib/api/entity-mention-counts";
-import { updateSidecar } from "../../src/lib/api/resources";
+import {
+  setNoiseTermDismissed,
+  updateSidecar,
+} from "../../src/lib/api/resources";
 import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
+const mockedSetNoiseTermDismissed = vi.mocked(setNoiseTermDismissed);
 
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
 const mockedGetEntityMentionCounts = vi.mocked(getEntityMentionCounts);
@@ -391,7 +398,7 @@ describe("EntityRosterView", () => {
       claimedBy: {},
     };
     mockedGetEntityMentionCounts.mockResolvedValue({});
-    mockedUpdateSidecar.mockResolvedValue(undefined);
+    mockedSetNoiseTermDismissed.mockResolvedValue(["case"]);
 
     const resources: AnyResource[] = [
       makeEntityResource("e-a", {
@@ -427,12 +434,17 @@ describe("EntityRosterView", () => {
     // Dismiss "Case" on Entity A only.
     dismissButtonsBefore[0].click();
 
-    await waitFor(() => expect(mockedUpdateSidecar).toHaveBeenCalledTimes(1));
-    expect(mockedUpdateSidecar).toHaveBeenCalledWith(
+    // Only the term is sent (note_8cfdc308); no whole-resource sidecar save.
+    await waitFor(() =>
+      expect(mockedSetNoiseTermDismissed).toHaveBeenCalledTimes(1),
+    );
+    expect(mockedSetNoiseTermDismissed).toHaveBeenCalledWith(
       "e-a",
       PROJECT_ID,
-      expect.objectContaining({ dismissedNoiseTerms: ["case"] }),
+      "Case",
+      true,
     );
+    expect(mockedUpdateSidecar).not.toHaveBeenCalled();
 
     // Entity A's observation disappears; Entity B's remains.
     await waitFor(() => {
@@ -552,6 +564,7 @@ describe("EntityRosterView", () => {
       button.click();
 
       expect(mockedUpdateSidecar).not.toHaveBeenCalled();
+      expect(mockedSetNoiseTermDismissed).not.toHaveBeenCalled();
     });
 
     it("renders no control other than the row's activation button (no inline name/kind/alias editor)", async () => {

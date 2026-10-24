@@ -26,7 +26,7 @@ import {
   type NoiseWordLists,
 } from "../../../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../../../src/lib/api/global-noise-words";
-import { updateSidecar } from "../../../../src/lib/api/resources";
+import { setNoiseTermDismissed } from "../../../../src/lib/api/resources";
 import type { NoiseTermKind } from "../../../../src/lib/models/entity-noise-copy";
 import type { EntityAliasEntry } from "../../../../src/lib/models/entity-alias-table";
 import EntityRosterRowComponent from "./EntityRosterRow";
@@ -287,11 +287,11 @@ export default function EntityRosterView({
 
   /**
    * Dismisses (or un-dismisses) one entity's own flagged `term`
-   * (FR-8/FR-9/FR-13), persisting through the existing `updateSidecar`
-   * write path rather than a new transport (FR-9 — `setNoiseTermDismissedCore`,
-   * Task 7, has no HTTP route or client transport wired to it yet, so this
-   * replicates its normalize-and-merge logic client-side, the same approach
-   * `EntitySection.tsx`'s Task 14 integration takes). Scoped to this one
+   * (FR-8/FR-9/FR-13) through `setNoiseTermDismissed`: only the term is
+   * sent, and the server computes the new list from the stored sidecar
+   * (`setNoiseTermDismissedCore`, note_8cfdc308), so a dismissal made from a
+   * stale copy cannot drop another. The store takes the stored list the
+   * server returns. Scoped to this one
    * entity's own sidecar `dismissedNoiseTerms` array only — dismissing
    * "Case" on one entity never touches another entity's copy of the same
    * term (FR-13), since each entity's dismissed-terms list is read and
@@ -304,12 +304,15 @@ export default function EntityRosterView({
     const normalized = normalizeNoiseTermForDismissal(term);
     const current = resource.dismissedNoiseTerms ?? [];
     if (current.includes(normalized)) return;
-    const next = [...current, normalized];
-    const updated = { ...resource, dismissedNoiseTerms: next };
 
-    void updateSidecar(entityId, projectId, updated).then(() => {
-      dispatch(updateResource({ id: entityId, dismissedNoiseTerms: next }));
-    });
+    void setNoiseTermDismissed(entityId, projectId, term, true)
+      .then((stored) => {
+        dispatch(updateResource({ id: entityId, dismissedNoiseTerms: stored }));
+      })
+      .catch(() => {
+        // Not saved: the list in the store is unchanged, so the observation
+        // stays visible and the writer can dismiss it again.
+      });
   };
 
   return (
