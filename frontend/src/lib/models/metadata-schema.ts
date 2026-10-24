@@ -11,6 +11,7 @@
 import { atomicWriteFile, readFile, readdir } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
+import { withFileLock } from "./file-lock";
 import { PROJECT_FILENAME } from "./project-config";
 import { readSidecar, writeSidecar } from "./sidecar";
 import { canonicalValueKey } from "./field-values";
@@ -58,9 +59,9 @@ async function writeProject(
     project.config = { editorConfig: {} };
   }
   project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
-  // Atomic: this module holds locks.ts's lock, not withMetaLock, so it is not
-  // serialized with the other project.json writers (see project-json-write.ts);
-  // a plain write could interleave with theirs and leave the file unparseable.
+  // Atomic, so a reader never sees a half-written file. Callers run this inside
+  // `withFileLock` for `project.json` (the same lock `updateProjectJson` takes),
+  // with the read the write is based on made inside that same acquisition.
   await atomicWriteFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
@@ -92,10 +93,15 @@ function allFieldKeys(schema: MetadataSchema): string[] {
 }
 
 /**
- * Acquires the project lock, reads the project, initialises the schema (if
- * absent), calls `mutate(schema, project)` for in-place changes, writes the
- * project, releases the lock, and returns the schema. The `finally` block
- * guarantees the lock is always released.
+ * Acquires the project lock (`acquireLock`, outer), then the `project.json`
+ * file lock (`withFileLock`, innermost). Inside the file lock it reads the
+ * project, initialises the schema (if absent), calls `mutate(schema, project)`
+ * for in-place changes, writes the project (bumping `metadataRevision` once)
+ * and returns the schema. A throw from `mutate` writes nothing. The `finally`
+ * block guarantees the outer lock is always released.
+ *
+ * `mutate` runs inside the file lock and must not take any lock (Feature 92,
+ * FR-8; see `file-lock.ts`).
  */
 async function withLockedSchema(
   projectRoot: string,
@@ -103,11 +109,16 @@ async function withLockedSchema(
 ): Promise<MetadataSchema> {
   const release = await acquireLock(projectRoot);
   try {
-    const project = await readProject(projectRoot);
-    const schema = getOrInitSchema(project);
-    mutate(schema, project);
-    await writeProject(projectRoot, project);
-    return schema;
+    return await withFileLock(
+      path.join(projectRoot, PROJECT_FILENAME),
+      async () => {
+        const project = await readProject(projectRoot);
+        const schema = getOrInitSchema(project);
+        mutate(schema, project);
+        await writeProject(projectRoot, project);
+        return schema;
+      },
+    );
   } finally {
     release();
   }
