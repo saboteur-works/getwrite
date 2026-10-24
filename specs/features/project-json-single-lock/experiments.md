@@ -215,3 +215,30 @@ Overlapping run by start order: delete started first (50 repetitions): live side
 ### Closing line
 
 Lost update reproduced: YES for `setNoiseTermDismissedCore`, `renameResourceSidecarCore`, `reorderResourcesCore`'s sidecar loop, `nullifyResourceRefs` and `applyDocumentMetadata`; NO for `relinkResourceRefs` (0 of 100 in this construction), and `setNoiseTermDismissedCore` against itself lost 26 terms. Not in this section's evidence: why `relinkResourceRefs` did not lose a change; hypothesis, untested: its write lands after the metadata save has finished within the 0-3 ms offsets used; an experiment that logs the time of each writer's read and write per repetition, or delays the metadata save by tens of milliseconds, would settle it. No result changes scope (FR-19 covers every read-modify-write). The OQ-10 measurement feeds the follow-up POS note on the trash paths (F-4); the lead creates it. No source, `trash.ts` or `updateSidecarCore` behaviour was changed.
+
+## FR-22 before
+
+Task 6. Run on 2026-10-23 on branch `fix/project-json-write-lock`, lock code unchanged (the only new file is `frontend/tests/unit/sidecar-concurrent-writes.test.ts`; `metadata-concurrent-writes.test.ts` was not edited). Inside the sandbox, Vitest v4.1.6.
+
+- Tests (100 repetitions each, per-test timeout 120000 ms, which fails the test and not the suite): `a metadata save and updateRevisionInPlace keep both changes`, `a metadata save and clearField keep both changes`, `updateRevisionInPlace and clearField keep both changes`. Construction as in the Task 2 section (fresh project per repetition in a temp batch directory removed by `afterEach`, sidecar with `marker: "before"`, `updatedAt` 1970 value, `userMetadata { tone, other }`, 0-3 ms per-repetition start offset, `Promise.allSettled`, sidecar read back from disk). Each test collects `<rep>:unparseable`, `<rep>:rejected:<writer>` and `<rep>:<writer>` (change lost) entries and asserts the list is empty.
+- Command, from `frontend/`, 9 times: `timeout 600 npx vitest run tests/unit/sidecar-concurrent-writes.test.ts < /dev/null`. Logs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/fr22-1.log` to `fr22-9.log`.
+- Failing assertion text, tests 1 and 2: `AssertionError: expected [ '1:metadata', '2:revision', ...(N) ] to deeply equal []` (entries differ per run). Test 3 failed once (run 9): `AssertionError: expected [ '52:revision' ] to deeply equal []`.
+
+Lost changes per run (entries in the list, of 100 repetitions; no unparseable file and no rejected promise in any run):
+
+| Run | Exit | Test 1 metadata vs `updateRevisionInPlace` (lost / metadata-save change / revision change) | Test 2 metadata vs `clearField` (lost / metadata-save change / `clearField` change) | Test 3 `updateRevisionInPlace` vs `clearField` |
+| --- | --- | --- | --- | --- |
+| 1 | 1 | 47 / 3 / 44 | 10 / 9 / 1 | passed (0) |
+| 2 | 1 | 43 / 2 / 41 | 12 / 12 / 0 | passed (0) |
+| 3 | 1 | 46 / 17 / 29 | 10 / 10 / 0 | passed (0) |
+| 4 | 1 | 45 / 11 / 34 | 13 / 10 / 3 | passed (0) |
+| 5 | 1 | 47 / 19 / 28 | 6 / 5 / 1 | passed (0) |
+| 6 | 1 | 45 / 10 / 35 | 7 / 5 / 2 | passed (0) |
+| 7 | 1 | 46 / 3 / 43 | 8 / 6 / 2 | passed (0) |
+| 8 | 1 | 46 / 22 / 24 | 13 / 12 / 1 | passed (0) |
+| 9 | 1 | 49 / 7 / 42 | 7 / 7 / 0 | FAILED: 1 (`52:revision`) |
+
+- Compared with Task 2 (41 and 10 changes lost in 100 repetitions): test 1 lost 43-49 (9 runs), test 2 lost 6-13, test 3 lost 0 in 8 runs and 1 in run 9 (Task 2: 0 of 100). Tests 1 and 2 failed in all 9 runs; test 3 passed in 8 of 9 runs, so the "third passes" expectation of the task did not hold in run 9.
+- Not explained here. Hypothesis, untested: the single lost `updatedAt` in run 9 is the same read-outside-the-lock overlap as the other two pairs, rarer for this pair; an experiment that repeats test 3 with several hundred repetitions per run, or logs read and write order for that pair, would settle it. It is a measurement that `updateRevisionInPlace` vs `clearField` is not 0 on this tree in every run.
+- `tsc --noEmit` reported nothing for the file; ESLint reported nothing; Prettier was applied. Running this file with `metadata-concurrent-writes.test.ts`: the other two tests of that file pass, its Task 4 test fails (as recorded in "FR-10 before").
+- Status: red by design until Task 21.
