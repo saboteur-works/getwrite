@@ -12,6 +12,7 @@ import {
   ReorderPayload,
 } from "../lib/api/resources";
 import { fetchEntityAliasTable } from "./entityAliasTableSlice";
+import { toastService } from "../lib/toast-service";
 
 interface ResourcesState {
   selectedResourceId: string | null;
@@ -48,11 +49,21 @@ export const persistReorder = createAsyncThunk(
     // reorder route predates the tenant-route migration and still supports
     // a legacy `body.projectRoot` fallback — see `reorderResources`'s doc
     // comment for why this is still sent.
-    await reorderResources(
-      projectId,
-      { folderOrder, resourceOrder },
-      projectRoot,
-    );
+    try {
+      await reorderResources(
+        projectId,
+        { folderOrder, resourceOrder },
+        projectRoot,
+      );
+    } catch (err) {
+      // The new order is already on screen; a failed save used to leave it
+      // there with no message, and it was gone after a reload (note_51c813c1).
+      toastService.error(
+        "Order not saved",
+        "The new order could not be saved. Reload to see the saved order.",
+      );
+      throw err;
+    }
     return { projectRoot, folderOrder, resourceOrder };
   },
 );

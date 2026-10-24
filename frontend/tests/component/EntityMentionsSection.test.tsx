@@ -146,10 +146,19 @@ function setupStore(resourceId: string, overrides: Partial<AnyResource> = {}) {
 }
 
 function mockMentionedIn(mentionedIn: EntityMentionedIn[]) {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = input.toString();
     if (url.includes("/mentioned-in")) {
       return { ok: true, json: async () => ({ mentionedIn }) } as Response;
+    }
+    if (url.includes("/noise-term")) {
+      const { term } = JSON.parse(String(init?.body)) as { term: string };
+      return {
+        ok: true,
+        json: async () => ({
+          dismissedNoiseTerms: [term.trim().toLowerCase()],
+        }),
+      } as Response;
     }
     return { ok: true, json: async () => ({}) } as Response;
   });
@@ -411,7 +420,7 @@ describe("EntityMentionsSection", () => {
       ).toContain("tiny");
     });
 
-    // Let the dismiss handler's own updateSidecar().then(...) chain settle
+    // Let the dismiss handler's own setNoiseTermDismissed().then(...) chain settle
     // before this test tears down — otherwise the pending
     // fetchEntityAliasTable dispatch (and its getEntityAliasTable call)
     // resolves during the *next* test and inflates its call count.

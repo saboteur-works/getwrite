@@ -63,8 +63,11 @@ import {
   SIDECAR_UNCHANGED,
   mutateSidecar,
   readSidecar,
+  sidecarPathForProject,
   writeSidecar,
 } from "./sidecar";
+import { ResourceGoneError } from "./resource-gone-error";
+import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
 import { getEffectiveResourceRefFieldKeys } from "./metadata-schema";
@@ -480,7 +483,10 @@ function omitServerDerivedKeys(
  * Reads the stored sidecar inside the sidecar sink, merges `buildUpdate`'s
  * result over it (keeping `orderIndex` and `folderId` from the stored value),
  * applies `clearKeys` and writes. A locked-access error propagates and nothing
- * is written; any other read error reads as "no prior sidecar", as before.
+ * is written; an unreadable sidecar is replaced, as before.
+ *
+ * @throws {ResourceGoneError} When no sidecar file exists (checked inside the
+ *   lock): the resource was deleted or never existed. Nothing is written.
  */
 async function mergeSidecarUpdate(
   projectRoot: string,
@@ -493,7 +499,13 @@ async function mergeSidecarUpdate(
   await mutateSidecar(
     projectRoot,
     resourceId,
-    (existing) => {
+    async (existing) => {
+      if (
+        existing === null &&
+        !(await exists(sidecarPathForProject(projectRoot, resourceId)))
+      ) {
+        throw new ResourceGoneError(resourceId);
+      }
       const update = buildUpdate(existing);
       const merged: Record<string, unknown> = {
         ...(existing ?? {}),
@@ -631,15 +643,19 @@ function readDismissedNoiseTerms(
  * effects (the entity-graph position cleanup) do not run here. An empty array
  * is not `undefined`, so it survives the merge intact and no `clearKeys` entry
  * is needed.
+ *
+ * @returns The stored `dismissedNoiseTerms` after the change.
+ * @throws {ResourceGoneError} When the resource has no sidecar.
  */
 export async function setNoiseTermDismissedCore(
   projectId: string,
   resourceId: string,
   term: string,
   dismissed: boolean,
-): Promise<void> {
+): Promise<string[]> {
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
   const normalized = normalizeNoiseTerm(term);
+  let stored: string[] = [];
 
   await mergeSidecarUpdate(projectRoot, resourceId, (existing) => {
     const current = readDismissedNoiseTerms(existing);
@@ -648,8 +664,10 @@ export async function setNoiseTermDismissedCore(
         ? current
         : [...current, normalized]
       : current.filter((entry) => entry !== normalized);
+    stored = next;
     return { dismissedNoiseTerms: next };
   });
+  return stored;
 }
 
 // ---------------------------------------------------------------------------
@@ -823,6 +841,20 @@ export class ReorderProjectNotFoundError extends Error {
 }
 
 /**
+ * Thrown by {@link reorderResourcesCore} after its sidecar loop when one or
+ * more resource sidecars could not be saved. The other sidecars were saved;
+ * `failedIds` names the ones that were not (note_51c813c1).
+ */
+export class ReorderSaveError extends Error {
+  readonly failedIds: string[];
+  constructor(failedIds: string[]) {
+    super(`Could not save the new order for ${failedIds.length} resource(s).`);
+    this.name = "ReorderSaveError";
+    this.failedIds = failedIds;
+  }
+}
+
+/**
  * Persists a folder/resource reorder for a project.
  *
  * A deliberate divergence from every other operation in this module: this
@@ -894,12 +926,16 @@ export async function reorderResourcesCore(
       }
     });
   } catch (err) {
+    if (isLockedAccessError(err)) throw err;
     // log and continue with resources
     // eslint-disable-next-line no-console
     console.error("folder update error", err);
   }
 
-  // Update resource sidecars
+  // Update resource sidecars. A failure no longer reports success: the rest
+  // are still saved, then the call rejects naming the ones that failed. A
+  // locked-access error stops at once (every later save would fail too).
+  const failedIds: string[] = [];
   for (const ro of resourceOrder) {
     try {
       // The stored value is read inside the sink; an unreadable prior
@@ -915,9 +951,11 @@ export async function reorderResourcesCore(
         { isReadTolerant: true },
       );
     } catch (err) {
-      // log and continue
+      if (isLockedAccessError(err)) throw err;
       // eslint-disable-next-line no-console
       console.error("resource sidecar update failed", ro.id, err);
+      failedIds.push(ro.id);
     }
   }
+  if (failedIds.length > 0) throw new ReorderSaveError(failedIds);
 }

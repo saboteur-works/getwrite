@@ -105,6 +105,27 @@ describe("POST /api/resource/[resource-id]/sidecar (projectId-based)", () => {
       expect(json.error).toBe("Invalid projectId");
     });
   });
+
+  it("returns 404 resource-gone and writes nothing when the resource has no sidecar", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      const { POST } =
+        await import("../../app/api/resource/[resource-id]/sidecar/route");
+      const res = await POST(
+        sidecarRequest(resourceId, {
+          projectId,
+          updatedResource: { status: "Draft" },
+        }) as never,
+        { params: Promise.resolve({ "resource-id": resourceId }) },
+      );
+
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.code).toBe("resource-gone");
+      expect(await readSidecar(projectPath, resourceId)).toBeNull();
+    });
+  });
 });
 
 describe("POST /api/resource/[resource-id]/sidecar (resourceSubtype, FR-7/FR-8)", () => {

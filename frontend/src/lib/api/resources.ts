@@ -9,6 +9,10 @@ import {
   ResourceRevisionContentResponseSchema,
 } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
+import {
+  RESOURCE_GONE_CODE,
+  ResourceGoneError,
+} from "../models/resource-gone-error";
 import type { WritingLogSignal } from "../models/revision-core";
 import { reportWritingLogSignal } from "../writing-log-signal";
 
@@ -158,6 +162,18 @@ export interface ResourcesTransport {
     updatedResource: AnyResource,
     clearKeys?: string[],
   ): Promise<void>;
+  /**
+   * Dismisses (`dismissed: true`) or restores one noise-flagged term for one
+   * entity. The server computes the new list from the stored sidecar (see
+   * `resource-crud-core.ts`'s `setNoiseTermDismissedCore`) and resolves with
+   * it. Rejects with `ResourceGoneError` when the resource no longer exists.
+   */
+  setNoiseTermDismissed(
+    resourceId: string,
+    projectId: string,
+    term: string,
+    dismissed: boolean,
+  ): Promise<string[]>;
   /** Renames a resource or folder. */
   rename(
     resourceId: string,
@@ -196,6 +212,16 @@ export interface ResourcesTransport {
     payload: ReorderPayload,
     projectRoot?: string,
   ): Promise<void>;
+}
+
+/** True when a sidecar 404 body carries the route's resource-gone code. */
+async function isResourceGoneBody(response: Response): Promise<boolean> {
+  try {
+    const body = (await response.json()) as { code?: unknown };
+    return body.code === RESOURCE_GONE_CODE;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -300,8 +326,35 @@ export const httpResourcesTransport: ResourcesTransport = {
       ),
     });
     if (!response.ok) {
+      if (response.status === 404 && (await isResourceGoneBody(response))) {
+        throw new ResourceGoneError(resourceId);
+      }
       throw new Error(`Failed to update sidecar (${response.status})`);
     }
+  },
+
+  async setNoiseTermDismissed(resourceId, projectId, term, dismissed) {
+    const response = await fetch(`/api/resource/${resourceId}/noise-term`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, term, dismissed }),
+    });
+    if (!response.ok) {
+      if (response.status === 404 && (await isResourceGoneBody(response))) {
+        throw new ResourceGoneError(resourceId);
+      }
+      throw new Error(
+        `Failed to update noise-term dismissal (${response.status})`,
+      );
+    }
+    const body = (await response.json()) as { dismissedNoiseTerms?: unknown };
+    if (
+      !Array.isArray(body.dismissedNoiseTerms) ||
+      !body.dismissedNoiseTerms.every((t) => typeof t === "string")
+    ) {
+      throw new Error("Malformed noise-term dismissal response");
+    }
+    return body.dismissedNoiseTerms as string[];
   },
 
   async rename(resourceId, projectId, newName, resourceType) {
@@ -401,11 +454,14 @@ export const httpResourcesTransport: ResourcesTransport = {
   },
 
   async reorder(projectId, payload, projectRoot) {
-    await fetch(`/api/projects/${projectId}/reorder`, {
+    const response = await fetch(`/api/projects/${projectId}/reorder`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(projectRoot ? { ...payload, projectRoot } : payload),
     });
+    if (!response.ok) {
+      throw new Error(`Failed to save the new order (${response.status})`);
+    }
   },
 };
 
@@ -542,6 +598,25 @@ export async function updateSidecar(
     projectId,
     updatedResource,
     clearKeys,
+  );
+}
+
+/**
+ * Dismisses or restores one noise-flagged term for one entity; resolves with
+ * the stored list. See {@link ResourcesTransport.setNoiseTermDismissed}.
+ */
+export async function setNoiseTermDismissed(
+  resourceId: string,
+  projectId: string,
+  term: string,
+  dismissed: boolean,
+): Promise<string[]> {
+  const transport = await resolveResourcesTransport();
+  return transport.setNoiseTermDismissed(
+    resourceId,
+    projectId,
+    term,
+    dismissed,
   );
 }
 

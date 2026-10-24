@@ -32,30 +32,41 @@ const PROJECT_PATH = "/tmp/test-project";
  * drifted once elsewhere (`entity-graph-settings`, fixed in a prior pass).
  */
 function makeFetchStub() {
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const url = input.toString();
-    // EntitySection fetches both of these on mount for its noise-flag
-    // check — the catch-all `{}` below fails their own response-shape
-    // validation (`transport-validation.ts`) and logs a console error, so
-    // they get their real shape here rather than every other, unrelated
-    // test in this file routing around that noise individually.
-    if (url.includes("/api/project/noise-words")) {
-      return {
-        ok: true,
-        json: async () => ({
-          customNoiseWords: [],
-          excludedGlobalNoiseWords: [],
-        }),
-      } as Response;
-    }
-    if (url.includes("/api/global-noise-words")) {
-      return { ok: true, json: async () => [] } as Response;
-    }
-    if (url.includes("/entity-alias-table")) {
-      return { ok: true, json: async () => EMPTY_ALIAS_TABLE } as Response;
-    }
-    return { ok: true, json: async () => ({}) } as Response;
-  });
+  return vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (input, init) => {
+      const url = input.toString();
+      // EntitySection fetches both of these on mount for its noise-flag
+      // check — the catch-all `{}` below fails their own response-shape
+      // validation (`transport-validation.ts`) and logs a console error, so
+      // they get their real shape here rather than every other, unrelated
+      // test in this file routing around that noise individually.
+      if (url.includes("/api/project/noise-words")) {
+        return {
+          ok: true,
+          json: async () => ({
+            customNoiseWords: [],
+            excludedGlobalNoiseWords: [],
+          }),
+        } as Response;
+      }
+      if (url.includes("/api/global-noise-words")) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (url.includes("/entity-alias-table")) {
+        return { ok: true, json: async () => EMPTY_ALIAS_TABLE } as Response;
+      }
+      if (url.includes("/noise-term")) {
+        const { term } = JSON.parse(String(init?.body)) as { term: string };
+        return {
+          ok: true,
+          json: async () => ({
+            dismissedNoiseTerms: [term.trim().toLowerCase()],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
 }
 
 function setupStore(resourceId: string, overrides: Partial<AnyResource> = {}) {
@@ -85,6 +96,18 @@ function getLastSidecarBody(fetchStub: ReturnType<typeof makeFetchStub>) {
     projectId: string;
     updatedResource: AnyResource;
     clearKeys?: string[];
+  };
+}
+
+function getLastNoiseTermBody(fetchStub: ReturnType<typeof makeFetchStub>) {
+  const call = fetchStub.mock.calls
+    .filter(([url]) => url.toString().includes("/noise-term"))
+    .pop();
+  if (!call) return null;
+  return JSON.parse(call[1]?.body as string) as {
+    projectId: string;
+    term: string;
+    dismissed: boolean;
   };
 }
 
@@ -313,9 +336,16 @@ describe("EntitySection", () => {
       ).not.toBeInTheDocument();
     });
 
-    const body = getLastSidecarBody(fetchStub);
-    expect(body).not.toBeNull();
-    expect(body!.updatedResource.dismissedNoiseTerms).toEqual(["jo"]);
+    // Only the term is sent (note_8cfdc308); no whole-resource sidecar save.
+    expect(getLastNoiseTermBody(fetchStub)).toMatchObject({
+      term: "Jo",
+      dismissed: true,
+    });
+    expect(getLastSidecarBody(fetchStub)).toBeNull();
+    expect(
+      store.getState().resources.resources.find((r) => r.id === "res-6")
+        ?.dismissedNoiseTerms,
+    ).toEqual(["jo"]);
   });
 
   it("dismissing a flagged alias observation persists the dismissal and hides it", async () => {
@@ -345,11 +375,16 @@ describe("EntitySection", () => {
       ).not.toBeInTheDocument();
     });
 
-    const body = getLastSidecarBody(fetchStub);
-    expect(body).not.toBeNull();
-    expect(body!.updatedResource.dismissedNoiseTerms).toEqual(["jo"]);
-    // The alias itself is untouched by the dismissal.
-    expect(body!.updatedResource.aliases).toEqual(["Jo"]);
+    expect(getLastNoiseTermBody(fetchStub)).toMatchObject({
+      term: "Jo",
+      dismissed: true,
+    });
+    // The alias itself is untouched: no whole-resource sidecar save is sent.
+    expect(getLastSidecarBody(fetchStub)).toBeNull();
+    expect(
+      store.getState().resources.resources.find((r) => r.id === "res-7")
+        ?.aliases,
+    ).toEqual(["Jo"]);
   });
 
   it("clearing entityKind hides the alias editor without deleting stored aliases", async () => {

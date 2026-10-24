@@ -14,7 +14,7 @@ import {
   normalizeNoiseTerm,
   setNoiseTermDismissedCore,
 } from "../../src/lib/models/resource-crud-core";
-import { readSidecar } from "../../src/lib/models/sidecar";
+import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
@@ -66,6 +66,8 @@ describe("setNoiseTermDismissedCore", () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       await setNoiseTermDismissedCore(projectId, resourceId, "Case", true);
 
@@ -78,6 +80,8 @@ describe("setNoiseTermDismissedCore", () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       await setNoiseTermDismissedCore(projectId, resourceId, "case", true);
       await setNoiseTermDismissedCore(projectId, resourceId, "case", false);
@@ -91,6 +95,8 @@ describe("setNoiseTermDismissedCore", () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       await setNoiseTermDismissedCore(projectId, resourceId, "case", true);
       await setNoiseTermDismissedCore(projectId, resourceId, "Case", true);
@@ -104,10 +110,12 @@ describe("setNoiseTermDismissedCore", () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       await expect(
         setNoiseTermDismissedCore(projectId, resourceId, "case", false),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual([]);
 
       const sidecar = await readSidecar(projectPath, resourceId);
       expect(sidecar?.dismissedNoiseTerms).toEqual([]);
@@ -118,6 +126,8 @@ describe("setNoiseTermDismissedCore", () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       // Dismiss "case" for this entity.
       await setNoiseTermDismissedCore(projectId, resourceId, "case", true);
@@ -148,6 +158,8 @@ describe("setNoiseTermDismissedCore", () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const resourceId = generateUUID();
+      // A resource exists only with its sidecar; updates refuse a missing one.
+      await writeSidecar(projectPath, resourceId, { id: resourceId });
 
       await setNoiseTermDismissedCore(projectId, resourceId, "ada", true);
 

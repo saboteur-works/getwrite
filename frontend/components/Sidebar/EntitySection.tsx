@@ -6,7 +6,10 @@ import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
-import { updateSidecar } from "../../src/lib/api/resources";
+import {
+  setNoiseTermDismissed,
+  updateSidecar,
+} from "../../src/lib/api/resources";
 import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 import {
@@ -175,19 +178,33 @@ export default function EntitySection(): JSX.Element | null {
     dismissedNoiseTerms,
   };
 
-  // FR-8/FR-9/FR-13: dismissing/un-dismissing one term for this entity only,
-  // persisted via the existing `updateSidecar` write path `persist` already
-  // uses — no new transport. Normalization matches `entity-noise-check.ts`'s
-  // own internal normalization (and `resource-crud-core.ts`'s
-  // `normalizeNoiseTerm`) so a dismissal and a later check agree on what
-  // counts as "the same term".
+  // FR-8/FR-9/FR-13: dismissing one term for this entity only. Only the term
+  // is sent; the server computes the list from the stored sidecar
+  // (`setNoiseTermDismissedCore`, note_8cfdc308) and the stored list it
+  // returns replaces the optimistic one. Normalization matches
+  // `entity-noise-check.ts`'s own internal normalization (and
+  // `resource-crud-core.ts`'s `normalizeNoiseTerm`) so a dismissal and a
+  // later check agree on what counts as "the same term".
   const handleDismissNoiseTerm = (term: string): void => {
     const normalized = normalizeNoiseTerm(term);
     if (dismissedNoiseTerms.includes(normalized)) return;
-    persist({
-      ...resource,
-      dismissedNoiseTerms: [...dismissedNoiseTerms, normalized],
-    });
+    dispatch(
+      updateResource({
+        id: resource.id,
+        dismissedNoiseTerms: [...dismissedNoiseTerms, normalized],
+      }),
+    );
+    if (!projectId) return;
+    void setNoiseTermDismissed(resource.id, projectId, term, true)
+      .then((stored) => {
+        dispatch(
+          updateResource({ id: resource.id, dismissedNoiseTerms: stored }),
+        );
+        dispatch(fetchEntityAliasTable(projectId));
+      })
+      .catch(() => {
+        // Best-effort persistence, consistent with `persist` above.
+      });
   };
 
   const commitAliases = (nextAliases: string[]): void => {

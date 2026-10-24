@@ -6,6 +6,10 @@ import {
   updateSidecarCore,
 } from "../../../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
+import {
+  RESOURCE_GONE_CODE,
+  ResourceGoneError,
+} from "../../../../../src/lib/models/resource-gone-error";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 
 interface SidecarUpdateBody {
@@ -47,6 +51,12 @@ async function handlePost(
       return NextResponse.json(
         { error: "Invalid clearKeys", details: error.message },
         { status: 400 },
+      );
+    }
+    if (error instanceof ResourceGoneError) {
+      return NextResponse.json(
+        { error: "Resource not found", code: RESOURCE_GONE_CODE },
+        { status: 404 },
       );
     }
     if (error instanceof InvalidResourceSubtypeCoreError) {

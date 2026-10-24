@@ -28,10 +28,13 @@ import {
   httpResourcesTransport,
   renameResource,
   updateSidecar,
+  reorderResources,
+  setNoiseTermDismissed,
   uploadMediaResource,
 } from "../../src/lib/api/resources";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import type { AnyResource } from "../../src/lib/models/types";
+import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 
 const mockedReport = vi.mocked(reportTransportValidationFailure);
 
@@ -236,6 +239,85 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
       ).rejects.toThrow();
     },
   );
+
+  it("updateSidecar rejects with ResourceGoneError on a 404 resource-gone", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: "Resource not found", code: "resource-gone" },
+        false,
+        404,
+      ),
+    );
+    const updated = { id: resourceId, name: "Gone" } as unknown as AnyResource;
+
+    await expect(
+      updateSidecar(resourceId, directoryUuid, updated),
+    ).rejects.toBeInstanceOf(ResourceGoneError);
+  });
+
+  it("updateSidecar rejects with a plain error on a 404 without that code", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, false, 404));
+    const updated = { id: resourceId, name: "Gone" } as unknown as AnyResource;
+
+    const error = await updateSidecar(resourceId, directoryUuid, updated).then(
+      () => null,
+      (err: unknown) => err,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ResourceGoneError);
+  });
+
+  it("reorderResources rejects when the reorder route answers with an error status", async () => {
+    // note_51c813c1: the transport used to ignore the response status.
+    fetchMock.mockResolvedValue(jsonResponse({}, false, 500));
+    await expect(
+      reorderResources(directoryUuid, { folderOrder: [], resourceOrder: [] }),
+    ).rejects.toThrow();
+  });
+
+  it("setNoiseTermDismissed posts the term to the noise-term route and returns the stored list", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ dismissedNoiseTerms: ["will", "case"] }),
+    );
+
+    const stored = await setNoiseTermDismissed(
+      resourceId,
+      directoryUuid,
+      "Case",
+      true,
+    );
+
+    expect(stored).toEqual(["will", "case"]);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`/api/resource/${resourceId}/noise-term`);
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      projectId: directoryUuid,
+      term: "Case",
+      dismissed: true,
+    });
+  });
+
+  it("setNoiseTermDismissed rejects with ResourceGoneError on a 404 resource-gone, and plainly otherwise", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ code: "resource-gone" }, false, 404),
+    );
+    await expect(
+      setNoiseTermDismissed(resourceId, directoryUuid, "case", true),
+    ).rejects.toBeInstanceOf(ResourceGoneError);
+
+    fetchMock.mockResolvedValue(jsonResponse({}, false, 500));
+    const error = await setNoiseTermDismissed(
+      resourceId,
+      directoryUuid,
+      "case",
+      true,
+    ).then(
+      () => null,
+      (err: unknown) => err,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ResourceGoneError);
+  });
 
   it("renameResource sends projectId in the POST body, with no projectRoot field", async () => {
     await renameResource(resourceId, directoryUuid, "New name", "resource");

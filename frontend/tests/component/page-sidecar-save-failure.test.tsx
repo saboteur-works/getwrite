@@ -15,6 +15,7 @@ vi.mock("../../components/Sharing/SharingLimitsContext", () => ({
 }));
 import { Provider } from "react-redux";
 import { makeStore } from "../../src/store/store";
+import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 
 /**
@@ -171,6 +172,21 @@ describe("page.tsx metadata save failure (note_13ae633c)", () => {
       expect(screen.getByTestId("shown-status")).toHaveTextContent("Outline"),
     );
     expect(storedStatus(store)).toBe("Outline");
+  });
+
+  it("shows no error when the save is refused because the resource was deleted", async () => {
+    // note_131ecc62: a save still in flight when the resource is moved to
+    // Trash is refused; the writer deleted it, so there is nothing to report.
+    updateSidecar.mockRejectedValue(new ResourceGoneError("res-1"));
+    await renderOpenedPage();
+
+    act(() => shellProps.onChangeStatus?.("Draft", "res-1"));
+
+    await waitFor(() => expect(updateSidecar).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("keeps the change and shows nothing when the save succeeds", async () => {
