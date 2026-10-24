@@ -36,6 +36,12 @@ interface UseCanonicalAutosaveResult {
   lastSavedAt: Date | null;
   failedSaveDoc: TipTapDocument | null;
   queueAutosave: (doc: TipTapDocument) => void;
+  /**
+   * Saves now, to the selection this hook was rendered with, skipping the
+   * debounce. For a pending edit that must not wait (a Markdown source edit
+   * flushed on a resource switch).
+   */
+  saveNow: (doc: TipTapDocument) => void;
   retryFailedSave: () => void;
   clearSaveErrors: () => void;
 }
@@ -220,6 +226,13 @@ export function useCanonicalAutosave({
     [debouncedPersistCanonicalRevisionContent],
   );
 
+  const saveNow = React.useCallback(
+    (doc: TipTapDocument): void => {
+      void saveCanonicalRevisionNow(doc);
+    },
+    [saveCanonicalRevisionNow],
+  );
+
   const retryFailedSave = React.useCallback((): void => {
     if (!failedSaveDoc) {
       return;
@@ -237,6 +250,7 @@ export function useCanonicalAutosave({
     lastSavedAt,
     failedSaveDoc,
     queueAutosave,
+    saveNow,
     retryFailedSave,
     clearSaveErrors,
   };

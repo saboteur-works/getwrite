@@ -131,6 +131,7 @@ export default function EditView({
     lastSavedAt,
     failedSaveDoc,
     queueAutosave,
+    saveNow,
     retryFailedSave,
     clearSaveErrors,
   } = useCanonicalAutosave({
@@ -428,6 +429,9 @@ export default function EditView({
               id="editview-editor"
               value={tipTapDoc ?? content} // prefer loaded doc, fallback to initial/plain content
               onChange={handleChange}
+              onFlushPendingSource={
+                isEditingCanonicalRevision ? saveNow : undefined
+              }
               onNodeTypesChange={setNodeTypes}
               readonly={false}
             />

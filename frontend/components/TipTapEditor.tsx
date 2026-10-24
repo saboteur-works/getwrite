@@ -39,6 +39,7 @@ import {
   settleCreatedEditor,
   shouldSyncEditorContent,
 } from "./Editor/loadDocumentIntoEditor";
+import { createPendingSourceCommit } from "./Editor/pendingSourceCommit";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
 export { resolveOffsetToPosition } from "./Editor/offset-resolver";
 import { setActiveEditor } from "./Editor/activeEditorRegistry";
@@ -141,6 +142,14 @@ export interface TipTapEditorProps {
    * content updates, but only when the resulting label list actually changes.
    */
   onNodeTypesChange?: (labels: string[]) => void;
+  /**
+   * Saves a document straight to the resource being edited, for a Markdown
+   * source-mode edit still pending when the resource is switched or the
+   * editor unmounts. Captured with each source edit, so a later switch sends
+   * the edit to the resource it was typed into. Omitted when edits are not
+   * saved (for example a non-canonical revision).
+   */
+  onFlushPendingSource?: (doc: TipTapDocument) => void;
 }
 
 /**
@@ -185,6 +194,7 @@ export default function TipTapEditor({
   id,
   readonly = false,
   onNodeTypesChange,
+  onFlushPendingSource,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectResolvedEditorConfig);
   // The active project's on-disk directory basename — the `projectId`
@@ -297,6 +307,11 @@ export default function TipTapEditor({
   // (which would drop pending edits) on every parent re-render.
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onFlushPendingSourceRef = useRef(onFlushPendingSource);
+  onFlushPendingSourceRef.current = onFlushPendingSource;
+  // The source edit still waiting out the debounce, with the save of the
+  // resource it was typed into (see pendingSourceCommit.ts).
+  const [pendingSource] = useState(createPendingSourceCommit);
   // Last emitted label list, joined, so repeat emits for the same node context
   // are suppressed (avoids churn on every keystroke / selection nudge).
   const lastNodeLabelsKeyRef = useRef<string | null>(null);
@@ -526,6 +541,7 @@ export default function TipTapEditor({
       const html = editor.getHTML();
       const json = editor.getJSON() as TipTapDocument;
       lastEmittedDocRef.current = json;
+      pendingSource.clear();
       onChangeRef.current?.(html, json);
     },
     [editor],
@@ -583,8 +599,13 @@ export default function TipTapEditor({
   useEffect(() => {
     return () => {
       scheduleSourceCommit.cancel();
+      // Unmount: send a pending source edit to its own resource instead of
+      // dropping it.
+      pendingSource.flushTo(
+        (markdown) => markdownToDocument(markdown) as TipTapDocument,
+      );
     };
-  }, [scheduleSourceCommit]);
+  }, [scheduleSourceCommit, pendingSource]);
 
   /**
    * Registers this editor instance as the app's single "live editor" (Task
@@ -607,6 +628,7 @@ export default function TipTapEditor({
   const handleSourceChange = useCallback(
     (next: string) => {
       setSourceText(next);
+      pendingSource.record(next, onFlushPendingSourceRef.current);
       scheduleSourceCommit(next);
     },
     [scheduleSourceCommit],
@@ -651,7 +673,12 @@ export default function TipTapEditor({
       emitNodeTypes(editor);
       // Cancel any pending source-mode autosave first: a late fire after the
       // swap would push the previous buffer into the now-selected resource.
+      // The pending edit itself is sent to the resource it was typed into
+      // through the save captured with it, without touching the editor.
       scheduleSourceCommit.cancel();
+      pendingSource.flushTo(
+        (markdown) => markdownToDocument(markdown) as TipTapDocument,
+      );
       // An external content swap (resource/revision switch) invalidates any
       // in-progress source edit; return to the rich view so the user sees the
       // newly loaded document rather than stale Markdown.
@@ -691,7 +718,7 @@ export default function TipTapEditor({
   const switchToRich = useCallback(() => {
     if (!editor) return;
     scheduleSourceCommit.cancel();
-    commitSourceMarkdown(sourceText);
+    commitSourceMarkdown(sourceText); // also clears the pending edit
     lastNodeLabelsKeyRef.current = null;
     emitNodeTypes(editor);
     setMode("rich");
