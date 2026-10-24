@@ -243,6 +243,12 @@ with the app without hand-rewriting it (see OQ-90).
   project or folder tree, so that I do not mistake locked or unreadable work
   for lost work. [Next] (Owner decision, Gate 3, 2026-10-18; Feature 89,
   part 5.)
+- US-31: As a writer on deadline who changes more than one project setting
+  in quick succession, or whose editor settings save at the moment another
+  setting is saved, I want to have every one of those changes kept and my
+  project still open afterwards, so that I do not find a setting I
+  changed has silently reverted or that the project no longer loads.
+  [Next] (Added 2026-10-23; FR-76.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1741,6 +1747,60 @@ with the app without hand-rewriting it (see OQ-90).
   (note_db7c7c58). Facts. Reported by the owner, not measured: the heading
   Colour field box is taller than the other inputs and the Font Weight
   select is shorter. [US-9]
+- FR-76: Two writes to the same project's settings file (`project.json`)
+  that overlap in time MUST NOT lose either change and MUST NOT leave the
+  file unparseable. Scope, decided at Gate 1, 2026-10-23: `project.json`
+  only, which is what is measured (OQ-110). Sidecars, `meta/index/*`,
+  `backlinks.json`, `relationships.json` and writing-log files are unknown,
+  not promised. The guarantee is stated for one server process: the desktop
+  app and a single web server process (OQ-111); multi-instance hosted
+  coordination is out of scope. Every read-modify-write of `project.json`,
+  including those of writers that hold `acquireLock` (`metadata-schema.ts`,
+  `project-features.ts`) and the `metadataRevision` bump in `sidecar.ts`,
+  goes through one narrow `project.json` lock (the shape of
+  `updateProjectJson`), and the read a write is based on happens inside
+  that same lock (OQ-113, OQ-114); migrations and other saves otherwise
+  run as they do now. A write waits for the lock with no time limit, with
+  no timeout or new failure path (OQ-112), and a write that cannot get the
+  lock MUST NOT look like a saved write. Added 2026-10-23 (reliability and data-loss work, the
+  same group as Feature 89's "hidden and lost work"). Facts, all measured
+  on 2026-10-23 in this repository. (1) Before PR #294, two concurrent
+  `updateEditorConfigCore` calls (headings and body) left `project.json`
+  unparseable on the first of 20 repetitions, in two runs
+  (`frontend/tests/unit/metadata-concurrent-writes.test.ts`). PR #294
+  (merged) added `updateProjectJson`
+  (`frontend/src/lib/models/project-json-write.ts`: read, mutate, atomic
+  write under `withMetaLock(projectRoot)` from `meta-locks.ts`) for editor
+  config, rename, preferences, default revision name and tags, and gave
+  `atomicWriteFile` (`io.ts`) a unique temp name per write. PR #295
+  (merged) made `metadata-schema.ts`, `project-features.ts` and the
+  `metadataRevision` bump in `sidecar.ts` write atomically. These writers
+  can no longer leave the file unparseable. (2) Still open, measured: an
+  editor-style save (`updateEditorConfigCore`, under `withMetaLock`) racing
+  `addField` (`metadata-schema.ts`, under `locks.ts` `acquireLock(projectRoot)`)
+  lost the new field in 20 of 20 repetitions in each of 9 runs: the editor
+  save read `project.json` first and wrote back its older copy. (3) Not
+  measured: whether sidecar files have the same lost-update problem; a
+  status change racing a canonical save was not reproduced (20 of 20
+  kept, two runs). Read, not run: the two lock families (`meta-locks.ts`
+  `withMetaLock`, a promise chain; `locks.ts` `acquireLock`, a queue mutex)
+  are each per process, each keyed by `projectRoot`, neither reentrant, and
+  do not serialize with each other. Several `metadata-schema.ts` operations
+  (for example `changeFieldTypeWithMigration`, `renameFieldKey`,
+  `updateFieldOptionsWithMigration`) hold `acquireLock` while rewriting
+  sidecars, and `writeSidecar` takes `withMetaLock` and bumps
+  `metadataRevision` in `project.json` under it; `updateFeatureConfig` in
+  `project-features.ts` holds `acquireLock`; `word-count-goal-core`,
+  `mention-highlight-duration-core`, `entity-graph-settings-core`,
+  `setDailyWordGoalCore` (`writing-log-core`) and `project-noise-words-core`
+  use `withMetaLock`. A change that makes one lock family stand in for the
+  other risks deadlock; the feature spec must show the lock order cannot
+  deadlock and must prove the fix with the race test that measured the loss
+  (editor-config save against `addField`). Carried to the feature spec: a
+  sidecar race experiment (each sidecar writer pair that uses a different
+  lock family), and a check of whether any writer reads `project.json` in
+  one request and writes it in a later one, before claiming coverage.
+  Resolved: OQ-110 to OQ-114. [US-31]
 
 ## Constraints
 
@@ -3441,6 +3501,36 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (2026-10-21, Gate 1): option (c). The SIL OFL licence text and per-font copyright notices ship with the app as a file (`THIRD_PARTY_FONTS.txt` or equivalent alongside the fonts, and in the repo). An in-app Licences view in Help is a later follow-up, out of this scope.
 **Evidence:** Owner decision, Gate 1, 2026-10-21.
 **Impact:** FR-73; licence compliance for redistributed font files.
+**Owner:** Product owner.
+
+**OQ-110 (resolved): Does the no-lost-update promise of FR-76 cover only `project.json`, or every metadata file (sidecars, `backlinks.json`, the indexes under `meta/index/`, `relationships.json`, writing-log files)?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23; option a): `project.json` only, which is what is measured. FR-76 covers `project.json` only. Other files (sidecars, `meta/index/*`, `backlinks.json`, `relationships.json`, writing-log files) are named as unknown, not promised. Carried to the feature spec as a task: a sidecar race experiment (each sidecar writer pair that uses a different lock family); if it reproduces a lost update, sidecars are brought into scope then. Applied in FR-76.
+**Evidence:** Owner decision, Gate 1, 2026-10-23. Measured 2026-10-23: the `project.json` lost update (editor save against `addField`, 20 of 20 in each of 9 runs). Not reproduced: a sidecar status change against a canonical save kept both changes in 20 of 20 repetitions, two runs. Not measured: the other metadata files.
+**Impact:** FR-76; US-31; how wide the feature spec's tests and fix must be.
+**Owner:** Product owner.
+
+**OQ-111 (resolved): Is a hosted deployment with more than one server instance in scope for FR-76?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23): resolved from evidence, owner confirmed; option (a). Hosted multi-instance is out of scope. FR-76 is stated for one server process (the desktop app and a single web server). Multi-instance coordination is deferred to the revisit conditions in ADR-017 (`docs/architecture/ADRs/adr-017-request-scoped-directory-per-tenant-storage.md`: each tenant pinned to one instance so in-process locks stay correct) and ADR-019 (`adr-019-object-store-backend-adapter.md`: cross-instance locking out of scope, a later decision). Applied in FR-76.
+**Evidence:** Owner confirmation, Gate 1, 2026-10-23. Read, not run: both lock families are per process. Not measured: no race between two server processes has been run.
+**Impact:** FR-76; US-31; hosted service.
+**Owner:** Product owner.
+
+**OQ-112 (resolved): What should happen to a settings write that cannot get the lock?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23), in two parts. (1) Resolved from evidence, owner confirmed: a write that cannot get the lock must never look like a saved write (`docs/standards/failure-visibility.md`). (2) Owner decision, option (a): a write waits for the lock with no time limit; no timeout or new failure path is added. This is acceptable because of OQ-114 (c): the wait is at most one `project.json` write, not a whole migration. Applied in FR-76.
+**Evidence:** Owner decision and owner confirmation, Gate 1, 2026-10-23. Read, not run: `withMetaLock` and `acquireLock` queue callers and have no timeout in the code read. Not measured: how long a migration holds the lock on a large project.
+**Impact:** FR-76; US-31; the editor's autosave and settings screens.
+**Owner:** Product owner.
+
+**OQ-113 (resolved): Must every read that feeds a later write of `project.json` happen inside the same lock as that write?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23): resolved from evidence, owner confirmed. Yes, for every writer of `project.json`, the read that a write is based on happens inside the same lock as that write; a read outside the lock may be used for display only. Carried to the feature spec: check whether any writer reads `project.json` in one request and writes it in a later one, before claiming coverage. Applied in FR-76.
+**Evidence:** Owner confirmation, Gate 1, 2026-10-23. Measured 2026-10-23: the lost field came from a writer that read `project.json` first and wrote back its older copy after the other writer finished. `updateProjectJson` (PR #294) already reads and writes under one lock for its callers. Not measured: whether any writer reads `project.json` in one request and writes it in a later one.
+**Impact:** FR-76; US-31.
+**Owner:** Product owner.
+
+**OQ-114 (resolved): May a quick settings save wait behind a long field migration, or must the two be allowed to run at the same time?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23; option c): every `project.json` read-modify-write goes through one narrow `project.json` lock (the shape of the existing `updateProjectJson` in `frontend/src/lib/models/project-json-write.ts`), including writers that hold `locks.ts`'s `acquireLock` (`metadata-schema.ts`, `project-features.ts`) and `sidecar.ts`'s `metadataRevision` bump. Migrations and other saves otherwise run as they do now. The feature spec must prove it with the race test that measured the loss (editor-config save against `addField`), and must show the lock order cannot deadlock. Applied in FR-76.
+**Evidence:** Owner decision, Gate 1, 2026-10-23. Read, not run: `changeFieldTypeWithMigration`, `renameFieldKey` and `updateFieldOptionsWithMigration` hold `acquireLock` for the whole sidecar rewrite, and `writeSidecar` takes `withMetaLock` inside it; locks are not reentrant. Not measured: migration duration on a large project, or that any deadlock occurs.
+**Impact:** FR-76; US-31; metadata schema editing.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)
