@@ -4,7 +4,7 @@
  * repetitions, each writer changing a distinct field (the construction of
  * specs/features/project-json-single-lock/scripts/fr15-sidecar-races.test.ts):
  * - a metadata save (`updateSidecarCore`, the production metadata-save path)
- *   sets `marker`;
+ *   sets `wordCountGoal`;
  * - `updateRevisionInPlace` sets `updatedAt`;
  * - `clearField` (through `forEachUserMetadata`) deletes `userMetadata.tone`.
  * Written to fail on the lock code as it stood before Feature 92; see
@@ -116,7 +116,7 @@ async function makeRep(batchRoot: string, ref?: RefState): Promise<Rep> {
   await writeSidecar(projectRoot, resourceId, {
     id: resourceId,
     updatedAt: T0,
-    marker: "before",
+    wordCountGoal: 1,
     ...(ref
       ? {
           slug: "orig",
@@ -172,7 +172,9 @@ const sleep = (ms: number): Promise<void> =>
 async function run(writer: Writer, rep: Rep, i: number): Promise<void> {
   await sleep((i * 7) % 4); // 0-3 ms start offset, varied per repetition
   if (writer === "metadata") {
-    await updateSidecarCore(rep.projectId, rep.resourceId, { marker: "after" });
+    await updateSidecarCore(rep.projectId, rep.resourceId, {
+      wordCountGoal: 2,
+    });
   } else if (writer === "revision") {
     await updateRevisionInPlace(
       rep.projectRoot,
@@ -186,7 +188,7 @@ async function run(writer: Writer, rep: Rep, i: number): Promise<void> {
 }
 
 function kept(writer: Writer, sidecar: Record<string, unknown>): boolean {
-  if (writer === "metadata") return sidecar.marker === "after";
+  if (writer === "metadata") return sidecar.wordCountGoal === 2;
   if (writer === "revision") return sidecar.updatedAt !== T0;
   const um = (sidecar.userMetadata ?? {}) as Record<string, unknown>;
   return !("tone" in um) && um.other === "keep";

@@ -74,21 +74,21 @@
   "E revision bump through updateSidecarCore": {
     "revision": "",
     "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
-    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"marker\": \"after\"\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"wordCountGoal\": 1\n}",
     "returned": "<undefined>",
     "error": null
   },
   "E revision bump, project.json absent": {
     "revision": "",
     "projectJson": "<absent>",
-    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"marker\": \"after\"\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"wordCountGoal\": 1\n}",
     "returned": "<undefined>",
     "error": null
   },
   "E revision bump, unparseable project.json": {
     "revision": "",
     "projectJson": "{not json",
-    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"marker\": \"after\"\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"wordCountGoal\": 1\n}",
     "returned": "<undefined>",
     "error": {
       "name": "SyntaxError",
@@ -99,7 +99,7 @@
   "S1 updateSidecarCore": {
     "revision": "",
     "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
-    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Renamed\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"extra\": 1\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"wordCountGoal\": 1\n}",
     "returned": "<undefined>",
     "error": null
   },

@@ -318,4 +318,24 @@ Result: no caller of the seven writers was found holding `withMetaLock` for the 
 
 ## FR-20 test-edit list
 
-Task 2 input (MEASURED, E-4b): a save through today's `updateSidecarCore` stores `plaintext` (lower-case) from the page copy in 10 of 10 repetitions; the allowlist stops storing it on the next save. `plainText`, `tiptap` and `charCount` were not carried by the page copy and were absent from every stored sidecar in the E-4 runs. Test edits: (empty; Tasks 8 and 12)
+Task 2 input (MEASURED, E-4b): a save through today's `updateSidecarCore` stores `plaintext` (lower-case) from the page copy in 10 of 10 repetitions; the allowlist stops storing it on the next save. `plainText`, `tiptap` and `charCount` were not carried by the page copy and were absent from every stored sidecar in the E-4 runs. Test edits (Task 12, 2026-10-24). Each edited test depended on a key `updateSidecarCore` now ignores; the assertion was rewritten onto an allowlisted key. Stated as observed, no cause.
+
+`frontend/tests/unit/resource-crud-core-sidecar-sink.test.ts`:
+- "merges over the stored value, drops wordCount, keeps orderIndex and folderId" (renamed "merges allowlisted keys over the stored value, drops wordCount and name, keeps orderIndex and folderId"): sent `name: "New"`; now sends `entityKind` and expects the stored `name` "Old" unchanged. Reason: `name` ignored.
+- "keeps the stored media file name when an update sends another": sent `name: "Pic 2"`; now sends `wordCountGoal: 100` and expects `name` "Pic" and `file` "original.png" unchanged. Reason: `name` ignored.
+- "keeps both changes when two updates of different keys run at once": sent 20 custom keys `field${i}`; now five concurrent updates, one per allowlisted key (`userMetadata` sent once, it is replaced wholesale), expecting all five stored. Reason: unlisted keys ignored. Intent kept (concurrent updates keep each other's change).
+- "keeps a concurrent update's change when renaming at once": sent `note`; now sends `wordCountGoal: 7`. Reason: `note` ignored.
+
+`frontend/tests/unit/resource-sidecar-route.test.ts`:
+- "resolves projectId to the on-disk project and updates the sidecar": sent `status`; now `wordCountGoal: 300`. Reason: `status` ignored.
+- "behaves exactly as a pure merge when clearKeys is omitted": sent `status`; now `wordCountGoal: 300`. Reason: `status` ignored.
+
+Further tests the full suite showed red (found by `pnpm test:ci`, 12 failed before these edits), same reason:
+- `frontend/tests/unit/sidecar-concurrent-writes.test.ts`, the 9 tests "sidecar read-modify-writes at once (FR-22)" (all pairs with the metadata save): the metadata writer set `marker` (seed `marker: "before"`, checked `marker === "after"`); now `wordCountGoal` 1 to 2. Reason: `marker` ignored.
+- `frontend/tests/unit/helpers/single-writer-scenarios.ts` scenarios "E revision bump through updateSidecarCore", "E revision bump, project.json absent", "E revision bump, unparseable project.json" (sent `marker`; now `wordCountGoal: 1`) and "S1 updateSidecarCore" (sent `name: "Renamed", extra: 1`; now `wordCountGoal: 1`). The recorded baseline `frontend/tests/fixtures/project-json-lock/single-writer-baseline.json` was edited by hand for those four entries (the sidecar byte string: `marker: "after"` to `wordCountGoal: 1`; S1 `name` "Renamed" to "Scene" and `extra: 1` to `wordCountGoal: 1`). It was not regenerated from the unchanged tree; a single key was used so the unchanged tree's merge writes the same bytes. Test consumer: `project-json-lock-failures.test.ts` "single writer on an idle project (FR-13, FR-23)" (4 of its parametrised cases).
+
+Not edited (pass without an ignored key or FR-23 dependence): `metadata-concurrent-writes.test.ts`, `resource-crud-core-entity-kind-omitted.test.ts`, the `:213` test in the sink file (the Task 9/11 tests already cover FR-23).
+
+E-4 consequence (MEASURED in E-4b, restated): the page resource copy carries `plaintext` (lower-case), which the unchanged `updateSidecarCore` stored in 10 of 10 repetitions; the allowlist does not store it, so a stored sidecar that holds `plaintext` loses it on its next save. `plainText`, `tiptap` and `charCount` were absent from the page copy and from every stored sidecar in the E-4 runs. No test in the suite was found to depend on `plaintext`.
+
+Verification (from `frontend/`, 2026-10-24): `pnpm typecheck` exit 0; `pnpm lint` 0 errors / 392 warnings; `pnpm exec vitest run` on the sink, route, metadata-concurrent-writes, entity-kind-omitted, sidecar-concurrent-writes and project-json-lock-failures files: 6 files, 117 passed; `pnpm test:ci`: 675 files passed, 8240 passed, 0 failed, 2 expected fail, 1 skipped (baseline: 1 failed, 8217 passed; the baseline flaky EntityGraphSettingsPanel test did not fail in this run).

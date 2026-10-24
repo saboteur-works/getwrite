@@ -74,14 +74,14 @@ describe("POST /api/resource/[resource-id]/sidecar (projectId-based)", () => {
       const res = await POST(
         sidecarRequest(resourceId, {
           projectId,
-          updatedResource: { status: "in-progress" },
+          updatedResource: { wordCountGoal: 300 },
         }) as never,
         { params: Promise.resolve({ "resource-id": resourceId }) },
       );
 
       expect(res.status).toBe(200);
       const sidecar = await readSidecar(projectPath, resourceId);
-      expect(sidecar?.status).toBe("in-progress");
+      expect(sidecar?.wordCountGoal).toBe(300);
       expect(sidecar?.name).toBe("Original");
     });
   });
@@ -415,14 +415,14 @@ describe("POST /api/resource/[resource-id]/sidecar (clearKeys, FR-20/FR-25)", ()
       const res = await POST(
         sidecarRequest(resourceId, {
           projectId,
-          updatedResource: { status: "in-progress" },
+          updatedResource: { wordCountGoal: 300 },
         }) as never,
         { params: Promise.resolve({ "resource-id": resourceId }) },
       );
 
       expect(res.status).toBe(200);
       const sidecar = await readSidecar(projectPath, resourceId);
-      expect(sidecar?.status).toBe("in-progress");
+      expect(sidecar?.wordCountGoal).toBe(300);
       expect(sidecar?.entityKind).toBe("character");
       expect(sidecar?.aliases).toEqual(["Al"]);
       expect(sidecar?.orderIndex).toBe(3);
@@ -569,6 +569,76 @@ describe("POST /api/resource/[resource-id]/sidecar (clearKeys, FR-20/FR-25)", ()
       expect(res.status).toBe(400);
       const after = await fs.readFile(sidecarPath, "utf-8");
       expect(after).toBe(before);
+    });
+  });
+});
+
+describe("POST /api/resource/[resource-id]/sidecar (allowlist, Feature 93 Task 9)", () => {
+  async function post(
+    projectId: string,
+    resourceId: string,
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    const { POST } =
+      await import("../../app/api/resource/[resource-id]/sidecar/route");
+    return POST(sidecarRequest(resourceId, { projectId, ...body }) as never, {
+      params: Promise.resolve({ "resource-id": resourceId }),
+    });
+  }
+
+  it("(g) answers 200 { message: 'Sidecar updated.' }", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: { entityKind: "place" },
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ message: "Sidecar updated." });
+      expect((await readSidecar(projectPath, resourceId))?.entityKind).toBe(
+        "place",
+      );
+    });
+  });
+
+  it("(AC-15) succeeds with an unlisted key and does not store it", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: { someUnlistedKey: "x" },
+      });
+      expect(res.status).toBe(200);
+      expect(await readSidecar(projectPath, resourceId)).not.toHaveProperty(
+        "someUnlistedKey",
+      );
+    });
+  });
+
+  it("(f) still answers 400 for an invalid clearKeys entry alongside ignored keys", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Original",
+        type: "text",
+      });
+      const res = await post(projectId, resourceId, {
+        updatedResource: { someUnlistedKey: "x" },
+        clearKeys: ["name"],
+      });
+      expect(res.status).toBe(400);
     });
   });
 });

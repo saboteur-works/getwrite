@@ -131,7 +131,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 11
 **Estimate:** 3
 **Notes:** Satisfies FR-20, AC-5. Existing tests otherwise stay green without edits. The 20-concurrent test is the one with real design content: keep its intent (concurrent updates keep each other's change) using separate allowlisted keys.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Sidecar acceptance: stale-copy tests pass nine consecutive runs
 **What:** Run the stale-copy tests against the allowlist and record nine consecutive passing runs next to the E-1..E-3 before values.
