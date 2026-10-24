@@ -233,8 +233,8 @@ export async function computeBacklinks(
   return index;
 }
 
-/** Persist backlink index under `meta/backlinks.json`. */
-export async function persistBacklinks(
+/** Writes `meta/backlinks.json`. Callers hold `withMetaLock`. */
+async function saveBacklinks(
   projectRoot: string,
   index: BacklinkIndex,
 ): Promise<void> {
@@ -245,11 +245,40 @@ export async function persistBacklinks(
     // ignore
   }
   const out = path.join(metaDir, "backlinks.json");
+  await atomicWriteFile(out, JSON.stringify(index, null, 2), {
+    writeOptions: "utf8",
+    durable: process.env.GETWRITE_DURABLE_META === "1",
+  });
+}
+
+/**
+ * Persist backlink index under `meta/backlinks.json`. Locks the write only: a
+ * caller holding an index loaded or computed earlier can overwrite a change
+ * saved since. Use {@link updateBacklinks} to load, change and save as one
+ * step.
+ */
+export async function persistBacklinks(
+  projectRoot: string,
+  index: BacklinkIndex,
+): Promise<void> {
+  await withMetaLock(projectRoot, () => saveBacklinks(projectRoot, index));
+}
+
+/**
+ * Loads, changes and saves `backlinks.json` inside one `withMetaLock` call
+ * (the shape of `inverted-index.ts` `updateIndex`). `change` mutates the
+ * freshly loaded index in place and must not take `withMetaLock` itself. If
+ * `change` or the load throws, nothing is written, the lock is released and
+ * the error reaches the caller unchanged.
+ */
+export async function updateBacklinks(
+  projectRoot: string,
+  change: (index: BacklinkIndex) => void,
+): Promise<void> {
   await withMetaLock(projectRoot, async () => {
-    await atomicWriteFile(out, JSON.stringify(index, null, 2), {
-      writeOptions: "utf8",
-      durable: process.env.GETWRITE_DURABLE_META === "1",
-    });
+    const index = await loadBacklinks(projectRoot);
+    change(index);
+    await saveBacklinks(projectRoot, index);
   });
 }
 
@@ -269,20 +298,22 @@ export async function loadBacklinks(
 
 /**
  * Remove a resource from the persisted backlinks index: deletes its own key
- * and strips it from every other resource's array of referenced ids.
- * Mirrors `inverted-index.ts`'s `removeResourceFromIndex` — load, modify,
- * persist, inside one `withMetaLock` call (via `persistBacklinks`'s own lock).
+ * and strips it from every other resource's array of referenced ids. Loads,
+ * changes and saves inside one `withMetaLock` call (`updateBacklinks`). A
+ * `computeBacklinks` recompute followed by `persistBacklinks` is NOT atomic: a
+ * recompute that scanned before this removal and saves after it restores the
+ * removed entries (known gap, Feature 93 F93-4).
  */
 export async function removeResourceFromBacklinks(
   projectRoot: string,
   resourceId: string,
 ): Promise<void> {
-  const index = await loadBacklinks(projectRoot);
-  delete index[resourceId];
-  for (const [id, refs] of Object.entries(index)) {
-    index[id] = refs.filter((refId) => refId !== resourceId);
-  }
-  await persistBacklinks(projectRoot, index);
+  await updateBacklinks(projectRoot, (index) => {
+    delete index[resourceId];
+    for (const [id, refs] of Object.entries(index)) {
+      index[id] = refs.filter((refId) => refId !== resourceId);
+    }
+  });
 }
 
 /**
@@ -366,6 +397,7 @@ const backlinks = {
   listResourceIds,
   computeBacklinks,
   persistBacklinks,
+  updateBacklinks,
   loadBacklinks,
   removeResourceFromBacklinks,
   getEntityBacklinkEdges,

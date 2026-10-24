@@ -421,3 +421,59 @@ MEASURED (no cause established):
 - After the change, `pnpm test:ci` (once): 676 files passed, 8255 passed, 2 expected fail, 1 skipped, 0 failed; duration 126 s. Per-test durations under load were not recorded.
 - `EntityGraphSettingsPanel.test.tsx` "persists a changed hop radius" did not fail in this run.
 - `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings.
+
+## Task 18 race tests
+
+Date 2026-10-24. Branch `fix/stale-saves-and-index-races`, unchanged `src/`. Files: `frontend/tests/unit/mention-index-concurrent-writes.test.ts` (new), `frontend/tests/unit/backlinks-concurrent-writes.test.ts` (new), shared helpers `frontend/tests/helpers/mentionIndexRaceConstructions.ts`, `backlinksRaceConstructions.ts` (ports of `scripts/e8-constructions.ts`, `e9-constructions.ts`; per-repetition timer 5 s instead of 20 s, gate release 0.5 s instead of 1.5 s) and `raceRepetitions.ts`. Each test: 20 repetitions, one fresh temp project per repetition under `mkdtemp($TMPDIR)`, both changes asserted present, file must parse, no writer rejection, 5 s timer per repetition, 30000 ms per-test timeout. Command (from `frontend/`): `pnpm exec vitest run tests/unit/mention-index-concurrent-writes.test.ts tests/unit/backlinks-concurrent-writes.test.ts`.
+
+MEASURED, one run on the unchanged tree: 13 tests, 7 failed, 4 passed, 2 expected-fail (`it.fails`, reported as passing). In every failing test the failure list held 20 entries (20 of 20 repetitions failed an assertion).
+
+| Test | Mode | Observed |
+| --- | --- | --- |
+| m1 remove vs runTask mention step | gated | failed, 20 of 20 repetitions |
+| m2 remove vs rescanEntityAcrossProject | gated | failed, 20 of 20 |
+| m3 rescan vs runTask mention step | gated | failed, 20 of 20 |
+| m4 two persistMentionIndex callers | gated | failed, 20 of 20 |
+| b1 removeResourceFromBacklinks vs persistBacklinks | gated | failed, 20 of 20 |
+| b2 two persistBacklinks callers | gated | failed, 20 of 20 |
+| b4 removeResourceFromBacklinks vs runTask | gated | failed, 20 of 20 |
+| b3 watcher body vs runTask backlinks step (KNOWN GAP F93-4, `it.fails`) | gated | assertion failed as the test expects (20 of 20 lost per the E-9 driver re-run below); suite reports pass |
+| b5 remove vs computeBacklinks recompute (KNOWN GAP F93-4, `it.fails`) | gated | same as b3 |
+| m1 guard | natural | passed, 0 of 20 |
+| m3 guard | natural | passed, 0 of 20 |
+| b3 guard | natural | passed, 0 of 20 |
+| b4 guard | natural | passed, 0 of 20 |
+
+Natural variants not included: m2 (E-8 natural 1 of 20, not a stable guard), m4, b1, b2, b5 (E-8/E-9 natural 20 of 20, covered by the gated tests). Hung, rejected and unparseable: 0 in every repetition of the E-9 driver re-run (`scripts/vitest.e9.config.ts`, 20 repetitions per pair, same day: lostAny gated 20/20/20/20/20 for removeVsPersist/persistVsPersist/watcherVsRunTask/removeVsRunTask/removeVsRecompute, natural 20/20/0/0/20; unparseable 0, rejected 0, hung 0). The `it.fails` tests pass for any assertion failure, so the driver re-run is the record that the loss, not a hang, is what they observe. `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings.
+
+Red-by-design: m1-m4, b1, b2, b4 are expected to pass after Tasks 20/21. b3 and b5 are expected to keep failing inside `it.fails` until an atomic recompute exists (follow-up F93-4); if they ever pass, `it.fails` turns them red and they must be changed to plain `it`.
+
+## Task 20 / Task 21 outcome
+
+Date 2026-10-24. Branch `fix/stale-saves-and-index-races`. Owner-narrowed scope: only the pairs one locked load/change/save can close are fixed; the rest are labelled known gaps.
+
+Change: `updateMentionIndex(root, change)` (`mention-index.ts`) and `updateBacklinks(root, change)` (`backlinks.ts`), shaped like `inverted-index.ts` `updateIndex`: `withMetaLock` held across load, change and save, writing through an unlocked save helper (`saveMentionIndex`, `saveBacklinks`) so nothing nests. `persistMentionIndex` and `persistBacklinks` keep their write-only lock. Applied to `removeResourceFromMentionIndex`, `removeResourceFromBacklinks`, `runTask`'s mention and backlinks steps (the backlinks change replaces the loaded index's contents with the `computeBacklinks` result, as `persistBacklinks` did; the scan stays outside the lock and stays an input), and `rescanEntityAcrossProject` (the per-resource scan runs first, the change is applied to the index loaded inside the lock). Importers, `reindex`, `backlinks-watcher.ts` and `computeBacklinks` are unchanged.
+
+| Pair | Result |
+| --- | --- |
+| m1 remove vs runTask mention step | closed (gated test red -> green, test unchanged) |
+| m2 remove vs rescanEntityAcrossProject | closed |
+| m3 rescan vs runTask mention step | closed |
+| b1 removeResourceFromBacklinks vs persistBacklinks | closed |
+| b4 removeResourceFromBacklinks vs runTask | closed |
+| m4 two persistMentionIndex callers | known gap, `it.fails` (follow-up: move importers scrivener/docx/plaintext, `reindex` and the persist callers onto `updateMentionIndex`) |
+| b2 two persistBacklinks callers | known gap, `it.fails` (same follow-up with `updateBacklinks`; F93-4) |
+| b3 watcher vs runTask | known gap, stays `it.fails`: with `runTask`'s step on `updateBacklinks` it still failed its gated assertion in all 9 runs, so it was not made a normal test |
+| b5 remove vs recompute | known gap, stays `it.fails` (`computeBacklinks` not atomic, F93-4) |
+
+Natural-mode guards (m1, m3, b3, b4) pass in every run.
+
+MEASURED, 9 consecutive runs of `pnpm exec vitest run tests/unit/mention-index-concurrent-writes.test.ts tests/unit/backlinks-concurrent-writes.test.ts`: every run 2 files passed, 9 tests passed, 4 expected fail (13); no hang (5 s per repetition), no failed repetition in the closed pairs.
+
+Added tests (existing files extended): `updateMentionIndex` and `updateBacklinks` idle write, and a throw inside `change` reaches the caller unchanged, leaves the file as seeded and releases the lock (a following update succeeds), in `mention-index-remove-resource.test.ts` and `backlinks-remove-resource.test.ts`. The Task 19 nested-lock guard stays green.
+
+Checks: `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings; targeted vitest (mention-index*, backlinks*, indexer*, inverted-index, meta-locks) 15 files, 93 passed, 4 expected fail; one full `pnpm test:ci`: 678 files passed, 8268 passed, 6 expected fail, 1 skipped, 0 failed (the known-flaky EntityGraphSettingsPanel test and the projectFeatureToggles 20-repetition test did not fail).
+
+Files changed: `frontend/src/lib/models/mention-index.ts`, `backlinks.ts`, `indexer-queue.ts`; tests `mention-index-concurrent-writes.test.ts`, `backlinks-concurrent-writes.test.ts` (m4, b2 to `it.fails` with follow-up comments), `mention-index-remove-resource.test.ts`, `backlinks-remove-resource.test.ts`. Commit naming: E-8 gates the mention-index change (Task 20); E-9 gates the backlinks change (Task 21).
+
+E-7 (entity-graph settings) is an accepted follow-up, owner-confirmed.

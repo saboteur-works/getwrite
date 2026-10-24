@@ -13,7 +13,7 @@ import { loadResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { startBacklinkWatcher } from "./backlinks-watcher";
 import {
   computeBacklinks,
-  persistBacklinks,
+  updateBacklinks,
   listResourceIds,
 } from "./backlinks";
 import {
@@ -21,11 +21,7 @@ import {
   type EntityAliasEntry,
 } from "./entity-alias-table";
 import { findMentionOffsets } from "./entity-detection";
-import {
-  loadMentionIndex,
-  persistMentionIndex,
-  type MentionRecord,
-} from "./mention-index";
+import { updateMentionIndex, type MentionRecord } from "./mention-index";
 import {
   dialogueRatio,
   averageSentenceLength,
@@ -271,7 +267,10 @@ async function runTask(task: Task) {
 
         try {
           const backlinks = await computeBacklinks(task.projectRoot);
-          await persistBacklinks(task.projectRoot, backlinks);
+          await updateBacklinks(task.projectRoot, (index) => {
+            for (const key of Object.keys(index)) delete index[key];
+            Object.assign(index, backlinks);
+          });
         } catch (err) {
           console.error("[indexer-queue] backlinks update failed:", err);
         }
@@ -289,13 +288,13 @@ async function runTask(task: Task) {
             if (record) records.push(record);
           }
 
-          const mentionIndex = await loadMentionIndex(task.projectRoot);
-          if (records.length > 0) {
-            mentionIndex[task.resourceId] = records;
-          } else {
-            delete mentionIndex[task.resourceId];
-          }
-          await persistMentionIndex(task.projectRoot, mentionIndex);
+          await updateMentionIndex(task.projectRoot, (mentionIndex) => {
+            if (records.length > 0) {
+              mentionIndex[task.resourceId] = records;
+            } else {
+              delete mentionIndex[task.resourceId];
+            }
+          });
         } catch (err) {
           console.error("[indexer-queue] mention detection failed:", err);
         }
@@ -382,9 +381,9 @@ export function enqueueIndex(
  * every other entity's records for that same resource, and every other
  * resource's entries, are left byte-for-byte untouched.
  *
- * Reads the mention index once and every resource's persisted text once,
- * applies all per-resource updates for this entity in memory, then persists
- * a single time — avoiding the load/persist thrashing a per-resource
+ * Reads every resource's persisted text once, then loads, applies all
+ * per-resource updates for this entity and saves the mention index in one
+ * locked step (`updateMentionIndex`) — avoiding the load/persist thrashing a per-resource
  * read-modify-write loop would cause (Task 6 done_when).
  *
  * If the entity no longer exists in the alias table (its sidecar's
@@ -401,30 +400,36 @@ async function rescanEntityAcrossProject(
   const entity = aliasTable.entities[entityId];
 
   const resourceIds = await listResourceIds(projectRoot);
-  const mentionIndex = await loadMentionIndex(projectRoot);
-
+  const newRecords = new Map<string, MentionRecord | undefined>();
   for (const resourceId of resourceIds) {
     const plain = await loadPersistedPlainText(projectRoot, resourceId);
-    const newRecord = entity
-      ? buildMentionRecordForEntity(entity, resourceId, plain)
-      : undefined;
-
-    const existing = mentionIndex[resourceId] ?? [];
-    const withoutThisEntity = existing.filter(
-      (record) => record.entityId !== entityId,
+    newRecords.set(
+      resourceId,
+      entity
+        ? buildMentionRecordForEntity(entity, resourceId, plain)
+        : undefined,
     );
-    const updated = newRecord
-      ? [...withoutThisEntity, newRecord]
-      : withoutThisEntity;
-
-    if (updated.length > 0) {
-      mentionIndex[resourceId] = updated;
-    } else {
-      delete mentionIndex[resourceId];
-    }
   }
 
-  await persistMentionIndex(projectRoot, mentionIndex);
+  // The scan above is an input; the change is applied to the index loaded
+  // inside the lock, so a concurrent writer's change to it is kept.
+  await updateMentionIndex(projectRoot, (mentionIndex) => {
+    for (const [resourceId, newRecord] of newRecords) {
+      const existing = mentionIndex[resourceId] ?? [];
+      const withoutThisEntity = existing.filter(
+        (record) => record.entityId !== entityId,
+      );
+      const updated = newRecord
+        ? [...withoutThisEntity, newRecord]
+        : withoutThisEntity;
+
+      if (updated.length > 0) {
+        mentionIndex[resourceId] = updated;
+      } else {
+        delete mentionIndex[resourceId];
+      }
+    }
+  });
 }
 
 /**
