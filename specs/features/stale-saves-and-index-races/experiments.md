@@ -339,3 +339,33 @@ Not edited (pass without an ignored key or FR-23 dependence): `metadata-concurre
 E-4 consequence (MEASURED in E-4b, restated): the page resource copy carries `plaintext` (lower-case), which the unchanged `updateSidecarCore` stored in 10 of 10 repetitions; the allowlist does not store it, so a stored sidecar that holds `plaintext` loses it on its next save. `plainText`, `tiptap` and `charCount` were absent from the page copy and from every stored sidecar in the E-4 runs. No test in the suite was found to depend on `plaintext`.
 
 Verification (from `frontend/`, 2026-10-24): `pnpm typecheck` exit 0; `pnpm lint` 0 errors / 392 warnings; `pnpm exec vitest run` on the sink, route, metadata-concurrent-writes, entity-kind-omitted, sidecar-concurrent-writes and project-json-lock-failures files: 6 files, 117 passed; `pnpm test:ci`: 675 files passed, 8240 passed, 0 failed, 2 expected fail, 1 skipped (baseline: 1 failed, 8217 passed; the baseline flaky EntityGraphSettingsPanel test did not fail in this run).
+
+## Sidecar after (Task 13)
+
+MEASURED. Recorded 2026-10-24 (Task 13), HEAD `588ba025`, working tree with the Task 10-12 changes. Command, nine times in a row, from `frontend/` (sandboxed, Vitest 4.1.6, Node v24.15.0): `pnpm exec vitest run tests/unit/resource-crud-core-sidecar-sink.test.ts`. Test: describe "updateSidecarCore allowlist (Feature 93 Task 9)" in that file. Each test uses its own temp project directory created and removed by the test's `withProject` helper.
+
+The rename test (`(b) a stale whole-resource save after a rename leaves the new name, 20 of 20`) and the canonical-save test (`(b) a stale whole-resource save after a canonical save leaves the newer updatedAt, 100 of 100`) assert `kept === 20` and `kept === 100` (`expect(kept).toBe(20)`, `expect(kept).toBe(100)`). Both passed in each of the nine runs, so the newer value was kept in 20 of 20 and 100 of 100 repetitions in every run. The per-repetition counts were not printed by the runner; they are inferred from the passing assertions.
+
+| Run | Started | Test files | Tests | Duration |
+|---|---|---|---|---|
+| 1 | 15:03:35 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.28s |
+| 2 | 15:03:40 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.25s |
+| 3 | 15:03:44 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 2.87s |
+| 4 | 15:03:47 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.29s |
+| 5 | 15:03:51 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.16s |
+| 6 | 15:03:55 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.16s |
+| 7 | 15:03:59 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.16s |
+| 8 | 15:04:03 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 3.00s |
+| 9 | 15:04:06 MDT | 1 passed / 0 failed | 33 passed / 0 failed / 0 skipped | 2.96s |
+
+Nine of nine runs passed; 0 failed tests in any run.
+
+### Before and after, side by side
+
+| Experiment | Before (Task 3, one run, HEAD `c01bebea`) | After (Task 13, nine runs, HEAD `588ba025`) |
+|---|---|---|
+| E-1 stale `name` after rename, then stale whole-resource `updateSidecarCore` | stored `name` equalled the pre-rename value in 20 of 20; the renamed value in 0 of 20; unparseable 0, rejected 0 | rename test kept the newer `name` in 20 of 20, in each of 9 runs (assertion `kept === 20` passed 9 of 9) |
+| E-2 stale `updatedAt` after a canonical save | stored `updatedAt` equalled the older client value in 100 of 100; the second save's value in 0 of 100; unparseable 0, rejected 0 | canonical-save test kept the newer `updatedAt` in 100 of 100, in each of 9 runs (assertion `kept === 100` passed 9 of 9) |
+| E-3 stale `dismissedNoiseTerms` after `setNoiseTermDismissedCore` | stored list lacked "hello" in 20 of 20; held it in 0 of 20; unparseable 0, rejected 0 | the Task 9 file has no repetition-counted test of the E-3 construction (dismiss, load copy, dismiss another term, stale send). It has the table row `(a) ignores a client dismissedNoiseTerms: stored value unchanged and the call succeeds`, which passed in 9 of 9 runs (single call, no repetitions). The E-3 construction was not re-run after the change. |
+
+Unparseable and rejected counts are not measured in the Task 13 runs (the Task 9 tests do not count them); the runs recorded no failing test.
