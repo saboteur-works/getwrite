@@ -39,22 +39,12 @@ const initialState: ResourcesState = {
 
 export const persistReorder = createAsyncThunk(
   "projects/persistReorder",
-  async (
-    payload: ReorderPayload & { projectId: string; projectRoot: string },
-  ) => {
-    const { projectRoot, folderOrder, resourceOrder, projectId } = payload;
+  async (payload: ReorderPayload & { projectId: string }) => {
+    const { folderOrder, resourceOrder, projectId } = payload;
     // `projectId` here is the project's on-disk directory basename (see
     // `selectActiveProjectDirectoryId`), used for the route's URL segment.
-    // `projectRoot` (absolute path) is also forwarded in the body: the
-    // reorder route predates the tenant-route migration and still supports
-    // a legacy `body.projectRoot` fallback — see `reorderResources`'s doc
-    // comment for why this is still sent.
     try {
-      await reorderResources(
-        projectId,
-        { folderOrder, resourceOrder },
-        projectRoot,
-      );
+      await reorderResources(projectId, { folderOrder, resourceOrder });
     } catch (err) {
       // The new order is already on screen; a failed save used to leave it
       // there with no message, and it was gone after a reload (note_51c813c1).
@@ -64,7 +54,7 @@ export const persistReorder = createAsyncThunk(
       );
       throw err;
     }
-    return { projectRoot, folderOrder, resourceOrder };
+    return { folderOrder, resourceOrder };
   },
 );
 

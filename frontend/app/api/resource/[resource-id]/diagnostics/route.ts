@@ -3,6 +3,10 @@ import { rebuildDiagnosticsRecordIfStale } from "../../../../../src/lib/models/d
 import { loadPersistedPlainText } from "../../../../../src/lib/models/indexer-queue";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 /**
  * Reads a resource's persisted prose diagnostics summary (FR-7, Feature 62):
@@ -33,6 +37,7 @@ async function handleGet(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("projectId");
 

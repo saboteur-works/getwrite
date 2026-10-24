@@ -248,7 +248,6 @@ export default function ResourceTree({
         dispatch(
           persistReorder({
             projectId: projectDirectoryId,
-            projectRoot: currentProject.rootPath,
             folderOrder: payload.folderOrder,
             resourceOrder: payload.resourceOrder,
           }),

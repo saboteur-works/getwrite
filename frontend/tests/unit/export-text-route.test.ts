@@ -74,14 +74,24 @@ describe("POST /api/export/text", () => {
     const projectId = generateUUID();
     const projectPath = path.join(projectsDir, projectId);
     // Simulates content that was just autosaved to disk.
-    await writeResourceText(projectPath, "r1", "old line\nbrand new line");
+    await writeResourceText(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      "old line\nbrand new line",
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         exportRequest({
           projectId,
-          resourceIds: ["r1"],
-          resources: [{ id: "r1", name: "My Note", type: "text" }],
+          resourceIds: ["00000000-0000-4000-8000-000000000001"],
+          resources: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "My Note",
+              type: "text",
+            },
+          ],
           exportName: "My Note",
         }) as never,
       ),
@@ -98,17 +108,36 @@ describe("POST /api/export/text", () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     const projectPath = path.join(projectsDir, projectId);
-    await writeResourceText(projectPath, "r1", "first body");
-    await writeResourceText(projectPath, "r2", "second body");
+    await writeResourceText(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      "first body",
+    );
+    await writeResourceText(
+      projectPath,
+      "00000000-0000-4000-8000-000000000002",
+      "second body",
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         exportRequest({
           projectId,
-          resourceIds: ["r1", "r2"],
+          resourceIds: [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+          ],
           resources: [
-            { id: "r1", name: "Chapter One", type: "text" },
-            { id: "r2", name: "Chapter Two", type: "text" },
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Chapter One",
+              type: "text",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000002",
+              name: "Chapter Two",
+              type: "text",
+            },
           ],
           exportName: "Book",
         }) as never,
@@ -126,16 +155,31 @@ describe("POST /api/export/text", () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     const projectPath = path.join(projectsDir, projectId);
-    await writeResourceText(projectPath, "r1", "keep this");
+    await writeResourceText(
+      projectPath,
+      "00000000-0000-4000-8000-000000000001",
+      "keep this",
+    );
 
     const res = await withProjectsDir(projectsDir, () =>
       POST(
         exportRequest({
           projectId,
-          resourceIds: ["r1", "img"],
+          resourceIds: [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000003",
+          ],
           resources: [
-            { id: "r1", name: "Text", type: "text" },
-            { id: "img", name: "Picture", type: "image" },
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              name: "Text",
+              type: "text",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000003",
+              name: "Picture",
+              type: "image",
+            },
           ],
           exportName: "Text",
         }) as never,
@@ -173,11 +217,22 @@ describe("POST /api/export/text", () => {
     const plainPath = path.join(projectsDir, plainId);
     const subtypedPath = path.join(projectsDir, subtypedId);
     for (const projectPath of [plainPath, subtypedPath]) {
-      await writeResourceText(projectPath, "r1", "first body");
-      await writeResourceText(projectPath, "r2", "second body");
+      await writeResourceText(
+        projectPath,
+        "00000000-0000-4000-8000-000000000001",
+        "first body",
+      );
+      await writeResourceText(
+        projectPath,
+        "00000000-0000-4000-8000-000000000002",
+        "second body",
+      );
     }
     await fs.mkdir(path.join(subtypedPath, "meta"), { recursive: true });
-    for (const id of ["r1", "r2"]) {
+    for (const id of [
+      "00000000-0000-4000-8000-000000000001",
+      "00000000-0000-4000-8000-000000000002",
+    ]) {
       await fs.writeFile(
         path.join(subtypedPath, "meta", `resource-${id}.meta.json`),
         JSON.stringify({ id, type: "text", resourceSubtype: "Memoir" }),
@@ -190,10 +245,21 @@ describe("POST /api/export/text", () => {
         POST(
           exportRequest({
             projectId,
-            resourceIds: ["r1", "r2"],
+            resourceIds: [
+              "00000000-0000-4000-8000-000000000001",
+              "00000000-0000-4000-8000-000000000002",
+            ],
             resources: [
-              { id: "r1", name: "Chapter One", type: "text" },
-              { id: "r2", name: "Chapter Two", type: "text" },
+              {
+                id: "00000000-0000-4000-8000-000000000001",
+                name: "Chapter One",
+                type: "text",
+              },
+              {
+                id: "00000000-0000-4000-8000-000000000002",
+                name: "Chapter Two",
+                type: "text",
+              },
             ],
             exportName: "Book",
           }) as never,

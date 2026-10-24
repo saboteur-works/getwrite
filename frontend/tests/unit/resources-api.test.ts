@@ -267,6 +267,20 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(error).not.toBeInstanceOf(ResourceGoneError);
   });
 
+  it("reorderResources sends the order with no projectRoot field", async () => {
+    const payload = {
+      folderOrder: [],
+      resourceOrder: [{ id: resourceId, orderIndex: 2, folderId: null }],
+    };
+    await reorderResources(directoryUuid, payload);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`/api/projects/${directoryUuid}/reorder`);
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).toEqual(payload);
+    expect(body).not.toHaveProperty("projectRoot");
+  });
+
   it("reorderResources rejects when the reorder route answers with an error status", async () => {
     // note_51c813c1: the transport used to ignore the response status.
     fetchMock.mockResolvedValue(jsonResponse({}, false, 500));

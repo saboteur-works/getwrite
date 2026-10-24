@@ -299,3 +299,19 @@ describe("saved query with a matches node", () => {
     await removeDirRetry(tmp);
   });
 });
+
+// ─── Id guard ────────────────────────────────────────────────────────────────
+
+describe("query id guard", () => {
+  // The id names the file (`<id>.query.json`); a non-UUID id could name one
+  // outside meta/queries/.
+  it.each(["../x", "not-a-uuid"])(
+    "readQuery and deleteQuery refuse %j before touching the disk",
+    async (badId) => {
+      const tmp = await makeTmp();
+      await expect(readQuery(tmp, badId)).rejects.toThrow();
+      await expect(deleteQuery(tmp, badId)).rejects.toThrow();
+      await removeDirRetry(tmp);
+    },
+  );
+});

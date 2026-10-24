@@ -99,7 +99,7 @@ describe("GET /api/resource/[id]/diagnostics", () => {
   it("computes and returns fresh diagnostics for a resource with no persisted record", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      const resourceId = "scene-1";
+      const resourceId = "00000000-0000-4000-8000-000000000001";
       const text =
         '"Hello there," she said. "Come in." He walked slowly into the room.';
       await writeResourceContent(projectPath, resourceId, text);
@@ -125,8 +125,12 @@ describe("GET /api/resource/[id]/diagnostics", () => {
     const { projectsDir, projectId } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await diagnosticsGet(
-        makeGetRequest("never-saved", projectId),
-        { params: Promise.resolve({ "resource-id": "never-saved" }) },
+        makeGetRequest("00000000-0000-4000-8000-000000000003", projectId),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000003",
+          }),
+        },
       );
 
       expect(res.status).toBe(200);
@@ -142,7 +146,7 @@ describe("GET /api/resource/[id]/diagnostics", () => {
   it("rebuilds a stale (older heuristicVersion) record before responding", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      const resourceId = "scene-2";
+      const resourceId = "00000000-0000-4000-8000-000000000002";
       const text = "One two three. One two three. One two three four five six.";
       await writeResourceContent(projectPath, resourceId, text);
 
@@ -176,8 +180,12 @@ describe("GET /api/resource/[id]/diagnostics", () => {
     const { projectsDir } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await diagnosticsGet(
-        makeGetRequest("some-id", "not-a-uuid"),
-        { params: Promise.resolve({ "resource-id": "some-id" }) },
+        makeGetRequest("00000000-0000-4000-8000-000000000004", "not-a-uuid"),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000004",
+          }),
+        },
       );
       expect(res.status).toBe(400);
       const json = await res.json();
@@ -193,8 +201,12 @@ describe("GET /api/resource/[id]/diagnostics", () => {
           new ProjectLockedError(projectId),
         );
         const res = await diagnosticsGet(
-          makeGetRequest("scene-locked", projectId),
-          { params: Promise.resolve({ "resource-id": "scene-locked" }) },
+          makeGetRequest("00000000-0000-4000-8000-000000000005", projectId),
+          {
+            params: Promise.resolve({
+              "resource-id": "00000000-0000-4000-8000-000000000005",
+            }),
+          },
         );
         expect(res.status).toBe(401);
       });
@@ -207,8 +219,12 @@ describe("GET /api/resource/[id]/diagnostics", () => {
           new MissingProjectKeyError(projectId),
         );
         const res = await diagnosticsGet(
-          makeGetRequest("scene-keyless", projectId),
-          { params: Promise.resolve({ "resource-id": "scene-keyless" }) },
+          makeGetRequest("00000000-0000-4000-8000-000000000006", projectId),
+          {
+            params: Promise.resolve({
+              "resource-id": "00000000-0000-4000-8000-000000000006",
+            }),
+          },
         );
         expect(res.status).toBe(409);
       });

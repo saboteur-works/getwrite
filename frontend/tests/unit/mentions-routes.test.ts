@@ -82,8 +82,8 @@ describe("GET /api/resource/[id]/mentions", () => {
   it("returns the entities mentioned in a resource", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      const sceneId = "scene-1";
-      const ariaId = "entity-aria";
+      const sceneId = "00000000-0000-4000-8000-000000000001";
+      const ariaId = "00000000-0000-4000-8000-000000000003";
       await writeSidecar(projectPath, ariaId, { id: ariaId, name: "Aria" });
       await persistMentionIndex(projectPath, {
         [sceneId]: [
@@ -106,8 +106,16 @@ describe("GET /api/resource/[id]/mentions", () => {
     const { projectsDir, projectId } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await mentionsGet(
-        makeGetRequest("no-mentions", "mentions", projectId),
-        { params: Promise.resolve({ "resource-id": "no-mentions" }) },
+        makeGetRequest(
+          "00000000-0000-4000-8000-000000000004",
+          "mentions",
+          projectId,
+        ),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000004",
+          }),
+        },
       );
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -119,8 +127,16 @@ describe("GET /api/resource/[id]/mentions", () => {
     const { projectsDir } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await mentionsGet(
-        makeGetRequest("some-id", "mentions", "not-a-uuid"),
-        { params: Promise.resolve({ "resource-id": "some-id" }) },
+        makeGetRequest(
+          "00000000-0000-4000-8000-000000000005",
+          "mentions",
+          "not-a-uuid",
+        ),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000005",
+          }),
+        },
       );
       expect(res.status).toBe(400);
       const json = await res.json();
@@ -133,8 +149,8 @@ describe("GET /api/resource/[id]/mentioned-in", () => {
   it("returns every resource mentioning the entity, with a snippet per occurrence", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      const ariaId = "entity-aria";
-      const sceneId = "scene-1";
+      const ariaId = "00000000-0000-4000-8000-000000000003";
+      const sceneId = "00000000-0000-4000-8000-000000000001";
       await writeSidecar(projectPath, sceneId, {
         id: sceneId,
         name: "Chapter One",
@@ -169,8 +185,16 @@ describe("GET /api/resource/[id]/mentioned-in", () => {
     const { projectsDir, projectId } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await mentionedInGet(
-        makeGetRequest("entity-unmentioned", "mentioned-in", projectId),
-        { params: Promise.resolve({ "resource-id": "entity-unmentioned" }) },
+        makeGetRequest(
+          "00000000-0000-4000-8000-000000000006",
+          "mentioned-in",
+          projectId,
+        ),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000006",
+          }),
+        },
       );
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -182,8 +206,16 @@ describe("GET /api/resource/[id]/mentioned-in", () => {
     const { projectsDir } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const res = await mentionedInGet(
-        makeGetRequest("some-id", "mentioned-in", "not-a-uuid"),
-        { params: Promise.resolve({ "resource-id": "some-id" }) },
+        makeGetRequest(
+          "00000000-0000-4000-8000-000000000005",
+          "mentioned-in",
+          "not-a-uuid",
+        ),
+        {
+          params: Promise.resolve({
+            "resource-id": "00000000-0000-4000-8000-000000000005",
+          }),
+        },
       );
       expect(res.status).toBe(400);
       const json = await res.json();

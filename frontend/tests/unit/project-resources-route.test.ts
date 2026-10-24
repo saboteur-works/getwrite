@@ -91,14 +91,21 @@ describe("POST /api/project-resources (projectId-based)", () => {
   it("resolves projectId to the on-disk project and returns resource content", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      await writeResourceContent(projectPath, "res-route", "Hello world");
+      await writeResourceContent(
+        projectPath,
+        "00000000-0000-4000-8000-000000000001",
+        "Hello world",
+      );
 
       const { POST } = await import("../../app/api/project-resources/route");
       const res = await POST(
         new Request("http://localhost/api/project-resources", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, resourceId: "res-route" }),
+          body: JSON.stringify({
+            projectId,
+            resourceId: "00000000-0000-4000-8000-000000000001",
+          }),
         }) as never,
       );
       expect(res.status).toBe(200);
@@ -119,7 +126,7 @@ describe("POST /api/project-resources (projectId-based)", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             projectId: "not-a-uuid",
-            resourceId: "res-route",
+            resourceId: "00000000-0000-4000-8000-000000000001",
           }),
         }) as never,
       );
@@ -143,7 +150,10 @@ describe("POST /api/project-resources (projectId-based)", () => {
         new Request("http://localhost/api/project-resources", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, resourceId: "res-route" }),
+          body: JSON.stringify({
+            projectId,
+            resourceId: "00000000-0000-4000-8000-000000000001",
+          }),
         }) as never,
       );
       expect(res.status).toBe(401);
@@ -155,8 +165,16 @@ describe("POST /api/project-resources/excerpts (projectId-based)", () => {
   it("resolves projectId to the on-disk project and returns excerpts", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
-      await writeResourceContent(projectPath, "res-a", "Excerpt content A");
-      await writeResourceContent(projectPath, "res-b", "Excerpt content B");
+      await writeResourceContent(
+        projectPath,
+        "00000000-0000-4000-8000-000000000002",
+        "Excerpt content A",
+      );
+      await writeResourceContent(
+        projectPath,
+        "00000000-0000-4000-8000-000000000003",
+        "Excerpt content B",
+      );
 
       const { POST } =
         await import("../../app/api/project-resources/excerpts/route");
@@ -164,13 +182,23 @@ describe("POST /api/project-resources/excerpts (projectId-based)", () => {
         new Request("http://localhost/api/project-resources/excerpts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, resourceIds: ["res-a", "res-b"] }),
+          body: JSON.stringify({
+            projectId,
+            resourceIds: [
+              "00000000-0000-4000-8000-000000000002",
+              "00000000-0000-4000-8000-000000000003",
+            ],
+          }),
         }) as never,
       );
       expect(res.status).toBe(200);
       const body = (await res.json()) as { excerpts: Record<string, string> };
-      expect(body.excerpts["res-a"]).toBe("Excerpt content A");
-      expect(body.excerpts["res-b"]).toBe("Excerpt content B");
+      expect(body.excerpts["00000000-0000-4000-8000-000000000002"]).toBe(
+        "Excerpt content A",
+      );
+      expect(body.excerpts["00000000-0000-4000-8000-000000000003"]).toBe(
+        "Excerpt content B",
+      );
     });
   });
 
@@ -210,7 +238,10 @@ describe("POST /api/project-resources/excerpts (projectId-based)", () => {
         new Request("http://localhost/api/project-resources/excerpts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, resourceIds: ["res-a"] }),
+          body: JSON.stringify({
+            projectId,
+            resourceIds: ["00000000-0000-4000-8000-000000000002"],
+          }),
         }) as never,
       );
       expect(res.status).toBe(401);

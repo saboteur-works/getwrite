@@ -119,6 +119,35 @@ describe("POST /api/resource (projectId-based)", () => {
     });
   });
 
+  it.each([
+    { type: "image", image: { file: "../x.png" } },
+    { type: "audio", audio: { file: "a/b.mp3" } },
+  ])(
+    "refuses a media file name that is not a bare file name (%#), writing nothing",
+    async (media) => {
+      const { projectsDir, projectId, projectPath } =
+        await makeTmpProjectsDir();
+      await withProjectsDirEnv(projectsDir, async () => {
+        const { POST } = await import("../../app/api/resource/route");
+        const res = await POST(
+          new Request("http://localhost/api/resource", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              projectId,
+              resourceData: { name: "Media", ...media },
+            }),
+          }) as never,
+        );
+
+        expect(res.status).toBe(400);
+        await expect(
+          fs.readdir(path.join(projectPath, "meta")),
+        ).rejects.toThrow();
+      });
+    },
+  );
+
   it("returns the uniform 400 when projectId is not a well-formed UUID", async () => {
     const { projectsDir } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {

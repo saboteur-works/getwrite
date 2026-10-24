@@ -48,6 +48,13 @@ If you cannot determine that an operation is permitted, deny it.
   `validateProjectId` / `respondInvalidProjectId`, then
   `path.join(resolveProjectsDir(), projectId)`.
 - Reject traversal rather than normalising it away.
+- Any other client-supplied value that becomes part of a path is checked at
+  the route before use. Resource and folder ids must be UUIDs
+  (`isResourceId` / `areResourceIds` / `respondInvalidResourceId` in
+  `resource-id.ts`; `tests/unit/resource-id-route-guard.test.ts` walks every
+  `[resource-id]` route). A saved query id must be a UUID. A media resource's
+  stored `file` must be a bare file name (`isPlainFileName`) and only upload
+  sets it. A folder slug that is not a plain name falls back to the folder id.
 
 ---
 

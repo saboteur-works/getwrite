@@ -232,7 +232,6 @@ export const SCENARIOS: Record<string, Scenario> = {
     corruption: "none",
     run: (ctx) =>
       reorderResourcesCore(PROJECT_ID, {
-        projectRootOverride: ctx.projectRoot,
         folderOrder: [],
         resourceOrder: [{ id: RESOURCE_ID, orderIndex: 4, folderId: null }],
       }),

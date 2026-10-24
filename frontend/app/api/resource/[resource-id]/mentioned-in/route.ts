@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getEntityMentionedIn } from "../../../../../src/lib/models/mentions-core";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 /**
  * Lists every resource mentioning an entity, with one snippet per
@@ -20,6 +24,7 @@ async function handleGet(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const entityId = (await params)["resource-id"];
+  if (!isResourceId(entityId)) return respondInvalidResourceId();
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("projectId");
 

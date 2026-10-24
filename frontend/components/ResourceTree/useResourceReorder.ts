@@ -106,7 +106,6 @@ export function useResourceReorder({
     dispatch(
       persistReorder({
         projectId: projectDirectoryId,
-        projectRoot: currentProject.rootPath,
         folderOrder: reorderPayload.folderOrder,
         resourceOrder: reorderPayload.resourceOrder,
       }),

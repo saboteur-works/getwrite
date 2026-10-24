@@ -9,6 +9,11 @@ import { readFileBuffer } from "../../../../../src/lib/models/io";
 import { readSidecar } from "../../../../../src/lib/models/sidecar";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import { isPlainFileName } from "../../../../../src/lib/models/media-validation";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 /** Derives a MIME type from a stored filename, falling back to octet-stream. */
 function mimeForFile(fileName: string): string {
@@ -34,6 +39,7 @@ async function handleGet(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("projectId");
 
@@ -48,6 +54,13 @@ async function handleGet(
     return NextResponse.json(
       { error: "Resource has no stored file" },
       { status: 404 },
+    );
+  }
+
+  if (!isPlainFileName(fileName)) {
+    return NextResponse.json(
+      { error: "Stored file name is not valid" },
+      { status: 500 },
     );
   }
 

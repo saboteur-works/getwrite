@@ -1365,9 +1365,10 @@ describe("OrganizerView drag-and-drop reorder persistence and grid re-render (Ta
 
     await waitFor(() => expect(mockReorder).toHaveBeenCalledTimes(1));
 
-    const [projectId, payload, projectRoot] = mockReorder.mock.calls[0];
+    const [projectId, payload] = mockReorder.mock.calls[0];
     expect(projectId).toBe("p1");
-    expect(projectRoot).toBe("/projects/p1");
+    // No path is sent; the server resolves the project from its id.
+    expect(mockReorder.mock.calls[0]).toHaveLength(2);
     // R1 moved to the last resource slot: resourceOrder reflects R2, R3, R1
     // in that order, each carrying its newly assigned `orderIndex`.
     expect(

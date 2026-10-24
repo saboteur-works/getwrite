@@ -44,6 +44,10 @@ import { isLockedAccessError } from "../../../../../src/lib/models/locked-access
 import { checkLimit } from "../../../../../src/lib/sharing/limits-check";
 import { REVISION_DELETE_REFUSAL_MESSAGE } from "../../../../../src/lib/sharing/limits-copy";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 interface GetRevisionResponse {
   revision: Revision;
@@ -126,6 +130,7 @@ async function handleGet(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
   const { searchParams } = new URL(req.url);
 
   const resolved = resolveProjectPath(searchParams.get("projectId"));
@@ -162,6 +167,7 @@ async function handlePost(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
 
   const parsed = await parseJsonBody<SaveRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;
@@ -199,6 +205,7 @@ async function handleDelete(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
 
   const parsed = await parseJsonBody<DeleteRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;
@@ -241,6 +248,7 @@ async function handlePatch(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
 
   const parsed = await parseJsonBody<SetCanonicalRevisionBody>(req);
   if (parsed instanceof NextResponse) return parsed;

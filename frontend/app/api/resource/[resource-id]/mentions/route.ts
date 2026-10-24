@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getResourceMentions } from "../../../../../src/lib/models/mentions-core";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
+import {
+  isResourceId,
+  respondInvalidResourceId,
+} from "../../../../../src/lib/models/resource-id";
 
 /**
  * Lists the entities detected as mentioned within a resource (FR-9).
@@ -18,6 +22,7 @@ async function handleGet(
   { params }: { params: Promise<{ "resource-id": string }> },
 ): Promise<Response> {
   const resourceId = (await params)["resource-id"];
+  if (!isResourceId(resourceId)) return respondInvalidResourceId();
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("projectId");
 

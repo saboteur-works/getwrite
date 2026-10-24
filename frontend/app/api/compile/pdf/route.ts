@@ -4,9 +4,14 @@ import { compilePdfCore } from "../../../../src/lib/models/compile-core";
 import { InvalidProjectIdCoreError } from "../../../../src/lib/models/project-crud-core";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../_tenant/with-storage-context";
+import {
+  areResourceIds,
+  respondInvalidResourceId,
+} from "../../../../src/lib/models/resource-id";
 
 async function handlePost(req: NextRequest) {
   const body = (await req.json()) as CompileBody;
+  if (!areResourceIds(body.resourceIds)) return respondInvalidResourceId();
 
   let resolved;
   try {

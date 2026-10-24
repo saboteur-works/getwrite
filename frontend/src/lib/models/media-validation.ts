@@ -104,6 +104,25 @@ function resolveType(
 }
 
 /**
+ * The extension for the stored file name (`original.<ext>`): the name's own
+ * extension when it is on an allowlist, otherwise the allowlisted extension
+ * for the resolved MIME type. A name's text after its last dot can hold a
+ * `/` (`x./y`), so it is never used unless allowlisted.
+ */
+function storedExtension(extension: string, mime: string): string {
+  if (extension in IMAGE_EXTENSION_MIME || extension in AUDIO_EXTENSION_MIME) {
+    return extension;
+  }
+  const match = [
+    ...Object.entries(IMAGE_EXTENSION_MIME),
+    ...Object.entries(AUDIO_EXTENSION_MIME),
+  ].find(([, value]) => value === mime);
+  // `resolveType` only returns a MIME type from these maps, so a match
+  // exists; the fallback never reuses the unchecked text.
+  return match ? match[0] : "bin";
+}
+
+/**
  * Classifies a media file as an image or audio resource, or rejects it.
  *
  * Type resolution runs before the size check so an unsupported file reports
@@ -140,7 +159,18 @@ export function validateMediaFile(
   return {
     ok: true,
     type: resolved.type,
-    extension: extension || resolved.mime.split("/")[1],
+    extension: storedExtension(extension, resolved.mime),
     mime: resolved.mime,
   };
+}
+
+/**
+ * True when `name` is a bare file name: one path segment, not `.` or `..`,
+ * with no `/`, `\` or NUL. A media resource's stored `file` is joined under
+ * `resources/<id>/`, so anything else could name a file outside it.
+ */
+export function isPlainFileName(name: string): boolean {
+  return (
+    name.length > 0 && name !== "." && name !== ".." && !/[/\\\0]/.test(name)
+  );
 }
