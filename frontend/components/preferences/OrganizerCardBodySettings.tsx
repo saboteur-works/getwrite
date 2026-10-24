@@ -13,6 +13,13 @@
  * When no card body is configured yet, the selector previews the back-compat
  * default the Organizer consumer (Task 10) will use: the Notes field when Notes
  * is enabled, otherwise None.
+ *
+ * Each save replaces the stored block wholesale, so a second edit sent before
+ * the first one's stored result is in the client store could leave the stored
+ * block lacking one of the two edits (Feature 93, E-5). While a save is in
+ * flight both controls are disabled and every handler returns early
+ * (`isSaving`, as in `SubtypesSettings`); a failed save shows its error toast,
+ * re-enables the controls and returns the length draft to the persisted value.
  */
 
 import { useEffect, useState } from "react";
@@ -26,6 +33,7 @@ import {
   updateProjectOrganizerCardBody,
 } from "../../src/store/projectsSlice";
 import type { OrganizerCardBodyConfig } from "../../src/lib/models/types";
+import { toastService } from "../../src/lib/toast-service";
 import Select from "../common/UI/Select/Select";
 
 /** Prefix used to distinguish field options from the `none`/`text-excerpt` sources. */
@@ -101,6 +109,7 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
   const [excerptDraft, setExcerptDraft] = useState<string>(
     String(persistedExcerptLength),
   );
+  const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
     setExcerptDraft(String(persistedExcerptLength));
   }, [persistedExcerptLength]);
@@ -111,16 +120,29 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
 
   /**
    * Persists a full card-body config (the route replaces the block wholesale).
+   * Marks the section busy until the stored result is in the client store; on
+   * failure shows the error and returns the length draft to the persisted value.
    *
    * @param next - The card-body config to persist.
    */
-  const persist = (next: OrganizerCardBodyConfig): void => {
-    void dispatch(
-      updateProjectOrganizerCardBody({
-        projectId: selectedProjectId,
-        organizerCardBody: next,
-      }),
-    );
+  const persist = async (next: OrganizerCardBodyConfig): Promise<void> => {
+    setIsSaving(true);
+    try {
+      await dispatch(
+        updateProjectOrganizerCardBody({
+          projectId: selectedProjectId,
+          organizerCardBody: next,
+        }),
+      ).unwrap();
+    } catch (error) {
+      setExcerptDraft(String(persistedExcerptLength));
+      toastService.error(
+        "Couldn't update the Organizer card body",
+        error instanceof Error ? error.message : undefined,
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   /**
@@ -129,21 +151,24 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
    * @param value - Encoded select value (`none`, `text-excerpt`, or `field:<key>`).
    */
   const handleSourceChange = (value: string): void => {
+    if (isSaving) {
+      return;
+    }
     if (value === "text-excerpt") {
-      persist({
+      void persist({
         source: "text-excerpt",
         excerptLength: parsePositiveInt(excerptDraft) ?? DEFAULT_EXCERPT_LENGTH,
       });
       return;
     }
     if (value.startsWith(FIELD_OPTION_PREFIX)) {
-      persist({
+      void persist({
         source: "field",
         fieldKey: value.slice(FIELD_OPTION_PREFIX.length),
       });
       return;
     }
-    persist({ source: "none" });
+    void persist({ source: "none" });
   };
 
   /**
@@ -152,16 +177,26 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
    * @param raw - Raw input value.
    */
   const handleExcerptChange = (raw: string): void => {
+    if (isSaving) {
+      return;
+    }
     setExcerptDraft(raw);
     const length = parsePositiveInt(raw);
     if (length !== null) {
-      persist({ source: "text-excerpt", excerptLength: length });
+      void persist({ source: "text-excerpt", excerptLength: length });
     }
   };
 
   return (
-    <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
-      <h2 className="text-sm font-semibold text-gw-primary">
+    <section
+      aria-labelledby="organizer-card-body-heading"
+      aria-busy={isSaving}
+      className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5"
+    >
+      <h2
+        id="organizer-card-body-heading"
+        className="text-sm font-semibold text-gw-primary"
+      >
         Organizer Card Body
       </h2>
       <p className="mt-1 text-sm text-gw-secondary">
@@ -178,6 +213,7 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
         <Select
           id="organizer-card-body-source"
           value={selectValue}
+          disabled={isSaving}
           onChange={(event) => handleSourceChange(event.target.value)}
           className="rounded-md"
         >
@@ -212,8 +248,9 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
             min={1}
             step={1}
             value={excerptDraft}
+            disabled={isSaving}
             onChange={(event) => handleExcerptChange(event.target.value)}
-            className="w-32 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+            className="w-32 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
           />
           <p className="mt-0.5 text-xs text-gw-secondary">
             The card shows up to this many characters of the resource&apos;s

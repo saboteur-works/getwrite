@@ -9,7 +9,13 @@
  * and are not covered here.
  */
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import ProjectFeatureToggles from "../components/preferences/ProjectFeatureToggles";
 import { makeStore } from "../src/store/store";
@@ -245,5 +251,103 @@ describe("ProjectFeatureToggles", () => {
       </Provider>,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  describe("in-flight guard (Feature 93, E-5)", () => {
+    /** Fake route: stores the request's map at once, holds each response. */
+    function holdingRoute() {
+      const server = { stored: null as ProjectFeatureFlags | null };
+      const releases: Array<() => void> = [];
+      const spy = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (_url, init) => {
+          const features = (
+            JSON.parse((init as RequestInit).body as string) as {
+              features: ProjectFeatureFlags;
+            }
+          ).features;
+          server.stored = features;
+          await new Promise<void>((resolve) => releases.push(resolve));
+          return new Response(
+            JSON.stringify({ features, organizerCardBody: null }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        });
+      return { server, spy, release: () => releases.shift()?.() };
+    }
+
+    it("does not send a second toggle until the first has settled; the stored map holds both", async () => {
+      for (let rep = 0; rep < 20; rep += 1) {
+        const { store } = setup({ entities: true });
+        const { server, spy, release } = holdingRoute();
+
+        fireEvent.click(screen.getByRole("checkbox", { name: /synopsis/i }));
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+
+        expect(screen.getByRole("checkbox", { name: /notes/i })).toBeDisabled();
+        fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        release();
+        await waitFor(() =>
+          expect(
+            screen.getByRole("checkbox", { name: /notes/i }),
+          ).not.toBeDisabled(),
+        );
+        expect(
+          store.getState().projects.projects["test-project-id"].features,
+        ).toEqual({ entities: true, synopsis: true });
+
+        fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+        release();
+        await waitFor(() =>
+          expect(
+            store.getState().projects.projects["test-project-id"].features,
+          ).toEqual({ entities: true, synopsis: true, notes: true }),
+        );
+        expect(server.stored).toEqual({
+          entities: true,
+          synopsis: true,
+          notes: true,
+        });
+        vi.restoreAllMocks();
+        cleanup();
+      }
+    });
+
+    it("marks the section busy while saving", async () => {
+      setup();
+      const { release } = holdingRoute();
+      fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+      await waitFor(() =>
+        expect(
+          screen.getByRole("region", { name: /built-in features/i }),
+        ).toHaveAttribute("aria-busy", "true"),
+      );
+      release();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("region", { name: /built-in features/i }),
+        ).toHaveAttribute("aria-busy", "false"),
+      );
+    });
+
+    it("shows the error of a failed save and re-enables the toggles", async () => {
+      setup();
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+      );
+      fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+      await waitFor(() => expect(toastService.error).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(
+          screen.getByRole("checkbox", { name: /notes/i }),
+        ).not.toBeDisabled(),
+      );
+      expect(
+        screen.getByRole("checkbox", { name: /notes/i }),
+      ).not.toBeChecked();
+    });
   });
 });

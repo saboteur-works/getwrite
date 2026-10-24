@@ -9,7 +9,13 @@
  * and the section renders nothing when no project is selected.
  */
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import OrganizerCardBodySettings from "../components/preferences/OrganizerCardBodySettings";
 import { makeStore } from "../src/store/store";
@@ -18,6 +24,19 @@ import type {
   OrganizerCardBodyConfig,
   ProjectFeatureFlags,
 } from "../src/lib/models/types";
+
+vi.mock("../src/lib/toast-service", () => {
+  const toastService = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+    dismissAll: vi.fn(),
+  };
+  return { toastService, default: toastService };
+});
+import { toastService } from "../src/lib/toast-service";
 
 function setup(options?: {
   features?: ProjectFeatureFlags;
@@ -213,5 +232,100 @@ describe("OrganizerCardBodySettings", () => {
       </Provider>,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  describe("in-flight guard (Feature 93, E-5)", () => {
+    /** Fake route: stores the request's block at once, holds each response. */
+    function holdingRoute() {
+      const server = { stored: null as OrganizerCardBodyConfig | null };
+      const releases: Array<() => void> = [];
+      const spy = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (_url, init) => {
+          const block = (
+            JSON.parse((init as RequestInit).body as string) as {
+              organizerCardBody: OrganizerCardBodyConfig;
+            }
+          ).organizerCardBody;
+          server.stored = block;
+          await new Promise<void>((resolve) => releases.push(resolve));
+          return new Response(
+            JSON.stringify({ features: {}, organizerCardBody: block }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        });
+      return { server, spy, release: () => releases.shift()?.() };
+    }
+
+    const lengthInput = () =>
+      screen.getByRole("spinbutton", { name: /excerpt length/i });
+
+    it("does not send a second edit until the first has settled; the stored block is the second edit", async () => {
+      for (let rep = 0; rep < 20; rep += 1) {
+        const { store } = setup({
+          organizerCardBody: { source: "text-excerpt", excerptLength: 200 },
+        });
+        const { server, spy, release } = holdingRoute();
+
+        fireEvent.change(lengthInput(), { target: { value: "300" } });
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+
+        expect(lengthInput()).toBeDisabled();
+        expect(sourceSelect()).toBeDisabled();
+        fireEvent.change(lengthInput(), { target: { value: "400" } });
+        fireEvent.change(sourceSelect(), { target: { value: "none" } });
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        release();
+        await waitFor(() => expect(lengthInput()).not.toBeDisabled());
+        expect(
+          store.getState().projects.projects["test-project-id"]
+            .organizerCardBody,
+        ).toEqual({ source: "text-excerpt", excerptLength: 300 });
+
+        fireEvent.change(lengthInput(), { target: { value: "400" } });
+        await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+        release();
+        await waitFor(() =>
+          expect(
+            store.getState().projects.projects["test-project-id"]
+              .organizerCardBody,
+          ).toEqual({ source: "text-excerpt", excerptLength: 400 }),
+        );
+        expect(server.stored).toEqual({
+          source: "text-excerpt",
+          excerptLength: 400,
+        });
+        vi.restoreAllMocks();
+        cleanup();
+      }
+    });
+
+    it("marks the section busy while saving", async () => {
+      setup({ organizerCardBody: { source: "none" } });
+      const { release } = holdingRoute();
+      fireEvent.change(sourceSelect(), { target: { value: "text-excerpt" } });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("region", { name: /organizer card body/i }),
+        ).toHaveAttribute("aria-busy", "true"),
+      );
+      release();
+      await waitFor(() => expect(sourceSelect()).not.toBeDisabled());
+    });
+
+    it("shows the error of a failed save and re-enables the controls", async () => {
+      setup({
+        organizerCardBody: { source: "text-excerpt", excerptLength: 200 },
+      });
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ error: "boom" }), { status: 500 }),
+      );
+      fireEvent.change(lengthInput(), { target: { value: "300" } });
+      await waitFor(() => expect(toastService.error).toHaveBeenCalled());
+      await waitFor(() => expect(lengthInput()).not.toBeDisabled());
+      expect(sourceSelect()).not.toBeDisabled();
+      expect(lengthInput()).toHaveValue(200);
+    });
   });
 });
