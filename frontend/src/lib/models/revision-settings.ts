@@ -3,10 +3,7 @@
  *
  * Persistence helpers for the project-level defaultRevisionName setting.
  */
-import { readFile, writeFile } from "./io";
-import path from "node:path";
-import type { Project } from "./types";
-import { PROJECT_FILENAME } from "./project-config";
+import { updateProjectJson } from "./project-json-write";
 
 /**
  * Writes the `defaultRevisionName` field into the project's `config` block and
@@ -30,18 +27,12 @@ export async function updateDefaultRevisionName(
     throw new Error("Revision name too long (max 100 characters)");
   }
 
-  const filePath = path.join(projectPath, PROJECT_FILENAME);
-  const project = JSON.parse(await readFile(filePath, "utf8")) as Project;
-
-  const updated: Project = {
-    ...project,
-    config: {
+  return updateProjectJson(projectPath, (project) => {
+    project.config = {
       ...(project.config ?? { editorConfig: {} }),
       defaultRevisionName: trimmed,
-    },
-    updatedAt: new Date().toISOString(),
-  };
-
-  await writeFile(filePath, JSON.stringify(updated, null, 2), "utf8");
-  return trimmed;
+    };
+    project.updatedAt = new Date().toISOString();
+    return { result: trimmed };
+  });
 }

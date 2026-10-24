@@ -5,6 +5,8 @@ import { readSidecar } from "./sidecar";
 import { readFolderTree } from "./folder-utils";
 import { migrateProjectOnLoad } from "./metadata-schema";
 import { countWords } from "../word-count";
+import { tiptapToPlainText } from "../tiptap-text";
+import type { TipTapDocument } from "./types";
 
 /**
  * True for the "this path does not exist" error both the real `fs` adapter and
@@ -17,6 +19,40 @@ function isMissingEntryError(error: unknown): boolean {
     error !== null &&
     (error as { code?: unknown }).code === "ENOENT"
   );
+}
+
+/**
+ * The plain text a project load shows for a text resource: `content.txt`, or,
+ * when that file does not exist, the text of `content.tiptap.json`. Returns
+ * `null` when neither exists, so the caller keeps the sidecar's stored word
+ * count instead of counting zero. A missing `content.txt` used to fail the
+ * whole project open with ENOENT; the editor reads the canonical revision, not
+ * this file. Any other read failure (including a locked project) propagates.
+ */
+async function readListPlainText(
+  resourcesDir: string,
+  id: string,
+): Promise<string | null> {
+  try {
+    return await readFile(path.join(resourcesDir, id, "content.txt"), "utf-8");
+  } catch (error) {
+    if (!isMissingEntryError(error)) throw error;
+  }
+  try {
+    const raw = await readFile(
+      path.join(resourcesDir, id, "content.tiptap.json"),
+      "utf-8",
+    );
+    return tiptapToPlainText(JSON.parse(raw) as TipTapDocument);
+  } catch (error) {
+    if (isMissingEntryError(error) || error instanceof SyntaxError) {
+      console.warn(
+        `[project-load] text resource ${id} has no readable content.txt or content.tiptap.json`,
+      );
+      return null;
+    }
+    throw error;
+  }
 }
 
 /** A resource entry assembled from its sidecar metadata and plaintext content. */
@@ -98,12 +134,7 @@ export async function loadProjectFromDisk(
         // Only text resources persist a content.txt. Image/audio resources store
         // a binary original.<ext> with no content.txt, so reading it would throw.
         const plaintext =
-          type === "text"
-            ? await readFile(
-                path.join(resourcesDir, id, "content.txt"),
-                "utf-8",
-              )
-            : "";
+          type === "text" ? await readListPlainText(resourcesDir, id) : "";
         // Same algorithm as everywhere else that counts words (creation,
         // canonical save, query/smart-folder evaluation): `countWords()`
         // filters out whitespace-delimited tokens with no word character
@@ -117,10 +148,15 @@ export async function loadProjectFromDisk(
         // predicate actually evaluated against (`query-evaluate-core.ts`,
         // which already used `countWords()`) — three call sites disagreeing
         // on the same content (POS task_7f1afd5d).
-        const wordCount = type === "text" ? countWords(plaintext) : undefined;
+        const wordCount =
+          type !== "text"
+            ? undefined
+            : plaintext === null
+              ? (sidecar?.wordCount as number | undefined)
+              : countWords(plaintext);
         return {
           ...sidecar,
-          plaintext,
+          plaintext: plaintext ?? "",
           ...(wordCount !== undefined && { wordCount }),
         } as LoadedResource;
       }),

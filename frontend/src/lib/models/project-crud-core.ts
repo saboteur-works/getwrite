@@ -28,7 +28,7 @@
  * the pre-lift route, not "fixed" to the basename convention.
  */
 import path from "node:path";
-import { readFile, readdir, writeFile, rm } from "./io";
+import { readFile, readdir, rm } from "./io";
 import { readProjectMarker } from "./crypto/project-marker";
 import { isLockedAccessError } from "./locked-access";
 import { getSessionKeyring } from "./crypto/keyring-session";
@@ -50,7 +50,9 @@ import { generateUUID } from "./uuid";
 import { getProjectType } from "../projectTypes";
 import { getStaticProjectType } from "./project-types-static";
 import { reindexMissingResources } from "./inverted-index";
+import { repairMissingInitialRevisions } from "./revision-repair";
 import type { AnyResource, Folder, Project } from "./types";
+import { updateProjectJson } from "./project-json-write";
 
 /** One entry of `listProjectsCore`'s result — mirrors `GET /api/projects`'s payload shape. */
 export interface ProjectListEntry {
@@ -480,7 +482,38 @@ export async function loadProjectCore(
   projectId: string,
 ): Promise<LoadedProject> {
   const projectRoot = resolveProjectRootOrThrow(projectId);
+  await repairRevisionlessResources(projectRoot);
   return loadProjectFromDisk(projectRoot);
+}
+
+/**
+ * Gives every text resource that has content but no revision its initial
+ * canonical revision before the project is shown. The editor autosaves only
+ * into a canonical revision, so edits typed into such a resource were dropped
+ * with no message (note_1243f93b); until now only `getwrite-cli
+ * repair-revisions` fixed them. Resources with any revision are left alone.
+ * A locked project rethrows; any other failure is logged and the project
+ * still opens, as it did before this repair existed.
+ */
+async function repairRevisionlessResources(projectRoot: string): Promise<void> {
+  try {
+    const report = await repairMissingInitialRevisions(projectRoot);
+    if (report.repaired.length > 0) {
+      console.info(
+        `[project-open] wrote an initial revision for ${report.repaired.length} resource(s) that had none`,
+      );
+    }
+    if (report.skipped.length > 0) {
+      console.warn(
+        `[project-open] ${report.skipped.length} resource(s) have no revision and could not be repaired: ${report.skipped
+          .map((s) => `${s.id} (${s.reason})`)
+          .join(", ")}`,
+      );
+    }
+  } catch (error) {
+    if (isLockedAccessError(error)) throw error;
+    console.error("[project-open] revision repair failed", error);
+  }
 }
 
 /**
@@ -495,15 +528,10 @@ export async function renameProjectCore(
   newName: string,
 ): Promise<unknown> {
   const projectRoot = resolveProjectRootOrThrow(projectId);
-  const projectFilePath = path.join(projectRoot, "project.json");
-  const projectFileContent = await readFile(projectFilePath, "utf-8");
-  const projectData = JSON.parse(projectFileContent);
-  projectData.name = newName;
-  await writeFile(
-    projectFilePath,
-    JSON.stringify(projectData, null, 2),
-    "utf-8",
-  );
+  const projectData = await updateProjectJson(projectRoot, (project) => {
+    project.name = newName;
+    return { result: project };
+  });
   await syncEncryptedProjectName(projectId, projectRoot, newName);
   return projectData;
 }

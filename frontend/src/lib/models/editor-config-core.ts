@@ -27,11 +27,9 @@
  * `native-editor-config-backend.ts` transport methods — can call the same
  * core operation with different fields populated.
  */
-import path from "node:path";
-import { readFile, writeFile } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
-import type { Project, ProjectConfig } from "./types";
+import type { ProjectConfig } from "./types";
 import {
   sanitizeEditorHeadingMap,
   type EditorHeadingMap,
@@ -42,6 +40,7 @@ import {
   sanitizeEditorBody,
   type EditorBodyConfig,
 } from "../editor-body-settings";
+import { updateProjectJson } from "./project-json-write";
 
 /**
  * Shares {@link InvalidProjectIdCoreError} with `project-crud-core.ts`
@@ -101,34 +100,26 @@ export async function updateEditorConfigCore(
     throw new InvalidLineHeightError();
   }
   const projectRoot = resolveEditorConfigProjectRootOrThrow(input.projectId);
-  const projectFilePath = path.join(projectRoot, "project.json");
-  const parsedProject = JSON.parse(
-    await readFile(projectFilePath, "utf-8"),
-  ) as Project;
 
-  const nextEditorConfig: ProjectConfig["editorConfig"] = {
-    ...(parsedProject.config?.editorConfig ?? {}),
-    headings:
-      input.headings !== undefined
-        ? sanitizeEditorHeadingMap(input.headings)
-        : parsedProject.config?.editorConfig?.headings,
-    body:
-      input.body !== undefined
-        ? sanitizeEditorBody(input.body)
-        : parsedProject.config?.editorConfig?.body,
-  };
-
-  const nextProject: Project = {
-    ...parsedProject,
-    config: { ...(parsedProject.config ?? {}), editorConfig: nextEditorConfig },
-    updatedAt: new Date().toISOString(),
-  };
-
-  await writeFile(
-    projectFilePath,
-    JSON.stringify(nextProject, null, 2),
-    "utf-8",
-  );
-
-  return { editorConfig: nextEditorConfig };
+  // Locked and atomic: two unlocked saves at once (headings and body) left
+  // project.json unparseable (tests/unit/metadata-concurrent-writes.test.ts).
+  return updateProjectJson(projectRoot, (parsedProject) => {
+    const nextEditorConfig: ProjectConfig["editorConfig"] = {
+      ...(parsedProject.config?.editorConfig ?? {}),
+      headings:
+        input.headings !== undefined
+          ? sanitizeEditorHeadingMap(input.headings)
+          : parsedProject.config?.editorConfig?.headings,
+      body:
+        input.body !== undefined
+          ? sanitizeEditorBody(input.body)
+          : parsedProject.config?.editorConfig?.body,
+    };
+    parsedProject.config = {
+      ...(parsedProject.config ?? {}),
+      editorConfig: nextEditorConfig,
+    };
+    parsedProject.updatedAt = new Date().toISOString();
+    return { result: { editorConfig: nextEditorConfig } };
+  });
 }

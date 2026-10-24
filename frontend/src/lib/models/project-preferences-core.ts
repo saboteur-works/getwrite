@@ -33,8 +33,6 @@
  * `app/api/project/preferences/route.ts` handler, reusing
  * `mergeUserPreferencesIntoProjectMetadata` from `../user-preferences.ts`.
  */
-import path from "node:path";
-import { readFile, writeFile } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import {
@@ -43,6 +41,7 @@ import {
 } from "../user-preferences";
 import { updateDefaultRevisionName } from "./revision-settings";
 import type { MetadataValue } from "./types";
+import { updateProjectJson } from "./project-json-write";
 
 /**
  * Shares {@link InvalidProjectIdCoreError} with `project-crud-core.ts`
@@ -88,31 +87,20 @@ export async function saveProjectPreferencesCore(
   preferences: Partial<ProjectUserPreferences>,
 ): Promise<SaveProjectPreferencesResult> {
   const projectRoot = resolvePreferencesProjectRootOrThrow(projectId);
-  const projectFilePath = path.join(projectRoot, "project.json");
-  const parsedProject = JSON.parse(
-    await readFile(projectFilePath, "utf-8"),
-  ) as { metadata?: Record<string, MetadataValue>; updatedAt?: string };
 
-  const updatedMetadata = mergeUserPreferencesIntoProjectMetadata(
-    parsedProject.metadata,
-    preferences,
-  );
-
-  await writeFile(
-    projectFilePath,
-    JSON.stringify(
-      {
-        ...parsedProject,
-        metadata: updatedMetadata,
-        updatedAt: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-    "utf-8",
-  );
-
-  return { metadata: updatedMetadata };
+  return updateProjectJson(projectRoot, (project) => {
+    const parsedProject = project as unknown as {
+      metadata?: Record<string, MetadataValue>;
+      updatedAt?: string;
+    };
+    const updatedMetadata = mergeUserPreferencesIntoProjectMetadata(
+      parsedProject.metadata,
+      preferences,
+    );
+    parsedProject.metadata = updatedMetadata;
+    parsedProject.updatedAt = new Date().toISOString();
+    return { result: { metadata: updatedMetadata } };
+  });
 }
 
 /**
