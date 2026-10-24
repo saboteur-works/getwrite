@@ -544,7 +544,7 @@ export default function TipTapEditor({
       pendingSource.clear();
       onChangeRef.current?.(html, json);
     },
-    [editor],
+    [editor, pendingSource],
   );
 
   /**
@@ -631,7 +631,7 @@ export default function TipTapEditor({
       pendingSource.record(next, onFlushPendingSourceRef.current);
       scheduleSourceCommit(next);
     },
-    [scheduleSourceCommit],
+    [scheduleSourceCommit, pendingSource],
   );
 
   /**
@@ -684,7 +684,7 @@ export default function TipTapEditor({
       // newly loaded document rather than stale Markdown.
       setMode("rich");
     }
-  }, [value, editor, emitNodeTypes, scheduleSourceCommit]);
+  }, [value, editor, emitNodeTypes, scheduleSourceCommit, pendingSource]);
 
   /**
    * Handle the "Edit as Markdown" toolbar action: inspect the live document for
