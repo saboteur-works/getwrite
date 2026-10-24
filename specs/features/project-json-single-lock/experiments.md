@@ -178,6 +178,27 @@ Task 4. Run on 2026-10-23 on branch `fix/project-json-write-lock`, lock code unc
 - Difference from the comment this replaced (schema change lost in 20 of 20 repetitions in each of 9 runs): in these 9 runs the font size was the lost change in 161 of 180 repetitions and the field in 19. Not explained here. Hypothesis, untested: which writer reads first varies with scheduling; an experiment that logs read and write order per writer per repetition would settle it. The earlier comment's measurement may also have used a different assertion.
 - Status: red by design until Task 15.
 
+## FR-10 after
+
+Task 15. Run on 2026-10-23 on branch `fix/project-json-write-lock`, with Tasks 7-14 applied (no source change in this task). Inside the sandbox, Vitest v4.1.6.
+
+- Command, from `frontend/`, 9 times consecutively: `timeout 300 npx vitest run tests/unit/metadata-concurrent-writes.test.ts < /dev/null`. Logs: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/fr10after-1.log` to `fr10after-9.log`.
+- Test: `an editor-style save racing a schema change keeps both changes` (20 repetitions per run, same construction as "FR-10 before").
+
+| Run | Exit | Test file result | FR-10 test | Repetitions that failed (of 20) |
+| --- | --- | --- | --- | --- |
+| 1 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 2 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 3 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 4 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 5 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 6 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 7 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 8 | 0 | `Tests 3 passed (3)` | passed | 0 |
+| 9 | 0 | `Tests 3 passed (3)` | passed | 0 |
+
+- 9 of 9 runs green; 0 failed repetitions in 180 (before: 9 of 9 red, 20 failed repetitions per run, 180 of 180). No `AssertionError` in any log.
+
 ## FR-15 sidecar races, remaining families
 
 Task 5. Run on 2026-10-23 on branch `fix/project-json-write-lock`, source unchanged (only `scripts/fr15-sidecar-races.test.ts` was extended). Inside the sandbox, Vitest v4.1.6, experiment-only config.
