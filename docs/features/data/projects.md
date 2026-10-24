@@ -96,7 +96,7 @@ The `writeSidecar(projectRoot, resourceId, metadata)` helper (implemented in fro
 - Ensures the `<projectRoot>/meta/` directory exists.
 - Computes a canonical filename for the resource sidecar: `resource-<uuid>.meta.json`.
 - Writes the JSON metadata into `<projectRoot>/meta/resource-<uuid>.meta.json` (pretty-printed).
-- Uses an internal lock helper (`withMetaLock`) to avoid concurrent writes.
+- Uses an internal lock helper (`withMetaLock`), then the sidecar's per-file lock (`withFileLock`), to avoid concurrent writes (Feature 92; see [sidecars.md](../sidecars.md)).
 - After successfully writing the sidecar, enqueues an async background indexing request via `indexer-queue` (dynamic import); enqueue errors are ignored.
 
 Important: because the sidecar write enqueues indexing, creating a project will trigger the indexer for each resource sidecar written. If you need to debug indexing, watch for activity in the indexer queue or stub/mock `indexer-queue` during tests.
@@ -114,7 +114,7 @@ The function returns the following in-memory objects:
 - Validation failures: `validateProjectTypeFile` / `validateProjectType` return a result object; if `.success` is false the function throws an `Error` describing validation issues. Reproduce by supplying malformed spec JSON.
 - Filesystem errors: most `fs` operations use `await` and will propagate errors. Common issues include permission errors or invalid paths.
 - Partial writes: creation is not transactional — if an error occurs partway through, some files may have been written (for example: some folders or resources). When debugging, examine the filesystem tree under `projectRoot` to see which steps completed.
-- Race conditions: `writeSidecar` uses `withMetaLock` to protect sidecar writes. If you encounter corrupted sidecars, confirm the lock implementation is used consistently.
+- Race conditions: `writeSidecar` and `mutateSidecar` hold `withMetaLock` and the sidecar's per-file lock around the write (`mutateSidecar` also around the read). If you encounter corrupted sidecars, confirm the lock implementation is used consistently.
 
 ### Where to look in the code
 
