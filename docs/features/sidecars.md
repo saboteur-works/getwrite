@@ -50,14 +50,20 @@
 
 ## API & Helpers
 
-- Read/write helpers live in `frontend/src/lib/models/sidecar.ts` and expose functions to `readSidecar(projectRoot, resourceId)` and `writeSidecar(projectRoot, resourceId, meta)`.
+- Read/write helpers live in `frontend/src/lib/models/sidecar.ts` and expose `readSidecar(projectRoot, resourceId)`, `writeSidecar(projectRoot, resourceId, meta)` and `mutateSidecar(projectRoot, resourceId, mutate, options?)`.
+- **Writes (Feature 92).** A sidecar write runs under `withMetaLock(projectRoot)` and then the sidecar's per-file lock (`withFileLock`, `file-lock.ts`), with the read inside that lock, and is written atomically (temp file then rename). The sidecar lock is released before the `config.metadataRevision` bump takes the `project.json` file lock; the two file locks are never nested, and no lock is taken inside a file lock.
+- `mutateSidecar` is the sink for a writer that derives the new value from the stored one: `mutate(current)` receives the value read inside the lock (`null` if absent) and returns the value to store, or `SIDECAR_UNCHANGED` to write and bump nothing. A read error, a locked-access error or a throw from `mutate` propagates and nothing is written. `options.isReadTolerant` makes an unparseable file read as `null` (as `writeSidecar` does); a locked-access error still propagates.
+- `writeSidecar` stores the whole object it is given. Use it only for a first write of a new id. A caller must not build a whole object from an earlier read and pass it to `writeSidecar`: that value can be older than the stored one by the time it is written. Use `mutateSidecar`.
+- Not covered by the lock: trash move and restore of a sidecar (`trash.ts`) and new-id creation (copy, duplicate, templates) write without it (intentionally, OQ-10). `updateSidecarCore` merges a client-sent object, so a client holding stale data can still overwrite newer values; that contract is unchanged (OQ-9). The source scan test (`tests/unit/project-json-lock-scan.test.ts`) reads one file at a time and goes by names; it does not prove every writer is locked.
 - When updating resource content, keep the sidecar in sync; tests rely on sidecar presence for indexing and pruning logic.
 
 ## Best Practices
 
 - Keep sidecars small and focused: prefer scalar fields and shallow objects to reduce read/write churn.
 - Use sidecars for derived, mutable, or indexable attributes (tags, previews, derived counts), not as canonical copies of resource content.
-- Always write sidecars atomically when updating (write temp file and rename) to reduce risk of partial writes.
+- Always write sidecars atomically when updating (write temp file and rename) to reduce risk of partial writes. `writeSidecar` and `mutateSidecar` do this.
+- Change an existing sidecar with `mutateSidecar`, reading the current value inside the callback; do not read with `readSidecar`, edit, and write the result back.
+- Do not call a lock (`withMetaLock`, `acquireLock`, `withFileLock`) or `writeSidecar` from inside a `mutate` callback.
 - Add new fields to sidecars conservatively and document them in `docs/features/sidecars.md` to maintain interoperability.
 
 ## Troubleshooting

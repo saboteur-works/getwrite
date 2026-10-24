@@ -955,7 +955,8 @@ async function migrateFieldTypeInSidecars(
 
 /**
  * Changes a field's type and atomically migrates sidecar values according to
- * the provided resolution map, then updates the schema under `acquireLock`.
+ * the provided resolution map, then updates the schema under `acquireLock`
+ * and the `project.json` file lock (`withFileLock`, innermost).
  *
  * For `select` / `multiselect` types, `newOptions` replaces (or initialises)
  * `field.options`. For all other types, `field.options` is removed.
@@ -1095,7 +1096,8 @@ async function migrateFieldOptionsInSidecars(
 /**
  * Updates a `select` or `multiselect` field's options list and atomically
  * migrates sidecar values for any orphaned option values, then writes the
- * schema under `acquireLock`.
+ * schema under `acquireLock` and the `project.json` file lock (`withFileLock`,
+ * innermost).
  *
  * Entries in `migrations` are keyed by orphaned option value string:
  * - `"keep"` — leave the sidecar value unchanged

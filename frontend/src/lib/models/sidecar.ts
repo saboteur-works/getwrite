@@ -27,7 +27,7 @@ export function sidecarPathForProject(
 
 /**
  * Adds 1 to `config.metadataRevision` in `project.json` under the per-file
- * lock. Called from `writeSidecar` inside `withMetaLock`, so the lock order is
+ * lock. Called from `runSidecarWrite` inside `withMetaLock`, so the lock order is
  * `withMetaLock -> project.json lock` (Feature 92, FR-8). A missing
  * `project.json` is ignored; any other read, parse or write error propagates.
  */
