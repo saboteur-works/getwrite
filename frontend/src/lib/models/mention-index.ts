@@ -89,6 +89,10 @@ export async function persistMentionIndex(
  * `updateIndex`). `change` mutates the freshly loaded index in place and must
  * not take `withMetaLock` itself. If `change` or the load throws, nothing is
  * written, the lock is released and the error reaches the caller unchanged.
+ * `removeResourceFromMentionIndex`, `runTask`'s mention step and
+ * `rescanEntityAcrossProject` load, change and save under this lock; other
+ * callers of `persistMentionIndex` (importers, `reindex`) still lock the write
+ * only.
  */
 export async function updateMentionIndex(
   projectRoot: string,
@@ -125,8 +129,9 @@ export function invertMentionIndex(
  * only. Under this index's shape (`Record<resourceId, MentionRecord[]>`), a
  * resource can only be the mentioning side, never the mentioned side, so no
  * cross-entry scan is needed. Loads, changes and saves inside one
- * `withMetaLock` call (the `updateMentionIndex` shape); a resource with no entry writes
- * nothing.
+ * `withMetaLock` call (the `updateMentionIndex` shape); a resource with no
+ * entry writes nothing. The whole load, change and save is locked here, unlike
+ * `persistMentionIndex`, which locks the write only.
  */
 export async function removeResourceFromMentionIndex(
   projectRoot: string,

@@ -477,3 +477,39 @@ Checks: `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings; targeted vi
 Files changed: `frontend/src/lib/models/mention-index.ts`, `backlinks.ts`, `indexer-queue.ts`; tests `mention-index-concurrent-writes.test.ts`, `backlinks-concurrent-writes.test.ts` (m4, b2 to `it.fails` with follow-up comments), `mention-index-remove-resource.test.ts`, `backlinks-remove-resource.test.ts`. Commit naming: E-8 gates the mention-index change (Task 20); E-9 gates the backlinks change (Task 21).
 
 E-7 (entity-graph settings) is an accepted follow-up, owner-confirmed.
+
+## Post-fix driver re-runs and Task 22 comment check
+
+Date 2026-10-24. Branch `fix/stale-saves-and-index-races`, tree after Tasks 20/21. Same constructions as the earlier E-8/E-9 runs (the drivers call the real functions), 20 repetitions per pair and mode. Lost = a seeded change absent from the final file; hung = repetition that did not finish. Counts are as observed; no cause is stated.
+
+MEASURED, E-8 re-run (temp dir `/tmp/claude-501/f93-e8-81H8Lh`; result JSON `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/e8-after.json`; command from `frontend/`: `E8_RESULT_OUT=<that path> pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e8.config.ts`; 1 test passed, 94 s). Hung, rejected, unparseable: 0 in every pair and mode.
+
+| Pair | natural lost / 20 | gated lost / 20 |
+| --- | --- | --- |
+| removeVsRunTask (m1) | 0 | 0 |
+| removeVsRescan (m2) | 0 | 0 |
+| rescanVsRunTask (m3) | 0 | 0 |
+| persistVsPersist (m4) | 20 | 20 |
+
+MEASURED, E-9 re-run (temp dir `/tmp/claude-501/f93-e9-5AzeXR`; result JSON `.../scratchpad/e9-after.json`; command as above with `E9_RESULT_OUT` and `vitest.e9.config.ts`; 1 test passed, 66 s). Hung, rejected, unparseable: 0 in every pair and mode.
+
+| Pair | natural lost / 20 | gated lost / 20 |
+| --- | --- | --- |
+| removeVsPersist (b1) | 0 | 0 |
+| persistVsPersist (b2) | 20 | 20 |
+| watcherVsRunTask (b3) | 0 | 20 |
+| removeVsRunTask (b4) | 0 | 0 |
+| removeVsRecompute (b5) | 20 | 20 |
+
+Observed lost-change counts are the only failures; no pair hung. A 0 in natural mode is a non-reproduction under that timing only (FR-2).
+
+Task 22: comments only, no behaviour change. Updated the `updateMentionIndex`, `removeResourceFromMentionIndex` and `updateBacklinks` comments to name which callers load, change and save under the lock and which (`persistMentionIndex`/`persistBacklinks` callers: importers, `reindex`, the watcher) lock the write only; the `removeResourceFromBacklinks` comment and the `updateBacklinks` comment state a `computeBacklinks` recompute is not atomic. Grep `grep -n -i "inside one" frontend/src/lib/models/mention-index.ts frontend/src/lib/models/backlinks.ts` output:
+
+```
+frontend/src/lib/models/backlinks.ts:268: * Loads, changes and saves `backlinks.json` inside one `withMetaLock` call
+frontend/src/lib/models/backlinks.ts:306: * changes and saves inside one `withMetaLock` call (`updateBacklinks`). A
+frontend/src/lib/models/mention-index.ts:86: * Loads, changes and saves the mention index inside one `withMetaLock` call,
+frontend/src/lib/models/mention-index.ts:131: * cross-entry scan is needed. Loads, changes and saves inside one
+```
+
+Each of the four sits on a function whose body does load, change and save inside a single `withMetaLock` (`updateBacklinks`, `updateMentionIndex`, `removeResourceFromBacklinks` via `updateBacklinks`, `removeResourceFromMentionIndex`).
