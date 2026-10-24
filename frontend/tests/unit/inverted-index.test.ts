@@ -161,6 +161,38 @@ describe("inverted index (T025)", () => {
     r = await search(projectRoot, "apple");
     expect(r).toEqual([]);
   });
+
+  // indexResource and removeResourceFromIndex used to load the index, change
+  // it, and save it with only the save locked, so two writers on one project
+  // overwrote each other: one entry was lost in 20 of 20 trials. The
+  // importers index directly while each sidecar write queues a background pass.
+  it("keeps both resources when two are indexed concurrently", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-idx-"));
+    const a = createTextResource({ name: "A", plainText: "dragon" });
+    const b = createTextResource({ name: "B", plainText: "dragon" });
+
+    await Promise.all([
+      indexResource(projectRoot, a),
+      indexResource(projectRoot, b),
+    ]);
+
+    const r = await search(projectRoot, "dragon");
+    expect(r.sort()).toEqual([a.id, b.id].sort());
+  });
+
+  it("keeps a concurrent index write when another resource is removed", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-idx-"));
+    const a = createTextResource({ name: "A", plainText: "dragon" });
+    const b = createTextResource({ name: "B", plainText: "dragon" });
+    await indexResource(projectRoot, a);
+
+    await Promise.all([
+      removeResourceFromIndex(projectRoot, a.id),
+      indexResource(projectRoot, b),
+    ]);
+
+    expect(await search(projectRoot, "dragon")).toEqual([b.id]);
+  });
 });
 
 // reindexMissingResources now reads sidecars through the io adapter, so these
