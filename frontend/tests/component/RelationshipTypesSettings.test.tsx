@@ -234,30 +234,36 @@ describe("RelationshipTypesSettings", () => {
       for (let rep = 0; rep < 20; rep += 1) {
         const { store } = setup({ relationshipTypes: ["Mentor"] });
         const { server, spy, release } = holdingRoute();
+        // Queried once per repetition: a role query costs ~13 ms in jsdom.
+        const input = newTypeInput();
+        const add = addButton();
+        const removeMentor = screen.getByRole("button", {
+          name: /remove mentor/i,
+        });
 
-        fireEvent.change(newTypeInput(), { target: { value: "Alpha" } });
-        fireEvent.click(addButton());
+        fireEvent.change(input, { target: { value: "Alpha" } });
+        fireEvent.click(add);
         await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
 
         // Second edit attempted while the first is pending.
-        fireEvent.change(newTypeInput(), { target: { value: "Beta" } });
-        expect(addButton()).toBeDisabled();
-        fireEvent.click(addButton());
-        fireEvent.keyDown(newTypeInput(), { key: "Enter" });
-        fireEvent.click(screen.getByRole("button", { name: /remove mentor/i }));
+        fireEvent.change(input, { target: { value: "Beta" } });
+        expect(add).toBeDisabled();
+        fireEvent.click(add);
+        fireEvent.keyDown(input, { key: "Enter" });
+        fireEvent.click(removeMentor);
         expect(spy).toHaveBeenCalledTimes(1);
 
         release();
-        await waitFor(() => expect(addButton()).not.toBeDisabled());
+        await waitFor(() => expect(add).not.toBeDisabled());
         expect(
           store.getState().projects.projects["test-project-id"]
             .relationshipTypes,
         ).toEqual(["Mentor", "Alpha"]);
 
-        fireEvent.click(addButton());
+        fireEvent.click(add);
         await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
         release();
-        await waitFor(() => expect(addButton()).toBeDisabled());
+        await waitFor(() => expect(add).toBeDisabled());
         await waitFor(() =>
           expect(
             store.getState().projects.projects["test-project-id"]
@@ -268,7 +274,7 @@ describe("RelationshipTypesSettings", () => {
         vi.restoreAllMocks();
         cleanup();
       }
-    }, 30000);
+    }, 10000);
 
     it("marks the section busy and disables the controls while saving", async () => {
       setup({ relationshipTypes: ["Mentor", "Rival"] });

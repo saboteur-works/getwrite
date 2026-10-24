@@ -569,3 +569,7 @@ Also re-run from `frontend/`: `pnpm typecheck` exit 0; `pnpm lint` 0 errors / 39
 Command (frontend/): `pnpm exec vitest run tests/unit/resource-crud-core-sidecar-sink.test.ts tests/unit/resource-sidecar-route.test.ts tests/unit/mention-index-concurrent-writes.test.ts tests/unit/backlinks-concurrent-writes.test.ts`
 
 Runs 1 to 9, each identical: Test Files 4 passed (4); Tests 65 passed | 4 expected fail (69).
+
+## Owner decision: Organizer guard reverted (2026-10-24, Gate 5)
+
+The `OrganizerCardBodySettings` guard from 5aad9c9a was reverted; the component and its test file are back to their 5aad9c9a^ content. Reason recorded by the owner's decision: the section lives only in the Project Settings dialog's Organizer tab, nothing else writes `organizerCardBody`, and each save carries the section's full current state; the guard disabled the length input during each save, which drops the keystrokes that follow (READ from the code, not run in the app). E-5 counts for this sender stay as recorded above. Follow-up: save the excerpt length on blur or after a pause in typing instead of per keystroke. `RelationshipTypesSettings` and `ProjectFeatureToggles` keep their guards.

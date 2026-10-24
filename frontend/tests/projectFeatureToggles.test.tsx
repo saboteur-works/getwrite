@@ -280,25 +280,24 @@ describe("ProjectFeatureToggles", () => {
       for (let rep = 0; rep < 20; rep += 1) {
         const { store } = setup({ entities: true });
         const { server, spy, release } = holdingRoute();
+        // Queried once per repetition: a role query costs ~13 ms in jsdom.
+        const synopsis = screen.getByRole("checkbox", { name: /synopsis/i });
+        const notes = screen.getByRole("checkbox", { name: /notes/i });
 
-        fireEvent.click(screen.getByRole("checkbox", { name: /synopsis/i }));
+        fireEvent.click(synopsis);
         await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
 
-        expect(screen.getByRole("checkbox", { name: /notes/i })).toBeDisabled();
-        fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+        expect(notes).toBeDisabled();
+        fireEvent.click(notes);
         expect(spy).toHaveBeenCalledTimes(1);
 
         release();
-        await waitFor(() =>
-          expect(
-            screen.getByRole("checkbox", { name: /notes/i }),
-          ).not.toBeDisabled(),
-        );
+        await waitFor(() => expect(notes).not.toBeDisabled());
         expect(
           store.getState().projects.projects["test-project-id"].features,
         ).toEqual({ entities: true, synopsis: true });
 
-        fireEvent.click(screen.getByRole("checkbox", { name: /notes/i }));
+        fireEvent.click(notes);
         await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
         release();
         await waitFor(() =>
@@ -314,7 +313,7 @@ describe("ProjectFeatureToggles", () => {
         vi.restoreAllMocks();
         cleanup();
       }
-    }, 30000);
+    }, 10000);
 
     it("marks the section busy while saving", async () => {
       setup();
