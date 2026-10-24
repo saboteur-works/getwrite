@@ -27,8 +27,10 @@
  * present, or removing one that is absent, is a no-op rather than an error.
  */
 import path from "node:path";
-import { atomicWriteFile, readFile } from "./io";
+import { readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { updateProjectJson } from "./project-json-write";
+import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { PROJECT_FILENAME } from "./project-config";
@@ -114,21 +116,18 @@ async function mutateNoiseWordLists(
   projectRoot: string,
   mutate: (current: NoiseWordLists) => NoiseWordLists,
 ): Promise<NoiseWordLists> {
-  const file = path.join(projectRoot, PROJECT_FILENAME);
   return withMetaLock(projectRoot, async () => {
-    const raw = await readFile(file, "utf8");
-    const project = JSON.parse(raw) as { config?: Record<string, unknown> };
-    const config = { ...(project.config ?? {}) };
-    const updated = mutate(extractLists(config));
-    config.customNoiseWords = updated.customNoiseWords;
-    config.excludedGlobalNoiseWords = updated.excludedGlobalNoiseWords;
-    await atomicWriteFile(
-      file,
-      JSON.stringify({ ...project, config }, null, 2),
-      {
-        writeOptions: "utf8",
-        durable: process.env.GETWRITE_DURABLE_META === "1",
+    const updated = await updateProjectJson<NoiseWordLists>(
+      projectRoot,
+      (project) => {
+        const config: Record<string, unknown> = { ...(project.config ?? {}) };
+        const next = mutate(extractLists(config));
+        config.customNoiseWords = next.customNoiseWords;
+        config.excludedGlobalNoiseWords = next.excludedGlobalNoiseWords;
+        project.config = config as unknown as ProjectConfig;
+        return { result: next };
       },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
     );
     return updated;
   });

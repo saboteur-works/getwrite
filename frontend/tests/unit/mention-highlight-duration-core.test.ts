@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import { createProjectJsonWriteProbe } from "../helpers/projectJsonWriteProbe";
 import {
   setStorageAdapter,
   readFile,
@@ -101,5 +102,40 @@ describe("mention-highlight-duration-core (Entity mention navigation Task 7)", (
       (e: unknown) => e,
     );
     expect(isLockedAccessError(err)).toBe(true);
+  });
+  describe("project.json write (Feature 92 Task 14)", () => {
+    const prevDurable = process.env.GETWRITE_DURABLE_META;
+    afterEach(() => {
+      if (prevDurable === undefined) delete process.env.GETWRITE_DURABLE_META;
+      else process.env.GETWRITE_DURABLE_META = prevDurable;
+    });
+
+    it("writes project.json inside the per-file lock, with no added updatedAt", async () => {
+      const probe = createProjectJsonWriteProbe();
+      setStorageAdapter(probe.adapter);
+      await mkdir(ROOT, { recursive: true });
+      await writeFile(`${ROOT}/project.json`, projectJson(), "utf8");
+      await setMentionHighlightDurationCore(PID, 5);
+      expect(probe.lockKeysAtWrite.slice(-1)).toEqual([1]);
+      const written = JSON.parse(
+        await readFile(`${ROOT}/project.json`, "utf8"),
+      );
+      expect(written.config).toHaveProperty("mentionHighlightDurationSeconds");
+      expect(written).not.toHaveProperty("updatedAt");
+    });
+
+    it("fsyncs the write only when GETWRITE_DURABLE_META is 1", async () => {
+      const probe = createProjectJsonWriteProbe();
+      setStorageAdapter(probe.adapter);
+      await mkdir(ROOT, { recursive: true });
+      await writeFile(`${ROOT}/project.json`, projectJson(), "utf8");
+      delete process.env.GETWRITE_DURABLE_META;
+      await setMentionHighlightDurationCore(PID, 5);
+      expect(probe.fsyncs).toEqual([]);
+      process.env.GETWRITE_DURABLE_META = "1";
+      await setMentionHighlightDurationCore(PID, 5);
+      expect(probe.fsyncs).toHaveLength(1);
+      expect(probe.fsyncs[0]).toContain("project.json");
+    });
   });
 });

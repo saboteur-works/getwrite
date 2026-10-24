@@ -1,8 +1,9 @@
 import { atomicWriteFile, mkdir, readFile } from "./io";
 import path from "node:path";
-import type { UUID, MetadataValue } from "./types";
+import type { UUID, MetadataValue, Project } from "./types";
 import { withMetaLock } from "./meta-locks";
-import { PROJECT_FILENAME } from "./project-config";
+import { updateProjectJson } from "./project-json-write";
+import { withFileLock } from "./file-lock";
 import { isLockedAccessError } from "./locked-access";
 
 /**
@@ -24,22 +25,20 @@ export function sidecarPathForProject(
   return path.join(projectRoot, "meta", sidecarFilename(resourceId));
 }
 
+/**
+ * Adds 1 to `config.metadataRevision` in `project.json` under the per-file
+ * lock. Called from `runSidecarWrite` inside `withMetaLock`, so the lock order is
+ * `withMetaLock -> project.json lock` (Feature 92, FR-8). A missing
+ * `project.json` is ignored; any other read, parse or write error propagates.
+ */
 async function bumpMetadataRevision(projectRoot: string): Promise<void> {
-  const projectPath = path.join(projectRoot, PROJECT_FILENAME);
   try {
-    const raw = await readFile(projectPath, "utf8");
-    const project = JSON.parse(raw) as {
-      config?: { metadataRevision?: number; [key: string]: unknown };
-      [key: string]: unknown;
-    };
-    if (!project.config) project.config = {};
-    project.config.metadataRevision =
-      (project.config.metadataRevision ?? 0) + 1;
-    await atomicWriteFile(
-      projectPath,
-      JSON.stringify(project, null, 2),
-      "utf8",
-    );
+    await updateProjectJson(projectRoot, (project) => {
+      project.config = project.config ?? ({} as Project["config"]);
+      const config = project.config as { metadataRevision?: number };
+      config.metadataRevision = (config.metadataRevision ?? 0) + 1;
+      return { result: undefined };
+    });
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
     throw err;
@@ -143,45 +142,79 @@ function needsEntityRescan(
   return isNameChanged || isAliasesChanged;
 }
 
+/** Returned by a {@link mutateSidecar} callback to leave the sidecar as stored. */
+export const SIDECAR_UNCHANGED: unique symbol = Symbol("sidecar-unchanged");
+
+export type SidecarMutation =
+  | Record<string, MetadataValue>
+  | typeof SIDECAR_UNCHANGED;
+
+interface SidecarWriteOutcome {
+  previous: Record<string, MetadataValue> | null;
+  /** The value now stored, or `null` when nothing was written and none exists. */
+  current: Record<string, MetadataValue> | null;
+  isWritten: boolean;
+}
+
 /**
- * Write sidecar metadata for a resource into the project's `meta/` folder.
- * Creates directories as needed. Overwrites existing sidecars.
+ * The one read-modify-write of a sidecar (Feature 92, FR-19, FR-20).
+ *
+ * Sequence, with no file lock inside another: `withMetaLock(projectRoot)` is
+ * taken; inside it the sidecar's file lock is taken for the read, `mutate` and
+ * the atomic write, and released; then the `metadataRevision` bump takes the
+ * `project.json` file lock, still inside `withMetaLock`. `mutate` must not call
+ * `writeSidecar`, this function or any lock.
  */
-export async function writeSidecar(
+async function runSidecarWrite(
   projectRoot: string,
   resourceId: UUID,
-  metadata: Record<string, MetadataValue>,
-): Promise<void> {
+  isReadTolerant: boolean,
+  mutate: (
+    current: Record<string, MetadataValue> | null,
+  ) => SidecarMutation | Promise<SidecarMutation>,
+): Promise<SidecarWriteOutcome> {
   const dir = path.join(projectRoot, "meta");
   const filePath = sidecarPathForProject(projectRoot, resourceId);
 
-  // Read the pre-write sidecar (if any) so we can detect an entity's
-  // name/aliases/entityKind changing across this write, below. A failure
-  // reading it (as opposed to it simply not existing, which readSidecar
-  // already reports as `null`) must not block the write itself — except a
-  // locked-access failure (encrypted project, workspace locked, or no key
-  // for it), which is not "no prior sidecar exists" and must propagate
-  // rather than let the write proceed as if this were a brand-new resource.
-  let previous: Record<string, MetadataValue> | null = null;
-  try {
-    previous = await readSidecar(projectRoot, resourceId);
-  } catch (err) {
-    if (isLockedAccessError(err)) throw err;
-    previous = null;
-  }
-
-  const json = JSON.stringify(metadata, null, 2);
-  await withMetaLock(projectRoot, async () => {
-    await mkdir(dir, { recursive: true });
-    // Write-then-rename: readSidecar takes no lock, so an in-place write
-    // would let a concurrent reader parse a half-written file. The fixed
-    // `.tmp` name is safe because the meta lock serializes writers.
-    await atomicWriteFile(filePath, json, "utf8");
-    await bumpMetadataRevision(projectRoot);
+  return withMetaLock(projectRoot, async () => {
+    const outcome = await withFileLock(filePath, async () => {
+      let previous: Record<string, MetadataValue> | null = null;
+      try {
+        previous = await readSidecar(projectRoot, resourceId);
+      } catch (err) {
+        // A locked-access failure is not "no sidecar exists" and must
+        // propagate. Whole-object `writeSidecar` otherwise tolerates an
+        // unreadable prior file (it overwrites it); the sink does not.
+        if (!isReadTolerant || isLockedAccessError(err)) throw err;
+        previous = null;
+      }
+      // `mutate` gets a copy: a callback that edits it in place and returns
+      // it must still differ from `previous`, which decides the entity rescan.
+      const next = await mutate(
+        previous === null ? null : structuredClone(previous),
+      );
+      if (next === SIDECAR_UNCHANGED) {
+        return { previous, current: previous, isWritten: false };
+      }
+      await mkdir(dir, { recursive: true });
+      // Write-then-rename: readSidecar takes no lock, so an in-place write
+      // would let a concurrent reader parse a half-written file.
+      await atomicWriteFile(filePath, JSON.stringify(next, null, 2), "utf8");
+      return { previous, current: next, isWritten: true };
+    });
+    // The sidecar lock is released here. Lock order: withMetaLock (held) ->
+    // project.json file lock (taken inside the bump); never one file lock in
+    // another. The bump never takes withMetaLock itself.
+    if (outcome.isWritten) await bumpMetadataRevision(projectRoot);
+    return outcome;
   });
+}
 
-  const shouldRescanEntity = needsEntityRescan(previous, metadata);
-
+function enqueueAfterSidecarWrite(
+  projectRoot: string,
+  resourceId: UUID,
+  shouldRescanEntity: boolean,
+): void {
   // Enqueue background indexing after sidecar update. Use dynamic import
   // to avoid circular static imports between sidecar and the indexer queue.
   setImmediate(() => {
@@ -203,9 +236,74 @@ export async function writeSidecar(
   });
 }
 
+/**
+ * Read, mutate and write a sidecar as one step (the sink every sidecar writer
+ * that derives its new value from the stored one must use). `mutate` receives
+ * a copy of the stored value read inside the lock (`null` when absent), which
+ * it may edit in place, and returns the
+ * value to write, or {@link SIDECAR_UNCHANGED} to write and bump nothing.
+ * Returns the value now stored (`null` if none exists). A read error, a
+ * locked-access error or a throw from `mutate` propagates unchanged and
+ * nothing is written. Bytes, index enqueue and entity rescan enqueue match
+ * {@link writeSidecar}; the rescan decision uses the value read in the lock.
+ *
+ * `options.isReadTolerant` (default false) makes a non-locked-access read
+ * error (for example an unparseable file) read as `null` so `mutate` can
+ * replace it, as {@link writeSidecar} does; a locked-access error still
+ * propagates. For callers whose pre-sink behaviour was that tolerance.
+ */
+export async function mutateSidecar(
+  projectRoot: string,
+  resourceId: UUID,
+  mutate: (
+    current: Record<string, MetadataValue> | null,
+  ) => SidecarMutation | Promise<SidecarMutation>,
+  options: { isReadTolerant?: boolean } = {},
+): Promise<Record<string, MetadataValue> | null> {
+  const outcome = await runSidecarWrite(
+    projectRoot,
+    resourceId,
+    options.isReadTolerant ?? false,
+    mutate,
+  );
+  if (outcome.isWritten && outcome.current) {
+    enqueueAfterSidecarWrite(
+      projectRoot,
+      resourceId,
+      needsEntityRescan(outcome.previous, outcome.current),
+    );
+  }
+  return outcome.current;
+}
+
+/**
+ * Write sidecar metadata for a resource into the project's `meta/` folder.
+ * Creates directories as needed. Overwrites existing sidecars, under the
+ * sidecar's file lock. For first writes of a new id only: a caller that built
+ * `metadata` from an earlier read must use {@link mutateSidecar}.
+ */
+export async function writeSidecar(
+  projectRoot: string,
+  resourceId: UUID,
+  metadata: Record<string, MetadataValue>,
+): Promise<void> {
+  const outcome = await runSidecarWrite(
+    projectRoot,
+    resourceId,
+    true,
+    () => metadata,
+  );
+  enqueueAfterSidecarWrite(
+    projectRoot,
+    resourceId,
+    needsEntityRescan(outcome.previous, metadata),
+  );
+}
+
 export default {
   sidecarFilename,
   sidecarPathForProject,
   readSidecar,
   writeSidecar,
+  mutateSidecar,
 };

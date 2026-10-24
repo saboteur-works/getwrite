@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
-import { writeSidecar } from "../../src/lib/models/sidecar";
+import { mutateSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import {
   changeFieldTypeWithMigration,
   updateFieldOptionsWithMigration,
@@ -601,5 +601,66 @@ describe("appliesTo is preserved by migrating schema operations (FR-17)", () => 
     );
     expect(schema.groups[0].fields[0].options).toEqual(["dark", "light"]);
     expect(schema.groups[0].fields[0].appliesTo).toEqual(["Scene"]);
+  });
+});
+
+// ─── Feature 92 Task 19: forEachUserMetadata on the sidecar sink ──────────────
+
+describe("forEachUserMetadata sweeps read, mutate and write inside the sidecar lock", () => {
+  it("keeps a field written by a writer holding the sidecar while clearField sweeps", async () => {
+    const dir = await makeTmpProject(simpleSchema());
+    const id = generateUUID();
+    await writeMeta(dir, id, { tone: "dark", keep: "x" });
+    let signalStarted: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      signalStarted = resolve;
+    });
+    const held = mutateSidecar(dir, id, async (current) => {
+      signalStarted();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      return { ...(current ?? {}), heldField: true };
+    });
+    await started;
+    await clearField(dir, GROUP_ID, FIELD.key);
+    await held;
+    const raw = await readSidecarRaw(dir, id);
+    expect(raw.heldField).toBe(true);
+    expect(raw.userMetadata).toEqual({ keep: "x" });
+  });
+
+  it("skips a sidecar without an object userMetadata without writing it", async () => {
+    const dir = await makeTmpProject(simpleSchema());
+    const id = generateUUID();
+    await writeSidecar(dir, id, { name: "no meta" });
+    const file = path.join(dir, "meta", `resource-${id}.meta.json`);
+    const before = await fs.stat(file);
+    await clearField(dir, GROUP_ID, FIELD.key);
+    const after = await fs.stat(file);
+    expect(after.ino).toBe(before.ino);
+    expect(after.mtimeMs).toBe(before.mtimeMs);
+  });
+
+  it("writes nothing for a sidecar the callback leaves unchanged", async () => {
+    const dir = await makeTmpProject(simpleSchema());
+    const id = generateUUID();
+    await writeMeta(dir, id, { other: "x" });
+    const file = path.join(dir, "meta", `resource-${id}.meta.json`);
+    const before = await fs.stat(file);
+    await clearField(dir, GROUP_ID, FIELD.key);
+    const after = await fs.stat(file);
+    expect(after.ino).toBe(before.ino);
+    expect(await readMeta(dir, id)).toEqual({ other: "x" });
+  });
+
+  it("still rejects when a sidecar cannot be parsed", async () => {
+    const dir = await makeTmpProject(simpleSchema());
+    const id = generateUUID();
+    await fs.mkdir(path.join(dir, "meta"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "meta", `resource-${id}.meta.json`),
+      "{ not json",
+      "utf8",
+    );
+    await expect(clearField(dir, GROUP_ID, FIELD.key)).rejects.toThrow();
   });
 });

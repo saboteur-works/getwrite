@@ -26,7 +26,7 @@ import {
   setCanonicalRevision as setCanonicalRevisionByVersion,
   writeRevision,
 } from "./revision";
-import { readSidecar, writeSidecar } from "./sidecar";
+import { mutateSidecar } from "./sidecar";
 import type { Revision } from "./types";
 import { persistResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { countWords } from "../word-count";
@@ -515,18 +515,27 @@ async function updateRevisionInPlaceLocked(
   );
 
   const updatedAt = new Date().toISOString();
-  const existingSidecar = await readSidecar(projectRoot, resourceId);
-  await writeSidecar(projectRoot, resourceId, {
-    ...(existingSidecar ?? {}),
-    updatedAt,
-    // Autosave is the only thing that ever writes a resource's content after
-    // creation, so a sidecar whose wordCount is not refreshed here keeps its
-    // creation-time value (0) forever — which list views read as "Needs
-    // content" for a resource that has plenty. Left alone when nothing was
-    // synced (a legacy plain-text revision), since there is then no saved
-    // plain text to count and the stored value is the better answer.
-    ...(wordCount === undefined ? {} : { wordCount }),
-  });
+  // Read, merge and write inside the sidecar's lock (Feature 92): a metadata
+  // edit landing between the content write and here is kept, not overwritten.
+  // Lock edges: revision-content (held) -> withMetaLock -> sidecar file lock.
+  await mutateSidecar(
+    projectRoot,
+    resourceId,
+    (existingSidecar) => ({
+      ...(existingSidecar ?? {}),
+      updatedAt,
+      // Autosave is the only thing that ever writes a resource's content after
+      // creation, so a sidecar whose wordCount is not refreshed here keeps its
+      // creation-time value (0) forever — which list views read as "Needs
+      // content" for a resource that has plenty. Left alone when nothing was
+      // synced (a legacy plain-text revision), since there is then no saved
+      // plain text to count and the stored value is the better answer.
+      ...(wordCount === undefined ? {} : { wordCount }),
+    }),
+    // Matches the earlier readSidecar-then-writeSidecar pair: an unparseable
+    // sidecar threw from the read, so it is not tolerated here either.
+    { isReadTolerant: false },
+  );
 
   // Reported back to the caller so the editor can refresh its revision list
   // and tell the writer a way back exists — a backup nobody knows about is

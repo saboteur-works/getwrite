@@ -3,7 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
-import { migrateProjectOnLoad } from "../../src/lib/models/metadata-schema";
+import {
+  getSchema,
+  migrateProjectOnLoad,
+} from "../../src/lib/models/metadata-schema";
+import { withFileLock } from "../../src/lib/models/file-lock";
+import { acquireLock } from "../../src/lib/models/locks";
 import { loadProjectFromDisk } from "../../src/lib/models/project-loader";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type {
@@ -538,5 +543,141 @@ describe("loadProjectFromDisk — FR8 migration safety + idempotency", () => {
     expect(meta.synopsis).toBe("A duel.");
     expect(meta.custom).toBe("keep me");
     expect((meta.pov as { name: string }).name).toBe("Hero");
+  });
+});
+
+// ─── per-file lock (Feature 92, Task 13) ─────────────────────────────────────
+
+const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 25));
+
+/** Holds the project.json file lock until `release()` is called. */
+function holdFileLock(dir: string): {
+  held: Promise<void>;
+  release: () => void;
+} {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  let signal!: () => void;
+  const held = new Promise<void>((r) => {
+    signal = r;
+  });
+  void withFileLock(path.join(dir, PROJECT_FILENAME), async () => {
+    signal();
+    await gate;
+  });
+  return { held, release };
+}
+
+async function patchConfig(
+  dir: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const p = path.join(dir, PROJECT_FILENAME);
+  const proj = JSON.parse(await fs.readFile(p, "utf8")) as Project;
+  proj.config = { ...proj.config, ...patch } as ProjectConfig;
+  await fs.writeFile(p, JSON.stringify(proj, null, 2), "utf8");
+}
+
+describe("migrateProjectOnLoad — project.json file lock", () => {
+  it("does not write while the project.json file lock is held", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: oldLockedSchema(),
+    });
+    const before = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    const { held, release } = holdFileLock(dir);
+    await held;
+    const run = migrateProjectOnLoad(dir);
+    await tick();
+    expect(await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8")).toBe(
+      before,
+    );
+    release();
+    await run;
+    expect((await readConfig(dir)).metadataRevision).toBe(1);
+  });
+
+  it("keeps a change made between the deciding read and the locked read", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: oldLockedSchema(),
+    });
+    const outer = await acquireLock(dir);
+    const run = migrateProjectOnLoad(dir);
+    await tick(); // first read done; now waiting on the project lock
+    await patchConfig(dir, { fontSize: "19px" });
+    outer();
+    await run;
+    const config = (await readConfig(dir)) as ProjectConfig & {
+      fontSize?: string;
+    };
+    expect(config.fontSize).toBe("19px");
+    expect(
+      findField(config.metadataSchema!, "builtin-document", "synopsis")?.locked,
+    ).toBeUndefined();
+  });
+
+  it("writes nothing when no migration is needed", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: migratedSchema(),
+      features: {},
+    });
+    const before = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    await migrateProjectOnLoad(dir);
+    expect(await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8")).toBe(
+      before,
+    );
+  });
+});
+
+describe("getSchema — migration write under the file lock", () => {
+  it("does not write while the project.json file lock is held", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: oldLockedSchema(),
+    });
+    const before = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    const { held, release } = holdFileLock(dir);
+    await held;
+    const run = getSchema(dir);
+    await tick();
+    expect(await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8")).toBe(
+      before,
+    );
+    release();
+    await run;
+    expect((await readConfig(dir)).metadataRevision).toBe(1);
+  });
+
+  it("keeps a change made between the deciding read and the locked read", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: oldLockedSchema(),
+    });
+    const outer = await acquireLock(dir);
+    const run = getSchema(dir);
+    await tick();
+    await patchConfig(dir, { fontSize: "19px" });
+    outer();
+    await run;
+    expect(
+      ((await readConfig(dir)) as ProjectConfig & { fontSize?: string })
+        .fontSize,
+    ).toBe("19px");
+  });
+
+  it("writes nothing when the schema needs no migration", async () => {
+    const dir = await makeProject({
+      editorConfig: {},
+      metadataSchema: migratedSchema(),
+    });
+    const before = await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+    await getSchema(dir);
+    expect(await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8")).toBe(
+      before,
+    );
   });
 });

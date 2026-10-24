@@ -8,11 +8,12 @@
  * Follow the same pattern as `tags.ts`: no optimistic in-memory state, direct
  * filesystem reads/writes, file locking for concurrent-write safety.
  */
-import { atomicWriteFile, readFile, readdir } from "./io";
+import { readFile, readdir } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
+import { updateProjectJson } from "./project-json-write";
 import { PROJECT_FILENAME } from "./project-config";
-import { readSidecar, writeSidecar } from "./sidecar";
+import { SIDECAR_UNCHANGED, mutateSidecar, readSidecar } from "./sidecar";
 import { canonicalValueKey } from "./field-values";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import { dedupeSubtypeLabels } from "./field-subtype-scope";
@@ -49,19 +50,16 @@ async function readProject(projectRoot: string): Promise<Project> {
   return JSON.parse(raw) as Project;
 }
 
-async function writeProject(
-  projectRoot: string,
-  project: Project,
-): Promise<void> {
-  const p = path.join(projectRoot, PROJECT_FILENAME);
+/**
+ * Bumps `metadataRevision` on a project about to be written. Callers run it
+ * inside an {@link updateProjectJson} mutation, so the read the write is based
+ * on and the atomic write happen under the `project.json` file lock.
+ */
+function bumpMetadataRevision(project: Project): void {
   if (!project.config) {
     project.config = { editorConfig: {} };
   }
   project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
-  // Atomic: this module holds locks.ts's lock, not withMetaLock, so it is not
-  // serialized with the other project.json writers (see project-json-write.ts);
-  // a plain write could interleave with theirs and leave the file unparseable.
-  await atomicWriteFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
 function getOrInitSchema(project: Project): MetadataSchema {
@@ -92,10 +90,16 @@ function allFieldKeys(schema: MetadataSchema): string[] {
 }
 
 /**
- * Acquires the project lock, reads the project, initialises the schema (if
- * absent), calls `mutate(schema, project)` for in-place changes, writes the
- * project, releases the lock, and returns the schema. The `finally` block
- * guarantees the lock is always released.
+ * Acquires the project lock (`acquireLock`, outer), then runs
+ * {@link updateProjectJson}, which takes the `project.json` file lock
+ * (`withFileLock`, innermost). Inside the file lock it reads the
+ * project, initialises the schema (if absent), calls `mutate(schema, project)`
+ * for in-place changes, writes the project (bumping `metadataRevision` once)
+ * and returns the schema. A throw from `mutate` writes nothing. The `finally`
+ * block guarantees the outer lock is always released.
+ *
+ * `mutate` runs inside the file lock and must not take any lock (Feature 92,
+ * FR-8; see `file-lock.ts`).
  */
 async function withLockedSchema(
   projectRoot: string,
@@ -103,11 +107,12 @@ async function withLockedSchema(
 ): Promise<MetadataSchema> {
   const release = await acquireLock(projectRoot);
   try {
-    const project = await readProject(projectRoot);
-    const schema = getOrInitSchema(project);
-    mutate(schema, project);
-    await writeProject(projectRoot, project);
-    return schema;
+    return await updateProjectJson(projectRoot, (project) => {
+      const schema = getOrInitSchema(project);
+      mutate(schema, project);
+      bumpMetadataRevision(project);
+      return { result: schema };
+    });
   } finally {
     release();
   }
@@ -300,8 +305,11 @@ function userMetadataOf(
 /**
  * Iterates every resource sidecar under `meta/`, invoking `mutate` with each
  * sidecar's `userMetadata` map; when `mutate` returns `true` the sidecar is
- * written back. Sidecars that are missing, unreadable, or have no object
- * `userMetadata` are skipped. Centralizes the readdir + filename-parse + read +
+ * written back. Each sidecar's read, `mutate` and write run inside its own
+ * sidecar lock (`mutateSidecar`), one sidecar at a time; no lock is held across
+ * the sweep. Sidecars that are missing or have no object `userMetadata` are
+ * skipped; a read error (for example an unparseable file) propagates.
+ * Centralizes the readdir + filename-parse + read +
  * guard + conditional-write scaffold shared by the value-migration helpers.
  */
 async function forEachUserMetadata(
@@ -323,13 +331,12 @@ async function forEachUserMetadata(
       "resource-".length,
       -".meta.json".length,
     ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
-    const meta = userMetadataOf(sidecar);
-    if (!meta) continue;
-    if (mutate(meta)) {
-      await writeSidecar(projectRoot, resourceId, sidecar);
-    }
+    await mutateSidecar(projectRoot, resourceId, (sidecar) => {
+      if (!sidecar) return SIDECAR_UNCHANGED;
+      const meta = userMetadataOf(sidecar);
+      if (!meta) return SIDECAR_UNCHANGED;
+      return mutate(meta) ? sidecar : SIDECAR_UNCHANGED;
+    });
   }
 }
 
@@ -398,40 +405,42 @@ export async function migrateProjectOnLoad(
 
   const release = await acquireLock(projectRoot);
   try {
-    const project = await readProject(projectRoot);
-    if (!project.config) project.config = { editorConfig: {} };
-    let hasChanged = false;
+    // The read the write is based on is repeated inside the file lock; the
+    // read above only decided whether to scan.
+    return await updateProjectJson(projectRoot, (project) => {
+      if (!project.config) project.config = { editorConfig: {} };
+      let hasChanged = false;
 
-    if (project.config.metadataSchema) {
-      const result = applySchemaMigrations(project.config.metadataSchema);
-      if (result.changed) {
-        project.config.metadataSchema = result.schema;
+      if (project.config.metadataSchema) {
+        const result = applySchemaMigrations(project.config.metadataSchema);
+        if (result.changed) {
+          project.config.metadataSchema = result.schema;
+          hasChanged = true;
+        }
+      }
+
+      if (project.config.features === undefined && seeded !== undefined) {
+        project.config.features = seeded;
         hasChanged = true;
       }
-    }
 
-    if (project.config.features === undefined && seeded !== undefined) {
-      project.config.features = seeded;
-      hasChanged = true;
-    }
+      // Backfill the view flag for projects migrated before the timeline
+      // fields and the Timeline view were split into separate toggles. The
+      // old `timeline` flag gated both, so a project that had it on keeps its
+      // view. Runs once — an already-defined `timelineView` is never
+      // overwritten.
+      if (
+        project.config.features !== undefined &&
+        project.config.features.timelineView === undefined &&
+        project.config.features.timeline === true
+      ) {
+        project.config.features.timelineView = true;
+        hasChanged = true;
+      }
 
-    // Backfill the view flag for projects migrated before the timeline fields
-    // and the Timeline view were split into separate toggles. The old `timeline`
-    // flag gated both, so a project that had it on keeps its view. Runs once — a
-    // already-defined `timelineView` is never overwritten.
-    if (
-      project.config.features !== undefined &&
-      project.config.features.timelineView === undefined &&
-      project.config.features.timeline === true
-    ) {
-      project.config.features.timelineView = true;
-      hasChanged = true;
-    }
-
-    if (hasChanged) {
-      await writeProject(projectRoot, project);
-    }
-    return project;
+      if (hasChanged) bumpMetadataRevision(project);
+      return { result: project, shouldWrite: hasChanged };
+    });
   } finally {
     release();
   }
@@ -482,14 +491,17 @@ export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
   // the lock so a concurrent writer is not clobbered, then re-apply.
   const release = await acquireLock(projectRoot);
   try {
-    const fresh = await readProject(projectRoot);
-    if (!fresh.config?.metadataSchema) return first.schema;
-    const result = applySchemaMigrations(fresh.config.metadataSchema);
-    if (result.changed) {
-      fresh.config.metadataSchema = result.schema;
-      await writeProject(projectRoot, fresh);
-    }
-    return result.schema;
+    return await updateProjectJson(projectRoot, (fresh) => {
+      if (!fresh.config?.metadataSchema) {
+        return { result: first.schema, shouldWrite: false };
+      }
+      const result = applySchemaMigrations(fresh.config.metadataSchema);
+      if (result.changed) {
+        fresh.config.metadataSchema = result.schema;
+        bumpMetadataRevision(fresh);
+      }
+      return { result: result.schema, shouldWrite: result.changed };
+    });
   } finally {
     release();
   }
@@ -781,10 +793,7 @@ async function renameFieldKeyInSchema(
   fieldKey: string,
   newKey: string,
 ): Promise<MetadataSchema> {
-  const release = await acquireLock(projectRoot);
-  try {
-    const project = await readProject(projectRoot);
-    const schema = getOrInitSchema(project);
+  return withLockedSchema(projectRoot, (schema) => {
     if (allFieldKeys(schema).includes(newKey)) {
       throw new Error(`Field key already exists: "${newKey}"`);
     }
@@ -794,11 +803,7 @@ async function renameFieldKeyInSchema(
     if (field.locked)
       throw new Error(`Cannot rename key of locked field: "${fieldKey}"`);
     field.key = newKey;
-    await writeProject(projectRoot, project);
-    return schema;
-  } finally {
-    release();
-  }
+  });
 }
 
 /**
@@ -936,7 +941,8 @@ async function migrateFieldTypeInSidecars(
 
 /**
  * Changes a field's type and atomically migrates sidecar values according to
- * the provided resolution map, then updates the schema under `acquireLock`.
+ * the provided resolution map, then updates the schema under `acquireLock`
+ * and the `project.json` file lock (`withFileLock`, innermost).
  *
  * For `select` / `multiselect` types, `newOptions` replaces (or initialises)
  * `field.options`. For all other types, `field.options` is removed.
@@ -956,12 +962,8 @@ export async function changeFieldTypeWithMigration(
   newOptions: string[],
   migrations: Record<string, TypeMigrationEntry>,
 ): Promise<MetadataSchema> {
-  const release = await acquireLock(projectRoot);
-  let schema: MetadataSchema;
-  try {
-    const project = await readProject(projectRoot);
-    schema = getOrInitSchema(project);
-    const group = findGroup(schema, groupId);
+  const schema = await withLockedSchema(projectRoot, (draft) => {
+    const group = findGroup(draft, groupId);
     const field = group.fields.find((f) => f.key === fieldKey);
     if (!field) throw new Error(`Field not found: "${fieldKey}"`);
     if (field.locked)
@@ -972,10 +974,7 @@ export async function changeFieldTypeWithMigration(
     } else {
       delete field.options;
     }
-    await writeProject(projectRoot, project);
-  } finally {
-    release();
-  }
+  });
   await migrateFieldTypeInSidecars(projectRoot, fieldKey, migrations);
   return schema;
 }
@@ -1083,7 +1082,8 @@ async function migrateFieldOptionsInSidecars(
 /**
  * Updates a `select` or `multiselect` field's options list and atomically
  * migrates sidecar values for any orphaned option values, then writes the
- * schema under `acquireLock`.
+ * schema under `acquireLock` and the `project.json` file lock (`withFileLock`,
+ * innermost).
  *
  * Entries in `migrations` are keyed by orphaned option value string:
  * - `"keep"` — leave the sidecar value unchanged
@@ -1100,13 +1100,9 @@ export async function updateFieldOptionsWithMigration(
   newOptions: string[],
   migrations: Record<string, OptionsMigrationEntry>,
 ): Promise<MetadataSchema> {
-  const release = await acquireLock(projectRoot);
-  let schema: MetadataSchema;
-  let fieldType: MetadataFieldType;
-  try {
-    const project = await readProject(projectRoot);
-    schema = getOrInitSchema(project);
-    const group = findGroup(schema, groupId);
+  let fieldType: MetadataFieldType = "select";
+  const schema = await withLockedSchema(projectRoot, (draft) => {
+    const group = findGroup(draft, groupId);
     const field = group.fields.find((f) => f.key === fieldKey);
     if (!field) throw new Error(`Field not found: "${fieldKey}"`);
     if (field.type !== "select" && field.type !== "multiselect") {
@@ -1119,10 +1115,7 @@ export async function updateFieldOptionsWithMigration(
       .filter(([, m]) => m.action === "add-to-options")
       .map(([v]) => v);
     field.options = [...newOptions, ...addToOptionsValues];
-    await writeProject(projectRoot, project);
-  } finally {
-    release();
-  }
+  });
   await migrateFieldOptionsInSidecars(
     projectRoot,
     fieldKey,

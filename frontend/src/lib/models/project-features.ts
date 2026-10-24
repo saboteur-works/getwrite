@@ -8,28 +8,23 @@
  * entity-relationship-type vocabulary, FR-19), and `config.subtypes` (the
  * project's resource-subtype list, Feature 72).
  *
- * Unlike the lock-free `editor-config` / `preferences` read-modify-writes, this
- * helper acquires the per-project lock so toggle writes cannot race the
- * schema/migration writes in `metadata-schema.ts` and clobber data. It
+ * This helper acquires the per-project lock (outer) so toggle writes cannot race the
+ * schema/migration writes in `metadata-schema.ts`, and does its read, mutate and
+ * write under the `project.json` file lock via `updateProjectJson` (innermost,
+ * Feature 92 FR-8), so it also cannot race the other `project.json` writers. It
  * deliberately does NOT bump `config.metadataRevision`: toggles change no field
  * keys or sidecar values, so invalidating the query cache would be wasteful —
  * that bump is reserved for the one-time load migration.
  */
 import { z } from "zod";
-import { atomicWriteFile, readFile } from "./io";
-import path from "node:path";
 import { acquireLock } from "./locks";
-import { PROJECT_FILENAME } from "./project-config";
+import { updateProjectJson } from "./project-json-write";
 import {
   ProjectFeatureFlagsSchema,
   OrganizerCardBodyConfigSchema,
   SubtypeListSchema,
 } from "./schemas";
-import type {
-  Project,
-  ProjectFeatureFlags,
-  OrganizerCardBodyConfig,
-} from "./types";
+import type { ProjectFeatureFlags, OrganizerCardBodyConfig } from "./types";
 
 const RelationshipTypesSchema = z.array(z.string());
 
@@ -63,7 +58,7 @@ export interface FeatureConfigResult {
  * `relationshipTypes` / `subtypes`) replaces the existing block wholesale; an omitted
  * block is left unchanged.
  *
- * The read-modify-write runs under the project lock and updates `updatedAt`. It
+ * The read-modify-write runs under the project lock, then the file lock, and updates `updatedAt`. It
  * never bumps `metadataRevision`.
  *
  * @param projectRoot - Absolute path to the project root directory.
@@ -103,45 +98,34 @@ export async function updateFeatureConfig(
 
   const release = await acquireLock(projectRoot);
   try {
-    const filePath = path.join(projectRoot, PROJECT_FILENAME);
-    const raw = await readFile(filePath, "utf8");
-    const project = JSON.parse(raw) as Project;
-    const config = project.config ?? { editorConfig: {} };
+    return await updateProjectJson(projectRoot, (project) => {
+      const config = project.config ?? { editorConfig: {} };
 
-    if (nextFeatures !== undefined) {
-      config.features = nextFeatures;
-    }
-    if (nextCardBody !== undefined) {
-      config.organizerCardBody = nextCardBody;
-    }
-    if (nextRelationshipTypes !== undefined) {
-      config.relationshipTypes = nextRelationshipTypes;
-    }
-    if (nextSubtypes !== undefined) {
-      config.subtypes = nextSubtypes;
-    }
+      if (nextFeatures !== undefined) {
+        config.features = nextFeatures;
+      }
+      if (nextCardBody !== undefined) {
+        config.organizerCardBody = nextCardBody;
+      }
+      if (nextRelationshipTypes !== undefined) {
+        config.relationshipTypes = nextRelationshipTypes;
+      }
+      if (nextSubtypes !== undefined) {
+        config.subtypes = nextSubtypes;
+      }
 
-    const nextProject: Project = {
-      ...project,
-      config,
-      updatedAt: new Date().toISOString(),
-    };
-    // NOTE: intentionally no metadataRevision bump — see module docstring.
-    // Atomic: this writer holds locks.ts's lock, not withMetaLock, so it is
-    // not serialized with the other project.json writers; a plain write could
-    // interleave with theirs and leave the file unparseable.
-    await atomicWriteFile(
-      filePath,
-      JSON.stringify(nextProject, null, 2),
-      "utf8",
-    );
-
-    return {
-      features: config.features ?? {},
-      organizerCardBody: config.organizerCardBody,
-      relationshipTypes: config.relationshipTypes,
-      subtypes: config.subtypes,
-    };
+      project.config = config;
+      project.updatedAt = new Date().toISOString();
+      // NOTE: intentionally no metadataRevision bump — see module docstring.
+      return {
+        result: {
+          features: config.features ?? {},
+          organizerCardBody: config.organizerCardBody,
+          relationshipTypes: config.relationshipTypes,
+          subtypes: config.subtypes,
+        },
+      };
+    });
   } finally {
     release();
   }

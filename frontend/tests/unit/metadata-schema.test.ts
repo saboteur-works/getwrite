@@ -33,6 +33,14 @@ import type {
   MetadataSchema,
 } from "../../src/lib/models/types";
 import { generateUUID } from "../../src/lib/models/uuid";
+import { withFileLock } from "../../src/lib/models/file-lock";
+import { outsideFileLock } from "../helpers/lockOrderGuard";
+import {
+  changeFieldTypeWithMigration,
+  updateFieldAppliesTo,
+  updateFieldOptionsWithMigration,
+  updateRefProperties,
+} from "../../src/lib/models/metadata-schema";
 
 async function makeTmpProject(schema?: MetadataSchema) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-mschema-"));
@@ -971,4 +979,262 @@ describe("renameGroup", () => {
       /Group not found/,
     );
   });
+});
+
+// ---------------------------------------------------------------------------
+// withLockedSchema on the per-file lock (Feature 92, Task 11; FR-2, FR-4)
+// ---------------------------------------------------------------------------
+
+describe("the 13 withLockedSchema operations on the project.json file lock", () => {
+  const SELECT: MetadataField = {
+    key: "pick",
+    label: "Pick",
+    type: "select",
+    options: ["a", "b"],
+  };
+  const REF: MetadataField = {
+    key: "link",
+    label: "Link",
+    type: "multi-resource-ref",
+  };
+  const OTHER: MetadataField = { key: "other", label: "Other", type: "text" };
+  function fixedSchema(): MetadataSchema {
+    return {
+      groups: [
+        {
+          id: GROUP_ID,
+          label: "Test Group",
+          fields: [FIELD, SELECT, REF, OTHER],
+        },
+        { id: "second-group", label: "Second", fields: [] },
+      ],
+    };
+  }
+
+  const NEW_FIELD: MetadataField = {
+    key: "added",
+    label: "Added",
+    type: "text",
+  };
+  const OPERATIONS: ReadonlyArray<{
+    name: string;
+    run: (dir: string) => Promise<MetadataSchema>;
+    fail: (dir: string) => Promise<MetadataSchema>;
+  }> = [
+    {
+      name: "addField",
+      run: (d) => addField(d, GROUP_ID, NEW_FIELD),
+      fail: (d) => addField(d, GROUP_ID, FIELD),
+    },
+    {
+      name: "removeField",
+      run: (d) => removeField(d, GROUP_ID, "other"),
+      fail: (d) => removeField(d, GROUP_ID, "nope"),
+    },
+    {
+      name: "deprecateField",
+      run: (d) => deprecateField(d, GROUP_ID, "other"),
+      fail: (d) => deprecateField(d, GROUP_ID, "nope"),
+    },
+    {
+      name: "reorderFields",
+      run: (d) =>
+        reorderFields(d, GROUP_ID, ["other", "link", "pick", "my-field"]),
+      fail: (d) => reorderFields(d, GROUP_ID, ["other"]),
+    },
+    {
+      name: "renameField",
+      run: (d) => renameField(d, GROUP_ID, "other", "Renamed"),
+      fail: (d) => renameField(d, GROUP_ID, "nope", "Renamed"),
+    },
+    {
+      name: "updateFieldOptions",
+      run: (d) => updateFieldOptions(d, GROUP_ID, "pick", ["x", "y"]),
+      fail: (d) => updateFieldOptions(d, GROUP_ID, "nope", ["x"]),
+    },
+    {
+      name: "addGroup",
+      run: (d) => addGroup(d, { id: "third", label: "Third", fields: [] }),
+      fail: (d) => addGroup(d, { id: GROUP_ID, label: "Dup", fields: [] }),
+    },
+    {
+      name: "renameGroup",
+      run: (d) => renameGroup(d, "second-group", "Second Renamed"),
+      fail: (d) => renameGroup(d, "nope", "X"),
+    },
+    {
+      name: "removeGroup",
+      run: (d) => removeGroup(d, "second-group"),
+      fail: (d) => removeGroup(d, "nope"),
+    },
+    {
+      name: "reorderGroups",
+      run: (d) => reorderGroups(d, ["second-group", GROUP_ID]),
+      fail: (d) => reorderGroups(d, [GROUP_ID]),
+    },
+    {
+      name: "updateRefProperties",
+      run: (d) =>
+        updateRefProperties(d, GROUP_ID, "link", { maxSelections: 3 }),
+      fail: (d) => updateRefProperties(d, GROUP_ID, "nope", {}),
+    },
+    {
+      name: "updateFieldAppliesTo",
+      run: (d) => updateFieldAppliesTo(d, GROUP_ID, "other", ["Scene"]),
+      fail: (d) => updateFieldAppliesTo(d, GROUP_ID, "nope", ["Scene"]),
+    },
+    {
+      name: "changeFieldType",
+      run: (d) => changeFieldType(d, GROUP_ID, "other", "number"),
+      fail: (d) => changeFieldType(d, GROUP_ID, "nope", "number"),
+    },
+  ];
+
+  async function readRaw(dir: string): Promise<string> {
+    return fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+  }
+
+  it.each(OPERATIONS)(
+    "$name writes the schema it returns, bumps metadataRevision once, and keeps key order",
+    async ({ run }) => {
+      const { dir } = await makeTmpProject(fixedSchema());
+      const before = JSON.parse(await readRaw(dir)) as {
+        config: Record<string, unknown>;
+      };
+      const returned = await run(dir);
+      const expected = structuredClone(before);
+      expected.config.metadataSchema = returned;
+      expected.config.metadataRevision = 1;
+      expect(await readRaw(dir)).toBe(JSON.stringify(expected, null, 2));
+    },
+  );
+
+  it.each(OPERATIONS)(
+    "$name writes nothing and does not bump metadataRevision when it throws",
+    async ({ fail }) => {
+      const { dir } = await makeTmpProject(fixedSchema());
+      const before = await readRaw(dir);
+      await expect(fail(dir)).rejects.toThrow();
+      expect(await readRaw(dir)).toBe(before);
+    },
+  );
+
+  it.each(OPERATIONS)(
+    "$name does not read or write project.json while another writer holds the file lock",
+    async ({ run }) => {
+      const { dir } = await makeTmpProject(fixedSchema());
+      const file = path.join(dir, PROJECT_FILENAME);
+      let op: Promise<MetadataSchema> | undefined;
+      let hasSettled = false;
+      let heldContent = "";
+      let contentAfterWait = "";
+      await withFileLock(file, async () => {
+        heldContent = await fs.readFile(file, "utf8");
+        op = outsideFileLock(() => run(dir)).finally(() => {
+          hasSettled = true;
+        });
+        // Time for the operation to take its outer lock and, if it does not
+        // wait for the file lock, to read and write.
+        await new Promise((r) => setTimeout(r, 40));
+        contentAfterWait = await fs.readFile(file, "utf8");
+        expect(hasSettled).toBe(false);
+      });
+      expect(contentAfterWait).toBe(heldContent);
+      await op;
+      expect(await readMetadataRevision(dir)).toBe(1);
+    },
+  );
+});
+
+describe("the three migration operations write the schema on the project.json file lock", () => {
+  const SELECT: MetadataField = {
+    key: "pick",
+    label: "Pick",
+    type: "select",
+    options: ["a", "b"],
+  };
+  const OTHER: MetadataField = { key: "other", label: "Other", type: "text" };
+  const schema = (): MetadataSchema => ({
+    groups: [{ id: GROUP_ID, label: "Test Group", fields: [SELECT, OTHER] }],
+  });
+  const OPERATIONS: ReadonlyArray<{
+    name: string;
+    run: (dir: string) => Promise<MetadataSchema>;
+    fail: (dir: string) => Promise<MetadataSchema>;
+  }> = [
+    {
+      name: "renameFieldKey",
+      run: (d) => renameFieldKey(d, GROUP_ID, "other", "renamed"),
+      fail: (d) => renameFieldKey(d, GROUP_ID, "other", "pick"),
+    },
+    {
+      name: "changeFieldTypeWithMigration",
+      run: (d) =>
+        changeFieldTypeWithMigration(d, GROUP_ID, "other", "number", [], {}),
+      fail: (d) =>
+        changeFieldTypeWithMigration(d, GROUP_ID, "nope", "number", [], {}),
+    },
+    {
+      name: "updateFieldOptionsWithMigration",
+      run: (d) =>
+        updateFieldOptionsWithMigration(d, GROUP_ID, "pick", ["x"], {
+          a: { action: "add-to-options" },
+        }),
+      fail: (d) =>
+        updateFieldOptionsWithMigration(d, GROUP_ID, "other", ["x"], {}),
+    },
+  ];
+
+  async function readRaw(dir: string): Promise<string> {
+    return fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8");
+  }
+
+  it.each(OPERATIONS)(
+    "$name writes the schema it returns and bumps metadataRevision once",
+    async ({ run }) => {
+      const { dir } = await makeTmpProject(schema());
+      const before = JSON.parse(await readRaw(dir)) as {
+        config: Record<string, unknown>;
+      };
+      const returned = await run(dir);
+      const expected = structuredClone(before);
+      expected.config.metadataSchema = returned;
+      expected.config.metadataRevision = 1;
+      expect(await readRaw(dir)).toBe(JSON.stringify(expected, null, 2));
+    },
+  );
+
+  it.each(OPERATIONS)(
+    "$name writes nothing when it throws",
+    async ({ fail }) => {
+      const { dir } = await makeTmpProject(schema());
+      const before = await readRaw(dir);
+      await expect(fail(dir)).rejects.toThrow();
+      expect(await readRaw(dir)).toBe(before);
+    },
+  );
+
+  it.each(OPERATIONS)(
+    "$name does not read or write project.json while another writer holds the file lock",
+    async ({ run }) => {
+      const { dir } = await makeTmpProject(schema());
+      const file = path.join(dir, PROJECT_FILENAME);
+      let op: Promise<MetadataSchema> | undefined;
+      let hasSettled = false;
+      let heldContent = "";
+      let contentAfterWait = "";
+      await withFileLock(file, async () => {
+        heldContent = await fs.readFile(file, "utf8");
+        op = outsideFileLock(() => run(dir)).finally(() => {
+          hasSettled = true;
+        });
+        await new Promise((r) => setTimeout(r, 40));
+        contentAfterWait = await fs.readFile(file, "utf8");
+        expect(hasSettled).toBe(false);
+      });
+      expect(contentAfterWait).toBe(heldContent);
+      await op;
+      expect(await readMetadataRevision(dir)).toBe(1);
+    },
+  );
 });

@@ -1,0 +1,177 @@
+{
+  "A editor config": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2026-01-02T03:04:05.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 4,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontSize\": \"19px\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "{\n  \"editorConfig\": {\n    \"body\": {\n      \"fontSize\": \"19px\"\n    }\n  }\n}",
+    "error": null
+  },
+  "A editor config, unparseable project.json": {
+    "revision": "",
+    "projectJson": "{not json",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "B word-count goal": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 4,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    },\n    \"wordCountGoal\": 4321\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "{\n  \"wordCountGoal\": 4321\n}",
+    "error": null
+  },
+  "B word-count goal, unparseable project.json": {
+    "revision": "",
+    "projectJson": "{not json",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "C addField": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 7,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    },\n    \"metadataSchema\": {\n      \"groups\": [\n        {\n          \"id\": \"builtin-document\",\n          \"label\": \"Document\",\n          \"fields\": [\n            {\n              \"key\": \"synopsis\",\n              \"label\": \"Synopsis\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"notes\",\n              \"label\": \"Notes\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"status\",\n              \"label\": \"Status\",\n              \"type\": \"select\",\n              \"locked\": true\n            },\n            {\n              \"key\": \"pov\",\n              \"label\": \"Point of View\",\n              \"type\": \"resource-ref\",\n              \"multiple\": false\n            }\n          ]\n        },\n        {\n          \"id\": \"builtin-story-timeline\",\n          \"label\": \"Timeline\",\n          \"fields\": [\n            {\n              \"key\": \"storyDate\",\n              \"label\": \"Story Date\",\n              \"type\": \"date\"\n            },\n            {\n              \"key\": \"storyDuration\",\n              \"label\": \"Duration (minutes)\",\n              \"type\": \"number\"\n            },\n            {\n              \"key\": \"storyEndDate\",\n              \"label\": \"Story End Date\",\n              \"type\": \"date\"\n            }\n          ]\n        },\n        {\n          \"id\": \"custom-group\",\n          \"label\": \"Custom\",\n          \"fields\": [\n            {\n              \"key\": \"mood\",\n              \"label\": \"Mood\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"tone\",\n              \"label\": \"Mood\",\n              \"type\": \"text\"\n            }\n          ]\n        }\n      ]\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "{\n  \"groups\": [\n    {\n      \"id\": \"builtin-document\",\n      \"label\": \"Document\",\n      \"fields\": [\n        {\n          \"key\": \"synopsis\",\n          \"label\": \"Synopsis\",\n          \"type\": \"text\"\n        },\n        {\n          \"key\": \"notes\",\n          \"label\": \"Notes\",\n          \"type\": \"text\"\n        },\n        {\n          \"key\": \"status\",\n          \"label\": \"Status\",\n          \"type\": \"select\",\n          \"locked\": true\n        },\n        {\n          \"key\": \"pov\",\n          \"label\": \"Point of View\",\n          \"type\": \"resource-ref\",\n          \"multiple\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"builtin-story-timeline\",\n      \"label\": \"Timeline\",\n      \"fields\": [\n        {\n          \"key\": \"storyDate\",\n          \"label\": \"Story Date\",\n          \"type\": \"date\"\n        },\n        {\n          \"key\": \"storyDuration\",\n          \"label\": \"Duration (minutes)\",\n          \"type\": \"number\"\n        },\n        {\n          \"key\": \"storyEndDate\",\n          \"label\": \"Story End Date\",\n          \"type\": \"date\"\n        }\n      ]\n    },\n    {\n      \"id\": \"custom-group\",\n      \"label\": \"Custom\",\n      \"fields\": [\n        {\n          \"key\": \"mood\",\n          \"label\": \"Mood\",\n          \"type\": \"text\"\n        },\n        {\n          \"key\": \"tone\",\n          \"label\": \"Mood\",\n          \"type\": \"text\"\n        }\n      ]\n    }\n  ]\n}",
+    "error": null
+  },
+  "C addField, unparseable project.json": {
+    "revision": "",
+    "projectJson": "{not json",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "D feature config": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2026-01-02T03:04:05.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 4,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    },\n    \"subtypes\": [\n      \"Scene\"\n    ]\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "{\n  \"features\": {},\n  \"subtypes\": [\n    \"Scene\"\n  ]\n}",
+    "error": null
+  },
+  "D feature config, unparseable project.json": {
+    "revision": "",
+    "projectJson": "{not json",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "E revision bump through updateSidecarCore": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"marker\": \"after\"\n}",
+    "returned": "<undefined>",
+    "error": null
+  },
+  "E revision bump, project.json absent": {
+    "revision": "",
+    "projectJson": "<absent>",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"marker\": \"after\"\n}",
+    "returned": "<undefined>",
+    "error": null
+  },
+  "E revision bump, unparseable project.json": {
+    "revision": "",
+    "projectJson": "{not json",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"marker\": \"after\"\n}",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "S1 updateSidecarCore": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Renamed\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"extra\": 1\n}",
+    "returned": "<undefined>",
+    "error": null
+  },
+  "S1 updateSidecarCore, unparseable sidecar": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"name\": \"Renamed\",\n  \"orderIndex\": 0,\n  \"folderId\": null\n}",
+    "returned": "<undefined>",
+    "error": null
+  },
+  "S2 updateRevisionInPlace": {
+    "revision": "{\n  \"id\": \"33333333-3333-4333-8333-333333333333\",\n  \"resourceId\": \"22222222-2222-4222-8222-222222222222\",\n  \"versionNumber\": 1,\n  \"createdAt\": \"2026-01-02T03:04:05.000Z\",\n  \"savedAt\": \"2026-01-02T03:04:05.000Z\",\n  \"filePath\": \"<ROOT>/11111111-1111-4111-8111-111111111111/revisions/22222222-2222-4222-8222-222222222222/v-1/content.bin\",\n  \"isCanonical\": true,\n  \"metadata\": {\n    \"name\": \"Initial Draft\"\n  }\n}\n---\none two three four",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 6,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"createdAt\": \"2026-01-02T03:04:05.000Z\",\n  \"orderIndex\": 0,\n  \"folderId\": null,\n  \"slug\": \"scene\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"wordCount\": 3,\n  \"updatedAt\": \"2026-01-02T03:04:05.000Z\"\n}",
+    "returned": "{\n  \"id\": \"33333333-3333-4333-8333-333333333333\",\n  \"resourceId\": \"22222222-2222-4222-8222-222222222222\",\n  \"versionNumber\": 1,\n  \"createdAt\": \"2026-01-02T03:04:05.000Z\",\n  \"savedAt\": \"2026-01-02T03:04:05.000Z\",\n  \"filePath\": \"<ROOT>/11111111-1111-4111-8111-111111111111/revisions/22222222-2222-4222-8222-222222222222/v-1/content.bin\",\n  \"isCanonical\": true,\n  \"metadata\": {\n    \"name\": \"Initial Draft\"\n  },\n  \"updatedAt\": \"2026-01-02T03:04:05.000Z\",\n  \"snapshotCreated\": false,\n  \"writingLog\": {\n    \"skipped\": true\n  }\n}",
+    "error": null
+  },
+  "S2 updateRevisionInPlace, unparseable sidecar": {
+    "revision": "{\n  \"id\": \"33333333-3333-4333-8333-333333333333\",\n  \"resourceId\": \"22222222-2222-4222-8222-222222222222\",\n  \"versionNumber\": 1,\n  \"createdAt\": \"2026-01-02T03:04:05.000Z\",\n  \"savedAt\": \"2026-01-02T03:04:05.000Z\",\n  \"filePath\": \"<ROOT>/11111111-1111-4111-8111-111111111111/revisions/22222222-2222-4222-8222-222222222222/v-1/content.bin\",\n  \"isCanonical\": true,\n  \"metadata\": {\n    \"name\": \"Initial Draft\"\n  }\n}\n---\none two three four",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{not json",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "S3 clearField sweep": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 8,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    },\n    \"metadataSchema\": {\n      \"groups\": [\n        {\n          \"id\": \"builtin-document\",\n          \"label\": \"Document\",\n          \"fields\": [\n            {\n              \"key\": \"synopsis\",\n              \"label\": \"Synopsis\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"notes\",\n              \"label\": \"Notes\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"status\",\n              \"label\": \"Status\",\n              \"type\": \"select\",\n              \"locked\": true\n            },\n            {\n              \"key\": \"pov\",\n              \"label\": \"Point of View\",\n              \"type\": \"resource-ref\",\n              \"multiple\": false\n            }\n          ]\n        },\n        {\n          \"id\": \"builtin-story-timeline\",\n          \"label\": \"Timeline\",\n          \"fields\": [\n            {\n              \"key\": \"storyDate\",\n              \"label\": \"Story Date\",\n              \"type\": \"date\"\n            },\n            {\n              \"key\": \"storyDuration\",\n              \"label\": \"Duration (minutes)\",\n              \"type\": \"number\"\n            },\n            {\n              \"key\": \"storyEndDate\",\n              \"label\": \"Story End Date\",\n              \"type\": \"date\"\n            }\n          ]\n        },\n        {\n          \"id\": \"custom-group\",\n          \"label\": \"Custom\",\n          \"fields\": []\n        }\n      ]\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "{\n  \"groups\": [\n    {\n      \"id\": \"builtin-document\",\n      \"label\": \"Document\",\n      \"fields\": [\n        {\n          \"key\": \"synopsis\",\n          \"label\": \"Synopsis\",\n          \"type\": \"text\"\n        },\n        {\n          \"key\": \"notes\",\n          \"label\": \"Notes\",\n          \"type\": \"text\"\n        },\n        {\n          \"key\": \"status\",\n          \"label\": \"Status\",\n          \"type\": \"select\",\n          \"locked\": true\n        },\n        {\n          \"key\": \"pov\",\n          \"label\": \"Point of View\",\n          \"type\": \"resource-ref\",\n          \"multiple\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"builtin-story-timeline\",\n      \"label\": \"Timeline\",\n      \"fields\": [\n        {\n          \"key\": \"storyDate\",\n          \"label\": \"Story Date\",\n          \"type\": \"date\"\n        },\n        {\n          \"key\": \"storyDuration\",\n          \"label\": \"Duration (minutes)\",\n          \"type\": \"number\"\n        },\n        {\n          \"key\": \"storyEndDate\",\n          \"label\": \"Story End Date\",\n          \"type\": \"date\"\n        }\n      ]\n    },\n    {\n      \"id\": \"custom-group\",\n      \"label\": \"Custom\",\n      \"fields\": []\n    }\n  ]\n}",
+    "error": null
+  },
+  "S3 clearField sweep, unparseable sidecar": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 7,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    },\n    \"metadataSchema\": {\n      \"groups\": [\n        {\n          \"id\": \"builtin-document\",\n          \"label\": \"Document\",\n          \"fields\": [\n            {\n              \"key\": \"synopsis\",\n              \"label\": \"Synopsis\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"notes\",\n              \"label\": \"Notes\",\n              \"type\": \"text\"\n            },\n            {\n              \"key\": \"status\",\n              \"label\": \"Status\",\n              \"type\": \"select\",\n              \"locked\": true\n            },\n            {\n              \"key\": \"pov\",\n              \"label\": \"Point of View\",\n              \"type\": \"resource-ref\",\n              \"multiple\": false\n            }\n          ]\n        },\n        {\n          \"id\": \"builtin-story-timeline\",\n          \"label\": \"Timeline\",\n          \"fields\": [\n            {\n              \"key\": \"storyDate\",\n              \"label\": \"Story Date\",\n              \"type\": \"date\"\n            },\n            {\n              \"key\": \"storyDuration\",\n              \"label\": \"Duration (minutes)\",\n              \"type\": \"number\"\n            },\n            {\n              \"key\": \"storyEndDate\",\n              \"label\": \"Story End Date\",\n              \"type\": \"date\"\n            }\n          ]\n        },\n        {\n          \"id\": \"custom-group\",\n          \"label\": \"Custom\",\n          \"fields\": []\n        }\n      ]\n    }\n  }\n}",
+    "sidecar": "{not json",
+    "returned": "<undefined>",
+    "error": {
+      "name": "SyntaxError",
+      "code": null,
+      "message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    }
+  },
+  "S4 setNoiseTermDismissedCore": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  },\n  \"dismissedNoiseTerms\": [\n    \"term\"\n  ]\n}",
+    "returned": "<undefined>",
+    "error": null
+  },
+  "S4 setNoiseTermDismissedCore, unparseable sidecar": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"dismissedNoiseTerms\": [\n    \"term\"\n  ],\n  \"orderIndex\": 0,\n  \"folderId\": null\n}",
+    "returned": "<undefined>",
+    "error": null
+  },
+  "S4 renameResourceSidecarCore": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"New name\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"New name\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 1,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "error": null
+  },
+  "S4 reorderResourcesCore": {
+    "revision": "",
+    "projectJson": "{\n  \"id\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"Idle project\",\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"folders\": [],\n  \"resources\": [],\n  \"config\": {\n    \"metadataRevision\": 5,\n    \"editorConfig\": {\n      \"body\": {\n        \"fontFamily\": \"serif\"\n      }\n    }\n  }\n}",
+    "sidecar": "{\n  \"id\": \"22222222-2222-4222-8222-222222222222\",\n  \"name\": \"Scene\",\n  \"type\": \"text\",\n  \"slug\": \"scene\",\n  \"orderIndex\": 4,\n  \"folderId\": null,\n  \"createdAt\": \"2025-12-01T00:00:00.000Z\",\n  \"updatedAt\": \"2025-12-01T00:00:00.000Z\",\n  \"userMetadata\": {\n    \"mood\": \"calm\",\n    \"keep\": \"yes\"\n  }\n}",
+    "returned": "<undefined>",
+    "error": null
+  }
+}

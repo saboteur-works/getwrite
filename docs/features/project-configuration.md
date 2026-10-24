@@ -33,6 +33,7 @@ Meta/Derived storage
 Concurrency and durability concerns
 
 - All writers that modify files under `meta/` should use `withMetaLock(projectRoot, fn)` from `frontend/src/lib/models/meta-locks.ts` to serialize operations and avoid races.
+- `project.json` has its own per-file lock, `withFileLock` in `frontend/src/lib/models/file-lock.ts`, separate from `withMetaLock` and `acquireLock`. A read-modify-write of `project.json` goes through `updateProjectJson` (`project-json-write.ts`), which reads, mutates and atomically writes inside that lock, so the read is never older than the previous locked writer's write. `metadata-schema.ts` uses `updateProjectJson` too, after `acquireLock(projectRoot)`. The file lock is always innermost: nothing (no other lock, no second file lock) is taken inside it. Allowed outer locks are `acquireLock(*)` and `withMetaLock`. A test-only guard (`lock-guard.ts`, installed from `tests/setup.ts`) and a source scan (`tests/unit/project-json-lock-scan.test.ts`) check this under test; production has no guard. Unchanged contracts that can still overwrite with stale client data: `POST /api/project/features` replaces its lists wholesale.
 - Indexing runs asynchronously via the indexer queue: `frontend/src/lib/models/indexer-queue.ts`. Tests may call `flushIndexer()` to wait for the queue to drain.
 - For operations that require durable writes (e.g., export/import workflows), consider performing an `fsync` on the file descriptor after `writeFile` (not currently enabled by default).
 

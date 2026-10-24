@@ -25,7 +25,7 @@
  * clobbering the other.
  *
  * `applyDocumentMetadata` resolves this by doing its own read-modify-write:
- * it calls `readSidecar` first, merges only the `userMetadata.synopsis` /
+ * it reads the sidecar inside `mutateSidecar`, merges only the `userMetadata.synopsis` /
  * `userMetadata.notes` keys into whatever `userMetadata` (and other
  * top-level sidecar keys) already exists, and writes the merged result back.
  * This makes it safe to call **either before or after** Task 8's other
@@ -38,7 +38,7 @@
  * (or otherwise serialize them, e.g. one `withMetaLock`-style critical
  * section per resource) before moving to the next resource.
  */
-import { readSidecar, writeSidecar } from "../sidecar";
+import { mutateSidecar } from "../sidecar";
 import { convertRtfToTiptap } from "./rtf-to-tiptap";
 import type { UUID, MetadataValue } from "../types";
 
@@ -86,7 +86,7 @@ function isPlainObjectMetadata(
 /**
  * Reads the resource's existing sidecar (if any), merges in
  * `userMetadata.synopsis` / `userMetadata.notes` derived from `doc`, and
- * writes the merged sidecar back via `writeSidecar`. Every other existing
+ * writes the merged sidecar back via `mutateSidecar`. Every other existing
  * sidecar key — including other `userMetadata` fields — is preserved as-is.
  *
  * A document with neither `synopsis` nor `notesRtf` still performs the
@@ -99,39 +99,43 @@ export async function applyDocumentMetadata(
   resourceId: UUID,
   doc: ScrivenerDocumentMetadataInput,
 ): Promise<ApplyDocumentMetadataResult> {
-  const existing = await readSidecar(projectRoot, resourceId);
-  const base: Record<string, MetadataValue> = existing ?? {};
-  const existingUserMetadata = isPlainObjectMetadata(base.userMetadata)
-    ? base.userMetadata
-    : {};
-
-  const nextUserMetadata: Record<string, MetadataValue> = {
-    ...existingUserMetadata,
-  };
-
   const synopsis = doc.synopsis?.trim();
   const hasSynopsis = Boolean(synopsis && synopsis.length > 0);
-  if (hasSynopsis) {
-    nextUserMetadata.synopsis = doc.synopsis as string;
-  }
 
   let notesPlainText: string | undefined;
   if (doc.notesRtf !== undefined) {
     notesPlainText = convertRtfToTiptap(doc.notesRtf).plainText;
   }
   const hasNotes = Boolean(notesPlainText && notesPlainText.trim().length > 0);
-  if (hasNotes && notesPlainText !== undefined) {
-    nextUserMetadata.notes = notesPlainText;
-  }
 
-  const nextSidecar: Record<string, MetadataValue> = {
-    ...base,
-    userMetadata: nextUserMetadata,
+  // The stored sidecar is read inside the sink, so the merge is computed from
+  // the value that is then replaced.
+  const nextSidecar = await mutateSidecar(
+    projectRoot,
+    resourceId,
+    (existing) => {
+      const base: Record<string, MetadataValue> = existing ?? {};
+      const existingUserMetadata = isPlainObjectMetadata(base.userMetadata)
+        ? base.userMetadata
+        : {};
+      const nextUserMetadata: Record<string, MetadataValue> = {
+        ...existingUserMetadata,
+      };
+      if (hasSynopsis) {
+        nextUserMetadata.synopsis = doc.synopsis as string;
+      }
+      if (hasNotes && notesPlainText !== undefined) {
+        nextUserMetadata.notes = notesPlainText;
+      }
+      return { ...base, userMetadata: nextUserMetadata };
+    },
+  );
+
+  return {
+    sidecar: nextSidecar as Record<string, MetadataValue>,
+    hasSynopsis,
+    hasNotes,
   };
-
-  await writeSidecar(projectRoot, resourceId, nextSidecar);
-
-  return { sidecar: nextSidecar, hasSynopsis, hasNotes };
 }
 
 /** The feature toggles to enable, or an empty object when nothing qualifies. */

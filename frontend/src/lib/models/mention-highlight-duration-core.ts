@@ -10,12 +10,11 @@
  * errors are NOT caught here — they propagate up unchanged from whatever
  * throws inside (`readFile`/`atomicWriteFile` going through `io.ts`).
  */
-import path from "node:path";
-import { atomicWriteFile, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { updateProjectJson } from "./project-json-write";
+import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
-import { PROJECT_FILENAME } from "./project-config";
 
 export { InvalidProjectIdCoreError };
 
@@ -59,20 +58,17 @@ export async function setMentionHighlightDurationCore(
   ) {
     throw new InvalidMentionHighlightDurationError(seconds);
   }
-  const file = path.join(projectRoot, PROJECT_FILENAME);
   return withMetaLock(projectRoot, async () => {
-    const raw = await readFile(file, "utf8");
-    const project = JSON.parse(raw) as { config?: Record<string, unknown> };
-    const config = { ...(project.config ?? {}) };
-    if (seconds === null) delete config.mentionHighlightDurationSeconds;
-    else config.mentionHighlightDurationSeconds = seconds;
-    await atomicWriteFile(
-      file,
-      JSON.stringify({ ...project, config }, null, 2),
-      {
-        writeOptions: "utf8",
-        durable: process.env.GETWRITE_DURABLE_META === "1",
+    await updateProjectJson(
+      projectRoot,
+      (project) => {
+        const config: Record<string, unknown> = { ...(project.config ?? {}) };
+        if (seconds === null) delete config.mentionHighlightDurationSeconds;
+        else config.mentionHighlightDurationSeconds = seconds;
+        project.config = config as unknown as ProjectConfig;
+        return { result: undefined };
       },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
     );
     return {
       mentionHighlightDurationSeconds: seconds === null ? undefined : seconds,

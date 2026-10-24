@@ -129,14 +129,13 @@ describe("metadata read-modify-writes at once", () => {
     expect(lost).toEqual([]);
   }, 60000);
 
-  it("an editor-style save racing a schema change never leaves project.json unparseable", async () => {
-    // metadata-schema.ts holds locks.ts's lock, not withMetaLock, so the two
-    // writers are not serialized; atomic writes keep the file whole. Measured
-    // 2026-10-23: the schema change was lost in 20 of 20 repetitions in each
-    // of 9 runs (the editor save read project.json first and wrote back its
-    // older copy). That lost update is a known open defect and is not
-    // asserted here; only an unparseable file fails this test.
-    const unparseable: number[] = [];
+  it("an editor-style save racing a schema change keeps both changes", async () => {
+    // FR-10: project.json must parse and hold both the editor font size and
+    // the new field in every repetition. Written to fail on the lock code
+    // as it stood before Feature 92 (metadata-schema.ts holds locks.ts's
+    // lock, updateProjectJson holds withMetaLock); see
+    // specs/features/project-json-single-lock/experiments.md "FR-10 before".
+    const failures: string[] = [];
     for (let rep = 0; rep < 20; rep += 1) {
       const { projectId, projectRoot } = await newProject();
       await addGroup(projectRoot, {
@@ -156,12 +155,28 @@ describe("metadata read-modify-writes at once", () => {
         path.join(projectRoot, "project.json"),
         "utf8",
       );
+      let project: {
+        config?: {
+          editorConfig?: { body?: { fontSize?: string } };
+          metadataSchema?: { groups?: { fields?: { key?: string }[] }[] };
+        };
+      };
       try {
-        JSON.parse(raw);
+        project = JSON.parse(raw);
       } catch {
-        unparseable.push(rep);
+        failures.push(`${rep}:unparseable`);
+        continue;
+      }
+      if (project.config?.editorConfig?.body?.fontSize !== "19px") {
+        failures.push(`${rep}:fontSize`);
+      }
+      const hasMood = (project.config?.metadataSchema?.groups ?? []).some((g) =>
+        (g.fields ?? []).some((f) => f.key === "mood"),
+      );
+      if (!hasMood) {
+        failures.push(`${rep}:mood`);
       }
     }
-    expect(unparseable).toEqual([]);
+    expect(failures).toEqual([]);
   }, 60000);
 });

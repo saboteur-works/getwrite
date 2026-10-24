@@ -59,8 +59,12 @@ import {
 } from "./resource-initial-revision";
 import { loadResourceContent } from "../tiptap-utils";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
-import { readSidecar, writeSidecar } from "./sidecar";
-import { isLockedAccessError } from "./locked-access";
+import {
+  SIDECAR_UNCHANGED,
+  mutateSidecar,
+  readSidecar,
+  writeSidecar,
+} from "./sidecar";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
 import { getEffectiveResourceRefFieldKeys } from "./metadata-schema";
@@ -473,6 +477,48 @@ function omitServerDerivedKeys(
 }
 
 /**
+ * Reads the stored sidecar inside the sidecar sink, merges `buildUpdate`'s
+ * result over it (keeping `orderIndex` and `folderId` from the stored value),
+ * applies `clearKeys` and writes. A locked-access error propagates and nothing
+ * is written; any other read error reads as "no prior sidecar", as before.
+ */
+async function mergeSidecarUpdate(
+  projectRoot: string,
+  resourceId: string,
+  buildUpdate: (
+    existing: Record<string, MetadataValue> | null,
+  ) => Record<string, unknown>,
+  clearKeys?: string[],
+): Promise<void> {
+  await mutateSidecar(
+    projectRoot,
+    resourceId,
+    (existing) => {
+      const update = buildUpdate(existing);
+      const merged: Record<string, unknown> = {
+        ...(existing ?? {}),
+        ...update,
+        orderIndex:
+          existing?.orderIndex ??
+          (update.orderIndex as number | undefined) ??
+          0,
+        folderId:
+          existing?.folderId ??
+          (update.folderId as string | null | undefined) ??
+          null,
+      };
+      if (clearKeys) {
+        for (const key of clearKeys) {
+          delete merged[key];
+        }
+      }
+      return merged as Record<string, MetadataValue>;
+    },
+    { isReadTolerant: true },
+  );
+}
+
+/**
  * Merges an incoming sidecar update with the existing sidecar, preserving
  * structural fields (`orderIndex`, `folderId`) that only the reorder route
  * may change.
@@ -502,40 +548,7 @@ export async function updateSidecarCore(
 
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
-  const existing = await readSidecar(projectRoot, resourceId).catch(
-    (err: unknown) => {
-      // A locked-access failure (encrypted project, workspace locked, or no
-      // key for it) is not "no prior sidecar exists" — proceeding here would
-      // silently drop the existing sidecar on write. Only a genuine ENOENT
-      // (already resolved to `null` by `readSidecar` itself) reaches this
-      // catch as a non-error.
-      if (isLockedAccessError(err)) throw err;
-      return null;
-    },
-  );
-
-  const merged: Record<string, unknown> = {
-    ...(existing ?? {}),
-    ...update,
-    orderIndex:
-      existing?.orderIndex ?? (update.orderIndex as number | undefined) ?? 0,
-    folderId:
-      existing?.folderId ??
-      (update.folderId as string | null | undefined) ??
-      null,
-  };
-
-  if (clearKeys) {
-    for (const key of clearKeys) {
-      delete merged[key];
-    }
-  }
-
-  await writeSidecar(
-    projectRoot,
-    resourceId,
-    merged as Record<string, MetadataValue>,
-  );
+  await mergeSidecarUpdate(projectRoot, resourceId, () => update, clearKeys);
 
   // Task 14 (FR-12): un-declaring an entity (clearing `entityKind`) also
   // drops any saved entity-graph node position for it, unconditionally —
@@ -611,10 +624,13 @@ function readDismissedNoiseTerms(
  * (idempotent — dismissing the same term twice does not duplicate it);
  * `dismissed: false` removes it if present (also idempotent). Either way,
  * the resulting array — including an empty one, when the last dismissal is
- * cleared — is passed to `updateSidecarCore` as the new value of
- * `dismissedNoiseTerms`. An empty array is not `undefined`, so it survives
- * `JSON.stringify` and the merge intact; this is why no change to
- * `updateSidecarCore`'s `clearKeys` allowlist is needed here.
+ * cleared — is merged over the stored sidecar as the new value of
+ * `dismissedNoiseTerms` by `mergeSidecarUpdate`, the read-merge-write inside
+ * the sidecar sink. The array is computed from the sidecar read inside the
+ * sink. It does not go through `updateSidecarCore`, so that function's side
+ * effects (the entity-graph position cleanup) do not run here. An empty array
+ * is not `undefined`, so it survives the merge intact and no `clearKeys` entry
+ * is needed.
  */
 export async function setNoiseTermDismissedCore(
   projectId: string,
@@ -625,21 +641,15 @@ export async function setNoiseTermDismissedCore(
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
   const normalized = normalizeNoiseTerm(term);
 
-  const existing = await readSidecar(projectRoot, resourceId).catch(
-    (err: unknown) => {
-      if (isLockedAccessError(err)) throw err;
-      return null;
-    },
-  );
-
-  const current = readDismissedNoiseTerms(existing);
-  const next = dismissed
-    ? current.includes(normalized)
-      ? current
-      : [...current, normalized]
-    : current.filter((entry) => entry !== normalized);
-
-  await updateSidecarCore(projectId, resourceId, { dismissedNoiseTerms: next });
+  await mergeSidecarUpdate(projectRoot, resourceId, (existing) => {
+    const current = readDismissedNoiseTerms(existing);
+    const next = dismissed
+      ? current.includes(normalized)
+        ? current
+        : [...current, normalized]
+      : current.filter((entry) => entry !== normalized);
+    return { dismissedNoiseTerms: next };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -695,16 +705,10 @@ export async function renameResourceSidecarCore(
 ): Promise<Record<string, MetadataValue> | null> {
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
-  const existing = await readSidecar(projectRoot, resourceId);
-  if (existing === null) return null;
-
-  const updatedData: Record<string, MetadataValue> = {
-    ...existing,
-    name: newName,
-  };
-
-  await writeSidecar(projectRoot, resourceId, updatedData);
-  return updatedData;
+  const stored = await mutateSidecar(projectRoot, resourceId, (existing) =>
+    existing === null ? SIDECAR_UNCHANGED : { ...existing, name: newName },
+  );
+  return stored;
 }
 
 // ---------------------------------------------------------------------------
@@ -898,13 +902,18 @@ export async function reorderResourcesCore(
   // Update resource sidecars
   for (const ro of resourceOrder) {
     try {
-      const existing = await readSidecar(projectRoot, ro.id).catch(() => null);
-      const merged = {
-        ...(existing ?? {}),
-        orderIndex: ro.orderIndex,
-        folderId: ro.folderId ?? existing?.folderId ?? null,
-      };
-      await writeSidecar(projectRoot, ro.id, merged);
+      // The stored value is read inside the sink; an unreadable prior
+      // sidecar reads as "no prior sidecar" (isReadTolerant), as before.
+      await mutateSidecar(
+        projectRoot,
+        ro.id,
+        (existing) => ({
+          ...(existing ?? {}),
+          orderIndex: ro.orderIndex,
+          folderId: ro.folderId ?? existing?.folderId ?? null,
+        }),
+        { isReadTolerant: true },
+      );
     } catch (err) {
       // log and continue
       // eslint-disable-next-line no-console

@@ -1,5 +1,11 @@
 import { vi } from "vitest";
 import "@testing-library/jest-dom";
+import { installLockOrderGuard } from "./helpers/lockOrderGuard";
+
+// Feature 92 (FR-9): the lock-order guard is on for every test file, so any
+// lock taken inside a per-file lock body fails the test that did it. It is
+// installed here only; production code never installs it.
+installLockOrderGuard();
 
 // Global test setup for Vitest + Testing Library
 // Extend this file with any global mocks or helpers needed across tests.

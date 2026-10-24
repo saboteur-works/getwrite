@@ -9,12 +9,12 @@
  * there is no server-timezone or UTC fallback, an over-long window is rejected
  * rather than clamped, and the window is never a path component.
  */
-import path from "node:path";
-import { atomicWriteFile, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { updateProjectJson } from "./project-json-write";
+import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
-import { loadProjectConfig, PROJECT_FILENAME } from "./project-config";
+import { loadProjectConfig } from "./project-config";
 import { readWritingLogEntries } from "./writing-log";
 
 export { InvalidProjectIdCoreError };
@@ -177,20 +177,17 @@ export async function setDailyWordGoalCore(
   if (goal !== null && (!Number.isInteger(goal) || goal < 0)) {
     throw new InvalidDailyWordGoalError(goal);
   }
-  const file = path.join(projectRoot, PROJECT_FILENAME);
   return withMetaLock(projectRoot, async () => {
-    const raw = await readFile(file, "utf8");
-    const project = JSON.parse(raw) as { config?: Record<string, unknown> };
-    const config = { ...(project.config ?? {}) };
-    if (goal === null) delete config.dailyWordGoal;
-    else config.dailyWordGoal = goal;
-    await atomicWriteFile(
-      file,
-      JSON.stringify({ ...project, config }, null, 2),
-      {
-        writeOptions: "utf8",
-        durable: process.env.GETWRITE_DURABLE_META === "1",
+    await updateProjectJson(
+      projectRoot,
+      (project) => {
+        const config: Record<string, unknown> = { ...(project.config ?? {}) };
+        if (goal === null) delete config.dailyWordGoal;
+        else config.dailyWordGoal = goal;
+        project.config = config as unknown as ProjectConfig;
+        return { result: undefined };
       },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
     );
     return { dailyWordGoal: goal === null ? undefined : goal };
   });

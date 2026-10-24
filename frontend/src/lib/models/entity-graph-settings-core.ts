@@ -21,8 +21,10 @@
  * "ignored... rather than erroring" contract.
  */
 import path from "node:path";
-import { atomicWriteFile, readFile } from "./io";
+import { readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { updateProjectJson } from "./project-json-write";
+import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { PROJECT_FILENAME } from "./project-config";
@@ -121,20 +123,17 @@ export async function setEntityGraphSettingsCore(
     throw new InvalidEntityGraphFocalHopRadiusError(hopRadius);
   }
   const filteredTypes = filterToKnownConnectionTypes(connectionTypes);
-  const file = path.join(projectRoot, PROJECT_FILENAME);
   return withMetaLock(projectRoot, async () => {
-    const raw = await readFile(file, "utf8");
-    const project = JSON.parse(raw) as { config?: Record<string, unknown> };
-    const config = { ...(project.config ?? {}) };
-    config.entityGraphConnectionTypes = filteredTypes;
-    config.entityGraphFocalHopRadius = hopRadius;
-    await atomicWriteFile(
-      file,
-      JSON.stringify({ ...project, config }, null, 2),
-      {
-        writeOptions: "utf8",
-        durable: process.env.GETWRITE_DURABLE_META === "1",
+    await updateProjectJson(
+      projectRoot,
+      (project) => {
+        const config: Record<string, unknown> = { ...(project.config ?? {}) };
+        config.entityGraphConnectionTypes = filteredTypes;
+        config.entityGraphFocalHopRadius = hopRadius;
+        project.config = config as unknown as ProjectConfig;
+        return { result: undefined };
       },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
     );
     return {
       entityGraphConnectionTypes: filteredTypes,

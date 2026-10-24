@@ -1,5 +1,7 @@
 // Lightweight per-key async mutex.
 // Usage: const release = await acquireLock(key); try { ... } finally { release(); }
+import { getLockGuard } from "./lock-guard";
+
 const queues = new Map<string, Array<() => void>>();
 
 function makeRelease(key: string): () => void {
@@ -18,6 +20,7 @@ function makeRelease(key: string): () => void {
 }
 
 export async function acquireLock(key: string): Promise<() => void> {
+  getLockGuard()?.beforeLock("acquireLock", key);
   return new Promise<() => void>((resolve) => {
     const q = queues.get(key);
     if (!q) {

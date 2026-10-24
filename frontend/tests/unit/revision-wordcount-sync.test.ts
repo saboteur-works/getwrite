@@ -1,13 +1,26 @@
+import path from "node:path";
 import { describe, it, expect, beforeEach } from "vitest";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
-import { setStorageAdapter, readFile } from "../../src/lib/models/io";
+import {
+  getStorageAdapter,
+  setStorageAdapter,
+  readFile,
+} from "../../src/lib/models/io";
 import { generateUUID } from "../../src/lib/models/uuid";
 import {
   createRevision,
   updateRevisionInPlace,
 } from "../../src/lib/models/revision-core";
-import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
+import {
+  mutateSidecar,
+  readSidecar,
+  sidecarPathForProject,
+  writeSidecar,
+} from "../../src/lib/models/sidecar";
+import { acquireLock } from "../../src/lib/models/locks";
+import { withMetaLock } from "../../src/lib/models/meta-locks";
 import { countWords } from "../../src/lib/word-count";
+import { outsideFileLock } from "../helpers/lockOrderGuard";
 
 /**
  * A resource's `wordCount` lives in its sidecar and is what list views use to
@@ -126,5 +139,91 @@ describe("updateRevisionInPlace keeps the sidecar's wordCount in sync", () => {
 
     const sidecar = await readSidecar(projectRoot, resourceId);
     expect(sidecar?.updatedAt).toBe(result.updatedAt);
+  });
+  it("keeps a metadata edit that lands while the sidecar update is in flight", async () => {
+    // Feature 92 Task 18: the sidecar is read inside its lock, so an edit that
+    // arrives between the sidecar read and write queues behind it instead of
+    // being overwritten. The edit is started from the first sidecar read.
+    const revisionId = await canonicalRevisionId();
+    const base = getStorageAdapter();
+    const sidecarPath = sidecarPathForProject(projectRoot, resourceId);
+    let isArmed = true;
+    let edit: Promise<unknown> = Promise.resolve();
+    setStorageAdapter({
+      ...base,
+      readFile: (async (p: string, e?: BufferEncoding) => {
+        const result = await base.readFile(p, e);
+        if (isArmed && p === sidecarPath) {
+          isArmed = false;
+          // A separate request, not a call made from inside the sidecar lock.
+          edit = outsideFileLock(() =>
+            mutateSidecar(projectRoot, resourceId, (current) => ({
+              ...(current ?? {}),
+              userMetadata: { status: "draft" },
+            })),
+          );
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+        return result;
+      }) as typeof base.readFile,
+    });
+
+    await updateRevisionInPlace(
+      projectRoot,
+      resourceId,
+      revisionId,
+      JSON.stringify(doc("one two three")),
+    );
+    await edit;
+
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    expect(sidecar?.userMetadata).toEqual({ status: "draft" });
+    expect(sidecar?.wordCount).toBe(3);
+    expect(sidecar?.name).toBe("Chapter One");
+  });
+  it("takes revision-content, then withMetaLock, for the sidecar update", async () => {
+    // Feature 92 Task 18: the allowed edge is acquireLock(revision-content)
+    // -> withMetaLock. With the meta lock held elsewhere the save waits on it
+    // while still holding the revision-content lock.
+    const revisionId = await canonicalRevisionId();
+    let releaseMeta: () => void = () => undefined;
+    const metaHeld = new Promise<void>((resolve) => {
+      releaseMeta = resolve;
+    });
+    const metaAcquired = new Promise<void>((resolve) => {
+      void withMetaLock(projectRoot, async () => {
+        resolve();
+        await metaHeld;
+      });
+    });
+    await metaAcquired;
+
+    let isSaved = false;
+    const save = updateRevisionInPlace(
+      projectRoot,
+      resourceId,
+      revisionId,
+      JSON.stringify(doc("one two")),
+    ).then(() => {
+      isSaved = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(isSaved).toBe(false);
+
+    let isContentLockFree = false;
+    const contentLock = acquireLock(
+      `revision-content:${path.resolve(projectRoot)}:${resourceId}`,
+    ).then((release) => {
+      isContentLockFree = true;
+      release();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(isContentLockFree).toBe(false);
+
+    releaseMeta();
+    await save;
+    await contentLock;
+    expect(isContentLockFree).toBe(true);
+    expect((await readSidecar(projectRoot, resourceId))?.wordCount).toBe(2);
   });
 });
