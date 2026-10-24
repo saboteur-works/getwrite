@@ -66,7 +66,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-15 (extended), FR-22 (measurement half). Estimate raised from 3 to 5 at the Gate 5 re-gate for the two added measurements; the two added measurements satisfy the OQ-9 and OQ-10 decisions. They must not change `trash.ts` or `updateSidecarCore` behaviour. Measurement before lock code, as for Tasks 2 and 4. The script lives outside the suite as Task 2's does. Temp directories only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Sidecar race tests as suite tests, red on the unchanged tree
 **What:** Turn the three FR-15 pairs into suite tests of 100 repetitions asserting both changes are kept, and record that the two reproducing pairs fail on the unchanged tree.

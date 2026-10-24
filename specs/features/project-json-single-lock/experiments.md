@@ -177,3 +177,41 @@ Task 4. Run on 2026-10-23 on branch `fix/project-json-write-lock`, lock code unc
 - Other tests in the file (`a status change survives a canonical save of the same resource`, `concurrent heading and body saves both reach project.json`): passed in all 9 runs (`Tests 1 failed | 2 passed (3)`). `tsc --noEmit` and ESLint on the file reported nothing.
 - Difference from the comment this replaced (schema change lost in 20 of 20 repetitions in each of 9 runs): in these 9 runs the font size was the lost change in 161 of 180 repetitions and the field in 19. Not explained here. Hypothesis, untested: which writer reads first varies with scheduling; an experiment that logs read and write order per writer per repetition would settle it. The earlier comment's measurement may also have used a different assertion.
 - Status: red by design until Task 15.
+
+## FR-15 sidecar races, remaining families
+
+Task 5. Run on 2026-10-23 on branch `fix/project-json-write-lock`, source unchanged (only `scripts/fr15-sidecar-races.test.ts` was extended). Inside the sandbox, Vitest v4.1.6, experiment-only config.
+
+- Command, from `frontend/`: `timeout 600 npx vitest run --config ../specs/features/project-json-single-lock/scripts/vitest.fr15.config.ts -t "remaining|itself|stale" < /dev/null`. Exit 0, 3 tests passed (they record counts and do not assert on them), 10.0 s. Log: `/private/tmp/claude-501/-Users-jedaisaboteur-Repositories-getwrite/823016bf-e4d6-40dc-80e0-e17d7324f2cb/scratchpad/t5-run.log`. Result files: `/tmp/claude-501/fr15-families-results.json`, `fr15-noise-self-results.json`, `fr15-oq9-oq10-results.json`.
+- Design as in the Task 2 section (fresh project per repetition, 0-3 ms start offset per repetition, `Promise.allSettled`, sidecar read back from disk), except that each repetition's project directory is a UUID under the batch root and `GETWRITE_PROJECTS_DIR` is set to the batch root for the run, so the `projectId` cores resolve it. 100 repetitions per run. The metadata save is `readSidecar` then `writeSidecar` setting top-level `marker: "after"`. The family changes: `setNoiseTermDismissedCore` adds `dismissedNoiseTerms: ["term"]`; `renameResourceSidecarCore` sets `name: "renamed"`; `reorderResourcesCore` (with `projectRootOverride`, one resource entry) sets `orderIndex: 5` (from 0); `nullifyResourceRefs` clears `userMetadata.ref` (from `{id: <deletedId>, name: "Del"}` to `id: null`); `relinkResourceRefs` (not exported; driven through `restoreResource` of a trashed resource with a written ref record) restores `userMetadata.ref.id` (from `null`); `applyDocumentMetadata` sets `userMetadata.synopsis`. Counts are per writer change as in Task 2 (a repetition can lose 2).
+- Fixture note: the first relink attempt rejected in every repetition (a `ZodError` from `validateResource`, reached through `getLocalResources` in `resolveRestoreName`, because the referencing sidecar lacked `slug` and `type`); the referencing sidecar of the family runs now carries `slug`, `type: "text"`, `name`, `orderIndex`, `folderId`, `createdAt`. The figures below are from the run after that fix.
+
+| Pair (family against metadata save) | Repetitions | Lost changes | of which family change | of which metadata-save change | Unparseable files | Rejected promises | Temp directory |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `setNoiseTermDismissedCore` | 100 | 25 | 0 | 25 | 0 | 0 | `/tmp/claude-501/gw-fr15-noise-sidecar-FycF9R` |
+| `renameResourceSidecarCore` | 100 | 27 | 19 | 8 | 0 | 0 | `/tmp/claude-501/gw-fr15-rename-sidecar-AzjN5s` |
+| `reorderResourcesCore` sidecar loop | 100 | 26 | 1 | 25 | 0 | 0 | `/tmp/claude-501/gw-fr15-reorder-sidecar-CckpeU` |
+| `nullifyResourceRefs` | 100 | 26 | 1 | 25 | 0 | 0 | `/tmp/claude-501/gw-fr15-nullify-sidecar-GMED5o` |
+| `relinkResourceRefs` (via `restoreResource`) | 100 | 0 | 0 | 0 | 0 | 0 | `/tmp/claude-501/gw-fr15-relink-sidecar-zSY1jv` |
+| `applyDocumentMetadata` | 100 | 28 | 24 | 4 | 0 | 0 | `/tmp/claude-501/gw-fr15-apply-sidecar-gQKBqw` |
+
+`setNoiseTermDismissedCore` against itself, terms `alpha` and `beta` (the FR-21 cross-function case), 100 repetitions: 26 terms missing from the final `dismissedNoiseTerms` (of 200 terms written), 0 unparseable, 0 rejected. Temp directory `/tmp/claude-501/gw-fr15-noise-self-pHtyXq`.
+
+### OQ-9: stale client `updatedAt` (sequential, no overlap)
+
+Per repetition: the client copy is read (`updatedAt` 1970 value), `updateRevisionInPlace` runs to completion (canonical save), then `updateSidecarCore` is called with `{...clientCopy, name: "edited"}`. 100 repetitions. The canonical save left `updatedAt` unchanged in 0 repetitions (it advanced in all 100). The stored `updatedAt` equalled the older client value afterwards in 100 of 100 repetitions. 0 unparseable, 0 rejected. Temp directory `/tmp/claude-501/gw-fr15-stale-updatedat-Zjn4kR`.
+
+### OQ-10: `updateSidecarCore` and `softDeleteResource` for the same resource
+
+Per repetition: a resource with a live sidecar (carrying `userMetadata`), then `softDeleteResource`, and `updateSidecarCore(projectId, id, {name: "edited"})`. "Live sidecar present" is `meta/resource-<id>.meta.json` existing afterwards. 100 repetitions each.
+
+| Run | Live sidecar present afterwards | Trashed copy present | Both present | Neither present | Live sidecar without `userMetadata` | Unparseable | Rejected | Temp directory |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Sequential (`softDeleteResource` completes, then `updateSidecarCore`) | 100 | 100 | 100 | 0 | 100 | 0 | 0 | `/tmp/claude-501/gw-fr15-trash-sequential-wyyvlt` |
+| Overlapping (alternating which starts first; the other delayed 0-3 ms) | 46 | 100 | 46 | 0 | 44 | 0 | 0 | `/tmp/claude-501/gw-fr15-trash-overlapping-S55tJw` |
+
+Overlapping run by start order: delete started first (50 repetitions): live sidecar present in 46; update started first (50 repetitions): live sidecar present in 0.
+
+### Closing line
+
+Lost update reproduced: YES for `setNoiseTermDismissedCore`, `renameResourceSidecarCore`, `reorderResourcesCore`'s sidecar loop, `nullifyResourceRefs` and `applyDocumentMetadata`; NO for `relinkResourceRefs` (0 of 100 in this construction), and `setNoiseTermDismissedCore` against itself lost 26 terms. Not in this section's evidence: why `relinkResourceRefs` did not lose a change; hypothesis, untested: its write lands after the metadata save has finished within the 0-3 ms offsets used; an experiment that logs the time of each writer's read and write per repetition, or delays the metadata save by tens of milliseconds, would settle it. No result changes scope (FR-19 covers every read-modify-write). The OQ-10 measurement feeds the follow-up POS note on the trash paths (F-4); the lead creates it. No source, `trash.ts` or `updateSidecarCore` behaviour was changed.
