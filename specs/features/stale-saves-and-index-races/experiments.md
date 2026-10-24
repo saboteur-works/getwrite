@@ -96,7 +96,35 @@ Keys any sender sets: `entityKind`, `aliases`, `wordCountGoal`, `resourceSubtype
 
 ## E-5 Features-route senders, two quick edits
 
-(empty; Task 4)
+Command (from `frontend/`, sandboxed): `E5_REPS=20 E5_RESULT_OUT=<scratchpad>/e5-result.json pnpm exec vitest run --config ../specs/features/stale-saves-and-index-races/scripts/vitest.e5.config.ts`. Script: `specs/features/stale-saves-and-index-races/scripts/e5-features-route-senders.test.tsx` (config `vitest.e5.config.ts`; not run by the suite). Run 2026-10-24 14:39 MDT on `fix/stale-saves-and-index-races`, tree unchanged apart from the new `specs/` scripts, Vitest 4.1.6, Node v24.15.0. Temp directory: `/tmp/claude-501/f93-e5-quyw5q` (one fresh project directory per repetition, removed after the run). Result: 1 test passed, 6 cells of 20 repetitions.
+
+Construction (MEASURED, all three senders): the real component mounted with the real store and the real `postFeatureConfig` HTTP transport; `fetch` replaced by a controlled-delay stub that builds a `NextRequest` and calls the real `POST` in `app/api/project/features/route.ts` (which runs `updateFeatureConfig`, then `updateProjectJson`) against a temp project. The first save is held while the second edit is made from the same mounted component, then the second request completes, then the first is released. Two hold points, each 20 repetitions per sender:
+- `after-route`: the first request reaches the route and is written; its response is held until the second request has completed.
+- `before-route`: the first request is held before it reaches the route; the second reaches the route first.
+
+Edits: `RelationshipTypesSettings` add "Alpha" then add "Beta" (start: no persisted list, default vocabulary of 7). `ProjectFeatureToggles` tick Synopsis then Notes (start: `{entities: true}`). `OrganizerCardBodySettings` start `{source: "text-excerpt", excerptLength: 200}`, set the excerpt length to 300 then to 400.
+
+"Holds both" is: relationship types, stored list is the 7 defaults plus Alpha and Beta; features, stored map has `entities`, `synopsis` and `notes` all true; organizer card body, stored block equals the second edit's block `{text-excerpt, 400}` (the block is replaced wholesale, so the second edit's block is the only one that includes both). "Store" is the client Redux project after all requests and responses settled.
+
+| Sender (source line) | Hold point | Requests per rep | Reps whose stored block holds both | Reps whose client store holds both | Unparseable project.json | Non-2xx responses |
+| --- | --- | --- | --- | --- | --- | --- |
+| `RelationshipTypesSettings.tsx` `persist` `:67-82` | after-route | 2 (20 of 20) | 0 of 20 | 0 of 20 | 0 | 0 |
+| same | before-route | 2 (20 of 20) | 0 of 20 | 0 of 20 | 0 | 0 |
+| `ProjectFeatureToggles.tsx:100-125` | after-route | 2 (20 of 20) | 0 of 20 | 0 of 20 | 0 | 0 |
+| same | before-route | 2 (20 of 20) | 0 of 20 | 0 of 20 | 0 | 0 |
+| `OrganizerCardBodySettings.tsx:121` | after-route | 2 (20 of 20) | 20 of 20 | 0 of 20 | 0 | 0 |
+| same | before-route | 2 (20 of 20) | 0 of 20 | 0 of 20 | 0 | 0 |
+
+Observed final values (first repetition of each cell, from the result JSON). Relationship types, after-route: stored list is the 7 defaults plus "Beta" only; the second request body carried the 7 defaults plus "Beta" (no "Alpha"). Features, after-route: stored `{notes: true, entities: true}` (no `synopsis`); the second request body carried `{entities: true, notes: true}`. Features, before-route: stored `{synopsis: true, entities: true}`. Organizer, after-route: stored `{text-excerpt, 400}`, client store `{text-excerpt, 300}` (the first response mirrored last). Organizer, before-route: stored `{text-excerpt, 300}`; the second request carried 400.
+
+`SubtypesSettings.tsx`: READ, not run. It carries `isSaving` (`:46`) and returns early or disables its controls while true (`:82`, `:105`, `:117`, `:149`, `:158`, `:167`, `:214`).
+
+MEASURED limits of this construction: the stub holds a fetch, not the network; the hold points are two of the possible orderings; the organizer sender was driven by two edits to the excerpt-length field only (the length field is not rendered until the stored source is text-excerpt); the "holds both" definition for the organizer block is the one stated above. A non-reproduction is not evidence of safety under other timing (FR-2).
+
+Verdicts per sender (primary hold point `after-route`; `before-route` stated beside it):
+- `RelationshipTypesSettings`: reproduced a loss (stored block holds both in 0 of 20 at both hold points).
+- `ProjectFeatureToggles`: reproduced a loss (stored block holds both in 0 of 20 at both hold points).
+- `OrganizerCardBodySettings`: did not reproduce a loss at `after-route` (stored block is the second edit in 20 of 20; the client store ended on the first edit's block in 20 of 20); at `before-route` the stored block was the first edit's block in 20 of 20 (second edit not stored), a different ordering from the one the spec describes.
 
 ## E-6 Editor config, overlapping and older-copy saves
 
