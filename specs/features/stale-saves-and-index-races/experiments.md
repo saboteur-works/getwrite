@@ -411,3 +411,13 @@ Date 2026-10-24. Branch `fix/stale-saves-and-index-races`.
 - Task 8 flagged no caller holding `withMetaLock` for the same root, so no un-nesting is planned. Tasks 20/21 must not wrap `persistMentionIndex`/`persistBacklinks` callers in a new outer lock without an unlocked write helper.
 - Gate (Tasks 6/7 reproduction): not consulted; the test is added as a regression guard and the `src/` hook is test-inactive.
 - Verified from `frontend/`: `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings; `pnpm build` completed. `pnpm test:ci`: first full run 2 failed (the wordcount test above, fixed; and `projectFeatureToggles.test.tsx` in-flight guard timed out at 5000 ms), second full run 1 failed (the same toggles test, timeout); that file passes alone (16/16) before and after the change and does not reference locks. Cause of the timeout not established.
+
+## Test timeout follow-up (Tasks 15-16)
+
+MEASURED (no cause established):
+
+- The three 20-repetition in-flight guard tests, run alone with the vitest verbose reporter (default timeout 5000 ms): `projectFeatureToggles.test.tsx` 4874 ms, 5004 ms (failed once at the timeout, passed once), 4166 ms; `organizerCardBodySettings.test.tsx` 3233, 3166, 3138 ms; `RelationshipTypesSettings.test.tsx` 3761, 3842, 3853 ms.
+- Change: each of the three tests now has an explicit 30000 ms third-argument timeout. Repetitions (20) and assertions are unchanged.
+- After the change, `pnpm test:ci` (once): 676 files passed, 8255 passed, 2 expected fail, 1 skipped, 0 failed; duration 126 s. Per-test durations under load were not recorded.
+- `EntityGraphSettingsPanel.test.tsx` "persists a changed hop radius" did not fail in this run.
+- `pnpm typecheck` clean; `pnpm lint` 0 errors / 392 warnings.

@@ -268,7 +268,7 @@ describe("RelationshipTypesSettings", () => {
         vi.restoreAllMocks();
         cleanup();
       }
-    });
+    }, 30000);
 
     it("marks the section busy and disables the controls while saving", async () => {
       setup({ relationshipTypes: ["Mentor", "Rival"] });

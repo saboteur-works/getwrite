@@ -299,7 +299,7 @@ describe("OrganizerCardBodySettings", () => {
         vi.restoreAllMocks();
         cleanup();
       }
-    });
+    }, 30000);
 
     it("marks the section busy while saving", async () => {
       setup({ organizerCardBody: { source: "none" } });
