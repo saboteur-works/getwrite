@@ -275,7 +275,46 @@ Result: the 2026-10-24 finding is confirmed (no caller relies on a to-be-dropped
 
 ## FR-17 callers of the functions FR-15 and FR-16 change
 
-(empty; Task 8)
+Label: READ, not run. Date 2026-10-24. Branch `fix/stale-saves-and-index-races`. Method: `grep -rnE` for the seven names, `withMetaLock`, `enqueueIndex`, `enqueueEntityRescan`, `softDeleteResource`, `purgeResource`, `restoreResource`, the three `rebuildIndexes`/importer entry points, over `frontend/`, `cli/`, `electron/` (`.ts`/`.tsx`, tests excluded); then each callee chain and each `withMetaLock` holder body read. Name grep is medium confidence; the holder check below was done by reading imports and bodies, not by name alone.
+
+Facts about the callees themselves (relevant to un-nesting):
+- `persistMentionIndex` takes `withMetaLock(projectRoot)` around the write only (`mention-index.ts:65`); the load is outside it. `removeResourceFromMentionIndex` (`mention-index.ts:100-108`) loads outside any lock, then calls `persistMentionIndex`.
+- `persistBacklinks` takes `withMetaLock(projectRoot)` around the write only (`backlinks.ts:248`). `removeResourceFromBacklinks` (`backlinks.ts:276-286`) loads outside any lock, then calls `persistBacklinks`. `computeBacklinks` takes no lock.
+- `meta-locks.ts:14-41` chains each call after the stored tail; an outer `withMetaLock` whose `fn` calls `persistMentionIndex` or `persistBacklinks` (directly or through the two `remove*` functions) is a nested call on the same key. Today no outer holder does (table below).
+
+Writer call sites (project root = same root in every row). "Holds": withMetaLock held by the caller or a function above it, for the same root.
+
+| Writer | Caller (file:line) | Holds `withMetaLock`? |
+|---|---|---|
+| `removeResourceFromBacklinks` | `trash.ts:334` in `softDeleteResource` | no |
+| `removeResourceFromMentionIndex` | `trash.ts:335` in `softDeleteResource` | no |
+| `removeResourceFromBacklinks` | `trash.ts:1279` in `purgeResourceSteps.removeIndexEntries` | no |
+| `removeResourceFromMentionIndex` | `trash.ts:1280` in `purgeResourceSteps.removeIndexEntries` | no |
+| `persistBacklinks` | `indexer-queue.ts:274` in `runTask` (backlinks step) | no |
+| `persistMentionIndex` | `indexer-queue.ts:298` in `runTask` (mention step) | no |
+| `persistMentionIndex` / `rescanEntityAcrossProject` | `indexer-queue.ts:427` in `rescanEntityAcrossProject`; the function is called only at `indexer-queue.ts:460` in `enqueueEntityRescan`, inside `runForTenant` | no |
+| `persistBacklinks` | `backlinks-watcher.ts:53` in the debounced timer in `startBacklinkWatcher`, inside `runForTenant` | no |
+| `persistBacklinks` | `scrivener/import-scrivener-project.ts:784` in `rebuildIndexes` | no |
+| `persistMentionIndex` | `scrivener/import-scrivener-project.ts:814` in `rebuildIndexes` | no |
+| `persistBacklinks` | `plaintext/import-plaintext-project.ts:524` in `rebuildIndexes` | no |
+| `persistMentionIndex` | `plaintext/import-plaintext-project.ts:554` in `rebuildIndexes` | no |
+| `persistBacklinks` | `docx/import-docx-project.ts:834` in `rebuildIndexes` | no |
+| `persistMentionIndex` | `docx/import-docx-project.ts:864` in `rebuildIndexes` | no |
+| `persistBacklinks` | `cli/src/commands/reindex.ts:111`, inside `runForTenant` | no |
+| `persistMentionIndex` | `cli/src/commands/reindex.ts:152`, inside `runForTenant` | no |
+
+Callers' callers (chain up to the entry point; "no" means no `withMetaLock` on the chain):
+- `softDeleteResource` (`trash.ts:320`): called at `resource-crud-core.ts:379` (`deleteResourceCore`; callers `app/api/resource/[resource-id]/route.ts:43`, `.../delete/route.ts:36`, `store/transport/native-resource-backend.ts:117`) and at `trash.ts:625` (`softDeleteFolder`; callers `resource-crud-core.ts:715` `softDeleteFolderCore`, then `app/api/folder/[folder-id]/delete/route.ts:43`, `native-resource-backend.ts:123`). No `withMetaLock` in `deleteResourceCore`, `softDeleteFolder` or their callers. Result: no.
+- `purgeResourceSteps.removeIndexEntries`: called only through `purgeResource` (`trash.ts:1347`, step list at `:1355`); `purgeResource` called from `trash.ts:1436` (folder purge) and `trash-core.ts:152` (`purgeOneCore`; callers `trash-core.ts:193`, `native-trash-backend.ts:141`). No `withMetaLock` on the chain. Result: no.
+- `runTask` (`indexer-queue.ts:246`): called only at `indexer-queue.ts:334` in `processQueue`, which `enqueueIndex` starts with `void processQueue()` (`:361`). `enqueueIndex` callers: `sidecar.ts:224` (inside `setImmediate` in `enqueueAfterSidecarWrite`, itself called at `sidecar.ts:270` and `:296` after `runSidecarWrite` returned, so outside `withMetaLock`), `tiptap-utils.ts:29` (inside `setImmediate`), `revision-manager.ts:65` (`void`, not awaited; holds the revision-content `acquireLock`, not `withMetaLock`), `inverted-index.ts:257` (`void`, in `reindexMissingResources`, outside `updateIndex`'s lock), `trash.ts:973` (`await`, in `restoreResource`; no `withMetaLock` in `trash.ts`). Result: no.
+- `enqueueEntityRescan`: sole caller `sidecar.ts:229`, same `setImmediate` callback as above, so outside `withMetaLock`. Result: no.
+- `rebuildIndexes` (three importers): called at `scrivener/import-scrivener-project.ts:512`, `plaintext/import-plaintext-project.ts:463`, `docx/import-docx-project.ts:775`, each inside the importer's write phase; importers called from `cli/src/commands/project.ts:206`, `:283`, `:329`, `electron/worker/scrivener-import-worker.ts:43`, `electron/worker/docx-import-worker.ts:46`. No `withMetaLock`, `acquireLock` or `withFileLock` token in `scrivener/`, `plaintext/`, `docx/`, `cli/`, `electron/` sources. The scrivener importer wraps its write phase in `withIndexingSuspended` (`import-scrivener-project.ts:304`), which sets `isStopped` so `enqueueIndex` returns at once; it takes no lock. Result: no.
+- `startBacklinkWatcher`: started by `ensureBacklinkWatcher` (`indexer-queue.ts:65-79`), called at `indexer-queue.ts:357` in `enqueueIndex`; skipped under VITEST/NODE_ENV=test (`:75`). Result: no.
+- `reindex` (`cli/src/commands/reindex.ts`): `runForTenant` wrapper only. Result: no.
+
+`withMetaLock` holders (every call site in `frontend/`, bodies read for calls into the writers or `trash.ts`/`indexer-queue.ts`): `project-noise-words-core.ts:119`, `entity-graph-kind-styles.ts:168`, `entity-graph-settings-core.ts:126`, `resource-crud-core.ts:880` (folder reorder; body reads and writes `folder.json` only), `sidecar.ts:179` (`runSidecarWrite`; `mutate` callbacks must call no lock, and index enqueue happens after it returns), `inverted-index.ts:104` (`updateIndex`; body is `loadIndex`, `change`, `saveIndex`), `resource-templates.ts:133`, `:598`, `:736`, `:786` (file reads/writes), `mention-highlight-duration-core.ts:61`, `diagnostics-index.ts:83`, `saved-queries.ts:109`, `:127`, `writing-log-core.ts:180`, `writing-log.ts:149`, `previews.ts:42`, `entity-relationships.ts:171`, `:206`, `:233`, `global-noise-words.ts:159`, `entity-graph-positions.ts:125`, `:168`, `word-count-goal-core.ts:53`, `crypto/name-index.ts:166`, plus `mention-index.ts:65` and `backlinks.ts:248` (the callees' own write locks). Import lines checked: none of these files other than `resource-crud-core.ts` (imports `trash`, not called inside its lock) and the two dynamic `import("./indexer-queue")` in `sidecar.ts:221` and `inverted-index.ts:249` import `trash`, `backlinks`, `mention-index` or `indexer-queue`.
+
+Result: no caller of the seven writers was found holding `withMetaLock` for the same project root, directly or through a callee. Flagged for un-nesting in Task 20 or 21: none found. Observations for Tasks 20 and 21 (facts, not flags): the writers' own `persistMentionIndex` (`mention-index.ts:65`) and `persistBacklinks` (`backlinks.ts:248`) already take `withMetaLock`, so a new outer lock around `removeResourceFromMentionIndex`, `removeResourceFromBacklinks`, `rescanEntityAcrossProject` or `runTask`'s two steps that still calls those two `persist*` functions would be a nested call. `trash.ts:973` awaits `enqueueIndex` (queue drain, polled every 50 ms); no lock is held there today. Not covered: dynamic dispatch through `native-*-backend.ts` `run(...)` wrappers was read at the call lines only; tests and `projects/` not searched.
 
 ## FR-20 test-edit list
 
