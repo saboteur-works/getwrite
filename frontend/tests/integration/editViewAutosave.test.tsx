@@ -92,7 +92,6 @@ function createRevisionEntry(resourceId: string): RevisionEntry {
     resourceId,
     versionNumber: 1,
     createdAt: new Date().toISOString(),
-    filePath: "/tmp/rev-canonical.json",
     isCanonical: true,
     displayName: "Canonical",
     isProtected: false,

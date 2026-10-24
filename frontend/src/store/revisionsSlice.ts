@@ -31,7 +31,7 @@ import {
 } from "./revision-transport-service";
 import { setSelectedResourceId } from "./resourcesSlice";
 import type { RootState } from "./store";
-import type { Revision } from "../lib/models/types";
+import type { RevisionSummary } from "../lib/models/types";
 
 export type { RevisionEntry } from "./revision-normalization";
 
@@ -83,7 +83,7 @@ interface SetPreservePayload extends ResourceAndRevisionPayload {
 
 interface SetPreserveResult extends ResourceAndRevisionPayload {
   /** Revision as returned by the server, carrying the persisted metadata. */
-  revision: Revision;
+  revision: RevisionSummary;
 }
 
 interface LoadRevisionsResult {
