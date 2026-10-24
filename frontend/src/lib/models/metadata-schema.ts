@@ -13,7 +13,7 @@ import path from "node:path";
 import { acquireLock } from "./locks";
 import { withFileLock } from "./file-lock";
 import { PROJECT_FILENAME } from "./project-config";
-import { readSidecar, writeSidecar } from "./sidecar";
+import { SIDECAR_UNCHANGED, mutateSidecar, readSidecar } from "./sidecar";
 import { canonicalValueKey } from "./field-values";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import { dedupeSubtypeLabels } from "./field-subtype-scope";
@@ -311,8 +311,11 @@ function userMetadataOf(
 /**
  * Iterates every resource sidecar under `meta/`, invoking `mutate` with each
  * sidecar's `userMetadata` map; when `mutate` returns `true` the sidecar is
- * written back. Sidecars that are missing, unreadable, or have no object
- * `userMetadata` are skipped. Centralizes the readdir + filename-parse + read +
+ * written back. Each sidecar's read, `mutate` and write run inside its own
+ * sidecar lock (`mutateSidecar`), one sidecar at a time; no lock is held across
+ * the sweep. Sidecars that are missing or have no object `userMetadata` are
+ * skipped; a read error (for example an unparseable file) propagates.
+ * Centralizes the readdir + filename-parse + read +
  * guard + conditional-write scaffold shared by the value-migration helpers.
  */
 async function forEachUserMetadata(
@@ -334,13 +337,12 @@ async function forEachUserMetadata(
       "resource-".length,
       -".meta.json".length,
     ) as UUID;
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
-    const meta = userMetadataOf(sidecar);
-    if (!meta) continue;
-    if (mutate(meta)) {
-      await writeSidecar(projectRoot, resourceId, sidecar);
-    }
+    await mutateSidecar(projectRoot, resourceId, (sidecar) => {
+      if (!sidecar) return SIDECAR_UNCHANGED;
+      const meta = userMetadataOf(sidecar);
+      if (!meta) return SIDECAR_UNCHANGED;
+      return mutate(meta) ? sidecar : SIDECAR_UNCHANGED;
+    });
   }
 }
 
