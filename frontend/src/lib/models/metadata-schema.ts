@@ -8,7 +8,7 @@
  * Follow the same pattern as `tags.ts`: no optimistic in-memory state, direct
  * filesystem reads/writes, file locking for concurrent-write safety.
  */
-import { readFile, readdir, writeFile } from "./io";
+import { atomicWriteFile, readFile, readdir } from "./io";
 import path from "node:path";
 import { acquireLock } from "./locks";
 import { PROJECT_FILENAME } from "./project-config";
@@ -58,7 +58,10 @@ async function writeProject(
     project.config = { editorConfig: {} };
   }
   project.config.metadataRevision = (project.config.metadataRevision ?? 0) + 1;
-  await writeFile(p, JSON.stringify(project, null, 2), "utf8");
+  // Atomic: this module holds locks.ts's lock, not withMetaLock, so it is not
+  // serialized with the other project.json writers (see project-json-write.ts);
+  // a plain write could interleave with theirs and leave the file unparseable.
+  await atomicWriteFile(p, JSON.stringify(project, null, 2), "utf8");
 }
 
 function getOrInitSchema(project: Project): MetadataSchema {

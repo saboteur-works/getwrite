@@ -21,6 +21,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { updateSidecarCore } from "../../src/lib/models/resource-crud-core";
 import { updateRevisionInPlace } from "../../src/lib/models/revision-core";
 import { updateEditorConfigCore } from "../../src/lib/models/editor-config-core";
+import { addField, addGroup } from "../../src/lib/models/metadata-schema";
 import { listRevisions } from "../../src/lib/models/revision";
 import { readSidecar } from "../../src/lib/models/sidecar";
 import { createResourceOfType } from "../../src/lib/models/resource-factory";
@@ -126,5 +127,41 @@ describe("metadata read-modify-writes at once", () => {
       if (ec?.body?.fontSize !== "19px") lost.push(`${rep}:body`);
     }
     expect(lost).toEqual([]);
+  }, 60000);
+
+  it("an editor-style save racing a schema change never leaves project.json unparseable", async () => {
+    // metadata-schema.ts holds locks.ts's lock, not withMetaLock, so the two
+    // writers are not serialized; atomic writes keep the file whole. Measured
+    // 2026-10-23: the schema change was lost in 20 of 20 repetitions in each
+    // of 9 runs (the editor save read project.json first and wrote back its
+    // older copy). That lost update is a known open defect and is not
+    // asserted here; only an unparseable file fails this test.
+    const unparseable: number[] = [];
+    for (let rep = 0; rep < 20; rep += 1) {
+      const { projectId, projectRoot } = await newProject();
+      await addGroup(projectRoot, {
+        id: "custom-group",
+        label: "Custom",
+        fields: [],
+      });
+      await Promise.all([
+        updateEditorConfigCore({ projectId, body: { fontSize: "19px" } }),
+        addField(projectRoot, "custom-group", {
+          key: "mood",
+          label: "Mood",
+          type: "text",
+        }),
+      ]);
+      const raw = await fs.readFile(
+        path.join(projectRoot, "project.json"),
+        "utf8",
+      );
+      try {
+        JSON.parse(raw);
+      } catch {
+        unparseable.push(rep);
+      }
+    }
+    expect(unparseable).toEqual([]);
   }, 60000);
 });
