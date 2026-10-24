@@ -248,7 +248,16 @@ with the app without hand-rewriting it (see OQ-90).
   setting is saved, I want to have every one of those changes kept and my
   project still open afterwards, so that I do not find a setting I
   changed has silently reverted or that the project no longer loads.
-  [Next] (Added 2026-10-23; FR-76.)
+  [Next] (Added 2026-10-23; FR-76.) Revised (Owner decision, Gate 5,
+  2026-10-23): the same holds for a resource's metadata, for example a
+  metadata edit made while that resource autosaves, or while a metadata
+  field is removed: the edit and the autosave's changes are both kept and
+  the resource still opens.
+  Narrowed (Owner decision, Gate 5 re-gate, 2026-10-23; feature OQ-9
+  option a): for metadata, two metadata saves read and write the file in
+  order; values a client sends are stored as sent, so a save carrying an
+  older copy of a value stores that value (a recorded follow-up, not
+  promised here).
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1747,12 +1756,16 @@ with the app without hand-rewriting it (see OQ-90).
   (note_db7c7c58). Facts. Reported by the owner, not measured: the heading
   Colour field box is taller than the other inputs and the Font Weight
   select is shorter. [US-9]
-- FR-76: Two writes to the same project's settings file (`project.json`)
-  that overlap in time MUST NOT lose either change and MUST NOT leave the
-  file unparseable. Scope, decided at Gate 1, 2026-10-23: `project.json`
-  only, which is what is measured (OQ-110). Sidecars, `meta/index/*`,
-  `backlinks.json`, `relationships.json` and writing-log files are unknown,
-  not promised. The guarantee is stated for one server process: the desktop
+- FR-76: Two writes to the same project's settings file (`project.json`),
+  or to the same resource sidecar (`meta/resource-<id>.meta.json`), that
+  overlap in time MUST NOT lose either change and MUST NOT leave the file
+  unparseable. Scope, decided at Gate 1, 2026-10-23: `project.json` only,
+  which is what was measured then (OQ-110). Revised (Owner decision, Gate 5,
+  2026-10-23): scope expanded to `project.json` AND each resource sidecar,
+  because the sidecar race experiment reproduced lost updates (OQ-110). The
+  other `meta/` files (`meta/index/*`, `backlinks.json`,
+  `relationships.json` and writing-log files) are still unknown, not
+  promised. The guarantee is stated for one server process: the desktop
   app and a single web server process (OQ-111); multi-instance hosted
   coordination is out of scope. Every read-modify-write of `project.json`,
   including those of writers that hold `acquireLock` (`metadata-schema.ts`,
@@ -1760,7 +1773,15 @@ with the app without hand-rewriting it (see OQ-90).
   goes through one narrow `project.json` lock (the shape of
   `updateProjectJson`), and the read a write is based on happens inside
   that same lock (OQ-113, OQ-114); migrations and other saves otherwise
-  run as they do now. A write waits for the lock with no time limit, with
+  run as they do now. Revised (Owner decision, Gate 5, 2026-10-23): every
+  read-modify-write of a resource sidecar likewise goes through a narrow
+  lock on that sidecar file, the read a write is based on happens inside
+  that same lock, the same scope rules apply (one server process, no time
+  limit on waiting, a write that cannot get the lock never looks saved),
+  and the sidecar writers that today hold different lock families
+  (`writeSidecar` under `withMetaLock`, `updateRevisionInPlace` under a
+  `revision-content:` `acquireLock`, `metadata-schema.ts`'s sidecar
+  migrations) are covered together. A write waits for the lock with no time limit, with
   no timeout or new failure path (OQ-112), and a write that cannot get the
   lock MUST NOT look like a saved write. Added 2026-10-23 (reliability and data-loss work, the
   same group as Feature 89's "hidden and lost work"). Facts, all measured
@@ -1782,7 +1803,7 @@ with the app without hand-rewriting it (see OQ-90).
   save read `project.json` first and wrote back its older copy. (3) Not
   measured: whether sidecar files have the same lost-update problem; a
   status change racing a canonical save was not reproduced (20 of 20
-  kept, two runs). Read, not run: the two lock families (`meta-locks.ts`
+  kept, two runs; superseded by the Gate 5 measurement below). Read, not run: the two lock families (`meta-locks.ts`
   `withMetaLock`, a promise chain; `locks.ts` `acquireLock`, a queue mutex)
   are each per process, each keyed by `projectRoot`, neither reentrant, and
   do not serialize with each other. Several `metadata-schema.ts` operations
@@ -1800,7 +1821,24 @@ with the app without hand-rewriting it (see OQ-90).
   sidecar race experiment (each sidecar writer pair that uses a different
   lock family), and a check of whether any writer reads `project.json` in
   one request and writes it in a later one, before claiming coverage.
-  Resolved: OQ-110 to OQ-114. [US-31]
+  Revised facts (Gate 5, 2026-10-23), measured on `main` with unchanged
+  source (`specs/features/project-json-single-lock/experiments.md`, Task 2;
+  100 repetitions per pair, each writer changing a distinct field of one
+  sidecar): a metadata save (`readSidecar` then `writeSidecar`, the pattern
+  of `updateSidecarCore`) racing `updateRevisionInPlace` lost a change in 41
+  of 100 repetitions (23 lost the revision's `updatedAt`, 18 lost the
+  metadata edit); the same save racing `clearField` (through
+  `forEachUserMetadata`) lost a change in 10 of 100 (9 lost the metadata
+  edit, 1 kept a value that should have been removed);
+  `updateRevisionInPlace` racing `forEachUserMetadata` lost none in 100; no
+  sidecar was left unparseable in 300 repetitions; no writer rejected. The
+  cause is not established by experiment. Hypothesis, untested: each writer
+  reads the sidecar outside any lock and writes it back through
+  `writeSidecar`, whose write alone is under `withMetaLock`. The earlier
+  non-reproduction (status change via `updateSidecarCore` against a
+  canonical save, 20 of 20 kept, two runs) used a different construction
+  and fewer repetitions. Resolved: OQ-110 to OQ-114 (OQ-110 revised at
+  Gate 5). [US-31]
 
 ## Constraints
 
@@ -3505,7 +3543,8 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 **OQ-110 (resolved): Does the no-lost-update promise of FR-76 cover only `project.json`, or every metadata file (sidecars, `backlinks.json`, the indexes under `meta/index/`, `relationships.json`, writing-log files)?**
 **Resolution:** Resolved (Owner decision, Gate 1, 2026-10-23; option a): `project.json` only, which is what is measured. FR-76 covers `project.json` only. Other files (sidecars, `meta/index/*`, `backlinks.json`, `relationships.json`, writing-log files) are named as unknown, not promised. Carried to the feature spec as a task: a sidecar race experiment (each sidecar writer pair that uses a different lock family); if it reproduces a lost update, sidecars are brought into scope then. Applied in FR-76.
-**Evidence:** Owner decision, Gate 1, 2026-10-23. Measured 2026-10-23: the `project.json` lost update (editor save against `addField`, 20 of 20 in each of 9 runs). Not reproduced: a sidecar status change against a canonical save kept both changes in 20 of 20 repetitions, two runs. Not measured: the other metadata files.
+**Revised (Owner decision, Gate 5, 2026-10-23; option b):** the sidecar race experiment reproduced lost updates, so sidecars are brought into scope as the Gate 1 resolution provided. FR-76 now covers `project.json` and each resource sidecar (`meta/resource-<id>.meta.json`). Measured on `main`, unchanged source, 100 repetitions per pair, each writer changing a distinct field of one sidecar: metadata save against `updateRevisionInPlace`, 41 of 100 lost a change (23 lost the revision's `updatedAt`, 18 lost the metadata edit); metadata save against `clearField` via `forEachUserMetadata`, 10 of 100 (9 lost the metadata edit, 1 kept a value that should have been removed); `updateRevisionInPlace` against `forEachUserMetadata`, 0 of 100; 0 unparseable; no writer rejected. Cause not established by experiment. The other `meta/` files (`meta/index/*`, `backlinks.json`, `relationships.json`, writing-log files) stay unknown, not promised. Applied in FR-76, US-31.
+**Evidence:** Owner decision, Gate 1, 2026-10-23. Measured 2026-10-23: the `project.json` lost update (editor save against `addField`, 20 of 20 in each of 9 runs). Not reproduced at Gate 1: a sidecar status change against a canonical save kept both changes in 20 of 20 repetitions, two runs. Not measured: the other metadata files. Gate 5 addition: owner decision 2026-10-23; the Task 2 sidecar race measurements above (`specs/features/project-json-single-lock/experiments.md`, scripts under `specs/features/project-json-single-lock/scripts/fr15-sidecar-races.test.ts`).
 **Impact:** FR-76; US-31; how wide the feature spec's tests and fix must be.
 **Owner:** Product owner.
 
