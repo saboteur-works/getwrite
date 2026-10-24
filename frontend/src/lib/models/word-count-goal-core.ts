@@ -10,12 +10,11 @@
  * from whatever throws inside (`readFile`/`atomicWriteFile` going through
  * `io.ts`).
  */
-import path from "node:path";
-import { atomicWriteFile, readFile } from "./io";
 import { withMetaLock } from "./meta-locks";
+import { updateProjectJson } from "./project-json-write";
+import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
-import { PROJECT_FILENAME } from "./project-config";
 
 export { InvalidProjectIdCoreError };
 
@@ -51,20 +50,17 @@ export async function setWordCountGoalCore(
   if (goal !== null && (!Number.isInteger(goal) || goal < 0)) {
     throw new InvalidWordCountGoalError(goal);
   }
-  const file = path.join(projectRoot, PROJECT_FILENAME);
   return withMetaLock(projectRoot, async () => {
-    const raw = await readFile(file, "utf8");
-    const project = JSON.parse(raw) as { config?: Record<string, unknown> };
-    const config = { ...(project.config ?? {}) };
-    if (goal === null) delete config.wordCountGoal;
-    else config.wordCountGoal = goal;
-    await atomicWriteFile(
-      file,
-      JSON.stringify({ ...project, config }, null, 2),
-      {
-        writeOptions: "utf8",
-        durable: process.env.GETWRITE_DURABLE_META === "1",
+    await updateProjectJson(
+      projectRoot,
+      (project) => {
+        const config: Record<string, unknown> = { ...(project.config ?? {}) };
+        if (goal === null) delete config.wordCountGoal;
+        else config.wordCountGoal = goal;
+        project.config = config as unknown as ProjectConfig;
+        return { result: undefined };
       },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
     );
     return { wordCountGoal: goal === null ? undefined : goal };
   });
