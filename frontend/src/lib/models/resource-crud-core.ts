@@ -901,13 +901,18 @@ export async function reorderResourcesCore(
   // Update resource sidecars
   for (const ro of resourceOrder) {
     try {
-      const existing = await readSidecar(projectRoot, ro.id).catch(() => null);
-      const merged = {
-        ...(existing ?? {}),
-        orderIndex: ro.orderIndex,
-        folderId: ro.folderId ?? existing?.folderId ?? null,
-      };
-      await writeSidecar(projectRoot, ro.id, merged);
+      // The stored value is read inside the sink; an unreadable prior
+      // sidecar reads as "no prior sidecar" (isReadTolerant), as before.
+      await mutateSidecar(
+        projectRoot,
+        ro.id,
+        (existing) => ({
+          ...(existing ?? {}),
+          orderIndex: ro.orderIndex,
+          folderId: ro.folderId ?? existing?.folderId ?? null,
+        }),
+        { isReadTolerant: true },
+      );
     } catch (err) {
       // log and continue
       // eslint-disable-next-line no-console

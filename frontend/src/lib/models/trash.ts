@@ -11,8 +11,8 @@ import path from "node:path";
 import {
   sidecarPathForProject,
   sidecarFilename,
-  readSidecar,
-  writeSidecar,
+  SIDECAR_UNCHANGED,
+  mutateSidecar,
 } from "./sidecar";
 import { revisionsBaseDir } from "./revision";
 import { removeResourceFromIndex } from "./inverted-index";
@@ -164,8 +164,8 @@ function patchRef(
  * The deleted resource's own sidecar is skipped — it will be moved to trash
  * by `softDeleteResource` immediately after this call.
  *
- * Uses `writeSidecar` for each patched file, which serialises concurrent writes
- * via the meta-lock.
+ * Uses `mutateSidecar` for each patched file, which reads, patches and writes
+ * under the sidecar's lock.
  *
  * Returns every entry it cleared, each shaped per Task 1's
  * `TrashRefRecordEntrySchema` (FR-8) — the raw material a caller persists via
@@ -203,42 +203,44 @@ export async function nullifyResourceRefs(
       .replace(/^resource-/, "")
       .replace(/\.meta\.json$/, "");
 
-    const sidecar = await readSidecar(projectRoot, resourceId);
-    if (!sidecar) continue;
+    // Read, patch and write inside the sink; the cleared entries are taken
+    // from the value read there.
+    await mutateSidecar(projectRoot, resourceId, (sidecar) => {
+      if (!sidecar) return SIDECAR_UNCHANGED;
 
-    const rawMeta = sidecar["userMetadata"];
-    if (
-      typeof rawMeta !== "object" ||
-      rawMeta === null ||
-      Array.isArray(rawMeta)
-    ) {
-      continue;
-    }
+      const rawMeta = sidecar["userMetadata"];
+      if (
+        typeof rawMeta !== "object" ||
+        rawMeta === null ||
+        Array.isArray(rawMeta)
+      ) {
+        return SIDECAR_UNCHANGED;
+      }
 
-    const userMetadata = rawMeta as Record<string, MetadataValue>;
-    let isDirty = false;
+      const userMetadata = rawMeta as Record<string, MetadataValue>;
+      let isDirty = false;
 
-    for (const fieldKey of resourceRefFieldKeys) {
-      const value = userMetadata[fieldKey];
-      if (value === undefined) continue;
+      for (const fieldKey of resourceRefFieldKeys) {
+        const value = userMetadata[fieldKey];
+        if (value === undefined) continue;
 
-      const result = patchRef(value, deletedResourceId, fieldKey);
-      if (result.changed) {
-        userMetadata[fieldKey] = result.value as MetadataValue;
-        isDirty = true;
-        for (const patchEntry of result.entries) {
-          clearedEntries.push({
-            referencingResourceId: resourceId,
-            ...patchEntry,
-          });
+        const result = patchRef(value, deletedResourceId, fieldKey);
+        if (result.changed) {
+          userMetadata[fieldKey] = result.value as MetadataValue;
+          isDirty = true;
+          for (const patchEntry of result.entries) {
+            clearedEntries.push({
+              referencingResourceId: resourceId,
+              ...patchEntry,
+            });
+          }
         }
       }
-    }
 
-    if (isDirty) {
+      if (!isDirty) return SIDECAR_UNCHANGED;
       sidecar["userMetadata"] = userMetadata;
-      await writeSidecar(projectRoot, resourceId, sidecar);
-    }
+      return sidecar;
+    });
   }
 
   return clearedEntries;
@@ -732,57 +734,59 @@ async function relinkResourceRefs(
   }
 
   for (const [referencingResourceId, entries] of byReferencingResource) {
-    const sidecar = await readSidecar(projectRoot, referencingResourceId);
-    const rawMeta = sidecar?.["userMetadata"];
-    const userMetadata =
-      sidecar &&
-      typeof rawMeta === "object" &&
-      rawMeta !== null &&
-      !Array.isArray(rawMeta)
-        ? (rawMeta as Record<string, MetadataValue>)
-        : undefined;
+    // Read, re-link and write inside the sink; the restored and not-restored
+    // lists are built from the value read there.
+    await mutateSidecar(projectRoot, referencingResourceId, (sidecar) => {
+      const rawMeta = sidecar?.["userMetadata"];
+      const userMetadata =
+        sidecar &&
+        typeof rawMeta === "object" &&
+        rawMeta !== null &&
+        !Array.isArray(rawMeta)
+          ? (rawMeta as Record<string, MetadataValue>)
+          : undefined;
 
-    let isDirty = false;
+      let isDirty = false;
 
-    for (const entry of entries) {
-      const info = toReferenceInfo(entry);
-      const value = userMetadata?.[entry.fieldKey];
+      for (const entry of entries) {
+        const info = toReferenceInfo(entry);
+        const value = userMetadata?.[entry.fieldKey];
 
-      if (entry.arrayIndex !== undefined) {
-        if (
-          Array.isArray(value) &&
-          isStillClearedRef(value[entry.arrayIndex], entry.priorValue.name)
-        ) {
-          const nextArray = (value as unknown as ResourceRef[]).slice();
-          nextArray[entry.arrayIndex] = {
+        if (entry.arrayIndex !== undefined) {
+          if (
+            Array.isArray(value) &&
+            isStillClearedRef(value[entry.arrayIndex], entry.priorValue.name)
+          ) {
+            const nextArray = (value as unknown as ResourceRef[]).slice();
+            nextArray[entry.arrayIndex] = {
+              id: resourceId,
+              name: entry.priorValue.name,
+            };
+            userMetadata![entry.fieldKey] = nextArray as MetadataValue;
+            isDirty = true;
+            restored.push(info);
+          } else {
+            notRestored.push(info);
+          }
+          continue;
+        }
+
+        if (isStillClearedRef(value, entry.priorValue.name)) {
+          userMetadata![entry.fieldKey] = {
             id: resourceId,
             name: entry.priorValue.name,
-          };
-          userMetadata![entry.fieldKey] = nextArray as MetadataValue;
+          } as MetadataValue;
           isDirty = true;
           restored.push(info);
         } else {
           notRestored.push(info);
         }
-        continue;
       }
 
-      if (isStillClearedRef(value, entry.priorValue.name)) {
-        userMetadata![entry.fieldKey] = {
-          id: resourceId,
-          name: entry.priorValue.name,
-        } as MetadataValue;
-        isDirty = true;
-        restored.push(info);
-      } else {
-        notRestored.push(info);
-      }
-    }
-
-    if (isDirty && sidecar && userMetadata) {
+      if (!isDirty || !sidecar || !userMetadata) return SIDECAR_UNCHANGED;
       sidecar["userMetadata"] = userMetadata as MetadataValue;
-      await writeSidecar(projectRoot, referencingResourceId, sidecar);
-    }
+      return sidecar;
+    });
   }
 
   return { restored, notRestored };
