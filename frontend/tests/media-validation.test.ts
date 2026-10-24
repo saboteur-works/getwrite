@@ -48,6 +48,22 @@ describe("validateMediaFile", () => {
     }
   });
 
+  it("uses the allowlisted extension for the MIME type when the name's extension is not allowlisted", () => {
+    // The extension becomes part of the stored file name (`original.<ext>`);
+    // everything after the last dot of `x./y` is `/y`.
+    for (const ext of ["x./y", "photo.png/../z", "pic.weird"]) {
+      const result = validateMediaFile({ ext, mime: "image/png", size: 1024 });
+      expect(result.ok, ext).toBe(true);
+      if (result.ok) expect(result.extension, ext).toBe("png");
+    }
+  });
+
+  it("uses the allowlisted extension for the MIME type when the name has none", () => {
+    const result = validateMediaFile({ mime: "audio/mpeg", size: 2048 });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.extension).toBe("mp3");
+  });
+
   it("rejects an unsupported extension", () => {
     const result = validateMediaFile({ ext: "exe", size: 1024 });
     expect(result.ok).toBe(false);
