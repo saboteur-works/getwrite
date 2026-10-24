@@ -409,40 +409,48 @@ export async function migrateProjectOnLoad(
 
   const release = await acquireLock(projectRoot);
   try {
-    const project = await readProject(projectRoot);
-    if (!project.config) project.config = { editorConfig: {} };
-    let hasChanged = false;
+    return await withFileLock(
+      path.join(projectRoot, PROJECT_FILENAME),
+      async () => {
+        // The read the write is based on is repeated inside the file lock; the
+        // read above only decided whether to scan.
+        const project = await readProject(projectRoot);
+        if (!project.config) project.config = { editorConfig: {} };
+        let hasChanged = false;
 
-    if (project.config.metadataSchema) {
-      const result = applySchemaMigrations(project.config.metadataSchema);
-      if (result.changed) {
-        project.config.metadataSchema = result.schema;
-        hasChanged = true;
-      }
-    }
+        if (project.config.metadataSchema) {
+          const result = applySchemaMigrations(project.config.metadataSchema);
+          if (result.changed) {
+            project.config.metadataSchema = result.schema;
+            hasChanged = true;
+          }
+        }
 
-    if (project.config.features === undefined && seeded !== undefined) {
-      project.config.features = seeded;
-      hasChanged = true;
-    }
+        if (project.config.features === undefined && seeded !== undefined) {
+          project.config.features = seeded;
+          hasChanged = true;
+        }
 
-    // Backfill the view flag for projects migrated before the timeline fields
-    // and the Timeline view were split into separate toggles. The old `timeline`
-    // flag gated both, so a project that had it on keeps its view. Runs once — a
-    // already-defined `timelineView` is never overwritten.
-    if (
-      project.config.features !== undefined &&
-      project.config.features.timelineView === undefined &&
-      project.config.features.timeline === true
-    ) {
-      project.config.features.timelineView = true;
-      hasChanged = true;
-    }
+        // Backfill the view flag for projects migrated before the timeline
+        // fields and the Timeline view were split into separate toggles. The
+        // old `timeline` flag gated both, so a project that had it on keeps its
+        // view. Runs once — an already-defined `timelineView` is never
+        // overwritten.
+        if (
+          project.config.features !== undefined &&
+          project.config.features.timelineView === undefined &&
+          project.config.features.timeline === true
+        ) {
+          project.config.features.timelineView = true;
+          hasChanged = true;
+        }
 
-    if (hasChanged) {
-      await writeProject(projectRoot, project);
-    }
-    return project;
+        if (hasChanged) {
+          await writeProject(projectRoot, project);
+        }
+        return project;
+      },
+    );
   } finally {
     release();
   }
@@ -493,14 +501,19 @@ export async function getSchema(projectRoot: string): Promise<MetadataSchema> {
   // the lock so a concurrent writer is not clobbered, then re-apply.
   const release = await acquireLock(projectRoot);
   try {
-    const fresh = await readProject(projectRoot);
-    if (!fresh.config?.metadataSchema) return first.schema;
-    const result = applySchemaMigrations(fresh.config.metadataSchema);
-    if (result.changed) {
-      fresh.config.metadataSchema = result.schema;
-      await writeProject(projectRoot, fresh);
-    }
-    return result.schema;
+    return await withFileLock(
+      path.join(projectRoot, PROJECT_FILENAME),
+      async () => {
+        const fresh = await readProject(projectRoot);
+        if (!fresh.config?.metadataSchema) return first.schema;
+        const result = applySchemaMigrations(fresh.config.metadataSchema);
+        if (result.changed) {
+          fresh.config.metadataSchema = result.schema;
+          await writeProject(projectRoot, fresh);
+        }
+        return result.schema;
+      },
+    );
   } finally {
     release();
   }
