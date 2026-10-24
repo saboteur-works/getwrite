@@ -285,3 +285,29 @@ Task 21. Run on 2026-10-23 on branch `fix/project-json-write-lock`, with Tasks 7
 
 - The count per test is the length of the collected list, which the assertion requires to be empty; a passing test therefore means 0 lost, 0 unparseable, 0 rejected. No `AssertionError` in any log. Compared with "FR-22 before": pair 1 lost 43-49 and pair 2 lost 6-13 per run on the unchanged tree, pair 3 lost 1 in one of 9 runs; after, 0 in all 9 runs.
 - Not measured: the six family tests were not run on the unchanged tree in this file (their before values are the 100-repetition counts in "FR-15 sidecar races, remaining families"; `relinkResourceRefs` lost 0 of 100 there as well, so its test did not discriminate on the unchanged tree). The pair tests changed their metadata-save writer from the in-test read/write pair to `updateSidecarCore` after the "FR-22 before" runs; their before-values were measured with the earlier writer. `tsc --noEmit` reported nothing for the file, ESLint reported nothing, Prettier check clean.
+
+## Final suites
+
+Task 27. Run on 2026-10-23 on branch `fix/project-json-write-lock`, `HEAD` `ae53ce3ee0029bd2f2e5726508049e81aa822e3c`, `git status --short` empty before the runs. `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before `pnpm test:e2e`: no output, exit 1; after all suites: no output, exit 1. `pnpm storybook` was not started. `typecheck` and `lint` ran inside the sandbox; the rest outside it. Logs in the session scratchpad (`f-*.log`, `knip.log`, `cli.log`, `el.log`).
+
+| Command | Directory | Baseline (Task 1) | Observed |
+| --- | --- | --- | --- |
+| `pnpm typecheck` | `frontend/` | exit 0 | exit 0 |
+| `pnpm lint` | `frontend/` | 0 errors, 391 warnings | exit 0; `391 problems (0 errors, 391 warnings)`; 7 potentially fixable |
+| `pnpm test:ci` | `frontend/` | 660 files; 7925 passed, 2 expected fail, 1 skipped | exit 0; Test Files 670 passed (670); Tests 8151 passed, 2 expected fail, 1 skipped (8154); 47.95s |
+| `pnpm test:e2e` | `frontend/` | 230 passed, 1 skipped, 0 failed | exit 0; 230 passed, 1 skipped, 0 failed (51.3s) |
+| `pnpm knip` | repo root | exit 1; sum 412 | exit 1; sum 414 (see below) |
+| `pnpm --filter getwrite-cli test` | repo root | 23 files / 153 tests | exit 0; 23 files / 153 tests |
+| `pnpm --filter getwrite-electron test` | repo root | 34 files / 528 tests | exit 0; 34 files / 528 tests |
+| `pnpm build` | `frontend/` | not in Task 1 | exit 0 (Next.js production build completed, route table printed) |
+
+Knip per-section counts (baseline -> observed): Unused files 49 -> 49; Unused dependencies 1 -> 1; Unused devDependencies 4 -> 4; Unlisted dependencies 6 -> 6; Unlisted binaries 4 -> 4; Unused exports 160 -> 161 (+1); Unused exported types 174 -> 175 (+1); Duplicate exports 14 -> 14. Configuration hints 6 -> 6.
+
+New findings (identified by name, in the knip output, with `git log -S` showing each introduced in commit `29579885`, Task 23):
+- Unused export (function): `stripComments`, `frontend/tests/helpers/projectJsonLockScan.ts:53`.
+- Unused exported type: `GuardedLockKind`, `frontend/src/lib/models/lock-guard.ts:15`.
+The `/usr/bin/grep` search of the knip output found no finding for `fileLockKeyCountForTests`, `installLockGuard` or `SIDECAR_UNCHANGED`. The baseline finding list itself was not re-run on the unchanged tree for a name-level diff (UNMEASURED; the two names are identified by the per-section count increase of 1 each plus their introducing commit). Whether the findings are intended (a test helper and a type exported for documentation or tests) is a hypothesis; `stripComments` has no importer other than its own file per a source grep, and `GuardedLockKind` is used only inside `lock-guard.ts`.
+
+Production bundle check: `grep async_hooks` over `lock-guard.ts`, `locks.ts` and `meta-locks.ts` matches only two comment lines in `lock-guard.ts` (lines 8 and 10); no import statement. `pnpm build` exited 0. `pnpm build:native` was not run (a known pre-existing failure per tasks.md).
+
+No test or story was modified by this task. `git worktree list` shows only the main checkout. `git status --short` after the runs (before this edit): empty.
