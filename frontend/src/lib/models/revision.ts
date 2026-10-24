@@ -15,6 +15,7 @@ import type { Dirent } from "node:fs";
 import { generateUUID } from "./uuid";
 import type { UUID, Revision } from "./types";
 import { mkdir, writeFile, readFile, readdir, stat, rm, rename } from "./io";
+import { isLockedAccessError } from "./locked-access";
 
 /** Optional attributes for revision creation. */
 export interface WriteRevisionOptions {
@@ -247,7 +248,12 @@ export async function listRevisions(
         const raw = await readFile(metaPath, "utf8");
         const parsed = JSON.parse(raw) as Revision;
         results.push(parsed);
-      } catch {
+      } catch (err) {
+        // A locked or keyless project is not "this revision is unreadable":
+        // skipping here made the list empty, and a save then failed as
+        // "Revision <id> not found." (404) instead of answering locked
+        // (note_1465a609; tests/unit/revision-locked-access.test.ts).
+        if (isLockedAccessError(err)) throw err;
         continue;
       }
     }
