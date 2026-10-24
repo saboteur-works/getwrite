@@ -40,7 +40,6 @@ function createRevisionEntry(overrides: Partial<RevisionEntry>): RevisionEntry {
     resourceId,
     versionNumber,
     createdAt: `2026-03-21T12:00:0${versionNumber}.000Z`,
-    filePath: `/tmp/${revisionId}.json`,
     isCanonical: versionNumber === 1,
     displayName: `Revision v${versionNumber}`,
     isProtected: false,

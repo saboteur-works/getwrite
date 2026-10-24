@@ -1,7 +1,8 @@
 import { indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
-import { listRevisions } from "./revision";
+import path from "node:path";
+import { listRevisions, revisionDir } from "./revision";
 import {
   getStorageAdapter,
   runForTenant,
@@ -177,10 +178,18 @@ export async function loadPersistedPlainText(
       const revs = await listRevisions(projectRoot, resourceId);
       const source =
         revs.find((rev) => rev.isCanonical) ?? revs[revs.length - 1];
-      if (source?.filePath) {
+      if (source) {
+        // From the revision's own folder, not its stored `filePath`: that is
+        // the absolute path at creation and goes stale when the project moves.
         try {
           plain = revisionContentToPlainText(
-            await readFile(source.filePath, "utf8"),
+            await readFile(
+              path.join(
+                revisionDir(projectRoot, resourceId, source.versionNumber),
+                "content.bin",
+              ),
+              "utf8",
+            ),
           );
         } catch (err) {
           if (isLockedAccessError(err)) throw err;

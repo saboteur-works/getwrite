@@ -1,4 +1,4 @@
-import type { Revision } from "../lib/models/types";
+import type { RevisionSummary } from "../lib/models/types";
 
 /**
  * Revision shape stored in Redux for the selected resource.
@@ -6,7 +6,7 @@ import type { Revision } from "../lib/models/types";
  * This extends the persisted revision metadata with a display label used by
  * `RevisionControl`.
  */
-export interface RevisionEntry extends Revision {
+export interface RevisionEntry extends RevisionSummary {
   /** Human-readable label shown in the revision list UI. */
   displayName: string;
   /** True when `metadata.preserve` is truthy (protected from pruning and deletion). */
@@ -22,7 +22,7 @@ function trimIfNonEmpty(value: unknown): string | undefined {
  * Returns a human-readable display label for a revision.
  */
 export function resolveRevisionDisplayName(
-  revision: Revision,
+  revision: RevisionSummary,
   fallbackName?: string,
 ): string {
   return (
@@ -36,7 +36,7 @@ export function resolveRevisionDisplayName(
  * Converts a persisted revision record into the slice entry shape.
  */
 export function toRevisionEntry(
-  revision: Revision,
+  revision: RevisionSummary,
   fallbackName?: string,
 ): RevisionEntry {
   return {
@@ -49,7 +49,7 @@ export function toRevisionEntry(
 /**
  * Type guard for revision payload values.
  */
-export function isRevision(value: unknown): value is Revision {
+export function isRevision(value: unknown): value is RevisionSummary {
   return (
     !!value &&
     typeof value === "object" &&
@@ -57,7 +57,6 @@ export function isRevision(value: unknown): value is Revision {
     "resourceId" in value &&
     "versionNumber" in value &&
     "createdAt" in value &&
-    "filePath" in value &&
     "isCanonical" in value
   );
 }

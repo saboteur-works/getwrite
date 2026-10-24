@@ -38,7 +38,8 @@ import {
   setRevisionPreserve,
   updateRevisionInPlace,
 } from "../../../../../src/lib/models/revision-core";
-import type { Revision } from "../../../../../src/lib/models/types";
+import type { RevisionSummary } from "../../../../../src/lib/models/types";
+import { toRevisionSummary } from "../../../../../src/lib/models/revision-summary";
 import { resolveProjectPath } from "../../../../../src/lib/models/project-path";
 import { isLockedAccessError } from "../../../../../src/lib/models/locked-access";
 import { checkLimit } from "../../../../../src/lib/sharing/limits-check";
@@ -50,7 +51,7 @@ import {
 } from "../../../../../src/lib/models/resource-id";
 
 interface GetRevisionResponse {
-  revision: Revision;
+  revision: RevisionSummary;
   content: string;
 }
 
@@ -152,7 +153,10 @@ async function handleGet(
       resourceId,
       revisionId,
     );
-    const responseBody: GetRevisionResponse = { revision, content };
+    const responseBody: GetRevisionResponse = {
+      revision: toRevisionSummary(revision),
+      content,
+    };
     return NextResponse.json(responseBody, { status: 200 });
   } catch (error) {
     if (isLockedAccessError(error)) {
@@ -191,7 +195,7 @@ async function handlePost(
       metadata,
     });
 
-    return NextResponse.json(revision, { status: 201 });
+    return NextResponse.json(toRevisionSummary(revision), { status: 201 });
   } catch (error) {
     if (isLockedAccessError(error)) {
       throw error;
@@ -220,7 +224,7 @@ async function handleDelete(
 
   try {
     const deleted = await deleteRevision(projectPath, resourceId, revisionId);
-    return NextResponse.json(deleted, { status: 200 });
+    return NextResponse.json(toRevisionSummary(deleted), { status: 200 });
   } catch (error) {
     if (isLockedAccessError(error)) {
       throw error;
@@ -287,7 +291,7 @@ async function handlePatch(
         revisionId,
         shouldPreserve,
       );
-      return NextResponse.json(updated, { status: 200 });
+      return NextResponse.json(toRevisionSummary(updated), { status: 200 });
     }
 
     if (typeof content === "string") {
@@ -297,7 +301,7 @@ async function handlePatch(
         revisionId,
         content,
       );
-      return NextResponse.json(updated, { status: 200 });
+      return NextResponse.json(toRevisionSummary(updated), { status: 200 });
     }
 
     const canonicalRevision = await setCanonicalRevision(
@@ -305,7 +309,9 @@ async function handlePatch(
       resourceId,
       revisionId,
     );
-    return NextResponse.json(canonicalRevision, { status: 200 });
+    return NextResponse.json(toRevisionSummary(canonicalRevision), {
+      status: 200,
+    });
   } catch (error) {
     if (isLockedAccessError(error)) {
       throw error;

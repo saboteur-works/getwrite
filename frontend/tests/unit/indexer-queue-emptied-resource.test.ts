@@ -103,4 +103,31 @@ describe("indexing a resource after all its text is removed", () => {
       "The rain fell.",
     );
   });
+
+  it("with no content files, reads the revision from the project's own folder after the project is moved", async () => {
+    // A revision's stored `filePath` is the absolute path at creation; the
+    // fallback used to read from it, so a moved project read nothing.
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "gw-moved-"));
+    const before = path.join(parent, "before");
+    const after = path.join(parent, "after");
+    await fs.mkdir(before);
+    await fs.writeFile(
+      path.join(before, "project.json"),
+      JSON.stringify({ id: "p", name: "P", config: {} }),
+    );
+    const resource = createTextResource({
+      name: "Chapter",
+      plainText: "The rain fell.",
+    });
+    await writeResourceWithInitialRevision(before, resource);
+    await fs.rm(path.join(before, "resources", resource.id, "content.txt"));
+    await fs.rm(
+      path.join(before, "resources", resource.id, "content.tiptap.json"),
+    );
+    await fs.rename(before, after);
+
+    expect(await loadPersistedPlainText(after, resource.id)).toBe(
+      "The rain fell.",
+    );
+  });
 });

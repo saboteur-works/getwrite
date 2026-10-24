@@ -395,13 +395,24 @@ export interface Revision {
   savedAt?: string;
   /** Optional author identifier or display name. */
   author?: string;
-  /** Filesystem path to the stored revision file. */
+  /**
+   * Absolute server path of the stored revision file, as written at creation.
+   * Never sent to clients ({@link RevisionSummary}) and never read back: it
+   * goes stale when a project is moved or a revision is trashed and restored.
+   * The content path is derived from `versionNumber` instead.
+   */
   filePath: string;
   /** True when this revision is the canonical/current revision for the resource. */
   isCanonical: boolean;
   /** Optional arbitrary metadata persisted alongside the revision (e.g., preserve flags). */
   metadata?: Record<string, unknown>;
 }
+
+/**
+ * A revision as API responses send it: everything but the server-side
+ * `filePath` (task_d53cf256).
+ */
+export type RevisionSummary = Omit<Revision, "filePath">;
 
 /** Origin of a bulk word addition in the writing log (Feature 59). */
 export type WritingLogSource = "docx" | "scrivener" | "plaintext";

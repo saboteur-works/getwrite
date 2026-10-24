@@ -14,7 +14,6 @@ function makeRevision(overrides: Partial<RevisionEntry> = {}): RevisionEntry {
     isCanonical: false,
     displayName: "Revision v1",
     isProtected: false,
-    filePath: "/path/to/content",
     metadata: {},
     ...overrides,
   };

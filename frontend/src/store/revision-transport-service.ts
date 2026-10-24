@@ -1,4 +1,4 @@
-import type { Revision } from "../lib/models/types";
+import type { RevisionSummary } from "../lib/models/types";
 import { selectActiveProjectDirectoryId } from "./projectsSlice";
 import type { RootState } from "./store";
 import { createTransport } from "./transport/create-transport";
@@ -16,7 +16,7 @@ interface ProjectResourcesResponse {
  * Response shape for fetching a single revision preview.
  */
 export interface RevisionContentResponse {
-  revision: Revision;
+  revision: RevisionSummary;
   content: string;
 }
 
@@ -146,7 +146,7 @@ export interface RevisionTransport {
   create(
     context: RevisionRequestContext,
     revisionName: string,
-  ): Promise<Revision>;
+  ): Promise<RevisionSummary>;
   /** Reads a specific revision's metadata and content. */
   read(
     context: RevisionRequestContext,
@@ -157,7 +157,7 @@ export interface RevisionTransport {
     context: RevisionRequestContext,
     revisionId: string,
     content: string,
-  ): Promise<Revision & { updatedAt: string }>;
+  ): Promise<RevisionSummary & { updatedAt: string }>;
   /** Marks the given revision as canonical. */
   setCanonical(
     context: RevisionRequestContext,
@@ -168,7 +168,7 @@ export interface RevisionTransport {
     context: RevisionRequestContext,
     revisionId: string,
     preserve: boolean,
-  ): Promise<Revision>;
+  ): Promise<RevisionSummary>;
   /** Deletes a non-canonical, unprotected revision. */
   delete(context: RevisionRequestContext, revisionId: string): Promise<void>;
 }
@@ -195,7 +195,7 @@ export const httpRevisionTransport: RevisionTransport = {
 
     if (!response.ok) await throwApiError(response, "Failed to save revision.");
 
-    return (await response.json()) as Revision;
+    return (await response.json()) as RevisionSummary;
   },
 
   async read(context, revisionId) {
@@ -231,7 +231,7 @@ export const httpRevisionTransport: RevisionTransport = {
     if (!response.ok)
       await throwApiError(response, "Failed to update revision.");
 
-    return (await response.json()) as Revision & { updatedAt: string };
+    return (await response.json()) as RevisionSummary & { updatedAt: string };
   },
 
   async setCanonical(context, revisionId) {
@@ -265,7 +265,7 @@ export const httpRevisionTransport: RevisionTransport = {
     if (!response.ok)
       await throwApiError(response, "Failed to update revision protection.");
 
-    return (await response.json()) as Revision;
+    return (await response.json()) as RevisionSummary;
   },
 
   async delete(context, revisionId) {
@@ -310,7 +310,7 @@ export const resolveRevisionTransport: () => Promise<RevisionTransport> =
 export async function createRevision(
   context: RevisionRequestContext,
   revisionName: string,
-): Promise<Revision> {
+): Promise<RevisionSummary> {
   const transport = await resolveRevisionTransport();
   return transport.create(context, revisionName);
 }
@@ -356,7 +356,7 @@ export async function persistRevisionPreserve(
   context: RevisionRequestContext,
   revisionId: string,
   preserve: boolean,
-): Promise<Revision> {
+): Promise<RevisionSummary> {
   const transport = await resolveRevisionTransport();
   return transport.setPreserve(context, revisionId, preserve);
 }
