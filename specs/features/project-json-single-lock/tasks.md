@@ -48,7 +48,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Satisfies FR-16 (OQ-113, OQ-8 option b; extended at Gate 5). Read-only task. Estimate raised from 3 to 5 for the second file kind. Findings are inputs to OQ-9 and OQ-10, which the owner resolved at the Gate 5 re-gate as option a (follow-ups, no contract change); a writer it finds that the spec does not list is added to Task 20.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Make the FR-10 race test assert both changes, and show it fails today
 **What:** Change `an editor-style save racing a schema change` to assert the editor font size and the new field are both present, and record that it fails on the unchanged lock code.
@@ -57,7 +57,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** Satisfies FR-10 (before half). The test is expected to be red until Task 15; the orchestrator does not commit a red tree as done, so this task's red state is recorded and Tasks 5-15 follow on the same branch.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Sidecar race baselines for the remaining writer families
 **What:** On the unchanged tree, measure each sidecar writer family of the spec's inventory that Task 2 did not cover, against a metadata save, and record the counts.
@@ -75,7 +75,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-22 (before half). Red by design until Task 21; like Task 4 the red state is recorded and Tasks 7-21 follow on the same branch. The distinct-field construction is the one that measured the loss; keep it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: The per-file lock primitive
 **What:** Add a small module owning the per-file lock: callback form only, no exposed release, its own key map, one key per file path, `path.resolve(filePath)`. Used for `project.json` and, in later tasks, for each sidecar.
@@ -84,7 +84,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 4, 5, 6
 **Estimate:** 3
 **Notes:** Revised at Gate 5: per-file instead of per-root, and it waits on the new measurement tasks 5 and 6 so that no lock code precedes the sidecar "before" measurements. Satisfies FR-1 (primitive; OQ-1 option c revised, OQ-2), FR-8 (doc comment), FR-14 (release on throw). No `realpath`. Do not use `node:async_hooks` here (the native shim does not propagate across `await`).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Build updateProjectJson on the primitive (family A) with the durable argument
 **What:** Rebuild `updateProjectJson` on the per-file primitive (key: the resolved path of the project's `project.json`), add an optional `durable` argument, and leave the five family A callers unchanged.
@@ -93,7 +93,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 7
 **Estimate:** 3
 **Notes:** Satisfies FR-1, FR-7, FR-13 (OQ-6: `durable` optional, default unchanged). Family A callers' mutate callbacks, results and `updatedAt` handling must not change.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Family E: the sidecar metadataRevision bump
 **What:** Move `bumpMetadataRevision` onto the per-file primitive (the `project.json` key) while `writeSidecar` keeps its outer `withMetaLock`.
@@ -102,7 +102,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 8
 **Estimate:** 2
 **Notes:** Satisfies FR-6. Must not call `withMetaLock` or `acquireLock` from inside the primitive. At this point the bump is still called inside `writeSidecar`'s `withMetaLock` but outside any sidecar file lock (none exists yet); Task 16 keeps it so (FR-20).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Family D: updateFeatureConfig
 **What:** Move `updateFeatureConfig` onto the primitive inside its outer `acquireLock(projectRoot)`.
@@ -111,7 +111,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 8
 **Estimate:** 2
 **Notes:** Satisfies FR-5 (OQ-3 option b).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Family C part 1: withLockedSchema and writeProject
 **What:** Make the 13 schema operations that go through `withLockedSchema` do their read, mutate and write inside the primitive, under the kept outer lock.
@@ -120,7 +120,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (part), FR-2. Read the callers listed at `:506-896` before editing.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Family C part 2: rename, change-type and options with migration
 **What:** Move `renameFieldKeyInSchema`, `changeFieldTypeWithMigration` and `updateFieldOptionsWithMigration` schema writes onto the primitive.
@@ -129,7 +129,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 11
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (part). The migrations stay outside any project-wide lock (non-goal).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Family C part 3: migrateProjectOnLoad and the getSchema migration write
 **What:** Put the lock-held re-read and write of `migrateProjectOnLoad` and `getSchema` inside the primitive.
@@ -138,7 +138,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 12
 **Estimate:** 2
 **Notes:** Satisfies FR-2, FR-4 (part). Depends on Task 12 only to serialise edits to `metadata-schema.ts`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Family B: the five withMetaLock setters
 **What:** Move the five family B setters onto the primitive, keeping their written form and the durable write.
@@ -147,7 +147,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-3 (OQ-6).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: FR-10 race test passes nine times
 **What:** Run the changed FR-10 test against the new lock and record nine consecutive passing runs.
@@ -156,16 +156,16 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 11, 12, 13
 **Estimate:** 2
 **Notes:** Satisfies FR-10 (hard acceptance).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: The sidecar read-modify-write sink and the no-nesting sequence
 **What:** Add one read-modify-write function for a sidecar in `sidecar.ts` (read, mutate, atomic write, all under that sidecar's file lock, inside `withMetaLock`), make whole-object `writeSidecar` take the same lock for its write, and keep the `metadataRevision` bump outside the sidecar lock.
 **Files:** Modifies `frontend/src/lib/models/sidecar.ts` (`readSidecar` stays unlocked; `writeSidecar` at `:150-190` and its doc comment; the new function, name decided at implementation); extends the existing sidecar tests found by reading.
-**Done when:** tests that fail first and pass: two overlapping calls of the new function on one resource both land (the second sees the first's change); a call for another resource is not blocked by the first; within one call the order is `withMetaLock` taken, sidecar file lock taken, read, mutate, atomic write, sidecar lock released, then the `project.json` file lock taken for the bump (a test records the acquisition order and asserts the bump never runs while the sidecar lock is held, FR-20); `mutate` returning "no change" writes nothing and bumps nothing; `metadataRevision` rises by exactly 1 per write; ENOENT on `project.json` is still ignored in the bump; the entity rescan decision uses the value read inside the lock; the mutate callback calling `writeSidecar` or the sink throws under the guard of Task 23 (checked there); a missing sidecar reaches `mutate` as `null`; a locked-access error propagates unchanged and the write does not proceed; the written bytes, background index enqueue and entity rescan enqueue for a single call are identical to before. Whole-object `writeSidecar` produces identical bytes and takes the sidecar lock for its write. All existing sidecar tests pass without edits. `pnpm typecheck`, `pnpm lint`, targeted vitest.
+**Done when:** tests that fail first and pass: two overlapping calls of the new function on one resource both land (the second sees the first's change); a call for another project is not blocked by the first (within one project, calls queue on `withMetaLock` as before Feature 92; wording amended by owner decision, Gate 6, 2026-10-24); within one call the order is `withMetaLock` taken, sidecar file lock taken, read, mutate, atomic write, sidecar lock released, then the `project.json` file lock taken for the bump (a test records the acquisition order and asserts the bump never runs while the sidecar lock is held, FR-20); `mutate` returning "no change" writes nothing and bumps nothing; `metadataRevision` rises by exactly 1 per write; ENOENT on `project.json` is still ignored in the bump; the entity rescan decision uses the value read inside the lock; the mutate callback calling `writeSidecar` or the sink throws under the guard of Task 23 (checked there); a missing sidecar reaches `mutate` as `null`; a locked-access error propagates unchanged and the write does not proceed; the written bytes, background index enqueue and entity rescan enqueue for a single call are identical to before. Whole-object `writeSidecar` produces identical bytes and takes the sidecar lock for its write. All existing sidecar tests pass without edits. `pnpm typecheck`, `pnpm lint`, targeted vitest.
 **Depends on:** 7, 9
 **Estimate:** 5
 **Notes:** Satisfies FR-19 (sink), FR-20, FR-23 (part). L because it changes the one function every sidecar writer calls and must keep the lock order of the spec's "Lock order" section. Design fixed by FR-20; no other lock layout is to be tried without reporting. Does not move any caller yet (Tasks 17-20).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Move updateSidecarCore and the resource-crud-core sidecar writers onto the sink
 **What:** Convert `updateSidecarCore`, `setNoiseTermDismissedCore` and `renameResourceSidecarCore` to the sidecar read-modify-write function, computing the new value inside the mutate callback.
@@ -174,7 +174,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 16
 **Estimate:** 3
 **Notes:** Satisfies FR-19, FR-21, FR-23. The route and transport contracts (`app/api/resource/[resource-id]/sidecar/route.ts`, `native-resource-backend.ts`) do not change (OQ-9 option a: no contract change).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Move updateRevisionInPlace's sidecar update onto the sink
 **What:** Replace the `readSidecar` plus `writeSidecar` pair at the end of `updateRevisionInPlaceLocked` with the sidecar read-modify-write function.
@@ -183,7 +183,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 16
 **Estimate:** 2
 **Notes:** Satisfies FR-19, FR-23. The content write and its lock are untouched; only the sidecar update changes.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Move forEachUserMetadata onto the sink
 **What:** Make `forEachUserMetadata` do its read, mutate and write per sidecar through the sidecar read-modify-write function, one sidecar at a time.
@@ -192,7 +192,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 13, 16
 **Estimate:** 2
 **Notes:** Satisfies FR-19, FR-23. Depends on Task 13 to serialise edits to `metadata-schema.ts`. Do not run in parallel with Tasks 11-13.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Move the remaining sidecar read-then-write sequences onto the sink
 **What:** Convert `reorderResourcesCore`'s sidecar loop, `nullifyResourceRefs`, `relinkResourceRefs`, `applyDocumentMetadata` and any further writer Task 3 found, to the sidecar read-modify-write function.
@@ -201,7 +201,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 3, 16
 **Estimate:** 3
 **Notes:** Satisfies FR-19, FR-23. The trash move and restore of a sidecar (`trash.ts:335`, `:862`) are not changed here (OQ-10, option a). The creation paths (new id) are not converted; they use whole-object `writeSidecar`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Sidecar race acceptance tests pass nine times
 **What:** Run the Task 6 suite tests and the per-family tests from Task 5 against the new lock and record nine consecutive passing runs.
@@ -219,7 +219,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 9, 10, 14, 15
 **Estimate:** 5
 **Notes:** Satisfies FR-11. L because seven pairs each need their own fixtures; a shared parametrised helper is allowed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Source scan test and test-only runtime guard
 **What:** Add a source scan that fails on any unlisted `project.json` or sidecar read-then-write, and a runtime guard active only in tests that throws on re-entry or on any lock, including a second file lock, taken while a file lock is held.
@@ -228,7 +228,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 9, 10, 11, 12, 13, 14, 17, 18, 19, 20
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-9 (OQ-5 option b; extended to sidecars at Gate 5). Estimate raised from 3 to 5 for the sidecar scan and the second-file-lock rule. No production guard: the native `async_hooks` shim (`src/native-shims/async-hooks.mjs`, `next.config.mjs` aliases) does not propagate across `await`. `pnpm build` runs outside the sandbox in the main checkout.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Deadlock test
 **What:** Run an operation from every family concurrently on one project, in several orderings, and fail on any repetition that does not finish within 5 s.
@@ -237,7 +237,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 21, 22, 23
 **Estimate:** 5
 **Notes:** Satisfies FR-12 (OQ-7 option a; extended to sidecars at Gate 5). Estimate raised from 3 to 5. Must include orderings that start `updateRevisionInPlace` (holding the `revision-content:` lock) before and after the other writers, to exercise the edge `acquireLock(revision-content) -> withMetaLock -> file lock`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Failure propagation and single-writer behaviour
 **What:** Prove that every kind of failure inside the lock reaches the caller unchanged and releases the lock, including `ProjectBusyError`, and that a single writer behaves as before, for `project.json` and for sidecars.
@@ -246,7 +246,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 21, 22
 **Estimate:** 3
 **Notes:** Satisfies FR-14, FR-23, FR-13 (OQ-4: `crypto/convert-project.ts` is excluded, protected by the write barrier). Estimate raised from 2 to 3 for the sidecar cases.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Documentation
 **What:** Update the docs and stale comments for the new lock and the lock-order rule.
@@ -255,7 +255,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 3, 24, 25
 **Estimate:** 3
 **Notes:** Satisfies FR-17, FR-8 (CLAUDE.md). Wording is a working copy. Estimate raised from 2 to 3 for `sidecars.md`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Final suites
 **What:** Run every final suite on the branch and record the results next to the Task 1 baselines.
@@ -264,7 +264,7 @@ FR coverage: FR-1: 7, 8. FR-2: 13. FR-3: 14. FR-4: 11, 12, 13. FR-5: 10. FR-6: 9
 **Depends on:** 26
 **Estimate:** 3
 **Notes:** Satisfies FR-18, FR-13. `pnpm test:e2e` runs outside the sandbox; stop only pids this task started.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 27
