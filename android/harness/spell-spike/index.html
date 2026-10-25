@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spell checker spike (Feature 95)</title>
+    <style>
+      body {
+        font:
+          16px/1.8 system-ui,
+          sans-serif;
+        margin: 1.5rem;
+      }
+      a {
+        display: block;
+        margin: 0.75rem 0;
+        font-size: 1.1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Spell checker spike</h1>
+    <p>Origin: <code id="origin"></code></p>
+    <a href="driver.html?uas=0&amp;recheckRuns=5"
+      >Run the spike driver (both engines; uas=0 because the page is not
+      cross-origin isolated; 5 re-check runs per FR-6 e)</a
+    >
+    <a href="underline-page.html">Native underline observation page (FR-7)</a>
+    <a href="storage-check.html">localStorage persistence check (FR-34)</a>
+    <script>
+      document.getElementById("origin").textContent = location.origin;
+    </script>
+  </body>
+</html>

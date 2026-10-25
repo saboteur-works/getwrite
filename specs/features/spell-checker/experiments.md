@@ -125,3 +125,85 @@ Planted counts (printed by the script):
 Determinism: two runs of the script with default seed wrote files with identical SHA-256 for all three sizes (first 16 hex: 5,000 `6fb863ca359548a5`, 50,000 `7ffbb90145defde9`, 200,000 `382a0ed507495172`).
 
 Not established: whether the engines flag every planted misspelling (an edit can yield a valid inflected form not in the stem list).
+
+## Web Worker in android/harness
+
+Task 9. Result: `android/harness` can host a Web Worker once the spike bundle is added to it (edits listed below). No blocker.
+
+READ, not run (files read: `android/scripts/build-harness.mjs`, `android/harness/harness-entry.ts`, `android/capacitor.config.ts`, `android/CLAUDE.md`, `android/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/WebViewLocalServer.java`, `CapConfig.java`):
+
+- As found, the harness is one IIFE bundle (`www/harness.bundle.js`, entry `harness-entry.ts`) loaded by `www/index.html`. It creates no Worker and bundles no Worker script.
+- As found, the harness page is not what the app loads: `android/capacitor.config.ts` sets `webDir: "../frontend/out"`, so `cap sync` copies the frontend static export, not `www/`.
+- Capacitor Android serves `webDir` assets from the app's local server (`WebViewLocalServer`) inside the system WebView. The default scheme in `CapConfig.java` is `CAPACITOR_HTTPS_SCHEME` (the config sets no `server.androidScheme`). `getMimeType` returns `application/wasm` for a path ending `.wasm` (`WebViewLocalServer.java:558-559`).
+- A same-origin Worker script served this way is an ordinary HTTPS URL for the WebView; the page, the worker scripts, the two `.wasm` files, the dictionary and the fixtures all sit in the same `webDir`.
+- Not established by reading: that the Pixel's System WebView accepts a module worker (`worker-harper.js`, `type: "module"`) and `WebAssembly.instantiateStreaming` against the local server. That is what the owner run measures.
+
+MEASURED on a desktop Chromium stand-in (not the Android WebView; 2026-10-25, run outside the Bash sandbox because Chromium would not start inside it):
+
+- Build: `node android/scripts/build-harness.mjs --spell-spike` (cwd repo root), exit 0, output `android/build/spell-spike/`.
+- Served the output with `node specs/features/spell-checker/scripts/serve.mjs --bundle android/build/spell-spike --fixtures $TMPDIR/sp-fx` and ran `node specs/features/spell-checker/scripts/run.mjs --url <served url>/ --query "warm=1&sizes=5000&sizeRuns=1&recheckRuns=2&suggestReps=1&uas=0"` (Playwright full Chromium, major version 148).
+- Both workers were created and reported ready from the built output: nspell as a classic worker, harper.js as a module worker. `errors` was `[]` for both engines; no `driverError`. This is a smoke run (single warm load, 5,000 words); the numbers are not the measurements of record.
+- The persist script (`persist.bundle.js`) loaded on that page without a page error.
+- Not run: the Android WebView, `@capacitor/filesystem` on a device, the Capacitor local server.
+
+Edits under `android/` (FR-10; owner decision, Gate 4). No edit was made to `android/capacitor.config.ts`.
+
+| File | Change | Reason |
+| --- | --- | --- |
+| `android/scripts/build-harness.mjs` | Added `copyFileSync, readFileSync, writeFileSync` import and a `--spell-spike` branch before the existing build. With the flag it builds the Task 7 spike (`specs/features/spell-checker/scripts/build.mjs` `buildBundle`) into `android/build/spell-spike/`, writes fixtures and `env.json` there, bundles `spell-spike-entry.ts` to `persist.bundle.js`, copies the two pages below, and injects the persist script into `driver.html`. Without the flag the file behaves as before. | The spike must run inside the app's WebView through the harness build. `android/build/` is already ignored by `android/.gitignore`, so the output does not enter git. |
+| `android/harness/spell-spike-entry.ts` (new) | Polls `window.__spellResult` and writes it to `Directory.Data/spell-spike-result.json` with `@capacitor/filesystem`. Imports no application module. | Same host-side capture route as `harness-entry.ts` (`adb shell run-as ... cat files/...`), so the owner copies the JSON block off the phone without logcat scraping. |
+| `android/harness/spell-spike/index.html` (new) | Menu page with links to the driver, the underline page and the storage check; prints `location.origin`. | A WebView has no address bar; the pages need to be reachable by tapping. |
+| `android/harness/spell-spike/storage-check.html` (new) | Writes, reads and reloads a `localStorage` key and prints the origin. | FR-34 Capacitor persistence check. |
+
+Outside `android/` but inside `specs/features/spell-checker/`: `scripts/serve.mjs` now exports `prepareFixtures` (one word, `export`), so the build can reuse the fixture generator.
+
+## Owner step: Android
+
+Halts here. The run is the owner's (Task 16); nothing below was run on a phone. Items marked unverified were not established from the repository.
+
+Device facts established from the repository: app id `works.saboteur.getwrite` (`android/capacitor.config.ts`, `android/android/app/build.gradle`); launch activity `.MainActivity` (`AndroidManifest.xml`); `minSdkVersion` 24, `targetSdkVersion` 36 (`variables.gradle`); Capacitor Android 8.4.2; the harness's own capture route reads `files/<name>` with `run-as` (comment in `android/harness/harness-entry.ts`), which needs a debuggable build (unverified for this build). The device is a Pixel 7 Pro (FR-4 c). Its System WebView version and keyboard app are not recorded anywhere in the repository; steps 11 and 12 record them.
+
+Warnings before starting.
+
+- The spike app is built into the same app id as the real GetWrite app, so installing it over the real app replaces the app code but keeps app data (a debug install with `-r` is the normal behaviour; unverified for this device). Never run `adb shell pm clear works.saboteur.getwrite`: it would delete the projects on the phone.
+- The spike page shares the origin `https://localhost` (default scheme, READ above; step 14 prints the real origin) with the real app. The storage check writes one key, `spell-spike-storage-check`, and nothing else in `localStorage`.
+- Step 15 puts the real app back.
+
+Steps, from the repository root of a clean checkout of this branch (`pnpm install` already done by the owner; do not run it for this):
+
+1. Check the phone is visible and unlocked, with the screen timeout raised in the phone's settings (the run can take up to the driver's 20 minute limit): `adb devices`. Expect one device in state `device`.
+2. Build the spike into the harness output: `node android/scripts/build-harness.mjs --spell-spike`. Expect the last line `[build-harness] wrote .../android/build/spell-spike (spell-spike)` and exit 0. Output: `android/build/spell-spike/` (about 40 MB, mostly the two harper `.wasm` files).
+3. Point Capacitor's `webDir` at that folder for this run only: `sed -i '' 's#webDir: "../frontend/out"#webDir: "build/spell-spike"#' android/capacitor.config.ts` (macOS `sed`). Check with `git diff android/capacitor.config.ts`: one changed line. This file is reverted in step 15.
+4. Create the native project only if `android/android/` does not exist (it is gitignored, so a clean checkout lacks it): `cd android && pnpm exec cap add android` (unverified command; `android/.gitignore` names `npx cap add android`). Then copy the web assets in: `cd android && pnpm run sync` (the `sync` script is `cap sync android`).
+5. Build and install the debug app on the phone: `cd android/android && ./gradlew installDebug` (unverified; the Gradle wrapper is in `android/android/`, and the owner's earlier harness runs are recorded as using `installDebug`). Expect `BUILD SUCCESSFUL`. Record the APK size: `ls -l android/android/app/build/outputs/apk/debug/app-debug.apk` (standard Gradle output path, unverified) and write it next to the "size added to the install" row.
+6. Launch: `adb shell am start -n works.saboteur.getwrite/.MainActivity`. The phone shows "Spell checker spike" with three links and the origin.
+7. Record memory baseline (menu page, nothing running): `adb shell dumpsys meminfo works.saboteur.getwrite > specs/features/spell-checker/screenshots/meminfo-1-menu.txt`.
+8. Tap "Run the spike driver". It runs both engines (20 warm loads each, three document sizes, 5 re-check runs) and shows `running` until done. While it runs, take a second sample at least once, and again during the longest-running phase you can see in the on-page log: `adb shell dumpsys meminfo works.saboteur.getwrite > specs/features/spell-checker/screenshots/meminfo-2-running.txt`. The workers are terminated by the driver at the end of each engine, so a sample after the run shows the page only; the "running" sample is the one that can include a worker.
+9. When the page shows the result block and the line "result written to Directory.Data/spell-spike-result.json", take the third sample: `adb shell dumpsys meminfo works.saboteur.getwrite > specs/features/spell-checker/screenshots/meminfo-3-after.txt`. If the line says "result NOT written", the error text is on the page; the JSON is still in the page's `<pre>` and in `console.log` as `SPELL_RESULT_JSON` (logcat route, unverified: `adb logcat -d | grep SPELL_RESULT_JSON`; long lines may be truncated).
+10. Copy the JSON result block to the clipboard: `adb shell run-as works.saboteur.getwrite cat files/spell-spike-result.json | pbcopy`. Open `specs/features/spell-checker/experiments.md`, go to the heading "Android results (pasted)" at the end of this file, replace the line `pending owner run` with a fenced `json` block and paste. In the pasted block check `environment.browser.userAgent` (it names the WebView's Chrome version) and that `engines[].errors` is empty for both engines; a worker that failed to start shows `worker error` there. Optional repeat for FR-6 cold loads: `adb shell am force-stop works.saboteur.getwrite`, relaunch (step 6), run again, paste each block under its own sub-heading; whether a relaunch counts as a cold load on this WebView is not established (a Capacitor asset load has no network transfer, so `transferSize` may be 0 on every load).
+11. Record the System WebView version: `adb shell dumpsys webviewupdate` (shows the current WebView package and version; unverified output format), and `adb shell dumpsys package com.google.android.webview | grep versionName` (package name may differ on a Pixel, for example `com.android.webview`; unverified). Write both lines, and the Chrome version from the UserAgent in the pasted block, under "Android environment" at the end of this file.
+12. Record the keyboard app: `adb shell settings get secure default_input_method`. Write its output and the app's name as shown in the phone's Settings under "Languages & input". Also record Android version and device: `adb shell getprop ro.build.version.release`, `adb shell getprop ro.product.model`.
+13. FR-7 screenshots. On the phone, go back to the menu (system Back) and tap "Native underline observation page (FR-7)". For each of the eight cases, tap into the field, wait 2 seconds, and capture: `adb exec-out screencap -p > specs/features/spell-checker/screenshots/android-underline-<N>.png` with N = 1 to 8 (create the folder if absent). Case 7 and 8 are the two inside the container that carries `spellcheck="false"`. Beside each file, write one line under "Android underlines" at the end of this file: the case number, whether the text `recieve teh wrold` showed a red or other underline, whether the keyboard's suggestion strip or a composing underline appeared (OQ-12), and the keyboard app name. State what is seen; write no cause. Only an observation that was made is labelled MEASURED; one that could not be made is labelled UNMEASURED with the reason.
+14. FR-34 check, Capacitor origin. Go back to the menu and tap "localStorage persistence check". The page prints `location.origin` (copy it into the results) and `value: (absent)` on first visit.
+    1. Tap "Write a new value". The page shows `value: written <timestamp>`.
+    2. Tap "Reload page". Expect the same timestamp.
+    3. Force-stop and relaunch: `adb shell am force-stop works.saboteur.getwrite`, then `adb shell am start -n works.saboteur.getwrite/.MainActivity`, open the same page. Expect the same timestamp.
+    4. Record each of the three outcomes (timestamp seen, or absent) under "Capacitor localStorage" at the end of this file. Optionally also swipe the app away from recents and reopen it, and say which of the two was done.
+15. Put the real app back: `git checkout android/capacitor.config.ts` (it only reverts the one-line edit of step 3), then from `frontend/` `pnpm build:native`, then `cd android && pnpm run sync` and `cd android/android && ./gradlew installDebug`. Open the app and confirm the projects are listed (data was kept). `android/build/` can then be deleted.
+16. Tell the lead the headings are filled. The run is halted on this section until the Decision section names the engine (FR-9).
+
+### Android environment
+
+pending owner run
+
+### Android underlines
+
+pending owner run
+
+### Capacitor localStorage
+
+pending owner run
+
+## Android results (pasted)
+
+pending owner run

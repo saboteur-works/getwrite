@@ -20,12 +20,65 @@
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const androidRoot = resolve(here, "..");
 const shims = resolve(androidRoot, "harness", "shims");
 
 const shimPath = (name) => resolve(shims, name);
+
+// Feature 95 (spell checker) Part 0, Task 9 (FR-8, FR-10): `--spell-spike` builds the
+// spell-checker spike into `android/build/spell-spike/` (gitignored) instead of the
+// harness bundle, so the spike runs in the real Capacitor WebView. Point Capacitor's
+// webDir at that folder to load it (see specs/features/spell-checker/experiments.md,
+// "Owner step: Android"). The default harness build below is unchanged.
+if (process.argv.includes("--spell-spike")) {
+  const spike = resolve(
+    androidRoot,
+    "..",
+    "specs/features/spell-checker/scripts",
+  );
+  const out = resolve(androidRoot, "build", "spell-spike");
+  const { buildBundle } = await import(resolve(spike, "build.mjs"));
+  const { prepareFixtures, environmentRecord } = await import(
+    resolve(spike, "serve.mjs")
+  );
+  await buildBundle(out);
+  await prepareFixtures(resolve(out, "fixtures"));
+  writeFileSync(resolve(out, "env.json"), JSON.stringify(environmentRecord()));
+  await build({
+    entryPoints: [resolve(androidRoot, "harness", "spell-spike-entry.ts")],
+    bundle: true,
+    platform: "browser",
+    format: "iife",
+    target: ["es2015"],
+    outfile: resolve(out, "persist.bundle.js"),
+    logLevel: "info",
+    define: { "process.env.NODE_ENV": '"production"' },
+    banner: {
+      js: "if(typeof globalThis==='undefined'){window.globalThis=window;}",
+    },
+  });
+  for (const f of ["index.html", "storage-check.html"]) {
+    copyFileSync(
+      resolve(androidRoot, "harness", "spell-spike", f),
+      resolve(out, f),
+    );
+  }
+  const driver = resolve(out, "driver.html");
+  writeFileSync(
+    driver,
+    readFileSync(driver, "utf8").replace(
+      "</body>",
+      '<p id="persist-status">waiting for the result</p>\n<script src="persist.bundle.js"></script>\n</body>',
+    ),
+  );
+  console.log(
+    `[build-harness] wrote ${out} (spell-spike). Set webDir to build/spell-spike, then sync.`,
+  );
+  process.exit(0);
+}
 
 await build({
   entryPoints: [resolve(androidRoot, "harness", "harness-entry.ts")],

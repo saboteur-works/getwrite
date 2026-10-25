@@ -57,7 +57,7 @@ export function environmentRecord() {
   };
 }
 
-async function prepareFixtures(dir) {
+export async function prepareFixtures(dir) {
   mkdirSync(dir, { recursive: true });
   const words = await loadDictionaryWords();
   const sizes = [];

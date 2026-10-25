@@ -113,7 +113,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-8, AC-5, FR-4 (c), FR-34 (Capacitor persistence check). Resolved (owner, Gate 4): FR-10 allows Part 0 to edit files under `android/harness` and `android/scripts/build-harness.mjs` when the spike requires it; such an edit is recorded in `experiments.md` (file, change, reason) and is neither a blocker nor a scope violation. Only a harness that cannot host a Worker at all stops the task. This task writes the runbook only; the owner runs it in Task 16.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Web measurements, localhost production build
 **What:** Run the harness in Chromium against the localhost production-style server and record every FR-6 metric for both engines.
