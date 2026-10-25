@@ -103,7 +103,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-7. An underline is not observable from the DOM; observations are screenshots plus one-line statements recorded in Task 13 and Task 17.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Check android/harness can host a Web Worker; write the Android runbook
 **What:** Determine whether the existing `android/harness` setup can host a Web Worker, record the result, and write the "Owner step: Android" runbook in `experiments.md`.

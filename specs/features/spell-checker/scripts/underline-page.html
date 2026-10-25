@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spell-checker spike: native underline observation page (FR-7)</title>
+<style>
+  body { font: 16px/1.8 system-ui, sans-serif; margin: 1.5rem; max-width: 40rem; }
+  .case { margin: 0 0 1rem; }
+  label { display: block; font-weight: 600; }
+  textarea, input, [contenteditable] { display: block; width: 100%; box-sizing: border-box; font: inherit; padding: 0.25rem; border: 1px solid #888; }
+  .container { border: 1px dashed #888; padding: 0.5rem; }
+</style>
+</head>
+<body>
+  <h1>Native underline observation page</h1>
+  <p>Every field holds "recieve teh wrold". Click into a field, then screenshot it. Eight elements.</p>
+  <section class="case" data-case="1"><label for="case-1">1. contenteditable, no spellcheck attribute</label><div id="case-1" contenteditable="true">recieve teh wrold</div></section>
+  <section class="case" data-case="2"><label for="case-2">2. textarea, no spellcheck attribute</label><textarea id="case-2" rows="2">recieve teh wrold</textarea></section>
+  <section class="case" data-case="3"><label for="case-3">3. input, no spellcheck attribute</label><input id="case-3" type="text" value="recieve teh wrold"></section>
+  <section class="case" data-case="4"><label for="case-4">4. contenteditable, spellcheck="false"</label><div id="case-4" contenteditable="true" spellcheck="false">recieve teh wrold</div></section>
+  <section class="case" data-case="5"><label for="case-5">5. textarea, spellcheck="false"</label><textarea id="case-5" rows="2" spellcheck="false">recieve teh wrold</textarea></section>
+  <section class="case" data-case="6"><label for="case-6">6. input, spellcheck="false"</label><input id="case-6" type="text" value="recieve teh wrold" spellcheck="false"></section>
+  <div class="container" spellcheck="false" data-container="spellcheck-false">
+    <p>Container with spellcheck="false" (cases 7 and 8 carry no attribute of their own).</p>
+    <section class="case" data-case="7"><label for="case-7">7. contenteditable inside a spellcheck="false" container (attribute not on the element)</label><div id="case-7" contenteditable="true">recieve teh wrold</div></section>
+    <section class="case" data-case="8"><label for="case-8">8. textarea inside a spellcheck="false" container (attribute not on the element)</label><textarea id="case-8" rows="2">recieve teh wrold</textarea></section>
+  </div>
+</body>
+</html>

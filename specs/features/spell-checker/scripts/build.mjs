@@ -7,7 +7,7 @@
 //   default DIR: $TMPDIR/spell-spike-bundle
 //
 // Output layout:
-//   driver.html, driver.bundle.js
+//   driver.html, driver.bundle.js, underline-page.html (FR-7, static)
 //   worker-nspell.js            classic worker (iife)
 //   worker-harper.js            module worker (esm; harper.js uses import.meta.url)
 //   harper_wasm_bg.wasm, harper_wasm_slim_bg.wasm   next to worker-harper.js, because
@@ -76,6 +76,7 @@ export async function buildBundle(out) {
     });
   }
   copyFileSync(join(here, "driver.html"), join(out, "driver.html"));
+  copyFileSync(join(here, "underline-page.html"), join(out, "underline-page.html"));
   for (const f of ["harper_wasm_bg.wasm", "harper_wasm_slim_bg.wasm"]) copyFileSync(join(nodeModules, "harper.js/dist", f), join(out, f));
   for (const f of ["index.aff", "index.dic"]) copyFileSync(join(nodeModules, "dictionary-en", f), join(out, "assets", f));
 }
