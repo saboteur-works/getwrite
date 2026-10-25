@@ -213,6 +213,7 @@ FR coverage: FR-1: 1, 3, 4, 5, 6, 7. FR-2: 3-8 (gating), 15, 16, 17, 20, 21. FR-
 **Depends on:** 8, 18, 19
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-17, FR-20, AC-9, AC-10. Concurrent with Task 20. Estimate is gated-in; N/A costs 1.
+**Outcome note (Gate 6, 2026-10-24):** `runTask`'s backlinks step was moved to `updateBacklinks` and then reverted to `persistBacklinks` (d17c4674), which locks the write only. Measured: a `removeResourceFromBacklinks` held between `computeBacklinks`'s scan and the write was lost in 20 of 20 with `updateBacklinks` too, because the scan taken before the lock is what is stored. This is known-gap test b6 (`it.fails`, F93-4). The earlier b4 "0 of 20 after the fix" covered the `backlinks.json` load point only, not the scan. The removal functions still use the helpers. Recorded at the end of `experiments.md`.
 **Done:** [x]
 
 ### Task 22: Correct the "inside one withMetaLock" comments
