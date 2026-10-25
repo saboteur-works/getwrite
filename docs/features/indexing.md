@@ -72,12 +72,13 @@ Each key is a resource UUID; its value is the list of resource UUIDs that the ke
 
 **API** (`frontend/src/lib/models/backlinks.ts`)
 
-| Function                               | Description                                                    |
-| -------------------------------------- | -------------------------------------------------------------- |
-| `listResourceIds(projectRoot)`         | Lists resource UUIDs from `resources/` directory               |
-| `computeBacklinks(projectRoot)`        | Scans all resource content and builds the full `BacklinkIndex` |
-| `persistBacklinks(projectRoot, index)` | Writes `meta/backlinks.json` under meta lock                   |
-| `loadBacklinks(projectRoot)`           | Reads `meta/backlinks.json`, returns `{}` if absent            |
+| Function                               | Description                                                        |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| `listResourceIds(projectRoot)`         | Lists resource UUIDs from `resources/` directory                   |
+| `computeBacklinks(projectRoot)`        | Scans all resource content and builds the full `BacklinkIndex`     |
+| `persistBacklinks(projectRoot, index)` | Writes `meta/backlinks.json` under meta lock (write only)          |
+| `updateBacklinks(projectRoot, change)` | Loads, changes and saves `meta/backlinks.json` under one meta lock |
+| `loadBacklinks(projectRoot)`           | Reads `meta/backlinks.json`, returns `{}` if absent                |
 
 **Live updates** (`frontend/src/lib/models/backlinks-watcher.ts`)
 
@@ -119,7 +120,7 @@ Keyed by `resourceId` so a resource's own mentions are a direct lookup; `invertM
 Testing and determinism
 
 - `flushIndexer()` is exported and used in unit tests to wait for background indexing to complete before test cleanup (this avoids `ENOTEMPTY` directory errors on some platforms).
-- Meta writes are serialized via `withMetaLock(projectRoot, fn)` to avoid concurrent write/remove races during tests and runtime.
+- Meta writes are serialized via `withMetaLock(projectRoot, fn)` to avoid concurrent write/remove races during tests and runtime. The mention-index and backlinks removal writers, `runTask`'s mention step and the entity-rescan writer load, change and save under one lock (`updateMentionIndex`, `updateBacklinks`); `runTask`'s backlinks step, importers, `reindex` and the backlinks watcher lock only the write (`persistBacklinks`), and a `computeBacklinks` recompute is not atomic: a removal that lands between its scan and its write is undone (measured 20 of 20, a known gap). See [project-configuration.md](./project-configuration.md).
 
 Developer notes
 

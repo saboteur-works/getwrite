@@ -12,7 +12,16 @@
  * only hides its field — stored values are preserved. The entity-specific
  * `entities`/`entityHighlighting` toggles live in `EntityFeatureToggles.tsx`
  * instead, rendered from Project Settings' "Entities" tab.
+ *
+ * Because each save replaces the stored `features` block wholesale from the map
+ * the client currently holds, a second toggle sent before the first one's stored
+ * result is in the client store would drop the first (Feature 93, E-5). While a
+ * save is in flight every toggle is disabled and the handler returns early
+ * (`isSaving`, as in `SubtypesSettings`); a failed save shows its error toast
+ * and re-enables the toggles.
  */
+
+import { useState } from "react";
 
 import { useAppDispatch } from "../../src/store/hooks";
 import useAppSelector from "../../src/store/hooks";
@@ -75,6 +84,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
   // separate `timelineView`) are preserved — the route replaces the `features`
   // block wholesale.
   const features = useAppSelector(selectActiveProjectFeatures);
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!selectedProjectId) {
     return null;
@@ -101,6 +111,9 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     label: string,
     next: boolean,
   ): Promise<void> => {
+    if (isSaving) {
+      return;
+    }
     const updated: ProjectFeatureFlags = { ...features, [key]: next };
     // The Timeline view depends on the date fields; disabling the fields takes
     // the view with them (no-op when the view is already off).
@@ -109,6 +122,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     if (isCascadesViewOff) {
       updated.timelineView = false;
     }
+    setIsSaving(true);
     try {
       await dispatch(
         updateProjectFeatures({
@@ -125,12 +139,21 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
         `Couldn't update ${label}`,
         error instanceof Error ? error.message : undefined,
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
-    <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
-      <h2 className="text-sm font-semibold text-gw-primary">
+    <section
+      aria-labelledby="built-in-features-heading"
+      aria-busy={isSaving}
+      className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5"
+    >
+      <h2
+        id="built-in-features-heading"
+        className="text-sm font-semibold text-gw-primary"
+      >
         Built-in features
       </h2>
       <p className="mt-1 text-sm text-gw-secondary">
@@ -151,10 +174,11 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
                 <input
                   type="checkbox"
                   checked={features[key] === true}
+                  disabled={isSaving}
                   onChange={(event) =>
                     void handleToggle(key, label, event.target.checked)
                   }
-                  className="h-4 w-4 rounded border-gw-border"
+                  className="h-4 w-4 rounded border-gw-border disabled:opacity-50"
                 />
                 <span className="text-sm font-medium text-gw-primary">
                   {label}

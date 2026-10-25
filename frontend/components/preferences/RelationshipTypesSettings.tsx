@@ -14,6 +14,13 @@
  * {@link updateProjectRelationshipTypes} (Task 12) with the full, updated
  * array; the route replaces `config.relationshipTypes` wholesale, so each
  * dispatch must always carry the complete list, not a delta.
+ *
+ * Because each dispatch replaces the stored list wholesale from the list the
+ * client currently holds, a second edit sent before the first one's stored
+ * result is in the client store would drop the first edit (Feature 93, E-5).
+ * While a save is in flight every control is disabled and every handler
+ * returns early (`isSaving`, as in `SubtypesSettings`); a failed save shows its
+ * error toast and re-enables the controls.
  */
 
 import { useState } from "react";
@@ -56,6 +63,7 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
     selectActiveProjectRelationshipTypes,
   );
   const [newType, setNewType] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // No new flag is introduced (FR-19) — this editor rides the existing
   // `entities` flag, matching where the FR-2 create control it configures is
@@ -71,6 +79,7 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
    * @param next - The complete, ordered relationship-types array to persist.
    */
   const persist = async (next: string[]): Promise<void> => {
+    setIsSaving(true);
     try {
       await dispatch(
         updateProjectRelationshipTypes({
@@ -83,6 +92,8 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
         "Couldn't update relationship types",
         error instanceof Error ? error.message : undefined,
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -91,6 +102,9 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
    * case-insensitive duplicates of an existing type without dispatching.
    */
   const handleAdd = (): void => {
+    if (isSaving) {
+      return;
+    }
     const trimmed = newType.trim();
     if (trimmed === "") {
       return;
@@ -116,6 +130,9 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
    * @param index - Index of the type to remove.
    */
   const handleRemove = (index: number): void => {
+    if (isSaving) {
+      return;
+    }
     const next = relationshipTypes.filter((_, i) => i !== index);
     void persist(next);
   };
@@ -129,7 +146,11 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
    */
   const handleMove = (index: number, direction: -1 | 1): void => {
     const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= relationshipTypes.length) {
+    if (
+      isSaving ||
+      targetIndex < 0 ||
+      targetIndex >= relationshipTypes.length
+    ) {
       return;
     }
     const next = [...relationshipTypes];
@@ -139,8 +160,15 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
   };
 
   return (
-    <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
-      <h2 className="text-sm font-semibold text-gw-primary">
+    <section
+      aria-labelledby="relationship-types-heading"
+      aria-busy={isSaving}
+      className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5"
+    >
+      <h2
+        id="relationship-types-heading"
+        className="text-sm font-semibold text-gw-primary"
+      >
         Relationship Types
       </h2>
       <p className="mt-1 text-sm text-gw-secondary">
@@ -162,7 +190,7 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
                 type="button"
                 aria-label={`Move ${type} up`}
                 onClick={() => handleMove(index, -1)}
-                disabled={index === 0}
+                disabled={isSaving || index === 0}
                 className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:opacity-40"
               >
                 <ChevronUp size={16} aria-hidden="true" />
@@ -171,7 +199,7 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
                 type="button"
                 aria-label={`Move ${type} down`}
                 onClick={() => handleMove(index, 1)}
-                disabled={index === relationshipTypes.length - 1}
+                disabled={isSaving || index === relationshipTypes.length - 1}
                 className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:opacity-40"
               >
                 <ChevronDown size={16} aria-hidden="true" />
@@ -180,7 +208,8 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
                 type="button"
                 aria-label={`Remove ${type}`}
                 onClick={() => handleRemove(index)}
-                className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary"
+                disabled={isSaving}
+                className="rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:opacity-40"
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -222,7 +251,7 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
           variant="secondary"
           size="sm"
           onClick={handleAdd}
-          disabled={newType.trim() === ""}
+          disabled={isSaving || newType.trim() === ""}
         >
           Add
         </Button>

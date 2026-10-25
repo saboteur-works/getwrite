@@ -384,15 +384,44 @@ export async function deleteResourceCore(
 // ---------------------------------------------------------------------------
 
 /**
- * Sidecar keys derived by the server (the canonical save in
- * `revision-core.ts` writes `wordCount`; upload writes a media resource's
- * `file`, which the file route joins into a path). A client sidecar update never
- * supplies them: they are dropped from the update before the merge, so the
- * stored value is left as the canonical save wrote it. `updatedAt` is not
- * listed: a client-sent `updatedAt` was read in the code path but not
- * observed (experiments.md, Part B).
+ * The only sidecar keys a client sidecar update may store (Feature 93, FR-4).
+ * Every other key in the update is ignored silently: server-owned keys
+ * (`wordCount`, written by the canonical save; `file`, written by upload;
+ * `updatedAt`, `name`, `dismissedNoiseTerms`, which other writers change) and
+ * any key not listed, so a stale whole-resource copy cannot put them back.
+ * `orderIndex` and `folderId` are re-applied from the stored sidecar by
+ * {@link mergeSidecarUpdate}.
  */
-const SERVER_DERIVED_SIDECAR_KEYS: readonly string[] = ["wordCount", "file"];
+const CLIENT_WRITABLE_SIDECAR_KEYS: readonly string[] = [
+  "entityKind",
+  "aliases",
+  "wordCountGoal",
+  "resourceSubtype",
+  "userMetadata",
+];
+
+/**
+ * Identity keys taken from the client only when the stored sidecar is not
+ * valid JSON and is replaced (FR-23): the replacement must still parse and
+ * load as a resource.
+ */
+const REPLACEMENT_IDENTITY_KEYS: readonly string[] = [
+  "id",
+  "slug",
+  "name",
+  "type",
+  "createdAt",
+];
+
+/**
+ * Placement keys taken from the client only on the same replace path: with no
+ * stored sidecar to keep them from, dropping them would move the resource to
+ * the root at position 0. On the normal path they are ignored.
+ */
+const REPLACEMENT_PLACEMENT_KEYS: readonly string[] = [
+  "folderId",
+  "orderIndex",
+];
 
 /**
  * Allowlist of sidecar keys {@link updateSidecarCore}'s `clearKeys` parameter
@@ -475,21 +504,49 @@ function validateClearKeys(clearKeys: string[] | undefined): void {
   }
 }
 
-function omitServerDerivedKeys(
-  update: Record<string, unknown>,
+function pickKeys(
+  source: Record<string, unknown>,
+  keys: readonly string[],
 ): Record<string, unknown> {
-  const kept: Record<string, unknown> = { ...update };
-  for (const key of SERVER_DERIVED_SIDECAR_KEYS) {
-    delete kept[key];
+  const picked: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      picked[key] = source[key];
+    }
   }
-  return kept;
+  return picked;
+}
+
+/**
+ * Inside the sidecar lock, after the tolerant read returned `null` for a file
+ * that exists: re-reads it to tell a JSON parse failure (`SyntaxError`, the
+ * file is replaced) from any other failure (for example `EACCES`, `EIO`),
+ * which is rethrown so nothing is written (FR-23). A re-read that succeeds
+ * means the first failure was not a parse failure (a short-lived read error),
+ * so the valid file is not replaced: that case throws too.
+ */
+async function assertUnparseableSidecar(
+  projectRoot: string,
+  resourceId: string,
+): Promise<void> {
+  try {
+    await readSidecar(projectRoot, resourceId);
+  } catch (err) {
+    if (err instanceof SyntaxError) return;
+    throw err;
+  }
+  throw new Error(
+    `Sidecar for resource ${resourceId} could not be read, but re-reads as valid JSON; not replacing it`,
+  );
 }
 
 /**
  * Reads the stored sidecar inside the sidecar sink, merges `buildUpdate`'s
  * result over it (keeping `orderIndex` and `folderId` from the stored value),
  * applies `clearKeys` and writes. A locked-access error propagates and nothing
- * is written; an unreadable sidecar is replaced, as before.
+ * is written; an unreadable sidecar is replaced, as before, unless
+ * `isStrictRead` is set: then only a JSON parse failure is replaced and any
+ * other read error propagates.
  *
  * @throws {ResourceGoneError} When no sidecar file exists (checked inside the
  *   lock): the resource was deleted or never existed. Nothing is written.
@@ -501,16 +558,19 @@ async function mergeSidecarUpdate(
     existing: Record<string, MetadataValue> | null,
   ) => Record<string, unknown>,
   clearKeys?: string[],
+  isStrictRead = false,
 ): Promise<void> {
   await mutateSidecar(
     projectRoot,
     resourceId,
     async (existing) => {
-      if (
-        existing === null &&
-        !(await exists(sidecarPathForProject(projectRoot, resourceId)))
-      ) {
-        throw new ResourceGoneError(resourceId);
+      if (existing === null) {
+        if (!(await exists(sidecarPathForProject(projectRoot, resourceId)))) {
+          throw new ResourceGoneError(resourceId);
+        }
+        if (isStrictRead) {
+          await assertUnparseableSidecar(projectRoot, resourceId);
+        }
       }
       const update = buildUpdate(existing);
       const merged: Record<string, unknown> = {
@@ -560,13 +620,25 @@ export async function updateSidecarCore(
   clearKeys?: string[],
 ): Promise<void> {
   validateClearKeys(clearKeys);
-  const update = omitServerDerivedKeys(
-    normalizeResourceSubtype(updatedResource),
-  );
+  const normalized = normalizeResourceSubtype(updatedResource);
+  const update = pickKeys(normalized, CLIENT_WRITABLE_SIDECAR_KEYS);
 
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
-  await mergeSidecarUpdate(projectRoot, resourceId, () => update, clearKeys);
+  await mergeSidecarUpdate(
+    projectRoot,
+    resourceId,
+    (existing) =>
+      existing === null
+        ? {
+            ...pickKeys(normalized, REPLACEMENT_IDENTITY_KEYS),
+            ...pickKeys(normalized, REPLACEMENT_PLACEMENT_KEYS),
+            ...update,
+          }
+        : update,
+    clearKeys,
+    true,
+  );
 
   // Task 14 (FR-12): un-declaring an entity (clearing `entityKind`) also
   // drops any saved entity-graph node position for it, unconditionally —

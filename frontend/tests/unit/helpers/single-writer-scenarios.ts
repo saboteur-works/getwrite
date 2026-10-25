@@ -148,28 +148,25 @@ export const SCENARIOS: Record<string, Scenario> = {
   "E revision bump through updateSidecarCore": {
     family: "E",
     corruption: "none",
-    run: () => updateSidecarCore(PROJECT_ID, RESOURCE_ID, { marker: "after" }),
+    run: () => updateSidecarCore(PROJECT_ID, RESOURCE_ID, { wordCountGoal: 1 }),
   },
   "E revision bump, project.json absent": {
     family: "E",
     corruption: "project-json-absent",
-    run: () => updateSidecarCore(PROJECT_ID, RESOURCE_ID, { marker: "after" }),
+    run: () => updateSidecarCore(PROJECT_ID, RESOURCE_ID, { wordCountGoal: 1 }),
   },
   "E revision bump, unparseable project.json": {
     family: "E",
     corruption: "project-json-unparseable",
-    run: () => updateSidecarCore(PROJECT_ID, RESOURCE_ID, { marker: "after" }),
+    run: () => updateSidecarCore(PROJECT_ID, RESOURCE_ID, { wordCountGoal: 1 }),
   },
   "S1 updateSidecarCore": {
     family: "S1",
     corruption: "none",
     run: () =>
-      updateSidecarCore(
-        PROJECT_ID,
-        RESOURCE_ID,
-        { name: "Renamed", extra: 1 },
-        ["resourceSubtype"],
-      ),
+      updateSidecarCore(PROJECT_ID, RESOURCE_ID, { wordCountGoal: 1 }, [
+        "resourceSubtype",
+      ]),
   },
   "S1 updateSidecarCore, unparseable sidecar": {
     family: "S1",

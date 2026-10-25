@@ -7,7 +7,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getStorageAdapter } from "../../src/lib/models/io";
 import { generateUUID } from "../../src/lib/models/uuid";
 import {
   renameResourceSidecarCore,
@@ -57,7 +58,7 @@ async function withProject<T>(
 }
 
 describe("updateSidecarCore on the sidecar sink", () => {
-  it("merges over the stored value, drops wordCount, keeps orderIndex and folderId", async () => {
+  it("merges allowlisted keys over the stored value, drops wordCount and name, keeps orderIndex and folderId", async () => {
     await withProject(async ({ projectId, projectPath, resourceId }) => {
       await writeSidecar(projectPath, resourceId, {
         name: "Old",
@@ -67,6 +68,7 @@ describe("updateSidecarCore on the sidecar sink", () => {
       });
 
       await updateSidecarCore(projectId, resourceId, {
+        entityKind: "character",
         name: "New",
         orderIndex: 9,
         folderId: "folder-b",
@@ -75,7 +77,8 @@ describe("updateSidecarCore on the sidecar sink", () => {
 
       const stored = await readSidecar(projectPath, resourceId);
       expect(stored).toMatchObject({
-        name: "New",
+        entityKind: "character",
+        name: "Old",
         orderIndex: 3,
         folderId: "folder-a",
         keep: "kept",
@@ -94,12 +97,13 @@ describe("updateSidecarCore on the sidecar sink", () => {
       });
 
       await updateSidecarCore(projectId, resourceId, {
-        name: "Pic 2",
+        wordCountGoal: 100,
         file: "../other.png",
       });
 
       expect(await readSidecar(projectPath, resourceId)).toMatchObject({
-        name: "Pic 2",
+        name: "Pic",
+        wordCountGoal: 100,
         file: "original.png",
       });
     });
@@ -236,13 +240,25 @@ describe("updateSidecarCore on the sidecar sink", () => {
         orderIndex: 0,
         folderId: null,
       });
-      await Promise.all(
-        Array.from({ length: 20 }, (_, i) =>
-          updateSidecarCore(projectId, resourceId, { [`field${i}`]: i }),
-        ),
-      );
+      // One update per allowlisted key; userMetadata is replaced wholesale,
+      // so it is sent once.
+      await Promise.all([
+        updateSidecarCore(projectId, resourceId, { entityKind: "place" }),
+        updateSidecarCore(projectId, resourceId, { aliases: ["A", "B"] }),
+        updateSidecarCore(projectId, resourceId, { wordCountGoal: 250 }),
+        updateSidecarCore(projectId, resourceId, { resourceSubtype: "Scene" }),
+        updateSidecarCore(projectId, resourceId, {
+          userMetadata: { status: "Draft" },
+        }),
+      ]);
       const stored = await readSidecar(projectPath, resourceId);
-      for (let i = 0; i < 20; i++) expect(stored?.[`field${i}`]).toBe(i);
+      expect(stored).toMatchObject({
+        entityKind: "place",
+        aliases: ["A", "B"],
+        wordCountGoal: 250,
+        resourceSubtype: "Scene",
+        userMetadata: { status: "Draft" },
+      });
     });
   });
 });
@@ -335,12 +351,240 @@ describe("renameResourceSidecarCore on the sidecar sink", () => {
       });
       await Promise.all([
         renameResourceSidecarCore(projectId, resourceId, "Renamed"),
-        updateSidecarCore(projectId, resourceId, { note: "n" }),
+        updateSidecarCore(projectId, resourceId, { wordCountGoal: 7 }),
       ]);
       expect(await readSidecar(projectPath, resourceId)).toMatchObject({
         name: "Renamed",
-        note: "n",
+        wordCountGoal: 7,
       });
+    });
+  });
+});
+
+describe("updateSidecarCore allowlist (Feature 93 Task 9)", () => {
+  const stored = {
+    id: "stored-id",
+    slug: "stored-slug",
+    name: "Stored name",
+    type: "text",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-02-02T00:00:00.000Z",
+    dismissedNoiseTerms: ["kept"],
+    wordCount: 7,
+    file: "stored.png",
+    orderIndex: 3,
+    folderId: "folder-a",
+  };
+
+  const writerOwned: ReadonlyArray<[string, unknown]> = [
+    ["entityKind", "character"],
+    ["aliases", ["Al", "Bo"]],
+    ["wordCountGoal", 5000],
+    ["resourceSubtype", "Scene"],
+    ["userMetadata", { status: "Draft", mood: "calm" }],
+  ];
+
+  const ignored: ReadonlyArray<[string, unknown]> = [
+    ["updatedAt", "2020-01-01T00:00:00.000Z"],
+    ["name", "Client name"],
+    ["dismissedNoiseTerms", ["client"]],
+    ["wordCount", 999],
+    ["file", "../client.png"],
+    ["orderIndex", 42],
+    ["folderId", "folder-client"],
+    ["someUnlistedKey", "client value"],
+  ];
+
+  it.each(writerOwned)("(a) stores a client %s as sent", async (key, value) => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, { ...stored });
+      await updateSidecarCore(projectId, resourceId, { [key]: value });
+      const after = await readSidecar(projectPath, resourceId);
+      expect(after?.[key]).toEqual(value);
+    });
+  });
+
+  it.each(ignored)(
+    "(a) ignores a client %s: stored value unchanged and the call succeeds",
+    async (key, value) => {
+      await withProject(async ({ projectId, projectPath, resourceId }) => {
+        await writeSidecar(projectPath, resourceId, { ...stored });
+        await expect(
+          updateSidecarCore(projectId, resourceId, { [key]: value }),
+        ).resolves.toBeUndefined();
+        const after = await readSidecar(projectPath, resourceId);
+        expect(after?.[key]).toEqual((stored as Record<string, unknown>)[key]);
+      });
+    },
+  );
+
+  it("(b) a stale whole-resource save after a rename leaves the new name, 20 of 20", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      let kept = 0;
+      for (let rep = 0; rep < 20; rep += 1) {
+        const id = generateUUID();
+        await writeSidecar(projectPath, id, {
+          id,
+          name: "Old",
+          type: "text",
+          orderIndex: 0,
+          folderId: null,
+        });
+        const staleCopy = (await readSidecar(projectPath, id)) ?? {};
+        await renameResourceSidecarCore(projectId, id, `New${rep}`);
+        await updateSidecarCore(projectId, id, {
+          ...staleCopy,
+          userMetadata: { status: "Draft" },
+        });
+        if ((await readSidecar(projectPath, id))?.name === `New${rep}`) {
+          kept += 1;
+        }
+      }
+      void resourceId;
+      expect(kept).toBe(20);
+    });
+  }, 60000);
+
+  it("(b) a stale whole-resource save after a canonical save leaves the newer updatedAt, 100 of 100", async () => {
+    await withProject(async ({ projectId, projectPath }) => {
+      let kept = 0;
+      for (let rep = 0; rep < 100; rep += 1) {
+        const id = generateUUID();
+        const older = "2026-01-01T00:00:00.000Z";
+        const newer = `2026-03-01T00:00:${String(rep % 60).padStart(2, "0")}.000Z`;
+        await writeSidecar(projectPath, id, {
+          id,
+          name: "N",
+          type: "text",
+          updatedAt: older,
+          orderIndex: 0,
+          folderId: null,
+        });
+        const staleCopy = (await readSidecar(projectPath, id)) ?? {};
+        // The canonical save writes a newer updatedAt after the copy was taken.
+        await writeSidecar(projectPath, id, { ...staleCopy, updatedAt: newer });
+        await updateSidecarCore(projectId, id, {
+          ...staleCopy,
+          userMetadata: { status: "Draft" },
+        });
+        if ((await readSidecar(projectPath, id))?.updatedAt === newer) {
+          kept += 1;
+        }
+      }
+      expect(kept).toBe(100);
+    });
+  }, 120000);
+
+  it("(c) KNOWN GAP: a stale userMetadata is stored as sent (replaced wholesale)", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, {
+        ...stored,
+        userMetadata: { status: "Final", mood: "calm" },
+      });
+      await updateSidecarCore(projectId, resourceId, {
+        userMetadata: { status: "Draft" },
+      });
+      const after = await readSidecar(projectPath, resourceId);
+      expect(after?.userMetadata).toEqual({ status: "Draft" });
+    });
+  });
+
+  it("(d) replaces a sidecar that is not valid JSON with identity keys plus allowlisted keys", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await fs.mkdir(path.join(projectPath, "meta"), { recursive: true });
+      const file = sidecarPathForProject(projectPath, resourceId);
+      await fs.writeFile(file, "{not json", "utf8");
+
+      await updateSidecarCore(projectId, resourceId, {
+        id: resourceId,
+        slug: "client-slug",
+        name: "Client name",
+        type: "text",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        entityKind: "character",
+        userMetadata: { status: "Draft" },
+        someUnlistedKey: "dropped",
+      });
+
+      const parsed: unknown = JSON.parse(await fs.readFile(file, "utf8"));
+      expect(parsed).toMatchObject({
+        id: resourceId,
+        slug: "client-slug",
+        name: "Client name",
+        type: "text",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        entityKind: "character",
+        userMetadata: { status: "Draft" },
+      });
+      expect(parsed).not.toHaveProperty("someUnlistedKey");
+      expect(await readSidecar(projectPath, resourceId)).not.toBeNull();
+    });
+  });
+
+  it("(e) rejects and leaves the bytes unchanged when the read fails with EACCES", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, { ...stored });
+      const file = sidecarPathForProject(projectPath, resourceId);
+      const before = await fs.readFile(file);
+      await fs.chmod(file, 0o000);
+      try {
+        await expect(
+          updateSidecarCore(projectId, resourceId, { entityKind: "x" }),
+        ).rejects.toMatchObject({ code: "EACCES" });
+      } finally {
+        await fs.chmod(file, 0o644);
+      }
+      expect((await fs.readFile(file)).equals(before)).toBe(true);
+    });
+  });
+
+  it("(f) Gate 6 F2: rejects and leaves the file unchanged when the first read fails with EIO and the re-read succeeds", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, { ...stored });
+      const file = sidecarPathForProject(projectPath, resourceId);
+      const before = await fs.readFile(file);
+      const adapter = getStorageAdapter();
+      const realRead = adapter.readFile.bind(adapter);
+      let hasFailed = false;
+      const spy = vi.spyOn(adapter, "readFile").mockImplementation(((
+        p: string,
+        e?: BufferEncoding,
+      ) => {
+        if (!hasFailed && p === file) {
+          hasFailed = true;
+          return Promise.reject(
+            Object.assign(new Error("EIO: i/o error"), { code: "EIO" }),
+          );
+        }
+        return realRead(p, e);
+      }) as typeof adapter.readFile);
+      try {
+        await expect(
+          updateSidecarCore(projectId, resourceId, { entityKind: "x" }),
+        ).rejects.toBeInstanceOf(Error);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(hasFailed).toBe(true);
+      expect((await fs.readFile(file)).equals(before)).toBe(true);
+    });
+  });
+
+  it("(g) Gate 6 F7: replacing an unparseable sidecar carries the client's folderId and orderIndex", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await fs.mkdir(path.join(projectPath, "meta"), { recursive: true });
+      const file = sidecarPathForProject(projectPath, resourceId);
+      await fs.writeFile(file, "{not json", "utf8");
+      await updateSidecarCore(projectId, resourceId, {
+        id: resourceId,
+        name: "Client name",
+        type: "text",
+        folderId: "folder-x",
+        orderIndex: 3,
+        userMetadata: { status: "Draft" },
+      });
+      const parsed: unknown = JSON.parse(await fs.readFile(file, "utf8"));
+      expect(parsed).toMatchObject({ folderId: "folder-x", orderIndex: 3 });
     });
   });
 });

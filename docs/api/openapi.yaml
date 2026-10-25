@@ -1859,6 +1859,11 @@ paths:
         Merges `updatedResource` into the resource sidecar at
         `meta/resource-<id>.meta.json` (preserving `orderIndex`/`folderId` from the
         existing sidecar). Used to persist userMetadata changes from the Metadata sidebar.
+        Only five keys of `updatedResource` are stored: `entityKind`, `aliases`,
+        `wordCountGoal`, `resourceSubtype` and `userMetadata`. Any other key
+        (for example `name`, `updatedAt`, `dismissedNoiseTerms`, `wordCount`, `file`) is
+        ignored without an error; those are changed only by their own operations. A stale
+        `userMetadata` still replaces the stored one wholesale.
         An optional `clearKeys` array names sidecar keys to delete from the merged
         result after the merge; it is validated against a fail-closed allowlist
         (`entityKind`, `aliases`, `wordCountGoal`, `resourceSubtype`) and rejected with 400 if it

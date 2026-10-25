@@ -31,6 +31,13 @@ export interface LockGuardHooks {
   beforeLock(kind: GuardedLockKind, key: string): void;
   /** Runs `fn` (the body of a file lock) marked as holding that file lock. */
   runInFileLock<T>(key: string, fn: () => Promise<T>): Promise<T>;
+  /**
+   * Runs `fn` (the body of a `withMetaLock` call) marked as holding the meta
+   * lock for `key`, so `beforeLock("withMetaLock", key)` from inside it throws
+   * {@link LockOrderViolationError} (Feature 93, FR-17). Optional: a guard
+   * without it does not detect nesting.
+   */
+  runInMetaLock?<T>(key: string, fn: () => Promise<T>): Promise<T>;
 }
 
 let activeGuard: LockGuardHooks | null = null;

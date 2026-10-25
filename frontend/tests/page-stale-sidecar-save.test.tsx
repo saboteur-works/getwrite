@@ -1,9 +1,18 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
-import { setSelectedResourceId as setResourceId } from "../src/store/resourcesSlice";
+import {
+  setSelectedResourceId as setResourceId,
+  updateResource as updateResourceInSlice,
+} from "../src/store/resourcesSlice";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import type { AnyResource } from "../src/lib/models/types";
@@ -133,7 +142,7 @@ beforeEach(() => {
 });
 
 describe("page.tsx stale sidecar save (Feature 72 Task 2, FR-32)", () => {
-  it("pins the observed updateSidecar payloads for entityKind then a custom field edit (measurement of current behaviour)", async () => {
+  it("pins the updateSidecar payloads for entityKind then a custom field edit (the second carries the Redux entityKind)", async () => {
     const { default: Page } = await import("../app/(app)/page");
     const store = makeStore();
     render(
@@ -166,7 +175,8 @@ describe("page.tsx stale sidecar save (Feature 72 Task 2, FR-32)", () => {
       orderIndex: 0,
     };
 
-    // Measurement of current behaviour, not a statement of desired behaviour.
+    // Gate 6 (F1): the second payload now carries the Redux `entityKind`
+    // (before the fix it had no `entityKind` key, measured above).
     expect(first.slice(0, 3)).toEqual([
       "res-1",
       "proj-dir-id",
@@ -176,9 +186,12 @@ describe("page.tsx stale sidecar save (Feature 72 Task 2, FR-32)", () => {
     expect(second).toEqual([
       "res-1",
       "proj-dir-id",
-      { ...baseResource, userMetadata: { mood: "calm" } },
+      {
+        ...baseResource,
+        userMetadata: { mood: "calm" },
+        entityKind: "character",
+      },
     ]);
-    expect(second[2]).not.toHaveProperty("entityKind");
 
     const redux = store.getState().resources.resources as AnyResource[];
     expect(redux[0]).toMatchObject({
@@ -194,7 +207,10 @@ describe("page.tsx stale sidecar save (Feature 72 Task 2, FR-32)", () => {
  */
 import { openProject } from "../src/lib/api/projects";
 
-function projectPayload(resourceSubtype: string): unknown {
+function projectPayload(
+  resourceSubtype: string,
+  extra: Record<string, unknown> = {},
+): unknown {
   return {
     project: {
       id: "project-internal-id",
@@ -224,6 +240,7 @@ function projectPayload(resourceSubtype: string): unknown {
         orderIndex: 0,
         userMetadata: {},
         resourceSubtype,
+        ...extra,
       },
     ],
   };
@@ -355,5 +372,110 @@ describe("page.tsx subtype write when the resource was loaded already carrying a
     expect(calls[1][2]).not.toHaveProperty("resourceSubtype");
     const redux = store.getState().resources.resources as AnyResource[];
     expect(redux[0].resourceSubtype).toBeUndefined();
+  });
+});
+
+/**
+ * Gate 6 (F1). The Remove Entity control and the word-count goal control
+ * change `entityKind`, `aliases` and `wordCountGoal` through `updateSidecar`
+ * and Redux only, so the page's local copy keeps the loaded values. These keys
+ * are on the server allowlist, so a later whole-resource write must carry the
+ * Redux value, as it does for `resourceSubtype`.
+ */
+describe("page.tsx entity and goal keys are not put back by a later field edit (Gate 6, F1)", () => {
+  it("entityKind, aliases and wordCountGoal cleared in Redux are absent from the next payload", async () => {
+    vi.mocked(openProject).mockResolvedValueOnce(
+      projectPayload("Scene", {
+        entityKind: "character",
+        aliases: ["Ally"],
+        wordCountGoal: 500,
+      }) as Awaited<ReturnType<typeof openProject>>,
+    );
+    const { default: Page } = await import("../app/(app)/page");
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <Page />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(store.getState().resources.resources.length).toBe(1),
+    );
+    store.dispatch(setResourceId("res-1"));
+    const mood = await screen.findByLabelText("mood");
+
+    act(() => {
+      store.dispatch(
+        updateResourceInSlice({
+          id: "res-1",
+          entityKind: undefined,
+          aliases: undefined,
+          wordCountGoal: undefined,
+        } as Partial<AnyResource> & { id: string }),
+      );
+    });
+
+    fireEvent.change(mood, { target: { value: "calm" } });
+    await waitFor(() => expect(updateSidecarMock).toHaveBeenCalledTimes(1));
+    const payload = updateSidecarMock.mock.calls[0][2] as Record<
+      string,
+      unknown
+    >;
+    expect(payload).toMatchObject({ userMetadata: { mood: "calm" } });
+    expect(payload).not.toHaveProperty("entityKind");
+    expect(payload).not.toHaveProperty("aliases");
+    expect(payload).not.toHaveProperty("wordCountGoal");
+    const redux = store.getState().resources.resources as AnyResource[];
+    expect(redux[0].entityKind).toBeUndefined();
+    expect(redux[0].aliases).toBeUndefined();
+    expect(
+      (redux[0] as { wordCountGoal?: number }).wordCountGoal,
+    ).toBeUndefined();
+  });
+
+  it("a changed entityKind, aliases and wordCountGoal in Redux are carried by the next payload", async () => {
+    vi.mocked(openProject).mockResolvedValueOnce(
+      projectPayload("Scene", {
+        entityKind: "character",
+        aliases: ["Ally"],
+        wordCountGoal: 500,
+      }) as Awaited<ReturnType<typeof openProject>>,
+    );
+    const { default: Page } = await import("../app/(app)/page");
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <Page />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(store.getState().resources.resources.length).toBe(1),
+    );
+    store.dispatch(setResourceId("res-1"));
+    const mood = await screen.findByLabelText("mood");
+
+    act(() => {
+      store.dispatch(
+        updateResourceInSlice({
+          id: "res-1",
+          entityKind: "place",
+          aliases: ["Town"],
+          wordCountGoal: 900,
+        }),
+      );
+    });
+
+    fireEvent.change(mood, { target: { value: "calm" } });
+    await waitFor(() => expect(updateSidecarMock).toHaveBeenCalledTimes(1));
+    expect(updateSidecarMock.mock.calls[0][2]).toMatchObject({
+      entityKind: "place",
+      aliases: ["Town"],
+      wordCountGoal: 900,
+      userMetadata: { mood: "calm" },
+    });
   });
 });
