@@ -243,7 +243,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-12, FR-13, AC-6. Mirror `project-noise-words-core.ts:115-134` (including the `durable` option). Locale-independent lower-casing for the fold. Fail closed (`docs/standards/security.md`).
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Spelling route
 **What:** Write `app/api/project/spelling/route.ts` with GET and POST handlers mirroring the noise-words route.
