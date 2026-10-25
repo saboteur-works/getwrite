@@ -93,7 +93,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-2, FR-3, FR-4, FR-6. Built with `esbuild` already in the workspace (`android/scripts/build-harness.mjs` is the precedent); do not add a dependency. The server must serve with compression so transferred and decoded sizes differ honestly.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Native-underline observation page (FR-7)
 **What:** Write the test page of `contenteditable`, `<textarea>` and `<input>` variants (no attribute, `spellcheck="false"`, inside a `spellcheck="false"` container) all holding "recieve teh wrold".
