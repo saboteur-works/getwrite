@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { userEvent, within, expect, waitFor } from "storybook/test";
-import ImportDocxDialog from "../../../frontend/components/Start/ImportDocxDialog";
+import ImportDocxDialog from "../../components/Start/ImportDocxDialog";
 import type {
   DesktopBridge,
   DocxImportOutcome,

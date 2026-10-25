@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import CreateProjectModal, {
   CreateProjectModalProps,
   CreateProjectPayload,
-} from "../../../frontend/components/Start/CreateProjectModal";
+} from "../../components/Start/CreateProjectModal";
 
 const meta: Meta<typeof CreateProjectModal> = {
   title: "Start/CreateProjectModal",

@@ -37,3 +37,25 @@ Next.js build worker exited with code: 1 and signal: null
 
 - Also printed (not necessarily related): `WARN Issue while reading "/Users/jedaisaboteur/.npmrc". EPERM: operation not permitted` and a Turbopack "3 warnings" block about an unexpected file in the NFT list (`./frontend/.native-build/next.config.mjs`).
 - Cause: not established.
+
+## Native build, second run
+
+MEASURED.
+
+- Command: `pnpm build:native` (cwd `frontend/`), run inside the Bash sandbox.
+- Change 1 (file `frontend/stories/Start/CreateProjectModal.stories.tsx`, line 6):
+  - old: `} from "../../../frontend/components/Start/CreateProjectModal";`
+  - new: `} from "../../components/Start/CreateProjectModal";`
+- Exit code after change 1 alone: 1. First error lines, verbatim:
+
+```
+Failed to type check.
+
+./stories/Start/ImportDocxDialog.stories.tsx:4:30
+Type error: Cannot find module '../../../frontend/components/Start/ImportDocxDialog' or its corresponding type declarations.
+```
+
+- Change 2: the same import-path edit (`../../../frontend/components/` to `../../components/`) in `frontend/stories/Start/ManageProjectMenu.stories.tsx`, `ImportDocxDialog.stories.tsx`, `StartPage.stories.tsx`, `ImportScrivenerDialog.stories.tsx`. These were the only other files under `frontend/stories` containing `../../../frontend/`.
+- Exit code after changes 1 and 2: 0 (`Native static export produced at .../frontend/out`).
+- `pnpm typecheck` and `pnpm lint` results: see the task report.
+- Cause: not established.

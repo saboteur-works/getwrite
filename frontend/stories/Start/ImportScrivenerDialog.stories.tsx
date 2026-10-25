@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { userEvent, within, expect, waitFor } from "storybook/test";
-import ImportScrivenerDialog from "../../../frontend/components/Start/ImportScrivenerDialog";
+import ImportScrivenerDialog from "../../components/Start/ImportScrivenerDialog";
 import type {
   DesktopBridge,
   DocxImportOutcome,

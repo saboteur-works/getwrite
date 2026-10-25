@@ -6,7 +6,7 @@ import StartPage, {
   StartPageProps,
   StartPageCreateResult,
   StartPageProjectEntry,
-} from "../../../frontend/components/Start/StartPage";
+} from "../../components/Start/StartPage";
 import { AnyResource, Folder, Project } from "../../src/lib/models";
 import { openProject } from "../../src/lib/api/projects";
 import {

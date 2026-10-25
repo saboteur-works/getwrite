@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, within } from "storybook/test";
 import ManageProjectMenu, {
   ManageProjectMenuProps,
-} from "../../../frontend/components/Start/ManageProjectMenu";
+} from "../../components/Start/ManageProjectMenu";
 
 const meta: Meta<typeof ManageProjectMenu> = {
   title: "Start/ManageProjectMenu",
