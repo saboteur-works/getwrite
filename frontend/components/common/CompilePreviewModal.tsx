@@ -206,6 +206,7 @@ export default function CompilePreviewModal(
 
         <div className="mt-3">
           <input
+            spellCheck={false}
             id="compile-name"
             type="text"
             value={compilationName}

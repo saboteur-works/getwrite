@@ -233,6 +233,7 @@ export default function RelationshipTypesSettings(): JSX.Element | null {
             New relationship type
           </label>
           <input
+            spellCheck={false}
             id="relationship-type-new"
             type="text"
             value={newType}

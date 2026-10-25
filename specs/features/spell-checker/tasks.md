@@ -413,7 +413,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-28, AC-13. Wide but mechanical; the scan test is written first and shown failing on the real tree.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 40: Flagged word under the pointer or caret
 **What:** Make `EditorContextMenu` find the flagged word from the event position or, for a keyboard-originated event, the caret, and freeze the range when the menu opens.

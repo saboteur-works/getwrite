@@ -185,6 +185,7 @@ function ValueInput({
       <span className="filter-chip__value-relative">
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="number"
             className="filter-chip__value-input filter-chip__value-input--number"
             value={rel.amount}
@@ -223,6 +224,7 @@ function ValueInput({
         <span className="filter-chip__value-range">
           <EditContextMenu>
             <input
+              spellCheck={false}
               type="number"
               className="filter-chip__value-input filter-chip__value-input--number"
               value={range.from as number}
@@ -235,6 +237,7 @@ function ValueInput({
           <span className="filter-chip__value-range-sep">–</span>
           <EditContextMenu>
             <input
+              spellCheck={false}
               type="number"
               className="filter-chip__value-input filter-chip__value-input--number"
               value={range.to as number}
@@ -251,6 +254,7 @@ function ValueInput({
       <span className="filter-chip__value-range">
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="date"
             className="filter-chip__value-input filter-chip__value-input--date"
             value={range.from as string}
@@ -261,6 +265,7 @@ function ValueInput({
         <span className="filter-chip__value-range-sep">–</span>
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="date"
             className="filter-chip__value-input filter-chip__value-input--date"
             value={range.to as string}
@@ -278,6 +283,7 @@ function ValueInput({
       return (
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="text"
             className="filter-chip__value-input"
             value={typeof value === "string" ? value : ""}
@@ -317,6 +323,7 @@ function ValueInput({
       return (
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="number"
             className="filter-chip__value-input filter-chip__value-input--number"
             value={typeof value === "number" ? value : ""}
@@ -329,6 +336,7 @@ function ValueInput({
       return (
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="date"
             className="filter-chip__value-input filter-chip__value-input--date"
             value={typeof value === "string" ? value : ""}
@@ -375,6 +383,7 @@ function ValueInput({
           return (
             <EditContextMenu>
               <input
+                spellCheck={false}
                 type="text"
                 className="filter-chip__value-input"
                 value={typeof value === "string" ? value : ""}
@@ -401,6 +410,7 @@ function ValueInput({
         return (
           <EditContextMenu>
             <input
+              spellCheck={false}
               type="text"
               className="filter-chip__value-input"
               value={typeof value === "string" ? value : ""}
@@ -423,6 +433,7 @@ function ValueInput({
       return (
         <EditContextMenu>
           <input
+            spellCheck={false}
             type="text"
             className="filter-chip__value-input"
             value={typeof value === "string" ? value : ""}

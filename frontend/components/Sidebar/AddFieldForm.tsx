@@ -224,6 +224,7 @@ export default function AddFieldForm({
         <LabeledField label="Name">
           <div className="relative">
             <input
+              spellCheck={false}
               ref={nameInputRef}
               type="text"
               className={FIELD_CONTROL_CLASS}
@@ -327,6 +328,7 @@ export default function AddFieldForm({
           <>
             <LabeledField label="Label">
               <input
+                spellCheck={false}
                 type="text"
                 className={FIELD_CONTROL_CLASS}
                 value={label}

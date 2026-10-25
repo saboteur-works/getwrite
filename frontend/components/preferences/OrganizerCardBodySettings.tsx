@@ -207,6 +207,7 @@ export default function OrganizerCardBodySettings(): JSX.Element | null {
             Excerpt length (characters)
           </label>
           <input
+            spellCheck={false}
             id="organizer-card-body-excerpt-length"
             type="number"
             min={1}
