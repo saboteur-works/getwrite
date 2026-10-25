@@ -20,7 +20,14 @@
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const androidRoot = resolve(here, "..");
@@ -30,9 +37,14 @@ const shimPath = (name) => resolve(shims, name);
 
 // Feature 95 (spell checker) Part 0, Task 9 (FR-8, FR-10): `--spell-spike` builds the
 // spell-checker spike into `android/build/spell-spike/` (gitignored) instead of the
-// harness bundle, so the spike runs in the real Capacitor WebView. Point Capacitor's
-// webDir at that folder to load it (see specs/features/spell-checker/experiments.md,
-// "Owner step: Android"). The default harness build below is unchanged.
+// harness bundle, so the spike runs in the real Capacitor WebView. The spike is a
+// SEPARATE app (application id works.saboteur.getwrite.spellspike) whose native project
+// is generated into its own gitignored directory, android/build/spell-spike-native/,
+// with its own capacitor.config.json. Capacitor reads the config from the working
+// directory (config.js: appRootDir = process.cwd()) and puts the native project in
+// <cwd>/android, so android/capacitor.config.ts and android/android/ are never read or
+// written. See specs/features/spell-checker/experiments.md, "Owner step: Android".
+// The default harness build below is unchanged.
 if (process.argv.includes("--spell-spike")) {
   const spike = resolve(
     androidRoot,
@@ -74,8 +86,51 @@ if (process.argv.includes("--spell-spike")) {
       '<p id="persist-status">waiting for the result</p>\n<script src="persist.bundle.js"></script>\n</body>',
     ),
   );
+  const native = resolve(androidRoot, "build", "spell-spike-native");
+  mkdirSync(native, { recursive: true });
+  // appId/appName differ from android/capacitor.config.ts; that file sets no
+  // androidScheme or server options, so none are mirrored here.
+  writeFileSync(
+    resolve(native, "capacitor.config.json"),
+    JSON.stringify(
+      {
+        appId: "works.saboteur.getwrite.spellspike",
+        appName: "GetWrite Spell Spike",
+        webDir: "../spell-spike",
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  // Capacitor finds plugins from this package.json's dependencies and resolves them
+  // from node_modules by walking up from this directory (to android/node_modules).
+  writeFileSync(
+    resolve(native, "package.json"),
+    JSON.stringify(
+      {
+        name: "getwrite-spell-spike-native",
+        private: true,
+        version: "0.0.0",
+        dependencies: {
+          "@capacitor/android": "*",
+          "@capacitor/core": "*",
+          "@capacitor/filesystem": "*",
+        },
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  const cap = resolve(androidRoot, "node_modules/@capacitor/cli/bin/capacitor");
+  const runCap = (...args) =>
+    execFileSync(process.execPath, [cap, ...args], {
+      cwd: native,
+      stdio: "inherit",
+    });
+  if (!existsSync(resolve(native, "android"))) runCap("add", "android");
+  runCap("sync", "android");
   console.log(
-    `[build-harness] wrote ${out} (spell-spike). Set webDir to build/spell-spike, then sync.`,
+    `[build-harness] wrote ${out} (spell-spike) and the native project ${resolve(native, "android")}.`,
   );
   process.exit(0);
 }

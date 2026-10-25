@@ -5,7 +5,7 @@
 // the Capacitor WebView. The driver (specs/features/spell-checker/scripts/driver.mjs)
 // publishes its JSON block as `window.__spellResult`. This module waits for it and
 // writes it to Directory.Data/spell-spike-result.json, readable from the host via
-//   adb shell run-as works.saboteur.getwrite cat files/spell-spike-result.json
+//   adb shell run-as works.saboteur.getwrite.spellspike cat files/spell-spike-result.json
 // (same capture route as harness-entry.ts). It imports no application module.
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 
