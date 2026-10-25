@@ -20,6 +20,9 @@ const CONFIG = {
   // Supplementary experiment (Task 10): append a full stop to every Nth word of the fixture
   // text before checking. 0 leaves the fixture unchanged. Word start offsets do not move.
   punctuateEvery: num("punct", 0),
+  // Task 11: stop each engine after its load sequence (cold load, then warm loads); no fixtures,
+  // suggestion, check or memory steps.
+  loadOnly: params.get("loadOnly") === "1",
 };
 const WORKER_FILE = { nspell: "worker-nspell.js", harper: "worker-harper.js" };
 const WORKER_TYPE = { nspell: "classic", harper: "module" };
@@ -280,6 +283,11 @@ async function runEngine(engine, fixtures, manifest, suggestionWords) {
     }
   };
   const seq = await step("load", () => loadSequence(engine));
+  if (seq && CONFIG.loadOnly) {
+    out.load = seq.result;
+    seq.session.terminate();
+    return out;
+  }
   if (seq) {
     out.load = seq.result;
     out.suggestion = await step("suggest", () => suggestionTimes(seq.session, suggestionWords));
@@ -317,14 +325,14 @@ async function main() {
   const env = await environment();
   const manifest = JSON.parse(await fetchText("fixtures/manifest.json"));
   const fixtures = [];
-  for (const size of CONFIG.sizes) {
+  for (const size of CONFIG.loadOnly ? [] : CONFIG.sizes) {
     const entry = manifest.sizes.find((s) => s.size === size);
     if (!entry) throw new Error(`no fixture of ${size} words in the manifest`);
     fixtures.push({ size, text: punctuate(await fetchText(`fixtures/${entry.file}`), CONFIG.punctuateEvery) });
   }
   const suggestionSource = manifest.sizes.find((s) => s.size === 50000) ?? manifest.sizes.at(-1);
-  const sourceText = await fetchText(`fixtures/${suggestionSource.file}`);
-  const suggestionWords = [...plantedOffsets(sourceText, manifest).misspellings.values()].slice(0, CONFIG.suggestionWords);
+  const sourceText = CONFIG.loadOnly ? "" : await fetchText(`fixtures/${suggestionSource.file}`);
+  const suggestionWords = CONFIG.loadOnly ? [] : [...plantedOffsets(sourceText, manifest).misspellings.values()].slice(0, CONFIG.suggestionWords);
   const engines = [];
   for (const engine of CONFIG.engines) {
     if (!WORKER_FILE[engine]) throw new Error(`unknown engine ${engine}`);

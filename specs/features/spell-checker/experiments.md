@@ -325,3 +325,36 @@ pending owner run
 ## Android results (pasted)
 
 pending owner run
+
+## Hosted web, throttled
+
+Task 11. FR-4 (a) as resolved at OQ-5 (c), FR-6. All values MEASURED unless marked UNMEASURED. Cells read `median / min / max (n = runs)`. No cause is stated for any value. Separate from "Hosted web, localhost" (Task 10), whose values are unthrottled.
+
+### Environment and method
+
+- Date: 2026-10-25. Git HEAD `d2bea337` (the Task 10 measurement commit), branch `feat/spell-checker`, plus uncommitted edits to `scripts/driver.mjs` (a `loadOnly=1` query parameter: each engine stops after its load sequence, no fixtures, suggestion, check or memory steps) and `scripts/run.mjs` (a `--throttle "latencyMs,downKbps,upKbps"` option).
+- Browser, OS, Node, packages, server and bundle: as in the Task 10 environment record (Playwright 1.60.0, full Chromium 148.0.7778.96, macOS 26.5.1 arm64, Node v24.15.0, nspell 2.1.5, dictionary-en 4.0.0, harper.js 2.13.0; `scripts/serve.mjs` on `127.0.0.1`, brotli). Bundle rebuilt for this run by `scripts/build.mjs`. Server on an OS-assigned port (60180), started and stopped by this task by pid; browser, build and server ran outside the Bash sandbox in one environment.
+- Profile name: "Fast 3G-like" (the values Chrome DevTools uses for its Fast 3G preset). Latency 150 ms; download 1.6 Mbit/s (1,600 kbit/s = 200,000 bytes/s); upload 750 kbit/s (93,750 bytes/s). These are the values passed to the CDP call (`latency: 150`, `downloadThroughput: 200000`, `uploadThroughput: 93750`, `offline: false`).
+- Throttling method: CDP `Network.emulateNetworkConditions` through a Playwright CDP session on the page (`context.newCDPSession(page)`). A page-only call did not slow worker fetches (observed: nspell cold load 78.4 ms with the page-level call applied to the page only versus 75.9 ms unthrottled, a probe run of 1 cold load). The runner therefore also auto-attaches dedicated workers (`Target.setAutoAttach`, `waitForDebuggerOnStart: true`, `flatten: false`) and sends `Network.enable` and the same `Network.emulateNetworkConditions` to each worker through `Target.sendMessageToTarget` before resuming it (`Runtime.runIfWaitingForDebugger`). The runner reported 24 attached worker targets for 4 runs x 6 loads (2 engines x (1 cold + 2 warm) = 6 loads per run).
+- Verification that the throttle took effect on the worker's fetches: nspell cold load 1,172 ms in a 1-run probe with the throttle versus 75.9 ms without (same bundle, server and browser); harper.js cold load 76,514 ms median below versus 430 ms in Task 10. 15,170,508 bytes at 200,000 bytes/s is 75.9 s.
+- Command: `node scripts/run.mjs --url http://127.0.0.1:60180/ --runs 4 --query "loadOnly=1&warm=2" --throttle 150,1600,750`. Each run is a fresh browser context (empty HTTP cache and site data); within a run each engine loads one cold load and then 2 warm loads, each in a new worker. Every cold load recorded `transferSize > 0` (`firstLoadWasCold` true in 4 of 4 runs, both engines). `errors: []` for both engines in all runs.
+- Run counts used: cold load 4; warm load 8 (4 runs x 2); bytes transferred 4 cold and 8 warm. Fewer warm loads per run than Task 10 (2 against 4) because each harper.js load took about 76 s under this profile.
+
+### FR-6 (a) Load time, worker creation to "ready" (ms), throttled
+
+| Engine | Cold | Warm |
+| --- | --- | --- |
+| nspell | 1,160.0 / 1,154.7 / 1,171.0 (n=4) | 36.9 / 33.4 / 66.7 (n=8) |
+| harper.js | 76,514.2 / 76,438.7 / 76,653.4 (n=4) | 76,447.5 / 76,433.3 / 76,583.1 (n=8) |
+
+For comparison, Task 10 unthrottled: nspell cold 48.6, warm 45.8; harper.js cold 430.4, warm 437.1 (medians, ms).
+
+### FR-6 (c) Download size, bytes transferred (Resource Timing), throttled
+
+Cold load (n=4; identical in all 4 runs): nspell 200,562 bytes (worker script 8,365; dictionary 192,197); harper.js 15,170,508 bytes (worker script 23,908; WebAssembly 15,146,600 = 7,533,889 + 7,612,711).
+
+Warm load (n=8; the same value in every load): nspell 0 bytes; harper.js 15,146,600 bytes (worker script 0; both `.wasm` files with the same `transferSize` as cold). These equal Task 10's bytes exactly; the throttle changed the durations, not the byte counts.
+
+### Other FR-6 metrics
+
+Suggestion time (b), memory (d), time to check and re-check (e), correctness (f) and lowest browser version (g) are not measured here and are not repeated: see "Hosted web, localhost" (Task 10), FR-6 (b), (d), (e), (f), (g). They were not run under the throttled profile (UNMEASURED under throttle; the throttled runs used `loadOnly=1`).

@@ -133,7 +133,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-4 (a) as resolved at OQ-5 (c), FR-6. The throttling method (DevTools or a CDP `Network.emulateNetworkConditions` call) is recorded.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Desktop (Electron) measurements
 **What:** Run the harness in the shipped Electron with the app's `webPreferences` and record every FR-6 metric for both engines.
