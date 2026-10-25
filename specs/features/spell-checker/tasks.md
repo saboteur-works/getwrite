@@ -203,7 +203,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** OWNER HALT. Satisfies FR-9, AC-1. No later task starts before this is recorded.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: HALT, owner removes the unchosen packages and moves the chosen to dependencies
 **What:** Stop for the owner to run the package swap.

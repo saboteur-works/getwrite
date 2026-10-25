@@ -1579,17 +1579,33 @@ Recommendation: on the figures above, nspell with dictionary-en is the engine th
 
 ## Decision
 
-To be filled in by the owner. The author has not filled any field below (FR-8, FR-9; OQ-129: no performance limit is chosen in advance).
+Recorded from the owner's choice at Gate 5, 2026-10-25 (Task 18). Every figure is cited from a section above and carries that section's label; no cause is stated for any value (FR-8, FR-9; OQ-129: no performance limit is chosen in advance).
 
-- Engine chosen:
-- Performance limit, and what it limits (or "none"):
-- Minimum WebView or browser version:
+- Engine chosen: nspell 2.1.5 + dictionary-en 4.0.0, in a classic Web Worker.
+- Performance limit, and what it limits (or "none"): none. The 200,000-word check from a cold worker, load time excluded, measured for nspell: 67 ms median on web (Chromium 148.0.7778.96; range 62 to 112, n=5), 64 ms median in Electron 34.5.8 (Chromium 132; range 58 to 97, n=5), and 224.8 ms on Android (Pixel 7 Pro, Android System WebView 155.0.8059.43; n=1). Sources: the "Summary comparison (Task 15)" table, the desktop FR-6 (e) table and the "Android table (FR-6)".
+- Minimum WebView or browser version: the existing floor `Chrome >= 67` (`.browserslistrc`, last line of the file) is kept and is not raised (OQ-8, option c). The lowest version run was Chromium 132.0.6834.210 (Electron 34.5.8); the others were Chromium 148.0.7778.96 (web) and WebView 155.0.8059.43 (Android). Chrome 67 to 131 is UNMEASURED for nspell. The FR-26 disable-below-minimum path therefore has no engine-specific cutoff above 67.
 - `docs/standards/package-selection.md` justification for each package that will ship (sections 1, 2, 4, 6, 7 and 8 of the standard: the package exists, no existing dependency covers the need, purpose and necessity, registry-verified version, peer and TypeScript compatibility; `@types/nspell` is a devDependency and is not a shipping package):
-  - Package 1:
-  - Package 2:
-  - Package 3:
-- Owner name:
-- Date:
+  - Package 1: `nspell` 2.1.5.
+    - Section 1 (exists): installed in `frontend` and run in the harness on all three platforms; licence `"MIT"` in the installed `package.json`, licence file `(The MIT License)`, `Copyright (c) 2016 Titus Wormer` (see "Packages").
+    - Section 2 (existing dependencies first) and section 6 (purpose, necessity): the purpose is Hunspell-compatible word checking and suggestions in a worker (FR-1, FR-21). No dependency already in the repository was recorded as covering it (the Packages section records none). The only other engine measured, harper.js, is not chosen (reasons below).
+    - Section 4 (minimal dependency): size loaded 593,296 bytes decoded for nspell plus dictionary-en together (554,848 dictionary plus 38,448 built worker script, which includes nspell and its dependency `is-buffer` 2.0.5), from the "Size added to the install" table. Transferred 200,562 bytes cold and 0 warm (web, throttled and desktop).
+    - Section 7 (registry verification): version 2.1.5 is the version installed and measured by `pnpm list`. A registry lookup is recorded in "Packages" only for `@types/nspell`; a separate registry record for nspell itself is not recorded there. Maintenance status for nspell is not recorded in "Packages" (nothing is stated here beyond what that section holds).
+    - Section 8 (peer and TypeScript): nspell has no `types` field; importing it failed `pnpm typecheck` with TS7016 (exit 2) and passed (exit 0) with `@types/nspell` 2.1.6 installed (MIT, a devDependency). Peer dependency compatibility with React, Next.js and Node is not recorded in "Packages"; the harness ran it in Chromium 132, 148 and 155 only. Its entry is CommonJS (`main: lib/index.js`).
+  - Package 2: `dictionary-en` 4.0.0.
+    - Section 1 (exists): installed and run in the harness on all three platforms; licence expression `"(MIT AND BSD)"`; licence file begins `en_US Hunspell Dictionary` (see "Packages").
+    - Sections 2 and 6: the purpose is the English affix and dictionary data nspell reads. No dependency already in the repository was recorded as providing it. The package is an ES module that reads `index.aff` and `index.dic` through `node:fs/promises` (READ), so the two files are fetched or bundled as assets in the browser (FR-24).
+    - Section 4: `index.dic` 551,762 bytes plus `index.aff` 3,086 bytes, 554,848 bytes, the dictionary share of the 593,296 bytes above.
+    - Section 7: version 4.0.0 is the version installed and measured by `pnpm list`; no registry lookup for dictionary-en is recorded in "Packages". Maintenance status is not recorded in "Packages".
+    - Section 8: bundled types (`index.d.ts`); `import dictionary from "dictionary-en"` typechecked with no error. No `@types` package is needed.
+  - Package 3: none, harper.js not shipping. Why harper.js was not chosen, from measured facts only: it flagged 0 of 100, 0 of 1,000 and 0 of 4,000 planted misspellings on the unpunctuated fixtures (web, desktop and Android), and in the supplementary sentence-length experiment its flags varied with sentence spacing (cause not established); it transferred 15,170,508 bytes cold and 15,146,600 bytes on every warm load (web and desktop); the 200,000-word check from a cold worker took 71.2 to 128.0 s on web (median 72.2 s), 74.9 s on desktop (range 74.5 to 79.7 s) and 247.8 s on Android (n=1), a 72 to 248 s range; and the desktop working set was 466.0 MB above a blank page (median, n=3). harper.js was not measured on ordinary prose.
+- Owner name: Jedai Saboteur
+- Date: 2026-10-25
+
+### Consequence for OQ-11 and FR-28 (Task 18)
+
+Inheritance of `spellcheck="false"` from an ancestor was established on web (Chromium 148) and Electron (Chromium 132) only. On Android no native underline was visible in any of the 8 cases, so inheritance was not observable there (section "Underlines"). Under the OQ-11 rule, the backstop is added only if all three platforms honour inheritance; one platform did not show it, so the `<body spellCheck={false}>` backstop is NOT added. The explicit per-field attributes of FR-28 are unchanged.
+
+Note for Task 39: do not add `spellCheck={false}` to `<body>` in `app/layout.tsx`; OQ-11 resolved against it on this evidence.
 
 ### Harness and package removal (FR-10)
 
@@ -1624,3 +1640,5 @@ pnpm --filter getwrite-frontend add harper.js
 ```
 
 `@types/nspell` stays a `devDependency` if nspell is chosen. After removal the unchosen packages' names must appear in neither `frontend/package.json` nor `pnpm-lock.yaml` (AC-2).
+
+Owner note (2026-10-25): the owner is removing harper.js and re-adding nspell and dictionary-en as dependencies (Task 19).
