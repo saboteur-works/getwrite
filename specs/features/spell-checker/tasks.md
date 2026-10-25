@@ -53,7 +53,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** OWNER HALT. Satisfies FR-1. Report the command verbatim to the lead and stop. If a types package is needed (Task 4 will find out; for example `@types/nspell`, name not verified), Task 4 reports a further command for the owner and halts on it. Nothing may import these packages before this task is done.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Record installed versions, types need, package files and licences
 **What:** Read the installed packages and record versions, whether a types package is needed, how each loads its data in a browser, WebAssembly size, and each package's licence expression and licence file text.
