@@ -263,7 +263,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-15, AC-7 (HTTP half). Failure-visibility standard: failed must not equal empty.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Native backend, web stub, alias and CLAUDE.md
 **What:** Add the native backend running the same core, its web stub, the `turbopack.resolveAlias` entry, and the `frontend/CLAUDE.md` update.
