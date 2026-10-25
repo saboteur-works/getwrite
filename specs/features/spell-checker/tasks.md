@@ -303,7 +303,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-20, AC-9. Unlike `collectTextBlocks` (`entityHighlightDecoration.ts:275-297`), non-text inline nodes are boundaries. Engine-independent: it never calls the engine.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Known-word set
 **What:** Write the pure function that decides whether a word is known from the engine result, the two lists and the entity alias table.
