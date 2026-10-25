@@ -63,7 +63,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-1 (versions and types need), feeds FR-42 and FR-8 (package-selection justification). `dictionary-en` licence may differ from `nspell`'s; record each separately.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Spike fixture generator
 **What:** Write the deterministic fixture generator for the 5k, 50k and 200k word documents with planted misspellings and made-up names.

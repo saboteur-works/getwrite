@@ -353,6 +353,9 @@ importers:
       '@types/nodemailer':
         specifier: 8.0.1
         version: 8.0.1
+      '@types/nspell':
+        specifier: ^2.1.6
+        version: 2.1.6
       '@types/pg':
         specifier: 8.20.0
         version: 8.20.0
@@ -3246,6 +3249,9 @@ packages:
 
   '@types/nodemailer@8.0.1':
     resolution: {integrity: sha512-PxpaInm8V1JQDd4j0ds5HfvWQk8JupS1C0Picb96QJsrrRDjBH+DlK7L4ZdNSqNULhiZRQHc40nLVShaGxXAMw==}
+
+  '@types/nspell@2.1.6':
+    resolution: {integrity: sha512-PnWYqrBZhkKAreX2kIZDJcBeigZJzXC8VmSuNiXeILUNreczBZHLxGEv/pRT+zL8rsXLxT5bRbiIF9wuh6cGgg==}
 
   '@types/pg@8.20.0':
     resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
@@ -10527,6 +10533,10 @@ snapshots:
       undici-types: 7.24.6
 
   '@types/nodemailer@8.0.1':
+    dependencies:
+      '@types/node': 25.8.0
+
+  '@types/nspell@2.1.6':
     dependencies:
       '@types/node': 25.8.0
 
