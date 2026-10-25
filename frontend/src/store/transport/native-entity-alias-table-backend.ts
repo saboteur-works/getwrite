@@ -75,5 +75,15 @@ export function createNativeEntityAliasTableTransport(
         }
       });
     },
+
+    async getEntityAliasTableOrThrow(projectId) {
+      return run(async () => {
+        const projectRoot = resolveProjectRoot(projectId);
+        if (!projectRoot) {
+          throw new Error(`Unknown project: ${projectId}`);
+        }
+        return buildEntityAliasTable(projectRoot);
+      });
+    },
   };
 }

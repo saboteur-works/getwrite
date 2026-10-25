@@ -283,7 +283,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-19, AC-8 (the read half). Precedent: `listEntityRelationshipsOrThrow` in `entity-relationships.ts`; `frontend/CLAUDE.md` "Reject vs degrade is per site".
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Spelling Redux slice
 **What:** Add a slice holding the active project's two lists with a `not loaded | loaded | failed` state, loaded on project load and replaced by every mutation's response.

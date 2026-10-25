@@ -49,6 +49,14 @@ export interface EntityAliasTableTransport {
    * failure yields `{ entities: {}, claimedBy: {} }` rather than throwing.
    */
   getEntityAliasTable(projectId: string): Promise<EntityAliasTable>;
+
+  /**
+   * Fetches the project's entity alias table, rejecting on any failure the
+   * degrading read swallows (network error, non-2xx, malformed body) so a
+   * caller can tell a failed read from a genuinely empty table (spell-checker
+   * FR-19). `getEntityAliasTable` is unchanged.
+   */
+  getEntityAliasTableOrThrow(projectId: string): Promise<EntityAliasTable>;
 }
 
 /** The empty alias table returned on any read failure. */
@@ -92,6 +100,27 @@ export const httpEntityAliasTableTransport: EntityAliasTableTransport = {
       return EMPTY_ALIAS_TABLE;
     }
   },
+
+  async getEntityAliasTableOrThrow(projectId) {
+    const response = await fetch(
+      `/api/project/${encodeURIComponent(projectId)}/entity-alias-table`,
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load the entity alias table (status ${response.status}).`,
+      );
+    }
+    const body: unknown = await response.json();
+    const result = EntityAliasTableSchema.safeParse(body);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "entity-alias-table.getEntityAliasTableOrThrow",
+        result.error.issues,
+      );
+      throw new Error("Malformed entity alias table response.");
+    }
+    return result.data;
+  },
 };
 
 /**
@@ -122,4 +151,19 @@ export async function getEntityAliasTable(
 ): Promise<EntityAliasTable> {
   const transport = await resolveEntityAliasTableTransport();
   return transport.getEntityAliasTable(projectId);
+}
+
+/**
+ * Fetches the project's entity alias table, rejecting on any failure instead
+ * of degrading to the empty table (spell-checker FR-19). A resolved empty
+ * table means the project really has no entities.
+ *
+ * @param projectId - The project's on-disk directory basename.
+ * @throws On a network error, a non-2xx response or a malformed body.
+ */
+export async function getEntityAliasTableOrThrow(
+  projectId: string,
+): Promise<EntityAliasTable> {
+  const transport = await resolveEntityAliasTableTransport();
+  return transport.getEntityAliasTableOrThrow(projectId);
 }
