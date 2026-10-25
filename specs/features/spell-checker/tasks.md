@@ -533,7 +533,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-44, AC-18.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 52: Licence file present in the four outputs
 **What:** Check `THIRD_PARTY_SPELLCHECK.txt` is present in the web build output, `.next/standalone/frontend/public/`, the packaged Electron app's resources, and `frontend/out/`, and record each.
