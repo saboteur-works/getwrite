@@ -358,3 +358,123 @@ Warm load (n=8; the same value in every load): nspell 0 bytes; harper.js 15,146,
 ### Other FR-6 metrics
 
 Suggestion time (b), memory (d), time to check and re-check (e), correctness (f) and lowest browser version (g) are not measured here and are not repeated: see "Hosted web, localhost" (Task 10), FR-6 (b), (d), (e), (f), (g). They were not run under the throttled profile (UNMEASURED under throttle; the throttled runs used `loadOnly=1`).
+
+## Desktop (Electron)
+
+Task 12. FR-4 (b), FR-6, AC-3. All values MEASURED unless marked UNMEASURED. Cells read `median / min / max (n = runs)`. No cause is stated for any value. The web figures are in "Hosted web, localhost" (Task 10) and are not repeated here except where a row compares.
+
+### Environment record
+
+- Date: 2026-10-25. Git HEAD `a3c9fa6ec905958198392bc134dc8276b54ad245`, branch `feat/spell-checker`; the only uncommitted file used is `scripts/electron-main.mjs` (new). `scripts/driver.mjs`, `build.mjs`, `serve.mjs` unchanged from HEAD.
+- Electron version in `electron/package.json`: `^34.5.8` (READ). Installed `electron/node_modules/electron/package.json`: 34.5.8. Runtime `process.versions` of the launched binary: electron 34.5.8, chrome 132.0.6834.210, node 20.19.1, v8 13.2.152.41-electron.0. User agent: `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.210 Electron/34.5.8 Safari/537.36`. Page `crossOriginIsolated` true; `performance.memory` present; `performance.measureUserAgentSpecificMemory` is a function.
+- OS: macOS 26.5.1, `darwin 25.5.0 arm64`. Node (server) v24.15.0. Packages: nspell 2.1.5, dictionary-en 4.0.0, harper.js 2.13.0.
+- Window: `scripts/electron-main.mjs`, run unpackaged with the workspace binary `electron/node_modules/.bin/electron` (no install, no packaging). `BrowserWindow` `webPreferences`: `contextIsolation: true`, `nodeIntegration: false` (as `electron/src/main.ts:736-740`), plus `backgroundThrottling: false` and a per-run in-memory `partition` (empty HTTP cache for a cold first load). The app's `preload` is not used (the driver needs no bridge); the window is created with `show: false`. Throwaway `userData` under `$TMPDIR` (`app.setPath("userData", ...)` before `ready`; the script refuses any path outside the system temp directory). The real `userData`, `~/Library/Logs/*`, `~/Documents/GetWrite`, `projects/` and port 7340 were not used.
+- Server: `scripts/serve.mjs` from the Task 7 bundle (`scripts/build.mjs`), `127.0.0.1:60939` (OS-assigned), brotli, COOP `same-origin`, COEP `require-corp`, same fixtures generator (5,000 / 50,000 / 200,000 words). The Electron window ran outside the Bash sandbox; the server ran inside it. Origin is `http://127.0.0.1:60939`, not the desktop origin `http://localhost:7340`; the page was loaded from the Task 7 server as in Task 10.
+- Command (main pass): `electron scripts/electron-main.mjs --url http://127.0.0.1:60939/ --user-data <tmp> --runs 5 --query "warm=4&sizes=5000,50000,200000&sizeRuns=1&recheckRuns=10&suggestReps=5"`. Same driver query and counts as Task 10: each of 5 runs is a fresh window and session; per engine one cold load then 4 warm loads, 5 repetitions x 200 suggestions, one cold-worker check per size, 10 re-checks. Every cold load recorded `transferSize > 0` (5 of 5 runs, both engines). Every run reported `errors: []` for both engines and no `driverError`.
+- Run counts actually used: cold load 5, warm load 20, suggestion 5 repetitions x 5 runs = 25, check-from-cold-worker 5 per size (harper.js at 200,000 words: 74.5 to 79.7 s per check; no reduced count was needed), re-check 10 x 5 = 50, bytes 5 cold and 20 warm. Memory by `app.getAppMetrics()` is a separate pass per engine (3 runs each, same query with `engines=<one>`), plus the whole-run figures from the main pass (5 runs).
+- Script defects found and fixed while running, recorded for the record: (1) with no `window-all-closed` handler Electron quit when the first run's window was destroyed (the second window's first `loadURL` failed with `ERR_FAILED` and the process exited); the handler was added. (2) Four earlier launches of the main pass therefore stopped after run 0 or 1 (or failed on the first blank-page load) and produced no result file; they are not used. The values below come from the later complete launches only.
+
+### FR-6 (a) Load time, worker creation to "ready" (ms)
+
+| Engine | Cold | Warm |
+| --- | --- | --- |
+| nspell | 51.4 / 46.2 / 63.7 (n=5) | 47.6 / 43.7 / 57.4 (n=20) |
+| harper.js | 458.8 / 446.2 / 486.5 (n=5) | 456.4 / 437.8 / 489.4 (n=20) |
+
+### FR-6 (b) Suggestion time per call, 200 misspellings, 5 repetitions per run (ms)
+
+Per-repetition p50 and p95 over 200 calls; cells are over the 25 repetitions (5 runs x 5). Words with at least one suggestion in the first repetition: nspell 199 of 200, harper.js 199 of 200 (all 5 runs).
+
+| Engine | p50 | p95 |
+| --- | --- | --- |
+| nspell | 0.730 / 0.650 / 0.920 (n=25) | 1.220 / 1.005 / 1.940 (n=25) |
+| harper.js | 0.190 / 0.170 / 0.995 (n=25) | 0.220 / 0.195 / 1.945 (n=25) |
+
+### FR-6 (c) Download size, bytes (Resource Timing)
+
+Cold load (n=5; identical in all 5 runs):
+
+| Engine | Resource | Transferred | Encoded body | Decoded body |
+| --- | --- | --- | --- | --- |
+| nspell | worker script (`worker-nspell.js`) | 8,365 | 8,065 | 38,448 |
+| nspell | dictionary (`index.aff` 1,211 + `index.dic` 190,986 transferred) | 192,197 | 191,597 | 554,848 |
+| nspell | total | 200,562 | 199,662 | 593,296 |
+| harper.js | worker script (`worker-harper.js`) | 23,908 | 23,608 | 220,827 |
+| harper.js | WebAssembly (`harper_wasm_slim_bg.wasm` 7,533,889 + `harper_wasm_bg.wasm` 7,612,711 transferred) | 15,146,600 | 15,146,000 | 40,205,397 |
+| harper.js | total | 15,170,508 | 15,169,608 | 40,426,224 |
+
+Warm load, bytes transferred per load (n=20 for the total): nspell 0 (worker script 0, dictionary 0); harper.js 15,146,600 (worker script 0, both `.wasm` files with their cold `transferSize`). These equal the Task 10 values byte for byte. The bytes are from a localhost HTTP server, as in Task 10; the desktop app serves from its bundled local server, so these are not network-throttled figures.
+
+### FR-6 (d) Memory, `app.getAppMetrics()`
+
+Method: `electron-main.mjs` samples `app.getAppMetrics()` every 250 ms during a run and once on a blank `data:` page before the driver starts. Values are `memory.workingSetSize` (reported in KB; shown in MB, 1 MB = 1,024 KB) summed over all Electron processes (Browser, GPU, Utility, Tab), or by process type. "Peak" is the largest sampled value, so a peak between two samples is not seen. `memory.privateBytes` was reported as 0 on this platform for every process, so private memory: UNMEASURED. `performance.measureUserAgentSpecificMemory()` on the page was called (the page is cross-origin isolated) and threw `SecurityError: Failed to execute 'measureUserAgentSpecificMemory' on 'Performance': performance.measureUserAgentSpecificMemory is not available.` in all runs, so it is UNMEASURED in Electron (it returned values on Chromium 148 in Task 10). The worker JS heap is UNMEASURED (`performance.memory` absent in the worker; same as Task 10).
+
+Per-engine passes (3 runs each, one engine per launch):
+
+| Engine | Blank page, all processes | Peak, all processes | Peak minus blank page | Peak, Tab process type |
+| --- | --- | --- | --- | --- |
+| nspell | 307.5 / 294.8 / 330.2 (n=3) | 404.4 / 395.3 / 409.1 (n=3) | 96.9 / 78.9 / 100.5 (n=3) | 151.8 / 151.6 / 174.1 (n=3) |
+| harper.js | 296.3 / 291.2 / 310.2 (n=3) | 757.9 / 746.2 / 762.3 (n=3) | 466.0 / 436.1 / 466.6 (n=3) | 537.7 / 492.4 / 539.4 (n=3) |
+
+The Tab process working set on the blank page was 76.2 to 79.0 MB in the six runs. Peaks of the other process types in the same passes: Browser 120.1 to 135.0 MB, GPU 60.1 to 73.1 MB, Utility 38.9 to 61.2 MB (nspell and harper.js passes together).
+
+Main pass (5 runs, both engines in sequence in one window, so the peak is the larger of the two engines' phases): blank page 292.2 / 290.6 / 307.3 MB (n=5); peak, all processes 705.2 / 698.5 / 786.2 MB (n=5); peak Tab 490.0 / 478.8 / 543.9 MB (n=5).
+
+Page JS heap (`performance.memory.usedJSHeapSize`, MB, n=5, median / min / max; excludes the worker): nspell before any worker 5.32 / 5.24 / 5.32, after load 5.33 / 5.25 / 5.33, after checking 200,000 words 4.56 / 4.52 / 5.76; harper.js 4.26 / 3.61 / 4.30, 3.84 / 3.74 / 3.86, 3.92 / 3.82 / 3.94.
+
+### FR-6 (e) Time to check, from a cold worker (ms), and to re-check one edited paragraph
+
+Check: a new worker is loaded, then one `check` of the whole fixture is timed (1 per run, 5 runs; load time excluded).
+
+| Engine | 5,000 words | 50,000 words | 200,000 words |
+| --- | --- | --- | --- |
+| nspell | 2 / 2 / 2 (n=5) | 14 / 14 / 19 (n=5) | 64 / 58 / 97 (n=5) |
+| harper.js | 646 / 618 / 683 (n=5) | 9,794 / 9,549 / 10,039 (n=5) | 74,933 / 74,479 / 79,744 (n=5) |
+
+Re-check one edited paragraph (136 words, middle paragraph of the 200,000-word fixture with one suffixed word appended; 10 per run on a worker that had already checked the full document; 5 runs):
+
+| Engine | Re-check (ms) |
+| --- | --- |
+| nspell | 0.06 / 0.04 / 0.15 (n=50) |
+| harper.js | 18.41 / 14.49 / 23.48 (n=50) |
+
+The cold-worker check has 5 runs per size (the same as Task 10), not 10; the re-check has 50.
+
+### FR-6 (f) Correctness on the specified fixtures
+
+Identical in all 5 runs, and identical to the Task 10 counts. Fixtures are the unpunctuated Task 5 fixtures. See "Hosted web, localhost" FR-6 (f) for the column definitions.
+
+| Engine | Words | Planted misspellings flagged | Planted names flagged | Unplanted words flagged | Total flagged |
+| --- | --- | --- | --- | --- | --- |
+| nspell | 5,000 | 100 of 100 | 21 of 25 | 0 | 121 |
+| nspell | 50,000 | 992 of 1,000 | 232 of 250 | 0 | 1,224 |
+| nspell | 200,000 | 3,974 of 4,000 | 881 of 1,000 | 0 | 4,855 |
+| harper.js | 5,000 | 0 of 100 | 0 of 25 | 0 | 0 |
+| harper.js | 50,000 | 0 of 1,000 | 0 of 250 | 0 | 0 |
+| harper.js | 200,000 | 0 of 4,000 | 0 of 1,000 | 0 | 0 |
+
+The re-check of the edited paragraph flagged 4 words for nspell and 0 for harper.js (all 5 runs). For harper.js with sentence-ending full stops added to the fixture, see "Supplementary experiment: sentence length only" under "Hosted web, localhost" (a cross-reference only; it was not run in Electron).
+
+### FR-6 (g) Lowest runtime version run
+
+Chromium 132.0.6834.210 in Electron 34.5.8 (the version in `electron/package.json`'s range); both engines ran to completion (`errors: []`). Other Electron versions: UNMEASURED, none installed here.
+
+### Size added to the install
+
+Computed by `stat` file sizes (bytes; `find -L ... -exec stat -f %z`) of the files in `frontend/node_modules` as installed, the assets the harness bundle loads at run time:
+
+| Engine | Asset | Bytes |
+| --- | --- | --- |
+| nspell + dictionary-en | `dictionary-en/index.dic` + `index.aff` (551,762 + 3,086) | 554,848 |
+| nspell + dictionary-en | `nspell/lib` (JS source, 12 files) | 26,733 |
+| nspell + dictionary-en | `nspell` whole package dir | 42,413 |
+| nspell + dictionary-en | `dictionary-en` whole package dir (includes `license` 15,731) | 575,389 |
+| nspell + dictionary-en | `is-buffer` 2.0.5 (nspell dependency) | 4,587 |
+| nspell + dictionary-en | bundled worker script as built by `build.mjs`, decoded (includes nspell and `is-buffer`) | 38,448 |
+| harper.js | `dist/harper_wasm_bg.wasm` + `dist/harper_wasm_slim_bg.wasm` (20,252,229 + 19,953,168), both fetched in the cold load above | 40,205,397 |
+| harper.js | `dist/harper_wasm_slim_bg.wasm` alone | 19,953,168 |
+| harper.js | bundled worker script as built by `build.mjs`, decoded | 220,827 |
+| harper.js | whole `dist/` directory (includes the two inlined variants, not loaded) | 94,092,822 |
+| harper.js | `fflate` 0.8.3 (harper.js dependency) | 796,742 |
+
+Sum of the loaded assets plus the built worker script: nspell + dictionary-en 593,296 bytes; harper.js 40,426,224 bytes (equal to the decoded totals in FR-6 (c)). A packaged-app size (`electron-builder`, asar, compression) was not built or measured: UNMEASURED, no packaged build was made. Whether a shipped harper.js would load only the slim `.wasm` was not tested; in this harness both files were fetched.

@@ -143,7 +143,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-4 (b), FR-6, AC-3. Use a temporary `userData` directory under `$TMPDIR`, never the real one. The Electron window may need to run outside the sandbox.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Native-underline observations on web and desktop
 **What:** Open the Task 8 page in Chromium and in the Electron window and record what each underlines, with screenshot references.
