@@ -1642,3 +1642,47 @@ pnpm --filter getwrite-frontend add harper.js
 `@types/nspell` stays a `devDependency` if nspell is chosen. After removal the unchosen packages' names must appear in neither `frontend/package.json` nor `pnpm-lock.yaml` (AC-2).
 
 Owner note (2026-10-25): the owner is removing harper.js and re-adding nspell and dictionary-en as dependencies (Task 19).
+
+## Part 0 verification
+
+Task 20 (FR-10, FR-2, AC-1, AC-2). MEASURED on 2026-10-25, main checkout, branch `feat/spell-checker`, HEAD `e16e37ea`, in the sandbox. No cause is written for any value.
+
+### Part 0 diff scope
+
+Part 0 commits are the 18 commits `faaf65ef..e16e37ea` (`git log --format='%h %s' faaf65ef..e16e37ea | wc -l` prints 18): `3fbc1582` (Task 3) through `e16e37ea` (Task 19), including the two Task 9 commits `3a18b638` and `478724d6`. `git diff --stat faaf65ef..e16e37ea` reports 41 files changed, 4493 insertions, 17 deletions. `git diff --name-only faaf65ef..e16e37ea | grep -v '^specs/features/spell-checker/'` prints exactly six paths:
+
+| Path | Commits | Recorded in this file |
+|---|---|---|
+| `frontend/package.json` | `3fbc1582` (nspell, dictionary-en, harper.js as devDependencies), `a6b64026` (`@types/nspell`), `e16e37ea` (harper.js removed; nspell and dictionary-en to dependencies) | "Packages" (Task 3/4), "Harness and package removal (FR-10)" with the owner note of Task 19 |
+| `pnpm-lock.yaml` | same three commits | same sections |
+| `android/scripts/build-harness.mjs` | `3a18b638` (`--spell-spike` branch), `478724d6` (separate app id `works.saboteur.getwrite.spellspike`) | "Web Worker in android/harness" (edit table) and "Amended build, run here" |
+| `android/harness/spell-spike-entry.ts` | `3a18b638` (new), `478724d6` (comment only) | "Web Worker in android/harness" (edit table) |
+| `android/harness/spell-spike/index.html` | `3a18b638` (new) | "Web Worker in android/harness" (edit table) |
+| `android/harness/spell-spike/storage-check.html` | `3a18b638` (new) | "Web Worker in android/harness" (edit table) |
+
+Every other changed path is under `specs/features/spell-checker/` (this file, `tasks.md`, `scripts/`, `screenshots/`). Each of the five android and package paths above has a row or section here. No file under `frontend/components`, `frontend/src`, `frontend/app` or `frontend/stories` is in the Part 0 diff.
+
+The Task 1-2 commits are separate and outside that range. `git show --stat 29e3747c` (Task 1) lists one file, `specs/features/spell-checker/experiments.md` (39 insertions). `git show --stat faaf65ef` (Task 2, the `pnpm build:native` fix) lists `experiments.md` and five story files: `frontend/stories/Start/{CreateProjectModal,ImportDocxDialog,ImportScrivenerDialog,ManageProjectMenu,StartPage}.stories.tsx`, one line changed each. The `frontend/stories` edits therefore belong to the separate Task 2 commit and are not Part 0.
+
+### Package state
+
+- `grep -c harper frontend/package.json` prints 0; `grep -c harper pnpm-lock.yaml` prints 0.
+- `frontend/package.json` (lines in the file): `dictionary-en` `^4.0.0` at line 78 and `nspell` `^2.1.5` at line 92, both inside `dependencies` (lines 32 to 104); `@types/nspell` `^2.1.6` at line 123, inside `devDependencies` (from line 105).
+- `git grep -l "nspell\|dictionary-en\|harper" -- frontend/components frontend/src frontend/app` prints nothing (exit 1).
+
+### Typecheck and knip
+
+- `pnpm typecheck` (from `frontend/`): exit 0.
+- `pnpm knip` (repo root): exit 1. Findings by section: Unused files 50; Unused dependencies 3; Unused devDependencies 5; Unlisted dependencies 6; Unlisted binaries 4; Unused exports 160; Unused exported types 174; Duplicate exports 14 (sum 411; plus 6 configuration hints, not counted).
+- Baseline: the latest recorded one found is in `specs/features/stale-saves-and-index-races/experiments.md` ("knip delta closed"): 49 / 1 / 4 / 6 / 4 / 160 / 174 / 14 = 412 in the section order above; it was taken on another branch and is not a Feature 95 baseline, so a Feature 95 baseline is unestablished. Compared with it, three sections differ: Unused files 50 (+1: `android/harness/spell-spike-entry.ts`, which is Task 9), Unused dependencies 3 (+2: `dictionary-en` `frontend/package.json:78`, `nspell` `frontend/package.json:92`; the third is `typedoc`), Unused devDependencies 5 (+1: `@types/nspell` `frontend/package.json:123`; the other four are `@capacitor/filesystem`, `@better-auth/cli`, `@eslint/eslintrc`, `next-devtools-mcp`). The three package findings are the packages nothing in the app imports yet; knip was not changed.
+
+### Harness with harper.js uninstalled
+
+Run from the repo root, harper.js absent from `frontend/node_modules`:
+
+- `node specs/features/spell-checker/scripts/build.mjs --out $TMPDIR/t20bundle`: exit 1. `driver.bundle.js` (14.3 kb) and `worker-nspell.js` (37.5 kb) were written; the harper step failed with `Could not resolve "../../../../frontend/node_modules/harper.js/dist/index.js"` and `Could not resolve "../../../../frontend/node_modules/harper.js/dist/binary.js"` (both from `scripts/worker-harper.mjs`, lines 5 and 6). No `worker-harper.js` was produced.
+- `node specs/features/spell-checker/scripts/worker.check.mjs`: exit 1; 7 tests, 4 passed, 3 failed. Passed: `nspell: ready after init, then check and suggest`; `nspell: malformed and early requests get an error reply, not silence`; `protocol exports its message types and tokenizer`; `workers import no application module and take no timings`. Failed: `harper: ready after init, then check and suggest` and `harper: malformed and early requests get an error reply, not silence`, each with `Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../frontend/node_modules/harper.js/dist/index.js' imported from .../scripts/worker-harper.mjs`; and `both engines use identical message shapes` with an `AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal`.
+- `node specs/features/spell-checker/scripts/fixtures.check.mjs`: exit 0; 5 tests, 5 passed.
+- READ, not run: `android/scripts/build-harness.mjs --spell-spike` (line 55) imports `buildBundle` from `scripts/build.mjs`, which is the build that exited 1 above; the Android `--spell-spike` branch was not run (no `cap`, no gradle), so whether it exits non-zero is UNMEASURED. The other scripts that name harper.js (`driver.mjs`, `driver.html`, `protocol.mjs`, `serve.mjs`) were not run here.
+
+The harness is runnable only for the remaining engine, nspell. Fixture generation works for both. The harper.js worker, its bundle step and the three tests above fail; the scripts were left unchanged and stay as the experiment record (measurements above are not rewritten).

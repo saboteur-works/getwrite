@@ -213,7 +213,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** OWNER HALT. Satisfies FR-10, FR-1. Report the exact commands for the chosen engine. The agent never runs them.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Verify Part 0 scope and the no-engine-import rule
 **What:** Check the Part 0 diff scope and the package state, and record both.
@@ -223,7 +223,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** Satisfies FR-10, FR-2, AC-1, AC-2. A tracked change under `android/harness` or `android/scripts/build-harness.mjs` is allowed by FR-10 and is not a deviation; check that each one is recorded in `experiments.md` and list them here.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Config keys, constants and types
 **What:** Add `spellingProjectWords` and `spellingIgnoredWords` to the config schema and type, with the two bounds as named constants.
