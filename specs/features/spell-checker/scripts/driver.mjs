@@ -17,6 +17,9 @@ const CONFIG = {
   suggestReps: num("suggestReps", 5),
   suggestionWords: 200,
   uasMemory: params.get("uas") !== "0",
+  // Supplementary experiment (Task 10): append a full stop to every Nth word of the fixture
+  // text before checking. 0 leaves the fixture unchanged. Word start offsets do not move.
+  punctuateEvery: num("punct", 0),
 };
 const WORKER_FILE = { nspell: "worker-nspell.js", harper: "worker-harper.js" };
 const WORKER_TYPE = { nspell: "classic", harper: "module" };
@@ -252,6 +255,13 @@ async function memoryAndRecheck(engine, big) {
   };
 }
 
+/** Appends "." to every Nth whitespace-delimited word (1-based count); every = 0 returns the text unchanged. */
+function punctuate(text, every) {
+  if (!every) return text;
+  let i = 0;
+  return text.replace(/\S+/g, (w) => (++i % every === 0 ? `${w}.` : w));
+}
+
 async function fetchText(path) {
   const res = await fetch(path);
   if (!res.ok) throw new Error(`fetch ${path} failed with status ${res.status}`);
@@ -310,7 +320,7 @@ async function main() {
   for (const size of CONFIG.sizes) {
     const entry = manifest.sizes.find((s) => s.size === size);
     if (!entry) throw new Error(`no fixture of ${size} words in the manifest`);
-    fixtures.push({ size, text: await fetchText(`fixtures/${entry.file}`) });
+    fixtures.push({ size, text: punctuate(await fetchText(`fixtures/${entry.file}`), CONFIG.punctuateEvery) });
   }
   const suggestionSource = manifest.sizes.find((s) => s.size === 50000) ?? manifest.sizes.at(-1);
   const sourceText = await fetchText(`fixtures/${suggestionSource.file}`);

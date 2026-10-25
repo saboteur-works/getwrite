@@ -123,7 +123,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (a), FR-6, AC-3. Run the browser outside the sandbox if it fails inside it. Cold means caches and site data cleared. No cause is written for any value.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Web measurements under a throttled network
 **What:** Repeat the web load and download measurements under a throttled network profile and record them separately.

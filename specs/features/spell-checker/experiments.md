@@ -126,6 +126,124 @@ Determinism: two runs of the script with default seed wrote files with identical
 
 Not established: whether the engines flag every planted misspelling (an edit can yield a valid inflected form not in the stem list).
 
+## Hosted web, localhost
+
+Task 10. FR-4 (a), FR-6, AC-3. All values below MEASURED unless marked UNMEASURED. Cells read `median / min / max (n = runs)`. No cause is stated for any value.
+
+### Environment record
+
+- Date: 2026-10-25 (server record `2026-10-25T18:01:48Z`).
+- Git HEAD: `3a18b6381a3645572fce596cabc03570538f6f43`, branch `feat/spell-checker` (spike scripts as at HEAD plus one uncommitted edit to `scripts/driver.mjs`, the `punct` query parameter, used only by the supplementary experiment).
+- Browser: Playwright 1.60.0, full Chromium (`channel: "chromium"`, not the headless shell), version 148.0.7778.96; user agent reports `HeadlessChrome/148.0.0.0`; page `crossOriginIsolated` true; `performance.memory` present.
+- OS: macOS 26.5.1, `darwin 25.5.0 arm64`. Node v24.15.0.
+- Packages: nspell 2.1.5, dictionary-en 4.0.0, harper.js 2.13.0.
+- Server: `scripts/serve.mjs` on `127.0.0.1`, OS-assigned port, brotli responses (`Cache-Control: public, max-age=3600`, COOP `same-origin`, COEP `require-corp`). Bundle from `scripts/build.mjs`. Fixtures: the Task 5 generator, unchanged (5,000 / 50,000 / 200,000 words). Server pid started and stopped by this task; the browser, build and server ran outside the Bash sandbox, in one environment.
+- Command (main run): `node scripts/run.mjs --url http://127.0.0.1:<port>/ --runs 5 --query "warm=4&sizes=5000,50000,200000&sizeRuns=1&recheckRuns=10&suggestReps=5"`. Each of the 5 runs is a fresh browser context (empty HTTP cache and site data); within a run each engine loads one cold load then 4 warm loads in a new worker each, then the other steps. Every cold load recorded `transferSize > 0` (`firstLoadWasCold` true in 5 of 5 runs, both engines). Every run reported `errors: []` for both engines and no `driverError`.
+- Run counts actually used: cold load 5, warm load 20 (5 runs x 4), suggestion 5 repetitions x 5 runs = 25 repetitions of 200 words, check-from-cold-worker 5 per size (including harper.js at 200,000 words), re-check 10 per run x 5 runs = 50, memory 5 samples per phase, bytes 5 cold and 20 warm.
+- Memory method: `performance.measureUserAgentSpecificMemory()` called on the page (bytes), sampled before any worker, after load, and after checking the 200,000-word document. The worker's own JS heap: UNMEASURED, `measureUserAgentSpecificMemory is not available in the worker` and `performance.memory` is absent in the worker (returned `null`). Page JS heap (`performance.memory.usedJSHeapSize`) is also recorded; it does not include the worker.
+
+### FR-6 (a) Load time, worker creation to "ready" (ms)
+
+| Engine | Cold | Warm |
+| --- | --- | --- |
+| nspell | 48.6 / 38.3 / 77.0 (n=5) | 45.8 / 35.1 / 72.6 (n=20) |
+| harper.js | 430.4 / 425.8 / 691.7 (n=5) | 437.1 / 422.8 / 842.3 (n=20) |
+
+### FR-6 (b) Suggestion time per call, 200 misspellings, 5 repetitions per run (ms)
+
+Statistic is the per-repetition p50 and p95 over 200 calls; cells are over the 25 repetitions (5 runs x 5). Words with at least one suggestion in the first repetition: nspell 199 of 200, harper.js 199 of 200 (all 5 runs).
+
+| Engine | p50 | p95 |
+| --- | --- | --- |
+| nspell | 0.675 / 0.580 / 1.140 (n=25) | 1.080 / 0.875 / 1.785 (n=25) |
+| harper.js | 0.250 / 0.165 / 1.670 (n=25) | 0.285 / 0.180 / 2.340 (n=25) |
+
+### FR-6 (c) Download size, bytes (Resource Timing)
+
+Cold load (n=5; identical in all 5 runs, so min = max = median):
+
+| Engine | Resource | Transferred | Encoded body | Decoded body |
+| --- | --- | --- | --- | --- |
+| nspell | worker script (`worker-nspell.js`) | 8,365 | 8,065 | 38,448 |
+| nspell | dictionary (`index.aff` + `index.dic`) | 192,197 | 191,597 | 554,848 |
+| nspell | total | 200,562 | 199,662 | 593,296 |
+| harper.js | worker script (`worker-harper.js`) | 23,908 | 23,608 | 220,827 |
+| harper.js | WebAssembly (`harper_wasm_slim_bg.wasm` 7,533,889 transferred, `harper_wasm_bg.wasm` 7,612,711 transferred) | 15,146,600 | 15,146,000 | 40,205,397 |
+| harper.js | total | 15,170,508 | 15,169,608 | 40,426,224 |
+
+Warm load, bytes transferred per load (n=20 for the total, n=5 for the second load in each run; the same value in every load):
+
+| Engine | Worker script | Dictionary | WebAssembly | Total transferred |
+| --- | --- | --- | --- | --- |
+| nspell | 0 | 0 | not applicable (none) | 0 (n=20) |
+| harper.js | 0 | not applicable (none) | 15,146,600 | 15,146,600 (n=20) |
+
+For harper.js the warm-load Resource Timing entries for both `.wasm` files carried the same `transferSize` as on the cold load (7,533,889 and 7,612,711); encoded and decoded sizes are unchanged. For nspell all three entries carried `transferSize` 0 with the cold encoded and decoded sizes.
+
+Size added to the install: not applicable on the hosted web platform (no install); the desktop and Android figures belong to Tasks 12 and 17.
+
+### FR-6 (d) Memory, `measureUserAgentSpecificMemory` on the page (MB, 1 MB = 1,048,576 bytes)
+
+| Engine | Before any worker | After load | After checking 200,000 words |
+| --- | --- | --- | --- |
+| nspell | 3.25 / 3.25 / 3.25 (n=5) | 10.66 / 10.66 / 10.69 (n=5) | 12.38 / 12.36 / 12.39 (n=5) |
+| harper.js | 3.23 / 3.23 / 3.27 (n=5) | 165.59 / 165.58 / 165.59 (n=5) | 278.50 / 278.50 / 278.52 (n=5) |
+
+Page JS heap used (`performance.memory`, MB, n=5): nspell 4.65 before, 3.48 after load, 3.98 after check; harper.js 4.21 before, 3.46 after load, 3.45 after check. Worker JS heap: UNMEASURED (see method above). Whether the page-level figure includes the dedicated worker's memory was not tested separately; the figures are reported as the call returned them.
+
+### FR-6 (e) Time to check, from a cold worker (ms), and to re-check one edited paragraph
+
+Check: a new worker is loaded, then one `check` of the whole fixture is timed (1 per run, 5 runs; load time excluded).
+
+| Engine | 5,000 words | 50,000 words | 200,000 words |
+| --- | --- | --- | --- |
+| nspell | 3 / 2 / 5 (n=5) | 16 / 15 / 27 (n=5) | 67 / 62 / 112 (n=5) |
+| harper.js | 564 / 554 / 1,144 (n=5) | 8,965 / 8,898 / 15,597 (n=5) | 72,193 / 71,234 / 128,024 (n=5) |
+
+Re-check one edited paragraph (136 words, middle paragraph of the 200,000-word fixture with one suffixed word appended; 10 per run on a worker that had already checked the full document; 5 runs):
+
+| Engine | Re-check (ms) |
+| --- | --- |
+| nspell | 0.05 / 0.04 / 1.16 (n=50) |
+| harper.js | 16.41 / 13.04 / 27.89 (n=50) |
+
+The "10 runs each" requirement for the cold-worker check is met only for the re-check; the cold-worker check per size has 5 runs (n=5), stated above. Reason for the lower count: harper.js at 200,000 words took between 71 s and 128 s per check.
+
+### FR-6 (f) Correctness on the specified fixtures
+
+Identical in all 5 runs. The planted counts are from the Task 5 generator (fixture section). "Names" are the planted made-up proper names; a name flagged counts as a correct flag, a name not flagged is not an error under this metric.
+
+| Engine | Words | Planted misspellings flagged | Planted names flagged | Unplanted words flagged | Total flagged |
+| --- | --- | --- | --- | --- | --- |
+| nspell | 5,000 | 100 of 100 | 21 of 25 | 0 | 121 |
+| nspell | 50,000 | 992 of 1,000 | 232 of 250 | 0 | 1,224 |
+| nspell | 200,000 | 3,974 of 4,000 | 881 of 1,000 | 0 | 4,855 |
+| harper.js | 5,000 | 0 of 100 | 0 of 25 | 0 | 0 |
+| harper.js | 50,000 | 0 of 1,000 | 0 of 250 | 0 | 0 |
+| harper.js | 200,000 | 0 of 4,000 | 0 of 1,000 | 0 | 0 |
+
+harper.js flagged nothing on the specified (unpunctuated) fixtures. This is the result for those fixtures; it is not a statement about harper.js on ordinary prose. The re-check of the edited paragraph (appended `recieve` + `q`s) also flagged 0 words for harper.js and 4 for nspell in the first edited paragraph (all 5 runs).
+
+### FR-6 (g) Lowest browser version run
+
+Chromium 148.0.7778.96 only. Lower versions, including the `Chrome >= 67` floor: UNMEASURED, no older Chromium build is installed here and none was added. Both engines ran to completion on 148 (`errors: []`).
+
+### Supplementary experiment: sentence length only (not an FR-6 fixture)
+
+Purpose: the Task 7 smoke run observed harper.js flagging 3 words in "I recieve teh wrold." and 0 on the unpunctuated fixtures. This varies one thing, the sentence length of the same fixture text, in the harness only (`punct=N` query parameter in `scripts/driver.mjs`: a full stop is appended to every Nth whitespace-delimited word; word start offsets are unchanged; the Task 5 fixture files are not changed). `N=0` is the unmodified fixture. Sizes 5,000 and 50,000 words, one cold-worker check per cell (n=1 each, 1 run per N), same server, browser and day. Counts below are planted misspellings flagged / unplanted words flagged (total flagged):
+
+| Full stop every N words | nspell 5,000 | harper.js 5,000 | nspell 50,000 | harper.js 50,000 |
+| --- | --- | --- | --- | --- |
+| 0 (none) | 100/100, 0 (121) | 0/100, 0 (0) | 992/1,000, 0 (1,224) | 0/1,000, 0 (0) |
+| 40 | 100/100, 0 (121) | 99/100, 11 (131) | 992/1,000, 0 (1,224) | 987/1,000, 70 (1,289) |
+| 20 | 100/100, 0 (121) | 99/100, 11 (131) | 992/1,000, 0 (1,224) | 987/1,000, 69 (1,288) |
+| 10 | 100/100, 0 (121) | 99/100, 10 (130) | 992/1,000, 0 (1,224) | 989/1,000, 65 (1,286) |
+| 5 | 100/100, 0 (121) | 20/100, 7 (48) | 992/1,000, 0 (1,224) | 225/1,000, 59 (516) |
+
+Planted names flagged were 21 of 25 (5,000) and 232 of 250 (50,000) for harper.js at every N from 40 down to 5; 0 at N=0. nspell was identical in every row.
+
+What this shows: for nspell the counts did not change with sentence length. For harper.js the counts changed with sentence length: 0 with no full stops, 99 to 989 per planted set with a stop every 10 to 40 words, and fewer (20 of 100, 225 of 1,000) with a stop every 5 words. The relation is not monotonic over the values tried (more flags at 40, 20 and 10 than at 5, and 0 at none), and the unplanted words flagged (7 to 70) are dictionary-stem words harper.js did not recognise (sample: dwelt, whizzing, whirring, cliche). Cause: not established. The experiment varies only sentence length and does not discriminate between any mechanism for the 0, the drop at N=5, or the unplanted flags. Experiments that would: harper.js output on the same text with other punctuation (commas, newlines per sentence), a different fixture of equal sentence length, and the harper.js lint list for single sentences of increasing length.
+
 ## Web Worker in android/harness
 
 Task 9. Result: `android/harness` can host a Web Worker once the spike bundle is added to it (edits listed below). No blocker.
