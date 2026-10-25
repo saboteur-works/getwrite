@@ -100,3 +100,28 @@ Installed in `frontend` as devDependencies by the owner (Task 3). Date 2026-10-2
 - The single probe run reported one error (nspell, TS7016). dictionary-en and harper.js imports reported none. MEASURED.
 - `pnpm typecheck` with the probe removed (2026-10-25): exit code 0.
 - `pnpm typecheck` with `@types/nspell` installed and the probe removed (2026-10-25): exit code 0. MEASURED.
+
+## Fixture generator
+
+MEASURED (2026-10-25, Node v24.15.0). Script: `scripts/fixtures.mjs`; check: `node scripts/fixtures.check.mjs` (5 tests, 5 pass; first run before the script existed failed with `ERR_MODULE_NOT_FOUND` for `fixtures.mjs`). Generated text is written to `$TMPDIR/spell-fixtures` by default (`--out DIR`), not the tracked tree. The text is not recorded here.
+
+Parameters:
+
+- PRNG: mulberry32, seeded with `seed + size`; seed 95.
+- Words sampled uniformly from the stems of `dictionary-en` 4.0.0 `index.dic` (part before `/`) matching `^[a-z]{3,12}$`, sorted, de-duplicated: 35,965 words.
+- Sizes: 5,000, 50,000, 200,000 words. Words are space-separated, paragraphs joined by a blank line, no punctuation or capitals.
+- Paragraph length: 80 to 150 words each (checked for every paragraph of every size).
+- Misspelling: word index `i` with `i % 50 == 25`, a sampled word with one character substituted, deleted or inserted, rejected if it is a dictionary-en stem in the list above.
+- Made-up proper name: word index `i` with `i % 200 == 100`, one of 8 fixed names (Zorvath, Keldrin, Mirabeth, Quillon, Thessaly, Vornak, Ildreth, Brannoch), none a dictionary stem.
+
+Planted counts (printed by the script):
+
+| Words | Paragraphs | Misspellings | Names |
+| --- | --- | --- | --- |
+| 5,000 | 42 | 100 | 25 |
+| 50,000 | 434 | 1,000 | 250 |
+| 200,000 | 1,743 | 4,000 | 1,000 |
+
+Determinism: two runs of the script with default seed wrote files with identical SHA-256 for all three sizes (first 16 hex: 5,000 `6fb863ca359548a5`, 50,000 `7ffbb90145defde9`, 200,000 `382a0ed507495172`).
+
+Not established: whether the engines flag every planted misspelling (an edit can yield a valid inflected form not in the stem list).

@@ -73,7 +73,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-2, FR-5. Seeded mulberry32 as `tests/entityHighlightBenchmark.test.ts:24`. Generated text goes to a git-ignored or `$TMPDIR` folder, not the tracked tree. `knip.json` ignores `specs/**`.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Spike workers and message protocol for both engines
 **What:** Write one dedicated Web Worker per engine (`nspell` with `dictionary-en`; `harper.js`) exposing load, check, suggest and a ready message with identical operations.
