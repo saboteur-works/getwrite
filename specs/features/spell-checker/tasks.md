@@ -83,7 +83,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-3, FR-6 (instrumentation). This is spike code and is deliberately separate from the Task 31 adapter, which is written after the choice. Nothing here may be placed under `app/`, `components/` or `src/`.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Spike driver page, bundler and result block
 **What:** Write the driver page that runs the full FR-6 sequence against each worker and prints one JSON result block, plus the esbuild bundling script writing to a throwaway folder.
