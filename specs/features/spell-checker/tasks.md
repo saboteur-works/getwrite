@@ -233,7 +233,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-11, FR-13 (constants), AC-6 (the bounds are named constants). Shape follows `customNoiseWords` (`z.array(z.string().trim().min(1)).optional()`). Engine-independent.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Spelling core
 **What:** Write `project-spelling-core.ts` with read, add, remove, ignore, unignore under `withMetaLock` and `updateProjectJson`, with word validation and list bounds.

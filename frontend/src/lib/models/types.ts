@@ -107,6 +107,10 @@ export interface ProjectConfig {
   customNoiseWords?: string[];
   /** Per-project exclusion list of specific global noise-word-list words (FR-6). */
   excludedGlobalNoiseWords?: string[];
+  /** Per-project spelling word list, "Add to project dictionary" (spell-checker FR-11). Absent reads as `[]`. */
+  spellingProjectWords?: string[];
+  /** Per-project spelling ignore list, "Ignore" (spell-checker FR-11). Absent reads as `[]`. */
+  spellingIgnoredWords?: string[];
   /**
    * When true, automatically prune oldest non-canonical revisions when limit is exceeded.
    * When false, the UI should prompt the user (interactive) or abort in headless contexts.

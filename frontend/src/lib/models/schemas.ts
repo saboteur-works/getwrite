@@ -318,6 +318,14 @@ export const ProjectConfigSchema = z.object({
    */
   customNoiseWords: z.array(z.string().trim().min(1)).optional(),
   /**
+   * Per-project spelling word list, "Add to project dictionary" (spell-checker
+   * FR-11). Absent reads as `[]`. Word validation and the size bounds live in
+   * `project-spelling-core.ts`, not in this schema.
+   */
+  spellingProjectWords: z.array(z.string().trim().min(1)).optional(),
+  /** Per-project spelling ignore list, "Ignore" (spell-checker FR-11). Absent reads as `[]`. */
+  spellingIgnoredWords: z.array(z.string().trim().min(1)).optional(),
+  /**
    * Per-project exclusion list of specific words from the cross-project
    * global noise-word list (FR-6, entity-mention-noise-flagging). Recording
    * a word here means this project does not flag it even though the global
