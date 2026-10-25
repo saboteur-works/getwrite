@@ -523,7 +523,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** ENGINE-DEPENDENT: the notice text is written after the engine choice and depends on which packages remain in `dependencies` (Task 4 recorded their licences). Satisfies FR-42, FR-43. It is a second file, not the fonts file. `electron/` is edited here only for the one `extraResources` line (intended, owner decision at Gate 4; AC-20 allows exactly that one added line); the Electron suite stays unchanged.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 51: Licence notice test
 **What:** Write `third-party-spellcheck.test.ts` modelled on `third-party-fonts.test.ts`.
