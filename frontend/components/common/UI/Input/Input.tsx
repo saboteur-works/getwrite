@@ -15,6 +15,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
       <input
         ref={ref}
         type={type}
+        spellCheck={false}
         className={cn(
           "border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50",
           className,

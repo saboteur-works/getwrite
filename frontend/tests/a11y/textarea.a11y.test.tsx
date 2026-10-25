@@ -57,4 +57,14 @@ describe("a11y: Textarea primitive", () => {
       screen.getByRole("textbox", { name: "synopsis" }),
     ).toBeInTheDocument();
   });
+
+  it('sets spellcheck="false" by default', () => {
+    render(<Textarea aria-label="notes" />);
+    expect(screen.getByRole("textbox")).toHaveAttribute("spellcheck", "false");
+  });
+
+  it("lets a caller spellCheck prop override the default", () => {
+    render(<Textarea aria-label="notes" spellCheck />);
+    expect(screen.getByRole("textbox")).toHaveAttribute("spellcheck", "true");
+  });
 });

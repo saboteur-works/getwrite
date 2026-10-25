@@ -63,4 +63,14 @@ describe("a11y: Input primitive", () => {
       screen.getByRole("textbox", { name: "project name" }),
     ).toBeInTheDocument();
   });
+
+  it('sets spellcheck="false" by default', () => {
+    render(<Input aria-label="field" />);
+    expect(screen.getByRole("textbox")).toHaveAttribute("spellcheck", "false");
+  });
+
+  it("lets a caller spellCheck prop override the default", () => {
+    render(<Input aria-label="field" spellCheck />);
+    expect(screen.getByRole("textbox")).toHaveAttribute("spellcheck", "true");
+  });
 });

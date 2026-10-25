@@ -403,7 +403,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-28, AC-13. Open the component source and stories before touching props.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 39: Raw inputs, scan test and conditional body backstop
 **What:** Set `spellCheck={false}` on every remaining text-like `<input>` and `<textarea>` outside the wrappers, add the scan test, and add the `<body>` backstop only if Task 17 recorded inheritance on all three platforms.
