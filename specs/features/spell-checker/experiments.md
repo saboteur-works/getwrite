@@ -11,6 +11,53 @@ Labels: MEASURED = observed by running the command; READ = taken from reading co
 - `sw_vers`: macOS 26.5.1 (build 25F80)
 - Run inside the Bash sandbox (not retried outside it).
 
+## Summary comparison (Task 15)
+
+Consolidation of the detailed sections below; no new measurement. Every value is copied from the section named in its row and carries that section's label (MEASURED unless marked). Cells read `median (min to max), n`. No cause is stated for any value. The detailed sections remain the record.
+
+| Metric | Engine | Web localhost (Chromium 148) | Web throttled (Fast 3G-like) | Desktop (Electron 34.5.8, Chromium 132) | Android (Pixel 7 Pro) |
+| --- | --- | --- | --- | --- | --- |
+| Cold load, ms | nspell | 48.6 (38.3 to 77.0), n=5 | 1,160.0 (1,154.7 to 1,171.0), n=4 | 51.4 (46.2 to 63.7), n=5 | pending owner run |
+| Cold load, ms | harper.js | 430.4 (425.8 to 691.7), n=5 | 76,514.2 (76,438.7 to 76,653.4), n=4 | 458.8 (446.2 to 486.5), n=5 | pending owner run |
+| Warm load, ms | nspell | 45.8 (35.1 to 72.6), n=20 | 36.9 (33.4 to 66.7), n=8 | 47.6 (43.7 to 57.4), n=20 | pending owner run |
+| Warm load, ms | harper.js | 437.1 (422.8 to 842.3), n=20 | 76,447.5 (76,433.3 to 76,583.1), n=8 | 456.4 (437.8 to 489.4), n=20 | pending owner run |
+| Bytes transferred, cold | nspell | 200,562 (n=5) | 200,562 (n=4) | 200,562 (n=5) | pending owner run |
+| Bytes transferred, cold | harper.js | 15,170,508 (n=5) | 15,170,508 (n=4) | 15,170,508 (n=5) | pending owner run |
+| Bytes transferred, warm | nspell | 0 (n=20) | 0 (n=8) | 0 (n=20) | pending owner run |
+| Bytes transferred, warm | harper.js | 15,146,600 (n=20) | 15,146,600 (n=8) | 15,146,600 (n=20) | pending owner run |
+| Bytes decoded, cold | nspell | 593,296 | UNMEASURED (not recorded under throttle) | 593,296 | pending owner run |
+| Bytes decoded, cold | harper.js | 40,426,224 | UNMEASURED (not recorded under throttle) | 40,426,224 | pending owner run |
+| Suggestion p50, ms (200 calls) | nspell | 0.675 (0.580 to 1.140), n=25 | UNMEASURED (not run under throttle) | 0.730 (0.650 to 0.920), n=25 | pending owner run |
+| Suggestion p50, ms (200 calls) | harper.js | 0.250 (0.165 to 1.670), n=25 | UNMEASURED (not run under throttle) | 0.190 (0.170 to 0.995), n=25 | pending owner run |
+| Suggestion p95, ms | nspell | 1.080 (0.875 to 1.785), n=25 | UNMEASURED | 1.220 (1.005 to 1.940), n=25 | pending owner run |
+| Suggestion p95, ms | harper.js | 0.285 (0.180 to 2.340), n=25 | UNMEASURED | 0.220 (0.195 to 1.945), n=25 | pending owner run |
+| Check 5,000 words from cold worker, ms | nspell | 3 (2 to 5), n=5 | UNMEASURED | 2 (2 to 2), n=5 | pending owner run |
+| Check 5,000 words from cold worker, ms | harper.js | 564 (554 to 1,144), n=5 | UNMEASURED | 646 (618 to 683), n=5 | pending owner run |
+| Check 50,000 words, ms | nspell | 16 (15 to 27), n=5 | UNMEASURED | 14 (14 to 19), n=5 | pending owner run |
+| Check 50,000 words, ms | harper.js | 8,965 (8,898 to 15,597), n=5 | UNMEASURED | 9,794 (9,549 to 10,039), n=5 | pending owner run |
+| Check 200,000 words, ms | nspell | 67 (62 to 112), n=5 | UNMEASURED | 64 (58 to 97), n=5 | pending owner run |
+| Check 200,000 words, ms | harper.js | 72,193 (71,234 to 128,024), n=5 | UNMEASURED | 74,933 (74,479 to 79,744), n=5 | pending owner run |
+| Re-check one 136-word paragraph, ms | nspell | 0.05 (0.04 to 1.16), n=50 | UNMEASURED | 0.06 (0.04 to 0.15), n=50 | pending owner run |
+| Re-check one 136-word paragraph, ms | harper.js | 16.41 (13.04 to 27.89), n=50 | UNMEASURED | 18.41 (14.49 to 23.48), n=50 | pending owner run |
+| Memory after load, MB | nspell | 10.66 (10.66 to 10.69), n=5 (page, `measureUserAgentSpecificMemory`) | UNMEASURED | UNMEASURED (`measureUserAgentSpecificMemory` threw `SecurityError`) | pending owner run |
+| Memory after load, MB | harper.js | 165.59 (165.58 to 165.59), n=5 (page) | UNMEASURED | UNMEASURED (same) | pending owner run |
+| Memory after checking 200,000 words, MB | nspell | 12.38 (12.36 to 12.39), n=5 (page) | UNMEASURED | UNMEASURED (same) | pending owner run |
+| Memory after checking 200,000 words, MB | harper.js | 278.50 (278.50 to 278.52), n=5 (page) | UNMEASURED | UNMEASURED (same) | pending owner run |
+| Memory, peak minus blank page, all processes, MB (`app.getAppMetrics()`) | nspell | not applicable | not applicable | 96.9 (78.9 to 100.5), n=3 | pending owner run |
+| Memory, peak minus blank page, all processes, MB (`app.getAppMetrics()`) | harper.js | not applicable | not applicable | 466.0 (436.1 to 466.6), n=3 | pending owner run |
+| Worker JS heap | both | UNMEASURED (not available in the worker) | UNMEASURED | UNMEASURED (same) | pending owner run |
+| Planted misspellings flagged, 5,000 / 50,000 / 200,000 words (unpunctuated fixtures) | nspell | 100 of 100 / 992 of 1,000 / 3,974 of 4,000; 0 unplanted flagged | UNMEASURED | identical to web localhost | pending owner run |
+| Planted misspellings flagged, 5,000 / 50,000 / 200,000 words (unpunctuated fixtures) | harper.js | 0 of 100 / 0 of 1,000 / 0 of 4,000; 0 unplanted flagged | UNMEASURED | identical to web localhost | pending owner run |
+| Lowest browser or runtime version run | both | Chromium 148.0.7778.96 only | same browser as web localhost | Chromium 132.0.6834.210 (Electron 34.5.8) only | pending owner run |
+
+Other measured facts, with their sections:
+
+- Native underline (section "Underlines", MEASURED): on web (Chromium 148) and desktop (Electron 34.5.8), `spellcheck="false"` suppressed the native underline on `contenteditable`, `<textarea>` and `<input>`, and a `spellcheck="false"` ancestor was inherited by the `contenteditable` and the `<textarea>` inside it. The `<input>` without the attribute was underlined while focused and not after focus moved on. Android: not run (UNMEASURED until the owner's run).
+- harper.js sentence-length experiment (section "Supplementary experiment: sentence length only", n=1 per cell, 5,000 and 50,000 words): with no full stops 0 of 100 and 0 of 1,000 planted misspellings flagged; with a full stop every 40, 20 and 10 words, 99 of 100 and 987 to 989 of 1,000; with a full stop every 5 words, 20 of 100 and 225 of 1,000. Unplanted words flagged 7 to 70 for harper.js and 0 for nspell. Cause: not established.
+- Electron `localStorage` persistence (section "Electron localStorage persistence"): fixed origin `http://localhost:7340` UNMEASURED; stand-in origin `http://localhost:64313` MEASURED, value written on launch 1 was read on launch 2 (one run). Capacitor persistence: pending owner run.
+- Size added to the install (section "Desktop (Electron)", computed from files in `frontend/node_modules`): nspell and dictionary-en 593,296 bytes loaded (554,848 dictionary plus 38,448 built worker script); harper.js 40,426,224 bytes loaded (40,205,397 for the two `.wasm` files plus 220,827 built worker script). Packaged-app size: UNMEASURED. Android APK size: pending owner run.
+- Native build (sections "Native build" and "Native build, second run"): first run exit 1 at type check; after the import-path edits in five story files, exit 0. `pnpm typecheck` exit 0; `pnpm lint` exit 0 with 392 warnings.
+
 ## Native build
 
 MEASURED.
@@ -541,3 +588,66 @@ Date 2026-10-25. Command (repo root, outside the sandbox): `node specs/features/
 - Launch 2, same throwaway `userData` directory (created under `$TMPDIR`, deleted afterwards), read `"written-1792959997954"` from the same origin. `persisted: true`, one run.
 - The real desktop `userData`, `projects/` and port 7340 were not touched. Capacitor persistence is recorded from the Android runbook (Task 17).
 - Observed while building the script: an ESM main script that awaited `app.whenReady()` at top level never reached ready (two launches killed after 60 s by pid); calling it without the top-level await worked.
+
+## Recommendation (author's)
+
+This section is the author's recommendation. It is a judgment, not a measurement, and it is not the Decision: the owner decides in the section below. Every number is cited from the sections above; the labels there apply. No cause is stated for any value.
+
+What the recommendation rests on:
+
+1. Correctness on the specified fixtures. harper.js flagged 0 of 100, 0 of 1,000 and 0 of 4,000 planted misspellings on the unpunctuated fixtures (web localhost and desktop, identical in all 5 runs each). nspell flagged 100 of 100, 992 of 1,000 and 3,974 of 4,000, with 0 unplanted words flagged. In the supplementary sentence-length experiment (n=1 per cell) harper.js flagged 99 of 100 and 987 to 989 of 1,000 with a full stop every 10 to 40 words, 20 of 100 and 225 of 1,000 with a full stop every 5 words, and 0 with none; the counts varied non-monotonically with sentence length over the values tried, and 7 to 70 unplanted dictionary-stem words were flagged. The cause of the 0, of the drop at every 5 words and of the unplanted flags is not established; the experiments that would discriminate are listed in that section. harper.js was not measured on ordinary prose.
+2. Transfer. harper.js transferred 15,170,508 bytes on a cold load and 15,146,600 bytes on every warm load, including the loads after the cold one (the `.wasm` entries carried the same `transferSize` warm as cold, on localhost, throttled and desktop); decoded size is 40,426,224 bytes. nspell transferred 200,562 bytes cold and 0 warm; decoded 593,296 bytes. Under the Fast 3G-like profile (latency 150 ms, 1,600 kbit/s down) harper.js load took a median 76,514.2 ms cold and 76,447.5 ms warm; nspell took 1,160.0 ms cold and 36.9 ms warm.
+3. Time to check. From a cold worker, harper.js took a median 72,193 ms (range 71,234 to 128,024) on web and 74,933 ms (74,479 to 79,744) on desktop for 200,000 words, against nspell 67 ms and 64 ms; for 50,000 words 8,965 ms and 9,794 ms against 16 ms and 14 ms. Re-checking one 136-word paragraph took a median 16.41 ms (web) and 18.41 ms (desktop) for harper.js and 0.05 ms and 0.06 ms for nspell.
+4. Memory. On web the page-level figure after checking 200,000 words was 278.50 MB for harper.js and 12.38 MB for nspell. On desktop the all-process peak minus a blank page was 466.0 MB for harper.js and 96.9 MB for nspell (medians, n=3). The worker's own heap was not measured.
+5. Suggestions and load. Suggestion time was under 3 ms at p95 for both engines on both platforms measured (harper.js p95 0.285 ms web, 0.220 ms desktop; nspell 1.080 ms and 1.220 ms); both returned a suggestion for 199 of 200 words. Unthrottled load was 48.6 ms (nspell) and 430.4 ms (harper.js) cold on web.
+6. Not measured. Android has no figures (pending owner run), so no claim about the Pixel's WebView is made. The `Chrome >= 67` floor (`frontend/.browserslistrc:11`) was not run: the lowest browser version run was Chromium 132.0.6834.210 (desktop) and 148.0.7778.96 (web), so whether either engine runs between 67 and 131 is UNMEASURED. Native underlines: `spellcheck="false"` suppressed them and inheritance held on web and desktop; Android is unmeasured. Throttled suggestion, check and memory figures were not taken.
+
+Recommendation: on the figures above, nspell with dictionary-en is the engine the measurements support for adoption: it flagged the planted misspellings on the specified fixtures, transferred 0 bytes warm, and its measured load, whole-document check and re-check times and its memory are lower than harper.js's on every platform measured (suggestion time p50 was lower for harper.js on both platforms). harper.js is not recommended on this evidence because of the 0 flagged on the unpunctuated fixtures with unestablished cause, the non-monotonic dependence on sentence length, the 15 MB transfer on every load, and the 70 to 128 s whole-document check. This does not show that harper.js is unsuitable on ordinary prose, and it does not show nspell is suitable on the Pixel's WebView or below Chromium 132; those are unmeasured. The recommendation changes if the Android run or a punctuation experiment shows otherwise.
+
+## Decision
+
+To be filled in by the owner. The author has not filled any field below (FR-8, FR-9; OQ-129: no performance limit is chosen in advance).
+
+- Engine chosen:
+- Performance limit, and what it limits (or "none"):
+- Minimum WebView or browser version:
+- `docs/standards/package-selection.md` justification for each package that will ship (sections 1, 2, 4, 6, 7 and 8 of the standard: the package exists, no existing dependency covers the need, purpose and necessity, registry-verified version, peer and TypeScript compatibility; `@types/nspell` is a devDependency and is not a shipping package):
+  - Package 1:
+  - Package 2:
+  - Package 3:
+- Owner name:
+- Date:
+
+### Harness and package removal (FR-10)
+
+The harness under `specs/features/spell-checker/scripts/` stays as the record. It is runnable only for the engine whose packages remain installed; after the owner removes the unchosen packages, the other engine's worker will not build.
+
+These are owner commands, written here and not run by the author. Run from the repository root.
+
+Remove the unchosen engine:
+
+```
+pnpm --filter getwrite-frontend remove harper.js
+```
+
+or
+
+```
+pnpm --filter getwrite-frontend remove nspell dictionary-en
+```
+
+Move the chosen engine's packages to `dependencies` (they are installed as `devDependencies`):
+
+```
+pnpm --filter getwrite-frontend remove nspell dictionary-en
+pnpm --filter getwrite-frontend add nspell dictionary-en
+```
+
+or
+
+```
+pnpm --filter getwrite-frontend remove harper.js
+pnpm --filter getwrite-frontend add harper.js
+```
+
+`@types/nspell` stays a `devDependency` if nspell is chosen. After removal the unchosen packages' names must appear in neither `frontend/package.json` nor `pnpm-lock.yaml` (AC-2).

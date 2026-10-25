@@ -173,7 +173,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-8, AC-3 (web and desktop parts). The Decision section is left blank for the owner (OQ-129: no performance limit chosen in advance).
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: HALT, owner runs the Android harness on the Pixel
 **What:** Stop and report that the run is halted on the "Owner step: Android" section of `experiments.md`; resume when the owner has pasted the results.
