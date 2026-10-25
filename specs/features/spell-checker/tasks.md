@@ -153,7 +153,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-7, AC-4. Resolved (owner, Gate 4): native spell underlines may not render in an automated browser or Electron window; that is accepted. Such rows are recorded UNMEASURED with the reason and the owner checks them by eye. State what is seen, not why.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Electron localStorage persistence check
 **What:** Check that a `localStorage` value written for the fixed desktop origin persists across two launches.

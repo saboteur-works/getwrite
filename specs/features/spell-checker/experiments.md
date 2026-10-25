@@ -478,3 +478,54 @@ Computed by `stat` file sizes (bytes; `find -L ... -exec stat -f %z`) of the fil
 | harper.js | `fflate` 0.8.3 (harper.js dependency) | 796,742 |
 
 Sum of the loaded assets plus the built worker script: nspell + dictionary-en 593,296 bytes; harper.js 40,426,224 bytes (equal to the decoded totals in FR-6 (c)). A packaged-app size (`electron-builder`, asar, compression) was not built or measured: UNMEASURED, no packaged build was made. Whether a shipped harper.js would load only the slim `.wasm` was not tested; in this harness both files were fetched.
+
+## Underlines
+
+Task 13. FR-7, AC-4. Page: `scripts/underline-page.html` (8 labelled cases, each holding "recieve teh wrold"), served by `scripts/serve.mjs` from a bundle built by `scripts/build.mjs`, on `127.0.0.1` at an OS-assigned port (63577, server pid 29538, started and stopped by this task by pid). Date 2026-10-25, git HEAD `ed9c4885`. Screenshots are in `specs/features/spell-checker/screenshots/`. Each case was focused (click or `element.focus()`), the End key and one space character were sent, and a screenshot was taken 1.5 s later. Screenshots kept: case 1 and case 3 focused, and one taken after all eight fields had been visited ("all-fields-visited", focus on case 8). Cases 2 and 4 to 7 were each focused in the run; their result is read from the all-fields-visited screenshot. Native underlines are not in the DOM: each underline statement is what was seen in the screenshot; no cause is stated.
+
+### DOM-level fact (MEASURED, both platforms identical)
+
+`getAttribute("spellcheck")` and the `.spellcheck` property, per case, as the browser reported them:
+
+| Case | Element | Attribute | `.spellcheck` |
+| --- | --- | --- | --- |
+| 1 | contenteditable div | none | true |
+| 2 | textarea | none | true |
+| 3 | input | none | true |
+| 4 | contenteditable div | "false" | false |
+| 5 | textarea | "false" | false |
+| 6 | input | "false" | false |
+| 7 | contenteditable div, in a `spellcheck="false"` container | none | false |
+| 8 | textarea, in a `spellcheck="false"` container | none | false |
+
+### Web (Playwright 1.60.0 full Chromium 148.0.7778.96, `channel: "chromium"`, headless, macOS, run outside the sandbox)
+
+All MEASURED; the browser rendered red dotted underlines, so no row is UNMEASURED.
+
+- Case 1, contenteditable, no attribute: "recieve" and "wrold" underlined (`web-chromium-case1-focused.png`).
+- Case 2, textarea, no attribute: both words underlined (`web-chromium-all-fields-visited.png`).
+- Case 3, input, no attribute: both words underlined while focused (`web-chromium-case3-focused.png`); not underlined after focus moved on (`web-chromium-all-fields-visited.png`).
+- Case 4, contenteditable `spellcheck="false"`: no underline after focus (`web-chromium-all-fields-visited.png`). The attribute suppressed the underline.
+- Case 5, textarea `spellcheck="false"`: no underline after focus (`web-chromium-all-fields-visited.png`). Suppressed.
+- Case 6, input `spellcheck="false"`: no underline after focus (`web-chromium-all-fields-visited.png`). Suppressed.
+- Case 7, contenteditable inside a `spellcheck="false"` container, no own attribute: no underline after focus (`web-chromium-all-fields-visited.png`). The ancestor's attribute was inherited (`.spellcheck` false, above).
+- Case 8, textarea inside a `spellcheck="false"` container, no own attribute: no underline while focused (`web-chromium-all-fields-visited.png`). Inherited.
+
+### Desktop (Electron 34.5.8, Chromium 132.0.6834.210, `BrowserWindow` shown, `capturePage`, throwaway `userData` under `$TMPDIR` and deleted afterwards, fresh session partition, contextIsolation true, nodeIntegration false; run outside the sandbox)
+
+All MEASURED; red dotted underlines rendered in this window.
+
+- Case 1, contenteditable, no attribute: "recieve" and "wrold" underlined (`desktop-electron-case1-focused.png`).
+- Case 2, textarea, no attribute: both words underlined (`desktop-electron-case3-focused.png`, `desktop-electron-all-fields-visited.png`).
+- Case 3, input, no attribute: both words underlined while focused (`desktop-electron-case3-focused.png`); not underlined after focus moved on (`desktop-electron-all-fields-visited.png`).
+- Case 4, contenteditable `spellcheck="false"`: no underline (`desktop-electron-all-fields-visited.png`). Suppressed.
+- Case 5, textarea `spellcheck="false"`: no underline (`desktop-electron-all-fields-visited.png`). Suppressed.
+- Case 6, input `spellcheck="false"`: no underline (`desktop-electron-all-fields-visited.png`). Suppressed.
+- Case 7, contenteditable inside a `spellcheck="false"` container: no underline (`desktop-electron-all-fields-visited.png`). Inherited.
+- Case 8, textarea inside a `spellcheck="false"` container: no underline while focused (`desktop-electron-all-fields-visited.png`). Inherited.
+
+The Electron window ran `scripts/underline-page.html` through a scratch main script (not committed; same safeguards as `scripts/electron-main.mjs`: userData under the system temp directory, reserved ports refused, `127.0.0.1` only).
+
+### Android
+
+Not run here. The owner records the Android rows in "Android underlines" through the Task 16 runbook (UNMEASURED until then).
