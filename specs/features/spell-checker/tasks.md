@@ -253,7 +253,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-14, AC-6. Pattern: `app/api/project/noise-words/route.ts`. The route has no paired-device branch (a word-list write is not one of the five limits).
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: HTTP transport and response schema
 **What:** Write the client transport `project-spelling.ts` on `createTransport` with the HTTP implementation and a validated response schema.
