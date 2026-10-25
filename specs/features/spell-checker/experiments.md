@@ -13,49 +13,50 @@ Labels: MEASURED = observed by running the command; READ = taken from reading co
 
 ## Summary comparison (Task 15)
 
-Consolidation of the detailed sections below; no new measurement. Every value is copied from the section named in its row and carries that section's label (MEASURED unless marked). Cells read `median (min to max), n`. No cause is stated for any value. The detailed sections remain the record.
+Consolidation of the detailed sections below; the Android column was filled in Task 17 from the pasted JSON and the files in `screenshots/`. Every value is copied from the section named in its row and carries that section's label (MEASURED unless marked). Cells read `median (min to max), n`. No cause is stated for any value. The detailed sections remain the record.
 
 | Metric | Engine | Web localhost (Chromium 148) | Web throttled (Fast 3G-like) | Desktop (Electron 34.5.8, Chromium 132) | Android (Pixel 7 Pro) |
 | --- | --- | --- | --- | --- | --- |
-| Cold load, ms | nspell | 48.6 (38.3 to 77.0), n=5 | 1,160.0 (1,154.7 to 1,171.0), n=4 | 51.4 (46.2 to 63.7), n=5 | pending owner run |
-| Cold load, ms | harper.js | 430.4 (425.8 to 691.7), n=5 | 76,514.2 (76,438.7 to 76,653.4), n=4 | 458.8 (446.2 to 486.5), n=5 | pending owner run |
-| Warm load, ms | nspell | 45.8 (35.1 to 72.6), n=20 | 36.9 (33.4 to 66.7), n=8 | 47.6 (43.7 to 57.4), n=20 | pending owner run |
-| Warm load, ms | harper.js | 437.1 (422.8 to 842.3), n=20 | 76,447.5 (76,433.3 to 76,583.1), n=8 | 456.4 (437.8 to 489.4), n=20 | pending owner run |
-| Bytes transferred, cold | nspell | 200,562 (n=5) | 200,562 (n=4) | 200,562 (n=5) | pending owner run |
-| Bytes transferred, cold | harper.js | 15,170,508 (n=5) | 15,170,508 (n=4) | 15,170,508 (n=5) | pending owner run |
-| Bytes transferred, warm | nspell | 0 (n=20) | 0 (n=8) | 0 (n=20) | pending owner run |
-| Bytes transferred, warm | harper.js | 15,146,600 (n=20) | 15,146,600 (n=8) | 15,146,600 (n=20) | pending owner run |
-| Bytes decoded, cold | nspell | 593,296 | UNMEASURED (not recorded under throttle) | 593,296 | pending owner run |
-| Bytes decoded, cold | harper.js | 40,426,224 | UNMEASURED (not recorded under throttle) | 40,426,224 | pending owner run |
-| Suggestion p50, ms (200 calls) | nspell | 0.675 (0.580 to 1.140), n=25 | UNMEASURED (not run under throttle) | 0.730 (0.650 to 0.920), n=25 | pending owner run |
-| Suggestion p50, ms (200 calls) | harper.js | 0.250 (0.165 to 1.670), n=25 | UNMEASURED (not run under throttle) | 0.190 (0.170 to 0.995), n=25 | pending owner run |
-| Suggestion p95, ms | nspell | 1.080 (0.875 to 1.785), n=25 | UNMEASURED | 1.220 (1.005 to 1.940), n=25 | pending owner run |
-| Suggestion p95, ms | harper.js | 0.285 (0.180 to 2.340), n=25 | UNMEASURED | 0.220 (0.195 to 1.945), n=25 | pending owner run |
-| Check 5,000 words from cold worker, ms | nspell | 3 (2 to 5), n=5 | UNMEASURED | 2 (2 to 2), n=5 | pending owner run |
-| Check 5,000 words from cold worker, ms | harper.js | 564 (554 to 1,144), n=5 | UNMEASURED | 646 (618 to 683), n=5 | pending owner run |
-| Check 50,000 words, ms | nspell | 16 (15 to 27), n=5 | UNMEASURED | 14 (14 to 19), n=5 | pending owner run |
-| Check 50,000 words, ms | harper.js | 8,965 (8,898 to 15,597), n=5 | UNMEASURED | 9,794 (9,549 to 10,039), n=5 | pending owner run |
-| Check 200,000 words, ms | nspell | 67 (62 to 112), n=5 | UNMEASURED | 64 (58 to 97), n=5 | pending owner run |
-| Check 200,000 words, ms | harper.js | 72,193 (71,234 to 128,024), n=5 | UNMEASURED | 74,933 (74,479 to 79,744), n=5 | pending owner run |
-| Re-check one 136-word paragraph, ms | nspell | 0.05 (0.04 to 1.16), n=50 | UNMEASURED | 0.06 (0.04 to 0.15), n=50 | pending owner run |
-| Re-check one 136-word paragraph, ms | harper.js | 16.41 (13.04 to 27.89), n=50 | UNMEASURED | 18.41 (14.49 to 23.48), n=50 | pending owner run |
-| Memory after load, MB | nspell | 10.66 (10.66 to 10.69), n=5 (page, `measureUserAgentSpecificMemory`) | UNMEASURED | UNMEASURED (`measureUserAgentSpecificMemory` threw `SecurityError`) | pending owner run |
-| Memory after load, MB | harper.js | 165.59 (165.58 to 165.59), n=5 (page) | UNMEASURED | UNMEASURED (same) | pending owner run |
-| Memory after checking 200,000 words, MB | nspell | 12.38 (12.36 to 12.39), n=5 (page) | UNMEASURED | UNMEASURED (same) | pending owner run |
-| Memory after checking 200,000 words, MB | harper.js | 278.50 (278.50 to 278.52), n=5 (page) | UNMEASURED | UNMEASURED (same) | pending owner run |
-| Memory, peak minus blank page, all processes, MB (`app.getAppMetrics()`) | nspell | not applicable | not applicable | 96.9 (78.9 to 100.5), n=3 | pending owner run |
-| Memory, peak minus blank page, all processes, MB (`app.getAppMetrics()`) | harper.js | not applicable | not applicable | 466.0 (436.1 to 466.6), n=3 | pending owner run |
-| Worker JS heap | both | UNMEASURED (not available in the worker) | UNMEASURED | UNMEASURED (same) | pending owner run |
-| Planted misspellings flagged, 5,000 / 50,000 / 200,000 words (unpunctuated fixtures) | nspell | 100 of 100 / 992 of 1,000 / 3,974 of 4,000; 0 unplanted flagged | UNMEASURED | identical to web localhost | pending owner run |
-| Planted misspellings flagged, 5,000 / 50,000 / 200,000 words (unpunctuated fixtures) | harper.js | 0 of 100 / 0 of 1,000 / 0 of 4,000; 0 unplanted flagged | UNMEASURED | identical to web localhost | pending owner run |
-| Lowest browser or runtime version run | both | Chromium 148.0.7778.96 only | same browser as web localhost | Chromium 132.0.6834.210 (Electron 34.5.8) only | pending owner run |
+| Cold load, ms | nspell | 48.6 (38.3 to 77.0), n=5 | 1,160.0 (1,154.7 to 1,171.0), n=4 | 51.4 (46.2 to 63.7), n=5 | 189.5, n=1 (first load of the run; `firstLoadWasCold` true; no network on Android) |
+| Cold load, ms | harper.js | 430.4 (425.8 to 691.7), n=5 | 76,514.2 (76,438.7 to 76,653.4), n=4 | 458.8 (446.2 to 486.5), n=5 | 1,425.5, n=1 (same) |
+| Warm load, ms | nspell | 45.8 (35.1 to 72.6), n=20 | 36.9 (33.4 to 66.7), n=8 | 47.6 (43.7 to 57.4), n=20 | 190.7 (154.7 to 274.9), n=20 |
+| Warm load, ms | harper.js | 437.1 (422.8 to 842.3), n=20 | 76,447.5 (76,433.3 to 76,583.1), n=8 | 456.4 (437.8 to 489.4), n=20 | 1,412.4 (1,379.0 to 1,750.7), n=20 |
+| Bytes transferred, cold | nspell | 200,562 (n=5) | 200,562 (n=4) | 200,562 (n=5) | UNMEASURED (`loads[].transferred` is 300 on every load; Capacitor asset loads, not network transfers; not meaningful) |
+| Bytes transferred, cold | harper.js | 15,170,508 (n=5) | 15,170,508 (n=4) | 15,170,508 (n=5) | UNMEASURED (same) |
+| Bytes transferred, warm | nspell | 0 (n=20) | 0 (n=8) | 0 (n=20) | UNMEASURED (same) |
+| Bytes transferred, warm | harper.js | 15,146,600 (n=20) | 15,146,600 (n=8) | 15,146,600 (n=20) | UNMEASURED (same) |
+| Bytes decoded, cold | nspell | 593,296 | UNMEASURED (not recorded under throttle) | 593,296 | UNMEASURED (`loads[].decoded` is 0 on every load; same reason) |
+| Bytes decoded, cold | harper.js | 40,426,224 | UNMEASURED (not recorded under throttle) | 40,426,224 | UNMEASURED (same) |
+| Suggestion p50, ms (200 calls) | nspell | 0.675 (0.580 to 1.140), n=25 | UNMEASURED (not run under throttle) | 0.730 (0.650 to 0.920), n=25 | 2.0 (1.9 to 2.6), n=5 repetitions of one run |
+| Suggestion p50, ms (200 calls) | harper.js | 0.250 (0.165 to 1.670), n=25 | UNMEASURED (not run under throttle) | 0.190 (0.170 to 0.995), n=25 | 0.7 (0.7 to 3.5), n=5 repetitions of one run |
+| Suggestion p95, ms | nspell | 1.080 (0.875 to 1.785), n=25 | UNMEASURED | 1.220 (1.005 to 1.940), n=25 | 3.0 (2.9 to 4.1), n=5 repetitions of one run |
+| Suggestion p95, ms | harper.js | 0.285 (0.180 to 2.340), n=25 | UNMEASURED | 0.220 (0.195 to 1.945), n=25 | 0.8 (0.8 to 5.7), n=5 repetitions of one run |
+| Check 5,000 words from cold worker, ms | nspell | 3 (2 to 5), n=5 | UNMEASURED | 2 (2 to 2), n=5 | 9.6, n=1 |
+| Check 5,000 words from cold worker, ms | harper.js | 564 (554 to 1,144), n=5 | UNMEASURED | 646 (618 to 683), n=5 | 1,966, n=1 |
+| Check 50,000 words, ms | nspell | 16 (15 to 27), n=5 | UNMEASURED | 14 (14 to 19), n=5 | 71, n=1 |
+| Check 50,000 words, ms | harper.js | 8,965 (8,898 to 15,597), n=5 | UNMEASURED | 9,794 (9,549 to 10,039), n=5 | 28,972.9, n=1 |
+| Check 200,000 words, ms | nspell | 67 (62 to 112), n=5 | UNMEASURED | 64 (58 to 97), n=5 | 224.8, n=1 |
+| Check 200,000 words, ms | harper.js | 72,193 (71,234 to 128,024), n=5 | UNMEASURED | 74,933 (74,479 to 79,744), n=5 | 247,753.4, n=1 |
+| Re-check one 136-word paragraph, ms | nspell | 0.05 (0.04 to 1.16), n=50 | UNMEASURED | 0.06 (0.04 to 0.15), n=50 | 0.7 (0.6 to 2.3), n=5 |
+| Re-check one 136-word paragraph, ms | harper.js | 16.41 (13.04 to 27.89), n=50 | UNMEASURED | 18.41 (14.49 to 23.48), n=50 | 52.3 (45.3 to 55.1), n=5 |
+| Memory after load, MB | nspell | 10.66 (10.66 to 10.69), n=5 (page, `measureUserAgentSpecificMemory`) | UNMEASURED | UNMEASURED (`measureUserAgentSpecificMemory` threw `SecurityError`) | UNMEASURED (`measureUserAgentSpecificMemory` was not run: `uasMemory` false, `uaSpecificBytes` null; see the PSS rows) |
+| Memory after load, MB | harper.js | 165.59 (165.58 to 165.59), n=5 (page) | UNMEASURED | UNMEASURED (same) | UNMEASURED (same) |
+| Memory after checking 200,000 words, MB | nspell | 12.38 (12.36 to 12.39), n=5 (page) | UNMEASURED | UNMEASURED (same) | UNMEASURED (same) |
+| Memory after checking 200,000 words, MB | harper.js | 278.50 (278.50 to 278.52), n=5 (page) | UNMEASURED | UNMEASURED (same) | UNMEASURED (same) |
+| Memory, peak minus blank page, all processes, MB (`app.getAppMetrics()`) | nspell | not applicable | not applicable | 96.9 (78.9 to 100.5), n=3 | not applicable |
+| Memory, peak minus blank page, all processes, MB (`app.getAppMetrics()`) | harper.js | not applicable | not applicable | 466.0 (436.1 to 466.6), n=3 | not applicable |
+| Worker JS heap | both | UNMEASURED (not available in the worker) | UNMEASURED | UNMEASURED (same) | UNMEASURED (worker `jsHeapUsed` null in the JSON) |
+| Memory, app PSS (`dumpsys meminfo`), KB; covers both engines together, not separable | both | not applicable | not applicable | not applicable | menu page 179,664 (`meminfo-1-menu.txt`); highest of 72 successful 15 s samples during the run 227,438 (`meminfo-2-running.txt`); after the run 198,326 (`meminfo-3-after.txt`) |
+| Planted misspellings flagged, 5,000 / 50,000 / 200,000 words (unpunctuated fixtures) | nspell | 100 of 100 / 992 of 1,000 / 3,974 of 4,000; 0 unplanted flagged | UNMEASURED | identical to web localhost | 100 of 100 / 992 of 1,000 / 3,974 of 4,000; 0 unplanted flagged |
+| Planted misspellings flagged, 5,000 / 50,000 / 200,000 words (unpunctuated fixtures) | harper.js | 0 of 100 / 0 of 1,000 / 0 of 4,000; 0 unplanted flagged | UNMEASURED | identical to web localhost | 0 of 100 / 0 of 1,000 / 0 of 4,000; 0 unplanted flagged |
+| Lowest browser or runtime version run | both | Chromium 148.0.7778.96 only | same browser as web localhost | Chromium 132.0.6834.210 (Electron 34.5.8) only | Android System WebView (Chrome) 155.0.8059.43 only |
 
 Other measured facts, with their sections:
 
-- Native underline (section "Underlines", MEASURED): on web (Chromium 148) and desktop (Electron 34.5.8), `spellcheck="false"` suppressed the native underline on `contenteditable`, `<textarea>` and `<input>`, and a `spellcheck="false"` ancestor was inherited by the `contenteditable` and the `<textarea>` inside it. The `<input>` without the attribute was underlined while focused and not after focus moved on. Android: not run (UNMEASURED until the owner's run).
+- Native underline (section "Underlines", MEASURED): on web (Chromium 148) and desktop (Electron 34.5.8), `spellcheck="false"` suppressed the native underline on `contenteditable`, `<textarea>` and `<input>`, and a `spellcheck="false"` ancestor was inherited by the `contenteditable` and the `<textarea>` inside it. The `<input>` without the attribute was underlined while focused and not after focus moved on. Android (Task 17, section "Android underlines"): no underline was visible under "recieve teh wrold" in any of the 8 cases, with or without the attribute, so suppression and inheritance are not observable by underline there; Gboard's suggestion strip showed "wrold | world" in all 8 cases; typing was not tested (UNMEASURED).
 - harper.js sentence-length experiment (section "Supplementary experiment: sentence length only", n=1 per cell, 5,000 and 50,000 words): with no full stops 0 of 100 and 0 of 1,000 planted misspellings flagged; with a full stop every 40, 20 and 10 words, 99 of 100 and 987 to 989 of 1,000; with a full stop every 5 words, 20 of 100 and 225 of 1,000. Unplanted words flagged 7 to 70 for harper.js and 0 for nspell. Cause: not established.
-- Electron `localStorage` persistence (section "Electron localStorage persistence"): fixed origin `http://localhost:7340` UNMEASURED; stand-in origin `http://localhost:64313` MEASURED, value written on launch 1 was read on launch 2 (one run). Capacitor persistence: pending owner run.
-- Size added to the install (section "Desktop (Electron)", computed from files in `frontend/node_modules`): nspell and dictionary-en 593,296 bytes loaded (554,848 dictionary plus 38,448 built worker script); harper.js 40,426,224 bytes loaded (40,205,397 for the two `.wasm` files plus 220,827 built worker script). Packaged-app size: UNMEASURED. Android APK size: pending owner run.
+- Electron `localStorage` persistence (section "Electron localStorage persistence"): fixed origin `http://localhost:7340` UNMEASURED; stand-in origin `http://localhost:64313` MEASURED, value written on launch 1 was read on launch 2 (one run). Capacitor persistence (section "Capacitor localStorage"): MEASURED in the spike app only, origin `https://localhost`; the value written survived a page reload and `am force-stop` plus `am start` (one run). This does not show what the real app's origin would do.
+- Size added to the install (section "Desktop (Electron)", computed from files in `frontend/node_modules`): nspell and dictionary-en 593,296 bytes loaded (554,848 dictionary plus 38,448 built worker script); harper.js 40,426,224 bytes loaded (40,205,397 for the two `.wasm` files plus 220,827 built worker script). Packaged-app size: UNMEASURED. Android: the spike app's debug APK was 23,556,938 bytes when built in Task 9 (section "Amended build, run here"); that is the size of the spike APK as a whole (Capacitor shell plus both engines), not the size either engine adds to the install, and the size of the APK installed on the Pixel was not re-measured.
 - Native build (sections "Native build" and "Native build, second run"): first run exit 1 at type check; after the import-path edits in five story files, exit 0. `pnpm typecheck` exit 0; `pnpm lint` exit 0 with 392 warnings.
 
 ## Native build
@@ -373,19 +374,956 @@ Steps, from the repository root of a clean checkout of this branch:
 
 ### Android environment
 
-pending owner run
+All MEASURED unless marked. Android steps were driven by the lead through `adb` (including `adb input` for taps), with the owner's approval, not by the owner by hand. Date 2026-10-25.
+
+- Device: Pixel 7 Pro, Android 17, build CP3A.260905.009 (from the pasted `userAgent`).
+- System WebView: `dumpsys webviewupdate` current package `com.google.android.webview` 155.0.8059.43. `userAgent`: `Mozilla/5.0 (Linux; Android 17; Pixel 7 Pro Build/CP3A.260905.009; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.8059.43 Mobile Safari/537.36`; `chromeMajor` 155; `crossOriginIsolated` false; `hasPerformanceMemory` true.
+- Keyboard: `com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME` (Gboard).
+- Origin printed by the page: `https://localhost`.
+- App: the spike, installed as `works.saboteur.getwrite.spellspike` after `aapt dump badging` showed that package name; uninstalled afterwards (`Success`). The real app `works.saboteur.getwrite` was not touched.
+- Run notes: one of 73 meminfo polls returned "adb: no devices/emulators found" (a brief disconnect at 16:30:59), and an earlier install attempt failed while the device was briefly gone. Neither is explained here.
+- The JSON `environment.server` block records the build machine (git HEAD `478724d6`), not the phone.
 
 ### Android underlines
 
-pending owner run
+Task 17. FR-7, AC-4. Page: the same `underline-page.html` (8 cases, each holding "recieve teh wrold"), opened in the spike app. Each field was tapped into without typing and a screenshot was taken 2 s later through `adb`. Keyboard: Gboard. All MEASURED by looking at the screenshots (checked again by the author of this section); no cause is stated.
+
+- Case 1, contenteditable, no attribute: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-1.png`).
+- Case 2, textarea, no attribute: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-2.png`).
+- Case 3, input, no attribute: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-3.png`).
+- Case 4, contenteditable, `spellcheck="false"`: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-4.png`).
+- Case 5, textarea, `spellcheck="false"`: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-5.png`).
+- Case 6, input, `spellcheck="false"`: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-6.png`).
+- Case 7, contenteditable inside a `spellcheck="false"` container, no own attribute: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-7.png`).
+- Case 8, textarea inside a `spellcheck="false"` container, no own attribute: no underline visible under "recieve teh wrold"; the field was focused with the cursor at the end of the text; Gboard's suggestion strip showed "wrold | world" plus two globe emoji; no composing underline visible (`screenshots/android-underline-8.png`).
+- Not observed in any of the 8 cases: a red or other underline under "recieve" or "wrold", with or without the attribute (cases 1 to 3 have no attribute).
+- Gboard's suggestion strip showed "wrold | world" in cases 4 to 8 (attribute `false` on the element or on the container), as in cases 1 to 3.
+- UNMEASURED: whether an underline appears after the user types a word. No text was typed; only existing text was focused.
+- UNMEASURED: the DOM-level `.spellcheck` property on Android (not recorded in the JSON).
 
 ### Capacitor localStorage
 
-pending owner run
+MEASURED in the spike app only (`works.saboteur.getwrite.spellspike`), origin printed by the page `https://localhost`; one run. This does not show what the real app's origin would do.
+
+- First visit to the storage-check page: `value: (absent)`.
+- After "Write a new value": `value: written 2026-10-25T22:47:47.532Z`.
+- After "Reload page": the same value.
+- After `am force-stop` then `am start` of the spike: the same value. (Swiping away from recents was not done.)
 
 ## Android results (pasted)
 
-pending owner run
+Pasted from `screenshots/android-result.json` (22,103 bytes, as written by the driver on the phone; run 2026-10-25, 15 s meminfo polling alongside).
+
+```json
+{
+  "environment": {
+    "server": {
+      "date": "2026-10-25T22:00:01.551Z",
+      "node": "v24.15.0",
+      "os": "darwin 25.5.0 arm64",
+      "gitHead": "478724d6a8b0c06f52671e3c34bec5c35505c6fd",
+      "gitBranch": "feat/spell-checker",
+      "packages": {
+        "nspell": "2.1.5",
+        "dictionary-en": "4.0.0",
+        "harper.js": "2.13.0"
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 17; Pixel 7 Pro Build/CP3A.260905.009; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.8059.43 Mobile Safari/537.36",
+      "brands": [
+        "Android WebView 155",
+        "Chromium 155",
+        "Not(A:Brand 24"
+      ],
+      "chromeMajor": 155,
+      "platform": "Linux aarch64",
+      "crossOriginIsolated": false,
+      "hasPerformanceMemory": true
+    },
+    "config": {
+      "engines": [
+        "nspell",
+        "harper"
+      ],
+      "warmLoads": 20,
+      "sizes": [
+        5000,
+        50000,
+        200000
+      ],
+      "sizeRuns": 1,
+      "recheckRuns": 5,
+      "suggestReps": 5,
+      "suggestionWords": 200,
+      "uasMemory": false,
+      "punctuateEvery": 0,
+      "loadOnly": false
+    }
+  },
+  "lowestChromeVersionRun": {
+    "chromeMajor": 155,
+    "note": "single browser per run; the lowest across runs is taken by the caller"
+  },
+  "fixtureCounts": [
+    {
+      "words": 5000,
+      "paragraphs": 42,
+      "misspellings": 100,
+      "names": 25
+    },
+    {
+      "words": 50000,
+      "paragraphs": 434,
+      "misspellings": 1000,
+      "names": 250
+    },
+    {
+      "words": 200000,
+      "paragraphs": 1743,
+      "misspellings": 4000,
+      "names": 1000
+    }
+  ],
+  "suggestionList": {
+    "source": "fixture-50000.txt",
+    "count": 200,
+    "first": [
+      "shawper",
+      "scofl",
+      "dighearted",
+      "clo",
+      "holloo"
+    ]
+  },
+  "engines": [
+    {
+      "engine": "nspell",
+      "workerType": "classic",
+      "errors": [],
+      "load": {
+        "firstLoad": {
+          "ms": 189.5,
+          "resources": [
+            {
+              "name": "/worker-nspell.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.aff",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.dic",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "dictionary": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "secondLoad": {
+          "resources": [
+            {
+              "name": "/worker-nspell.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.aff",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.dic",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "dictionary": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "firstLoadWasCold": true,
+        "loads": [
+          {
+            "index": 0,
+            "ms": 189.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 1,
+            "ms": 167.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 2,
+            "ms": 210.40000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 3,
+            "ms": 173.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 4,
+            "ms": 216.40000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 5,
+            "ms": 250.2000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 6,
+            "ms": 243.80000000074506,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 7,
+            "ms": 190.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 8,
+            "ms": 155.09999999962747,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 9,
+            "ms": 257.40000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 10,
+            "ms": 182.2999999988824,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 11,
+            "ms": 154.69999999925494,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 12,
+            "ms": 265,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 13,
+            "ms": 187.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 14,
+            "ms": 245.30000000074506,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 15,
+            "ms": 173.7999999988824,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 16,
+            "ms": 162.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 17,
+            "ms": 247.90000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 18,
+            "ms": 201.19999999925494,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 19,
+            "ms": 274.90000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 20,
+            "ms": 177.59999999962747,
+            "transferred": 300,
+            "decoded": 0
+          }
+        ],
+        "warmMs": {
+          "n": 20,
+          "median": 190.7000000011176,
+          "min": 154.69999999925494,
+          "max": 274.90000000037253
+        }
+      },
+      "suggestion": {
+        "words": 200,
+        "wordsWithSuggestionsInFirstRepetition": 199,
+        "repetitions": [
+          {
+            "p50": 2.599999999627471,
+            "p95": 4.099999999627471,
+            "max": 17.40000000037253
+          },
+          {
+            "p50": 1.900000000372529,
+            "p95": 2.900000000372529,
+            "max": 5.099999999627471
+          },
+          {
+            "p50": 1.900000000372529,
+            "p95": 2.899999998509884,
+            "max": 3.400000000372529
+          },
+          {
+            "p50": 2,
+            "p95": 3.099999999627471,
+            "max": 5.400000000372529
+          },
+          {
+            "p50": 2,
+            "p95": 3,
+            "max": 3.599999999627471
+          }
+        ],
+        "p50": {
+          "n": 5,
+          "median": 2,
+          "min": 1.900000000372529,
+          "max": 2.599999999627471
+        },
+        "p95": {
+          "n": 5,
+          "median": 3,
+          "min": 2.899999998509884,
+          "max": 4.099999999627471
+        }
+      },
+      "checkFromColdWorker": [
+        {
+          "words": 5000,
+          "ms": {
+            "n": 1,
+            "median": 9.599999999627471,
+            "min": 9.599999999627471,
+            "max": 9.599999999627471
+          },
+          "runsMs": [
+            9.599999999627471
+          ],
+          "correctness": {
+            "plantedMisspellings": 100,
+            "plantedMisspellingsFlagged": 100,
+            "plantedNames": 25,
+            "plantedNamesFlagged": 21,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 121
+          }
+        },
+        {
+          "words": 50000,
+          "ms": {
+            "n": 1,
+            "median": 71,
+            "min": 71,
+            "max": 71
+          },
+          "runsMs": [
+            71
+          ],
+          "correctness": {
+            "plantedMisspellings": 1000,
+            "plantedMisspellingsFlagged": 992,
+            "plantedNames": 250,
+            "plantedNamesFlagged": 232,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 1224
+          }
+        },
+        {
+          "words": 200000,
+          "ms": {
+            "n": 1,
+            "median": 224.7999999988824,
+            "min": 224.7999999988824,
+            "max": 224.7999999988824
+          },
+          "runsMs": [
+            224.7999999988824
+          ],
+          "correctness": {
+            "plantedMisspellings": 4000,
+            "plantedMisspellingsFlagged": 3974,
+            "plantedNames": 1000,
+            "plantedNamesFlagged": 881,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 4855
+          }
+        }
+      ],
+      "memory": {
+        "beforeWorker": {
+          "worker": {},
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterLoad": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterCheck200k": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        }
+      },
+      "recheck": {
+        "paragraphWords": 136,
+        "ms": {
+          "n": 5,
+          "median": 0.6999999992549419,
+          "min": 0.599999999627471,
+          "max": 2.300000000745058
+        },
+        "runsMs": [
+          0.900000000372529,
+          0.599999999627471,
+          0.6999999992549419,
+          0.599999999627471,
+          2.300000000745058
+        ],
+        "flaggedInFirstEditedParagraph": 4
+      }
+    },
+    {
+      "engine": "harper",
+      "workerType": "module",
+      "errors": [],
+      "load": {
+        "firstLoad": {
+          "ms": 1425.5,
+          "resources": [
+            {
+              "name": "/worker-harper.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_slim_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "wasm": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "secondLoad": {
+          "resources": [
+            {
+              "name": "/worker-harper.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_slim_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "wasm": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "firstLoadWasCold": true,
+        "loads": [
+          {
+            "index": 0,
+            "ms": 1425.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 1,
+            "ms": 1412.4000000003725,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 2,
+            "ms": 1392.699999999255,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 3,
+            "ms": 1432.0999999996275,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 4,
+            "ms": 1471.2000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 5,
+            "ms": 1410.3999999985099,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 6,
+            "ms": 1431.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 7,
+            "ms": 1390.699999999255,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 8,
+            "ms": 1428.300000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 9,
+            "ms": 1412,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 10,
+            "ms": 1397.300000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 11,
+            "ms": 1430.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 12,
+            "ms": 1443.3999999985099,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 13,
+            "ms": 1379,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 14,
+            "ms": 1388.8999999985099,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 15,
+            "ms": 1433.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 16,
+            "ms": 1411.2000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 17,
+            "ms": 1421.4000000003725,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 18,
+            "ms": 1398.800000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 19,
+            "ms": 1415.800000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 20,
+            "ms": 1750.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          }
+        ],
+        "warmMs": {
+          "n": 20,
+          "median": 1412.4000000003725,
+          "min": 1379,
+          "max": 1750.7000000011176
+        }
+      },
+      "suggestion": {
+        "words": 200,
+        "wordsWithSuggestionsInFirstRepetition": 199,
+        "repetitions": [
+          {
+            "p50": 3.5,
+            "p95": 5.699999999254942,
+            "max": 104.69999999925494
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.8000000007450581,
+            "max": 3.200000001117587
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.7999999988824129,
+            "max": 1
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.7999999988824129,
+            "max": 1.599999999627471
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.7999999988824129,
+            "max": 1.1000000014901161
+          }
+        ],
+        "p50": {
+          "n": 5,
+          "median": 0.6999999992549419,
+          "min": 0.6999999992549419,
+          "max": 3.5
+        },
+        "p95": {
+          "n": 5,
+          "median": 0.7999999988824129,
+          "min": 0.7999999988824129,
+          "max": 5.699999999254942
+        }
+      },
+      "checkFromColdWorker": [
+        {
+          "words": 5000,
+          "ms": {
+            "n": 1,
+            "median": 1966,
+            "min": 1966,
+            "max": 1966
+          },
+          "runsMs": [
+            1966
+          ],
+          "correctness": {
+            "plantedMisspellings": 100,
+            "plantedMisspellingsFlagged": 0,
+            "plantedNames": 25,
+            "plantedNamesFlagged": 0,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 0
+          }
+        },
+        {
+          "words": 50000,
+          "ms": {
+            "n": 1,
+            "median": 28972.900000000373,
+            "min": 28972.900000000373,
+            "max": 28972.900000000373
+          },
+          "runsMs": [
+            28972.900000000373
+          ],
+          "correctness": {
+            "plantedMisspellings": 1000,
+            "plantedMisspellingsFlagged": 0,
+            "plantedNames": 250,
+            "plantedNamesFlagged": 0,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 0
+          }
+        },
+        {
+          "words": 200000,
+          "ms": {
+            "n": 1,
+            "median": 247753.3999999985,
+            "min": 247753.3999999985,
+            "max": 247753.3999999985
+          },
+          "runsMs": [
+            247753.3999999985
+          ],
+          "correctness": {
+            "plantedMisspellings": 4000,
+            "plantedMisspellingsFlagged": 0,
+            "plantedNames": 1000,
+            "plantedNamesFlagged": 0,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 0
+          }
+        }
+      ],
+      "memory": {
+        "beforeWorker": {
+          "worker": {},
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterLoad": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterCheck200k": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        }
+      },
+      "recheck": {
+        "paragraphWords": 136,
+        "ms": {
+          "n": 5,
+          "median": 52.30000000074506,
+          "min": 45.30000000074506,
+          "max": 55.099999997764826
+        },
+        "runsMs": [
+          53.099999997764826,
+          45.30000000074506,
+          55.099999997764826,
+          52,
+          52.30000000074506
+        ],
+        "flaggedInFirstEditedParagraph": 0
+      }
+    }
+  ]
+}
+```
+
+### Android table (FR-6)
+
+Source: the pasted JSON above (one run, `chromeMajor` 155) and `screenshots/meminfo-*.txt`. Cells read `median (min to max), n`. Both engines reported empty `errors`. No cause is stated for any value.
+
+| FR-6 metric | nspell | harper.js |
+| --- | --- | --- |
+| (a) Load, first load of the run, ms | 189.5, n=1 | 1,425.5, n=1 |
+| (a) Load, the 20 later loads, ms | 190.7 (154.7 to 274.9), n=20 | 1,412.4 (1,379.0 to 1,750.7), n=20 |
+| (a) Load, all 21 loads, ms | 190.7 (154.7 to 274.9), n=21 | 1,415.8 (1,379.0 to 1,750.7), n=21 |
+| (b) Suggestion p50 per repetition of 200 calls, ms | 2.0 (1.9 to 2.6), n=5 | 0.7 (0.7 to 3.5), n=5 |
+| (b) Suggestion p95, ms | 3.0 (2.9 to 4.1), n=5 | 0.8 (0.8 to 5.7), n=5 |
+| (b) Words with a suggestion, first repetition | 199 of 200 | 199 of 200 |
+| (c) Download size | UNMEASURED: `loads[].transferred` is 300 and `loads[].decoded` is 0 on all 21 loads; Capacitor asset loads, so the figures are not meaningful | UNMEASURED (same) |
+| (d) Memory, page `measureUserAgentSpecificMemory` | UNMEASURED: not run (`uasMemory` false; `uaSpecificBytes` null) | UNMEASURED (same) |
+| (d) Memory, page `performance.memory` | `jsHeapUsed` and `jsHeapTotal` 10,000,000 before the worker, after load and after the 200,000-word check (the same value each time; reported as is) | same values |
+| (d) Memory, worker JS heap | UNMEASURED (`jsHeapUsed` null) | UNMEASURED (same) |
+| (d) Memory, app PSS (`dumpsys meminfo`) | covers both engines and the page together; cannot be split: menu page 179,664 KB, highest of 72 successful 15 s samples during the run 227,438 KB, after the run 198,326 KB | same figures (one app) |
+| (e) Check from a cold worker, 5,000 words, ms | 9.6, n=1 | 1,966, n=1 |
+| (e) Check, 50,000 words, ms | 71, n=1 | 28,972.9, n=1 |
+| (e) Check, 200,000 words, ms | 224.8, n=1 | 247,753.4, n=1 |
+| (e) Re-check one 136-word paragraph, ms | 0.7 (0.6 to 2.3), n=5; 4 flagged in the first edited paragraph | 52.3 (45.3 to 55.1), n=5; 0 flagged |
+| (f) Planted misspellings flagged, 5,000 / 50,000 / 200,000 | 100 of 100 / 992 of 1,000 / 3,974 of 4,000 | 0 of 100 / 0 of 1,000 / 0 of 4,000 |
+| (f) Planted names flagged (not specified in FR-6, from the JSON) | 21 of 25 / 232 of 250 / 881 of 1,000 | 0 / 0 / 0 |
+| (f) Unplanted words flagged | 0 / 0 / 0 | 0 / 0 / 0 |
+| (g) Lowest browser version run | Chrome 155.0.8059.43 (Android System WebView) | same |
+
+Worker types: nspell classic, harper.js module; both started on the Pixel's WebView. The fixtures were unpunctuated (`punctuateEvery` 0), as for web and desktop.
+
+The memory polls: 72 of 73 returned a sample; one returned "adb: no devices/emulators found". `meminfo-2-running.txt` is the highest of the 72 (the polls were every 15 s; the phase each fell in was not recorded).
 
 ## Hosted web, throttled
 
@@ -589,7 +1527,28 @@ The Electron window ran `scripts/underline-page.html` through a scratch main scr
 
 ### Android
 
-Not run here. The owner records the Android rows in "Android underlines" through the Task 16 runbook (UNMEASURED until then).
+The per-case lines are in "Android underlines" (Pixel 7 Pro, Android 17, WebView 155.0.8059.43, Gboard). Summary: no underline was visible in any of the 8 cases, with or without the attribute; the suggestion strip showed "wrold | world" in all 8; typing was not tested.
+
+### AC-4 per platform (Task 17)
+
+| Case | Web (Chromium 148) | Desktop (Electron 34.5.8, Chromium 132) | Android (WebView 155, Gboard) |
+| --- | --- | --- | --- |
+| contenteditable, no attribute | underlined (`web-chromium-case1-focused.png`) | underlined (`desktop-electron-case1-focused.png`) | not underlined; strip "wrold \| world" (`android-underline-1.png`) |
+| textarea, no attribute | underlined (`web-chromium-all-fields-visited.png`) | underlined (`desktop-electron-case3-focused.png`, `desktop-electron-all-fields-visited.png`) | not underlined; strip shown (`android-underline-2.png`) |
+| input, no attribute | underlined while focused (`web-chromium-case3-focused.png`) | underlined while focused (`desktop-electron-case3-focused.png`) | not underlined; strip shown (`android-underline-3.png`) |
+| contenteditable, `spellcheck="false"` | suppressed | suppressed | not underlined; strip shown (`android-underline-4.png`) |
+| textarea, `spellcheck="false"` | suppressed | suppressed | not underlined; strip shown (`android-underline-5.png`) |
+| input, `spellcheck="false"` | suppressed | suppressed | not underlined; strip shown (`android-underline-6.png`) |
+| contenteditable in a `spellcheck="false"` container | not underlined: inherited | not underlined: inherited | not underlined; strip shown (`android-underline-7.png`) |
+| textarea in a `spellcheck="false"` container | not underlined: inherited | not underlined: inherited | not underlined; strip shown (`android-underline-8.png`) |
+
+(Web and desktop screenshot references for cases 4 to 8 are the "all-fields-visited" images named in the two sections above.)
+
+### Facts for later tasks (Task 17)
+
+- Lowest browser version each engine ran on, against the floor `Chrome >= 67` (`frontend/.browserslistrc:11`): web Chromium 148.0.7778.96, desktop Chromium 132.0.6834.210 (Electron 34.5.8), Android System WebView 155.0.8059.43. Both nspell and harper.js ran on all three; nothing below Chromium 132 was run, so whether either engine runs on Chrome 67 to 131 is UNMEASURED.
+- Inheritance (FR-28 body backstop input, OQ-11): web and desktop honoured inheritance (cases 7 and 8 not underlined, `.spellcheck` false). On Android no native underline was observed in any case, including cases 1 to 3 with no attribute, so inheritance is not observable there by underline and the `.spellcheck` property was not recorded on Android: all three platforms honouring inheritance is therefore NOT established; two of three are.
+- Android keyboard-level underline despite `spellcheck="false"` (FR-27 known gap, OQ-12): no composing or spelling underline was visible in cases 4 to 8; Gboard's suggestion strip appeared ("wrold | world") in cases 4 to 8 as in cases 1 to 3; typing was not tested, so an underline after typing is UNMEASURED.
 
 ## Electron localStorage persistence
 
@@ -609,14 +1568,14 @@ This section is the author's recommendation. It is a judgment, not a measurement
 
 What the recommendation rests on:
 
-1. Correctness on the specified fixtures. harper.js flagged 0 of 100, 0 of 1,000 and 0 of 4,000 planted misspellings on the unpunctuated fixtures (web localhost and desktop, identical in all 5 runs each). nspell flagged 100 of 100, 992 of 1,000 and 3,974 of 4,000, with 0 unplanted words flagged. In the supplementary sentence-length experiment (n=1 per cell) harper.js flagged 99 of 100 and 987 to 989 of 1,000 with a full stop every 10 to 40 words, 20 of 100 and 225 of 1,000 with a full stop every 5 words, and 0 with none; the counts varied non-monotonically with sentence length over the values tried, and 7 to 70 unplanted dictionary-stem words were flagged. The cause of the 0, of the drop at every 5 words and of the unplanted flags is not established; the experiments that would discriminate are listed in that section. harper.js was not measured on ordinary prose.
+1. Correctness on the specified fixtures. harper.js flagged 0 of 100, 0 of 1,000 and 0 of 4,000 planted misspellings on the unpunctuated fixtures (web localhost and desktop, identical in all 5 runs each; Android the same, one run). nspell flagged 100 of 100, 992 of 1,000 and 3,974 of 4,000, with 0 unplanted words flagged. In the supplementary sentence-length experiment (n=1 per cell) harper.js flagged 99 of 100 and 987 to 989 of 1,000 with a full stop every 10 to 40 words, 20 of 100 and 225 of 1,000 with a full stop every 5 words, and 0 with none; the counts varied non-monotonically with sentence length over the values tried, and 7 to 70 unplanted dictionary-stem words were flagged. The cause of the 0, of the drop at every 5 words and of the unplanted flags is not established; the experiments that would discriminate are listed in that section. harper.js was not measured on ordinary prose.
 2. Transfer. harper.js transferred 15,170,508 bytes on a cold load and 15,146,600 bytes on every warm load, including the loads after the cold one (the `.wasm` entries carried the same `transferSize` warm as cold, on localhost, throttled and desktop); decoded size is 40,426,224 bytes. nspell transferred 200,562 bytes cold and 0 warm; decoded 593,296 bytes. Under the Fast 3G-like profile (latency 150 ms, 1,600 kbit/s down) harper.js load took a median 76,514.2 ms cold and 76,447.5 ms warm; nspell took 1,160.0 ms cold and 36.9 ms warm.
 3. Time to check. From a cold worker, harper.js took a median 72,193 ms (range 71,234 to 128,024) on web and 74,933 ms (74,479 to 79,744) on desktop for 200,000 words, against nspell 67 ms and 64 ms; for 50,000 words 8,965 ms and 9,794 ms against 16 ms and 14 ms. Re-checking one 136-word paragraph took a median 16.41 ms (web) and 18.41 ms (desktop) for harper.js and 0.05 ms and 0.06 ms for nspell.
 4. Memory. On web the page-level figure after checking 200,000 words was 278.50 MB for harper.js and 12.38 MB for nspell. On desktop the all-process peak minus a blank page was 466.0 MB for harper.js and 96.9 MB for nspell (medians, n=3). The worker's own heap was not measured.
 5. Suggestions and load. Suggestion time was under 3 ms at p95 for both engines on both platforms measured (harper.js p95 0.285 ms web, 0.220 ms desktop; nspell 1.080 ms and 1.220 ms); both returned a suggestion for 199 of 200 words. Unthrottled load was 48.6 ms (nspell) and 430.4 ms (harper.js) cold on web.
-6. Not measured. Android has no figures (pending owner run), so no claim about the Pixel's WebView is made. The `Chrome >= 67` floor (`frontend/.browserslistrc:11`) was not run: the lowest browser version run was Chromium 132.0.6834.210 (desktop) and 148.0.7778.96 (web), so whether either engine runs between 67 and 131 is UNMEASURED. Native underlines: `spellcheck="false"` suppressed them and inheritance held on web and desktop; Android is unmeasured. Throttled suggestion, check and memory figures were not taken.
+6. Android (Pixel 7 Pro, WebView 155.0.8059.43, one run) and what was not measured. harper.js flagged 0 of 100, 0 of 1,000 and 0 of 4,000 planted misspellings on Android too; nspell flagged 100 of 100, 992 of 1,000 and 3,974 of 4,000. Check of 200,000 words took 247,753.4 ms (harper.js) against 224.8 ms (nspell), n=1 each; load median 1,415.8 ms against 190.7 ms (n=21); re-check of one paragraph 52.3 ms against 0.7 ms (n=5). Suggestion p50 was 0.7 ms (harper.js) and 2.0 ms (nspell). Download size and per-engine memory on Android are UNMEASURED (the app PSS of 179,664 to 227,438 KB covers both engines together). The `Chrome >= 67` floor (`frontend/.browserslistrc:11`) was not run: the lowest versions run were Chromium 132.0.6834.210 (desktop), 148.0.7778.96 (web) and 155.0.8059.43 (Android), so whether either engine runs between 67 and 131 is UNMEASURED. Native underlines: `spellcheck="false"` suppressed them and inheritance held on web and desktop; on Android no underline was visible in any case and Gboard's suggestion strip appeared in all 8; typing was not tested. Throttled suggestion, check and memory figures were not taken.
 
-Recommendation: on the figures above, nspell with dictionary-en is the engine the measurements support for adoption: it flagged the planted misspellings on the specified fixtures, transferred 0 bytes warm, and its measured load, whole-document check and re-check times and its memory are lower than harper.js's on every platform measured (suggestion time p50 was lower for harper.js on both platforms). harper.js is not recommended on this evidence because of the 0 flagged on the unpunctuated fixtures with unestablished cause, the non-monotonic dependence on sentence length, the 15 MB transfer on every load, and the 70 to 128 s whole-document check. This does not show that harper.js is unsuitable on ordinary prose, and it does not show nspell is suitable on the Pixel's WebView or below Chromium 132; those are unmeasured. The recommendation changes if the Android run or a punctuation experiment shows otherwise.
+Recommendation: on the figures above, nspell with dictionary-en is the engine the measurements support for adoption: it flagged the planted misspellings on the specified fixtures, transferred 0 bytes warm, and its measured load, whole-document check and re-check times and its memory are lower than harper.js's on every platform measured (suggestion time p50 was lower for harper.js on both platforms). harper.js is not recommended on this evidence because of the 0 flagged on the unpunctuated fixtures with unestablished cause, the non-monotonic dependence on sentence length, the 15 MB transfer on every load on web and desktop, and the 70 to 128 s whole-document check on web and desktop (247.8 s on Android, n=1). This does not show that harper.js is unsuitable on ordinary prose, and it does not show nspell is suitable below Chromium 132 (unmeasured); on the Pixel's WebView 155 the load, check, re-check and flagging figures above were measured once. The recommendation changes if a punctuation experiment shows otherwise.
 
 ## Decision
 

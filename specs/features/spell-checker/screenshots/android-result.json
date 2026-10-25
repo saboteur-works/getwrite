@@ -1,0 +1,878 @@
+{
+  "environment": {
+    "server": {
+      "date": "2026-10-25T22:00:01.551Z",
+      "node": "v24.15.0",
+      "os": "darwin 25.5.0 arm64",
+      "gitHead": "478724d6a8b0c06f52671e3c34bec5c35505c6fd",
+      "gitBranch": "feat/spell-checker",
+      "packages": {
+        "nspell": "2.1.5",
+        "dictionary-en": "4.0.0",
+        "harper.js": "2.13.0"
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 17; Pixel 7 Pro Build/CP3A.260905.009; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.8059.43 Mobile Safari/537.36",
+      "brands": [
+        "Android WebView 155",
+        "Chromium 155",
+        "Not(A:Brand 24"
+      ],
+      "chromeMajor": 155,
+      "platform": "Linux aarch64",
+      "crossOriginIsolated": false,
+      "hasPerformanceMemory": true
+    },
+    "config": {
+      "engines": [
+        "nspell",
+        "harper"
+      ],
+      "warmLoads": 20,
+      "sizes": [
+        5000,
+        50000,
+        200000
+      ],
+      "sizeRuns": 1,
+      "recheckRuns": 5,
+      "suggestReps": 5,
+      "suggestionWords": 200,
+      "uasMemory": false,
+      "punctuateEvery": 0,
+      "loadOnly": false
+    }
+  },
+  "lowestChromeVersionRun": {
+    "chromeMajor": 155,
+    "note": "single browser per run; the lowest across runs is taken by the caller"
+  },
+  "fixtureCounts": [
+    {
+      "words": 5000,
+      "paragraphs": 42,
+      "misspellings": 100,
+      "names": 25
+    },
+    {
+      "words": 50000,
+      "paragraphs": 434,
+      "misspellings": 1000,
+      "names": 250
+    },
+    {
+      "words": 200000,
+      "paragraphs": 1743,
+      "misspellings": 4000,
+      "names": 1000
+    }
+  ],
+  "suggestionList": {
+    "source": "fixture-50000.txt",
+    "count": 200,
+    "first": [
+      "shawper",
+      "scofl",
+      "dighearted",
+      "clo",
+      "holloo"
+    ]
+  },
+  "engines": [
+    {
+      "engine": "nspell",
+      "workerType": "classic",
+      "errors": [],
+      "load": {
+        "firstLoad": {
+          "ms": 189.5,
+          "resources": [
+            {
+              "name": "/worker-nspell.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.aff",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.dic",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "dictionary": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "secondLoad": {
+          "resources": [
+            {
+              "name": "/worker-nspell.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.aff",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/assets/index.dic",
+              "kind": "dictionary",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "dictionary": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "firstLoadWasCold": true,
+        "loads": [
+          {
+            "index": 0,
+            "ms": 189.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 1,
+            "ms": 167.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 2,
+            "ms": 210.40000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 3,
+            "ms": 173.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 4,
+            "ms": 216.40000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 5,
+            "ms": 250.2000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 6,
+            "ms": 243.80000000074506,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 7,
+            "ms": 190.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 8,
+            "ms": 155.09999999962747,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 9,
+            "ms": 257.40000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 10,
+            "ms": 182.2999999988824,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 11,
+            "ms": 154.69999999925494,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 12,
+            "ms": 265,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 13,
+            "ms": 187.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 14,
+            "ms": 245.30000000074506,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 15,
+            "ms": 173.7999999988824,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 16,
+            "ms": 162.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 17,
+            "ms": 247.90000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 18,
+            "ms": 201.19999999925494,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 19,
+            "ms": 274.90000000037253,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 20,
+            "ms": 177.59999999962747,
+            "transferred": 300,
+            "decoded": 0
+          }
+        ],
+        "warmMs": {
+          "n": 20,
+          "median": 190.7000000011176,
+          "min": 154.69999999925494,
+          "max": 274.90000000037253
+        }
+      },
+      "suggestion": {
+        "words": 200,
+        "wordsWithSuggestionsInFirstRepetition": 199,
+        "repetitions": [
+          {
+            "p50": 2.599999999627471,
+            "p95": 4.099999999627471,
+            "max": 17.40000000037253
+          },
+          {
+            "p50": 1.900000000372529,
+            "p95": 2.900000000372529,
+            "max": 5.099999999627471
+          },
+          {
+            "p50": 1.900000000372529,
+            "p95": 2.899999998509884,
+            "max": 3.400000000372529
+          },
+          {
+            "p50": 2,
+            "p95": 3.099999999627471,
+            "max": 5.400000000372529
+          },
+          {
+            "p50": 2,
+            "p95": 3,
+            "max": 3.599999999627471
+          }
+        ],
+        "p50": {
+          "n": 5,
+          "median": 2,
+          "min": 1.900000000372529,
+          "max": 2.599999999627471
+        },
+        "p95": {
+          "n": 5,
+          "median": 3,
+          "min": 2.899999998509884,
+          "max": 4.099999999627471
+        }
+      },
+      "checkFromColdWorker": [
+        {
+          "words": 5000,
+          "ms": {
+            "n": 1,
+            "median": 9.599999999627471,
+            "min": 9.599999999627471,
+            "max": 9.599999999627471
+          },
+          "runsMs": [
+            9.599999999627471
+          ],
+          "correctness": {
+            "plantedMisspellings": 100,
+            "plantedMisspellingsFlagged": 100,
+            "plantedNames": 25,
+            "plantedNamesFlagged": 21,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 121
+          }
+        },
+        {
+          "words": 50000,
+          "ms": {
+            "n": 1,
+            "median": 71,
+            "min": 71,
+            "max": 71
+          },
+          "runsMs": [
+            71
+          ],
+          "correctness": {
+            "plantedMisspellings": 1000,
+            "plantedMisspellingsFlagged": 992,
+            "plantedNames": 250,
+            "plantedNamesFlagged": 232,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 1224
+          }
+        },
+        {
+          "words": 200000,
+          "ms": {
+            "n": 1,
+            "median": 224.7999999988824,
+            "min": 224.7999999988824,
+            "max": 224.7999999988824
+          },
+          "runsMs": [
+            224.7999999988824
+          ],
+          "correctness": {
+            "plantedMisspellings": 4000,
+            "plantedMisspellingsFlagged": 3974,
+            "plantedNames": 1000,
+            "plantedNamesFlagged": 881,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 4855
+          }
+        }
+      ],
+      "memory": {
+        "beforeWorker": {
+          "worker": {},
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterLoad": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterCheck200k": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        }
+      },
+      "recheck": {
+        "paragraphWords": 136,
+        "ms": {
+          "n": 5,
+          "median": 0.6999999992549419,
+          "min": 0.599999999627471,
+          "max": 2.300000000745058
+        },
+        "runsMs": [
+          0.900000000372529,
+          0.599999999627471,
+          0.6999999992549419,
+          0.599999999627471,
+          2.300000000745058
+        ],
+        "flaggedInFirstEditedParagraph": 4
+      }
+    },
+    {
+      "engine": "harper",
+      "workerType": "module",
+      "errors": [],
+      "load": {
+        "firstLoad": {
+          "ms": 1425.5,
+          "resources": [
+            {
+              "name": "/worker-harper.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_slim_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "wasm": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "secondLoad": {
+          "resources": [
+            {
+              "name": "/worker-harper.js",
+              "kind": "worker-script",
+              "transferSize": 300,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_slim_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            },
+            {
+              "name": "/harper_wasm_bg.wasm",
+              "kind": "wasm",
+              "transferSize": 0,
+              "encodedBodySize": 0,
+              "decodedBodySize": 0
+            }
+          ],
+          "totals": {
+            "transferred": 300,
+            "encoded": 0,
+            "decoded": 0,
+            "byKind": {
+              "worker-script": {
+                "transferred": 300,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 1
+              },
+              "wasm": {
+                "transferred": 0,
+                "encoded": 0,
+                "decoded": 0,
+                "files": 2
+              }
+            }
+          }
+        },
+        "firstLoadWasCold": true,
+        "loads": [
+          {
+            "index": 0,
+            "ms": 1425.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 1,
+            "ms": 1412.4000000003725,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 2,
+            "ms": 1392.699999999255,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 3,
+            "ms": 1432.0999999996275,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 4,
+            "ms": 1471.2000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 5,
+            "ms": 1410.3999999985099,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 6,
+            "ms": 1431.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 7,
+            "ms": 1390.699999999255,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 8,
+            "ms": 1428.300000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 9,
+            "ms": 1412,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 10,
+            "ms": 1397.300000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 11,
+            "ms": 1430.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 12,
+            "ms": 1443.3999999985099,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 13,
+            "ms": 1379,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 14,
+            "ms": 1388.8999999985099,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 15,
+            "ms": 1433.5,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 16,
+            "ms": 1411.2000000011176,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 17,
+            "ms": 1421.4000000003725,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 18,
+            "ms": 1398.800000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 19,
+            "ms": 1415.800000000745,
+            "transferred": 300,
+            "decoded": 0
+          },
+          {
+            "index": 20,
+            "ms": 1750.7000000011176,
+            "transferred": 300,
+            "decoded": 0
+          }
+        ],
+        "warmMs": {
+          "n": 20,
+          "median": 1412.4000000003725,
+          "min": 1379,
+          "max": 1750.7000000011176
+        }
+      },
+      "suggestion": {
+        "words": 200,
+        "wordsWithSuggestionsInFirstRepetition": 199,
+        "repetitions": [
+          {
+            "p50": 3.5,
+            "p95": 5.699999999254942,
+            "max": 104.69999999925494
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.8000000007450581,
+            "max": 3.200000001117587
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.7999999988824129,
+            "max": 1
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.7999999988824129,
+            "max": 1.599999999627471
+          },
+          {
+            "p50": 0.6999999992549419,
+            "p95": 0.7999999988824129,
+            "max": 1.1000000014901161
+          }
+        ],
+        "p50": {
+          "n": 5,
+          "median": 0.6999999992549419,
+          "min": 0.6999999992549419,
+          "max": 3.5
+        },
+        "p95": {
+          "n": 5,
+          "median": 0.7999999988824129,
+          "min": 0.7999999988824129,
+          "max": 5.699999999254942
+        }
+      },
+      "checkFromColdWorker": [
+        {
+          "words": 5000,
+          "ms": {
+            "n": 1,
+            "median": 1966,
+            "min": 1966,
+            "max": 1966
+          },
+          "runsMs": [
+            1966
+          ],
+          "correctness": {
+            "plantedMisspellings": 100,
+            "plantedMisspellingsFlagged": 0,
+            "plantedNames": 25,
+            "plantedNamesFlagged": 0,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 0
+          }
+        },
+        {
+          "words": 50000,
+          "ms": {
+            "n": 1,
+            "median": 28972.900000000373,
+            "min": 28972.900000000373,
+            "max": 28972.900000000373
+          },
+          "runsMs": [
+            28972.900000000373
+          ],
+          "correctness": {
+            "plantedMisspellings": 1000,
+            "plantedMisspellingsFlagged": 0,
+            "plantedNames": 250,
+            "plantedNamesFlagged": 0,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 0
+          }
+        },
+        {
+          "words": 200000,
+          "ms": {
+            "n": 1,
+            "median": 247753.3999999985,
+            "min": 247753.3999999985,
+            "max": 247753.3999999985
+          },
+          "runsMs": [
+            247753.3999999985
+          ],
+          "correctness": {
+            "plantedMisspellings": 4000,
+            "plantedMisspellingsFlagged": 0,
+            "plantedNames": 1000,
+            "plantedNamesFlagged": 0,
+            "unplantedFlagged": 0,
+            "unplantedFlaggedSample": [],
+            "totalFlagged": 0
+          }
+        }
+      ],
+      "memory": {
+        "beforeWorker": {
+          "worker": {},
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterLoad": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        },
+        "afterCheck200k": {
+          "worker": {
+            "jsHeapUsed": null,
+            "jsHeapTotal": null,
+            "crossOriginIsolated": false,
+            "uaSpecificBytes": null,
+            "uaSpecificError": null
+          },
+          "page": {
+            "jsHeapUsed": 10000000,
+            "jsHeapTotal": 10000000
+          },
+          "pageUaSpecificBytes": null,
+          "pageUaSpecificError": null
+        }
+      },
+      "recheck": {
+        "paragraphWords": 136,
+        "ms": {
+          "n": 5,
+          "median": 52.30000000074506,
+          "min": 45.30000000074506,
+          "max": 55.099999997764826
+        },
+        "runsMs": [
+          53.099999997764826,
+          45.30000000074506,
+          55.099999997764826,
+          52,
+          52.30000000074506
+        ],
+        "flaggedInFirstEditedParagraph": 0
+      }
+    }
+  ]
+}

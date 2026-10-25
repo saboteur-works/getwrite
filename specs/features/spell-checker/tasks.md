@@ -183,7 +183,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** OWNER HALT. Satisfies FR-8 (Android is an owner step; OQ-6 b), FR-4 (c), AC-5. The agent never runs `adb`.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Fold Android results in; finish the spike's tables and facts
 **What:** Transcribe the pasted Android block into the Android table, complete the FR-7 and `localStorage` entries, and state the facts later tasks need.
@@ -193,7 +193,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-6, FR-7, AC-3, AC-4; feeds FR-27, FR-28. State observations as facts, never a cause.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: HALT, owner chooses the engine
 **What:** Stop for the owner to fill the Decision section naming `nspell` or `harper.js`.
