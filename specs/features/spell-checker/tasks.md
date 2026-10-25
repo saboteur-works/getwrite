@@ -333,7 +333,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** ENGINE-DEPENDENT: the content differs by the Decision in `experiments.md`. For `nspell` + `dictionary-en`: load the `.aff` and `.dic` data as same-origin assets, a worker-side `nspell` instance, possible types package. For `harper.js`: its WebAssembly binary as a same-origin asset and its linter's spell-check output mapped to the seam (a lint-based API may return ranges and suggestions together, so `isCorrect` and `suggest` map onto it). Satisfies FR-21, FR-23, FR-24. The debounce interval is set from the Part 0 numbers and recorded here. If the Decision sets a performance limit, implement it as set. Verification on all three build outputs is Task 32.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Worker and assets in the web build, standalone server and native export
 **What:** Verify the worker and its assets build and load in the Next.js build, the standalone output used by Electron, and the `build:native` export, and record the result.

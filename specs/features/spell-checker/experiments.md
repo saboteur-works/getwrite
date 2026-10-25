@@ -1686,3 +1686,33 @@ Run from the repo root, harper.js absent from `frontend/node_modules`:
 - READ, not run: `android/scripts/build-harness.mjs --spell-spike` (line 55) imports `buildBundle` from `scripts/build.mjs`, which is the build that exited 1 above; the Android `--spell-spike` branch was not run (no `cap`, no gradle), so whether it exits non-zero is UNMEASURED. The other scripts that name harper.js (`driver.mjs`, `driver.html`, `protocol.mjs`, `serve.mjs`) were not run here.
 
 The harness is runnable only for the remaining engine, nspell. Fixture generation works for both. The harper.js worker, its bundle step and the three tests above fail; the scripts were left unchanged and stay as the experiment record (measurements above are not rewritten).
+
+## Task 31: nspell adapter, worker entry and assets
+
+Date 2026-10-25. Main checkout, branch `feat/spell-checker`, Next.js 16.2.6 (Turbopack), Node v24.15.0.
+
+### How the worker and assets are emitted (MEASURED)
+
+- Source: `frontend/src/lib/spelling/spell.worker.ts` (entry), `engine-nspell.ts` (adapter), `serialize-requests.ts`, `create-spell-worker.ts` (`new Worker(new URL("./spell.worker.ts", import.meta.url))`, no `type` option, so a classic worker). The two dictionary files are referenced as `new URL("../../../node_modules/dictionary-en/index.aff", import.meta.url)` and `.../index.dic`; nothing is copied into the tracked tree and no copy step exists. `next.config.mjs` is unchanged.
+- A probe page (`frontend/app/spell-probe/page.tsx`, a client component that imported `createSpellWorker`, later also a client built on `createSpellClient`) was added temporarily so the worker was in the module graph, then deleted. `cd frontend && pnpm build`: exit 0 (with the probe, three runs; without it, exit 0). No consumer of `createSpellWorker` exists in the committed tree yet, so a `next build` of the committed tree does not emit the worker; the emitted-asset test in `frontend/tests/spellEngineAdapter.test.ts` skips itself when no built chunk references the `.aff` file.
+- Web build with the probe, `frontend/.next/static`: `chunks/turbopack-worker-0sjn--fhq~1cg.js` (worker bootstrap), the engine chunk `chunks/0p.nylhdc.q9x.js` (13,012 bytes), `media/index.0_qr_d9pp33w1.aff` (3,086 bytes) and `media/index.10xdz.pv.cbcu.dic` (551,762 bytes), both byte sizes equal to the files in `node_modules/dictionary-en`. The engine chunk holds the paths `/_next/static/media/index.0_qr_d9pp33w1.aff` and `/_next/static/media/index.10xdz.pv.cbcu.dic`. The build also emitted a copy of the worker source as `media/spell.worker.10wj-~.dawa7n.ts` (1,281 bytes), which is not requested at run time.
+- `pnpm build:native` with the probe: exit 0. `frontend/out/_next/static` holds the same worker bootstrap (818 bytes), engine chunk (13,675 bytes), `.aff`, `.dic` and a `spell.worker.*.ts` source copy (1,391 bytes). Task 32 still owns the recorded verification.
+- Standalone output (`frontend/.next/standalone`) does not hold `.next/static`; `electron/electron-builder.yml` lines 14 and 15 copy `../frontend/.next/static` to `frontend/.next/standalone/frontend/.next/static`. READ, not run.
+- A stale `frontend/out/` holding the emitted `spell.worker.*.ts` made the next `pnpm build` fail type checking (`Cannot find module './engine-nspell'` in `out/_next/static/media/spell.worker.*.ts`). `"out"` was added to `exclude` in `frontend/tsconfig.json`; with the stale `out/` present, `pnpm build` then exited 0.
+
+### Run in a browser (MEASURED)
+
+`pnpm exec next start -p 4311` of the probe build, Playwright Chromium (headless shell, run outside the sandbox), page checked `"I recieve teh letter, don’t worry."`: events `ready`, then `result` with unknown words `recieve` (offsets 2 to 9) and `teh` (10 to 13), and `suggest("recieve")` returned `["receive","relieve"]`. Requests made: the origin `http://localhost:4311` only, including the worker script and both dictionary files. Before `serialize-requests.ts` was added the same page reported `unavailable` with reason `the spelling engine is not isLoaded`: the client posts `init` and `check` back to back and the async handler ran the `check` before `init` finished. Second run after the change: as above.
+
+### Third-party requests (MEASURED)
+
+- The engine chunk and the worker bootstrap chunk contain no `http://` or `https://` string (`grep -o 'https\?://...'`: no output). The emitted-asset test asserts this on the `.aff`-referencing chunk when a build exists.
+- The adapter's loader (`createFetchAssetLoader`) rejects a URL whose origin differs from `self.location.origin` before any request; unit-tested.
+
+### is-buffer in the emitted worker bundle (MEASURED)
+
+The engine chunk `0p.nylhdc.q9x.js` contains the function body `function(e){return null!=e&&null!=e.constructor&&"function"==typeof e.constructor.isBuffer&&e.constructor.isBuffer(e)}`, the body of `is-buffer` (nspell's dependency, MIT). The string `isBuffer` occurs twice in the chunk. The minified chunk carries no licence comment. The licence notice (`frontend/public/THIRD_PARTY_SPELLCHECK.txt`) was not changed in this task.
+
+### Debounce interval
+
+`SPELL_DEBOUNCE_MS = 300` (`engine-nspell.ts`). Part 0 figures for nspell used: 200,000-word check from a cold worker 67 ms (web), 64 ms (Electron), 224.8 ms (Android, n=1); about 3 ms per 5,000 words; re-check of one 136-word paragraph 0.05 ms (web) and 0.7 ms (Android). 300 ms is greater than the longest of those measured checks (224.8 ms). It is a chosen value, not a measured one. The Decision sets no performance limit, so none is implemented.
