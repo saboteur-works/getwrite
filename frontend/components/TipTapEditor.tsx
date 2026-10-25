@@ -101,6 +101,10 @@ export const EDITOR_SURFACE_ATTRIBUTES = {
   role: "textbox",
   "aria-multiline": "true",
   "aria-label": "Document body",
+  // The browser's own checker never runs on the editing surface (FR-27); the
+  // app's spell checker is the only one. A string, as ProseMirror writes
+  // attributes verbatim. `autocapitalize` is deliberately not set.
+  spellcheck: "false",
 } as const;
 
 /**

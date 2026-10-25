@@ -1,4 +1,11 @@
-import { describe, it, expect } from "vitest";
+/** @vitest-environment jsdom */
+import { describe, it, expect, afterEach } from "vitest";
+import { Editor } from "@tiptap/core";
+import { baseSchemaExtensions } from "../../components/Editor/editorExtensions";
+import {
+  SPELLCHECK_ENABLED_STORAGE_KEY,
+  resetSpellcheckSessionValue,
+} from "../../src/lib/spellcheck-preference";
 import { EDITOR_SURFACE_ATTRIBUTES } from "../../components/TipTapEditor";
 
 /**
@@ -30,5 +37,66 @@ describe("TipTap editing surface accessibility attributes", () => {
     // the role must not have displaced it.
     expect(EDITOR_SURFACE_ATTRIBUTES.class).toContain("h-full");
     expect(EDITOR_SURFACE_ATTRIBUTES.class).toContain("focus:outline-none");
+  });
+});
+
+/**
+ * FR-27 / AC-13: the editing surface never uses the browser's own checker,
+ * whatever the app-wide switch says and whether or not the editor is
+ * read-only. The component renders a mock under test, so the contract is
+ * asserted on the exported constant and on a real TipTap view built with it
+ * (the same `editorProps.attributes` the component passes).
+ */
+describe("TipTap editing surface native spell-check opt-out", () => {
+  const editors: Editor[] = [];
+
+  afterEach(() => {
+    editors.splice(0).forEach((editor) => editor.destroy());
+    window.localStorage.clear();
+    resetSpellcheckSessionValue();
+  });
+
+  function mountEditor(editable: boolean): HTMLElement {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = new Editor({
+      element,
+      extensions: baseSchemaExtensions,
+      content: "<p>Teh quick fox</p>",
+      editable,
+      editorProps: { attributes: EDITOR_SURFACE_ATTRIBUTES },
+    });
+    editors.push(editor);
+    return editor.view.dom as HTMLElement;
+  }
+
+  it('sets spellcheck to the string "false" on the exported constant', () => {
+    expect(EDITOR_SURFACE_ATTRIBUTES.spellcheck).toBe("false");
+  });
+
+  it("does not add autocapitalize", () => {
+    expect(Object.keys(EDITOR_SURFACE_ATTRIBUTES)).not.toContain(
+      "autocapitalize",
+    );
+  });
+
+  it.each([
+    ["switch on (nothing stored)", null],
+    ["switch on (stored true)", "true"],
+    ["switch off", "false"],
+  ])("renders spellcheck=false with the %s", (_label, stored) => {
+    if (stored !== null) {
+      window.localStorage.setItem(SPELLCHECK_ENABLED_STORAGE_KEY, stored);
+    }
+    resetSpellcheckSessionValue();
+    const dom = mountEditor(true);
+    expect(dom.getAttribute("spellcheck")).toBe("false");
+    expect(dom.hasAttribute("autocapitalize")).toBe(false);
+  });
+
+  it("renders spellcheck=false when the editor is read-only", () => {
+    const dom = mountEditor(false);
+    expect(dom.getAttribute("contenteditable")).toBe("false");
+    expect(dom.getAttribute("spellcheck")).toBe("false");
   });
 });

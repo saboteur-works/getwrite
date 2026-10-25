@@ -393,7 +393,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** Satisfies FR-27, AC-13. Any Android keyboard-level underline despite the attribute is recorded in Task 17 and listed as a known gap in Task 55; other input attributes are added only if they do not change typing behaviour.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 38: Input and Textarea default spellCheck={false}
 **What:** Make the shared `Input` and `Textarea` default `spellCheck={false}` before `{...props}`.
