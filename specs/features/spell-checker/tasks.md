@@ -313,7 +313,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-17, FR-18 (OQ-1 a), AC-9. Reuses the exported `ATTACHED_CHAR_CLASS` and `POSSESSIVE_OR_PLURAL_SUFFIX` from `src/lib/models/entity-detection.ts`. The dictionary half is the engine's own rule via the seam of Task 30.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Engine seam, worker protocol, version discard, test double
 **What:** Define the `SpellEngine` adapter type, the worker message protocol with document versions, the main-thread client, and a test double.
