@@ -323,7 +323,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-21, FR-23, AC-10 (the discard and failure halves). This is the engine-agnostic seam; it must not import `nspell`, `dictionary-en` or `harper.js`.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Chosen-engine adapter, worker entry and assets (engine-dependent)
 **What:** Implement the `SpellEngine` adapter for the chosen engine, the worker entry that imports it, and the dictionary or WebAssembly assets served from the app's origin.
