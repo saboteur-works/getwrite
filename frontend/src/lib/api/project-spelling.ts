@@ -14,12 +14,13 @@
  * lists: empty lists mean the project has no words, and a failure is not
  * that. A mutation's result is never fabricated client-side.
  *
- * Only the HTTP implementation exists so far. The interface and the
- * resolver are the seam a native backend plugs into via `createTransport`.
+ * The native (Capacitor) build runs the same core in-process via
+ * `native-project-spelling-backend.ts`, selected by `createTransport`.
  */
 import type { SpellingLists } from "../models/project-spelling-core";
 import { SpellingListsResponseSchema } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
+import { createTransport } from "../../store/transport/create-transport";
 
 export type { SpellingLists };
 
@@ -136,13 +137,18 @@ export const httpProjectSpellingTransport: ProjectSpellingTransport = {
 };
 
 /**
- * Resolves the transport for the active runtime. Today this is always the
- * HTTP implementation; the native backend replaces it with a
- * `createTransport(httpProjectSpellingTransport, loadNative)` resolver.
+ * Resolves the transport for the active runtime. The thunk carries the
+ * literal `import("../../store/transport/native-project-spelling-backend")`
+ * specifier so `next.config.mjs`'s `turbopack.resolveAlias` can substitute a
+ * `node:*`-free web-stub at build time.
  */
-async function resolveProjectSpellingTransport(): Promise<ProjectSpellingTransport> {
-  return httpProjectSpellingTransport;
-}
+const resolveProjectSpellingTransport: () => Promise<ProjectSpellingTransport> =
+  createTransport(httpProjectSpellingTransport, () =>
+    import("../../store/transport/native-project-spelling-backend").then(
+      ({ createNativeProjectSpellingTransport }) =>
+        createNativeProjectSpellingTransport(),
+    ),
+  );
 
 /**
  * Both spelling lists for a project. Rejects on any failure; never resolves

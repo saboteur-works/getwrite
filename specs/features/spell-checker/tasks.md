@@ -273,7 +273,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-15, AC-7. Pattern: `src/lib/api/entity-graph-settings.ts:112-125` and `native-entity-graph-settings-backend.ts`. Builds only in the main checkout.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Rejecting alias-table read
 **What:** Add a rejecting alias-table read beside the degrading `getEntityAliasTable`, leaving the existing read unchanged.
