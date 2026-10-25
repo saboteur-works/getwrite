@@ -529,3 +529,15 @@ The Electron window ran `scripts/underline-page.html` through a scratch main scr
 ### Android
 
 Not run here. The owner records the Android rows in "Android underlines" through the Task 16 runbook (UNMEASURED until then).
+
+## Electron localStorage persistence
+
+Date 2026-10-25. Command (repo root, outside the sandbox): `node specs/features/spell-checker/scripts/electron-storage.mjs`.
+
+- `lsof -nP -iTCP:7340 -sTCP:LISTEN` before the run: nothing listening (MEASURED). The script never binds 7340, so the fixed desktop origin `http://localhost:7340` was not used.
+- Fixed-origin check at `http://localhost:7340`: UNMEASURED. Reason: the script does not bind 7340, because the owner may start the desktop app on it.
+- Stand-in, MEASURED, different origin: `http://localhost:64313` (port chosen by the OS, served by a throwaway Node static server that stayed up for both launches). Electron 34.5.8, Chromium 132.0.6834.210 (workspace `electron/node_modules/.bin/electron`), default session (no partition), `contextIsolation` true, `nodeIntegration` false, window not shown.
+- Launch 1 wrote `localStorage["spell-spike-persistence-key"] = "written-1792959997954"` and read it back. The process then exited (graceful `app.quit()`).
+- Launch 2, same throwaway `userData` directory (created under `$TMPDIR`, deleted afterwards), read `"written-1792959997954"` from the same origin. `persisted: true`, one run.
+- The real desktop `userData`, `projects/` and port 7340 were not touched. Capacitor persistence is recorded from the Android runbook (Task 17).
+- Observed while building the script: an ESM main script that awaited `app.whenReady()` at top level never reached ready (two launches killed after 60 s by pid); calling it without the top-level await worked.

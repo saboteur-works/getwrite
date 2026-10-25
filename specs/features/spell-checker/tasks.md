@@ -163,7 +163,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-34 (persistence recorded), AC-15 (Electron persistence MEASURED or UNMEASURED). Do not touch the real desktop `userData`. Capacitor persistence is recorded from the Android runbook in Task 17.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Write up web and desktop results; leave the Decision section
 **What:** Consolidate the web and desktop tables, add a labelled author Recommendation with the numbers it rests on, and add the empty Decision section and the FR-10 removal instructions.
