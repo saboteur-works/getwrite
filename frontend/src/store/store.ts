@@ -7,6 +7,7 @@ import searchReducer from "./searchSlice";
 import queryReducer from "./querySlice";
 import cryptoReducer from "./cryptoSlice";
 import entityAliasTableReducer from "./entityAliasTableSlice";
+import spellingReducer from "./spellingSlice";
 /**
  * @deprecated This is a temporary store instance for development and testing. In production, use makeStore to create a new store instance for each client.
  */
@@ -20,6 +21,7 @@ export const store = configureStore({
     queries: queryReducer,
     crypto: cryptoReducer,
     entityAliasTable: entityAliasTableReducer,
+    spelling: spellingReducer,
   },
 });
 
@@ -34,6 +36,7 @@ export const makeStore = () => {
       queries: queryReducer,
       crypto: cryptoReducer,
       entityAliasTable: entityAliasTableReducer,
+      spelling: spellingReducer,
     },
   });
 };

@@ -293,7 +293,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-16, AC-8. Use the `getwrite-redux-slice` skill for the transport/guards split.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Pure word extraction
 **What:** Write the engine-independent function that turns a ProseMirror document into checkable words with positions.
