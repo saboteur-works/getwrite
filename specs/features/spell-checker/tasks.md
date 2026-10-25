@@ -363,7 +363,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-33, FR-34, AC-15. Pattern: `APPEARANCE_CHANGED_EVENT` in `src/lib/user-preferences.ts:44,271-277`; the `storage` listener is new (none exists today). The setting is per origin; stated in Task 55.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: ProseMirror decoration plugin and underline style
 **What:** Write the view-only ProseMirror plugin that draws the misspelling underline, and its style.
