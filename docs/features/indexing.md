@@ -120,7 +120,7 @@ Keyed by `resourceId` so a resource's own mentions are a direct lookup; `invertM
 Testing and determinism
 
 - `flushIndexer()` is exported and used in unit tests to wait for background indexing to complete before test cleanup (this avoids `ENOTEMPTY` directory errors on some platforms).
-- Meta writes are serialized via `withMetaLock(projectRoot, fn)` to avoid concurrent write/remove races during tests and runtime. The mention-index and backlinks removal, `runTask` and entity-rescan writers load, change and save under one lock (`updateMentionIndex`, `updateBacklinks`); importers, `reindex` and the backlinks watcher lock only the write, and a `computeBacklinks` recompute is not atomic. See [project-configuration.md](./project-configuration.md).
+- Meta writes are serialized via `withMetaLock(projectRoot, fn)` to avoid concurrent write/remove races during tests and runtime. The mention-index and backlinks removal writers, `runTask`'s mention step and the entity-rescan writer load, change and save under one lock (`updateMentionIndex`, `updateBacklinks`); `runTask`'s backlinks step, importers, `reindex` and the backlinks watcher lock only the write (`persistBacklinks`), and a `computeBacklinks` recompute is not atomic: a removal that lands between its scan and its write is undone (measured 20 of 20, a known gap). See [project-configuration.md](./project-configuration.md).
 
 Developer notes
 

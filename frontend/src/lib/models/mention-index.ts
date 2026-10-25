@@ -78,7 +78,6 @@ export async function persistMentionIndex(
   projectRoot: string,
   index: MentionIndex,
 ): Promise<void> {
-  await ensureIndexDir(projectRoot);
   await withMetaLock(projectRoot, () => saveMentionIndex(projectRoot, index));
 }
 
@@ -87,7 +86,8 @@ export async function persistMentionIndex(
  * so two writers on one project cannot each load the old index and have the
  * later save drop the other's change (the shape of `inverted-index.ts`
  * `updateIndex`). `change` mutates the freshly loaded index in place and must
- * not take `withMetaLock` itself. If `change` or the load throws, nothing is
+ * not take `withMetaLock` itself. If `change` returns `false` (no change) the
+ * save is skipped. If `change` or the load throws, nothing is
  * written, the lock is released and the error reaches the caller unchanged.
  * `removeResourceFromMentionIndex`, `runTask`'s mention step and
  * `rescanEntityAcrossProject` load, change and save under this lock; other
@@ -96,11 +96,11 @@ export async function persistMentionIndex(
  */
 export async function updateMentionIndex(
   projectRoot: string,
-  change: (index: MentionIndex) => void,
+  change: (index: MentionIndex) => void | false,
 ): Promise<void> {
   await withMetaLock(projectRoot, async () => {
     const index = await loadMentionIndex(projectRoot);
-    change(index);
+    if (change(index) === false) return;
     await saveMentionIndex(projectRoot, index);
   });
 }
@@ -137,11 +137,9 @@ export async function removeResourceFromMentionIndex(
   projectRoot: string,
   resourceId: string,
 ): Promise<void> {
-  await withMetaLock(projectRoot, async () => {
-    const index = await loadMentionIndex(projectRoot);
-    if (!(resourceId in index)) return;
+  await updateMentionIndex(projectRoot, (index) => {
+    if (!(resourceId in index)) return false;
     delete index[resourceId];
-    await saveMentionIndex(projectRoot, index);
   });
 }
 

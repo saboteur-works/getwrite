@@ -336,7 +336,7 @@ Further tests the full suite showed red (found by `pnpm test:ci`, 12 failed befo
 
 Not edited (pass without an ignored key or FR-23 dependence): `metadata-concurrent-writes.test.ts`, `resource-crud-core-entity-kind-omitted.test.ts`, the `:213` test in the sink file (the Task 9/11 tests already cover FR-23).
 
-E-4 consequence (MEASURED in E-4b, restated): the page resource copy carries `plaintext` (lower-case), which the unchanged `updateSidecarCore` stored in 10 of 10 repetitions; the allowlist does not store it, so a stored sidecar that holds `plaintext` loses it on its next save. `plainText`, `tiptap` and `charCount` were absent from the page copy and from every stored sidecar in the E-4 runs. No test in the suite was found to depend on `plaintext`.
+E-4 consequence (MEASURED in E-4b, restated): the page resource copy carries `plaintext` (lower-case), which the unchanged `updateSidecarCore` stored in 10 of 10 repetitions; the allowlist does not store it from a client object; a sidecar that already holds `plaintext` keeps it (`mergeSidecarUpdate` spreads the stored sidecar first; corrected at Gate 6). `plainText`, `tiptap` and `charCount` were absent from the page copy and from every stored sidecar in the E-4 runs. No test in the suite was found to depend on `plaintext`.
 
 Verification (from `frontend/`, 2026-10-24): `pnpm typecheck` exit 0; `pnpm lint` 0 errors / 392 warnings; `pnpm exec vitest run` on the sink, route, metadata-concurrent-writes, entity-kind-omitted, sidecar-concurrent-writes and project-json-lock-failures files: 6 files, 117 passed; `pnpm test:ci`: 675 files passed, 8240 passed, 0 failed, 2 expected fail, 1 skipped (baseline: 1 failed, 8217 passed; the baseline flaky EntityGraphSettingsPanel test did not fail in this run).
 
@@ -573,3 +573,53 @@ Runs 1 to 9, each identical: Test Files 4 passed (4); Tests 65 passed | 4 expect
 ## Owner decision: Organizer guard reverted (2026-10-24, Gate 5)
 
 The `OrganizerCardBodySettings` guard from 5aad9c9a was reverted; the component and its test file are back to their 5aad9c9a^ content. Reason recorded by the owner's decision: the section lives only in the Project Settings dialog's Organizer tab, nothing else writes `organizerCardBody`, and each save carries the section's full current state; the guard disabled the length input during each save, which drops the keystrokes that follow (READ from the code, not run in the app). E-5 counts for this sender stay as recorded above. Follow-up: save the excerpt length on blur or after a pause in typing instead of per keystroke. `RelationshipTypesSettings` and `ProjectFeatureToggles` keep their guards.
+
+## Code-review fixes (Gate 6)
+
+Recorded 2026-10-24 on branch `fix/stale-saves-and-index-races`, starting HEAD `012a8afe`, tree clean at the start. Each finding came from reading the code. Entries are MEASURED unless stated. Where a cause is not discriminated by a test it is not stated.
+
+### F1: page save and `entityKind` / `aliases` / `wordCountGoal`
+
+MEASURED, before the fix (`tests/page-stale-sidecar-save.test.tsx`, run once): the resource loads with `entityKind: "character"`, `aliases: ["Ally"]`, `wordCountGoal: 500`; Redux then receives `entityKind`, `aliases` and `wordCountGoal` set to `undefined` (the shape Remove Entity writes); a `mood` field edit follows.
+- `page.tsx entity and goal keys are not put back by a later field edit (Gate 6, F1) > entityKind, aliases and wordCountGoal cleared in Redux are absent from the next payload` FAILED: `expect(payload).not.toHaveProperty("entityKind")`, received `"character"`.
+- `... > a changed entityKind, aliases and wordCountGoal in Redux are carried by the next payload` FAILED: payload had `entityKind: "character"`, `aliases: ["Ally"]`, `wordCountGoal: 500`, expected `"place"`, `["Town"]`, `900`.
+So the payload of the whole-resource write carried the loaded values rather than the Redux values. Not measured: the stored sidecar through the real route for these two tests (`updateSidecar` is mocked there).
+
+Change: `applyUpdate` in `app/(app)/page.tsx` overlays `resourceSubtype`, `entityKind`, `aliases` and `wordCountGoal` from Redux (key `undefined` in Redux: deleted from the payload; otherwise the Redux value). The value written back to Redux (`updateResourceInStore(applyUpdate(resource))`) comes from the same function, so it matches the payload. After the fix both tests pass. The Task 2 measurement test (`pins the updateSidecar payloads ...`) pinned the old payload (no `entityKind` in the second call); it now expects `entityKind: "character"` in the second payload, which is the intended change.
+
+### F2: a short-lived read error replacing a valid sidecar
+
+MEASURED, before the fix (`tests/unit/resource-crud-core-sidecar-sink.test.ts` test `(f)`): the adapter's `readFile` fails once with `EIO` for the sidecar path, the re-read succeeds. `updateSidecarCore(...)` did not reject (`expect(...).rejects.toBeInstanceOf(Error)`: the promise resolved with `undefined`).
+After the fix `assertUnparseableSidecar` throws an `Error` when the re-read parses, and the test passes with the file bytes unchanged. The existing `(e)` EACCES test and `(d)` unparseable-replace test pass unchanged.
+
+### F7: replacing an unparseable sidecar dropped `folderId` / `orderIndex`
+
+MEASURED, before the fix (test `(g)`): corrupt sidecar plus a client copy with `folderId: "folder-x"`, `orderIndex: 3`. The stored sidecar had `folderId: null`, `orderIndex: 0`.
+After the fix (`REPLACEMENT_PLACEMENT_KEYS`, replace path only) it stores `folder-x` and `3`. The existing test that ignores client `folderId` / `orderIndex` with a stored sidecar still passes (35 of 35 in the file).
+
+### F6 check: `runTask`'s backlinks step
+
+READ: b4 (`removeVsRunTask`, gated) uses the `afterSignal` gate on reads of `meta/backlinks.json`: the adapter withholds the result of the backlinks.json read until `runTask` has finished (or 0.5 s). `computeBacklinks` does not read `backlinks.json`, and in b4 X's folder is absent, so the scan does not list X. b4 therefore forces the overlap at the index LOAD, with the scan already done and not containing X. Its earlier "fixed" result (20 of 20 lost, then 0 of 20) covers the load point only.
+
+New construction `removeDuringScan` (`tests/helpers/backlinksRaceConstructions.ts`, gate kind `holdScanRead`): X and Y both exist with content, the index is seeded `{X:[Y], Y:[X]}`, `runTask` for Y starts, the adapter withholds the first read under `resources/<X>`, `removeResourceFromBacklinks(X)` runs to completion, then the read is released and `runTask` finishes. The outcome records whether the removal finished before the scan resumed.
+
+MEASURED, on the tree with `runTask` calling `computeBacklinks` then `updateBacklinks` (replace the index with the scan), 20 repetitions, one run: lost 20 of 20 (X key or a reference to X present in the stored index), removal finished before the scan resumed 20 of 20, rejected 0, hung 0.
+Change: `runTask` calls `persistBacklinks(projectRoot, backlinks)` again (drops the wasted load). MEASURED after: b4, 20 of 20 kept both changes (test passes); the new test `b6` is added as `it.fails` under the F93-4 known gaps and passes as an expected failure (the construction loses on both the old and new code, since both store the scan). Not discriminated: whether any other ordering also loses. A real overlap in production was not measured.
+`b4` is renamed to "removeResourceFromBacklinks held at its backlinks.json load vs runTask (scan already done) keeps both changes" and its comment states the load point. Claims updated: `docs/features/indexing.md`, `docs/features/project-configuration.md`, the measured-claim sentence in the Feature 93 status note in `specs/product/getwrite.features.md`, and the `backlinks.ts` doc comment.
+
+### F4: doc correction
+
+The "loses it on its next client save" wording (`docs/features/sidecars.md`, and the E-4 consequence line above in this file) was wrong: `mergeSidecarUpdate` spreads the stored sidecar first, so a stored key outside the allowlist is kept. Reworded in both places. The same claim was not found in `indexing.md`, `project-configuration.md`, `frontend/CLAUDE.md` or the spec status note. Not run as a test (READ from `mergeSidecarUpdate`).
+
+### F9, F10: `mention-index.ts`
+
+No failing-first test: both are behaviour-preserving refactors, and the existing Task 18 tests (`mention-index-remove-resource.test.ts`, `mention-index-concurrent-writes.test.ts`) were the guard. F9: the outer `ensureIndexDir` in `persistMentionIndex` is removed (`saveMentionIndex` creates the directory inside the lock). `backlinks.ts` has no such double call (`saveBacklinks` makes `meta/` once). F10: `updateMentionIndex`'s `change` may return `false` to skip the save; `removeResourceFromMentionIndex` now uses it. `removeResourceFromBacklinks` already goes through `updateBacklinks` and always saved, so it was left as is.
+
+### Final suites (after all changes)
+
+- `pnpm typecheck`: exit 0.
+- `pnpm lint`: 0 errors, 392 warnings.
+- `pnpm test:ci`: 678 files passed; 8269 passed, 7 expected fail, 1 skipped (baseline 8265 / 6 / 1): +2 F1 tests, +2 sidecar tests (F2, F7), +1 expected fail (b6).
+- `pnpm test:e2e` (outside the sandbox, ports 3000/7340/6006 free first): 230 passed, 1 skipped.
+- `pnpm knip` (root): 412 (49/1/4/6/4/160/174/14).
+- Task 9 sidecar file, `resource-sidecar-route`, `sidecar-concurrent-writes` and the two Task 18 race files run 5 times: each run 5 files passed; 76 passed | 5 expected fail (81).

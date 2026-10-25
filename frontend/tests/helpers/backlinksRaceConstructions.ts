@@ -45,7 +45,8 @@ export type PairId =
   | "persistVsPersist"
   | "watcherVsRunTask"
   | "removeVsRunTask"
-  | "removeVsRecompute";
+  | "removeVsRecompute"
+  | "removeDuringScan";
 
 const REP_TIMEOUT_MS = 5000;
 const GATE_RELEASE_MS = 500;
@@ -62,6 +63,8 @@ export interface Outcome {
   gateReads: number;
   /** Gated load pairs: reads whose snapshot equalled the seed file. */
   gateSeedSnapshots: number;
+  /** removeDuringScan only: the removal finished before the scan resumed. */
+  removeFinishedBeforeScanResumed: boolean | null;
 }
 
 interface Signal {
@@ -77,8 +80,15 @@ function makeSignal(): Signal {
 }
 
 type Gate = {
-  kind: "afterSignal" | "twoReads";
+  kind: "afterSignal" | "twoReads" | "holdScanRead";
   signal: Signal;
+  /** holdScanRead: opens when the scan's read of the held file has arrived. */
+  arrived: Signal;
+  /** holdScanRead: a path fragment naming the file whose read is withheld. */
+  holdPath: string;
+  heldOnce: boolean;
+  /** holdScanRead: the 0.5 s release fired before the signal opened. */
+  timedOut: boolean;
   seed: string;
   reads: number;
   seedSnapshots: number;
@@ -97,7 +107,25 @@ function installAdapter(gate: Gate | null): void {
         p,
         (e ?? "utf8") as never,
       )) as unknown as string;
-      if (gate && p.endsWith(target)) {
+      if (gate && gate.kind === "holdScanRead") {
+        // Withhold the first read of the scan's per-resource content until
+        // the gate opens: the scan has listed its ids and is mid-scan here,
+        // and has not reached the backlinks lock.
+        if (!gate.heldOnce && p.includes(gate.holdPath)) {
+          gate.heldOnce = true;
+          gate.reads += 1;
+          gate.arrived.open();
+          await Promise.race([
+            gate.signal.promise,
+            new Promise<void>((resolve) =>
+              setTimeout(() => {
+                gate.timedOut = true;
+                resolve();
+              }, GATE_RELEASE_MS),
+            ),
+          ]);
+        }
+      } else if (gate && p.endsWith(target)) {
         gate.reads += 1;
         if (content === gate.seed) gate.seedSnapshots += 1;
         if (gate.kind === "twoReads" && gate.reads >= 2) gate.signal.open();
@@ -197,6 +225,8 @@ const refs = (idx: BacklinkIndex, from: string, to: string): boolean =>
 const anyRefTo = (idx: BacklinkIndex, to: string): boolean =>
   Object.values(idx).some((r) => r.includes(to));
 
+let isRemoveDoneBeforeResume: boolean | null = null;
+
 interface Plan {
   expect: Array<{ name: string; check: (idx: BacklinkIndex) => boolean }>;
   gate: Gate | null;
@@ -222,7 +252,17 @@ async function buildPlan(
   const isGated = mode === "gated";
   const mkGate = (kind: Gate["kind"], seed: string): Gate | null =>
     isGated
-      ? { kind, signal: makeSignal(), seed, reads: 0, seedSnapshots: 0 }
+      ? {
+          kind,
+          signal: makeSignal(),
+          arrived: makeSignal(),
+          holdPath: "",
+          heldOnce: false,
+          timedOut: false,
+          seed,
+          reads: 0,
+          seedSnapshots: 0,
+        }
       : null;
 
   if (pair === "removeVsPersist") {
@@ -314,6 +354,39 @@ async function buildPlan(
       },
     };
   }
+  if (pair === "removeDuringScan") {
+    // runTask for Y scans (computeBacklinks) and X is in its id list. While the
+    // scan is held at X's content read, R removes X and finishes. The scan then
+    // resumes, finishes, and runTask takes the backlinks lock. X's folder is
+    // still on disk, so the scan lists X; only the persisted index differs.
+    // Expected: no X key and no reference to X in the stored index.
+    await addResource(root, X, `link ${Y}`);
+    await addResource(root, Y, `link ${X}`);
+    const seed = await writeSeed(root, { [X]: [Y], [Y]: [X] });
+    const gate = mkGate("holdScanRead", seed);
+    if (gate) gate.holdPath = path.join("resources", X);
+    return {
+      gate,
+      expect: [
+        { name: "X removal", check: (i) => !(X in i) && !anyRefTo(i, X) },
+      ],
+      run: async () => {
+        const t = enqueueIndex(root, Y);
+        if (gate) {
+          await Promise.race([
+            gate.arrived.promise,
+            new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+          ]);
+        }
+        await removeResourceFromBacklinks(root, X);
+        isRemoveDoneBeforeResume = gate
+          ? gate.reads > 0 && !gate.timedOut
+          : null;
+        gate?.signal.open();
+        await t;
+      },
+    };
+  }
   // removeVsRecompute: a recompute (the runTask / watcher compute step) whose
   // snapshot still lists X, a removal of X, then the recompute saves.
   await addResource(root, X, `link ${Y}`);
@@ -357,6 +430,7 @@ export async function runRepetition(
     JSON.stringify({ id: "p", name: "P", config: {} }),
     "utf8",
   );
+  isRemoveDoneBeforeResume = null;
   installAdapter(null); // setup writes go through the plain adapter
   const plan = await buildPlan(pair, mode, root);
   installAdapter(plan.gate);
@@ -375,5 +449,7 @@ export async function runRepetition(
       : plan.expect.map((e) => e.name),
     gateReads: plan.gate?.reads ?? 0,
     gateSeedSnapshots: plan.gate?.seedSnapshots ?? 0,
+    removeFinishedBeforeScanResumed:
+      pair === "removeDuringScan" ? isRemoveDoneBeforeResume : null,
   };
 }

@@ -104,6 +104,18 @@ interface SelectedProjectState {
 }
 
 /**
+ * Sidecar keys whose value Redux owns for the selected resource: their
+ * controls write through `updateSidecar` and Redux, not this page's local
+ * copies (see `updateResource`).
+ */
+const REDUX_OWNED_SIDECAR_KEYS: readonly string[] = [
+  "resourceSubtype",
+  "entityKind",
+  "aliases",
+  "wordCountGoal",
+];
+
+/**
  * Root application page.
  *
  * Manages the top-level project and resource state, coordinates API calls for
@@ -500,22 +512,29 @@ export default function Home(): JSX.Element {
       return;
     }
 
-    // Feature 72 FR-32, subtype key only. The sidebar's subtype control writes
-    // `resourceSubtype` through `updateSidecar` and Redux, not through this
+    // Feature 72 FR-32 (subtype) and Feature 93 Gate 6 (entity and goal keys).
+    // The sidebar's subtype control, the Remove Entity control and the
+    // word-count goal control write `resourceSubtype`, `entityKind`, `aliases`
+    // and `wordCountGoal` through `updateSidecar` and Redux, not through this
     // page's local resource copies, so those copies can hold an older value
     // (or none). Overlay the Redux value onto whatever `updater` returns so
-    // this whole-resource write neither restores a replaced subtype nor
-    // resurrects a cleared one. Other keys are deliberately not reconciled.
+    // this whole-resource write neither restores a replaced value nor
+    // resurrects a cleared one: a key `undefined` in Redux is deleted from
+    // the payload, otherwise the Redux value is used. Other keys are
+    // deliberately not reconciled.
     const applyUpdate = (r: AnyResource): AnyResource => {
       const updated = updater(r);
       if (!selectedResource || selectedResource.id !== updated.id) {
         return updated;
       }
       const next: Record<string, unknown> = { ...updated };
-      if (selectedResource.resourceSubtype === undefined) {
-        delete next.resourceSubtype;
-      } else {
-        next.resourceSubtype = selectedResource.resourceSubtype;
+      const fromRedux = selectedResource as unknown as Record<string, unknown>;
+      for (const key of REDUX_OWNED_SIDECAR_KEYS) {
+        if (fromRedux[key] === undefined) {
+          delete next[key];
+        } else {
+          next[key] = fromRedux[key];
+        }
       }
       // Feature 87 (D-26/D-29), word count only. A canonical save updates the
       // word count in Redux (`useCanonicalAutosave`), not in this page's local

@@ -13,7 +13,7 @@ import { loadResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { startBacklinkWatcher } from "./backlinks-watcher";
 import {
   computeBacklinks,
-  updateBacklinks,
+  persistBacklinks,
   listResourceIds,
 } from "./backlinks";
 import {
@@ -267,10 +267,10 @@ async function runTask(task: Task) {
 
         try {
           const backlinks = await computeBacklinks(task.projectRoot);
-          await updateBacklinks(task.projectRoot, (index) => {
-            for (const key of Object.keys(index)) delete index[key];
-            Object.assign(index, backlinks);
-          });
+          // Locks the write only. A load under the lock would be discarded:
+          // the scan above is what is stored, and a removal that landed
+          // between the scan and this write is undone (F93-4, b6).
+          await persistBacklinks(task.projectRoot, backlinks);
         } catch (err) {
           console.error("[indexer-queue] backlinks update failed:", err);
         }

@@ -414,6 +414,16 @@ const REPLACEMENT_IDENTITY_KEYS: readonly string[] = [
 ];
 
 /**
+ * Placement keys taken from the client only on the same replace path: with no
+ * stored sidecar to keep them from, dropping them would move the resource to
+ * the root at position 0. On the normal path they are ignored.
+ */
+const REPLACEMENT_PLACEMENT_KEYS: readonly string[] = [
+  "folderId",
+  "orderIndex",
+];
+
+/**
  * Allowlist of sidecar keys {@link updateSidecarCore}'s `clearKeys` parameter
  * may name. A fail-closed boundary: any key outside this list — including
  * structural fields like `orderIndex`/`folderId` or the resource's `id` —
@@ -511,7 +521,9 @@ function pickKeys(
  * Inside the sidecar lock, after the tolerant read returned `null` for a file
  * that exists: re-reads it to tell a JSON parse failure (`SyntaxError`, the
  * file is replaced) from any other failure (for example `EACCES`, `EIO`),
- * which is rethrown so nothing is written (FR-23).
+ * which is rethrown so nothing is written (FR-23). A re-read that succeeds
+ * means the first failure was not a parse failure (a short-lived read error),
+ * so the valid file is not replaced: that case throws too.
  */
 async function assertUnparseableSidecar(
   projectRoot: string,
@@ -523,6 +535,9 @@ async function assertUnparseableSidecar(
     if (err instanceof SyntaxError) return;
     throw err;
   }
+  throw new Error(
+    `Sidecar for resource ${resourceId} could not be read, but re-reads as valid JSON; not replacing it`,
+  );
 }
 
 /**
@@ -615,7 +630,11 @@ export async function updateSidecarCore(
     resourceId,
     (existing) =>
       existing === null
-        ? { ...pickKeys(normalized, REPLACEMENT_IDENTITY_KEYS), ...update }
+        ? {
+            ...pickKeys(normalized, REPLACEMENT_IDENTITY_KEYS),
+            ...pickKeys(normalized, REPLACEMENT_PLACEMENT_KEYS),
+            ...update,
+          }
         : update,
     clearKeys,
     true,

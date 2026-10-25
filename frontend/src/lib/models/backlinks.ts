@@ -269,8 +269,8 @@ export async function persistBacklinks(
  * (the shape of `inverted-index.ts` `updateIndex`). `change` mutates the
  * freshly loaded index in place and must not take `withMetaLock` itself. If
  * `change` or the load throws, nothing is written, the lock is released and
- * the error reaches the caller unchanged. `removeResourceFromBacklinks` and
- * `runTask`'s backlinks step load, change and save under this lock; other
+ * the error reaches the caller unchanged. `removeResourceFromBacklinks` loads,
+ * changes and saves under this lock; `runTask`'s backlinks step and the other
  * callers of `persistBacklinks` (importers, `reindex`, the watcher) lock the
  * write only. A `computeBacklinks` recompute is not atomic: its scan runs
  * before the lock is taken.

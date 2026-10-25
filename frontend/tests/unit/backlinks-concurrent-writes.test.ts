@@ -20,8 +20,10 @@ import {
  *
  * Gated mode forces "one writer holds a copy older than the other's save,
  * then saves last" (E-9). The gated tests are the primary assertions. b1 and b4 FAIL on the tree before Task 21 (E-9: 20 of 20 lost a change) and
- * pass once removeResourceFromBacklinks and runTask's backlinks step load,
- * change and save under one withMetaLock. Natural variants (same-tick start) are
+ * pass once removeResourceFromBacklinks loads, changes and saves under one
+ * withMetaLock. b4 forces the overlap at the backlinks.json LOAD only; the scan
+ * (computeBacklinks) has already finished when it is forced. Gate 6 b6 forces
+ * it at the scan. Natural variants (same-tick start) are
  * regression guards only (E-9 natural 0 of 20 for b3 and b4) and say nothing
  * about other timing.
  */
@@ -46,7 +48,7 @@ describe("backlinks concurrent writers (F93 FR-18)", () => {
       RACE_TEST_TIMEOUT_MS,
     );
     it(
-      "b4: removeResourceFromBacklinks vs runTask backlinks step keeps both changes",
+      "b4: removeResourceFromBacklinks held at its backlinks.json load vs runTask (scan already done) keeps both changes",
       () => expectBothChangesKept("removeVsRunTask", "gated"),
       RACE_TEST_TIMEOUT_MS,
     );
@@ -79,6 +81,17 @@ describe("backlinks concurrent writers (F93 FR-18)", () => {
     it.fails(
       "b5: removeResourceFromBacklinks vs computeBacklinks recompute keeps the removal",
       () => expectBothChangesKept("removeVsRecompute", "gated"),
+      RACE_TEST_TIMEOUT_MS,
+    );
+  });
+
+  // Gate 6 (F6). Removal lands while runTask's scan is held, before runTask
+  // takes the backlinks lock. The scan listed X, so the index runTask stores
+  // (a replacement of the index with the scan) holds X again.
+  describe("KNOWN GAP (F93-4, Gate 6): removal between the scan and the lock", () => {
+    it.fails(
+      "b6: removeResourceFromBacklinks between runTask's computeBacklinks and its backlinks lock keeps the removal",
+      () => expectBothChangesKept("removeDuringScan", "gated"),
       RACE_TEST_TIMEOUT_MS,
     );
   });

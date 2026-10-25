@@ -7,7 +7,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getStorageAdapter } from "../../src/lib/models/io";
 import { generateUUID } from "../../src/lib/models/uuid";
 import {
   renameResourceSidecarCore,
@@ -534,6 +535,56 @@ describe("updateSidecarCore allowlist (Feature 93 Task 9)", () => {
         await fs.chmod(file, 0o644);
       }
       expect((await fs.readFile(file)).equals(before)).toBe(true);
+    });
+  });
+
+  it("(f) Gate 6 F2: rejects and leaves the file unchanged when the first read fails with EIO and the re-read succeeds", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await writeSidecar(projectPath, resourceId, { ...stored });
+      const file = sidecarPathForProject(projectPath, resourceId);
+      const before = await fs.readFile(file);
+      const adapter = getStorageAdapter();
+      const realRead = adapter.readFile.bind(adapter);
+      let hasFailed = false;
+      const spy = vi.spyOn(adapter, "readFile").mockImplementation(((
+        p: string,
+        e?: BufferEncoding,
+      ) => {
+        if (!hasFailed && p === file) {
+          hasFailed = true;
+          return Promise.reject(
+            Object.assign(new Error("EIO: i/o error"), { code: "EIO" }),
+          );
+        }
+        return realRead(p, e);
+      }) as typeof adapter.readFile);
+      try {
+        await expect(
+          updateSidecarCore(projectId, resourceId, { entityKind: "x" }),
+        ).rejects.toBeInstanceOf(Error);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(hasFailed).toBe(true);
+      expect((await fs.readFile(file)).equals(before)).toBe(true);
+    });
+  });
+
+  it("(g) Gate 6 F7: replacing an unparseable sidecar carries the client's folderId and orderIndex", async () => {
+    await withProject(async ({ projectId, projectPath, resourceId }) => {
+      await fs.mkdir(path.join(projectPath, "meta"), { recursive: true });
+      const file = sidecarPathForProject(projectPath, resourceId);
+      await fs.writeFile(file, "{not json", "utf8");
+      await updateSidecarCore(projectId, resourceId, {
+        id: resourceId,
+        name: "Client name",
+        type: "text",
+        folderId: "folder-x",
+        orderIndex: 3,
+        userMetadata: { status: "Draft" },
+      });
+      const parsed: unknown = JSON.parse(await fs.readFile(file, "utf8"));
+      expect(parsed).toMatchObject({ folderId: "folder-x", orderIndex: 3 });
     });
   });
 });
