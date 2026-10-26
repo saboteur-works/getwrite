@@ -343,7 +343,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-24, AC-11 (the build half). The Part 0 harness does not prove this. Builds only in the main checkout.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Checker availability state and toasts
 **What:** Add the state recording why the checker is unavailable (lists failed, alias table failed, worker or engine failed, unsupported browser version) with a one-time toast per reason.

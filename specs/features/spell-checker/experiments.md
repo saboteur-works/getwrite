@@ -1716,3 +1716,42 @@ The engine chunk `0p.nylhdc.q9x.js` contains the function body `function(e){retu
 ### Debounce interval
 
 `SPELL_DEBOUNCE_MS = 300` (`engine-nspell.ts`). Part 0 figures for nspell used: 200,000-word check from a cold worker 67 ms (web), 64 ms (Electron), 224.8 ms (Android, n=1); about 3 ms per 5,000 words; re-check of one 136-word paragraph 0.05 ms (web) and 0.7 ms (Android). 300 ms is greater than the longest of those measured checks (224.8 ms). It is a chosen value, not a measured one. The Decision sets no performance limit, so none is implemented.
+
+## Task 32: worker and assets in the web build, standalone server and native export
+
+Date 2026-10-25. Main checkout, branch `feat/spell-checker`, Next.js 16.2.6 (Turbopack), Node v24.15.0. Port check before starting: `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` printed nothing.
+
+### Probe (temporary)
+
+No app module imports `createSpellWorker` yet, so a build of the committed tree does not emit the worker. A temporary probe page `frontend/app/spell-probe/page.tsx` (a client component that calls `createSpellClient({ createWorker: createSpellWorker })` and one `check`) was added for the three builds and then deleted; `git status --short` after deletion shows no probe file. This is a probe, not the real wiring: the real wiring (Task 36) is re-verified in Task 53. The first probe version used an `@/` import that does not resolve in this repo (`pnpm build` exit 1, module not found at `app/spell-probe/page.tsx`); it was changed to relative imports. No build config file was changed in this task.
+
+### 1. Web build (MEASURED)
+
+`cd frontend && pnpm build`: exit 0. In `frontend/.next/static`:
+
+- Worker script chunk: `chunks/turbopack-worker-0sjn--fhq~1cg.js`, referenced from client chunk `chunks/14vs-ueic127f.js`.
+- Engine chunk `chunks/0_xtchudgt-st.js` (holds the two `/_next/static/media/index.*` paths).
+- `media/index.0_qr_d9pp33w1.aff` (3,086 bytes) and `media/index.10xdz.pv.cbcu.dic` (551,762 bytes); `cmp` against `node_modules/dictionary-en/index.aff` and `index.dic`: identical.
+- A copy of the worker source `media/spell.worker.0sz-vkceg-mes.ts` (1,391 bytes), not requested at run time.
+
+`pnpm exec vitest run tests/spellEngineAdapter.test.ts --reporter=verbose` with this build present: 14 passed, 0 skipped; the test "references both dictionary files by same-origin path and no third-party URL" ran and passed (it skips when no built chunk references the `.aff` file).
+
+### 2. Standalone output used by Electron (MEASURED)
+
+- `frontend/.next/standalone/frontend/server.js` exists; `frontend/.next/standalone/frontend/.next/static` does not exist. `electron/electron-builder.yml` copies `../frontend/.next/static` to `frontend/.next/standalone/frontend/.next/static` (extraResources, read, not run; electron-builder was not run).
+- Replica: `.next/standalone` copied to a directory under `$TMPDIR`, `.next/static` copied to `<replica>/frontend/.next/static` (the electron-builder mapping), server started with `PORT=4322 HOSTNAME=127.0.0.1 GETWRITE_PROJECTS_DIR=<throwaway dir under $TMPDIR> node server.js`, then stopped by pid; the replica and throwaway dir were deleted. Responses:
+  - `/_next/static/chunks/turbopack-worker-0sjn--fhq~1cg.js`: 200, 818 bytes, `application/javascript`
+  - `/_next/static/chunks/0_xtchudgt-st.js` (engine): 200, 13,734 bytes
+  - `/_next/static/media/index.0_qr_d9pp33w1.aff`: 200, 3,086 bytes, `application/octet-stream`
+  - `/_next/static/media/index.10xdz.pv.cbcu.dic`: 200, 551,762 bytes, `text/x-c; charset=UTF-8`
+  - `/spell-probe`: 200
+- The run printed `Couldn't load fs` and `Couldn't load zlib` on start-up; not investigated.
+- The standalone run did not execute the worker in a browser; the browser run of Task 31 was against `next start`.
+
+### 3. Native export (MEASURED)
+
+`cd frontend && pnpm build:native`: exit 0 ("Native static export produced at .../frontend/out (21 top-level entries)"). In `frontend/out/_next/static`:
+
+- `chunks/turbopack-worker-0sjn--fhq~1cg.js` (818 bytes), engine chunk `chunks/10na21_gh7_zi.js` (13,675 bytes, holds both `/_next/static/media/index.*` paths), `media/index.0_qr_d9pp33w1.aff` (3,086 bytes), `media/index.10xdz.pv.cbcu.dic` (551,762 bytes), `media/spell.worker.0sz-vkceg-mes.ts` (1,391 bytes).
+- `out/spell-probe.html` present. Served with `python3 -I -m http.server 4323 --bind 127.0.0.1` from `frontend/out` (stopped): worker chunk 200 (818), engine chunk 200 (13,675), `.aff` 200 (3,086), `.dic` 200 (551,762), `/spell-probe.html` 200.
+- Not run: the worker executing inside the Capacitor WebView (Android); the static server was fetched with curl only.
