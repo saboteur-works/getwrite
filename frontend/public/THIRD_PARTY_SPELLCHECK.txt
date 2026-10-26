@@ -1,11 +1,13 @@
 GetWrite spell checker: licences and copyright notices
 ======================================================
 
-GetWrite's spell checker runs in the app using the two packages below. Each
-package name, installed version and licence expression is copied from its
-installed package.json; the copyright line and licence text are copied
-verbatim from the licence file the installed package carries. A licence text
-that applies to more than one package appears once.
+GetWrite's spell checker runs in the app using the packages below: the two
+it depends on directly, and is-buffer, a dependency of nspell that is bundled
+into the spell-check worker script. Each package name, installed version and
+licence expression is copied from its installed package.json; the copyright
+line and licence text are copied verbatim from the licence file the installed
+package carries. A licence text that applies to more than one package appears
+once.
 
 Package: nspell@2.1.5
 Licence: MIT
@@ -16,6 +18,11 @@ Package: dictionary-en@4.0.0
 Licence: (MIT AND BSD)
 Copyright: The collective work is Copyright 2000-2018 by Kevin Atkinson as well
 Licence file: dictionary-en/license (the en_US Hunspell dictionary licence)
+
+Package: is-buffer@2.0.5
+Licence: MIT
+Copyright: Copyright (c) Feross Aboukhadijeh
+Licence file: is-buffer/LICENSE (bundled into the worker script; a dependency of nspell)
 
 ----------------------------------------------------------------------
 Licence text: nspell (MIT)
@@ -43,6 +50,32 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+Licence text: is-buffer (MIT)
+----------------------------------------------------------------------
+
+The MIT License (MIT)
+
+Copyright (c) Feross Aboukhadijeh
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 ----------------------------------------------------------------------
 Licence text: dictionary-en (MIT AND BSD)
