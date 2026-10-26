@@ -633,6 +633,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Depends on:** 56, 60
 **Estimate:** 1
 **Notes:** LEAD/OWNER HALT. Satisfies AC-21, AC-22, FR-46, FR-47. The agent never runs `adb`.
+Accepted at Gate 6 (owner, 2026-10-26) with the DOM mark count and worker-script request UNMEASURED, as recorded in experiments.md.
 
 **Done:** [x]
 
@@ -643,8 +644,9 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Depends on:** 55, 56, 61
 **Estimate:** 3
 **Notes:** Amendment 2026-10-25 (Stage 6.5): moved to the end of the list and renumbered from 56 so that `Depends on:` enforces that final suites run after the create-path fix (Task 56) and the final device re-check (Task 61). Satisfies AC-20, AC-17 (`pnpm test:e2e`), AC-19 (PR text). A new context requirement on a component needs a Storybook decorator (e2e). `pnpm test:e2e` runs outside the sandbox.
+Ticked at Gate 6 (owner, 2026-10-26): knip has no new findings by name; the branch reports 2 fewer unused devDependencies than main (`@capacitor/android`, `@capacitor/core` in `android/package.json`, cause not established), accepted as parity.
 
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 62
