@@ -14,6 +14,67 @@ import {
 } from "../../src/lib/api/prose-diagnostics";
 
 /**
+ * How the stub answers `/api/user-word-list` (Feature 96). `empty` (the
+ * default) and `populated` serve a list that POST/DELETE then edit in
+ * memory, exactly as the real route answers with the persisted list;
+ * `failure` answers every verb with a 500 `{ error, reason: "unreadable" }`;
+ * `forbidden` answers every verb with the paired-device 403
+ * `{ error, limit: "userWordList" }`.
+ */
+export type UserWordListStubMode =
+  | { kind: "empty" }
+  | { kind: "populated"; words: string[] }
+  | { kind: "failure" }
+  | { kind: "forbidden" };
+
+/** Options for {@link stubAppShellFetch}. */
+export interface AppShellFetchStubOptions {
+  /** Defaults to `{ kind: "empty" }`. */
+  userWordList?: UserWordListStubMode;
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  } as Response;
+}
+
+/** Builds the `/api/user-word-list` handler for one stub installation. */
+function createUserWordListHandler(
+  mode: UserWordListStubMode,
+): (init: RequestInit | undefined) => Response {
+  let words = mode.kind === "populated" ? [...mode.words] : [];
+  return (init) => {
+    if (mode.kind === "failure") {
+      return jsonResponse(500, {
+        error: "The user word list could not be read.",
+        reason: "unreadable",
+      });
+    }
+    if (mode.kind === "forbidden") {
+      return jsonResponse(403, {
+        error: "This device is not allowed to use the user word list.",
+        limit: "userWordList",
+      });
+    }
+    const verb = init?.method ?? "GET";
+    if (verb === "POST" || verb === "DELETE") {
+      const { word } = JSON.parse(String(init?.body ?? "{}")) as {
+        word: string;
+      };
+      words =
+        verb === "POST"
+          ? [...words.filter((w) => w !== word), word]
+          : words.filter((w) => w !== word);
+    }
+    return jsonResponse(200, words);
+  };
+}
+
+/**
  * A plain `vi.fn()` `fetch` stub answering `{}` to every request is what
  * most `AppShell`-mounting tests use when they don't care about network
  * traffic — but several sidebar/editor sections `AppShell` always mounts
@@ -63,140 +124,150 @@ import {
  * it from inside its own, already-combined `beforeEach`, alongside other
  * per-test mock resets).
  */
-export function stubAppShellFetch(): () => void {
+export function stubAppShellFetch(
+  options: AppShellFetchStubOptions = {},
+): () => void {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-    const url = input.toString();
-    // Branches below are checked in order via unanchored `url.includes(...)`,
-    // so a new branch whose path is a substring of (or contains) an
-    // existing one must be ordered carefully — `/diagnostics-detail` is
-    // checked before `/diagnostics` for exactly this reason, since the
-    // latter would otherwise match first. `appShellFetchStub.contract.test
-    // .ts` is what actually guards this: a branch that silently started
-    // matching the wrong URL would answer the wrong shape, which that test
-    // checks against each endpoint's own real default.
-    if (url.includes("/api/project/noise-words")) {
+  const userWordList = createUserWordListHandler(
+    options.userWordList ?? { kind: "empty" },
+  );
+  globalThis.fetch = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      // Branches below are checked in order via unanchored `url.includes(...)`,
+      // so a new branch whose path is a substring of (or contains) an
+      // existing one must be ordered carefully — `/diagnostics-detail` is
+      // checked before `/diagnostics` for exactly this reason, since the
+      // latter would otherwise match first. `appShellFetchStub.contract.test
+      // .ts` is what actually guards this: a branch that silently started
+      // matching the wrong URL would answer the wrong shape, which that test
+      // checks against each endpoint's own real default.
+      if (url.includes("/api/user-word-list")) {
+        return userWordList(init);
+      }
+      if (url.includes("/api/project/noise-words")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            customNoiseWords: [],
+            excludedGlobalNoiseWords: [],
+          }),
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/api/global-noise-words")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/entity-alias-table")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => EMPTY_ALIAS_TABLE,
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/diagnostics-detail")) {
+        // The HTTP response wraps the array (`ProseDiagnosticsDetailResponseSchema`
+        // is `{ locatedRepeatedWords: [...] }`), unlike `getProseDiagnosticsDetail`'s
+        // own unwrapped return type — answering the bare array here fails
+        // validation. The contract test caught exactly this.
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            locatedRepeatedWords: EMPTY_PROSE_DIAGNOSTICS_DETAIL,
+          }),
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/diagnostics")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => EMPTY_PROSE_DIAGNOSTICS,
+          text: async () => "",
+        } as Response;
+      }
+      // The Graph tab (`EntityRelationshipGraphView.tsx`) pulls from several
+      // more endpoints, each with its own response-validation schema — all
+      // bare-array or small-object shapes, so an empty-but-valid stand-in for
+      // each here keeps any AppShell test that happens to mount the Graph tab
+      // from tripping the same noise as the sections above.
+      if (url.includes("/entity-backlink-edges")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/entity-shared-metadata-edges")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/entity-relationships")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/entity-graph-kind-styles")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/entity-graph-settings")) {
+        // Matches `DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES` — the same fallback
+        // `EntityRelationshipGraphView.tsx`'s own catch block degrades to on a
+        // real read failure, so a valid response here doesn't *also* need to
+        // change what the graph shows by default (an empty list here would:
+        // zero active connection types is a materially different graph than
+        // the default authored+cooccurrence pair).
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            entityGraphConnectionTypes: DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
+            entityGraphFocalHopRadius: DEFAULT_ENTITY_GRAPH_FOCAL_HOP_RADIUS,
+          }),
+          text: async () => "",
+        } as Response;
+      }
+      if (url.includes("/writing-log")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            totals: { added: 0, deleted: 0, net: 0 },
+            imported: { added: 0, deleted: 0, net: 0 },
+            incomplete: false,
+          }),
+          text: async () => "",
+        } as Response;
+      }
       return {
         ok: true,
         status: 200,
-        json: async () => ({
-          customNoiseWords: [],
-          excludedGlobalNoiseWords: [],
-        }),
+        json: async () => ({}),
         text: async () => "",
       } as Response;
-    }
-    if (url.includes("/api/global-noise-words")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => [],
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/entity-alias-table")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => EMPTY_ALIAS_TABLE,
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/diagnostics-detail")) {
-      // The HTTP response wraps the array (`ProseDiagnosticsDetailResponseSchema`
-      // is `{ locatedRepeatedWords: [...] }`), unlike `getProseDiagnosticsDetail`'s
-      // own unwrapped return type — answering the bare array here fails
-      // validation. The contract test caught exactly this.
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          locatedRepeatedWords: EMPTY_PROSE_DIAGNOSTICS_DETAIL,
-        }),
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/diagnostics")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => EMPTY_PROSE_DIAGNOSTICS,
-        text: async () => "",
-      } as Response;
-    }
-    // The Graph tab (`EntityRelationshipGraphView.tsx`) pulls from several
-    // more endpoints, each with its own response-validation schema — all
-    // bare-array or small-object shapes, so an empty-but-valid stand-in for
-    // each here keeps any AppShell test that happens to mount the Graph tab
-    // from tripping the same noise as the sections above.
-    if (url.includes("/entity-backlink-edges")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => [],
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/entity-shared-metadata-edges")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => [],
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/entity-relationships")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => [],
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/entity-graph-kind-styles")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => [],
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/entity-graph-settings")) {
-      // Matches `DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES` — the same fallback
-      // `EntityRelationshipGraphView.tsx`'s own catch block degrades to on a
-      // real read failure, so a valid response here doesn't *also* need to
-      // change what the graph shows by default (an empty list here would:
-      // zero active connection types is a materially different graph than
-      // the default authored+cooccurrence pair).
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          entityGraphConnectionTypes: DEFAULT_ENTITY_GRAPH_CONNECTION_TYPES,
-          entityGraphFocalHopRadius: DEFAULT_ENTITY_GRAPH_FOCAL_HOP_RADIUS,
-        }),
-        text: async () => "",
-      } as Response;
-    }
-    if (url.includes("/writing-log")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          totals: { added: 0, deleted: 0, net: 0 },
-          imported: { added: 0, deleted: 0, net: 0 },
-          incomplete: false,
-        }),
-        text: async () => "",
-      } as Response;
-    }
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    } as Response;
-  }) as unknown as typeof globalThis.fetch;
+    },
+  ) as unknown as typeof globalThis.fetch;
 
   return () => {
     globalThis.fetch = originalFetch;

@@ -23,8 +23,14 @@
  * there wouldn't be caught by an AppShell render either way — only by this
  * file, or by that test file's own assertions.
  */
-import { describe, it, expect } from "vitest";
-import { setupAppShellFetchStub } from "./appShellFetchStub";
+import { describe, it, expect, afterEach } from "vitest";
+import { setupAppShellFetchStub, stubAppShellFetch } from "./appShellFetchStub";
+import {
+  addUserWord,
+  getUserWords,
+  removeUserWord,
+  UserWordListTransportError,
+} from "../../src/lib/api/user-word-list";
 import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 import {
@@ -121,5 +127,51 @@ describe("stubAppShellFetch — each answer matches its module's own degrade-def
     await expect(
       getProseDiagnosticsDetail(PROJECT_ID, RESOURCE_ID),
     ).resolves.toEqual(EMPTY_PROSE_DIAGNOSTICS_DETAIL);
+  });
+});
+
+describe("stubAppShellFetch — user word list route (Feature 96)", () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => {
+    restore?.();
+    restore = null;
+  });
+
+  it("answers an empty list by default, with no option given", async () => {
+    restore = stubAppShellFetch();
+    await expect(getUserWords()).resolves.toEqual([]);
+  });
+
+  it("answers a populated list on demand", async () => {
+    restore = stubAppShellFetch({
+      userWordList: { kind: "populated", words: ["Zorblax", "quillon"] },
+    });
+    await expect(getUserWords()).resolves.toEqual(["Zorblax", "quillon"]);
+  });
+
+  it("keeps add and remove consistent with the list it serves", async () => {
+    restore = stubAppShellFetch({
+      userWordList: { kind: "populated", words: ["Zorblax"] },
+    });
+    await expect(addUserWord("quillon")).resolves.toEqual([
+      "Zorblax",
+      "quillon",
+    ]);
+    await expect(removeUserWord("Zorblax")).resolves.toEqual(["quillon"]);
+  });
+
+  it("fails on demand: the read rejects with the server reason, never []", async () => {
+    restore = stubAppShellFetch({ userWordList: { kind: "failure" } });
+    await expect(getUserWords()).rejects.toMatchObject({
+      name: "UserWordListTransportError",
+      reason: "unreadable",
+    });
+  });
+
+  it("answers a paired-device 403 on demand as a refusal", async () => {
+    restore = stubAppShellFetch({ userWordList: { kind: "forbidden" } });
+    const error: unknown = await getUserWords().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UserWordListTransportError);
+    expect((error as UserWordListTransportError).reason).toBe("refused");
   });
 });
