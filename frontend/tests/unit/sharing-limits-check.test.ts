@@ -7,8 +7,12 @@ import {
   decideLimit,
   checkLimit,
   refusalFor,
+  checkUserWordListAccess,
 } from "../../src/lib/sharing/limits-check";
-import { LIMIT_REFUSAL_MESSAGES } from "../../src/lib/sharing/limits-copy";
+import {
+  LIMIT_REFUSAL_MESSAGES,
+  USER_WORD_LIST_REFUSAL_MESSAGE,
+} from "../../src/lib/sharing/limits-copy";
 import { CLASSIFICATION_HEADER } from "../../src/lib/sharing/classify-request";
 import {
   LIMITS_FILE_NAME,
@@ -198,5 +202,38 @@ describe("checkLimit", () => {
       expect(checkLimit(req("window"), "unlocking")).toBeNull();
       expect(checkLimit(req("off"), "unlocking")).toBeNull();
     });
+  });
+});
+
+describe("checkUserWordListAccess (always refused for a paired caller)", () => {
+  it.each(["off", "window"])("does not refuse %s", (h) => {
+    expect(checkUserWordListAccess(req(h))).toBeNull();
+  });
+
+  it.each(["confirmed:d1", "not-confirmed:no-credential", "", "garbage", null])(
+    "refuses a paired or unclassified caller (%s) with 403 { error, limit }",
+    async (h) => {
+      const res = checkUserWordListAccess(req(h));
+      expect(res).not.toBeNull();
+      expect(res?.status).toBe(403);
+      const body = (await res?.json()) as { error: string; limit: string };
+      expect(Object.keys(body).sort()).toEqual(["error", "limit"]);
+      expect(body.error).toBe(USER_WORD_LIST_REFUSAL_MESSAGE);
+      expect(body.limit).toBe("userWordList");
+    },
+  );
+
+  it("refuses a paired caller on GET as well as POST", () => {
+    const get = new Request("http://localhost/api/user-word-list", {
+      method: "GET",
+      headers: { [CLASSIFICATION_HEADER]: "confirmed:d1" },
+    });
+    expect(checkUserWordListAccess(get)?.status).toBe(403);
+  });
+
+  it("does not read the limits file and leaves the LimitKey table unchanged", () => {
+    expect(Object.keys(LIMIT_REFUSAL_MESSAGES).sort()).toEqual(
+      [...KEYS].sort(),
+    );
   });
 });

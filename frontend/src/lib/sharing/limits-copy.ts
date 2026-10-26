@@ -33,3 +33,15 @@ export const REVISION_DELETE_REFUSAL_MESSAGE =
  */
 export const PASSPHRASE_CREATION_REFUSAL_MESSAGE =
   "Creating the encryption passphrase has to be done at the desktop.";
+
+/**
+ * Working copy (Feature 96, FR-12): the user word list is never reachable from
+ * a paired device, read or write, whatever the five switches say. It is not
+ * one of the five limits, so the refusal reports `USER_WORD_LIST_REFUSAL_LIMIT`
+ * rather than a `LimitKey`.
+ */
+export const USER_WORD_LIST_REFUSAL_MESSAGE =
+  "Your personal dictionary can only be used at the desktop. Add the word to the project dictionary instead.";
+
+/** The `limit` value reported with {@link USER_WORD_LIST_REFUSAL_MESSAGE}; not a `LimitKey`. */
+export const USER_WORD_LIST_REFUSAL_LIMIT = "userWordList";
