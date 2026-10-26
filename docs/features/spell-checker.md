@@ -4,7 +4,7 @@ Spec: [specs/features/spell-checker.md](../../specs/features/spell-checker.md). 
 
 ## What it does
 
-While you write, the editor underlines words the checker does not know with a wavy blue underline (a token, `--color-gw-spell-underline`, never the reserved red). Right-click (or the keyboard context-menu key with the caret in the word) a flagged word, or long-press it on a touch device, for up to five suggestions, **Ignore**, and **Add to project dictionary**. The underline is view-only: it is a ProseMirror decoration, changes no document content, and writes no sidecar, index or file.
+While you write, the editor underlines words the checker does not know with a wavy blue underline (a token, `--color-gw-spell-underline`, never the reserved red). Right-click (or the keyboard context-menu key with the caret in the word) a flagged word, or long-press it on a touch device, for up to five suggestions, **Ignore**, **Add to project dictionary**, and (where available, see "My dictionary" below) **Add to my dictionary**. The underline is view-only: it is a ProseMirror decoration, changes no document content, and writes no sidecar, index or file.
 
 - The word the caret is at the end of is not underlined while you type it; it is underlined once the caret leaves.
 - Checks run after a 300 ms pause in typing and re-check only the changed paragraphs; opening a resource runs a full check.
@@ -45,13 +45,40 @@ Both make a word known. They are independent: a word on one list is not removed 
 
 The checker is paused, not empty, while either list (or the entity table) has not loaded or has failed; an empty list is never assumed. The status line under the switch names the reason, and a toast says it once.
 
+## My dictionary (the user word list)
+
+Besides the two per-project lists, the writer has one list of their own words, the **user word list**, shown as **My dictionary** in App Settings. A word on it is known in every project opened on that device, so a term used everywhere is not flagged project by project. It joins the known-word set (`known-words.ts`) with the project dictionary, the ignored words and the entity terms; matching ignores case and treats apostrophes as for project words.
+
+Plain facts about its scope:
+
+- **Per device, not synced.** Each store belongs to one device or one hosted tenant. Nothing copies it between the desktop app, the hosted site and the Android app, or between two browsers.
+- **Not part of any project, and not in any export, compile or backup.** It is stored outside every project folder, so a project's export, compile output and revisions do not contain it, and no backup or export feature writes it. A writer cannot move it to a new device from the app.
+- **Added to the project list by default.** Add to project dictionary is unchanged. Add to my dictionary is a separate entry; adding to one list does not move the word out of the other.
+- **Same word rules as the project lists.** Words come from `spelling-word-rules.ts` and `user-word-list-core.ts`: NFC-normalised and trimmed, 1 to 100 UTF-16 code units, no whitespace or control character, at most 5000 words, a repeat is a no-op. The Electron main process restates the rules in `user-word-list-ipc.ts` because it cannot import the frontend module; a test runs both over the same inputs.
+
+Where it is stored:
+
+| Runtime                 | File                                                                                 | Reached through                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop app             | `<userData>/user-word-list.json`                                                     | IPC `getwrite:user-word-list-get`, `-add`, `-remove` (`electron/src/user-word-list-ipc.ts`; each handler checks the sender first) |
+| Hosted web / dev server | `.user-word-list.json` at the tenant root (`user-word-list.ts`, under the file lock) | `/api/user-word-list` (`GET`, `POST {word}`, `DELETE {word}`)                                                                     |
+| Android                 | `/user-word-list.json` in the app's data directory (`native-user-word-list.ts`)      | the native backend; no `/api`                                                                                                     |
+
+The file is a plain JSON array of strings. The path is never taken from the client. Add and remove return the persisted list; the UI changes only when that list comes back. A missing file reads as an empty list; a file that is not a JSON array of strings is a failure (HTTP 500 from the route, `unreadable` from IPC), never an empty list, and the file is left untouched.
+
+Paired devices: a device paired to the desktop over home-network sharing does not get the list. The route refuses every method with HTTP 403 `{ error, limit: "userWordList" }` before touching the store (`checkUserWordListAccess` in `limits-check.ts`); it is not one of the five owner limits and has no switch. On such a device the menu entry and the My dictionary add path are not shown, and the list is not loaded. While the role is not yet known, the entry is also not offered. The desktop window, a desktop with sharing off, and hosted web are allowed. Android is always allowed (`useUserListAvailable.ts`).
+
+Loading: the list is read once when the spelling switch is on, again when the window becomes visible after being hidden (so a change made in another tab or window is picked up), and when the My dictionary section opens, even with the switch off. A failed read pauses the checker, because an empty list is never assumed; the status line under the switch gives the reason with **Retry** and **Continue without my dictionary**. After Continue, a persistent notice under the switch says the writer's own words are not being applied and the checker uses the project lists only until the list loads again or the app is reloaded.
+
+The My dictionary section in App Settings (`MyDictionarySettingsTab.tsx`, after the Spell check section) lists the words sorted ignoring case, with a count in its heading, a Remove button per word, and an Add form. On a paired device it says it is not available and to use the project dictionary.
+
 ## The Spelling tab
 
 Project Settings has a **Spelling** tab listing the project dictionary and the ignored words, each sorted ignoring case with a **Remove** button per word. Removing a word makes it a candidate for an underline again. A failed removal shows its message and leaves the list unchanged.
 
 ## The context menu group
 
-On a flagged word the editor context menu starts with a "Replace with" heading and up to five suggestions (or one disabled item reading "Loading suggestions", "No suggestions" or "Suggestions unavailable"), then Ignore and Add to project dictionary, then a separator, then the usual items. The flagged range is fixed when the menu opens. In a read-only editor the suggestions are disabled; Ignore and Add to project dictionary stay available.
+On a flagged word the editor context menu starts with a "Replace with" heading and up to five suggestions (or one disabled item reading "Loading suggestions", "No suggestions" or "Suggestions unavailable"), then Ignore and Add to project dictionary, then Add to my dictionary only where the user word list is available (below), then a separator, then the usual items. The flagged range is fixed when the menu opens. In a read-only editor the suggestions are disabled; Ignore and Add to project dictionary stay available, and so does Add to my dictionary where the user word list is available.
 
 ## Entity names
 
@@ -72,8 +99,8 @@ The editor body carries `spellcheck="false"`, and the shared Input and Textarea 
 
 ## Known gaps
 
-- Words cannot be kept across projects: there is no user-level dictionary (Feature 96). Each project's lists stand alone.
-- The two lists are not in export or compile output and are not part of a compiled document.
+- The user word list is per device and is not synced: a word added on the desktop is not known on the hosted site or the Android app. It is not available on a paired device.
+- None of the lists (project dictionary, ignored words, user word list) are in export or compile output or part of a compiled document; the user word list is also not in any backup.
 - The Android keyboard's suggestion strip appears whatever the attribute says (above); an underline while typing there is untested.
 - ALL-CAPS acronyms are checked; an unknown one is underlined until cleared with one Ignore or Add.
 - One English dictionary (dictionary-en); no other language is offered.
@@ -85,4 +112,4 @@ The editor body carries `spellcheck="false"`, and the shared Input and Textarea 
 
 ## Code
 
-See the "Spell checker" entry in `frontend/CLAUDE.md` for the modules.
+See the "Spell checker" entry in `frontend/CLAUDE.md` for the modules, and `electron/CLAUDE.md` for the user-list IPC channels.
