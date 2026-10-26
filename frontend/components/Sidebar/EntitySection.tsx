@@ -6,6 +6,7 @@ import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
+import { refreshEntityAliasTables } from "../../src/store/entity-alias-refresh";
 import {
   setNoiseTermDismissed,
   updateSidecar,
@@ -133,11 +134,12 @@ export default function EntitySection(): JSX.Element | null {
     if (!projectId) return;
     // FR-12 trigger 3: refetch the alias table once this entity sidecar
     // write resolves, so open editors pick up the new/changed name or
-    // aliases without a manual refresh. Only fires on success — a failed
+    // aliases without a manual refresh; the spell checker's copy too, so a
+    // new name stops being underlined. Only fires on success — a failed
     // write left the sidecar (and thus the alias table) unchanged.
     void updateSidecar(updated.id, projectId, updated, clearKeys)
       .then(() => {
-        dispatch(fetchEntityAliasTable(projectId));
+        dispatch(refreshEntityAliasTables(projectId));
       })
       .catch(() => {
         // Best-effort persistence, consistent with other sidebar controls

@@ -4,7 +4,7 @@ import { useState } from "react";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
-import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
+import { refreshEntityAliasTables } from "../../src/store/entity-alias-refresh";
 import { updateSidecar } from "../../src/lib/api/resources";
 import {
   listEntityRelationshipsOrThrow,
@@ -93,7 +93,7 @@ function withoutEntityFields(resource: AnyResource): AnyResource {
  * dispatch, so the writer can retry or cancel. Only once every necessary
  * call succeeds does the handler dispatch `updateResource`, call
  * `notifyRelationshipsChanged()` (only on the delete path), dispatch
- * `fetchEntityAliasTable`, close the dialog, and move focus to the Entity
+ * `refreshEntityAliasTables` (both alias-table copies), close the dialog, and move focus to the Entity
  * Kind input — in that order, because dispatching `updateResource` flips
  * `isEntity` to `false` and unmounts this control immediately (FR-2), so
  * every step that depends on this component still being mounted runs
@@ -200,7 +200,7 @@ export default function RemoveEntityControl(): JSX.Element | null {
           // shows — a keep-path success leaves its list untouched.
           notifyRelationshipsChanged();
         }
-        dispatch(fetchEntityAliasTable(projectId));
+        dispatch(refreshEntityAliasTables(projectId));
         // Deferred to a macrotask: Radix's own `onCloseAutoFocus` (fired by
         // the dialog closing, above) asynchronously tries to return focus
         // to this control's now-unmounting "Remove Entity" trigger button,

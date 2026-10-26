@@ -116,6 +116,27 @@ afterEach(() => {
 });
 
 describe("EntitySection", () => {
+  it("re-reads the spell checker's copy of the alias table once an entity edit is saved (task_2da52ad1)", async () => {
+    makeFetchStub();
+    const store = setupStore("res-1");
+    expect(store.getState().spelling.aliasTableStatus).toBe("not-loaded");
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText("entity-kind-input"), {
+      target: { value: "character" },
+    });
+
+    await waitFor(() => {
+      const spelling = store.getState().spelling;
+      expect(spelling.projectId).toBe("test-project");
+      expect(spelling.aliasTableStatus).toBe("loaded");
+    });
+  });
+
   it("persists a free-text entityKind outside the suggested list unmodified", async () => {
     const fetchStub = makeFetchStub();
     const store = setupStore("res-1");

@@ -129,17 +129,17 @@ describe("Start Page create loads the spelling state (FR-46)", () => {
     expect(selectSpellCheckerState(store.getState()).status).toBe("active");
   });
 
-  it("does not fetch the entity-highlighting alias table on create (OQ-14 b)", async () => {
-    await renderPage();
+  it("also loads the entity-highlighting alias table for the new project (task_a01aea7f)", async () => {
+    const store = await renderPage();
     fireEvent.click(await screen.findByText("create project"));
-    await waitFor(() =>
-      expect(requestedUrls).toContain(
-        "/api/project/spelling?projectId=created-dir",
-      ),
-    );
-    // Spelling's own alias read is the only alias-table request.
+    await waitFor(() => {
+      const table = store.getState().entityAliasTable;
+      expect(table.projectId).toBe("created-dir");
+      expect(table.status).toBe("succeeded");
+    });
+    // One read for spelling's copy, one for entity highlighting.
     expect(
       requestedUrls.filter((u) => u.endsWith("/entity-alias-table")),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 });
