@@ -1,6 +1,6 @@
 # Tasks: A built-in spell checker in the editor (Feature 95)
 
-Source spec: `specs/features/spell-checker.md` (FR-1..FR-45, US-1..US-6, AC-1..AC-20; Gate 3 approved 2026-10-25; OQ-1..OQ-13 all resolved and not reopened). Parent: `specs/product/getwrite.features.md` Feature 95; product requirement FR-78 / US-33 in `specs/product/getwrite.md`. Branch suggestion: `feat/spell-checker`, main checkout. Format precedent: `specs/features/stale-saves-and-index-races/tasks.md`. Granularity: story points (1/2/3/5/8).
+Source spec: `specs/features/spell-checker.md` (FR-1..FR-47, US-1..US-6, AC-1..AC-22; FR-46, FR-47, AC-21, AC-22 and Tasks 56-61 (plus the move of final suites to Task 62) added by the Stage 6.5 amendment of 2026-10-25; Gate 3 approved 2026-10-25; OQ-1..OQ-13 all resolved and not reopened; OQ-14 resolved 2026-10-25 (option b); OQ-15..OQ-17 open with provisional recommendations, pending Task 58 measurement). Parent: `specs/product/getwrite.features.md` Feature 95; product requirement FR-78 / US-33 in `specs/product/getwrite.md`. Branch suggestion: `feat/spell-checker`, main checkout. Format precedent: `specs/features/stale-saves-and-index-races/tasks.md`. Granularity: story points (1/2/3/5/8).
 
 Shape of the work:
 - Tasks 1-2: `pnpm build:native` once in the main checkout; fix its failure first, in its own commit, only if it fails (OQ-9 a).
@@ -8,7 +8,8 @@ Shape of the work:
 - Tasks 21-27: storage and store (FR-11..FR-16, FR-19 read). Engine-independent.
 - Tasks 28-36: the checker (FR-17..FR-26). Tasks 28, 29, 30 and 33 are engine-independent; Task 31 is the ONLY task whose content depends on the engine choice; Tasks 32 and 36 verify against it.
 - Tasks 37-49: attributes, menu, switch, Spelling tab (FR-27..FR-41).
-- Tasks 50-56: licence notice, offline checks, docs, final suites (FR-42..FR-45, AC-17..AC-20).
+- Tasks 50-55: licence notice, offline checks, docs (FR-42..FR-45, AC-17..AC-19). Task 62: final suites (AC-17..AC-20), last in the list.
+- Tasks 56-61 (Stage 6.5 amendment, 2026-10-25, owner decision: both defects fixed on this branch before release): 56 new project loads spelling state (FR-46, spelling only per OQ-14 b); 57-61 touch spelling menu (FR-47), measurement and red test before implementation, with lead-run device steps at 58 and 61. Task 62 (final suites) was moved to the end and depends on 55, 56 and 61, so dependencies enforce that it runs last.
 
 Engine-agnostic seam. Everything after Task 20 is written against one interface, defined in Task 30: a worker message protocol (`init`, `check { version, blocks }`, `suggest { word }`, replies carrying the request `version`, and an `error` reply) and an `SpellEngine` adapter type with `load(): Promise<void>`, `isCorrect(word): boolean` and `suggest(word, max): string[]`, plus a test double. Only Task 31 (the adapter, the worker's import of the chosen package, its dictionary or WebAssembly assets) and the text of the licence notice (Task 50) depend on whether `nspell` or `harper.js` is chosen. Where a task's content differs by choice, its Notes say so.
 
@@ -23,7 +24,7 @@ Engine-agnostic seam. Everything after Task 20 is written against one interface,
 - Verification vocabulary, from `frontend/` unless stated: `pnpm typecheck`; `pnpm lint`; `pnpm exec vitest run <file>`; `pnpm test:ci`; `pnpm test:e2e`; from the repo root `pnpm knip`.
 - Halt rule: if a task cannot meet its done condition, leave it unticked, record why, and report; do not work around it. Open Questions OQ-1..OQ-13 are resolved and are not reopened.
 
-FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 12, 16. FR-5: 5. FR-6: 6, 10, 11, 12, 17. FR-7: 8, 13, 17. FR-8: 9, 15, 16, 18. FR-9: 18. FR-10: 19, 20. FR-11: 21. FR-12: 22. FR-13: 21, 22. FR-14: 23. FR-15: 24, 25. FR-16: 27. FR-17: 29. FR-18: 29. FR-19: 26, 33. FR-20: 28. FR-21: 30, 31, 36. FR-22: 36. FR-23: 30, 31, 33. FR-24: 1, 2, 31, 32, 36, 53, 54. FR-25: 35. FR-26: 33, 45. FR-27: 17, 37. FR-28: 17, 38, 39. FR-29: 40, 41. FR-30: 41. FR-31: 42. FR-32: 43. FR-33: 34. FR-34: 9, 14, 34, 54. FR-35: 35, 36, 45. FR-36: 45. FR-37: 48. FR-38: 47. FR-39: 47. FR-40: 46, 49. FR-41: 44, 46, 49. FR-42: 50. FR-43: 50, 52. FR-44: 51. FR-45: 55. AC-1: 18, 20. AC-2: 2, 20. AC-3: 10, 15, 17. AC-4: 13, 17. AC-5: 9, 16. AC-6: 21, 22, 23. AC-7: 24, 25. AC-8: 26, 27, 33. AC-9: 28, 29. AC-10: 30, 36. AC-11: 1, 32, 52, 53, 54. AC-12: 35. AC-13: 37, 38, 39. AC-14: 40, 41, 42, 43, 44. AC-15: 14, 34, 36, 45. AC-16: 47, 48. AC-17: 44, 46, 49, 56. AC-18: 51, 52. AC-19: 55, 56. AC-20: 56.
+FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 12, 16. FR-5: 5. FR-6: 6, 10, 11, 12, 17. FR-7: 8, 13, 17. FR-8: 9, 15, 16, 18. FR-9: 18. FR-10: 19, 20. FR-11: 21. FR-12: 22. FR-13: 21, 22. FR-14: 23. FR-15: 24, 25. FR-16: 27. FR-17: 29. FR-18: 29. FR-19: 26, 33. FR-20: 28. FR-21: 30, 31, 36. FR-22: 36. FR-23: 30, 31, 33. FR-24: 1, 2, 31, 32, 36, 53, 54. FR-25: 35. FR-26: 33, 45. FR-27: 17, 37. FR-28: 17, 38, 39. FR-29: 40, 41. FR-30: 41. FR-31: 42. FR-32: 43. FR-33: 34. FR-34: 9, 14, 34, 54. FR-35: 35, 36, 45. FR-36: 45. FR-37: 48. FR-38: 47. FR-39: 47. FR-40: 46, 49. FR-41: 44, 46, 49. FR-42: 50. FR-43: 50, 52. FR-44: 51. FR-45: 55. AC-1: 18, 20. AC-2: 2, 20. AC-3: 10, 15, 17. AC-4: 13, 17. AC-5: 9, 16. AC-6: 21, 22, 23. AC-7: 24, 25. AC-8: 26, 27, 33. AC-9: 28, 29. AC-10: 30, 36. AC-11: 1, 32, 52, 53, 54. AC-12: 35. AC-13: 37, 38, 39. AC-14: 40, 41, 42, 43, 44. AC-15: 14, 34, 36, 45. AC-16: 47, 48. AC-17: 44, 46, 49, 62. AC-18: 51, 52. AC-19: 55, 62. AC-20: 62. FR-46: 56, 61. FR-47: 57, 58, 59, 60, 61. AC-21: 56, 61. AC-22: 59, 60, 61.
 
 ### Task 1: Run pnpm build:native once and start experiments.md
 **What:** Run `pnpm build:native` once in the main checkout and create `experiments.md` with an environment record and a "Native build" entry holding the exit code and, on failure, the error text verbatim.
@@ -561,7 +562,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Done when:** `experiments.md` records the owner's observation for the phone as MEASURED or UNMEASURED with the reason, including whether the switch setting persisted across a relaunch.
 **Depends on:** 53
 **Estimate:** 1
-**Notes:** OWNER HALT. Satisfies AC-11 (phone), FR-24, FR-34 (Capacitor persistence). The agent never runs `adb`; give the owner the exact steps.
+**Notes:** OWNER HALT. Satisfies AC-11 (phone), FR-24, FR-34 (Capacitor persistence). The agent never runs `adb`; give the owner the exact steps. Amendment 2026-10-25 (Stage 6.5): this task already covers recording the phone results in `experiments.md`, so no separate recording task is added; the lead supplies the measurements and records them here, and the two Stage 6.5 defect measurements are recorded by Tasks 58 and 61. The Stage 6.5 phone result (a newly created project showed 0 `.spell-error` marks while the same project opened via Open project showed 3) means the phone-offline observation of this task is recorded together with that fact, and its re-check after the fix is Task 61.
 
 **Done:** [ ]
 
@@ -575,23 +576,84 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 
 **Done:** [x]
 
-### Task 56: Final suites
+### Task 56: Newly created project loads spelling state
+**What:** Red test first, then the fix: after `handleCreate` in `frontend/app/(app)/page.tsx` adds the new project, dispatch `fetchSpellingState` for the new project's directory id, as `loadProject` does on open (FR-46).
+**Files:** `frontend/app/(app)/page.tsx`; test in the existing test file for the Start Page create flow if one exists (find it with Grep first), else new `frontend/tests/startPageCreateSpelling.test.tsx`.
+**Done when:** The test is written first and shown failing because no spelling fetch is dispatched on create (measured: on a Pixel 7 Pro, a project created in-session showed 0 `.spell-error` marks on "recieve teh wrold", the worker was never requested, and the same project opened via "Open project" after a relaunch showed 3; the test discriminates whether the missing dispatch is the cause). It then passes and shows: creating a project dispatches `fetchSpellingState` with the new project's directory id (derived as `loadProject` derives it); once the lists and the alias table the checker reads are `loaded` for that project, `selectSpellCheckerState` is `active`; `handleOpen` and `loadProject` behave as before (existing tests pass unedited). Spelling only: `fetchEntityAliasTable` is not added on create (OQ-14 option b, owner decision 2026-10-25; filed as a separate POS task, new-project-skips-entity-alias-table-fetch, task_a01aea7f). `pnpm typecheck`, `pnpm lint` and the touched test files pass.
+**Depends on:** 27, 33
+**Estimate:** 2
+**Notes:** Satisfies FR-46, AC-21. Platform-independent: web, desktop and Android share `handleCreate`. If the red test does not fail on the missing dispatch, stop and report; do not name a cause. The device re-check is Task 61.
+
+**Done:** [ ]
+
+### Task 57: Touch long-press probe and runbook (measurement, before any fix)
+**What:** Write a read-only event probe and a runbook so the lead can record what the Android WebView delivers on a long-press on a flagged word in the real editor, with no change to app code.
+**Files:** Create `specs/features/spell-checker/scripts/longpress-probe.js` (a snippet injected through Chrome DevTools remote debugging of the WebView, or equivalent; not under `frontend/`); add an "Owner step: Android long-press" runbook section to `specs/features/spell-checker/experiments.md`.
+**Done when:** The probe logs, with timestamps, for a press on the editor body: `pointerdown`, `pointerup`, `pointercancel` (`pointerType`, `button`, `clientX`, `clientY`), `touchstart`, `touchend`, `touchcancel`, `contextmenu` (`isTrusted`, `clientX`, `clientY`, `button`, `sourceCapabilities.firesTouchEvents` if present, whether `preventDefault` was already called), `selectionchange`, and after the `contextmenu` the selected text, its anchor and head positions, and whether `editor.view.posAtCoords` at the event coordinates lands inside a `.spell-error` element; it changes no DOM and registers no `preventDefault`. The runbook gives the exact steps in order (device, WebView version, keyboard app, how to attach DevTools, inject the probe, long-press ~900 ms on "wrold" and on a non-flagged word, copy the log) and says the lead runs the device step; it asks for observations only and states no cause. Verified by running the probe in a desktop browser with scripted events (output shape only; labelled as not a device result).
+**Depends on:** 44
+**Estimate:** 2
+**Notes:** Satisfies FR-47 (measurement). Measured so far (device, same build): the long-press selected the word and opened `EditorContextMenu` with no spelling group; no cause is established and none is written. `adb` is never run by the agent.
+
+**Done:** [ ]
+
+### Task 58: HALT, lead runs the Android long-press measurement
+**What:** Stop for the lead to run the Task 57 runbook on the Pixel 7 Pro over `adb` and record the result.
+**Files:** None edited by the agent. The lead pastes the probe log into `specs/features/spell-checker/experiments.md` under "Android long-press (pasted)" with device, Android System WebView version and keyboard app, each entry labelled MEASURED or UNMEASURED with the reason.
+**Done when:** `experiments.md` holds the pasted event log for a long-press on a flagged word and on a non-flagged word, stating the sequence of events delivered, the selection state after the press, and whether `posAtCoords` at the event coordinates lands on the flagged word, with no cause stated; OQ-15, OQ-16 and OQ-17 are then ready for the owner to decide from these numbers.
+**Depends on:** 57
+**Estimate:** 1
+**Notes:** LEAD/OWNER HALT. Satisfies FR-47 (measurement). Tasks 59 and 60 do not start until OQ-15, OQ-16 and OQ-17 are resolved by the owner; the agent does not resolve them.
+
+**Done:** [ ]
+
+### Task 59: Red test for the touch spelling menu
+**What:** Write the failing tests for FR-47 from the recorded event sequence, using emulated touch events.
+**Files:** `frontend/tests/editorContextMenuSpelling.test.tsx` (extend); `frontend/tests/editorContextMenuSpellingTouch.test.tsx` (new, only if the existing file would grow past its sensible size); leaving `editorContextMenu*.test.tsx` unedited.
+**Done when:** Tests replay the event sequence recorded in Task 58 (as resolved by the owner at OQ-15; provisional recommendation (a) with fallback (d), pending Task 58 measurement) and are shown failing for the stated reason, namely that a long-press on a flagged word opens a menu with no spelling group (the measured behaviour): a touch long-press on a flagged word shows the spelling group above the existing items; a touch long-press on a non-flagged word shows exactly today's menu; the flagged range is frozen at open (FR-29); the selection the long-press creates is handled as the owner resolved at OQ-17; the pointer (button 2) and keyboard cases of AC-14 still pass unedited.
+**Depends on:** 58
+**Estimate:** 3
+**Notes:** Satisfies FR-47, AC-22. TDD: this task ends with the tests red and recorded; do not write the implementation here. If the replayed sequence already produces the spelling group in jsdom, record that (the emulation does not reproduce the device) and report; do not mark the task done on a test that never failed.
+
+**Done:** [ ]
+
+### Task 60: Implement the touch spelling menu
+**What:** Make a touch-originated `contextmenu` on a flagged word open the spelling group, resolving the word and the selection as the owner resolved at OQ-15, OQ-16 and OQ-17.
+**Files:** `frontend/components/Editor/EditorContextMenu.tsx`; `frontend/stories/Editor/EditorContextMenu.stories.tsx` (touch-originated story if needed).
+**Done when:** The Task 59 tests pass; the existing `editorContextMenu*.test.tsx` and `tests/editorContextMenu.a11y.test.tsx` pass unedited; Replace with, Ignore and Add keep their FR-31 and FR-32 behaviour from a touch-opened menu (frozen range, one undo step, read-only rules); `pnpm typecheck`, `pnpm lint` and the touched tests pass; no new shortcut is added.
+**Depends on:** 59
+**Estimate:** 3
+**Notes:** Satisfies FR-47, AC-22. Sections of `EditorContextMenu.tsx` for pointer and keyboard (FR-29) are not changed beyond what the resolved OQs require. The device check is Task 61.
+
+**Done:** [ ]
+
+### Task 61: HALT, lead re-checks both fixes on the Pixel
+**What:** Stop for the lead to repeat the two Stage 6.5 device observations on a debug build of the branch HEAD, offline, and record them.
+**Files:** None edited by the agent. The lead adds an "After the Stage 6.5 fixes" entry to `specs/features/spell-checker/experiments.md`.
+**Done when:** `experiments.md` records, MEASURED or UNMEASURED with the reason, with device, WebView version, keyboard app and `git` HEAD: (1) a project created via Start Page "Start a new project", a text resource opened, "recieve teh wrold" typed, offline: the number of `.spell-error` marks and whether a request for the worker script appeared (AC-21); (2) a long-press of about 900 ms on the flagged word "wrold": whether the spelling group appeared, and on a non-flagged word whether the menu was today's menu (AC-22). A failed check is recorded as it was observed and the task stays unticked.
+**Depends on:** 56, 60
+**Estimate:** 1
+**Notes:** LEAD/OWNER HALT. Satisfies AC-21, AC-22, FR-46, FR-47. The agent never runs `adb`.
+
+**Done:** [ ]
+
+### Task 62: Final suites
 **What:** Run every final suite from `frontend/` and record the results.
 **Files:** `specs/features/spell-checker/experiments.md` (a "Final suites" entry).
 **Done when:** `pnpm typecheck`, `pnpm lint`, `pnpm test:ci`, `pnpm test:e2e` (after the `lsof` check for 7340, 3000 and 6006), and from the repo root `pnpm knip` (new web-stub and spike packages accounted for) all exit 0, and the CLI and Electron suites are unchanged (the one `extraResources` line in `electron/electron-builder.yml` from Task 50 is the only permitted change under `electron/`, per AC-20); each result and exit code is recorded; the PR text names the missing user list as a known gap.
-**Depends on:** 55
+**Depends on:** 55, 56, 61
 **Estimate:** 3
-**Notes:** Satisfies AC-20, AC-17 (`pnpm test:e2e`), AC-19 (PR text). A new context requirement on a component needs a Storybook decorator (e2e). `pnpm test:e2e` runs outside the sandbox.
+**Notes:** Amendment 2026-10-25 (Stage 6.5): moved to the end of the list and renumbered from 56 so that `Depends on:` enforces that final suites run after the create-path fix (Task 56) and the final device re-check (Task 61). Satisfies AC-20, AC-17 (`pnpm test:e2e`), AC-19 (PR text). A new context requirement on a component needs a Storybook decorator (e2e). `pnpm test:e2e` runs outside the sandbox.
 
 **Done:** [ ]
 
 ## Summary
-- Total tasks: 56
-- Total estimated effort: 173 story points
-- Critical path: 1 → 2 → 3 → 4 → 6 → 7 → 12 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 27 → 33 → 35 → 36 → 53 → 54 → 55 → 56
-- Risks: Task 2 is conditional and its cause is not established (the documented failure's cause is unknown; if it is not small, Tasks 32 and 52 record UNMEASURED). Four owner HALTs (Tasks 3, 16, 18, 19) plus the phone check (Task 54) set the elapsed time more than any code task. Task 9 may need a tracked edit under `android/` that FR-10 forbids; Task 13 may be unable to observe native underlines in an automated window. Task 31 is engine-dependent and Task 36 (8 points) carries the most integration risk (debounce, incremental checks, caret word, source mode, version gate in one editor file). Task 39 is wide (about 40 files). Task 40's pointer-versus-keyboard `contextmenu` heuristic is unverified.
+- Total tasks: 62
+- Total estimated effort: 185 story points
+- Critical path: 1 → 2 → 3 → 4 → 6 → 7 → 12 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 27 → 33 → 35 → 40 → 41 → 42 → 44 → 57 → 58 → 59 → 60 → 61 → 62 (Task 62 depends on 55, 56 and 61)
+- Risks: Task 2 is conditional and its cause is not established (the documented failure's cause is unknown; if it is not small, Tasks 32 and 52 record UNMEASURED). Four owner HALTs (Tasks 3, 16, 18, 19) plus the phone check (Task 54) set the elapsed time more than any code task. Task 9 may need a tracked edit under `android/` that FR-10 forbids; Task 13 may be unable to observe native underlines in an automated window. Task 31 is engine-dependent and Task 36 (8 points) carries the most integration risk (debounce, incremental checks, caret word, source mode, version gate in one editor file). Task 39 is wide (about 40 files). Task 40's pointer-versus-keyboard `contextmenu` heuristic is unverified. Stage 6.5 (Tasks 56-61): Tasks 58 and 61 are lead-run device steps; Tasks 59 and 60 wait on OQ-15, OQ-16 and OQ-17, which only the owner resolves; the cause of the touch defect is not established, so Task 59's test may not fail in jsdom as it does on the device.
 
 ## Open Questions
 - Task 9 (raised by this breakdown, not by the spec): FR-8 and OQ-6 b require the Android spike to use `android/harness` (`android/scripts/build-harness.mjs`, `android/harness/harness-entry.ts`), but FR-10 says Part 0 changes no file outside `specs/features/spell-checker/`, `frontend/package.json` and `pnpm-lock.yaml`. If hosting the spell harness needs a tracked edit under `android/`, which rule wins? **Resolved (Owner decision, Gate 4, 2026-10-25):** Part 0 MAY edit files under `android/harness` (and `android/scripts/build-harness.mjs` if needed) when the spike requires it; each edit is recorded in `experiments.md`. FR-10 and AC-2 amended in the spec; Tasks 9 and 20 updated, so this is neither a blocker nor a scope violation.
 - Task 13 (raised by this breakdown): native spell underlines may not render in an automated browser or Electron window, so the web and desktop FR-7 rows may need to be owner observations. Task 13 records UNMEASURED with the reason rather than guessing. **Resolved (Owner decision, Gate 4, 2026-10-25):** Accepted. Task 13 records those rows as UNMEASURED with the reason, and the owner checks them by eye.
-- Task 50 (raised by this breakdown): the spec says `electron/electron-builder.yml` gains an entry (FR-43), which edits a file under `electron/`; the final-suites requirement says the Electron suite stays unchanged. The task treats the one `extraResources` line as intended and the suite as unaffected. **Resolved (Owner decision, Gate 4, 2026-10-25):** FR-43's one `extraResources` line in `electron/electron-builder.yml` is intended. AC-20 reworded in the spec to allow exactly that one added line; Tasks 50 and 56 updated.
+- Task 50 (raised by this breakdown): the spec says `electron/electron-builder.yml` gains an entry (FR-43), which edits a file under `electron/`; the final-suites requirement says the Electron suite stays unchanged. The task treats the one `extraResources` line as intended and the suite as unaffected. **Resolved (Owner decision, Gate 4, 2026-10-25):** FR-43's one `extraResources` line in `electron/electron-builder.yml` is intended. AC-20 reworded in the spec to allow exactly that one added line; Tasks 50 and 62 updated.
+- Stage 6.5 (raised by the amendment of 2026-10-25): spec OQ-14 is **Resolved (Decided by the owner, 2026-10-25):** option b; Task 56 is spelling only and the entity-highlighting omission is a separate POS task (new-project-skips-entity-alias-table-fetch, task_a01aea7f). Spec OQ-15 (how a touch `contextmenu` is detected), OQ-16 (how the word is resolved) and OQ-17 (what happens to the selection the long-press creates) remain open, with provisional recommendations pending the Task 58 measurement; Tasks 59 and 60 are blocked on them.
