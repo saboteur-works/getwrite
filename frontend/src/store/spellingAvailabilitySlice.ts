@@ -29,13 +29,13 @@ import type { SpellingLoadStatus } from "./spellingSlice";
 /** Lowest Chrome version the app supports (`.browserslistrc`); not raised. */
 export const MIN_CHROME_VERSION = 67;
 
-export type UnavailableKind =
+type UnavailableKind =
   | "lists-failed"
   | "alias-table-failed"
   | "engine-failed"
   | "browser-unsupported";
 
-export type PausedKind = UnavailableKind | "loading";
+type PausedKind = UnavailableKind | "loading";
 
 export interface PausedReason {
   kind: PausedKind;
@@ -52,7 +52,7 @@ export interface UnsupportedBrowser {
   minimum: number;
 }
 
-export interface SpellingAvailabilityState {
+interface SpellingAvailabilityState {
   /** Reason the worker or engine failed, or null. */
   engineFailure: string | null;
   /** Set when the browser is below the minimum, or null. */

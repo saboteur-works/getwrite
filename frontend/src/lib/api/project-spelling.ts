@@ -96,7 +96,7 @@ async function performAction(
 }
 
 /** HTTP transport: the hosted/desktop path. */
-export const httpProjectSpellingTransport: ProjectSpellingTransport = {
+const httpProjectSpellingTransport: ProjectSpellingTransport = {
   async getSpellingLists(projectId) {
     const query = new URLSearchParams({ projectId });
     const response = await fetch(`${ENDPOINT}?${query.toString()}`);

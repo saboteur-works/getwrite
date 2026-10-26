@@ -21,7 +21,7 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
 /** A part of a hyphenated word, with its document range. */
-export interface ExtractedWordPart {
+interface ExtractedWordPart {
   /** The part's text, apostrophes normalised to `'`. */
   word: string;
   /** Document position of the part's first character. */

@@ -1844,3 +1844,64 @@ Screenshot: `screenshots/desktop-packaged-switch-off-after-relaunch.png`. One ru
 Not measured: that the same holds after a quit through the window close button (the process was ended with `kill`, SIGTERM); the dmg and other platforms; whether the app wrote to its log path (`app.getPath("logs")` is outside `--user-data-dir` and was not looked at, because that folder is outside the permitted ones, so a line appended there by the probe's launches is possible and unchecked).
 
 Cleanup: `<tmp>` (build, packaged app, `ud`, `ws`) deleted; `ls` of it reports no such directory; 7340 and 9333 free; `pgrep` for the probe app: none.
+
+## Final suites (Task 56, 2026-10-25)
+
+Tree: branch `feat/spell-checker`, main checkout, HEAD `0ad1f835`. Raw outputs are in the session scratchpad, not the repo. Node and pnpm as installed; sandbox on except where stated.
+
+### Suites
+
+| Check | Where | Result |
+| --- | --- | --- |
+| `pnpm typecheck` | `frontend/` | exit 0 |
+| `pnpm lint` | `frontend/` | exit 0; 392 problems, 0 errors, 392 warnings |
+| `pnpm test:ci` | `frontend/` | exit 0; 699 files passed; 8678 passed, 7 expected fail, 1 skipped (8686) |
+| `pnpm test:e2e` | `frontend/`, outside the sandbox | exit 0; 230 passed, 1 skipped, 0 failed (1.4m) |
+| `pnpm knip` | repo root | exit 1; see below |
+| `pnpm test` | `cli/` | exit 0; 23 files, 153 passed |
+| `pnpm test` | `electron/` | exit 0; 34 files, 528 passed |
+| `pnpm typecheck` | `electron/` | exit 0 |
+
+`lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before and after `test:e2e`: empty, exit 1 both times. No 6006 held.
+
+The four-file un-export edit below was made after the e2e run; `test:ci` (same counts) and `typecheck` were re-run after it, `test:e2e` was not.
+
+### Diff against main
+
+`git diff main --stat -- cli electron android`: only `electron/electron-builder.yml`, 5 insertions (3 comment lines plus the `THIRD_PARTY_SPELLCHECK.txt` `from`/`to` pair). Nothing under `cli/` or `android/`.
+
+### knip against main
+
+Method: `git worktree add --detach <TMPDIR>/main-baseline main` (main at `49c4f879`), the five existing `node_modules` directories symlinked in, `pnpm knip` at its root. It ran (exit 1). Per category, main / this branch before the edit / this branch after:
+
+| Category | main | branch before | branch after |
+| --- | --- | --- | --- |
+| Unused files | 49 | 49 | 49 |
+| Unused dependencies | 1 | 1 | 1 |
+| Unused devDependencies | 6 | 4 | 4 |
+| Unlisted dependencies | 6 | 6 | 6 |
+| Unlisted binaries | 4 | 4 | 4 |
+| Unused exports | 160 | 162 | 160 |
+| Unused exported types | 174 | 178 | 174 |
+| Duplicate exports | 14 | 14 | 14 |
+| Configuration hints | 6 | 6 | 6 |
+
+Comparison by name and file basename (line numbers ignored). New on the branch before the edit (6): types `ExtractedWordPart` (`extract-words.ts`), `PausedKind`, `SpellingAvailabilityState`, `UnavailableKind` (`spellingAvailabilitySlice.ts`); exports `SPELLCHECK_NOT_SAVED_TOAST_ID` (`spellcheck-preference.ts`), `httpProjectSpellingTransport` (`project-spelling.ts`). Each had no other import in the repo (`git grep`); this feature added all six. They were un-exported (the `export` keyword removed, 6 lines in 4 files); after that the per-category counts equal main and a name comparison showed no finding that main lacks. `nspell`, `dictionary-en`, `@types/nspell` and `spell.worker.ts` are not flagged (`knip.json` has the one `frontend` entry for the worker, added earlier with a comment).
+
+Gone on the branch (2): unused devDependencies `@capacitor/android` and `@capacitor/core` in `android/package.json`, flagged on main. `android/` is unchanged on the branch, so the cause of the difference is not established; one experiment would be to run knip on the branch with `knip.json` reverted to main's.
+
+knip exits 1 on main as well (non-zero baseline), so "exit 0" in the task's done_when does not hold on main either; the result here is count parity with main.
+
+### aria-hidden-focus, `EditorContextMenu` stories
+
+Command `pnpm test-storybook EditorContextMenu` in `frontend/`, outside the sandbox.
+- This branch: 2 failed, 6 passed (8). `Default` and `Empty Selection Disabled` failed with axe `aria-hidden-focus` ("ARIA hidden element must not be focusable or contain focusable elements"), on `div[data-aria-hidden="true"][aria-hidden="true"]`.
+- main worktree: UNMEASURED. The run failed before any story ran: `Failed to import test file .../node_modules/.pnpm/@storybook+addon-vitest.../...` with `TypeError: Failed to fetch dynamically imported module: http://localhost:63315/Users/jedaisaboteur/Repositories/getwrite/node_modules/.pnpm/...` (the symlinked `node_modules` resolves to a path outside the worktree root). I did not edit the worktree's config to get around it, so whether the two stories fail on main is not established.
+
+### Cleanup
+
+Symlinks unlinked, worktree removed and pruned; `git worktree list` shows only the main worktree; no listener on 7340, 3000 or 6006. Whether the tool wrote caches through the symlinks into the shared `node_modules` was not checked.
+
+### Not done
+
+PR text naming the missing user list as a known gap is outside this task. Task 54 (phone check) not touched.

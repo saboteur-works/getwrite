@@ -17,7 +17,7 @@ export const SPELLCHECK_ENABLED_STORAGE_KEY = "getwrite-spellcheck-enabled";
 export const SPELLCHECK_CHANGED_EVENT = "getwrite:spellcheck-changed";
 
 /** Fixed toast id so repeated failed saves collapse into one toast. */
-export const SPELLCHECK_NOT_SAVED_TOAST_ID = "spellcheck-not-saved";
+const SPELLCHECK_NOT_SAVED_TOAST_ID = "spellcheck-not-saved";
 
 /**
  * Value held for this session when storage rejected a write, so the toggle
