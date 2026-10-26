@@ -36,6 +36,8 @@
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.28);
   --color-gw-mention-jump-highlight: rgba(80, 160, 220, 0.3);
   --color-gw-dialogue-highlight: rgba(40, 150, 150, 0.18);
+  /* Spell-check underline (Task 35): 5.52:1 on paper #f0ede6; 6.69:1 on #1c1c1a. Never red. */
+  --color-gw-spell-underline: #1d5fa8;
 
   /* ── Timeline overrides ──
      * Placed here (not :root) so this class-selector wins over the :root defaults
@@ -116,6 +118,8 @@
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.36);
   --color-gw-mention-jump-highlight: rgba(100, 180, 240, 0.38);
   --color-gw-dialogue-highlight: rgba(60, 180, 180, 0.24);
+  /* Spell-check underline (Task 35): 5.52:1 on paper #f0ede6; 6.69:1 on #1c1c1a. Never red. */
+  --color-gw-spell-underline: #6aa6e8;
 
   /* POV palette — original softer values for dark surfaces */
   --timeline-pov-0: #6b8cae;
@@ -166,6 +170,8 @@ html.gw-theme-light {
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.28);
   --color-gw-mention-jump-highlight: rgba(80, 160, 220, 0.3);
   --color-gw-dialogue-highlight: rgba(40, 150, 150, 0.18);
+  /* Spell-check underline (Task 35): 5.52:1 on paper #f0ede6; 6.69:1 on #1c1c1a. Never red. */
+  --color-gw-spell-underline: #1d5fa8;
 }
 
 html.gw-theme-dark {
@@ -187,6 +193,8 @@ html.gw-theme-dark {
   --color-gw-entity-highlight-attention: rgba(140, 112, 168, 0.36);
   --color-gw-mention-jump-highlight: rgba(100, 180, 240, 0.38);
   --color-gw-dialogue-highlight: rgba(60, 180, 180, 0.24);
+  /* Spell-check underline (Task 35): 5.52:1 on paper #f0ede6; 6.69:1 on #1c1c1a. Never red. */
+  --color-gw-spell-underline: #6aa6e8;
 }
 
 /* ── REDUCED MOTION ── (only permitted !important blocks in this file) */

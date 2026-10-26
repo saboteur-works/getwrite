@@ -373,7 +373,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-25, FR-35 (no work when off), AC-12. Pattern: `EntityHighlightDecorationExtension.ts` (plugin state is a `DecorationSet`, meta flag). Distinct in shape from entity, dialogue and mention-jump highlights.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 36: Editor wiring, scheduling, caret word, source mode, version gate
 **What:** Wire the plugin and client into `TipTapEditor` with debounce, incremental checks, a full check on resource load, the caret-word rule, source-mode pause, the switch ref and meta flag, and the minimum-browser gate.
