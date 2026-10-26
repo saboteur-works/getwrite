@@ -33,6 +33,7 @@ vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
 
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
   getEntityAliasTable: vi.fn(),
+  getEntityAliasTableOrThrow: vi.fn(),
 }));
 
 import {
@@ -41,12 +42,16 @@ import {
 } from "../../src/lib/api/entity-relationships";
 import type { EntityRelationshipEdge } from "../../src/lib/api/entity-relationships";
 import { updateSidecar } from "../../src/lib/api/resources";
-import { getEntityAliasTable } from "../../src/lib/api/entity-alias-table";
+import {
+  getEntityAliasTable,
+  getEntityAliasTableOrThrow,
+} from "../../src/lib/api/entity-alias-table";
 
 const mockedList = vi.mocked(listEntityRelationshipsOrThrow);
 const mockedRemoveByEntity = vi.mocked(removeEntityRelationshipsForEntity);
 const mockedUpdateSidecar = vi.mocked(updateSidecar);
 const mockedGetEntityAliasTable = vi.mocked(getEntityAliasTable);
+const mockedGetEntityAliasTableOrThrow = vi.mocked(getEntityAliasTableOrThrow);
 
 const PROJECT_ID = "proj-remove-entity-1";
 const ENTITY_ID = "entity-aria";
@@ -130,6 +135,11 @@ afterEach(() => {
   mockedUpdateSidecar.mockReset();
   mockedGetEntityAliasTable.mockReset();
   mockedGetEntityAliasTable.mockResolvedValue({ entities: {}, claimedBy: {} });
+  mockedGetEntityAliasTableOrThrow.mockReset();
+  mockedGetEntityAliasTableOrThrow.mockResolvedValue({
+    entities: {},
+    claimedBy: {},
+  });
 });
 
 describe("RemoveEntityControl", () => {
@@ -515,6 +525,25 @@ describe("RemoveEntityControl", () => {
       );
       await waitFor(() =>
         expect(screen.queryByText("Remove entity")).not.toBeInTheDocument(),
+      );
+    });
+
+    it("re-reads the spell checker's copy of the alias table after a removal (task_2da52ad1)", async () => {
+      mockedUpdateSidecar.mockResolvedValue(undefined);
+      const store = setupStore({ entityKind: "character" });
+
+      renderControl(store);
+      await openDialogAndResolveEdges([]);
+      expect(mockedGetEntityAliasTableOrThrow).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText("Remove"));
+
+      await waitFor(() =>
+        expect(mockedGetEntityAliasTableOrThrow).toHaveBeenCalledWith(
+          PROJECT_ID,
+        ),
+      );
+      await waitFor(() =>
+        expect(store.getState().spelling.aliasTableStatus).toBe("loaded"),
       );
     });
 

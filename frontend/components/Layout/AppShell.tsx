@@ -97,6 +97,7 @@ import {
   revokeSessions as authRevokeSessions,
 } from "../../src/lib/auth/auth-client";
 import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
+import { refreshEntityAliasTablesAfterRename } from "../../src/store/entity-alias-refresh";
 import {
   selectResource,
   selectResources,
@@ -649,6 +650,13 @@ export default function AppShell({
         dispatch(updateFolder({ id: resourceId, name: newName }));
       } else {
         dispatch(updateResource({ id: resourceId, name: newName }));
+        // An entity's name is in both alias tables (highlighting and spelling).
+        dispatch(
+          refreshEntityAliasTablesAfterRename(
+            getProjectDirectoryId(project.rootPath),
+            resourceId,
+          ),
+        );
       }
     } finally {
       setRenameModal({ open: false });

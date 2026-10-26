@@ -9,12 +9,16 @@
  *
  * Per FR-12/OQ-4, this cache is refreshed only by an explicit refetch —
  * there is no server-side push signal (no `metadataRevision`-based counter
- * is read or written here). The three refetch triggers are wired at their
- * call sites, not in this module:
+ * is read or written here). The refetch triggers are wired at their call
+ * sites, not in this module:
  *
  * 1. Project load — `projectsSlice.ts`'s `loadProject` thunk.
  * 2. Resource load — `resourcesSlice.ts`'s `loadResources` thunk.
  * 3. A resolved `updateSidecar` call from `EntitySection.tsx`'s save path.
+ * 4. Project creation — `handleCreate` in `app/(app)/page.tsx`.
+ * 5. Remove Entity and an entity rename (`RemoveEntityControl.tsx`,
+ *    `AppShell.tsx`). Triggers 3 and 5 go through `entity-alias-refresh.ts`,
+ *    which also re-reads the spell checker's copy.
  *
  * This intentionally does not compensate for cross-tab staleness (e.g. via
  * `storage` events) — an accepted limitation per OQ-4.

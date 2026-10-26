@@ -21,5 +21,5 @@ Text for the commit message and the pull request description. Facts only; measur
 - Android: after a long-press on a correctly spelled word, Cut and Copy can act on the previously selected text rather than the pressed word.
 - Android: on a phone the spelling menu can extend past the right edge of the screen.
 - ALL-CAPS acronyms are checked; each unknown one needs one Ignore or Add.
-- The checker reads entity names and aliases when a project is opened; a name added or changed afterwards is not known to it until the project is opened again.
+- Entity names and aliases are picked up as soon as you declare, edit, rename or remove an entity in this window; a change made in another window or on another device is picked up when the project is next opened.
 - Versions run: Chromium 132 to 155. Chrome 67 to 131 (the repository floor is Chrome 67) was not run.
