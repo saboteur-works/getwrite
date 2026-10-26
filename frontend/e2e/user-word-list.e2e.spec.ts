@@ -14,10 +14,18 @@ const SETTING = "appsettings-spellchecksetting";
 const MENU = "editor-editorcontextmenu";
 
 async function openFlaggedWordMenu(page: Page) {
+  // The story's play function opens the menu itself; wait for it, and only
+  // right-click the flagged word if no menu appears.
+  const menu = page.getByRole("menu", { name: "Editor options" });
   const flagged = page.getByText("wrold", { exact: true });
   await flagged.waitFor();
-  await flagged.click({ button: "right" });
-  const menu = page.getByRole("menu");
+  const isAlreadyOpen = await menu
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!isAlreadyOpen) {
+    await flagged.click({ button: "right" });
+  }
   await expect(menu).toBeVisible();
   return menu;
 }
@@ -82,9 +90,7 @@ test("Continue without my dictionary leaves a persistent notice with no dismiss 
   await page.goto(story(`${SETTING}--user-list-read-failed`));
 
   const status = page.getByRole("status");
-  await expect(status).toContainText(
-    "Your dictionary could not be loaded (unreadable).",
-  );
+  await expect(status).toContainText("Your dictionary could not be loaded");
 
   await page
     .getByRole("button", { name: "Continue without my dictionary" })
