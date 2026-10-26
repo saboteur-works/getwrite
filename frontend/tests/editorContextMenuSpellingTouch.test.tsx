@@ -34,6 +34,7 @@ const TEH: SpellRange = { from: 17, to: 20 };
 const END_OF_LINE = 31;
 const IN_WROLD = 9;
 const IN_FINE = 23;
+const FINE: SpellRange = { from: 21, to: 25 };
 const editors: Editor[] = [];
 
 function mountEditor(): Editor {
@@ -203,7 +204,7 @@ describe("EditorContextMenu touch long-press (Task 59, FR-47, AC-22)", () => {
     await screen.findByText("world");
   });
 
-  it("on a non-flagged word shows exactly today's menu and changes no selection", () => {
+  it("on a non-flagged word shows exactly today's menu and selects that word, so Cut and Copy act on it (task_0162a56f)", () => {
     const editor = mountEditor();
     const request = vi.fn(world);
     const surface = renderMenu(editor, request);
@@ -211,8 +212,70 @@ describe("EditorContextMenu touch long-press (Task 59, FR-47, AC-22)", () => {
     longPress(surface);
     expect(menuLabels()).toEqual(EXISTING_ITEMS);
     expect(request).not.toHaveBeenCalled();
-    expect(editor.state.selection.from).toBe(END_OF_LINE);
-    expect(editor.state.selection.to).toBe(END_OF_LINE);
+    expect(editor.state.selection.from).toBe(FINE.from);
+    expect(editor.state.selection.to).toBe(FINE.to);
+    expect(screen.getByText("Cut").closest("[data-disabled]")).toBeFalsy();
+    expect(screen.getByText("Copy").closest("[data-disabled]")).toBeFalsy();
+  });
+
+  it("replaces a leftover selection with the pressed word (measured on the Pixel: Cut/Copy acted on the previous word)", () => {
+    const editor = mountEditor();
+    const surface = renderMenu(editor);
+    act(() => {
+      editor.view.dispatch(
+        editor.state.tr.setSelection(
+          TextSelection.create(editor.state.doc, WROLD.from, WROLD.to),
+        ),
+      );
+    });
+    mockPosAtCoords(editor, IN_FINE);
+    longPress(surface);
+    // No spelling group for the leftover flagged selection: the press is on
+    // "fine" (option a, owner decision 2026-10-26).
+    expect(menuLabels()).toEqual(EXISTING_ITEMS);
+    expect(editor.state.selection.from).toBe(FINE.from);
+    expect(editor.state.selection.to).toBe(FINE.to);
+  });
+
+  it("a touch press off the text still falls back to a flagged caret word", async () => {
+    const editor = mountEditor();
+    const surface = renderMenu(editor);
+    setCaret(editor, TEH.from + 1);
+    mockPosAtCoords(editor, null);
+    longPress(surface);
+    expect(await screen.findByText("world")).toBeTruthy();
+    expect(editor.state.selection.from).toBe(TEH.from);
+    expect(editor.state.selection.to).toBe(TEH.to);
+  });
+
+  it("away from any word puts the caret at the press, with Cut and Copy disabled and Paste enabled", () => {
+    // "one" 1-4, space 4-5, "\u2014" 5-6, space 6-7, "two" 7-10 (HTML
+    // collapses repeated spaces): position 6 has no word character on either
+    // side.
+    const editor = new Editor({
+      element: document.createElement("div"),
+      extensions: [
+        ...baseSchemaExtensions,
+        SpellCheckDecorationExtension.configure({ isEnabled: () => true }),
+      ],
+      content: "<p>one \u2014 two</p>",
+    });
+    editors.push(editor);
+    act(() => {
+      editor.view.dispatch(
+        editor.state.tr.setSelection(
+          TextSelection.create(editor.state.doc, 1, 4),
+        ),
+      );
+    });
+    const surface = renderMenu(editor);
+    mockPosAtCoords(editor, 6);
+    longPress(surface);
+    expect(editor.state.selection.from).toBe(6);
+    expect(editor.state.selection.to).toBe(6);
+    expect(screen.getByText("Cut").closest("[data-disabled]")).toBeTruthy();
+    expect(screen.getByText("Copy").closest("[data-disabled]")).toBeTruthy();
+    expect(screen.getByText("Paste").closest("[data-disabled]")).toBeFalsy();
   });
 
   it("freezes the flagged range at open and makes it the editor selection", async () => {

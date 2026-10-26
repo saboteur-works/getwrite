@@ -79,8 +79,8 @@ The editor body carries `spellcheck="false"`, and the shared Input and Textarea 
 - One English dictionary (dictionary-en); no other language is offered.
 - The entity table can be out of date inside a session (above).
 - Touch long-press: on a flagged word it opens the spelling group. The touch `pointerType` is treated like a right-click, the word is resolved with `posAtCoords` at the `contextmenu` coordinates (caret position as the fallback), and the flagged range becomes the editor selection. Measured on a Pixel 7 Pro with scripted adb presses; presses by a finger are unmeasured.
-- After a long-press on a word that is not flagged, Cut and Copy act on the previous editor selection, because that press changes no selection. Not fixed.
-- On the Pixel 7 Pro the menu can overflow the right screen edge. Not fixed.
+- A long-press on a word that is not flagged selects that word (or puts the caret at the press when it is not on a word), so Cut, Copy and Paste act where you pressed. It shows the normal menu even when a misspelled word was selected before; only a press off the text falls back to a misspelled word at the caret. Right-click keeps the caret fallback.
+- On the Pixel 7 Pro the menu used to overflow the right screen edge; since PR #305 it flips or shifts to stay on screen (measured on the device: 103-283 x 290-826 CSS px in a 411 x 826 viewport).
 - Phone offline behaviour is not yet recorded.
 
 ## Code
