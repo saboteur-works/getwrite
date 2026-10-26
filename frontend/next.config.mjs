@@ -303,6 +303,13 @@ const nextConfig = {
           // same rule as above.
           "../../store/transport/native-global-noise-words-backend":
             "./src/store/transport/native-global-noise-words-backend.web-stub",
+          // Feature 96 Task 8:
+          // lib/api/user-word-list.ts also lives in src/lib/api/, so its
+          // dynamic import's literal specifier is
+          // "../../store/transport/native-user-word-list-backend" — same
+          // rule as above.
+          "../../store/transport/native-user-word-list-backend":
+            "./src/store/transport/native-user-word-list-backend.web-stub",
           // Entity mention navigation Task 8:
           // lib/api/mention-highlight-duration.ts also lives in
           // src/lib/api/, so its dynamic import's literal specifier is
