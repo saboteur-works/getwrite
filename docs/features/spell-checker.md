@@ -4,7 +4,7 @@ Spec: [specs/features/spell-checker.md](../../specs/features/spell-checker.md). 
 
 ## What it does
 
-While you write, the editor underlines words the checker does not know with a wavy blue underline (a token, `--color-gw-spell-underline`, never the reserved red). Right-click (or the keyboard context-menu key with the caret in the word) a flagged word for up to five suggestions, **Ignore**, and **Add to project dictionary**. The underline is view-only: it is a ProseMirror decoration, changes no document content, and writes no sidecar, index or file.
+While you write, the editor underlines words the checker does not know with a wavy blue underline (a token, `--color-gw-spell-underline`, never the reserved red). Right-click (or the keyboard context-menu key with the caret in the word) a flagged word, or long-press it on a touch device, for up to five suggestions, **Ignore**, and **Add to project dictionary**. The underline is view-only: it is a ProseMirror decoration, changes no document content, and writes no sidecar, index or file.
 
 - The word the caret is at the end of is not underlined while you type it; it is underlined once the caret leaves.
 - Checks run after a 300 ms pause in typing and re-check only the changed paragraphs; opening a resource runs a full check.
@@ -60,7 +60,7 @@ Entity names and aliases count as known words. Terms are derived at check time f
 - Each word of a multi-word name or alias is known on its own: "Will Turner" makes "Will" and "Turner" known everywhere in the project.
 - A term also makes its possessive and simple plural known (`Aria's`, `Arias`), by the entity-detection suffix.
 - The `entities` feature flag is not an input. With the flag off, names and aliases still count.
-- The table is read when the project is opened. By the code, no other path refreshes the spell checker's copy (the entity highlighting table is refreshed on resource load; this one is not). A name or alias declared or changed after the project was opened is therefore not known to the checker until the project is opened again. The spec states this for the flag-off case (the table may be stale until the next project load); reading the code, the same holds with the flag on. No test measures it.
+- The table is read when the project is opened and when a project is created from the Start Page (`handleCreate` dispatches `fetchSpellingState`, so checking starts without reopening). By the code, no other path refreshes the spell checker's copy (the entity highlighting table is refreshed on resource load; this one is not). A name or alias declared or changed after the project was opened is therefore not known to the checker until the project is opened again. The entity highlighting table is not fetched on create. The spec states this for the flag-off case (the table may be stale until the next project load); reading the code, the same holds with the flag on. No test measures it.
 
 ## Native checker
 
@@ -78,6 +78,9 @@ The editor body carries `spellcheck="false"`, and the shared Input and Textarea 
 - ALL-CAPS acronyms are checked; an unknown one is underlined until cleared with one Ignore or Add.
 - One English dictionary (dictionary-en); no other language is offered.
 - The entity table can be out of date inside a session (above).
+- Touch long-press: on a flagged word it opens the spelling group. The touch `pointerType` is treated like a right-click, the word is resolved with `posAtCoords` at the `contextmenu` coordinates (caret position as the fallback), and the flagged range becomes the editor selection. Measured on a Pixel 7 Pro with scripted adb presses; presses by a finger are unmeasured.
+- After a long-press on a word that is not flagged, Cut and Copy act on the previous editor selection, because that press changes no selection. Not fixed.
+- On the Pixel 7 Pro the menu can overflow the right screen edge. Not fixed.
 - Phone offline behaviour is not yet recorded.
 
 ## Code
