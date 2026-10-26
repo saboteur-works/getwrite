@@ -23,6 +23,7 @@ import {
   connectSpellClientAvailability,
   selectSpellCheckerState,
 } from "../store/spellingAvailabilitySlice";
+import { selectUserWords } from "../store/userWordListSlice";
 import type { SpellingLists } from "../lib/api/project-spelling";
 import type { EntityAliasTable } from "../lib/models/entity-alias-table";
 import { readSpellcheckEnabled } from "../lib/spellcheck-preference";
@@ -48,7 +49,7 @@ export interface SpellCheckGate {
   isOn: boolean;
   /** Ref-backed getter for the decoration extension; always the latest value. */
   isEnabled: () => boolean;
-  /** Project lists and entity terms, or null while they are not loaded. */
+  /** Project lists, user word list and entity terms, or null while they are not loaded. */
   knownWords: KnownWords | null;
 }
 
@@ -56,6 +57,9 @@ export function useSpellCheckGate(): SpellCheckGate {
   const [isSwitchOn] = useSpellcheckEnabled();
   const checker = useSelector(selectSpellCheckerState);
   const lists: SpellingLists = useSelector(selectSpellingLists);
+  // Empty unless the list was loaded, which happens only where the list is
+  // available (never on a paired device), so no role check is needed here.
+  const userWords: string[] = useSelector(selectUserWords);
   const aliasTable: EntityAliasTable | null = useSelector(
     selectSpellingAliasTable,
   );
@@ -69,10 +73,11 @@ export function useSpellCheckGate(): SpellCheckGate {
         ? createKnownWords({
             projectWords: lists.spellingProjectWords,
             ignoredWords: lists.spellingIgnoredWords,
+            userWords,
             aliasTable,
           })
         : null,
-    [lists, aliasTable],
+    [lists, userWords, aliasTable],
   );
   return { isOn, isEnabled, knownWords };
 }

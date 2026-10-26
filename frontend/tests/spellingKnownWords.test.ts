@@ -97,3 +97,58 @@ describe("createKnownWords", () => {
     expect(ignoredWords).toEqual(["qwertz"]);
   });
 });
+
+describe("user word list (Feature 96, FR-3, FR-4)", () => {
+  it("knows a word only in the user list", () => {
+    const known = createKnownWords({
+      projectWords: [],
+      ignoredWords: [],
+      userWords: ["Zorblax"],
+      aliasTable: EMPTY,
+    });
+    expect(known.has("zorblax")).toBe(true);
+    expect(known.has("other")).toBe(false);
+  });
+
+  it("knows a word only in the project list, or in both", () => {
+    const known = createKnownWords({
+      projectWords: ["blorp", "shared"],
+      ignoredWords: [],
+      userWords: ["shared", "zed"],
+      aliasTable: EMPTY,
+    });
+    expect(known.has("blorp")).toBe(true);
+    expect(known.has("shared")).toBe(true);
+    expect(known.has("zed")).toBe(true);
+  });
+
+  it("ignores case and normalises apostrophes as for project words", () => {
+    const known = createKnownWords({
+      projectWords: [],
+      ignoredWords: [],
+      userWords: ["O’Neil"],
+      aliasTable: EMPTY,
+    });
+    expect(known.has("o'neil")).toBe(true);
+    expect(known.has("O’NEIL")).toBe(true);
+  });
+
+  it("still knows an Ignored word when a user list is present", () => {
+    const known = createKnownWords({
+      projectWords: [],
+      ignoredWords: ["qwertz"],
+      userWords: ["zed"],
+      aliasTable: EMPTY,
+    });
+    expect(known.has("qwertz")).toBe(true);
+  });
+
+  it("is optional: omitting it adds nothing", () => {
+    const known = createKnownWords({
+      projectWords: [],
+      ignoredWords: [],
+      aliasTable: EMPTY,
+    });
+    expect(known.has("zed")).toBe(false);
+  });
+});
