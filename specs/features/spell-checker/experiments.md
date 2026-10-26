@@ -294,6 +294,8 @@ What this shows: for nspell the counts did not change with sentence length. For 
 
 ## Web Worker in android/harness
 
+Removal note: the Android harness spike code (`android/harness/spell-spike-entry.ts`, `android/harness/spell-spike/`, and the `--spell-spike` branch of `android/scripts/build-harness.mjs`) was removed after the engine decision. The commits that added it are `3a18b638` and `478724d6`. The Android run in this document was made with that code and cannot be repeated from the current tree without restoring it from those commits. The harper.js parts of the scripts under `specs/features/spell-checker/scripts/` no longer run (harper.js is uninstalled); the nspell parts still do (see "Part 0 verification").
+
 Task 9. Result: `android/harness` can host a Web Worker once the spike bundle is added to it (edits listed below). No blocker.
 
 READ, not run (files read: `android/scripts/build-harness.mjs`, `android/harness/harness-entry.ts`, `android/capacitor.config.ts`, `android/CLAUDE.md`, `android/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/WebViewLocalServer.java`, `CapConfig.java`):
@@ -335,6 +337,8 @@ READ, from `android/node_modules/@capacitor/cli/dist` (not guessed): `config.js`
 - UNVERIFIED: that the APK installs and launches on the Pixel; that `run-as` works on it (a debug build is expected to be debuggable; not checked with `aapt`); the WebView origin.
 
 ## Owner step: Android
+
+Removal note: the Android spike code this section drives was removed after the engine decision; it exists only in commits `3a18b638` and `478724d6` (details in "Web Worker in android/harness"). The steps below cannot be run from the current tree without restoring it.
 
 Halts here. The run is the owner's (Task 16); nothing below was run on a phone. Items marked unverified were not established from the repository.
 
