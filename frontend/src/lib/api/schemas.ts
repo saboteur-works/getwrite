@@ -950,3 +950,24 @@ export const ProjectTypeWriteRefusalSchema = z.object({
     .optional(),
   fieldErrors: z.record(z.string(), z.string()).optional(),
 });
+
+// ---------------------------------------------------------------------------
+// User word list — Feature 96, Task 4 (FR-19). `app/api/user-word-list/route.ts`
+// returns the full persisted list as a bare array on GET, POST (add) and
+// DELETE (remove). Failures are `{ error, reason? }`; a paired-device refusal
+// (403) is `{ error, limit }` where `limit` is the plain string
+// "userWordList" (outside the `LimitKey` table), so it is typed `z.string()`.
+// A refusal is an object, so it can never parse as the list.
+// ---------------------------------------------------------------------------
+
+export const UserWordListResponseSchema = z.array(z.string());
+
+export const UserWordListRefusalSchema = z.object({
+  error: z.string(),
+  limit: z.string(),
+});
+
+export const UserWordListErrorResponseSchema = z.object({
+  error: z.string(),
+  reason: z.string().optional(),
+});
