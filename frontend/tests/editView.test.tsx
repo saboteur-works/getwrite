@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { RevisionEntry } from "../src/store/revisionsSlice";
 import {
   setResources,
@@ -42,6 +42,7 @@ vi.mock("../components/TipTapEditor", () => {
   };
 });
 
+import { engineFailed } from "../src/store/spellingAvailabilitySlice";
 import EditView from "../components/WorkArea/EditView";
 import { makeStore } from "../src/store/store";
 import { Provider } from "react-redux";
@@ -246,5 +247,20 @@ describe("EditView", () => {
     expect(footer).not.toBeNull();
     expect(shell.lastElementChild).toBe(footer);
     expect(footer?.className).toContain("shrink-0");
+  });
+
+  it("shows the spell-check cue in the footer when the checker is paused", () => {
+    const store = makeStore();
+    store.dispatch(engineFailed("worker crashed"));
+    render(
+      <Provider store={store}>
+        <EditView initialContent="Hello world" />
+      </Provider>,
+    );
+    const footer = document.getElementById("editview-footer") as HTMLElement;
+    expect(footer).toHaveTextContent("Spell check paused");
+    expect(
+      within(footer).getByRole("button", { name: "Spell check settings" }),
+    ).toBeInTheDocument();
   });
 });

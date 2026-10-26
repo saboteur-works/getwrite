@@ -23,6 +23,7 @@ import { useRevisionContent } from "./useRevisionContent";
 import { useCanonicalAutosave } from "./useCanonicalAutosave";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
+import SpellCheckEditorCue from "./SpellCheckEditorCue";
 import WritingLogFooterDisplay from "./WritingLogFooterDisplay";
 import { setActiveEditorResourceId } from "../Editor/activeEditorRegistry";
 
@@ -441,7 +442,7 @@ export default function EditView({
 
       <footer
         id="editview-footer"
-        className="shrink-0 border-t border-gw-border px-4 py-2 bg-gw-chrome text-sm flex items-center justify-between"
+        className="shrink-0 border-t border-gw-border px-4 py-2 bg-gw-chrome text-sm flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
       >
         <div className="flex items-center gap-3 text-gw-secondary text-gw-small">
           <span>
@@ -455,6 +456,7 @@ export default function EditView({
             refreshToken={lastSavedAt?.getTime() ?? null}
           />
         </div>
+        <SpellCheckEditorCue />
         {isViewingNonCanonical && hasEditsAfterRevisionSwitch && (
           <p className="text-gw-small text-red-600 font-medium">
             Unsaved edits — save as a new revision to keep your changes.

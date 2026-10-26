@@ -11,6 +11,7 @@
  * create/export/compile flows, resizable/collapsible split panes, and debounced persistence
  * of editor content.
  */
+import { useAppSettingsOpenRequests } from "../../src/hooks/useAppSettingsOpenRequests";
 import React, { useState, useEffect } from "react";
 import type {
   AnyResource,
@@ -265,6 +266,7 @@ export default function AppShell({
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] =
     useState<boolean>(false);
   const [isAppSettingsOpen, setIsAppSettingsOpen] = useState<boolean>(false);
+  useAppSettingsOpenRequests(() => setIsAppSettingsOpen(true));
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] =
     useState<boolean>(false);
   const [isProjectTypesModalOpen, setIsProjectTypesModalOpen] =

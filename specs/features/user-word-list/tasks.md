@@ -20,7 +20,7 @@ Shape of the work:
 - Measurement vocabulary for any recorded result: MEASURED (run, with command and values), READ (not run) or UNMEASURED (with reason). State no cause for a value that no experiment has discriminated.
 - Halt rule: if a task cannot meet its done condition, leave it unticked, record why, and report; do not work around it. Open Questions OQ-1..OQ-11 are resolved and are not reopened.
 
-FR coverage: FR-1: 2, 6, 7, 8. FR-2: 1, 2, 6, 7. FR-3: 10. FR-4: 9, 10. FR-5: 12, 16. FR-6: 15. FR-7: 11, 15. FR-8: 16. FR-9: 19, 20. FR-10: 22. FR-11: 11, 15, 16. FR-12: 3, 5. FR-13: 1, 2, 6, 7. FR-14: 15. FR-15: 12. FR-16: 13, 17. FR-17: 9, 15. FR-18: 14. FR-19: 2, 4, 5, 6, 7, 8. FR-20: 22. FR-21: 16. FR-22: 7. FR-23: 12, 14, 16. E2E: 21.
+FR coverage: FR-1: 2, 6, 7, 8. FR-2: 1, 2, 6, 7. FR-3: 10. FR-4: 9, 10. FR-5: 12, 16. FR-6: 15. FR-7: 11, 15. FR-8: 16. FR-9: 19, 20. FR-10: 22. FR-11: 11, 15, 16. FR-12: 3, 5. FR-13: 1, 2, 6, 7. FR-14: 15. FR-15: 12. FR-16: 13, 17. FR-17: 9, 15. FR-18: 14. FR-19: 2, 4, 5, 6, 7, 8. FR-20: 22. FR-21: 16. FR-22: 7. FR-23: 12, 14, 16. FR-24: 25. E2E: 21.
 
 ### Task 1: Pure user-word-list core (validate, bounds, idempotent add and remove)
 **What:** Add a pure module that validates one word per the project-list rule, enforces 100 UTF-16 units per word and 5,000 words, and provides idempotent `addWord` / `removeWord` over a string array.
@@ -262,8 +262,18 @@ FR coverage: FR-1: 2, 6, 7, 8. FR-2: 1, 2, 6, 7. FR-3: 10. FR-4: 9, 10. FR-5: 12
 
 **Done:** [ ]
 
+### Task 25: Editor cue for a paused or partly applied spell checker (added after Task 23)
+**What:** Show a compact status cue in the EditView footer when the spell checker is paused for a failure or runs without the writer's own words, with an action that opens App Settings.
+**Files:** Create `frontend/src/store/spellCheckEditorCue.ts`, `frontend/components/WorkArea/SpellCheckEditorCue.tsx`, `frontend/src/lib/app-settings-open.ts`, `frontend/src/hooks/useAppSettingsOpenRequests.ts`; modify `frontend/components/WorkArea/EditView.tsx` (footer) and `frontend/components/Layout/AppShell.tsx` (listener); tests `frontend/tests/spellCheckEditorCue.test.ts`, `frontend/tests/spellCheckEditorCue.component.test.tsx`, `frontend/tests/editView.test.tsx`, `frontend/tests/a11y/spellCheckEditorCue.a11y.test.tsx`; story `frontend/stories/WorkArea/SpellCheckEditorCue.stories.tsx`; e2e `frontend/e2e/spell-check-editor-cue.e2e.spec.ts`; `docs/features/spell-checker.md`.
+**Done when:** Tests shown failing first (modules missing) now pass: the selector gives paused with the slice's message for each unavailable kind, notApplied after Continue, and null for active, loading and a paired device; the component shows nothing with the switch off, active or loading, shows the reason as status text and a "Spell check settings" button when paused, and the button raises the open-App-Settings request; axe finds no violations; one story per state; the e2e spec passes under `pnpm test:e2e`; `pnpm typecheck`, `pnpm lint` (0 errors) and `pnpm test:ci` pass.
+**Depends on:** 12, 13, 17
+**Estimate:** 3
+**Notes:** FR-24, Task 23 defect 4. Does not change the gate, the reasons or the toasts. Added after Task 23 and listed after Task 24 so numbering stays stable; Task 24's suites must be re-run after it.
+
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 24
-- Total estimated effort: 62 story points
+- Total tasks: 25
+- Total estimated effort: 65 story points
 - Critical path: 1 → 2 → 5 → 8 → 9 → 12 → 13 → 17 → 19 → 21 → 23 → 24
 - Risks: Task 3 (wording must be checked against the encryption route; touching the limits table could change an owner switch); Task 7 (Electron IPC and preload type sharing with the frontend, desktop run is gated on the owner approving port 7340); Task 6 (Android device run only in Task 23, `adb` outside the sandbox); Task 12 and 13 (the checker gate is shared with Feature 95 and must keep its existing reasons unchanged); Task 14 (focus re-read may race an in-flight add; handled in `userWordListSlice.ts`: a read that overlapped a mutation does not replace the mutation's list, and mutation results apply in start order); Task 17 (status line versus banner is a design call); Task 23 (depends on owner approval for port 7340 and the Pixel).
