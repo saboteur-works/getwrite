@@ -572,7 +572,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Done when:** The doc describes the checker, the two lists, the entity rule (including the `entities`-flag-off staleness), the switch and its per-device scope (per origin; a paired device or second browser has its own setting; a cleared profile reverts to on), and the known gaps (no user list; lists not in export or compile; native-checker behaviour per platform as measured in Task 17, including any Android keyboard-level underline or suggestion; ALL-CAPS acronyms checked and cleared with one Ignore or Add); `frontend/CLAUDE.md` Code Map and root glossary list the new modules and terms; `release-note.md` states as known gaps that words cannot yet be kept across projects (Feature 96) and any Android keyboard gap, for use as the commit and PR text.
 **Depends on:** 44, 46, 49, 52, 54
 **Estimate:** 3
-**Notes:** Satisfies FR-45, AC-19. Status of the release and merge belongs in `specs/product/getwrite.features.md`, not these files.
+**Notes:** Satisfies FR-45, AC-19. Status of the release and merge belongs in `specs/product/getwrite.features.md`, not these files. Amendment 2026-10-26: Feature 96 (branch `feat/spell-checker-user-list`) adds the user word list; the "no user list" known gap above is the state at Feature 95's merge and is removed from the doc and release note on that branch. See `specs/features/user-word-list.md`.
 
 **Done:** [x]
 
