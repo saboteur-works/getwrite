@@ -18,6 +18,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { ImportOutcome } from "./scrivener-import/handle-import-request";
 import type { ImportOutcome as DocxImportOutcomeType } from "./docx-import/handle-import-request";
 import type { KeepRunningSetting } from "./keep-running";
+import type { UserWordListResult as UserWordListResultType } from "./user-word-list-ipc";
 
 /** What changing the workspace location can result in. */
 export interface WorkspaceChangeResult {
@@ -56,6 +57,9 @@ export interface GlobalNoiseWordsSetResult {
   ok: boolean;
   message?: string;
 }
+
+/** The persisted user word list, or why the call failed (Feature 96). */
+export type UserWordListResult = UserWordListResultType;
 
 /** The five-kind discriminated outcome of a DOCX import (FR-17). */
 export type DocxImportOutcome = DocxImportOutcomeType;
@@ -170,6 +174,12 @@ export interface GetWriteDesktopBridge {
   getGlobalNoiseWords(): Promise<string[]>;
   /** Persists the cross-project global noise-word list (FR-5b). */
   setGlobalNoiseWords(words: string[]): Promise<GlobalNoiseWordsSetResult>;
+  /** Returns the user word list from `userData` (Feature 96). */
+  getUserWordList(): Promise<UserWordListResult>;
+  /** Adds one word to the user word list; resolves to the persisted list. */
+  addUserWord(word: string): Promise<UserWordListResult>;
+  /** Removes one word from the user word list; resolves to the persisted list. */
+  removeUserWord(word: string): Promise<UserWordListResult>;
   /** Returns the sharing status (setting, effect, addresses, store state). */
   getSharingStatus(): Promise<SharingStatus>;
   /** Records the sharing setting; it takes effect on restart. */
@@ -221,6 +231,11 @@ const bridge: GetWriteDesktopBridge = {
     ipcRenderer.invoke("getwrite:global-noise-words-get"),
   setGlobalNoiseWords: (words: string[]) =>
     ipcRenderer.invoke("getwrite:global-noise-words-set", words),
+  getUserWordList: () => ipcRenderer.invoke("getwrite:user-word-list-get"),
+  addUserWord: (word: string) =>
+    ipcRenderer.invoke("getwrite:user-word-list-add", word),
+  removeUserWord: (word: string) =>
+    ipcRenderer.invoke("getwrite:user-word-list-remove", word),
   getSharingStatus: () => ipcRenderer.invoke("getwrite:sharing-get-status"),
   setSharingEnabled: (enabled: boolean) =>
     ipcRenderer.invoke("getwrite:sharing-set-enabled", enabled),

@@ -56,6 +56,10 @@ import {
   type GlobalNoiseWordsSetResult,
 } from "./noise-words-ipc";
 import {
+  createUserWordListHandlers,
+  type UserWordListResult,
+} from "./user-word-list-ipc";
+import {
   createKeepRunningHandlers,
   shouldQuitWhenAllWindowsClosed,
   type KeepRunningSetting,
@@ -469,6 +473,33 @@ function registerGlobalNoiseWordsHandlers(): void {
 }
 
 /**
+ * Wires the three user word-list channels (Feature 96, FR-22). The list lives
+ * in `<userData>/user-word-list.json`; every handler checks the sender first
+ * and the renderer supplies only a word, never a path.
+ */
+function registerUserWordListHandlers(): void {
+  const userWordList = createUserWordListHandlers({
+    userDataDir: app.getPath("userData"),
+    log,
+    isTrustedSender: (url) => isTrustedSender(url, localOrigin(PORT)),
+  });
+
+  ipcMain.handle(
+    "getwrite:user-word-list-get",
+    (event): UserWordListResult => userWordList.get(event),
+  );
+  ipcMain.handle(
+    "getwrite:user-word-list-add",
+    (event, word: unknown): UserWordListResult => userWordList.add(event, word),
+  );
+  ipcMain.handle(
+    "getwrite:user-word-list-remove",
+    (event, word: unknown): UserWordListResult =>
+      userWordList.remove(event, word),
+  );
+}
+
+/**
  * Registers the App Settings switch that keeps GetWrite running after its
  * window closes (macOS only; see `keep-running.ts`). The setting is read
  * again at each close, so a change applies without a restart.
@@ -863,6 +894,7 @@ if (!app.requestSingleInstanceLock()) {
     log(`resourcesPath: ${process.resourcesPath}`);
     registerWorkspaceHandlers();
     registerGlobalNoiseWordsHandlers();
+    registerUserWordListHandlers();
     registerKeepRunningHandlers();
     registerSharingHandlers();
     registerScrivenerImportHandlers();
