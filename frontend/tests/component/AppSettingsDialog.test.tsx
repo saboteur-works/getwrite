@@ -243,7 +243,10 @@ describe("AppSettingsDialog", () => {
         { selector: "[role=status] p" },
       );
       const region = line.closest("[role=status]") as HTMLElement;
-      expect(region).toHaveTextContent("disk gone");
+      expect(region).toHaveTextContent(
+        "Your dictionary could not be loaded. Something went wrong while reading it.",
+      );
+      expect(region).not.toHaveTextContent("disk gone");
       expect(
         within(region).getByRole("button", { name: "Retry" }),
       ).toBeInTheDocument();
@@ -251,6 +254,36 @@ describe("AppSettingsDialog", () => {
         within(region).getByRole("button", {
           name: "Continue without my dictionary",
         }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a failed read once: Retry in Spell check, a short line in My dictionary", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockRejectedValue(
+        new userWordTransport.UserWordListTransportError(
+          "corrupt",
+          "The user word list is not valid JSON. Refusing to treat a corrupt file as an empty list.",
+        ),
+      );
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      await screen.findByText(/Your dictionary could not be loaded/i, {
+        selector: "[role=status] p",
+      });
+      expect(screen.getAllByText(/could not be loaded/i)).toHaveLength(1);
+      expect(
+        screen.getByText(/Its file is damaged and couldn't be read\./),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/corrupt|JSON|Refusing/i)).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
+      expect(
+        screen.getByText(
+          "Your words can't be shown until your dictionary loads.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 3, name: /my dictionary/i }),
       ).toBeInTheDocument();
     });
 

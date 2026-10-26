@@ -42,6 +42,7 @@ import {
 } from "@reduxjs/toolkit";
 import type { SpellClient } from "../lib/spelling/spell-client";
 import { toastService } from "../lib/toast-service";
+import { userWordListFailureText } from "../lib/user-word-list-failure";
 import type { SpellingLoadStatus } from "./spellingSlice";
 import { loadUserList, type UserWordListStatus } from "./userWordListSlice";
 
@@ -189,7 +190,7 @@ interface AvailabilityRoot {
     "userListApplies" | "userListOverride"
   > & { userListApplies?: boolean; userListOverride?: boolean };
   /** Absent only where the list cannot apply (read only when it does). */
-  userWordList?: { status: UserWordListStatus; errorMessage: string };
+  userWordList?: { status: UserWordListStatus; reason: string | null };
 }
 
 const select = {
@@ -204,12 +205,12 @@ const select = {
     s.userWordList
       ? s.userWordList.status
       : null,
-  userError: (s: AvailabilityRoot): string =>
+  userReason: (s: AvailabilityRoot): string | null =>
     s.spellingAvailability.userListApplies &&
     !s.spellingAvailability.userListOverride &&
     s.userWordList
-      ? s.userWordList.errorMessage
-      : "",
+      ? s.userWordList.reason
+      : null,
   engine: (s: AvailabilityRoot) => s.spellingAvailability.engineFailure,
   browser: (s: AvailabilityRoot) => s.spellingAvailability.unsupportedBrowser,
 };
@@ -255,13 +256,13 @@ function hasLoading(reasons: PausedReason[]): boolean {
  */
 function userListReason(
   status: UserWordListStatus | null,
-  error: string,
+  reason: string | null,
 ): PausedReason | null {
   if (status === null || status === "loaded") return null;
   if (status === "failed") {
     return {
       kind: "user-list-failed",
-      message: `Your dictionary could not be loaded${error ? ` (${error})` : ""}.`,
+      message: userWordListFailureText(reason),
     };
   }
   return { kind: "loading", message: "Your dictionary is loading." };
@@ -279,7 +280,7 @@ export const selectSpellCheckerState = createSelector(
     select.aliasStatus,
     select.aliasError,
     select.userStatus,
-    select.userError,
+    select.userReason,
     select.engine,
     select.browser,
   ],
@@ -289,7 +290,7 @@ export const selectSpellCheckerState = createSelector(
     aliasStatus,
     aliasError,
     userStatus,
-    userError,
+    userReason,
     engine,
     browser,
   ): SpellCheckerState => {
@@ -313,7 +314,7 @@ export const selectSpellCheckerState = createSelector(
     } else {
       reasons.push({ kind: "loading", message: "Spelling data is loading." });
     }
-    const user = userListReason(userStatus, userError);
+    const user = userListReason(userStatus, userReason);
     // Loading is reported once across every input.
     if (user && !(user.kind === "loading" && hasLoading(reasons))) {
       reasons.push(user);

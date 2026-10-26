@@ -261,7 +261,7 @@ describe("user list as a third input (Feature 96, FR-15, FR-23)", () => {
     expect(kinds(store)).toEqual(["user-list-failed"]);
     if (state.status === "paused")
       expect(state.reasons[0].message).toBe(
-        "Your dictionary could not be loaded (disk gone).",
+        "Your dictionary could not be loaded. Something went wrong while reading it.",
       );
   });
 
@@ -303,7 +303,7 @@ describe("user list as a third input (Feature 96, FR-15, FR-23)", () => {
     await loadUser(store, "fail");
     expect(toastService.error).toHaveBeenCalledTimes(1);
     expect(toastService.error).toHaveBeenCalledWith(
-      "Your dictionary could not be loaded (disk gone).",
+      "Your dictionary could not be loaded. Something went wrong while reading it.",
       undefined,
       { id: "spell-checker-user-list-failed" },
     );

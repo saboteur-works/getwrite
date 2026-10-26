@@ -175,7 +175,7 @@ export const UserListReadFailed: Story = {
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("status")).toHaveTextContent(
-      "Your dictionary could not be loaded (unreadable).",
+      "Your dictionary could not be loaded. Its file couldn't be read.",
     );
     await expect(
       canvas.getByRole("button", { name: "Retry" }),

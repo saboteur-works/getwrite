@@ -15,7 +15,9 @@ import {
 } from "../../src/store/userWordListSlice";
 import type { UserWordListFailure } from "../../src/store/userWordListSlice";
 import { useUserListAvailable } from "../../src/hooks/useUserListAvailable";
+import { useUserListFailureShownInSpellCheck } from "../../src/hooks/useUserListFailureShownInSpellCheck";
 import { useEnsureUserListLoaded } from "../../src/hooks/useUserListLoading";
+import { userWordListFailureText } from "../../src/lib/user-word-list-failure";
 
 /** Words sorted ignoring case, ties broken by the raw spelling. */
 function sortIgnoringCase(words: readonly string[]): string[] {
@@ -44,6 +46,18 @@ function failureText(error: unknown): string {
     : "The request failed.";
 }
 
+/** Props of {@link MyDictionarySettingsTab}. */
+export interface MyDictionarySettingsTabProps {
+  /**
+   * True when the Spell check section of App Settings is mounted beside this
+   * one. While that section is showing the failed-read line with Retry, this
+   * section shows one short line and no second Retry. Otherwise (the default,
+   * the switch off, or after "Continue without my dictionary") it keeps its
+   * own alert and Retry, so a failed read always has a Retry on screen.
+   */
+  withSpellCheckSection?: boolean;
+}
+
 /**
  * App Settings "My dictionary" section (Feature 96, FR-5, FR-8, FR-11,
  * FR-21, FR-23): the writer's own word list, shared by every project.
@@ -52,19 +66,19 @@ function failureText(error: unknown): string {
  * `SharingLimitsProvider`. Opening it loads the list once (also with the
  * spelling switch off). On a paired device nothing is loaded and no add path
  * is shown; while the role is unknown nothing is offered either. A failed read
- * shows the reason and Retry, never the empty-state sentence. Add and remove
+ * says so in plain words with Retry (or, with `withSpellCheckSection`, a short
+ * line pointing at the one shown elsewhere), never the empty-state sentence. Add and remove
  * change nothing until the server answers; removal is only offered here.
  */
-export default function MyDictionarySettingsTab(): JSX.Element {
+export default function MyDictionarySettingsTab({
+  withSpellCheckSection = false,
+}: MyDictionarySettingsTabProps): JSX.Element {
   const availability = useUserListAvailable();
   useEnsureUserListLoaded();
   const dispatch = useAppDispatch();
+  const isShownInSpellCheck = useUserListFailureShownInSpellCheck();
   const status = useAppSelector(selectUserWordListStatus);
   const reason = useAppSelector(selectUserWordListReason);
-  const errorMessage = useAppSelector(
-    (state: { userWordList: { errorMessage: string } }) =>
-      state.userWordList.errorMessage,
-  );
   const words = sortIgnoringCase(useAppSelector(selectUserWords));
   const [newWord, setNewWord] = useState<string>("");
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -136,12 +150,17 @@ export default function MyDictionarySettingsTab(): JSX.Element {
       );
     }
     if (status === "failed") {
+      if (withSpellCheckSection && isShownInSpellCheck) {
+        return (
+          <p className="text-sm text-gw-secondary">
+            {"Your words can't be shown until your dictionary loads."}
+          </p>
+        );
+      }
       return (
         <div className="flex flex-col gap-3">
           <p role="alert" className="text-sm font-medium text-gw-primary">
-            Your dictionary could not be loaded
-            {reason ? ` (${reason})` : ""}.{" "}
-            {errorMessage && errorMessage !== reason ? errorMessage : ""}
+            {userWordListFailureText(reason)}
           </p>
           <div>
             <Button
@@ -219,18 +238,18 @@ export default function MyDictionarySettingsTab(): JSX.Element {
   return (
     <section
       aria-labelledby="my-dictionary-heading"
-      className="flex w-full flex-col gap-6"
+      className="mt-6 flex w-full flex-col gap-3 border-t border-gw-border pt-4"
     >
-      <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
-        <h2
+      <header className="flex flex-col gap-1">
+        <h3
           id="my-dictionary-heading"
           tabIndex={-1}
           ref={headingRef}
-          className="text-lg font-semibold text-gw-primary"
+          className="text-sm font-semibold text-gw-primary"
         >
           {title}
-        </h2>
-        <p className="max-w-2xl text-sm text-gw-secondary">
+        </h3>
+        <p className="text-sm text-gw-secondary">
           Words you added for every project. A word here is not underlined as a
           misspelling. This list is kept on this device or account, not in a
           project.

@@ -9,6 +9,10 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import MyDictionarySettingsTab from "../../components/Layout/MyDictionarySettingsTab";
+import {
+  continueWithoutUserList,
+  setUserListApplies,
+} from "../../src/store/spellingAvailabilitySlice";
 import { makeStore } from "../../src/store/store";
 import { UserWordListTransportError } from "../../src/lib/api/user-word-list";
 
@@ -172,20 +176,83 @@ describe("MyDictionarySettingsTab", () => {
     expect((input as HTMLInputElement).value).toBe("word");
   });
 
-  it("shows a failed read with its reason and Retry, never the empty state", async () => {
+  it("renders its title as a level-3 heading like the sibling sections", async () => {
+    mocks.getUserWords.mockResolvedValue([]);
+    renderSection();
+    expect(
+      await screen.findByRole("heading", { level: 3, name: /My dictionary/ }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+  });
+
+  it("shows a failed read in plain words with Retry, never the empty state", async () => {
     mocks.getUserWords.mockRejectedValueOnce(
-      new UserWordListTransportError("corrupt", "File is corrupt."),
+      new UserWordListTransportError(
+        "corrupt",
+        "The user word list is not valid JSON. Refusing to treat a corrupt file as an empty list.",
+      ),
     );
     mocks.getUserWords.mockResolvedValueOnce(["back"]);
     const user = userEvent.setup();
     renderSection();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("File is corrupt.");
+    expect(alert.textContent).toContain(
+      "Its file is damaged and couldn't be read.",
+    );
+    expect(alert.textContent).not.toMatch(/corrupt|JSON|Refusing/);
     expect(screen.queryByText(/No words in your dictionary/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(
       await screen.findByRole("button", { name: /Remove back / }),
     ).toBeTruthy();
+  });
+
+  it("falls back to a generic plain sentence for an unknown reason", async () => {
+    mocks.getUserWords.mockRejectedValueOnce(new Error("disk gone"));
+    renderSection();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      "Something went wrong while reading it.",
+    );
+    expect(alert.textContent).not.toContain("disk gone");
+  });
+
+  it("keeps its own Retry when the Spell check line is not showing the failure", async () => {
+    mocks.getUserWords.mockRejectedValue(new Error("disk gone"));
+    const store = makeStore();
+    store.dispatch(setUserListApplies(true));
+    render(
+      <Provider store={store}>
+        <MyDictionarySettingsTab withSpellCheckSection />
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(store.getState().userWordList.status).toBe("failed"),
+    );
+    store.dispatch(continueWithoutUserList());
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  it("with the failure shown elsewhere, says so briefly and offers no second Retry", async () => {
+    mocks.getUserWords.mockRejectedValue(
+      new UserWordListTransportError("corrupt", "File is corrupt."),
+    );
+    const store = makeStore();
+    store.dispatch(setUserListApplies(true));
+    render(
+      <Provider store={store}>
+        <MyDictionarySettingsTab withSpellCheckSection />
+      </Provider>,
+    );
+    expect(
+      await screen.findByText(
+        "Your words can't be shown until your dictionary loads.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.queryByText(/No words in your dictionary/)).toBeNull();
   });
 
   it("works when the spelling switch is off", async () => {

@@ -1,5 +1,8 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
+import { useAppDispatch } from "../../src/store/hooks";
+import { setUserListApplies } from "../../src/store/spellingAvailabilitySlice";
 import AppSettingsDialog from "../../components/AppSettings/AppSettingsDialog";
 import {
   initialUserWordListState,
@@ -28,6 +31,22 @@ function mockGlobalNoiseWordsFetch(initial: string[]) {
   return () => {
     globalThis.fetch = originalFetch;
   };
+}
+
+/**
+ * Marks the user list as applying, as the app root does when the list is
+ * available and the spelling switch is on, so the Spell check section shows
+ * the failed-read line.
+ */
+function withUserListApplying(Story: React.ComponentType): JSX.Element {
+  function Applying(): JSX.Element {
+    const dispatch = useAppDispatch();
+    React.useEffect(() => {
+      dispatch(setUserListApplies(true));
+    }, [dispatch]);
+    return <Story />;
+  }
+  return <Applying />;
 }
 
 const meta: Meta<typeof AppSettingsDialog> = {
@@ -68,6 +87,42 @@ export const Empty: Story = {
     await expect(
       canvas.queryByText(/Account Settings/i),
     ).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * The writer's own word list could not be read: the failure shows once, in the
+ * Spell check section with Retry and "Continue without my dictionary"; My
+ * dictionary only says its words cannot be shown yet.
+ */
+export const UserListReadFailed: Story = {
+  decorators: [withUserListApplying],
+  beforeEach: () => mockGlobalNoiseWordsFetch([]),
+  args: { isOpen: true, onClose: () => undefined },
+  parameters: {
+    userWordList: {
+      ...initialUserWordListState,
+      status: "failed",
+      words: [],
+      reason: "corrupt",
+      errorMessage:
+        "The user word list is not valid JSON. Refusing to treat a corrupt file as an empty list.",
+    } satisfies UserWordListState,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("status")).toHaveTextContent(
+      "Your dictionary could not be loaded. Its file is damaged and couldn't be read.",
+    );
+    await expect(canvas.getAllByRole("button", { name: "Retry" })).toHaveLength(
+      1,
+    );
+    await expect(
+      canvas.getByText(
+        "Your words can't be shown until your dictionary loads.",
+      ),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole("alert")).toBeNull();
   },
 };
 

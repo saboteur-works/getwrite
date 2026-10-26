@@ -95,7 +95,7 @@ describe("MyDictionarySettingsTab a11y", () => {
     const container = renderSection();
     await screen.findByText(/No words in your dictionary/);
     expect(
-      screen.getByRole("heading", { level: 2, name: "My dictionary (0)" }),
+      screen.getByRole("heading", { level: 3, name: "My dictionary (0)" }),
     ).toBeTruthy();
     await runAxe(container);
   });
@@ -118,7 +118,9 @@ describe("MyDictionarySettingsTab a11y", () => {
     );
     const container = renderSection();
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("File is corrupt.");
+    expect(alert).toHaveTextContent(
+      "Your dictionary could not be loaded. Its file is damaged and couldn't be read.",
+    );
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
     await runAxe(container);
   });
@@ -180,7 +182,7 @@ describe("MyDictionarySettingsTab focus after removal", () => {
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { level: 2, name: /My dictionary/ }),
+        screen.getByRole("heading", { level: 3, name: /My dictionary/ }),
       ).toHaveFocus(),
     );
   });
@@ -221,6 +223,29 @@ describe("SpellcheckSetting user-list states a11y", () => {
       }),
     );
   }
+
+  it("has no violations when the failure is shown elsewhere, with no second Retry", async () => {
+    mocks.getUserWords.mockRejectedValue(
+      new UserWordListTransportError("corrupt", "File is corrupt."),
+    );
+    const store = makeStore();
+    store.dispatch(setUserListApplies(true));
+    const container = render(
+      <Provider store={store}>
+        <StaticSharingLimitsProvider value={{ state: { state: "exempt" } }}>
+          <main>
+            <SpellcheckSetting />
+            <MyDictionarySettingsTab withSpellCheckSection />
+          </main>
+        </StaticSharingLimitsProvider>
+      </Provider>,
+    ).container;
+    await screen.findByText(
+      "Your words can't be shown until your dictionary loads.",
+    );
+    expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
+    await runAxe(container);
+  });
 
   function renderRow(configure: (store: SpellStore) => void): HTMLElement {
     const store = makeSpellStore();
