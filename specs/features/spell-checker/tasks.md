@@ -433,7 +433,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-29, FR-30, AC-14. Content of the suggestion call depends on the engine only through the Task 30 seam.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 42: Replace with a suggestion
 **What:** Apply "Replace with" as one ProseMirror transaction that preserves marks and the word's capitalisation.

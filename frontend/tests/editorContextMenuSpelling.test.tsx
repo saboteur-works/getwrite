@@ -196,3 +196,188 @@ describe("EditorContextMenu flagged word (Task 40)", () => {
     expect(frozen).toHaveBeenLastCalledWith(WROLD);
   });
 });
+
+/**
+ * Task 41 (FR-29, FR-30, AC-14): the spelling group at the top of the menu.
+ */
+type SuggestResult =
+  | { status: "ok"; suggestions: string[] }
+  | { status: "unavailable"; reason: string };
+
+function openSpellingMenu(
+  editor: Editor,
+  requestSuggestions: (word: string) => Promise<SuggestResult>,
+  pos = 9,
+) {
+  render(
+    <EditorContextMenu editor={editor} requestSuggestions={requestSuggestions}>
+      <EditorContent editor={editor} data-testid="surface" />
+    </EditorContextMenu>,
+  );
+  const surface = screen.getByTestId("surface");
+  mockPosAtCoords(editor, pos);
+  rightPointerDown(surface);
+  fireEvent.contextMenu(surface, { clientX: 10, clientY: 10 });
+}
+
+function menuLabels(): string[] {
+  return screen
+    .getAllByRole("menuitem")
+    .map((i: HTMLElement) => i.textContent?.trim() ?? "");
+}
+
+const EXISTING_ITEMS = [
+  "Cut",
+  "Copy",
+  "Paste",
+  "Bold",
+  "Italic",
+  "Underline",
+  "Strikethrough",
+  "Inline Code",
+  "Select All",
+];
+
+describe("EditorContextMenu spelling group (Task 41)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    while (editors.length > 0) editors.pop()?.destroy();
+  });
+
+  it("requests suggestions for the one word under the click only", async () => {
+    const editor = mountEditor();
+    const request = vi.fn(async () => ({
+      status: "ok" as const,
+      suggestions: ["world"],
+    }));
+    openSpellingMenu(editor, request, 9); // inside "wrold", not "teh"
+    expect(await screen.findByText("world")).toBeTruthy();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith("wrold");
+  });
+
+  it("does not request suggestions when the click is not on a flagged word", () => {
+    const editor = mountEditor();
+    setCaret(editor, 3);
+    const request = vi.fn(async () => ({
+      status: "ok" as const,
+      suggestions: ["x"],
+    }));
+    openSpellingMenu(editor, request, 3);
+    expect(request).not.toHaveBeenCalled();
+    expect(menuLabels()).toEqual(EXISTING_ITEMS);
+  });
+
+  it("shows a disabled Loading suggestions item while pending", async () => {
+    const editor = mountEditor();
+    openSpellingMenu(editor, () => new Promise<SuggestResult>(() => {}));
+    const item = (await screen.findByText("Loading suggestions")).closest(
+      "[role=menuitem]",
+    );
+    expect(item?.hasAttribute("data-disabled")).toBe(true);
+  });
+
+  it("shows a disabled No suggestions item when the list is empty", async () => {
+    const editor = mountEditor();
+    openSpellingMenu(editor, async () => ({ status: "ok", suggestions: [] }));
+    const item = (await screen.findByText("No suggestions")).closest(
+      "[role=menuitem]",
+    );
+    expect(item?.hasAttribute("data-disabled")).toBe(true);
+    expect(screen.queryByText("Suggestions unavailable")).toBeNull();
+  });
+
+  it("shows a distinct disabled Suggestions unavailable item on failure", async () => {
+    const editor = mountEditor();
+    openSpellingMenu(editor, async () => ({
+      status: "unavailable",
+      reason: "worker crashed",
+    }));
+    const item = (await screen.findByText("Suggestions unavailable")).closest(
+      "[role=menuitem]",
+    );
+    expect(item?.hasAttribute("data-disabled")).toBe(true);
+    expect(screen.queryByText("No suggestions")).toBeNull();
+  });
+
+  it("shows Suggestions unavailable when no suggestion source is provided", async () => {
+    const editor = mountEditor();
+    render(
+      <EditorContextMenu editor={editor}>
+        <EditorContent editor={editor} data-testid="surface" />
+      </EditorContextMenu>,
+    );
+    const surface = screen.getByTestId("surface");
+    mockPosAtCoords(editor, 9);
+    rightPointerDown(surface);
+    fireEvent.contextMenu(surface);
+    expect(await screen.findByText("Suggestions unavailable")).toBeTruthy();
+  });
+
+  it("shows at most 5 suggestions", async () => {
+    const editor = mountEditor();
+    openSpellingMenu(editor, async () => ({
+      status: "ok",
+      suggestions: ["a1", "b2", "c3", "d4", "e5", "f6", "g7"],
+    }));
+    await screen.findByText("a1");
+    const labels = menuLabels();
+    expect(labels.slice(0, 5)).toEqual(["a1", "b2", "c3", "d4", "e5"]);
+    expect(labels).not.toContain("f6");
+    expect(labels).not.toContain("g7");
+  });
+
+  it("puts the group first, then the existing items unchanged", async () => {
+    const editor = mountEditor();
+    openSpellingMenu(editor, async () => ({
+      status: "ok",
+      suggestions: ["world", "wild"],
+    }));
+    await screen.findByText("world");
+    expect(screen.getByText("Replace with")).toBeTruthy();
+    expect(menuLabels()).toEqual([
+      "world",
+      "wild",
+      "Ignore",
+      "Add to project dictionary",
+      ...EXISTING_ITEMS,
+    ]);
+    const content = screen.getByRole("menu");
+    const firstChildText = content.firstElementChild?.textContent;
+    expect(firstChildText).toBe("Replace with");
+    const separators = content.querySelectorAll("[role=separator]");
+    expect(separators.length).toBe(3); // spelling | clipboard | formatting
+  });
+
+  it("ignores a suggestion reply that arrives after the menu reopened elsewhere", async () => {
+    const editor = mountEditor();
+    let resolveFirst: (r: SuggestResult) => void = () => {};
+    const request = vi
+      .fn<(w: string) => Promise<SuggestResult>>()
+      .mockImplementationOnce(
+        () => new Promise<SuggestResult>((r) => (resolveFirst = r)),
+      )
+      .mockImplementationOnce(async () => ({
+        status: "ok",
+        suggestions: ["the"],
+      }));
+    render(
+      <EditorContextMenu editor={editor} requestSuggestions={request}>
+        <EditorContent editor={editor} data-testid="surface" />
+      </EditorContextMenu>,
+    );
+    const surface = screen.getByTestId("surface");
+    mockPosAtCoords(editor, 9);
+    rightPointerDown(surface);
+    fireEvent.contextMenu(surface);
+    mockPosAtCoords(editor, 18);
+    rightPointerDown(surface);
+    fireEvent.contextMenu(surface);
+    expect(await screen.findByText("the")).toBeTruthy();
+    await act(async () =>
+      resolveFirst({ status: "ok", suggestions: ["late"] }),
+    );
+    expect(screen.queryByText("late")).toBeNull();
+    expect(screen.getByText("the")).toBeTruthy();
+  });
+});

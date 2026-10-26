@@ -31,7 +31,7 @@ export type SpellClientEvent =
   | { type: "result"; version: number; blocks: BlockResult[] }
   | { type: "unavailable"; reason: string };
 
-type SuggestResult =
+export type SuggestResult =
   | { status: "ok"; suggestions: string[] }
   | { status: "unavailable"; reason: string };
 

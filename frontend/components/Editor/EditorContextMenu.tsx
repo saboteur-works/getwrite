@@ -102,6 +102,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../common/UI/ContextMenu";
@@ -117,6 +118,8 @@ import {
   findSpellRangeAt,
   type SpellRange,
 } from "./Extensions/SpellCheckDecorationExtension";
+import type { SuggestResult } from "../../src/lib/spelling/spell-client";
+import { MAX_SUGGESTIONS } from "../../src/lib/spelling/engine";
 
 /**
  * Looks up a `ToolbarIconCommand` by its `id` from the "Text Formatting"
@@ -152,7 +155,19 @@ export interface EditorContextMenuProps {
    * flagged word. Later decoration changes do not retarget it.
    */
   onFlaggedWordFrozen?: (range: SpellRange | null) => void;
+  /**
+   * Asks the editor's one spell client for suggestions for a single word
+   * (FR-30). Absent: the menu shows "Suggestions unavailable" for a flagged
+   * word.
+   */
+  requestSuggestions?: (word: string) => Promise<SuggestResult>;
 }
+
+/** Where the suggestion request for the frozen word stands. */
+type SuggestionsState =
+  | { status: "pending" }
+  | { status: "ok"; suggestions: string[] }
+  | { status: "unavailable" };
 
 /** A snapshot of the editor's ProseMirror selection at a point in time. */
 export interface CapturedEditorSelection {
@@ -188,6 +203,7 @@ export default function EditorContextMenu({
   children,
   editor,
   onFlaggedWordFrozen,
+  requestSuggestions,
 }: EditorContextMenuProps) {
   const [captured, setCaptured] = React.useState<CapturedEditorSelection>(() =>
     captureEditorSelection(editor),
@@ -227,6 +243,39 @@ export default function EditorContextMenu({
     null,
   );
 
+  const [suggestions, setSuggestions] = React.useState<SuggestionsState>({
+    status: "pending",
+  });
+  // Identifies the latest suggestion request; a reply for an older one (the
+  // menu was reopened elsewhere) is dropped.
+  const suggestionRequestRef = React.useRef(0);
+
+  const requestSuggestionsFor = React.useCallback(
+    (word: string) => {
+      const requestId = ++suggestionRequestRef.current;
+      setSuggestions({ status: "pending" });
+      if (!requestSuggestions) {
+        setSuggestions({ status: "unavailable" });
+        return;
+      }
+      void requestSuggestions(word).then(
+        (result) => {
+          if (requestId !== suggestionRequestRef.current) return;
+          setSuggestions(
+            result.status === "ok"
+              ? { status: "ok", suggestions: result.suggestions }
+              : { status: "unavailable" },
+          );
+        },
+        () => {
+          if (requestId !== suggestionRequestRef.current) return;
+          setSuggestions({ status: "unavailable" });
+        },
+      );
+    },
+    [requestSuggestions],
+  );
+
   const handlePointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLSpanElement>) => {
       rightPointerDownRef.current = event.button === 2;
@@ -250,11 +299,20 @@ export default function EditorContextMenu({
       range ??= findSpellRangeAt(editor.state, editor.state.selection.from);
       setFlaggedRange(range);
       onFlaggedWordFrozen?.(range);
+      if (range) {
+        requestSuggestionsFor(
+          editor.state.doc.textBetween(range.from, range.to),
+        );
+      } else {
+        suggestionRequestRef.current++;
+      }
     },
-    [editor, onFlaggedWordFrozen],
+    [editor, onFlaggedWordFrozen, requestSuggestionsFor],
   );
-  // Read by the spelling group (Task 41).
-  void flaggedRange;
+
+  // Replace with / Ignore / Add are inert until Tasks 42 and 43 wire them;
+  // selecting one only closes the menu.
+  const handleSpellingItemSelect = React.useCallback(() => {}, []);
 
   const handleOpenChange = React.useCallback((open: boolean) => {
     isMenuOpenRef.current = open;
@@ -377,6 +435,12 @@ export default function EditorContextMenu({
         className="resource-context-menu"
         onCloseAutoFocus={handleCloseAutoFocus}
       >
+        {flaggedRange && (
+          <SpellingGroup
+            suggestions={suggestions}
+            onSelect={handleSpellingItemSelect}
+          />
+        )}
         <ContextMenuItem
           className="resource-context-menu-item"
           disabled={captured.isEmpty || captured.readOnly}
@@ -495,5 +559,64 @@ function TextFormattingMenuItem({
       )}
       {label}
     </ContextMenuItem>
+  );
+}
+
+interface SpellingGroupProps {
+  suggestions: SuggestionsState;
+  onSelect: () => void;
+}
+
+/**
+ * The menu's first items for a flagged word (FR-29, FR-30): "Replace with" and
+ * up to {@link MAX_SUGGESTIONS} suggestions, or one disabled item saying why
+ * there are none (pending, empty, and failed are three different states),
+ * then Ignore and Add to project dictionary, then a separator.
+ */
+function SpellingGroup({ suggestions, onSelect }: SpellingGroupProps) {
+  let body: React.ReactNode;
+  if (suggestions.status === "ok" && suggestions.suggestions.length > 0) {
+    body = suggestions.suggestions.slice(0, MAX_SUGGESTIONS).map((word) => (
+      <ContextMenuItem
+        key={word}
+        className="resource-context-menu-item"
+        onSelect={onSelect}
+      >
+        {word}
+      </ContextMenuItem>
+    ));
+  } else {
+    const text =
+      suggestions.status === "pending"
+        ? "Loading suggestions"
+        : suggestions.status === "ok"
+          ? "No suggestions"
+          : "Suggestions unavailable";
+    body = (
+      <ContextMenuItem className="resource-context-menu-item" disabled>
+        {text}
+      </ContextMenuItem>
+    );
+  }
+  return (
+    <>
+      <ContextMenuLabel className="resource-context-menu-header">
+        Replace with
+      </ContextMenuLabel>
+      {body}
+      <ContextMenuItem
+        className="resource-context-menu-item"
+        onSelect={onSelect}
+      >
+        Ignore
+      </ContextMenuItem>
+      <ContextMenuItem
+        className="resource-context-menu-item"
+        onSelect={onSelect}
+      >
+        Add to project dictionary
+      </ContextMenuItem>
+      <ContextMenuSeparator className="resource-context-menu-separator" />
+    </>
   );
 }

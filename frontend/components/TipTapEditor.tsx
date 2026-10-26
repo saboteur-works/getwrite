@@ -544,7 +544,7 @@ export default function TipTapEditor({
 
   // Debounced and incremental checks, caret word, lazy worker; no check in
   // Markdown source mode (the rich editor stays mounted there).
-  const { requestFullCheck } = useSpellCheckScheduling({
+  const { requestFullCheck, requestSuggestions } = useSpellCheckScheduling({
     editor,
     isOn: spellGate.isOn,
     knownWords: spellGate.knownWords,
@@ -799,7 +799,10 @@ export default function TipTapEditor({
               editor={editor}
               onToggleSource={readonly ? undefined : requestSwitchToSource}
             />
-            <EditorContextMenu editor={editor}>
+            <EditorContextMenu
+              editor={editor}
+              requestSuggestions={requestSuggestions}
+            >
               <EditorContent
                 editor={editor}
                 id={id}

@@ -13,6 +13,7 @@ import { createSpellScheduler } from "../lib/spelling/scheduler";
 import {
   createSpellClient,
   type SpellClient,
+  type SuggestResult,
 } from "../lib/spelling/spell-client";
 import {
   selectSpellingAliasTable,
@@ -92,6 +93,11 @@ export interface SpellCheckSchedulingOptions {
 export interface SpellCheckScheduling {
   /** Asks for a check of the whole document now (a resource just loaded). */
   requestFullCheck: () => void;
+  /**
+   * Asks the editor's own client (the one the scheduler uses, so no second
+   * worker) for suggestions for one word (spell-checker FR-30).
+   */
+  requestSuggestions: (word: string) => Promise<SuggestResult>;
 }
 
 function createDefaultClient(): SpellClient {
@@ -177,5 +183,10 @@ export function useSpellCheckScheduling({
     schedulerRef.current?.requestFull();
   }, []);
 
-  return { requestFullCheck };
+  const requestSuggestions = useCallback(
+    (word: string): Promise<SuggestResult> => getClient().suggest(word),
+    [getClient],
+  );
+
+  return { requestFullCheck, requestSuggestions };
 }
