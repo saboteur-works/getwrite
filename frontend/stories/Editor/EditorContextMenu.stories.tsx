@@ -154,7 +154,8 @@ export const ReadOnlyDisabled: Story = {
  * Radix's modal menu marks the rest of the page `aria-hidden` while open, and
  * the focusable editor surface sits inside it, so axe reports
  * `aria-hidden-focus` (measured: the existing Default story fails the same
- * way on the unmodified file). Only that rule is off for the spelling stories.
+ * way on the unmodified file, while ReadOnlyDisabled, whose surface is not
+ * editable, passes). Only that rule is off for the spelling stories.
  */
 const MENU_OPEN_A11Y = {
   test: "error",

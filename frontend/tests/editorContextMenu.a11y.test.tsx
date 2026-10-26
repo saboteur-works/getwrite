@@ -1,11 +1,15 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { Editor } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
 import { runAxe } from "./a11y/helpers/axe";
 import EditorContextMenu from "../components/Editor/EditorContextMenu";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
+import SpellCheckDecorationExtension, {
+  SPELL_CHECK_DECORATION_KEY,
+  getSpellDocVersion,
+} from "../components/Editor/Extensions/SpellCheckDecorationExtension";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
 // Mirrors editorContextMenu.test.tsx's own mountEditor/openMenu conventions
@@ -180,4 +184,116 @@ describe("a11y: EditorContextMenu", () => {
     await flushPendingEffects();
     await runAxe(document.body, ["region"]);
   });
+});
+
+/**
+ * Task 44 (FR-41 menu part, AC-14, AC-17): the spelling group in the flagged
+ * state. Document "Hello wrold and teh", "wrold" flagged at 7-12. Real timers
+ * throughout (the spelling menu opens without Radix's pointerdown timer, as in
+ * editorContextMenuSpelling.test.tsx), so axe can run straight after opening.
+ */
+type SuggestResult =
+  | { status: "ok"; suggestions: string[] }
+  | { status: "unavailable"; reason: string };
+
+function openFlaggedMenu(
+  requestSuggestions: (word: string) => Promise<SuggestResult>,
+) {
+  const element = document.createElement("div");
+  document.body.appendChild(element);
+  const spellEditor = new Editor({
+    element,
+    extensions: [
+      ...baseSchemaExtensions,
+      SpellCheckDecorationExtension.configure({ isEnabled: () => true }),
+    ],
+    content: "<p>Hello wrold and teh</p>",
+  });
+  editors.push(spellEditor);
+  act(() => {
+    spellEditor.view.dispatch(
+      spellEditor.state.tr.setMeta(SPELL_CHECK_DECORATION_KEY, {
+        type: "set",
+        version: getSpellDocVersion(spellEditor.state),
+        ranges: [{ from: 7, to: 12 }],
+      }),
+    );
+  });
+  render(
+    <EditorContextMenu
+      editor={spellEditor}
+      requestSuggestions={requestSuggestions}
+    >
+      <EditorContent editor={spellEditor} data-testid="prosemirror" />
+    </EditorContextMenu>,
+  );
+  vi.spyOn(spellEditor.view, "posAtCoords").mockReturnValue({
+    pos: 9,
+    inside: 9,
+  });
+  const surface = screen.getByTestId("prosemirror");
+  fireEvent.pointerDown(surface, { button: 2, pointerType: "mouse" });
+  fireEvent.contextMenu(surface, { clientX: 10, clientY: 10 });
+  return spellEditor;
+}
+
+// Radix marks everything outside the open menu aria-hidden while the focusable
+// editor surface stays inside that subtree, which axe reports as
+// aria-hidden-focus; runAxe already disables that rule by default (see its doc
+// comment), so no extra rule is switched off here beyond `region`.
+describe("a11y: EditorContextMenu spelling group (Task 44)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("exposes the header, suggestions, Ignore and Add by role and name, and axe is clean", async () => {
+    openFlaggedMenu(async () => ({
+      status: "ok",
+      suggestions: ["world", "wild"],
+    }));
+    const menu = await screen.findByRole("menu", { name: "Editor options" });
+    await within(menu).findByRole("menuitem", { name: "world" });
+    expect(within(menu).getByText("Replace with")).toBeTruthy();
+    for (const name of [
+      "world",
+      "wild",
+      "Ignore",
+      "Add to project dictionary",
+    ]) {
+      const item = within(menu).getByRole("menuitem", { name });
+      expect(item.hasAttribute("data-disabled")).toBe(false);
+    }
+    await flushPendingEffects();
+    await runAxe(document.body, ["region"]);
+  });
+
+  it.each([
+    ["Loading suggestions", () => new Promise<SuggestResult>(() => {})],
+    [
+      "No suggestions",
+      async (): Promise<SuggestResult> => ({ status: "ok", suggestions: [] }),
+    ],
+    [
+      "Suggestions unavailable",
+      async (): Promise<SuggestResult> => ({
+        status: "unavailable",
+        reason: "the spell-check worker failed",
+      }),
+    ],
+  ])(
+    "the %s state is a disabled menuitem and axe is clean",
+    async (name, request) => {
+      openFlaggedMenu(request);
+      const item = await screen.findByRole("menuitem", { name });
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item.hasAttribute("data-disabled")).toBe(true);
+      expect(
+        screen
+          .getByRole("menuitem", { name: "Ignore" })
+          .hasAttribute("data-disabled"),
+      ).toBe(false);
+      await flushPendingEffects();
+      await runAxe(document.body, ["region"]);
+    },
+  );
 });

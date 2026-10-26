@@ -463,7 +463,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-41 (menu part), AC-14, AC-17.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 45: App Settings switch row with status line
 **What:** Add the labelled spell-check switch row to `AppSettingsDialog`, shown on web, desktop and native, with the status line for unavailable states.
