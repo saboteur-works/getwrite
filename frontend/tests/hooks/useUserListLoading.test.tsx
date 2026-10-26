@@ -173,6 +173,54 @@ describe("useUserListLifecycle", () => {
   });
 });
 
+describe("useUserListLifecycle: userListApplies follows switch and role", () => {
+  const applies = (store: ReturnType<typeof makeStore>): boolean =>
+    store.getState().spellingAvailability.userListApplies;
+
+  it("is true with the switch on and an exempt role", async () => {
+    const { store } = setup(EXEMPT, useUserListLifecycle);
+    await act(async () => {});
+    expect(applies(store)).toBe(true);
+  });
+
+  it("is false with the switch off, true again when it turns on", async () => {
+    window.localStorage.setItem(SPELLCHECK_ENABLED_STORAGE_KEY, "false");
+    const { store } = setup(EXEMPT, useUserListLifecycle);
+    await act(async () => {});
+    expect(applies(store)).toBe(false);
+    await act(async () => {
+      setSwitch("true");
+    });
+    expect(applies(store)).toBe(true);
+    await act(async () => {
+      setSwitch("false");
+    });
+    expect(applies(store)).toBe(false);
+  });
+
+  it("is false on a paired device", async () => {
+    const { store } = setup(PAIRED, useUserListLifecycle);
+    await act(async () => {});
+    expect(applies(store)).toBe(false);
+  });
+
+  it("is false while the role is unknown", async () => {
+    const { store } = setup(
+      { state: { state: "unknown" } },
+      useUserListLifecycle,
+    );
+    await act(async () => {});
+    expect(applies(store)).toBe(false);
+  });
+
+  it("is false again after unmount", async () => {
+    const { store, unmount } = setup(EXEMPT, useUserListLifecycle);
+    await act(async () => {});
+    unmount();
+    expect(applies(store)).toBe(false);
+  });
+});
+
 describe("useEnsureUserListLoaded", () => {
   it("loads once on open even with the switch off", async () => {
     window.localStorage.setItem(SPELLCHECK_ENABLED_STORAGE_KEY, "false");

@@ -12,6 +12,7 @@ import {
 import SharingSettings from "../Sharing/SharingSettings";
 import KeepRunningSetting from "./KeepRunningSetting";
 import SpellcheckSetting from "./SpellcheckSetting";
+import MyDictionarySettingsTab from "../Layout/MyDictionarySettingsTab";
 import { toastService } from "../../src/lib/toast-service";
 
 export interface AppSettingsDialogProps {
@@ -25,7 +26,7 @@ export interface AppSettingsDialogProps {
  * Distinct from `ProjectSettingsDialog.tsx`: this dialog is not scoped to any
  * project and is reachable with no login/account required — it must never
  * be gated on `isHostedAuthActive()` or an auth session. Today it manages
- * exactly one thing, the cross-project global noise-word list (FR-5), via
+ * the cross-project global noise-word list (FR-5), via
  * `getGlobalNoiseWords`/`setGlobalNoiseWords` (`lib/api/global-noise-words.ts`,
  * Task 11), which already resolve to the correct web/Electron/native-Android
  * backend with no sync/merge between them.
@@ -179,6 +180,8 @@ export default function AppSettingsDialog({
         </section>
 
         <SpellcheckSetting />
+
+        <MyDictionarySettingsTab />
 
         <KeepRunningSetting />
 

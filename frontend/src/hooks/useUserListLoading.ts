@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useDispatch, useStore } from "react-redux";
 import type { AppDispatch } from "../store/store";
 import { loadUserList } from "../store/userWordListSlice";
+import { setUserListApplies } from "../store/spellingAvailabilitySlice";
 import {
   SPELLCHECK_CHANGED_EVENT,
   SPELLCHECK_ENABLED_STORAGE_KEY,
@@ -25,6 +26,11 @@ import { useUserListAvailable } from "./useUserListAvailable";
  *   in another tab or window is picked up. Nothing is requested while the
  *   switch is off and nothing was loaded, and nothing on a device where the
  *   list is not `available` (paired, or role unknown).
+ *
+ * The lifecycle also keeps `spellingAvailability.userListApplies` equal to
+ * "switch on and list available" (FR-15), so the checker gate reads the list
+ * only where it is wanted. It is false on a paired device, while the role is
+ * unknown, with the switch off, and after unmount.
  *
  * A re-read that fails leaves the slice `failed` with no words
  * (`userWordListSlice`), never the stale list. A re-read is skipped while a
@@ -65,6 +71,32 @@ export function useUserListLifecycle(): void {
   const availability = useUserListAvailable();
   const loadIfIdle = useStartRead(isIdle);
   const reread = useStartRead(isSettled);
+  const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    const sync = (): void => {
+      dispatch(
+        setUserListApplies(
+          availability === "available" && readSpellcheckEnabled(),
+        ),
+      );
+    };
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key !== null && event.key !== SPELLCHECK_ENABLED_STORAGE_KEY) {
+        return;
+      }
+      resetSpellcheckSessionValue();
+      sync();
+    };
+    sync();
+    window.addEventListener(SPELLCHECK_CHANGED_EVENT, sync);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(SPELLCHECK_CHANGED_EVENT, sync);
+      window.removeEventListener("storage", onStorage);
+      dispatch(setUserListApplies(false));
+    };
+  }, [availability, dispatch]);
 
   useEffect(() => {
     if (availability !== "available") return;
