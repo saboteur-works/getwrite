@@ -634,7 +634,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** LEAD/OWNER HALT. Satisfies AC-21, AC-22, FR-46, FR-47. The agent never runs `adb`.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 62: Final suites
 **What:** Run every final suite from `frontend/` and record the results.

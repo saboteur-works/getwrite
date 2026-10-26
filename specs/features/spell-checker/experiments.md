@@ -2488,3 +2488,35 @@ Press B (intended on `fine`):
 ### Status of the open questions
 
 OQ-15, OQ-16 and OQ-17 are ready for the owner to decide from these numbers. They are not resolved in this entry.
+
+## Device re-check (Task 61, lead, 2026-10-26)
+
+Recorded by an agent from the lead's report; the agent ran no `adb` and touched no device. Screenshots are in the lead's scratchpad, not the repo. Each item is MEASURED or UNMEASURED. One run, with scripted `adb input` presses, not a finger. No cause is stated for any value.
+
+### Device and build
+
+- MEASURED: Pixel 7 Pro, Android 17, Android System WebView 155.0.8059.43, Gboard.
+- MEASURED: debug APK of HEAD `4dd24cb3`: `pnpm build:native` exit 0, `sync` exit 0, `assembleDebug` exit 0; 10,420,868 bytes.
+- MEASURED: the first `adb install -r` failed with "no devices/emulators found" (USB dropped, screen locked). After the owner unlocked the phone, `adb install -r` returned Success; `lastUpdateTime` went from 2026-10-26 00:20:56 to 00:37:36. The owner's start page showed 5/12/38 before and after.
+
+### Offline state
+
+- MEASURED: `airplane_mode_on` = 1; "Active default network: none"; `ping 8.8.8.8` unreachable. The app was force-stopped and relaunched before the test.
+
+### FR-46 / AC-21 device clause (newly created project)
+
+- MEASURED: throwaway project "Touch Menu Test" created via Start a new project (Novel), Scene 1, typed `recieve teh wrold and some fine words`. `recieve`, `teh` and `wrold` were underlined with no reopen; `fine` and `words` were not underlined (screenshot). The count of three is from the screenshot.
+- UNMEASURED: the `.spell-error` count by DOM query (no CDP session was recorded for this run) and whether a request for the worker script appeared (not recorded).
+
+### FR-47 / AC-22 device clause (touch long-press)
+
+- MEASURED: a 900 ms long-press (scripted) on `wrold` opened `EditorContextMenu` with a "REPLACE WITH" heading and suggestions `wold` and `world`, then Ignore, Add to project dictionary, a separator, then Cut, Copy (both enabled), Paste, Bold, Italic, Underline, Strikethrough, Inline Code, Select All.
+- MEASURED: tapping `world` replaced the word. The text read `recieve teh world and some fine words`, `world` was selected and not underlined, and the status read "Saved - just now".
+- MEASURED: a long-press on the non-flagged `fine` afterwards opened today's menu (Cut, Copy, Paste, Bold, Italic, Underline, Strikethrough, Inline Code, Select All) with no spelling group.
+- MEASURED (out of scope here): on that `fine` menu, Cut and Copy were enabled; the ProseMirror selection was still `world` from the replace (the `world` box was still drawn). Relevant to task_0162a56f. The menu extended past the right screen edge (task_ea1bcc80).
+- UNMEASURED: finger presses (only scripted `adb input` presses were made).
+- UNMEASURED: Ignore and Add to project dictionary from a touch-opened menu were not tapped on the device; covered by jsdom tests only.
+
+### Cleanup
+
+MEASURED: the throwaway project was deleted via its card menu; the start page showed 5/12/38.
