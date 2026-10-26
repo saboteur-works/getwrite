@@ -12,6 +12,7 @@ import {
   Lock,
   CalendarClock,
   LayoutGrid,
+  SpellCheck,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
@@ -28,6 +29,7 @@ import SchemaManager from "../SchemaManager/SchemaManager";
 import DailyWordGoalField from "./DailyWordGoalField";
 import WordCountGoalField from "./WordCountGoalField";
 import NoiseWordsSettingsTab from "./NoiseWordsSettingsTab";
+import SpellingSettingsTab from "./SpellingSettingsTab";
 import MentionHighlightDurationField from "./MentionHighlightDurationField";
 import EntityFeatureToggles from "../preferences/EntityFeatureToggles";
 import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
@@ -83,6 +85,7 @@ type ProjectSettingsTab =
   | "timeline"
   | "organizer"
   | "writing-goals"
+  | "spelling"
   | "noise-words"
   | "entities"
   | "encryption";
@@ -118,6 +121,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "timeline", label: "Timeline", icon: CalendarClock },
   { value: "organizer", label: "Organizer", icon: LayoutGrid },
   { value: "writing-goals", label: "Writing Goals", icon: Target },
+  { value: "spelling", label: "Spelling", icon: SpellCheck },
   { value: "noise-words", label: "Noise Words", icon: Ban },
   { value: "entities", label: "Entities", icon: Users },
   { value: "encryption", label: "Project Encryption", icon: Lock },
@@ -290,6 +294,10 @@ export default function ProjectSettingsDialog({
                   />
                 </>
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="spelling" forceMount className={PANEL_CLASS}>
+              {projectId ? <SpellingSettingsTab /> : null}
             </TabsContent>
 
             <TabsContent value="noise-words" forceMount className={PANEL_CLASS}>

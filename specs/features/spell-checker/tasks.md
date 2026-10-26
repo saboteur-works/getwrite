@@ -503,7 +503,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-37, AC-16.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 49: Spelling tab story and a11y test
 **What:** Add stories and an a11y test for the Spelling tab in all four states.

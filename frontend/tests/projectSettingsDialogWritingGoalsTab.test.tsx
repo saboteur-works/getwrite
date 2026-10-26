@@ -13,6 +13,7 @@ import type { ProjectFeatureFlags } from "../src/lib/models/types";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
+import spellingReducer from "../src/store/spellingSlice";
 import { runAxe } from "./a11y/helpers/axe";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
@@ -44,6 +45,7 @@ async function renderDialog(features?: ProjectFeatureFlags): Promise<void> {
       resources: resourcesReducer,
       revisions: revisionsReducer,
       editorConfig: editorConfigReducer,
+      spelling: spellingReducer,
     },
   });
   if (features) {
@@ -96,6 +98,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Timeline",
       "Organizer",
       "Writing Goals",
+      "Spelling",
       "Noise Words",
       "Entities",
       "Project Encryption",

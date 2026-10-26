@@ -9,6 +9,7 @@ import projectReducer from "../src/store/projectsSlice";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
+import spellingReducer from "../src/store/spellingSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { StoredProject } from "../src/store/projectsSlice";
 import { flushPendingEffects } from "./helpers/flushEffects";
@@ -20,6 +21,7 @@ function makeStore() {
       resources: resourcesReducer,
       revisions: revisionsReducer,
       editorConfig: editorConfigReducer,
+      spelling: spellingReducer,
     },
     preloadedState: {
       projects: {
@@ -111,7 +113,7 @@ describe("ProjectSettingsDialog", () => {
     ).toBeInTheDocument();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(10);
+    expect(tabs).toHaveLength(11);
     expect(screen.getByRole("tab", { name: /Editor/ })).toHaveAttribute(
       "aria-selected",
       "true",
