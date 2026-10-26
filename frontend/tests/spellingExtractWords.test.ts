@@ -11,6 +11,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Math from "@tiptap/extension-mathematics";
 import {
+  extractTextBlocks,
   extractWords,
   findWordsInText,
 } from "../src/lib/spelling/extract-words";
@@ -190,6 +191,29 @@ describe("findWordsInText", () => {
     expect(findWordsInText("Jean-Luc O’Brien").map((w) => w.word)).toEqual([
       "Jean-Luc",
       "O'Brien",
+    ]);
+  });
+});
+
+describe("extractTextBlocks (Task 36)", () => {
+  it("returns each checkable textblock's joined text with a position per character", () => {
+    const d = doc([
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "teh " },
+          { type: "text", text: "cat", marks: [{ type: "bold" }] },
+        ],
+      },
+      { type: "codeBlock", content: [{ type: "text", text: "xyzzy" }] },
+      { type: "paragraph", content: [{ type: "text", text: "ok" }] },
+    ]);
+    const blocks = extractTextBlocks(d);
+    expect(blocks.map((b) => b.text)).toEqual(["teh cat", "ok"]);
+    expect(blocks[0].positions).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(blocks[1].positions).toEqual([
+      d.child(0).nodeSize + d.child(1).nodeSize + 1,
+      d.child(0).nodeSize + d.child(1).nodeSize + 2,
     ]);
   });
 });

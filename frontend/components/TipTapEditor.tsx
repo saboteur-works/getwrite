@@ -65,7 +65,12 @@ import {
 import EntityHighlightDecoration, {
   ENTITY_HIGHLIGHT_DECORATION_KEY,
 } from "./Editor/Extensions/EntityHighlightDecorationExtension";
+import SpellCheckDecorationExtension from "./Editor/Extensions/SpellCheckDecorationExtension";
 import { baseSchemaExtensions } from "./Editor/editorExtensions";
+import {
+  useSpellCheckGate,
+  useSpellCheckScheduling,
+} from "../src/hooks/useSpellCheck";
 import { useSelector } from "react-redux";
 import { selectResolvedEditorConfig } from "../src/store/editorConfigSlice";
 import {
@@ -302,6 +307,11 @@ export default function TipTapEditor({
       );
   }, [isEntityHighlightingActive]);
 
+  // Spell checker (specs/features/spell-checker.md). The gate is read through a
+  // ref-backed getter by the decoration extension, so a switch or availability
+  // change never recreates the editor; scheduling is wired after the editor.
+  const spellGate = useSpellCheckGate();
+
   // Keep the latest callback in a ref so the editor's (init-time) handlers can
   // call it without being re-created when the prop identity changes.
   const onNodeTypesChangeRef = useRef(onNodeTypesChange);
@@ -402,6 +412,9 @@ export default function TipTapEditor({
           isEnabled: () => entityHighlightingActiveRef.current,
           getAliasTable: () => entityAliasTableRef.current,
           getNoiseCheckSources: () => noiseCheckSourcesRef.current,
+        }),
+        SpellCheckDecorationExtension.configure({
+          isEnabled: spellGate.isEnabled,
         }),
         MentionJumpHighlightExtension,
         Math.configure({
@@ -528,6 +541,15 @@ export default function TipTapEditor({
     },
     [headingsConfigKey],
   );
+
+  // Debounced and incremental checks, caret word, lazy worker; no check in
+  // Markdown source mode (the rich editor stays mounted there).
+  const { requestFullCheck } = useSpellCheckScheduling({
+    editor,
+    isOn: spellGate.isOn,
+    knownWords: spellGate.knownWords,
+    isRichMode: mode === "rich",
+  });
 
   /**
    * Commit the current Markdown source buffer through the normal persistence
@@ -670,6 +692,8 @@ export default function TipTapEditor({
       // walk past the writer's own first keystroke and empty a document they
       // had only opened (note_68cf31b0).
       loadDocumentIntoEditor(editor, (value as Content) || "");
+      // A resource load gets a full spell check (FR-21).
+      requestFullCheck();
       // The content swap resets the selection; refresh the node-type indicator
       // so it reflects the newly loaded document (resource/revision switch)
       // rather than a stale value carried over from the previous one.
@@ -688,7 +712,14 @@ export default function TipTapEditor({
       // newly loaded document rather than stale Markdown.
       setMode("rich");
     }
-  }, [value, editor, emitNodeTypes, scheduleSourceCommit, pendingSource]);
+  }, [
+    value,
+    editor,
+    emitNodeTypes,
+    scheduleSourceCommit,
+    pendingSource,
+    requestFullCheck,
+  ]);
 
   /**
    * Handle the "Edit as Markdown" toolbar action: inspect the live document for

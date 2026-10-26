@@ -118,7 +118,8 @@ export function findWordsInText(text: string): TextWord[] {
   return found;
 }
 
-interface BlockText {
+/** A textblock's joined text and the document position of each character. */
+export interface BlockText {
   text: string;
   /** Document position of each character of `text`; -1 for a boundary. */
   positions: number[];
@@ -152,20 +153,33 @@ function toDocPart(word: TextWord, positions: number[]): ExtractedWordPart {
   };
 }
 
-/** Extracts every checkable word in the document, in document order. */
-export function extractWords(doc: ProseMirrorNode): ExtractedWord[] {
-  const out: ExtractedWord[] = [];
+/**
+ * The text of every checkable textblock, in document order, read by the same
+ * rule {@link extractWords} uses (code blocks skipped; non-text inline nodes
+ * and code-marked text are boundaries). The spell scheduler posts these texts
+ * to the worker.
+ */
+export function extractTextBlocks(doc: ProseMirrorNode): BlockText[] {
+  const out: BlockText[] = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
     if (node.type.spec.code) return false;
-    const { text, positions } = buildBlockText(node, pos);
+    out.push(buildBlockText(node, pos));
+    return false;
+  });
+  return out;
+}
+
+/** Extracts every checkable word in the document, in document order. */
+export function extractWords(doc: ProseMirrorNode): ExtractedWord[] {
+  const out: ExtractedWord[] = [];
+  for (const { text, positions } of extractTextBlocks(doc)) {
     for (const word of findWordsInText(text)) {
       out.push({
         ...toDocPart(word, positions),
         parts: word.parts.map((part) => toDocPart(part, positions)),
       });
     }
-    return false;
-  });
+  }
   return out;
 }

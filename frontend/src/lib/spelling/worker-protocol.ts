@@ -151,7 +151,7 @@ export function createWorkerHandler(
             : { requestId: req.requestId };
         return {
           type: "error",
-          message: "the spelling engine is not isLoaded",
+          message: "the spelling engine is not loaded",
           ...ids,
         };
       }

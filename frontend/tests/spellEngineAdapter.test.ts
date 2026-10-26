@@ -173,7 +173,10 @@ describe("worker request order", () => {
       handle({ type: "init" }),
       handle({ type: "check", version: 1, blocks: [] }),
     ]);
-    expect(unserialized[1].type).toBe("error");
+    expect(unserialized[1]).toMatchObject({
+      type: "error",
+      message: "the spelling engine is not loaded",
+    });
 
     const serialized = serializeRequests(
       createWorkerHandler(createNspellEngine({ loadAssets: realAssets })),

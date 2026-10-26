@@ -22,14 +22,7 @@ export interface NspellEngineOptions {
   loadAssets: () => Promise<DictionaryAssets>;
 }
 
-/**
- * Quiet time after an edit before the editor posts a check, in milliseconds.
- * Set from the Part 0 figures for this engine (`experiments.md`, Task 31
- * section): a whole-document check measured at most 224.8 ms (200,000 words,
- * Android), and re-checking one paragraph at most 0.7 ms. The Decision sets no
- * performance limit.
- */
-export const SPELL_DEBOUNCE_MS = 300;
+export { SPELL_DEBOUNCE_MS } from "./spell-constants";
 
 type Checker = ReturnType<typeof nspell>;
 

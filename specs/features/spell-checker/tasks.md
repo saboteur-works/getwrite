@@ -383,7 +383,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 8
 **Notes:** Satisfies FR-21, FR-22, FR-24 (OQ-8 c), FR-35, AC-10, AC-15 (same-session off/on). Pattern: ref-backed getters at `TipTapEditor.tsx:397-401` and the effect dispatching the meta flag at `:586-596`. The editor test environment renders an HTML mock at `:339` and `:735`; use the component test harness already in use for entity highlighting. The debounce interval is the value recorded in Task 31. Content of the minimum-version check depends on the engine choice.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 37: spellcheck="false" on the editor body
 **What:** Add `spellcheck: "false"` to `EDITOR_SURFACE_ATTRIBUTES` so the editor body never uses the native checker.

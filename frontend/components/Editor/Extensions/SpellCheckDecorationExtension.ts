@@ -60,7 +60,7 @@ interface SpellCheckPluginState {
   docVersion: number;
 }
 
-export interface SpellCheckDecorationOptions {
+interface SpellCheckDecorationOptions {
   /**
    * Whether underlines may be drawn: the switch is on and the checker is
    * active (see {@link isSpellCheckActive}). Read through a ref-backed getter
