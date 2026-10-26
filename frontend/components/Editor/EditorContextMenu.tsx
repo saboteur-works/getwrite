@@ -119,6 +119,7 @@ import {
   findSpellRangeAt,
   type SpellRange,
 } from "./Extensions/SpellCheckDecorationExtension";
+import { findWordRangeAt } from "./word-at-position";
 import type { SuggestResult } from "../../src/lib/spelling/spell-client";
 import { MAX_SUGGESTIONS } from "../../src/lib/spelling/engine";
 import { applyReplacement } from "../../src/lib/spelling/apply-replacement";
@@ -310,20 +311,37 @@ export default function EditorContextMenu({
       rightPointerDownRef.current = false;
       touchPointerDownRef.current = false;
       let range: SpellRange | null = null;
+      let pressPos: number | null = null;
       if (isPointerOriginated) {
         const at = editor.view.posAtCoords({
           left: event.clientX,
           top: event.clientY,
         });
+        pressPos = at ? at.pos : null;
         range = at ? findSpellRangeAt(editor.state, at.pos) : null;
       }
-      range ??= findSpellRangeAt(editor.state, editor.state.selection.from);
+      // The caret word stands in when the event gives no usable position
+      // (keyboard, or a press off the text). A touch press that landed on the
+      // text means the word there, so it never falls back to a flagged word
+      // elsewhere (task_0162a56f; right-click keeps FR-29's fallback).
+      const isPressOnText = isTouchOriginated && pressPos !== null;
+      if (!isPressOnText) {
+        range ??= findSpellRangeAt(editor.state, editor.state.selection.from);
+      }
       // FR-47 (OQ-17 c): the long-press DOM selection is never used to find
       // the word; on a flagged word the editor selection becomes the frozen
-      // range so Replace/Cut/Copy act on the same word. A non-flagged word
-      // changes no selection. Captured after this so Cut/Copy read it.
+      // range so Replace/Cut/Copy act on the same word. On any other word
+      // (task_0162a56f) the selection becomes the word under the press, or a
+      // caret there when no word is, so Cut/Copy/Paste act where the writer
+      // pressed rather than on a selection left from before. Captured after
+      // this so Cut/Copy read it.
       if (isTouchOriginated && range) {
         editor.commands.setTextSelection({ from: range.from, to: range.to });
+      } else if (isTouchOriginated && pressPos !== null) {
+        const word = findWordRangeAt(editor.state.doc, pressPos);
+        editor.commands.setTextSelection(
+          word ?? { from: pressPos, to: pressPos },
+        );
       }
       setCaptured(captureEditorSelection(editor));
       setFlaggedRange(range);
