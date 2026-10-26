@@ -33,6 +33,7 @@ import {
   getProjectDirectoryId,
   selectActiveProjectDirectoryId,
 } from "../../src/store/projectsSlice";
+import { fetchSpellingState } from "../../src/store/spellingSlice";
 import AppShell from "../../components/Layout/AppShell";
 import StartPage, {
   type StartPageProjectEntry,
@@ -280,6 +281,13 @@ export default function Home(): JSX.Element {
     dispatch(setSelectedProjectId(projectFiles.project.id));
     dispatch(setResources(projectFiles.resources));
     dispatch(setFolders(projectFiles.folders));
+    // Load the new project's spelling lists and alias table, as `loadProject`
+    // does on open (FR-46); without this the checker stayed paused until the
+    // project was reopened. Spelling only (OQ-14 option b).
+    const createdDirectoryId = getProjectDirectoryId(
+      projectFiles.project.rootPath ?? "",
+    );
+    if (createdDirectoryId) dispatch(fetchSpellingState(createdDirectoryId));
     setSelectedProject({
       id: projectFiles.project.id,
       name: projectFiles.project.name,

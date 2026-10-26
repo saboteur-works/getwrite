@@ -584,7 +584,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-46, AC-21. Platform-independent: web, desktop and Android share `handleCreate`. If the red test does not fail on the missing dispatch, stop and report; do not name a cause. The device re-check is Task 61.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 57: Touch long-press probe and runbook (measurement, before any fix)
 **What:** Write a read-only event probe and a runbook so the lead can record what the Android WebView delivers on a long-press on a flagged word in the real editor, with no change to app code.
