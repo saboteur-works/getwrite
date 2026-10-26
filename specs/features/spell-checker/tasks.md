@@ -624,7 +624,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-47, AC-22. Sections of `EditorContextMenu.tsx` for pointer and keyboard (FR-29) are not changed beyond what the resolved OQs require. Out of scope, filed separately: Cut/Copy disabled after a touch long-press (touch-longpress-disables-cut-copy, task_0162a56f) and the menu overflowing the right screen edge (editor-context-menu-overflows-right-edge-on-touch, task_ea1bcc80); do not fix either here. The device check is Task 61.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 61: HALT, lead re-checks both fixes on the Pixel
 **What:** Stop for the lead to repeat the two Stage 6.5 device observations on a debug build of the branch HEAD, offline, and record them.

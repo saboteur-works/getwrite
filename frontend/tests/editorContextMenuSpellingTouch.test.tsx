@@ -284,4 +284,17 @@ describe("EditorContextMenu touch long-press (Task 59, FR-47, AC-22)", () => {
     expect(editor.view.posAtCoords).not.toHaveBeenCalled();
     expect(await screen.findByText("world")).toBeTruthy();
   });
+
+  it("a touch tap followed by a key press then a contextmenu is keyboard-originated", async () => {
+    const editor = mountEditor();
+    setCaret(editor, 18); // inside "teh"
+    const surface = renderMenu(editor);
+    mockPosAtCoords(editor, IN_FINE);
+    fireEvent.pointerDown(surface, { pointerType: "touch", button: 0 });
+    fireEvent.keyDown(surface, { key: "ContextMenu" });
+    fireEvent.contextMenu(surface, { clientX: 10, clientY: 10 });
+    expect(editor.view.posAtCoords).not.toHaveBeenCalled();
+    expect(await screen.findByText("world")).toBeTruthy();
+    expect(editor.state.selection.from).toBe(18);
+  });
 });

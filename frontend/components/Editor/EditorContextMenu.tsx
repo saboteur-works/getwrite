@@ -241,8 +241,11 @@ export default function EditorContextMenu({
   // OQ-3: a `pointerdown` with button 2 immediately before `contextmenu`
   // marks the event as pointer-originated; otherwise (context-menu key,
   // Shift+F10) it is keyboard-originated. The marker is consumed by the
-  // `contextmenu` that follows it.
+  // `contextmenu` that follows it. FR-47 (OQ-15 a): a touch long-press is
+  // pointer-originated too; Android fires `pointerdown` (pointerType "touch",
+  // button 0) and then `contextmenu` (button -1).
   const rightPointerDownRef = React.useRef(false);
+  const touchPointerDownRef = React.useRef(false);
   // The flagged range frozen when the menu opened (null: none).
   const [flaggedRange, setFlaggedRange] = React.useState<SpellRange | null>(
     null,
@@ -286,16 +289,26 @@ export default function EditorContextMenu({
 
   const handlePointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLSpanElement>) => {
-      rightPointerDownRef.current = event.button === 2;
+      const isTouch = event.pointerType === "touch";
+      touchPointerDownRef.current = isTouch;
+      rightPointerDownRef.current = event.button === 2 || isTouch;
     },
     [],
   );
 
+  // A tap (touch `pointerdown`, no long-press) leaves the marker set; a key
+  // press after it means the next `contextmenu` is keyboard-originated.
+  const handleKeyDown = React.useCallback(() => {
+    rightPointerDownRef.current = false;
+    touchPointerDownRef.current = false;
+  }, []);
+
   const handleContextMenu = React.useCallback(
     (event: React.MouseEvent<HTMLSpanElement>) => {
-      setCaptured(captureEditorSelection(editor));
       const isPointerOriginated = rightPointerDownRef.current;
+      const isTouchOriginated = touchPointerDownRef.current;
       rightPointerDownRef.current = false;
+      touchPointerDownRef.current = false;
       let range: SpellRange | null = null;
       if (isPointerOriginated) {
         const at = editor.view.posAtCoords({
@@ -305,6 +318,14 @@ export default function EditorContextMenu({
         range = at ? findSpellRangeAt(editor.state, at.pos) : null;
       }
       range ??= findSpellRangeAt(editor.state, editor.state.selection.from);
+      // FR-47 (OQ-17 c): the long-press DOM selection is never used to find
+      // the word; on a flagged word the editor selection becomes the frozen
+      // range so Replace/Cut/Copy act on the same word. A non-flagged word
+      // changes no selection. Captured after this so Cut/Copy read it.
+      if (isTouchOriginated && range) {
+        editor.commands.setTextSelection({ from: range.from, to: range.to });
+      }
+      setCaptured(captureEditorSelection(editor));
       setFlaggedRange(range);
       onFlaggedWordFrozen?.(range);
       if (range) {
@@ -473,6 +494,7 @@ export default function EditorContextMenu({
       <ContextMenuTrigger asChild disabled={captured.isNodeSelection}>
         <span
           onPointerDown={handlePointerDown}
+          onKeyDown={handleKeyDown}
           onContextMenu={handleContextMenu}
           style={{ display: "contents" }}
         >
