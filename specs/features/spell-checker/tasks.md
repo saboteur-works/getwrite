@@ -483,7 +483,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-40, FR-41, AC-17.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 47: Spelling tab component
 **What:** Write `SpellingSettingsTab` showing the two lists with counts, sorted words, empty states, remove buttons and focus handling.
