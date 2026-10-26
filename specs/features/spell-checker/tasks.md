@@ -614,7 +614,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-47, AC-22. TDD: this task ends with the tests red and recorded; do not write the implementation here. If the replayed sequence already produces the spelling group in jsdom, record that (the emulation does not reproduce the device) and report; do not mark the task done on a test that never failed.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 60: Implement the touch spelling menu
 **What:** Make a touch-originated `contextmenu` on a flagged word open the spelling group, as the owner decided on 2026-10-26: record the `pointerType` of the preceding `pointerdown` and treat a `contextmenu` preceded by a touch `pointerdown` as pointer-originated (OQ-15 a); resolve the word with `editor.view.posAtCoords` at the `contextmenu` coordinates, then the caret word as today, never from the long-press DOM selection (OQ-16 b); on a flagged word set the editor selection to the frozen flagged range (OQ-17 c).
