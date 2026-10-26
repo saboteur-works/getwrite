@@ -1565,6 +1565,7 @@ Date 2026-10-25. Command (repo root, outside the sandbox): `node specs/features/
 - Launch 2, same throwaway `userData` directory (created under `$TMPDIR`, deleted afterwards), read `"written-1792959997954"` from the same origin. `persisted: true`, one run.
 - The real desktop `userData`, `projects/` and port 7340 were not touched. Capacitor persistence is recorded from the Android runbook (Task 17).
 - Observed while building the script: an ESM main script that awaited `app.whenReady()` at top level never reached ready (two launches killed after 60 s by pid); calling it without the top-level await worked.
+- Amendment 2026-10-25 (fixed origin, MEASURED): the packaged probe app on `http://localhost:7340` with a fresh `--user-data-dir` wrote `localStorage["getwrite-spellcheck-enabled"] = "false"` when the App Settings switch was turned off, and after the process was stopped by pid and relaunched with the same `--user-data-dir` it read `"false"`, the switch was unchecked and no `.spell-error` was present. One run. Detail under "Amendment to Task 53" below.
 
 ## Recommendation (author's)
 
@@ -1808,3 +1809,38 @@ Not measured: that the autosave of the typed words failed or queued while offlin
 Reason: the packaged app cannot be launched without taking port 7340. `electron/src/server-config.ts` exports `PORT = 7340`; `electron/src/main.ts` passes it to the forked server (`PORT: serverPortEnv(PORT)`), the window URL, the readiness check and the navigation guard, and the electron guide says there is no override and no fallback. This task's limits forbid port 7340, so the packaged binary was not built or launched and no packaged-app observation is claimed. A throwaway `userData` and `workspace.json` would have kept the data out of the owner's folders, but the port is the blocker, not the workspace.
 
 What does hold from earlier tasks, and is not an offline observation: the standalone output serves the worker and both dictionary files (Task 32, section 2), and the packaged resources hold the standalone output (Task 52). Settling the packaged case needs either a run on a machine where 7340 may be used (owner step: launch the packaged app with the network off, plant a misspelling, observe `.spell-error`, read the request log) or a port override in `server-config.ts`, which is a code change outside this task.
+
+### Amendment to Task 53: packaged desktop app, one-time use of port 7340 (MEASURED)
+
+Date 2026-10-25. The owner approved port 7340 for this one run and confirmed their app was not running. `lsof -nP -iTCP:7340 -sTCP:LISTEN` immediately before each launch: empty (exit 1). The statement above that the packaged app was not built or launched describes the earlier run; this amendment supersedes its UNMEASURED verdict for the items below.
+
+Build (outside the sandbox): `cd frontend && GETWRITE_PROJECTS_DIR=<mktemp -d>/buildprojects pnpm build` (exit 0); `cd electron && pnpm build && pnpm build:worker` (exit 0); `CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --config electron-builder.yml --dir --mac --arm64 -c.directories.output=<mktemp -d>/pkg -c.productName=GetWriteT53Probe -c.appId=works.saboteur.t53probe` (exit 0; electron-builder 25.1.8, Electron 34.5.8, Chromium 132.0.6834.210, unsigned). The standalone output again contained a copy of the stale `frontend/out` (as recorded under Task 52); not investigated.
+
+Launch: `GetWriteT53Probe --user-data-dir=<tmp>/ud --remote-debugging-port=9333`, with `<tmp>/ud/workspace.json` = `{"projectsDir":"<tmp>/ws"}` written beforehand. The app log printed `projectsDir: <tmp>/ws`; afterwards `<tmp>/ws` held the two project folders created and `<tmp>/ud` held the Chromium profile files and `workspace.json` (inspected there, not in the real folders). Driver: Playwright 1.60.0 `chromium.connectOverCDP`, outside the sandbox. Launch 1: app pid 4737, forked server pid 4801. Launch 2: app pid 12818, server pid 12827. Both stopped with `kill <app pid>`; after each stop 7340 and 9333 showed no listener.
+
+Project data: `POST /api/projects` and `POST /api/resource` from inside the page (so the window header applied) against `http://localhost:7340`. A first attempt passed the project `id` as `projectId` and got `Project not found` (the route wants the folder name under the projects dir); this left an extra empty project `T53 throwaway`. The resource `Offline note` (`The quick brwon fox jumps over the lazy dog.`) went into the second one.
+
+| Step | Observed |
+| --- | --- |
+| Page origin | `http://localhost:7340` |
+| Online, after load | `.spell-error`: `brwon`. Worker requested from `http://localhost:7340/_next/static/chunks/turbopack-worker-0sjn--fhq~1cg.js` |
+| After CDP `Network.emulateNetworkConditions` offline on the page | `fetch("/api/projects")` from the page: `failed: Failed to fetch` |
+| Offline, planted word | `.spell-error`: `brwon` |
+| Offline, typed ` Anothr mispeling here.` | `.spell-error`: `brwon`, `Anothr`, `mispeling` |
+
+Request log (Playwright context `request` events 118 and CDP `Network.requestWillBeSent` on the page 56, whole run): distinct origins `["http://localhost:7340"]`; requests to anything other than `localhost:7340`, `127.0.0.1:7340`, `data:` or `blob:`: none. The one request logged in the offline phase is the driver's own `/api/projects` probe. The `.aff` and `.dic` requests did not appear in the CDP page log (only the worker script did); I did not print the context-level log filtered for them, so their fetch by the worker is not shown by this run. Screenshot: `screenshots/offline-desktop-packaged.png`. Driver script not kept in the repo (scratchpad).
+
+Switch persistence across a relaunch on `http://localhost:7340` (same `--user-data-dir`):
+
+| Moment | UI switch `Check spelling while I write` | `localStorage["getwrite-spellcheck-enabled"]` | `.spell-error` count |
+| --- | --- | --- | --- |
+| Launch 1, before the click | checked | `null` (never written) | 1 or more (`brwon`) |
+| Launch 1, after clicking the switch in App Settings | unchecked | `"false"` | 0 |
+| Launch 2 (after process stop and relaunch), page load | not yet opened | `"false"` | 0 (4 s after opening the resource) |
+| Launch 2, App Settings opened | unchecked | `"false"` | 0 |
+
+Screenshot: `screenshots/desktop-packaged-switch-off-after-relaunch.png`. One run each, not repeated.
+
+Not measured: that the same holds after a quit through the window close button (the process was ended with `kill`, SIGTERM); the dmg and other platforms; whether the app wrote to its log path (`app.getPath("logs")` is outside `--user-data-dir` and was not looked at, because that folder is outside the permitted ones, so a line appended there by the probe's launches is possible and unchecked).
+
+Cleanup: `<tmp>` (build, packaged app, `ud`, `ws`) deleted; `ls` of it reports no such directory; 7340 and 9333 free; `pgrep` for the probe app: none.
