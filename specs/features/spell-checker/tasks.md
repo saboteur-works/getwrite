@@ -493,7 +493,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-38, FR-39, AC-16. Pattern: `NoiseWordsSettingsTab.tsx` (`Trash2`, per-word `aria-label` at `:180`). No "add a word" field (non-goal).
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 48: Register the Spelling tab
 **What:** Add the "Spelling" tab to `ProjectSettingsDialog` after "Writing Goals" and before "Noise Words".
