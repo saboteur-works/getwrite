@@ -225,6 +225,7 @@ export default function OrganizerFilterBar({
                 Minimum words
               </label>
               <input
+                spellCheck={false}
                 id="organizer-word-count-min-filter"
                 aria-label="Minimum words"
                 type="number"
@@ -241,6 +242,7 @@ export default function OrganizerFilterBar({
                 Maximum words
               </label>
               <input
+                spellCheck={false}
                 id="organizer-word-count-max-filter"
                 aria-label="Maximum words"
                 type="number"

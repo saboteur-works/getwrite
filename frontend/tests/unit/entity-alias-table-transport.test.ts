@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getEntityAliasTable,
+  getEntityAliasTableOrThrow,
   httpEntityAliasTableTransport,
 } from "../../src/lib/api/entity-alias-table";
 
@@ -97,5 +98,56 @@ describe("httpEntityAliasTableTransport", () => {
     expect(typeof httpEntityAliasTableTransport.getEntityAliasTable).toBe(
       "function",
     );
+  });
+});
+
+describe("getEntityAliasTableOrThrow — rejecting read (spell-checker FR-19)", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+
+  it("rejects on a network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    await expect(getEntityAliasTableOrThrow("project-1")).rejects.toThrow();
+  });
+
+  it("rejects on a non-2xx status", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ entities: {}, claimedBy: {} }),
+    } as Response);
+    await expect(getEntityAliasTableOrThrow("project-1")).rejects.toThrow(
+      /500/,
+    );
+  });
+
+  it("rejects on a malformed 2xx body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ entities: {}, claimedBy: "not-a-record" }),
+    } as Response);
+    await expect(getEntityAliasTableOrThrow("project-1")).rejects.toThrow();
+  });
+
+  it("rejects when the body is not JSON", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError("bad json");
+      },
+    } as unknown as Response);
+    await expect(getEntityAliasTableOrThrow("project-1")).rejects.toThrow();
+  });
+
+  it("resolves to the empty table when the table is genuinely empty", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ entities: {}, claimedBy: {} }),
+    } as Response);
+    await expect(getEntityAliasTableOrThrow("project-1")).resolves.toEqual({
+      entities: {},
+      claimedBy: {},
+    });
   });
 });

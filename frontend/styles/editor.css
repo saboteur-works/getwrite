@@ -313,3 +313,24 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+/* Spell-check underline (`SpellCheckDecorationExtension`, spell-checker
+ * FR-25/AC-12). A wavy underline, so the mark reads by shape and not colour
+ * alone, in its own `--color-gw-spell-underline` token (`getwrite-utilities.css`)
+ * with distinct light/dark values, each at least 3:1 against the editor
+ * background (WCAG 1.4.11). Never the reserved red. No background and no
+ * line-height change, so it overlaps entity and dialogue highlights cleanly.
+ */
+.tiptap .spell-error {
+  text-decoration: underline wavy;
+  text-decoration-color: var(--color-gw-spell-underline);
+  text-decoration-thickness: 1px;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+  .tiptap .spell-error {
+    text-decoration-color: LinkText;
+  }
+}

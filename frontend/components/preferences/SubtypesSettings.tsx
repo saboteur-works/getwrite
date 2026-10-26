@@ -187,6 +187,7 @@ export default function SubtypesSettings(): JSX.Element | null {
             New subtype
           </label>
           <input
+            spellCheck={false}
             id="subtype-new"
             type="text"
             maxLength={MAX_LABEL_LENGTH}

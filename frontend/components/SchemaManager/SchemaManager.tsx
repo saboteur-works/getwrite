@@ -738,6 +738,7 @@ export default function SchemaManager({
                 </label>
                 <EditContextMenu>
                   <input
+                    spellCheck={false}
                     type="text"
                     value={prefillKey}
                     onChange={(e) => {
@@ -758,6 +759,7 @@ export default function SchemaManager({
                 </label>
                 <EditContextMenu>
                   <input
+                    spellCheck={false}
                     type="text"
                     value={prefillLabel}
                     onChange={(e) => setPrefillLabel(e.target.value)}
@@ -867,6 +869,7 @@ export default function SchemaManager({
                     <div className="min-w-0 flex-1">
                       <EditContextMenu>
                         <input
+                          spellCheck={false}
                           type="text"
                           value={groupEditValue}
                           onChange={(e) => {
@@ -973,6 +976,7 @@ export default function SchemaManager({
                             {isEditing ? (
                               <EditContextMenu>
                                 <input
+                                  spellCheck={false}
                                   type="text"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
@@ -1109,6 +1113,7 @@ export default function SchemaManager({
                             <div className="flex flex-1 flex-col gap-0.5">
                               <EditContextMenu>
                                 <input
+                                  spellCheck={false}
                                   type="text"
                                   value={keyEditValue}
                                   onChange={(e) => {
@@ -1179,6 +1184,7 @@ export default function SchemaManager({
                             </label>
                             <EditContextMenu>
                               <textarea
+                                spellCheck={false}
                                 rows={3}
                                 className="w-full resize-none rounded border border-gw-border bg-transparent px-2 py-1 font-mono text-xs text-gw-primary focus:outline-none focus:ring-1 focus:ring-gw-border"
                                 aria-label={`Options for ${field.label}`}
@@ -1270,6 +1276,7 @@ export default function SchemaManager({
                             </label>
                             <EditContextMenu>
                               <input
+                                spellCheck={false}
                                 key={field.maxSelections ?? "none"}
                                 type="number"
                                 min={1}

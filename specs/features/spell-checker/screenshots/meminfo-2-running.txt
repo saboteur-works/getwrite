@@ -1,0 +1,123 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 16632565 Realtime: 73837793
+
+** MEMINFO in pid 8051 [works.saboteur.getwrite.spellspike] **
+                   Pss  Private  Private  SwapPss      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap    35256    35252        4        8    36820    63548    55910     3239
+  Dalvik Heap     5915     4100     1712        6     8176   262144     4426   257718
+ Dalvik Other    10756     2168       20        0    19660                           
+        Stack     1800     1800        0        0     1804                           
+       Ashmem      303       84        0        0     1544                           
+    Other dev      364      352        8        0      728                           
+     .so mmap     8900      196     4584        2    47088                           
+    .jar mmap     1709        0      276        0    49276                           
+    .apk mmap    32968      492     6860        0    87096                           
+    .ttf mmap      520        0      392        0      648                           
+    .dex mmap     8897     8892        0        0     9788                           
+    .oat mmap       15        0        0        0     2144                           
+    .art mmap     8907     7744      948        7    20984                           
+   Other mmap      848        4      444        0     2476                           
+   EGL mtrack    70684    70684        0        0    70684                           
+    GL mtrack    28228    28228        0        0    28228                           
+      Unknown    11344    11172      164        1    12092                           
+        TOTAL   227438   171168    15412       24   399236   325692    60336   260957
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    12792                          29160
+         Native Heap:    35252                          36820
+                Code:    21696                         213180
+               Stack:     1800                           1804
+            Graphics:    98912                          98912
+       Private Other:    16128
+              System:    40858
+             Unknown:                                   19360
+ 
+           TOTAL PSS:   227438            TOTAL RSS:   399236       TOTAL SWAP PSS:       24
+ 
+ Objects
+               Views:        9         ViewRootImpl:        1
+         AppContexts:        6           Activities:        1
+              Assets:      122        AssetManagers:        0
+       Local Binders:       38        Proxy Binders:       79
+       Parcel memory:       14         Parcel count:       58
+    Death Recipients:        5             WebViews:        1
+ 
+ Native Allocations
+                         Count                       Total(kB)
+                        ------                         ------
+    Other (malloced):      406                             37
+ Other (nonmalloced):      139                             97
+ 
+ Shared Bitmaps
+                         Count                       Size(KB)
+                        ------                         ------
+              Mapped:        0                              0
+  (Enable debug.hwui.bitmap_ashmem_long_name sysprop to count unique bitmap allocations)
+ 
+ SQL
+         MEMORY_USED:        0
+  PAGECACHE_OVERFLOW:        0          MALLOC_SIZE:        0
+ 
+ 
+ Asset Allocations
+    : 1K
+    : 14K
+    : 51K
+    : 0K
+    : 0K
+    : 43K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+    : 38K
+    : 3K
+ 

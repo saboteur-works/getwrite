@@ -11,6 +11,10 @@ import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
+import spellingReducer from "../../src/store/spellingSlice";
+import spellingAvailabilityReducer from "../../src/store/spellingAvailabilitySlice";
 import AppSettingsDialog from "../../components/AppSettings/AppSettingsDialog";
 import {
   getGlobalNoiseWords,
@@ -29,6 +33,20 @@ const mockSetGlobalNoiseWords = setGlobalNoiseWords as unknown as ReturnType<
   typeof vi.fn
 >;
 
+function renderDialog() {
+  const store = configureStore({
+    reducer: {
+      spelling: spellingReducer,
+      spellingAvailability: spellingAvailabilityReducer,
+    },
+  });
+  return render(
+    <Provider store={store}>
+      <AppSettingsDialog isOpen onClose={() => undefined} />
+    </Provider>,
+  );
+}
+
 afterEach(() => {
   vi.clearAllMocks();
   delete (window as unknown as Record<string, unknown>).getwriteDesktop;
@@ -37,7 +55,7 @@ afterEach(() => {
 describe("AppSettingsDialog", () => {
   it("never renders account-implying copy", async () => {
     mockGetGlobalNoiseWords.mockResolvedValue([]);
-    render(<AppSettingsDialog isOpen onClose={() => undefined} />);
+    renderDialog();
 
     await waitFor(() =>
       expect(screen.getByText(/No noise words yet/i)).toBeInTheDocument(),
@@ -49,9 +67,17 @@ describe("AppSettingsDialog", () => {
     expect(screen.queryByText(/sign in to manage/i)).not.toBeInTheDocument();
   });
 
+  it("shows the spell-check switch with no desktop bridge present", async () => {
+    mockGetGlobalNoiseWords.mockResolvedValue([]);
+    renderDialog();
+    expect(
+      await screen.findByRole("switch", { name: /check spelling/i }),
+    ).toBeChecked();
+  });
+
   it("loads the global list on open", async () => {
     mockGetGlobalNoiseWords.mockResolvedValue(["red herring", "macguffin"]);
-    render(<AppSettingsDialog isOpen onClose={() => undefined} />);
+    renderDialog();
 
     await waitFor(() => {
       expect(screen.getByText("red herring")).toBeInTheDocument();
@@ -64,7 +90,7 @@ describe("AppSettingsDialog", () => {
     mockGetGlobalNoiseWords.mockResolvedValue(["red herring"]);
     mockSetGlobalNoiseWords.mockResolvedValue(["red herring", "macguffin"]);
     const user = userEvent.setup();
-    render(<AppSettingsDialog isOpen onClose={() => undefined} />);
+    renderDialog();
 
     await waitFor(() =>
       expect(screen.getByText("red herring")).toBeInTheDocument(),
@@ -88,7 +114,7 @@ describe("AppSettingsDialog", () => {
     mockGetGlobalNoiseWords.mockResolvedValue(["red herring", "macguffin"]);
     mockSetGlobalNoiseWords.mockResolvedValue(["macguffin"]);
     const user = userEvent.setup();
-    render(<AppSettingsDialog isOpen onClose={() => undefined} />);
+    renderDialog();
 
     await waitFor(() =>
       expect(screen.getByText("red herring")).toBeInTheDocument(),
@@ -134,7 +160,7 @@ describe("AppSettingsDialog", () => {
       revokePairedDevice: async () => ({ kind: "ok" }),
     };
     const user = userEvent.setup();
-    render(<AppSettingsDialog isOpen onClose={() => undefined} />);
+    renderDialog();
     const revoke = await screen.findByRole("button", {
       name: "Revoke Safari on iPad",
     });

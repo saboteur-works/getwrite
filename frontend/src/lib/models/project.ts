@@ -30,6 +30,14 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     // `relationshipTypes`.
     customNoiseWords: config?.customNoiseWords ?? [],
     excludedGlobalNoiseWords: config?.excludedGlobalNoiseWords ?? [],
+    // Spell-checker FR-11: omitted when absent (consumers read absent as []),
+    // so a project that never uses them never gains the keys.
+    ...(config?.spellingProjectWords !== undefined
+      ? { spellingProjectWords: config.spellingProjectWords }
+      : {}),
+    ...(config?.spellingIgnoredWords !== undefined
+      ? { spellingIgnoredWords: config.spellingIgnoredWords }
+      : {}),
     autoPrune: config?.autoPrune ?? true,
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,

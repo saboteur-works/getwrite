@@ -846,6 +846,18 @@ export const NoiseWordListsResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// SpellingListsResponseSchema — spell-checker Task 24. Matches
+// `project-spelling-core.ts`'s `SpellingLists`: both lists are always present
+// (absent config keys are defaulted to `[]` by the core), so both are
+// required here. Backs the GET read and every POST action response.
+// ---------------------------------------------------------------------------
+
+export const SpellingListsResponseSchema = z.object({
+  spellingProjectWords: z.array(z.string()),
+  spellingIgnoredWords: z.array(z.string()),
+});
+
+// ---------------------------------------------------------------------------
 // GlobalNoiseWordsResponseSchema — Entity Mention Noise Flagging, Task 11
 // (client transport collapse for the cross-project global noise-word list).
 // Matches `app/api/global-noise-words/route.ts`'s bare-array response shape

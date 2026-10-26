@@ -119,4 +119,32 @@ describe("native entity-alias-table transport — in-process backend reuses the 
       claimedBy: {},
     });
   });
+
+  it("getEntityAliasTableOrThrow rejects on an invalid projectId instead of degrading", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const transport = createNativeEntityAliasTableTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await expect(
+      transport.getEntityAliasTableOrThrow("not-a-uuid"),
+    ).rejects.toThrow();
+  });
+
+  it("getEntityAliasTableOrThrow resolves the empty table for a project with no entities", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = generateUUID();
+    await capacitorFsAdapter(fs).mkdir(path.join(PROJECTS_DIR, projectId), {
+      recursive: true,
+    });
+    const transport = createNativeEntityAliasTableTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    await expect(
+      transport.getEntityAliasTableOrThrow(projectId),
+    ).resolves.toEqual({ entities: {}, claimedBy: {} });
+  });
 });

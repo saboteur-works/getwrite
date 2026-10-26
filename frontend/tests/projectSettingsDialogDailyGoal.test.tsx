@@ -11,6 +11,7 @@ import { setDailyWordGoal } from "../src/lib/api/writing-log";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
+import spellingReducer from "../src/store/spellingSlice";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
 vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
@@ -34,6 +35,7 @@ async function renderWith(projectId?: string): Promise<void> {
       resources: resourcesReducer,
       revisions: revisionsReducer,
       editorConfig: editorConfigReducer,
+      spelling: spellingReducer,
     },
   });
   render(

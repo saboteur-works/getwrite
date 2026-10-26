@@ -315,6 +315,7 @@ export default function FieldPicker({
           <div className="field-picker__search-wrapper">
             <EditContextMenu>
               <input
+                spellCheck={false}
                 ref={searchRef}
                 type="text"
                 className="field-picker__search"

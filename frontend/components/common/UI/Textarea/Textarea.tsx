@@ -12,6 +12,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       <EditContextMenu>
         <textarea
           ref={ref}
+          spellCheck={false}
           className={cn(
             "border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50 resize-y min-h-[80px]",
             className,

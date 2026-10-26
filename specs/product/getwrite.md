@@ -268,6 +268,15 @@ with the app without hand-rewriting it (see OQ-90).
   [Next] (Added 2026-10-24; FR-77. Owner-chosen scope, 2026-10-24. Scope
   decided Gate 1, 2026-10-24: OQ-115 to OQ-119; covers two devices, newest
   write per key wins.)
+- US-33: As a writer on deadline, I want to use a spell checker that is part
+  of GetWrite and that I can turn on and off, tell to ignore a word it
+  flagged, and teach my own words, so that a real misspelling is marked
+  the same way on the web, on desktop and on Android, and a name or term I
+  use on purpose is not flagged again and again. [Next] (Added 2026-10-25;
+  FR-78. Owner-chosen scope, 2026-10-25. Scope decided Gate 1, 2026-10-25:
+  OQ-120 to OQ-129.) Source: the owner's request of
+  2026-10-25 ("the last thing I want to add before release"); the concept
+  (`specs/concept.md`) has no spell-checker entry and is not edited.
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1956,6 +1965,80 @@ with the app without hand-rewriting it (see OQ-90).
   caller search before dropping `updatedAt`, `name` and
   `dismissedNoiseTerms`; the editor-config and entity-graph measurements;
   the class-B race tests. [US-32]
+- FR-78: GetWrite MUST include its own spell checker for the text a
+  writer edits, and it MUST behave the same on hosted web, desktop
+  (Electron) and Android (Capacitor). It MUST NOT depend on the browser's
+  or Electron's built-in spell checker. A word the checker does not find in
+  its dictionary MUST be marked as misspelled, and the writer MUST be able
+  to (a) turn the checker on and off, (b) ignore a flagged word so that it
+  is no longer flagged, and (c) add a word to a dictionary of their own.
+  Two word lists exist: a project list and a user list. A word in either
+  list MUST be treated as correct. The writer MUST be able to view and
+  remove words in the project word list, the ignore list and the user list
+  (Owner decision, Gate 2, 2026-10-25; F94-4 option d). An ignored word is kept per project, in
+  its own list in the project's config, separate from the project word list
+  ("Add"), and it persists. Entity names and aliases MUST count as known
+  words automatically. The editor body is the only checked text. The
+  on/off switch MUST be app-wide, MUST default to on for everyone (existing
+  users included), and turning it on or off MUST apply immediately to every
+  project that is open, without reopening it. The first version MUST offer
+  suggestions ("replace with") and is English only; there is no language
+  setting. On a paired device (home-network sharing), adding a word MUST
+  default to the project list; adding to the user list happens from the
+  desktop window. Added 2026-10-25 (owner-chosen scope; the
+  owner's request of 2026-10-25, "the last thing I want to add before
+  release"; the concept, `specs/concept.md`, has no spell-checker entry and
+  is not edited). Decided (Owner decision, 2026-10-25): the items above;
+  GetWrite ships its own minimal checker; the engine is `nspell` (MIT,
+  plain JavaScript, Hunspell-style) with `dictionary-en` (licence "MIT AND
+  BSD"), likely run in a Web Worker. Not decided: the engine is not final
+  until a spike has measured `harper.js` (Apache-2.0, WebAssembly, has
+  `importWords` and `ignoreLint`) against `nspell` on load time,
+  suggestion time and download size; the spike has not been run. Package
+  installs are the owner's decision: the owner runs `pnpm add`. "Ignore"
+  means dismissing a word the checker flagged as misspelled so that it is no
+  longer flagged. Decided (Owner decision, Gate 1, 2026-10-25; OQ-120 to
+  OQ-129): the ignore list (OQ-120); English only, from `dictionary-en`, with
+  no language setting (OQ-121; the UK dictionary is a separate package,
+  `dictionary-en-gb`, which indicates `dictionary-en` is US English, not
+  confirmed from its README); suggestions in v1, and the spike still
+  measures suggestion time (OQ-122); editor body only, other text fields set
+  `spellcheck="false"` explicitly so nothing relies on the native checker,
+  and the Markdown source view stays `spellCheck={false}` and is not checked
+  (OQ-123); switch default on (OQ-127); paired-device default is the project
+  list (OQ-128). Resolved from evidence, confirmed at Gate 1: the editor
+  body will always set `spellcheck="false"`, so a native underline never
+  appears whether ours is on or off, and whether Android's WebView honours it is
+  measured in the spike (OQ-124); the user list follows the global
+  noise-word list's three stores (desktop userData via IPC, web via a
+  server-side tenant-root file behind an /api route, an Android device
+  file), not synced across platforms, while the project list and the ignore
+  list are keys in project.json `config` written under `withMetaLock` /
+  `updateProjectJson`, with a core, route and native-backend pair so they
+  work on Android (OQ-125); entity names and aliases are derived at check
+  time from the entity alias table the client already caches
+  (`entityAliasTableSlice`) and are not copied into either list (OQ-126).
+  Evidence for OQ-125: `frontend/src/lib/api/global-noise-words.ts:1-46,133-169`,
+  `project-noise-words-core.ts:115-134`, `electron/CLAUDE.md:23`; export does
+  not read `config` (no `config` reference in `export-core.ts`); compile, and
+  whether an export bundles project.json, are not checked. Noted for the
+  feature spec (not open questions): where the app-wide switch is stored
+  and how it reaches open projects is a design point; the only app-wide
+  preference store today is localStorage
+  (`frontend/src/lib/user-preferences.ts:163-239`), which is per browser and
+  origin and has no change-notification mechanism; how multi-word entity
+  names are tokenised; compile and project.json bundling in export. Facts. (1) Read, not run (grep, 2026-10-24): the editor
+  has no spell checker and sets no `spellcheck` attribute; the only
+  `spellCheck` in the editor is `spellCheck={false}` in
+  `frontend/components/Editor/MarkdownSourceView.tsx:67`. Any underline in
+  the editor today therefore comes from the browser or Electron default.
+  Not measured: what each platform underlines today, including Android in
+  Capacitor. (2) Not measured: the engine's load time, suggestion time,
+  download size and memory on a long document on any platform; no
+  performance limit is promised until the spike measures load time,
+  suggestion time, download size and memory, including a long document on
+  each platform with Android included (OQ-129). Resolved: OQ-120 to OQ-129.
+  [US-33]
 
 ## Constraints
 
@@ -3718,6 +3801,56 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Resolution:** Resolved (Owner decision, Gate 1, 2026-10-24; option c): the mention index and backlinks stay in FR-77 as a class-B section, conditional: race-test first (like PR #300's), and fix only what reproduces. `relationships.json`, writing-log files and other indexes stay unknown, not promised. Caveat (read, not run): `computeBacklinks` reads every resource before `persistBacklinks` takes the lock, so one locked load, change and save makes the write safe but does not make a whole recompute atomic. The doc comments in `mention-index.ts` and `backlinks.ts` claim "inside one `withMetaLock`", which is inaccurate (the lock is only inside `persist*`). Applied in FR-77. the mention index and backlinks fix (class B) belong in FR-77, or in its own requirement and feature?**
 **Evidence:** Different defect class from the stale client copy: two server writers overlapping, and the fix shape is the PR #300 one (load, change and save as one locked step), not a change to what a client sends. Not measured for the mention index or backlinks: a race test like PR #300's (20 of 20 lost for the inverted index) has not been run for them. Bringing them in changes OQ-110's "unknown, not promised" for those two files.
 **Impact:** FR-77 facts (5) and (6); US-32; whether the feature breakdown has one feature or two for this scope.
+**Owner:** Product owner.
+
+**OQ-120 (resolved): Where is an ignore stored, and how long does it last: per project, per user, per document or per session?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-25; option a): an Ignore is kept per project, as its own list in project config, separate from the project word list ("Add"). It persists. Applied in FR-78.
+**Impact:** FR-78; US-33; the meaning of "Ignore" against the two word lists.
+**Owner:** Product owner.
+
+**OQ-121 (resolved): Which languages are in the first version: English only, and which variant (en-US, en-GB)? Is the language set per project?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-25; option a): English only in v1, from `dictionary-en`. The UK dictionary is a separate package (`dictionary-en-gb`), which indicates `dictionary-en` is US English; that is not confirmed from its README. No language setting. Applied in FR-78.
+**Impact:** FR-78; US-33; the dictionaries bundled with the app and the download size.
+**Owner:** Product owner.
+
+**OQ-122 (resolved): Are suggestions ("replace with") in the first version, or only the underline, add to a list and ignore?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-25; option a): suggestions ("replace with") are in v1. The spike still measures suggestion time. Applied in FR-78.
+**Impact:** FR-78; US-33; the engine choice (suggestion time) and the spike.
+**Owner:** Product owner.
+
+**OQ-123 (resolved): Which text is checked: the editor body only, or also titles, metadata fields and the Markdown source view (which sets `spellCheck={false}` today)?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-25; option a): editor body only. Other text fields explicitly set `spellcheck="false"` so nothing relies on the native checker. The Markdown source view stays `spellCheck={false}` and is not checked. Applied in FR-78.
+**Impact:** FR-78; US-33; which surfaces the on/off switch affects.
+**Owner:** Product owner.
+
+**OQ-124 (resolved): Is the browser's or Electron's native spell checker turned off when ours is on, to avoid double underlines, and what is its state when ours is off?**
+**Resolution:** Resolved from evidence, confirmed at Gate 1 (2026-10-25): the editor body will always set `spellcheck="false"`, so a native underline never appears whether ours is on or off. Whether Android's WebView honours it is measured in the spike. Applied in FR-78. Wording corrected at Gate 2 (2026-10-25) from the present tense ("the editor always sets") to the design: the editor sets no `spellcheck` attribute today and Feature 95 adds it. This is a wording correction, not a decision; the resolution is unchanged.
+**Impact:** FR-78; US-33; the "MUST NOT depend on" promise on each platform.
+**Owner:** Product owner.
+
+**OQ-125 (resolved): Where does the user list live on each platform (desktop userData, web, Android), and is the project list exported or compiled with the project?**
+**Resolution:** Resolved from evidence, confirmed at Gate 1 (2026-10-25): the user list follows the global noise-word list's three stores: desktop userData via IPC (`getDesktopBridge`), web via a server-side tenant-root file behind an /api route, and an Android device file; they are not synced across platforms. The project list (and the separate ignore list) is a key in project.json `config`, written under `withMetaLock` / `updateProjectJson`, with a core, route and native-backend pair so it works on Android. Export does not read `config` (no `config` reference in `export-core.ts`). Compile, and whether an export bundles project.json, are not checked; left to the feature spec. Evidence: `global-noise-words.ts:1-46,133-169`, `project-noise-words-core.ts:115-134`, `electron/CLAUDE.md:23`. Applied in FR-78.
+**Impact:** FR-78; US-33; storage on hosted web, desktop and native; export and compile.
+**Owner:** Product owner.
+
+**OQ-126 (resolved): Do entity names and aliases count as known words automatically?**
+**Resolution:** Resolved from evidence, confirmed at Gate 1 (2026-10-25): yes. They are derived at check time from the entity alias table the client already caches (`entityAliasTableSlice`) and are not copied into either list. How multi-word names are tokenised is a feature-spec detail. Applied in FR-78.
+**Impact:** FR-78; US-33; entities and the project list.
+**Owner:** Product owner.
+
+**OQ-127 (resolved): What is the default state of the switch, on or off, for new users and for existing users?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-25; option a): the switch defaults to on for everyone, including existing users. Applied in FR-78.
+**Impact:** FR-78; US-33; the first launch after release.
+**Owner:** Product owner.
+
+**OQ-128 (resolved): What is the default for words added on a paired device (home-network sharing): the project list or the user list?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-10-25; option a): on a paired device, adding a word defaults to the project list. Adding to the user list happens from the desktop window. Reason, from evidence: a paired device cannot reach the desktop userData store, and its user-list writes would go to the server's web file (`frontend/src/lib/api/global-noise-words.ts:133-154`). Applied in FR-78.
+**Impact:** FR-78; US-33; home-network sharing (FR-66 to FR-68) and where the user list lives.
+**Owner:** Product owner.
+
+**OQ-129 (resolved): What performance limits apply to long documents (check time, memory, and whether checking is done in part of the document at a time)?**
+**Resolution:** Resolved from evidence, confirmed at Gate 1 (2026-10-25): no performance limits until the spike measures load time, suggestion time, download size and memory, including a long document on each platform with Android included. Applied in FR-78.
+**Impact:** FR-78; US-33; to be set after the engine spike.
 **Owner:** Product owner.
 
 ## Out of Scope (Deferred)

@@ -66,6 +66,7 @@ export default function DurationInput({
     <LabeledField label="Duration" className={className}>
       <div className="flex gap-2 mt-2">
         <input
+          spellCheck={false}
           type="number"
           aria-label="story-duration-quantity"
           className="w-full p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"

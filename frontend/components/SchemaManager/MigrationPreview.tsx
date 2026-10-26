@@ -291,6 +291,7 @@ export default function MigrationPreview({
                       {row.action === "normalize" && (
                         <EditContextMenu>
                           <input
+                            spellCheck={false}
                             type="text"
                             className="bg-transparent border-b border-gw-border text-[10px] font-mono text-gw-primary outline-none focus:border-gw-border-md w-20 py-0.5 transition-colors duration-150"
                             placeholder="new value"

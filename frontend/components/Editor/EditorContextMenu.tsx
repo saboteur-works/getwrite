@@ -86,6 +86,7 @@ import * as React from "react";
 import type { Editor } from "@tiptap/core";
 import type { EditorStateSnapshot } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { ReactReduxContext } from "react-redux";
 import {
   Scissors,
   Copy,
@@ -102,6 +103,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../common/UI/ContextMenu";
@@ -113,6 +115,16 @@ import {
   menuBarStateSelector,
   type MenuBarState,
 } from "./MenuBar/menuBarState";
+import {
+  findSpellRangeAt,
+  type SpellRange,
+} from "./Extensions/SpellCheckDecorationExtension";
+import type { SuggestResult } from "../../src/lib/spelling/spell-client";
+import { MAX_SUGGESTIONS } from "../../src/lib/spelling/engine";
+import { applyReplacement } from "../../src/lib/spelling/apply-replacement";
+import { addProjectWord, ignoreWord } from "../../src/store/spellingSlice";
+import type { AppDispatch } from "../../src/store/store";
+import { toastService } from "../../src/lib/toast-service";
 
 /**
  * Looks up a `ToolbarIconCommand` by its `id` from the "Text Formatting"
@@ -142,7 +154,25 @@ export interface EditorContextMenuProps {
   children: React.ReactNode;
   /** The live TipTap editor instance whose selection gates the menu (FR-9). */
   editor: Editor;
+  /**
+   * Called each time the menu is opened with the flagged range frozen at that
+   * moment (spell-checker FR-29), or `null` when the click/caret is not on a
+   * flagged word. Later decoration changes do not retarget it.
+   */
+  onFlaggedWordFrozen?: (range: SpellRange | null) => void;
+  /**
+   * Asks the editor's one spell client for suggestions for a single word
+   * (FR-30). Absent: the menu shows "Suggestions unavailable" for a flagged
+   * word.
+   */
+  requestSuggestions?: (word: string) => Promise<SuggestResult>;
 }
+
+/** Where the suggestion request for the frozen word stands. */
+type SuggestionsState =
+  | { status: "pending" }
+  | { status: "ok"; suggestions: string[] }
+  | { status: "unavailable" };
 
 /** A snapshot of the editor's ProseMirror selection at a point in time. */
 export interface CapturedEditorSelection {
@@ -177,6 +207,8 @@ function captureEditorSelection(editor: Editor): CapturedEditorSelection {
 export default function EditorContextMenu({
   children,
   editor,
+  onFlaggedWordFrozen,
+  requestSuggestions,
 }: EditorContextMenuProps) {
   const [captured, setCaptured] = React.useState<CapturedEditorSelection>(() =>
     captureEditorSelection(editor),
@@ -206,9 +238,151 @@ export default function EditorContextMenu({
     };
   }, [editor]);
 
-  const handleContextMenu = React.useCallback(() => {
-    setCaptured(captureEditorSelection(editor));
-  }, [editor]);
+  // OQ-3: a `pointerdown` with button 2 immediately before `contextmenu`
+  // marks the event as pointer-originated; otherwise (context-menu key,
+  // Shift+F10) it is keyboard-originated. The marker is consumed by the
+  // `contextmenu` that follows it. FR-47 (OQ-15 a): a touch long-press is
+  // pointer-originated too; Android fires `pointerdown` (pointerType "touch",
+  // button 0) and then `contextmenu` (button -1).
+  const rightPointerDownRef = React.useRef(false);
+  const touchPointerDownRef = React.useRef(false);
+  // The flagged range frozen when the menu opened (null: none).
+  const [flaggedRange, setFlaggedRange] = React.useState<SpellRange | null>(
+    null,
+  );
+  // The flagged word's text, frozen with the range; "Replace with" checks the
+  // document still holds it (FR-31).
+  const [flaggedWord, setFlaggedWord] = React.useState("");
+
+  const [suggestions, setSuggestions] = React.useState<SuggestionsState>({
+    status: "pending",
+  });
+  // Identifies the latest suggestion request; a reply for an older one (the
+  // menu was reopened elsewhere) is dropped.
+  const suggestionRequestRef = React.useRef(0);
+
+  const requestSuggestionsFor = React.useCallback(
+    (word: string) => {
+      const requestId = ++suggestionRequestRef.current;
+      setSuggestions({ status: "pending" });
+      if (!requestSuggestions) {
+        setSuggestions({ status: "unavailable" });
+        return;
+      }
+      void requestSuggestions(word).then(
+        (result) => {
+          if (requestId !== suggestionRequestRef.current) return;
+          setSuggestions(
+            result.status === "ok"
+              ? { status: "ok", suggestions: result.suggestions }
+              : { status: "unavailable" },
+          );
+        },
+        () => {
+          if (requestId !== suggestionRequestRef.current) return;
+          setSuggestions({ status: "unavailable" });
+        },
+      );
+    },
+    [requestSuggestions],
+  );
+
+  const handlePointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLSpanElement>) => {
+      const isTouch = event.pointerType === "touch";
+      touchPointerDownRef.current = isTouch;
+      rightPointerDownRef.current = event.button === 2 || isTouch;
+    },
+    [],
+  );
+
+  // A tap (touch `pointerdown`, no long-press) leaves the marker set; a key
+  // press after it means the next `contextmenu` is keyboard-originated.
+  const handleKeyDown = React.useCallback(() => {
+    rightPointerDownRef.current = false;
+    touchPointerDownRef.current = false;
+  }, []);
+
+  const handleContextMenu = React.useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      const isPointerOriginated = rightPointerDownRef.current;
+      const isTouchOriginated = touchPointerDownRef.current;
+      rightPointerDownRef.current = false;
+      touchPointerDownRef.current = false;
+      let range: SpellRange | null = null;
+      if (isPointerOriginated) {
+        const at = editor.view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        });
+        range = at ? findSpellRangeAt(editor.state, at.pos) : null;
+      }
+      range ??= findSpellRangeAt(editor.state, editor.state.selection.from);
+      // FR-47 (OQ-17 c): the long-press DOM selection is never used to find
+      // the word; on a flagged word the editor selection becomes the frozen
+      // range so Replace/Cut/Copy act on the same word. A non-flagged word
+      // changes no selection. Captured after this so Cut/Copy read it.
+      if (isTouchOriginated && range) {
+        editor.commands.setTextSelection({ from: range.from, to: range.to });
+      }
+      setCaptured(captureEditorSelection(editor));
+      setFlaggedRange(range);
+      onFlaggedWordFrozen?.(range);
+      if (range) {
+        const word = editor.state.doc.textBetween(range.from, range.to);
+        setFlaggedWord(word);
+        requestSuggestionsFor(word);
+      } else {
+        setFlaggedWord("");
+        suggestionRequestRef.current++;
+      }
+    },
+    [editor, onFlaggedWordFrozen, requestSuggestionsFor],
+  );
+
+  // The store is read from context rather than `useDispatch` so the menu still
+  // renders (spelling items inert) where no Provider is mounted.
+  const reduxContext = React.useContext(ReactReduxContext);
+
+  // Ignore / Add write the project's config, not the document (FR-32), so they
+  // are not gated on read-only. No optimistic update: the slice replaces both
+  // lists from the response, which redraws every open editor; a failure leaves
+  // the word underlined and toasts.
+  const handleSpellingListChange = React.useCallback(
+    (thunk: typeof ignoreWord | typeof addProjectWord, failure: string) => {
+      if (!reduxContext || !flaggedWord) return;
+      const dispatch = reduxContext.store.dispatch as AppDispatch;
+      void dispatch(thunk(flaggedWord)).then((result) => {
+        if (result.meta.requestStatus !== "rejected") return;
+        const reason =
+          "error" in result && result.error.message
+            ? result.error.message
+            : undefined;
+        toastService.error(failure, reason);
+      });
+    },
+    [reduxContext, flaggedWord],
+  );
+  const handleIgnore = React.useCallback(
+    () => handleSpellingListChange(ignoreWord, "Could not ignore the word."),
+    [handleSpellingListChange],
+  );
+  const handleAddWord = React.useCallback(
+    () =>
+      handleSpellingListChange(
+        addProjectWord,
+        "Could not add the word to the project dictionary.",
+      ),
+    [handleSpellingListChange],
+  );
+
+  const handleReplace = React.useCallback(
+    (suggestion: string) => {
+      if (!flaggedRange) return;
+      applyReplacement(editor, flaggedRange, flaggedWord, suggestion);
+    },
+    [editor, flaggedRange, flaggedWord],
+  );
 
   const handleOpenChange = React.useCallback((open: boolean) => {
     isMenuOpenRef.current = open;
@@ -318,7 +492,12 @@ export default function EditorContextMenu({
   return (
     <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger asChild disabled={captured.isNodeSelection}>
-        <span onContextMenu={handleContextMenu} style={{ display: "contents" }}>
+        <span
+          onPointerDown={handlePointerDown}
+          onKeyDown={handleKeyDown}
+          onContextMenu={handleContextMenu}
+          style={{ display: "contents" }}
+        >
           {children}
         </span>
       </ContextMenuTrigger>
@@ -327,6 +506,15 @@ export default function EditorContextMenu({
         className="resource-context-menu"
         onCloseAutoFocus={handleCloseAutoFocus}
       >
+        {flaggedRange && (
+          <SpellingGroup
+            suggestions={suggestions}
+            readOnly={captured.readOnly}
+            onReplace={handleReplace}
+            onIgnore={handleIgnore}
+            onAddWord={handleAddWord}
+          />
+        )}
         <ContextMenuItem
           className="resource-context-menu-item"
           disabled={captured.isEmpty || captured.readOnly}
@@ -445,5 +633,75 @@ function TextFormattingMenuItem({
       )}
       {label}
     </ContextMenuItem>
+  );
+}
+
+interface SpellingGroupProps {
+  suggestions: SuggestionsState;
+  /** True when the editor is read-only: suggestions cannot be applied. */
+  readOnly: boolean;
+  onReplace: (suggestion: string) => void;
+  onIgnore: () => void;
+  onAddWord: () => void;
+}
+
+/**
+ * The menu's first items for a flagged word (FR-29, FR-30): "Replace with" and
+ * up to {@link MAX_SUGGESTIONS} suggestions, or one disabled item saying why
+ * there are none (pending, empty, and failed are three different states),
+ * then Ignore and Add to project dictionary, then a separator.
+ */
+function SpellingGroup({
+  suggestions,
+  readOnly,
+  onReplace,
+  onIgnore,
+  onAddWord,
+}: SpellingGroupProps) {
+  let body: React.ReactNode;
+  if (suggestions.status === "ok" && suggestions.suggestions.length > 0) {
+    body = suggestions.suggestions.slice(0, MAX_SUGGESTIONS).map((word) => (
+      <ContextMenuItem
+        key={word}
+        className="resource-context-menu-item"
+        disabled={readOnly}
+        onSelect={() => onReplace(word)}
+      >
+        {word}
+      </ContextMenuItem>
+    ));
+  } else {
+    const text =
+      suggestions.status === "pending"
+        ? "Loading suggestions"
+        : suggestions.status === "ok"
+          ? "No suggestions"
+          : "Suggestions unavailable";
+    body = (
+      <ContextMenuItem className="resource-context-menu-item" disabled>
+        {text}
+      </ContextMenuItem>
+    );
+  }
+  return (
+    <>
+      <ContextMenuLabel className="resource-context-menu-header">
+        Replace with
+      </ContextMenuLabel>
+      {body}
+      <ContextMenuItem
+        className="resource-context-menu-item"
+        onSelect={onIgnore}
+      >
+        Ignore
+      </ContextMenuItem>
+      <ContextMenuItem
+        className="resource-context-menu-item"
+        onSelect={onAddWord}
+      >
+        Add to project dictionary
+      </ContextMenuItem>
+      <ContextMenuSeparator className="resource-context-menu-separator" />
+    </>
   );
 }

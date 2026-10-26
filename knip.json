@@ -25,6 +25,9 @@
   ],
   "workspaces": {
     ".": { "paths": { "@gw/core": ["frontend/src/lib/core.ts"] } },
+    // spell.worker.ts is reached only through `new Worker(new URL(...))` in
+    // create-spell-worker.ts, which knip does not follow.
+    "frontend": { "entry": ["src/lib/spelling/spell.worker.ts"] },
     "cli": { "entry": ["src/getwrite-cli.ts"], "project": ["src/**/*.ts"] }
   }
 }

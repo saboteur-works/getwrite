@@ -44,6 +44,7 @@ export default function DateTimeInput({
   return (
     <LabeledField label="Story Date / Time" className={className}>
       <input
+        spellCheck={false}
         type="date"
         aria-label={ariaLabel}
         className="w-full mt-2 mb-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
@@ -54,6 +55,7 @@ export default function DateTimeInput({
         }}
       />
       <input
+        spellCheck={false}
         type="time"
         aria-label={`${ariaLabel}-time`}
         className="w-full mt-1 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"

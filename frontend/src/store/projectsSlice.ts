@@ -34,6 +34,7 @@ import {
   type FeatureConfigResult,
 } from "./feature-config-transport-service";
 import { fetchEntityAliasTable } from "./entityAliasTableSlice";
+import { fetchSpellingState } from "./spellingSlice";
 import {
   resolveMetadataSchemaRequestContext,
   postAddField,
@@ -227,6 +228,7 @@ export const loadProject = createAsyncThunk<
   const directoryId = getProjectDirectoryId(storedProject.rootPath);
   if (directoryId) {
     thunkApi.dispatch(fetchEntityAliasTable(directoryId));
+    thunkApi.dispatch(fetchSpellingState(directoryId));
   }
   return storedProject;
 });

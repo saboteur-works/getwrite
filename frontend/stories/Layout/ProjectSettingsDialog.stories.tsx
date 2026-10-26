@@ -8,6 +8,7 @@ import projectReducer, { setProject } from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
 import revisionsReducer from "../../src/store/revisionsSlice";
 import editorConfigReducer from "../../src/store/editorConfigSlice";
+import spellingReducer from "../../src/store/spellingSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import type { StoredProject } from "../../src/store/projectsSlice";
 
@@ -21,6 +22,7 @@ function makeStore() {
       resources: resourcesReducer,
       revisions: revisionsReducer,
       editorConfig: editorConfigReducer,
+      spelling: spellingReducer,
     },
     preloadedState: {
       projects: {

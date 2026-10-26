@@ -50,6 +50,7 @@ export default function EndDateInput({
       <LabeledField label="End Date / Time" className={className}>
         <div className="mt-2">
           <input
+            spellCheck={false}
             type="datetime-local"
             aria-label="story-end-date-input"
             className="w-full p-2 border text-gw-label"

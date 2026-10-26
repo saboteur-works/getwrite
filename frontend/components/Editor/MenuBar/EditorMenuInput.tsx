@@ -161,6 +161,7 @@ export default function EditorMenuInput({
       </label>
       {(type === "color" || type === "range") && (
         <input
+          spellCheck={false}
           type={type}
           {...sharedInputProps}
           onClick={onClick}
@@ -170,6 +171,7 @@ export default function EditorMenuInput({
       )}
       {type === "number" && (
         <input
+          spellCheck={false}
           type="number"
           {...sharedInputProps}
           step="0.1"

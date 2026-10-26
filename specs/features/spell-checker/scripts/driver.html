@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Spell checker spike driver (Feature 95)</title>
+  </head>
+  <body>
+    <h1>Spell checker spike driver</h1>
+    <p>
+      Query parameters: engines (nspell,harper), warm (warm loads after the first, default 20), sizes (default
+      5000,50000,200000), sizeRuns (cold-worker check runs per size, default 1), recheckRuns (default 10),
+      suggestReps (default 5), uas (1 or 0: measureUserAgentSpecificMemory, default 1).
+    </p>
+    <pre id="log"></pre>
+    <h2>Result</h2>
+    <pre id="result">running</pre>
+    <script src="driver.bundle.js"></script>
+  </body>
+</html>

@@ -95,6 +95,7 @@ function TextInput({
   return (
     <EditContextMenu>
       <input
+        spellCheck={false}
         type="text"
         className="picker-input picker-input--text"
         value={typeof value === "string" ? value : ""}
@@ -115,6 +116,7 @@ function NumberInput({
   return (
     <EditContextMenu>
       <input
+        spellCheck={false}
         type="number"
         className="picker-input picker-input--number"
         value={typeof value === "number" ? value : ""}
@@ -147,6 +149,7 @@ function BetweenInput({
     <span className="picker-range">
       <EditContextMenu>
         <input
+          spellCheck={false}
           type={type}
           className={`picker-input picker-input--${type}`}
           value={
@@ -173,6 +176,7 @@ function BetweenInput({
       <span className="picker-range__sep">–</span>
       <EditContextMenu>
         <input
+          spellCheck={false}
           type={type}
           className={`picker-input picker-input--${type}`}
           value={
@@ -230,6 +234,7 @@ function DateInput({
   return (
     <EditContextMenu>
       <input
+        spellCheck={false}
         type="date"
         className="picker-input picker-input--date"
         value={typeof value === "string" ? value : ""}
@@ -254,6 +259,7 @@ function InTheLastInput({
     <span className="picker-relative">
       <EditContextMenu>
         <input
+          spellCheck={false}
           type="number"
           className="picker-input picker-input--number"
           value={rel.amount}
@@ -509,6 +515,7 @@ export function SingleRefInput({
     <span className="picker-typeahead">
       <EditContextMenu>
         <input
+          spellCheck={false}
           ref={inputRef}
           type="text"
           className="picker-typeahead__input"
@@ -594,6 +601,7 @@ function MultiRefInput({
         <span className="picker-typeahead">
           <EditContextMenu>
             <input
+              spellCheck={false}
               type="text"
               className="picker-typeahead__input"
               value={inputVal}

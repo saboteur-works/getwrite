@@ -9,6 +9,10 @@ import {
 } from "../../src/lib/models/project-config";
 import { normalizeProjectConfig } from "../../src/lib/models/project";
 import { ProjectConfigSchema } from "../../src/lib/models/schemas";
+import {
+  MAX_SPELLING_LIST_SIZE,
+  MAX_SPELLING_WORD_LENGTH,
+} from "../../src/lib/models/project-spelling-core";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -264,5 +268,66 @@ describe("ProjectConfigSchema — excludedGlobalNoiseWords (FR-6)", () => {
       excludedGlobalNoiseWords: ["the"],
     } as never);
     expect(normalized.excludedGlobalNoiseWords).toEqual(["the"]);
+  });
+});
+
+describe("ProjectConfigSchema — spelling lists (spell-checker FR-11, FR-13)", () => {
+  it("exports the two bounds as named constants", () => {
+    expect(MAX_SPELLING_WORD_LENGTH).toBe(100);
+    expect(MAX_SPELLING_LIST_SIZE).toBe(5000);
+  });
+
+  it("parses both keys as string arrays", () => {
+    const result = ProjectConfigSchema.parse({
+      spellingProjectWords: ["Zorblax"],
+      spellingIgnoredWords: ["teh", "recieve"],
+    });
+    expect(result.spellingProjectWords).toEqual(["Zorblax"]);
+    expect(result.spellingIgnoredWords).toEqual(["teh", "recieve"]);
+  });
+
+  it("parses with both keys absent and leaves them undefined", () => {
+    const result = ProjectConfigSchema.parse({});
+    expect(result.spellingProjectWords).toBeUndefined();
+    expect(result.spellingIgnoredWords).toBeUndefined();
+  });
+
+  it("rejects a non-string-array value", () => {
+    expect(() =>
+      ProjectConfigSchema.parse({ spellingProjectWords: [1] }),
+    ).toThrow();
+    expect(() =>
+      ProjectConfigSchema.parse({ spellingIgnoredWords: "teh" }),
+    ).toThrow();
+  });
+
+  it("keeps both keys through loadProject of a project.json", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pcfg-"));
+    try {
+      await fs.writeFile(
+        path.join(tmp, PROJECT_FILENAME),
+        JSON.stringify({
+          id: generateUUID(),
+          name: "SpellCfg",
+          createdAt: new Date().toISOString(),
+          config: {
+            spellingProjectWords: ["Zorblax"],
+            spellingIgnoredWords: ["teh"],
+          },
+        }),
+        "utf8",
+      );
+      const loaded = await loadProject(tmp);
+      expect(loaded.config?.spellingProjectWords).toEqual(["Zorblax"]);
+      expect(loaded.config?.spellingIgnoredWords).toEqual(["teh"]);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("does not add the keys to a normalized config when absent", () => {
+    const normalized = normalizeProjectConfig(undefined);
+    expect("spellingProjectWords" in normalized).toBe(false);
+    expect("spellingIgnoredWords" in normalized).toBe(false);
   });
 });

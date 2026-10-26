@@ -11,6 +11,7 @@ import {
 } from "../../src/lib/api/global-noise-words";
 import SharingSettings from "../Sharing/SharingSettings";
 import KeepRunningSetting from "./KeepRunningSetting";
+import SpellcheckSetting from "./SpellcheckSetting";
 import { toastService } from "../../src/lib/toast-service";
 
 export interface AppSettingsDialogProps {
@@ -176,6 +177,8 @@ export default function AppSettingsDialog({
             </Button>
           </form>
         </section>
+
+        <SpellcheckSetting />
 
         <KeepRunningSetting />
 

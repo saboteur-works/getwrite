@@ -120,6 +120,17 @@ function createRootState(overrides?: {
       table: { entities: {}, claimedBy: {} },
       status: "idle",
     },
+    spelling: {
+      projectId: null,
+      requestedProjectId: null,
+      status: "not-loaded",
+      lists: { spellingProjectWords: [], spellingIgnoredWords: [] },
+      errorMessage: "",
+      aliasTableStatus: "not-loaded",
+      aliasTable: null,
+      aliasTableErrorMessage: "",
+    },
+    spellingAvailability: { engineFailure: null, unsupportedBrowser: null },
   } as RootState;
 }
 
