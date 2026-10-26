@@ -9,6 +9,7 @@ import cryptoReducer from "./cryptoSlice";
 import entityAliasTableReducer from "./entityAliasTableSlice";
 import spellingReducer from "./spellingSlice";
 import spellingAvailabilityReducer from "./spellingAvailabilitySlice";
+import userWordListReducer from "./userWordListSlice";
 /**
  * @deprecated This is a temporary store instance for development and testing. In production, use makeStore to create a new store instance for each client.
  */
@@ -24,6 +25,7 @@ export const store = configureStore({
     entityAliasTable: entityAliasTableReducer,
     spelling: spellingReducer,
     spellingAvailability: spellingAvailabilityReducer,
+    userWordList: userWordListReducer,
   },
 });
 
@@ -40,6 +42,7 @@ export const makeStore = () => {
       entityAliasTable: entityAliasTableReducer,
       spelling: spellingReducer,
       spellingAvailability: spellingAvailabilityReducer,
+      userWordList: userWordListReducer,
     },
   });
 };

@@ -131,6 +131,7 @@ function createRootState(overrides?: {
       aliasTableErrorMessage: "",
     },
     spellingAvailability: { engineFailure: null, unsupportedBrowser: null },
+    userWordList: { status: "idle", words: [], reason: null, errorMessage: "" },
   } as RootState;
 }
 
