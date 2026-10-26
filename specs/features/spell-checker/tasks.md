@@ -553,7 +553,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-24, AC-11. Use a throwaway workspace and `userData`; never the real ones.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 54: HALT, owner checks the phone offline
 **What:** Stop for the owner to confirm on the Pixel, with the network off, that a planted misspelling is underlined, and to record Capacitor `localStorage` persistence of the switch key.

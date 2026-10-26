@@ -1776,3 +1776,31 @@ Observation: `frontend/.next/standalone/frontend/out/THIRD_PARTY_SPELLCHECK.txt`
 ### is-buffer (open item from Task 51)
 
 `is-buffer` 2.0.5 (licence `MIT`, `Copyright (c) Feross Aboukhadijeh`, per its installed `package.json` and `LICENSE`) is a dependency of `nspell` 2.1.5 and its function body is in the emitted engine chunk (Task 31 section). `THIRD_PARTY_SPELLCHECK.txt` does not name it (grep for `is-buffer`: no match), and `frontend/package.json` `dependencies` does not list it (it is transitive). FR-42 requires naming each package that ships, and the MIT text requires its copyright notice to accompany copies of the code, so on this evidence the notice should name it. Recommendation (a decision for the owner, not made here): add a `Package: is-buffer@2.0.5` entry with its copyright line; the MIT text is already in the file once. FR-44 as written ("names no package absent from `dependencies`") would then need an exception for bundled transitive packages. The notice and `third-party-spellcheck.test.ts` are unchanged by this task.
+
+## Task 53: offline check on built web and packaged desktop
+
+Date 2026-10-25. Main checkout, branch `feat/spell-checker`, tree clean before the run (the new file is the screenshot). `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before and after: empty. Real editor wiring in place (Task 36), so the worker is emitted by a normal build, no probe page.
+
+### Built web app (MEASURED)
+
+- Build: `cd frontend && GETWRITE_PROJECTS_DIR=<mktemp -d under $TMPDIR>/projects pnpm build` (outside the sandbox), exit 0. `.next/static/chunks/turbopack-worker-0sjn--fhq~1cg.js` and `.next/static/media/index.0_qr_d9pp33w1.aff` / `index.10xdz.pv.cbcu.dic` are present.
+- Served with `pnpm exec next start -p 4391 -H 127.0.0.1` (node pid 64744, parent pnpm pid 64737; both stopped by pid, port 4391 clear afterwards), `GETWRITE_PROJECTS_DIR` the throwaway folder. Next printed the warning that `next start` does not work with `output: standalone`; the server ran and served the build.
+- Throwaway project created through the app's own routes: `POST /api/projects` (`blank`), then `POST /api/resource` with the text `The quick brwon fox jumps over the lazy dog.` The throwaway folder was deleted afterwards. The repo `projects/`, `~/Library/Application Support/getwrite-electron` and `~/Documents/GetWrite` were not read or written.
+- Driver (Playwright 1.60.0, full Chromium, `channel: "chromium"`, headless, outside the sandbox): open the project, open the resource, wait for `.spell-error`, then `context.setOffline(true)` after the page, worker and both dictionary files had loaded.
+
+| Step | Observed |
+| --- | --- |
+| Online, after load | `.spell-error` spans: `brwon`. Worker created from `/_next/static/chunks/turbopack-worker-0sjn--fhq~1cg.js` |
+| After `setOffline(true)` | `fetch("/api/projects")` from the page: `failed: Failed to fetch` (so the context was offline) |
+| Offline, planted word | `.spell-error` spans: `brwon` |
+| Offline, typed ` Anothr mispeling here.` at the end | `.spell-error` spans: `brwon`, `Anothr`, `mispeling` |
+
+Network log (`page.on("request")`, whole run, 60 requests): distinct origins `["http://127.0.0.1:4391"]`; requests to any other host: none. Worker script, `.aff` and `.dic` were requested in the online phase only. The one request logged in the offline phase is the driver's own `/api/projects` probe `fetch`; no request from the page or the worker to a non-local origin. Screenshot: `specs/features/spell-checker/screenshots/offline-web-chromium.png`. Driver script: not kept in the repo (scratchpad).
+
+Not measured: that the autosave of the typed words failed or queued while offline (not looked at; unrelated to FR-24).
+
+### Packaged desktop app (UNMEASURED)
+
+Reason: the packaged app cannot be launched without taking port 7340. `electron/src/server-config.ts` exports `PORT = 7340`; `electron/src/main.ts` passes it to the forked server (`PORT: serverPortEnv(PORT)`), the window URL, the readiness check and the navigation guard, and the electron guide says there is no override and no fallback. This task's limits forbid port 7340, so the packaged binary was not built or launched and no packaged-app observation is claimed. A throwaway `userData` and `workspace.json` would have kept the data out of the owner's folders, but the port is the blocker, not the workspace.
+
+What does hold from earlier tasks, and is not an offline observation: the standalone output serves the worker and both dictionary files (Task 32, section 2), and the packaged resources hold the standalone output (Task 52). Settling the packaged case needs either a run on a machine where 7340 may be used (owner step: launch the packaged app with the network off, plant a misspelling, observe `.spell-error`, read the request log) or a port override in `server-config.ts`, which is a code change outside this task.
