@@ -2520,3 +2520,50 @@ Recorded by an agent from the lead's report; the agent ran no `adb` and touched 
 ### Cleanup
 
 MEASURED: the throwaway project was deleted via its card menu; the start page showed 5/12/38.
+
+## Final suites (Task 62, 2026-10-26)
+
+Tree: branch `feat/spell-checker`, main checkout, HEAD `9782d930`; `main` is `49c4f879` (unchanged since the Task 56 run). Sandbox on except `pnpm test:e2e` (outside it). Raw outputs are in the session scratchpad, not the repo.
+
+### Suites
+
+| Check | Where | Result |
+| --- | --- | --- |
+| `pnpm typecheck` | `frontend/` | exit 0 |
+| `pnpm lint` | `frontend/` | exit 0; 392 problems, 0 errors, 392 warnings |
+| `pnpm test:ci` | `frontend/` | exit 0; 701 files passed; 8691 passed, 7 expected fail, 1 skipped (8699) |
+| `pnpm test:e2e` | `frontend/`, outside the sandbox | exit 0; 230 passed, 1 skipped (52.4s) |
+| `pnpm knip` | repo root | exit 1; see below |
+| `pnpm test` | `cli/` | exit 0; 23 files, 153 passed |
+| `pnpm test` | `electron/` | exit 0; 34 files, 528 passed |
+| `pnpm typecheck` | `electron/` | exit 0 |
+
+`lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before `test:e2e` and again after: empty, exit 1 both times.
+
+### Diff against main
+
+- `git diff main --stat -- cli electron android`: only `electron/electron-builder.yml`, 5 insertions.
+- `git diff main --stat | tail -3`: last line `162 files changed, 17774 insertions(+), 25 deletions(-)`.
+- `git log --oneline main..HEAD | wc -l`: 69.
+
+### knip against main
+
+Method as in the Task 56 section: `git worktree add --detach <TMPDIR>/main-baseline main`, `node_modules` symlinked in, `pnpm knip` there (exit 1), symlinks unlinked, worktree removed and pruned. `git worktree list` shows only the main worktree afterwards.
+
+| Category | main | branch |
+| --- | --- | --- |
+| Unused files | 49 | 49 |
+| Unused dependencies | 1 | 1 |
+| Unused devDependencies | 6 | 4 |
+| Unlisted dependencies | 6 | 6 |
+| Unlisted binaries | 4 | 4 |
+| Unused exports | 160 | 160 |
+| Unused exported types | 174 | 174 |
+| Duplicate exports | 14 | 14 |
+| Configuration hints | 6 | 6 |
+
+Name comparison (line numbers ignored): no finding on the branch that main lacks. Findings on main only (2): unused devDependencies `@capacitor/android` and `@capacitor/core` in `android/package.json`; the same two as in the Task 56 section. `android/` is unchanged on the branch; the cause of the difference is not established. knip exits 1 on main as well.
+
+### aria-hidden-focus, `EditorContextMenu` stories on main
+
+Not attempted this run (optional step skipped); main remains UNMEASURED.
