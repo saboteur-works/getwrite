@@ -17,10 +17,13 @@ import spellingReducer, {
 } from "../src/store/spellingSlice";
 import userWordListReducer, {
   loadUserList,
+  retryUserList,
 } from "../src/store/userWordListSlice";
 import availabilityReducer, {
   MIN_CHROME_VERSION,
   setUserListApplies,
+  continueWithoutUserList,
+  selectUserWordsNotApplied,
   browserUnsupported,
   clearBrowserUnsupported,
   clearEngineFailure,
@@ -334,5 +337,117 @@ describe("user list as a third input (Feature 96, FR-15, FR-23)", () => {
     store.dispatch(setUserListApplies(true));
     await loadUser(store, "fail");
     expect(kinds(store)).toEqual(["lists-failed", "user-list-failed"]);
+  });
+});
+
+describe("recovery: Retry and Continue without my dictionary (Feature 96, FR-16)", () => {
+  async function failedStore() {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    store.dispatch(setUserListApplies(true));
+    vi.mocked(getUserWords).mockRejectedValue(new Error("disk gone"));
+    await store.dispatch(loadUserList());
+    return store;
+  }
+
+  it("Retry re-reads; success clears the failure and the override", async () => {
+    const store = await failedStore();
+    store.dispatch(continueWithoutUserList());
+    vi.mocked(getUserWords).mockResolvedValue(["zorblax"]);
+    await store.dispatch(retryUserList());
+    expect(getUserWords).toHaveBeenCalledTimes(2);
+    expect(store.getState().userWordList.status).toBe("loaded");
+    expect(store.getState().spellingAvailability.userListOverride).toBe(false);
+    expect(selectUserWordsNotApplied(store.getState())).toBe(false);
+    expect(selectSpellCheckerState(store.getState())).toEqual({
+      status: "active",
+    });
+  });
+
+  it("a Retry that fails again keeps the failure paused (no override)", async () => {
+    const store = await failedStore();
+    await store.dispatch(retryUserList());
+    expect(store.getState().userWordList.status).toBe("failed");
+    expect(kinds(store)).toEqual(["user-list-failed"]);
+  });
+
+  it("the override un-pauses the checker while the read stays failed", async () => {
+    const store = await failedStore();
+    expect(selectUserWordsNotApplied(store.getState())).toBe(false);
+    store.dispatch(continueWithoutUserList());
+    expect(store.getState().userWordList.status).toBe("failed");
+    expect(selectSpellCheckerState(store.getState())).toEqual({
+      status: "active",
+    });
+    expect(selectUserWordsNotApplied(store.getState())).toBe(true);
+  });
+
+  it("stays active, with the notice, while a retry is in flight or fails again", async () => {
+    const store = await failedStore();
+    store.dispatch(continueWithoutUserList());
+    let fail: (error: Error) => void = () => undefined;
+    vi.mocked(getUserWords).mockReturnValue(
+      new Promise<string[]>((_resolve, reject) => (fail = reject)),
+    );
+    const pending = store.dispatch(retryUserList());
+    expect(store.getState().userWordList.status).toBe("loading");
+    expect(selectSpellCheckerState(store.getState()).status).toBe("active");
+    expect(selectUserWordsNotApplied(store.getState())).toBe(true);
+    fail(new Error("still down"));
+    await pending;
+    expect(store.getState().userWordList.status).toBe("failed");
+    expect(selectSpellCheckerState(store.getState()).status).toBe("active");
+    expect(selectUserWordsNotApplied(store.getState())).toBe(true);
+  });
+
+  it("is refused unless the read has failed", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    store.dispatch(setUserListApplies(true));
+    store.dispatch(continueWithoutUserList());
+    expect(store.getState().spellingAvailability.userListOverride).toBe(false);
+    expect(kinds(store)).toEqual(["loading"]);
+  });
+
+  it("is in memory only: no localStorage or fetch write; a fresh store has none", async () => {
+    const setItem = vi.fn();
+    vi.stubGlobal("localStorage", {
+      setItem,
+      getItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const store = await failedStore();
+    store.dispatch(continueWithoutUserList());
+    expect(setItem).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    const fresh = makeStore();
+    expect(fresh.getState().spellingAvailability.userListOverride).toBe(false);
+    vi.unstubAllGlobals();
+    fetchSpy.mockRestore();
+  });
+
+  it("project-list and alias-table failures still pause with the override on", async () => {
+    const store = makeStore();
+    await load(store, "fail", "fail");
+    store.dispatch(setUserListApplies(true));
+    vi.mocked(getUserWords).mockRejectedValue(new Error("disk gone"));
+    await store.dispatch(loadUserList());
+    store.dispatch(continueWithoutUserList());
+    expect(kinds(store)).toEqual(["lists-failed", "alias-table-failed"]);
+  });
+
+  it("an engine failure still pauses with the override on", async () => {
+    const store = await failedStore();
+    store.dispatch(continueWithoutUserList());
+    store.dispatch(engineFailed("boom"));
+    expect(kinds(store)).toEqual(["engine-failed"]);
+  });
+
+  it("the notice is false when the list does not apply", async () => {
+    const store = await failedStore();
+    store.dispatch(continueWithoutUserList());
+    store.dispatch(setUserListApplies(false));
+    expect(selectUserWordsNotApplied(store.getState())).toBe(false);
   });
 });

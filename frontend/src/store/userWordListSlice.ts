@@ -72,6 +72,13 @@ export const loadUserList = createAsyncThunk<string[], void, ThunkConfig>(
   },
 );
 
+/**
+ * "Retry" after a failed read (FR-16): the same read as `loadUserList`. A
+ * successful result clears the session override in `spellingAvailabilitySlice`
+ * (it listens for `loadUserList.fulfilled`); a failure leaves it as it was.
+ */
+export const retryUserList = loadUserList;
+
 function createMutationThunk(
   type: string,
   call: (word: string) => Promise<string[]>,

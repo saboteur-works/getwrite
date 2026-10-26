@@ -134,6 +134,7 @@ function createRootState(overrides?: {
       engineFailure: null,
       unsupportedBrowser: null,
       userListApplies: false,
+      userListOverride: false,
     },
     userWordList: { status: "idle", words: [], reason: null, errorMessage: "" },
   } as RootState;
