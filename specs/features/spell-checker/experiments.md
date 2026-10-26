@@ -1847,6 +1847,8 @@ Cleanup: `<tmp>` (build, packaged app, `ud`, `ws`) deleted; `ls` of it reports n
 
 ## Final suites (Task 56, 2026-10-25)
 
+Note: this section is the final-suites run done before the Stage 6.5 renumbering; it corresponds to what is now Task 62's earlier run.
+
 Tree: branch `feat/spell-checker`, main checkout, HEAD `0ad1f835`. Raw outputs are in the session scratchpad, not the repo. Node and pnpm as installed; sandbox on except where stated.
 
 ### Suites
@@ -1905,3 +1907,44 @@ Symlinks unlinked, worktree removed and pruned; `git worktree list` shows only t
 ### Not done
 
 PR text naming the missing user list as a known gap is outside this task. Task 54 (phone check) not touched.
+
+## Phone offline (Task 54, lead, 2026-10-25)
+
+Screenshots are in the lead's scratchpad, not the repo. Each item below is MEASURED unless marked UNMEASURED.
+
+### Device and build
+
+- MEASURED: Pixel 7 Pro, Android 17, Android System WebView 155.0.8059.43, Gboard.
+- MEASURED: debug APK of HEAD `e272b5fe` built by `pnpm build:native`, `pnpm run sync` and `assembleDebug`; 10,108,403 bytes; signer SHA-256 `72d9e5d4...b98818` equal to the installed app's. `adb install -r` returned Success; lastUpdateTime went from 2026-10-05 12:48:18 to 2026-10-25 19:38:18.
+- MEASURED: owner data after the update: the start page showed 5 active projects, 12 writing assets, 38 folders, the same as before the install. Owner projects were not opened.
+
+### Offline state
+
+- MEASURED: `settings get global airplane_mode_on` = 1; `dumpsys connectivity` reported "Active default network: none"; `ping 8.8.8.8` from the device was unreachable. The owner toggled airplane mode.
+- MEASURED: the app launched after force-stop while offline (twice more later) and the start page rendered.
+
+### Stage 6.5 defect fact (new project versus Open project)
+
+- MEASURED: throwaway project "Spellcheck Offline Test" created via Start a new project; "recieve teh wrold" typed in Scene 1: 0 `.spell-error` (CDP `Runtime.evaluate` over adb-forwarded `webview_devtools_remote`); `localStorage['getwrite-spellcheck-enabled']` was null; the `.ProseMirror` `spellcheck` attribute was `'false'`; resource timing (57 entries, buffer not full) had no `turbopack-worker-*.js` request. Recorded as the Stage 6.5 defect: FR-46, Task 56.
+- MEASURED: after force-stop and relaunch (offline) and Open project on the same project, `.spell-error` marks were on recieve, teh and wrold (screenshot-checked).
+- So a newly created project showed 0 marks while the same project opened via Open project showed 3. The re-check after the fix is Task 61.
+
+### Long-press (touch)
+
+- MEASURED: long-press (about 900 ms) on "wrold" selected the word and opened the app `EditorContextMenu` (Cut, Copy, Paste, Bold, Italic, Underline, Strikethrough, Inline Code, Select All) with no spelling group. This is the FR-47 defect; fixes are Tasks 57-61. Cause not established.
+
+### Settings and switch persistence
+
+- MEASURED: Project Settings, Spelling tab rendered offline, "Project dictionary (0)". App Settings, "Check spelling while I write" rendered, checked.
+- MEASURED: switch turned off: underlines cleared immediately. After force-stop and relaunch (offline), reopening the project and Scene 1 showed no underlines, `localStorage` = `'false'`, switch unchecked, 0 marks.
+- MEASURED: switch turned on: `localStorage` `'true'`, marks on recieve, teh, wrold.
+- So the switch setting persisted across a relaunch on the phone (FR-34, FR-24).
+
+### Side observations (not this feature)
+
+- MEASURED: Create Project with "blank" typed in the type search showed "Blank" in the select but the helper text kept Novel's description, and the project was created as `novel` (POS task_2191963a).
+- MEASURED (a build-artifact fact, not a defect claim): `out/_next/static/media/spell.worker.0sz-vkceg-mes.ts` is raw TS source shipped as a media asset (served as video/mp2ts). The app's worker is created from module 88073, which loads `turbopack-worker-0sjn--fhq~1cg.js`; the stray asset is referenced only by module 88872, which nothing was observed to use. It is present in `.next` too.
+
+### Cleanup
+
+Throwaway project deleted via its card menu; the start page was back to 5/12/38; the switch was left on; the devtools forward was removed.

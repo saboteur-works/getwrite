@@ -564,7 +564,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** OWNER HALT. Satisfies AC-11 (phone), FR-24, FR-34 (Capacitor persistence). The agent never runs `adb`; give the owner the exact steps. Amendment 2026-10-25 (Stage 6.5): this task already covers recording the phone results in `experiments.md`, so no separate recording task is added; the lead supplies the measurements and records them here, and the two Stage 6.5 defect measurements are recorded by Tasks 58 and 61. The Stage 6.5 phone result (a newly created project showed 0 `.spell-error` marks while the same project opened via Open project showed 3) means the phone-offline observation of this task is recorded together with that fact, and its re-check after the fix is Task 61.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 55: User doc, CLAUDE.md, glossary and release-note text
 **What:** Write `docs/features/spell-checker.md`, update the Code Map and glossary, and draft the release-note text.
