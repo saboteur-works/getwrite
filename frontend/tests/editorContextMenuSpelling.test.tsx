@@ -4,6 +4,18 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import spellingReducer from "../src/store/spellingSlice";
+import * as projectSpelling from "../src/lib/api/project-spelling";
+
+// The slice's transport service captures these functions at load time, so a
+// spy on the namespace would not reach it; the module itself is replaced.
+vi.mock("../src/lib/api/project-spelling", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/api/project-spelling")>()),
+  ignoreSpellingWord: vi.fn(),
+  addSpellingWord: vi.fn(),
+}));
 import EditorContextMenu from "../components/Editor/EditorContextMenu";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
 import { toastService } from "../src/lib/toast-service";
@@ -423,5 +435,129 @@ describe("EditorContextMenu replace with a suggestion (Task 42)", () => {
     openSpellingMenu(editor, world, 9);
     const item = (await screen.findByText("world")).closest("[role=menuitem]");
     expect(item?.hasAttribute("data-disabled")).toBe(true);
+  });
+});
+
+/**
+ * Task 43 (FR-32, AC-14): Ignore and Add to project dictionary.
+ */
+function makeSpellingStore() {
+  return configureStore({
+    reducer: { spelling: spellingReducer },
+    preloadedState: {
+      spelling: {
+        projectId: "p",
+        requestedProjectId: "p",
+        status: "loaded" as const,
+        lists: {
+          spellingProjectWords: [] as string[],
+          spellingIgnoredWords: [] as string[],
+        },
+        errorMessage: "",
+        aliasTableStatus: "not-loaded" as const,
+        aliasTable: null,
+        aliasTableErrorMessage: "",
+      },
+    },
+  });
+}
+
+function openWithStore(editor: Editor, store = makeSpellingStore()) {
+  render(
+    <Provider store={store}>
+      <EditorContextMenu
+        editor={editor}
+        requestSuggestions={async () => ({ status: "ok", suggestions: [] })}
+      >
+        <EditorContent editor={editor} data-testid="surface" />
+      </EditorContextMenu>
+    </Provider>,
+  );
+  const surface = screen.getByTestId("surface");
+  mockPosAtCoords(editor, 9);
+  rightPointerDown(surface);
+  fireEvent.contextMenu(surface, { clientX: 10, clientY: 10 });
+  return store;
+}
+
+describe("EditorContextMenu Ignore and Add to project dictionary (Task 43)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    while (editors.length > 0) editors.pop()?.destroy();
+  });
+
+  it("Ignore calls the transport with the word as written and replaces the lists from the response", async () => {
+    const editor = mountEditor();
+    const ignore = vi
+      .mocked(projectSpelling.ignoreSpellingWord)
+      .mockResolvedValue({
+        spellingProjectWords: [],
+        spellingIgnoredWords: ["wrold"],
+      });
+    const store = openWithStore(editor);
+    fireEvent.click(await screen.findByText("Ignore"));
+    await vi.waitFor(() =>
+      expect(store.getState().spelling.lists.spellingIgnoredWords).toEqual([
+        "wrold",
+      ]),
+    );
+    expect(ignore).toHaveBeenCalledWith("p", "wrold");
+  });
+
+  it("Add keeps the writer's capitalisation and updates the project list", async () => {
+    const editor = mountEditor();
+    act(() => {
+      editor.view.dispatch(editor.state.tr.insertText("W", 7, 8));
+    });
+    flag(editor, [WROLD, TEH]);
+    const add = vi
+      .mocked(projectSpelling.addSpellingWord)
+      .mockResolvedValue({
+        spellingProjectWords: ["Wrold"],
+        spellingIgnoredWords: [],
+      });
+    const store = openWithStore(editor);
+    fireEvent.click(await screen.findByText("Add to project dictionary"));
+    await vi.waitFor(() =>
+      expect(store.getState().spelling.lists.spellingProjectWords).toEqual([
+        "Wrold",
+      ]),
+    );
+    expect(add).toHaveBeenCalledWith("p", "Wrold");
+  });
+
+  it("on failure toasts the error, leaves the lists untouched and the word flagged", async () => {
+    const editor = mountEditor();
+    const toast = vi.spyOn(toastService, "error").mockReturnValue("t");
+    vi.mocked(projectSpelling.ignoreSpellingWord).mockRejectedValue(
+      new Error("disk full"),
+    );
+    const store = openWithStore(editor);
+    fireEvent.click(await screen.findByText("Ignore"));
+    await vi.waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(toast.mock.calls[0].join(" ")).toContain("disk full");
+    expect(store.getState().spelling.lists.spellingIgnoredWords).toEqual([]);
+    expect(
+      editor.view.dom.querySelectorAll(".spell-error").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("both items are enabled in a read-only editor", async () => {
+    const editor = mountEditor();
+    editor.setEditable(false);
+    openWithStore(editor);
+    for (const label of ["Ignore", "Add to project dictionary"]) {
+      const item = (await screen.findByText(label)).closest("[role=menuitem]");
+      expect(item?.hasAttribute("data-disabled")).toBe(false);
+    }
+  });
+
+  it("works without a store in scope, doing nothing", async () => {
+    const editor = mountEditor();
+    const ignore = vi.mocked(projectSpelling.ignoreSpellingWord);
+    ignore.mockClear();
+    openSpellingMenu(editor, async () => ({ status: "ok", suggestions: [] }));
+    fireEvent.click(await screen.findByText("Ignore"));
+    expect(ignore).not.toHaveBeenCalled();
   });
 });

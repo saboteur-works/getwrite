@@ -453,7 +453,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-32, AC-14. On a paired device the project list is the only add target (OQ-128).
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 44: Context-menu a11y and the unedited-existing-tests check
 **What:** Extend the context-menu a11y test with the spelling group and confirm the existing menu tests pass unedited.

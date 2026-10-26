@@ -85,8 +85,8 @@ const editors: Editor[] = [];
 function setup(
   html: string,
   engineOptions: TestDoubleEngineOptions = { known: ["cat", "the"] },
+  store: ReturnType<typeof makeStore> = makeStore(),
 ): Harness {
-  const store = makeStore();
   const worker = createDeferredWorker(createTestDoubleEngine(engineOptions));
   const createClient = vi.fn(() =>
     createSpellClient({ createWorker: () => worker }),
@@ -465,6 +465,35 @@ describe("project words, ignored words and entity terms", () => {
     });
     await h.flush();
     expect(h.underlined()).toEqual(["teh"]);
+  });
+});
+
+describe("a list change reaches every open editor of the project (Task 43, FR-32)", () => {
+  it("drops the underline in two editors sharing a store at once, from cache, with no worker request", async () => {
+    const store = makeStore();
+    const a = setup("<p>teh cat</p>", undefined, store);
+    const b = setup("<p>the teh blorp</p>", undefined, store);
+    await a.flush();
+    await b.flush();
+    expect(a.underlined()).toEqual(["teh"]);
+    expect(b.underlined()).toEqual(["teh", "blorp"]);
+    const postedA = a.worker.posted.length;
+    const postedB = b.worker.posted.length;
+
+    act(() => {
+      store.dispatch({
+        type: "spelling/ignoreWord/fulfilled",
+        payload: {
+          projectId: "p",
+          lists: { spellingProjectWords: [], spellingIgnoredWords: ["teh"] },
+        },
+        meta: { arg: "teh", requestId: "x", requestStatus: "fulfilled" },
+      });
+    });
+    expect(a.underlined()).toEqual([]);
+    expect(b.underlined()).toEqual(["blorp"]);
+    expect(a.worker.posted).toHaveLength(postedA);
+    expect(b.worker.posted).toHaveLength(postedB);
   });
 });
 

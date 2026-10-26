@@ -86,6 +86,7 @@ import * as React from "react";
 import type { Editor } from "@tiptap/core";
 import type { EditorStateSnapshot } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { ReactReduxContext } from "react-redux";
 import {
   Scissors,
   Copy,
@@ -121,6 +122,9 @@ import {
 import type { SuggestResult } from "../../src/lib/spelling/spell-client";
 import { MAX_SUGGESTIONS } from "../../src/lib/spelling/engine";
 import { applyReplacement } from "../../src/lib/spelling/apply-replacement";
+import { addProjectWord, ignoreWord } from "../../src/store/spellingSlice";
+import type { AppDispatch } from "../../src/store/store";
+import { toastService } from "../../src/lib/toast-service";
 
 /**
  * Looks up a `ToolbarIconCommand` by its `id` from the "Text Formatting"
@@ -315,9 +319,41 @@ export default function EditorContextMenu({
     [editor, onFlaggedWordFrozen, requestSuggestionsFor],
   );
 
-  // Ignore / Add are inert until Task 43 wires them; selecting one only
-  // closes the menu.
-  const handleSpellingItemSelect = React.useCallback(() => {}, []);
+  // The store is read from context rather than `useDispatch` so the menu still
+  // renders (spelling items inert) where no Provider is mounted.
+  const reduxContext = React.useContext(ReactReduxContext);
+
+  // Ignore / Add write the project's config, not the document (FR-32), so they
+  // are not gated on read-only. No optimistic update: the slice replaces both
+  // lists from the response, which redraws every open editor; a failure leaves
+  // the word underlined and toasts.
+  const handleSpellingListChange = React.useCallback(
+    (thunk: typeof ignoreWord | typeof addProjectWord, failure: string) => {
+      if (!reduxContext || !flaggedWord) return;
+      const dispatch = reduxContext.store.dispatch as AppDispatch;
+      void dispatch(thunk(flaggedWord)).then((result) => {
+        if (result.meta.requestStatus !== "rejected") return;
+        const reason =
+          "error" in result && result.error.message
+            ? result.error.message
+            : undefined;
+        toastService.error(failure, reason);
+      });
+    },
+    [reduxContext, flaggedWord],
+  );
+  const handleIgnore = React.useCallback(
+    () => handleSpellingListChange(ignoreWord, "Could not ignore the word."),
+    [handleSpellingListChange],
+  );
+  const handleAddWord = React.useCallback(
+    () =>
+      handleSpellingListChange(
+        addProjectWord,
+        "Could not add the word to the project dictionary.",
+      ),
+    [handleSpellingListChange],
+  );
 
   const handleReplace = React.useCallback(
     (suggestion: string) => {
@@ -453,7 +489,8 @@ export default function EditorContextMenu({
             suggestions={suggestions}
             readOnly={captured.readOnly}
             onReplace={handleReplace}
-            onSelect={handleSpellingItemSelect}
+            onIgnore={handleIgnore}
+            onAddWord={handleAddWord}
           />
         )}
         <ContextMenuItem
@@ -582,7 +619,8 @@ interface SpellingGroupProps {
   /** True when the editor is read-only: suggestions cannot be applied. */
   readOnly: boolean;
   onReplace: (suggestion: string) => void;
-  onSelect: () => void;
+  onIgnore: () => void;
+  onAddWord: () => void;
 }
 
 /**
@@ -595,7 +633,8 @@ function SpellingGroup({
   suggestions,
   readOnly,
   onReplace,
-  onSelect,
+  onIgnore,
+  onAddWord,
 }: SpellingGroupProps) {
   let body: React.ReactNode;
   if (suggestions.status === "ok" && suggestions.suggestions.length > 0) {
@@ -630,13 +669,13 @@ function SpellingGroup({
       {body}
       <ContextMenuItem
         className="resource-context-menu-item"
-        onSelect={onSelect}
+        onSelect={onIgnore}
       >
         Ignore
       </ContextMenuItem>
       <ContextMenuItem
         className="resource-context-menu-item"
-        onSelect={onSelect}
+        onSelect={onAddWord}
       >
         Add to project dictionary
       </ContextMenuItem>
