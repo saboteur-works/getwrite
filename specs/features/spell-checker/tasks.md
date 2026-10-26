@@ -594,7 +594,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 2
 **Notes:** Satisfies FR-47 (measurement). Measured so far (device, same build): the long-press selected the word and opened `EditorContextMenu` with no spelling group; no cause is established and none is written. `adb` is never run by the agent.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 58: HALT, lead runs the Android long-press measurement
 **What:** Stop for the lead to run the Task 57 runbook on the Pixel 7 Pro over `adb` and record the result.

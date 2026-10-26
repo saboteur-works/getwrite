@@ -1948,3 +1948,41 @@ Screenshots are in the lead's scratchpad, not the repo. Each item below is MEASU
 ### Cleanup
 
 Throwaway project deleted via its card menu; the start page was back to 5/12/38; the switch was left on; the devtools forward was removed.
+
+## Owner step: Android long-press
+
+Task 57 (FR-47 measurement). The lead runs the device step (Task 58); the agent that wrote this section ran no `adb` and touched no device. It asks for observations only: record what the WebView delivered, label each item MEASURED or UNMEASURED with the reason, and state no cause. OQ-15, OQ-16 and OQ-17 are decided by the owner afterwards from what is pasted.
+
+The probe is `specs/features/spell-checker/scripts/longpress-probe.js`. It is read-only: capture-phase passive listeners, no DOM change, no `preventDefault`. It logs, for a press on `.ProseMirror`, `pointerdown`/`pointerup`/`pointercancel`, `touchstart`/`touchend`/`touchcancel`, `contextmenu` (capture phase, plus a bubble-phase entry `contextmenu-bubble` on `window` so a `preventDefault` by something in between shows as `defaultPrevented: true`), and `selectionchange`; and two `after-contextmenu` entries (next macrotask and +300 ms) with the selected text, DOM anchor and focus, the ProseMirror selection when reachable, and a `.spell-error` hit test at the event coordinates and at the last pointer or touch coordinates. The editor view is reached through the `editor` property TipTap sets on the `.ProseMirror` element (`dom.editor`, `@tiptap/core` `Editor.ts`); if it is absent the entries say `view: "unreachable"` and the hit test uses `elementFromPoint` plus `closest('.spell-error')`, naming the method in `method`.
+
+The device build must contain the Task 56 fix (FR-46: a newly created project loads spelling state). If a newly created throwaway project still shows no `.spell-error` marks, close and reopen it with Open project after a force-stop and relaunch, and write down which of the two paths was used; do not read the missing marks as a long-press result.
+
+Steps, in order. Replace `<pid>` and `<your-sdk>` as needed; every command targets the real app `works.saboteur.getwrite` read-only. Never `pm clear` or `uninstall` it.
+
+1. Device: `adb devices` shows one device in state `device`, unlocked, screen timeout raised. Record `adb shell getprop ro.product.model` and `adb shell getprop ro.build.version.release`.
+2. WebView version: `adb shell dumpsys webviewupdate` (current package and version). Record it.
+3. Keyboard app: `adb shell settings get secure default_input_method`. Record it and the name shown in Settings under Languages & input.
+4. Build under test: record the HEAD commit the APK was built from and that it includes Task 56 (`git log --oneline` shows the "newly created project loads spelling state" commit). Airplane mode may stay as it was; this step does not need the network.
+5. Launch the app: `adb shell am start -n works.saboteur.getwrite/.MainActivity`. Use a throwaway project (create one with Start a new project, or reuse "Spellcheck Offline Test"), open Scene 1 and type `recieve teh wrold and some fine words` so `wrold` and a non-flagged word (for example `fine`) are on screen. Confirm `wrold` is underlined; if there are no marks, see the Open project note above. Leave the editor open and unlocked.
+6. Find the WebView DevTools socket pid: `adb shell cat /proc/net/unix | grep webview_devtools_remote`. The line ends `@webview_devtools_remote_<pid>`; take the pid of the app's process (`adb shell pidof works.saboteur.getwrite` should match).
+7. Attach DevTools: `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`. Check `curl -s http://localhost:9222/json` lists the app page and copy its `webSocketDebuggerUrl`. (This is how the Phone offline measurements were taken: CDP `Runtime.evaluate` over the forwarded `webview_devtools_remote` socket.)
+8. Inject the probe, either of:
+   - CDP: send `Runtime.evaluate` with `expression` set to the full text of `longpress-probe.js` over the websocket from step 7. Expect the result string `longpress probe installed`.
+   - Or open `chrome://inspect` in desktop Chrome, inspect the app page, and paste the file into the Console.
+   Then evaluate `window.__longpressProbe.log.length`; expect `0`.
+9. Long-press about 900 ms on the flagged word `wrold`, without moving the finger, then lift. A scripted press with `adb shell input swipe <x> <y> <x> <y> 900` is acceptable if that is how the lead drives the phone; write down which method was used (finger or `adb input`) because they may deliver different events. Do not tap anything in the context menu if one opens; dismiss it with Back and note whether it opened and which items it showed.
+10. Evaluate `window.__longpressProbe.dump()` and copy the returned JSON text (`Runtime.evaluate` with `returnByValue: true`, or copy from the Console). Save it as press A.
+11. Reload nothing. Evaluate `window.__longpressProbe.log.length = 0` to start press B with an empty log, then long-press about 900 ms on a non-flagged word (`fine`), same method as step 9, and copy `window.__longpressProbe.dump()` as press B.
+12. Optionally repeat steps 9 to 11 once with the other press method (finger versus `adb input`) and label it press A2 / B2.
+13. Stop the probe: evaluate `window.__longpressProbe.stop()`. Remove the forward: `adb forward --remove tcp:9222`. Delete the throwaway project through its card menu if it was created for this step.
+14. Paste under the heading "Android long-press (pasted)" below: device model, Android version, WebView version, keyboard app, the build commit, how each press was made, the pasted JSON for each press in a fenced `json` block, and in prose only what the JSON shows: the order of events delivered, the `contextmenu` fields (`isTrusted`, coordinates, `button`, `sourceCapabilities`, `defaultPrevented`), the selection state after the press, whether the hit test landed in `.spell-error` at the event coordinates and at the press-start coordinates, and which menu items opened. Label each MEASURED or UNMEASURED with the reason. State no cause.
+
+Self-check of the probe (not a device result): `node specs/features/spell-checker/scripts/longpress-probe.check.mjs` runs the probe in desktop headless Chromium against a local page with a contenteditable `.ProseMirror` holding a `.spell-error` span, using CDP `Input.dispatchTouchEvent` for a 900 ms touch and one synthetic `contextmenu`. It checks the entry shapes, that the DOM is unchanged, and that `stop()` detaches. It needs the browser to run outside the command sandbox.
+
+### Probe shape check on desktop Chromium (NOT a device result, 2026-10-25)
+
+Scripted events in headless desktop Chromium, output shape only. In the first run the page had no `editor` property, so the probe reported `view: "unreachable"` and used `elementFromPoint`; in the second a hand-written stub stood in for `editor.view`, so the `posAtCoords` values there are fabricated by the stub and say nothing about the app. Event order logged in both runs: `pointerdown > touchstart > contextmenu(synthetic) > contextmenu-bubble > after-contextmenu(+0ms) > selectionchange > pointerup > touchend > contextmenu(trusted, button -1, sourceCapabilities.firesTouchEvents false, target div.ProseMirror) > ...`. That order came from this desktop browser and this script; it is not what the Android WebView delivers.
+
+## Android long-press (pasted)
+
+pending lead run
