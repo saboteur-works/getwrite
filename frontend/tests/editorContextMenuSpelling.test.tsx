@@ -6,6 +6,7 @@ import { EditorContent } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
 import EditorContextMenu from "../components/Editor/EditorContextMenu";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
+import { toastService } from "../src/lib/toast-service";
 import SpellCheckDecorationExtension, {
   SPELL_CHECK_DECORATION_KEY,
   getSpellDocVersion,
@@ -379,5 +380,48 @@ describe("EditorContextMenu spelling group (Task 41)", () => {
     );
     expect(screen.queryByText("late")).toBeNull();
     expect(screen.getByText("the")).toBeTruthy();
+  });
+});
+
+/**
+ * Task 42 (FR-31, AC-14): choosing a suggestion replaces the frozen word.
+ */
+describe("EditorContextMenu replace with a suggestion (Task 42)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    while (editors.length > 0) editors.pop()?.destroy();
+  });
+
+  const world = async () => ({ status: "ok" as const, suggestions: ["world"] });
+
+  it("replaces the frozen word with the chosen suggestion; undo restores it", async () => {
+    const editor = mountEditor();
+    openSpellingMenu(editor, world, 9);
+    fireEvent.click(await screen.findByText("world"));
+    expect(editor.state.doc.textContent).toBe("Hello world and teh");
+    editor.commands.undo();
+    expect(editor.state.doc.textContent).toBe("Hello wrold and teh");
+  });
+
+  it("does nothing and toasts when the text at the frozen range changed while the menu was open", async () => {
+    const editor = mountEditor();
+    const toast = vi.spyOn(toastService, "info").mockReturnValue("t");
+    openSpellingMenu(editor, world, 9);
+    const item = await screen.findByText("world");
+    act(() => {
+      editor.view.dispatch(editor.state.tr.insertText("X", 7, 8));
+    });
+    const before = editor.state.doc.textContent;
+    fireEvent.click(item);
+    expect(editor.state.doc.textContent).toBe(before);
+    expect(toast).toHaveBeenCalled();
+  });
+
+  it("disables the suggestion items when the editor is read-only", async () => {
+    const editor = mountEditor();
+    editor.setEditable(false);
+    openSpellingMenu(editor, world, 9);
+    const item = (await screen.findByText("world")).closest("[role=menuitem]");
+    expect(item?.hasAttribute("data-disabled")).toBe(true);
   });
 });

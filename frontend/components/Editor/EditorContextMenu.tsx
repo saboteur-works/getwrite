@@ -120,6 +120,7 @@ import {
 } from "./Extensions/SpellCheckDecorationExtension";
 import type { SuggestResult } from "../../src/lib/spelling/spell-client";
 import { MAX_SUGGESTIONS } from "../../src/lib/spelling/engine";
+import { applyReplacement } from "../../src/lib/spelling/apply-replacement";
 
 /**
  * Looks up a `ToolbarIconCommand` by its `id` from the "Text Formatting"
@@ -242,6 +243,9 @@ export default function EditorContextMenu({
   const [flaggedRange, setFlaggedRange] = React.useState<SpellRange | null>(
     null,
   );
+  // The flagged word's text, frozen with the range; "Replace with" checks the
+  // document still holds it (FR-31).
+  const [flaggedWord, setFlaggedWord] = React.useState("");
 
   const [suggestions, setSuggestions] = React.useState<SuggestionsState>({
     status: "pending",
@@ -300,19 +304,28 @@ export default function EditorContextMenu({
       setFlaggedRange(range);
       onFlaggedWordFrozen?.(range);
       if (range) {
-        requestSuggestionsFor(
-          editor.state.doc.textBetween(range.from, range.to),
-        );
+        const word = editor.state.doc.textBetween(range.from, range.to);
+        setFlaggedWord(word);
+        requestSuggestionsFor(word);
       } else {
+        setFlaggedWord("");
         suggestionRequestRef.current++;
       }
     },
     [editor, onFlaggedWordFrozen, requestSuggestionsFor],
   );
 
-  // Replace with / Ignore / Add are inert until Tasks 42 and 43 wire them;
-  // selecting one only closes the menu.
+  // Ignore / Add are inert until Task 43 wires them; selecting one only
+  // closes the menu.
   const handleSpellingItemSelect = React.useCallback(() => {}, []);
+
+  const handleReplace = React.useCallback(
+    (suggestion: string) => {
+      if (!flaggedRange) return;
+      applyReplacement(editor, flaggedRange, flaggedWord, suggestion);
+    },
+    [editor, flaggedRange, flaggedWord],
+  );
 
   const handleOpenChange = React.useCallback((open: boolean) => {
     isMenuOpenRef.current = open;
@@ -438,6 +451,8 @@ export default function EditorContextMenu({
         {flaggedRange && (
           <SpellingGroup
             suggestions={suggestions}
+            readOnly={captured.readOnly}
+            onReplace={handleReplace}
             onSelect={handleSpellingItemSelect}
           />
         )}
@@ -564,6 +579,9 @@ function TextFormattingMenuItem({
 
 interface SpellingGroupProps {
   suggestions: SuggestionsState;
+  /** True when the editor is read-only: suggestions cannot be applied. */
+  readOnly: boolean;
+  onReplace: (suggestion: string) => void;
   onSelect: () => void;
 }
 
@@ -573,14 +591,20 @@ interface SpellingGroupProps {
  * there are none (pending, empty, and failed are three different states),
  * then Ignore and Add to project dictionary, then a separator.
  */
-function SpellingGroup({ suggestions, onSelect }: SpellingGroupProps) {
+function SpellingGroup({
+  suggestions,
+  readOnly,
+  onReplace,
+  onSelect,
+}: SpellingGroupProps) {
   let body: React.ReactNode;
   if (suggestions.status === "ok" && suggestions.suggestions.length > 0) {
     body = suggestions.suggestions.slice(0, MAX_SUGGESTIONS).map((word) => (
       <ContextMenuItem
         key={word}
         className="resource-context-menu-item"
-        onSelect={onSelect}
+        disabled={readOnly}
+        onSelect={() => onReplace(word)}
       >
         {word}
       </ContextMenuItem>

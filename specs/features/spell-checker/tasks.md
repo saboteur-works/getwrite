@@ -443,7 +443,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-31, AC-14. Stale-offset precedent: Mention jump (`offset-resolver.ts`).
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 43: Ignore and Add to project dictionary
 **What:** Wire Ignore and Add to the transport so the underline goes in every open editor at once, with no optimistic update.
