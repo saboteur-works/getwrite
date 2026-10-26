@@ -1109,8 +1109,11 @@ html.gw-theme-dark {
   }
 
   /* ── RESOURCE CONTEXT MENU ── */
+  /* No `position` here: Radix's positioning wrapper is already fixed and
+     sizes itself from this element to flip or shift the menu at the window
+     edges. A fixed menu left the wrapper 0x0, so the menu always opened down
+     and right and ran off the window. */
   .resource-context-menu {
-    position: fixed;
     z-index: 50;
     min-width: 180px;
     border: 0.5px solid var(--color-gw-border);
@@ -1119,10 +1122,11 @@ html.gw-theme-dark {
     padding: 4px;
   }
 
-  /* Kebab (⋯) popover variant: same look as the right-click menu but WITHOUT
-     `position: fixed` — Radix Popover positions its content via a transformed
-     positioner, and a fixed child would ignore that transform (its containing
-     block becomes the positioner) and mis-anchor at the trigger's corner. */
+  /* Kebab (⋯) popover variant: same look as the right-click menu. Like it, it
+     must not be `position: fixed` — Radix Popover positions its content via a
+     transformed positioner, and a fixed child would ignore that transform (its
+     containing block becomes the positioner) and mis-anchor at the trigger's
+     corner. */
   .resource-row-menu {
     min-width: 180px;
     border: 0.5px solid var(--color-gw-border);
