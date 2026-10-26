@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import AppSettingsDialog from "../../components/AppSettings/AppSettingsDialog";
+import type { UserWordListState } from "../../src/store/userWordListSlice";
 
 /**
  * `AppSettingsDialog` persists through `getGlobalNoiseWords`/
@@ -29,7 +30,18 @@ function mockGlobalNoiseWordsFetch(initial: string[]) {
 const meta: Meta<typeof AppSettingsDialog> = {
   title: "AppSettings/AppSettingsDialog",
   component: AppSettingsDialog,
-  parameters: { a11y: { test: "error" } },
+  // The dialog contains the "My dictionary" section, which loads the user word
+  // list when it is `idle`. Preloading a loaded empty list keeps every story
+  // off the network (the fetch stub above answers with noise words).
+  parameters: {
+    a11y: { test: "error" },
+    userWordList: {
+      status: "loaded",
+      words: [],
+      reason: null,
+      errorMessage: "",
+    } satisfies UserWordListState,
+  },
 };
 
 export default meta;

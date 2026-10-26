@@ -253,9 +253,48 @@ export const SpellingSuggestions: Story = {
       "wield",
       "Ignore",
       "Add to project dictionary",
+      "Add to my dictionary",
       "Cut",
     ]);
     await expect(within(menu).getByText("Replace with")).toBeTruthy();
+  },
+};
+
+/**
+ * Paired device (Feature 96, FR-6/FR-7): the user list is not available, so
+ * "Add to my dictionary" is absent while the project entries remain.
+ */
+export const SpellingPairedNoMyDictionary: Story = {
+  parameters: {
+    a11y: MENU_OPEN_A11Y,
+    sharingLimits: {
+      state: {
+        state: "paired",
+        limits: {
+          projectDeletion: false,
+          unlocking: false,
+          locking: false,
+          encryptionChanges: false,
+          permanentDeletion: false,
+        },
+      },
+    },
+  },
+  render: () => (
+    <SpellingDemo
+      requestSuggestions={async () => ({
+        status: "ok",
+        suggestions: ["world"],
+      })}
+    />
+  ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const menu = await openOnFlaggedWord(canvasElement);
+    await within(menu).findByText("world");
+    await expect(
+      within(menu).getByText("Add to project dictionary"),
+    ).toBeTruthy();
+    await expect(within(menu).queryByText("Add to my dictionary")).toBeNull();
   },
 };
 
