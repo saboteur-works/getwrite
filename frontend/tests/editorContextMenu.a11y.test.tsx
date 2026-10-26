@@ -1,5 +1,11 @@
 import React from "react";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  fireEvent,
+  act,
+  within,
+} from "@testing-library/react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { Editor } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
@@ -185,6 +191,13 @@ describe("a11y: EditorContextMenu", () => {
     await runAxe(document.body, ["region"]);
   });
 });
+
+import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
+
+// Feature 96: the menu reads the sharing-limits role, so every render sits in
+// a provider (default role `exempt`).
+const render = (ui: React.ReactElement) =>
+  rtlRender(<StaticSharingLimitsProvider>{ui}</StaticSharingLimitsProvider>);
 
 /**
  * Task 44 (FR-41 menu part, AC-14, AC-17): the spelling group in the flagged

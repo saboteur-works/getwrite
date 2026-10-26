@@ -124,6 +124,8 @@ import type { SuggestResult } from "../../src/lib/spelling/spell-client";
 import { MAX_SUGGESTIONS } from "../../src/lib/spelling/engine";
 import { applyReplacement } from "../../src/lib/spelling/apply-replacement";
 import { addProjectWord, ignoreWord } from "../../src/store/spellingSlice";
+import { addToUserList } from "../../src/store/userWordListSlice";
+import { useUserListAvailable } from "../../src/hooks/useUserListAvailable";
 import type { AppDispatch } from "../../src/store/store";
 import { toastService } from "../../src/lib/toast-service";
 
@@ -366,32 +368,45 @@ export default function EditorContextMenu({
   // are not gated on read-only. No optimistic update: the slice replaces both
   // lists from the response, which redraws every open editor; a failure leaves
   // the word underlined and toasts.
-  const handleSpellingListChange = React.useCallback(
-    (thunk: typeof ignoreWord | typeof addProjectWord, failure: string) => {
+  const runSpellingListThunk = React.useCallback(
+    (
+      run: (dispatch: AppDispatch, word: string) => Promise<ListThunkResult>,
+      failure: string,
+    ) => {
       if (!reduxContext || !flaggedWord) return;
       const dispatch = reduxContext.store.dispatch as AppDispatch;
-      void dispatch(thunk(flaggedWord)).then((result) => {
+      void run(dispatch, flaggedWord).then((result) => {
         if (result.meta.requestStatus !== "rejected") return;
-        const reason =
-          "error" in result && result.error.message
-            ? result.error.message
-            : undefined;
-        toastService.error(failure, reason);
+        toastService.error(failure, rejectionReason(result));
       });
     },
     [reduxContext, flaggedWord],
   );
   const handleIgnore = React.useCallback(
-    () => handleSpellingListChange(ignoreWord, "Could not ignore the word."),
-    [handleSpellingListChange],
+    () =>
+      runSpellingListThunk(
+        (dispatch, word) => dispatch(ignoreWord(word)),
+        "Could not ignore the word.",
+      ),
+    [runSpellingListThunk],
   );
   const handleAddWord = React.useCallback(
     () =>
-      handleSpellingListChange(
-        addProjectWord,
+      runSpellingListThunk(
+        (dispatch, word) => dispatch(addProjectWord(word)),
         "Could not add the word to the project dictionary.",
       ),
-    [handleSpellingListChange],
+    [runSpellingListThunk],
+  );
+  // The user list is device-wide and separate from the project lists (FR-17):
+  // the same word may be in both, and neither add touches the other list.
+  const handleAddToMyDictionary = React.useCallback(
+    () =>
+      runSpellingListThunk(
+        (dispatch, word) => dispatch(addToUserList(word)),
+        "Could not add the word to your dictionary.",
+      ),
+    [runSpellingListThunk],
   );
 
   const handleReplace = React.useCallback(
@@ -531,6 +546,7 @@ export default function EditorContextMenu({
             onReplace={handleReplace}
             onIgnore={handleIgnore}
             onAddWord={handleAddWord}
+            onAddToMyDictionary={handleAddToMyDictionary}
           />
         )}
         <ContextMenuItem
@@ -654,6 +670,22 @@ function TextFormattingMenuItem({
   );
 }
 
+/** What the menu reads from a settled list thunk. */
+interface ListThunkResult {
+  meta: { requestStatus: string };
+  payload?: unknown;
+  error?: { message?: string };
+}
+
+/** The text a rejected list thunk offers the toast: its payload message, else its error message. */
+function rejectionReason(result: ListThunkResult): string | undefined {
+  const payload = result.payload as { message?: unknown } | undefined;
+  if (payload && typeof payload.message === "string" && payload.message) {
+    return payload.message;
+  }
+  return result.error?.message || undefined;
+}
+
 interface SpellingGroupProps {
   suggestions: SuggestionsState;
   /** True when the editor is read-only: suggestions cannot be applied. */
@@ -661,13 +693,16 @@ interface SpellingGroupProps {
   onReplace: (suggestion: string) => void;
   onIgnore: () => void;
   onAddWord: () => void;
+  onAddToMyDictionary: () => void;
 }
 
 /**
  * The menu's first items for a flagged word (FR-29, FR-30): "Replace with" and
  * up to {@link MAX_SUGGESTIONS} suggestions, or one disabled item saying why
  * there are none (pending, empty, and failed are three different states),
- * then Ignore and Add to project dictionary, then a separator.
+ * then Ignore, Add to project dictionary and, only where the user list is
+ * available (Feature 96, FR-6/FR-7: not on a paired device, not while the
+ * role is unknown), Add to my dictionary, then a separator.
  */
 function SpellingGroup({
   suggestions,
@@ -675,7 +710,9 @@ function SpellingGroup({
   onReplace,
   onIgnore,
   onAddWord,
+  onAddToMyDictionary,
 }: SpellingGroupProps) {
+  const userListAvailability = useUserListAvailable();
   let body: React.ReactNode;
   if (suggestions.status === "ok" && suggestions.suggestions.length > 0) {
     body = suggestions.suggestions.slice(0, MAX_SUGGESTIONS).map((word) => (
@@ -719,6 +756,14 @@ function SpellingGroup({
       >
         Add to project dictionary
       </ContextMenuItem>
+      {userListAvailability === "available" && (
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          onSelect={onAddToMyDictionary}
+        >
+          Add to my dictionary
+        </ContextMenuItem>
+      )}
       <ContextMenuSeparator className="resource-context-menu-separator" />
     </>
   );
