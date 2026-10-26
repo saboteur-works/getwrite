@@ -513,7 +513,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-40, FR-41, AC-17.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 50: Licence notice file, public copy and Electron entry
 **What:** Write `THIRD_PARTY_SPELLCHECK.txt` at the root, an identical copy under `frontend/public/`, and the `electron-builder.yml` `extraResources` entry.
