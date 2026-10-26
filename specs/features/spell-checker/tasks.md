@@ -423,7 +423,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 5
 **Notes:** Satisfies FR-29, AC-14. The `pointerdown`-button-2 heuristic is unverified and the test must establish it (OQ-3). No new shortcut is added.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 41: Suggestions request and the spelling group
 **What:** Render the spelling group at the top of the menu for a flagged word: up to 5 suggestions under "Replace with", then Ignore and Add to project dictionary, a separator, then the existing items.

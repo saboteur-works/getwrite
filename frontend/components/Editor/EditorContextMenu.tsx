@@ -113,6 +113,10 @@ import {
   menuBarStateSelector,
   type MenuBarState,
 } from "./MenuBar/menuBarState";
+import {
+  findSpellRangeAt,
+  type SpellRange,
+} from "./Extensions/SpellCheckDecorationExtension";
 
 /**
  * Looks up a `ToolbarIconCommand` by its `id` from the "Text Formatting"
@@ -142,6 +146,12 @@ export interface EditorContextMenuProps {
   children: React.ReactNode;
   /** The live TipTap editor instance whose selection gates the menu (FR-9). */
   editor: Editor;
+  /**
+   * Called each time the menu is opened with the flagged range frozen at that
+   * moment (spell-checker FR-29), or `null` when the click/caret is not on a
+   * flagged word. Later decoration changes do not retarget it.
+   */
+  onFlaggedWordFrozen?: (range: SpellRange | null) => void;
 }
 
 /** A snapshot of the editor's ProseMirror selection at a point in time. */
@@ -177,6 +187,7 @@ function captureEditorSelection(editor: Editor): CapturedEditorSelection {
 export default function EditorContextMenu({
   children,
   editor,
+  onFlaggedWordFrozen,
 }: EditorContextMenuProps) {
   const [captured, setCaptured] = React.useState<CapturedEditorSelection>(() =>
     captureEditorSelection(editor),
@@ -206,9 +217,44 @@ export default function EditorContextMenu({
     };
   }, [editor]);
 
-  const handleContextMenu = React.useCallback(() => {
-    setCaptured(captureEditorSelection(editor));
-  }, [editor]);
+  // OQ-3: a `pointerdown` with button 2 immediately before `contextmenu`
+  // marks the event as pointer-originated; otherwise (context-menu key,
+  // Shift+F10) it is keyboard-originated. The marker is consumed by the
+  // `contextmenu` that follows it.
+  const rightPointerDownRef = React.useRef(false);
+  // The flagged range frozen when the menu opened (null: none).
+  const [flaggedRange, setFlaggedRange] = React.useState<SpellRange | null>(
+    null,
+  );
+
+  const handlePointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLSpanElement>) => {
+      rightPointerDownRef.current = event.button === 2;
+    },
+    [],
+  );
+
+  const handleContextMenu = React.useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      setCaptured(captureEditorSelection(editor));
+      const isPointerOriginated = rightPointerDownRef.current;
+      rightPointerDownRef.current = false;
+      let range: SpellRange | null = null;
+      if (isPointerOriginated) {
+        const at = editor.view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        });
+        range = at ? findSpellRangeAt(editor.state, at.pos) : null;
+      }
+      range ??= findSpellRangeAt(editor.state, editor.state.selection.from);
+      setFlaggedRange(range);
+      onFlaggedWordFrozen?.(range);
+    },
+    [editor, onFlaggedWordFrozen],
+  );
+  // Read by the spelling group (Task 41).
+  void flaggedRange;
 
   const handleOpenChange = React.useCallback((open: boolean) => {
     isMenuOpenRef.current = open;
@@ -318,7 +364,11 @@ export default function EditorContextMenu({
   return (
     <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger asChild disabled={captured.isNodeSelection}>
-        <span onContextMenu={handleContextMenu} style={{ display: "contents" }}>
+        <span
+          onPointerDown={handlePointerDown}
+          onContextMenu={handleContextMenu}
+          style={{ display: "contents" }}
+        >
           {children}
         </span>
       </ContextMenuTrigger>

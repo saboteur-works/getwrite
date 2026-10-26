@@ -89,6 +89,23 @@ export function getSpellDocVersion(state: EditorState): number {
   return SPELL_CHECK_DECORATION_KEY.getState(state)?.docVersion ?? 0;
 }
 
+/**
+ * The flagged range containing `pos` (a position at either edge counts), or
+ * `null` when none. Reads the plugin state, so it is empty while the checker
+ * is off. Returns a copy: callers may keep it after the decorations change.
+ */
+export function findSpellRangeAt(
+  state: EditorState,
+  pos: number,
+): SpellRange | null {
+  const decorations = SPELL_CHECK_DECORATION_KEY.getState(state)?.decorations;
+  if (!decorations) return null;
+  const hit = decorations
+    .find(pos, pos)
+    .find((d) => d.from <= pos && pos <= d.to);
+  return hit ? { from: hit.from, to: hit.to } : null;
+}
+
 function buildDecorations(
   doc: ProseMirrorNode,
   ranges: SpellRange[],
