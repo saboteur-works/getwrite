@@ -33,6 +33,27 @@ export interface CreateProjectModalProps {
   defaultType?: CreateProjectPayload["projectType"];
 }
 
+interface FilterableProjectType {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+/** Types whose id, name or description contains `filter` (case-insensitive). */
+function filterProjectTypes<T extends FilterableProjectType>(
+  types: T[],
+  filter: string,
+): T[] {
+  if (!filter) return types;
+  const q = filter.toLowerCase();
+  return types.filter(
+    (t) =>
+      t.id.toLowerCase().includes(q) ||
+      t.name.toLowerCase().includes(q) ||
+      (t.description || "").toLowerCase().includes(q),
+  );
+}
+
 /**
  * Controlled modal that:
  * - validates non-empty name,
@@ -123,9 +144,14 @@ export default function CreateProjectModal({
     }
   }, [isOpen, defaultName, defaultType]);
 
+  const visibleTypes = filterProjectTypes(types ?? [], filter);
+  const hasNoFilterMatch =
+    !!types && types.length > 0 && visibleTypes.length === 0;
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (isCreating) return; // ignore duplicate submits while creating
     e?.preventDefault();
+    if (hasNoFilterMatch) return; // the select shows no type to create from
     if (!name.trim()) {
       setError("Please enter a project name.");
       nameRef.current?.focus();
@@ -155,7 +181,20 @@ export default function CreateProjectModal({
     }
   };
 
-  const selectedType = types?.find((t) => t.id === projectType);
+  const selectedType = hasNoFilterMatch
+    ? undefined
+    : types?.find((t) => t.id === projectType);
+
+  // The select can only show a visible option, so a filter that hides the
+  // chosen type moves the choice to the first match; otherwise the select
+  // would display one type while the form submitted another.
+  const handleFilterChange = (next: string) => {
+    setFilter(next);
+    const matches = filterProjectTypes(types ?? [], next);
+    if (matches.length > 0 && !matches.some((t) => t.id === projectType)) {
+      setProjectType(matches[0].id);
+    }
+  };
 
   return (
     <Dialog
@@ -206,7 +245,7 @@ export default function CreateProjectModal({
                 aria-label="Filter project types"
                 placeholder="Search project types..."
                 value={filter}
-                onChange={(e) => setFilter(e.target.value)}
+                onChange={(e) => handleFilterChange(e.target.value)}
                 className="w-full mt-1 mb-2"
                 disabled={isCreating || isLoadingTypes}
               />
@@ -222,25 +261,16 @@ export default function CreateProjectModal({
               >
                 {isLoadingTypes ? (
                   <option>Loading...</option>
+                ) : hasNoFilterMatch ? (
+                  <option value="">No matching project types</option>
                 ) : types && types.length > 0 ? (
-                  // filter by id, name, or description
-                  types
-                    .filter((t) => {
-                      if (!filter) return true;
-                      const q = filter.toLowerCase();
-                      return (
-                        t.id.toLowerCase().includes(q) ||
-                        t.name.toLowerCase().includes(q) ||
-                        (t.description || "").toLowerCase().includes(q)
-                      );
-                    })
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                        {t.source === "saved" ? " (Saved)" : ""}
-                        {t.description ? ` — ${t.description}` : ""}
-                      </option>
-                    ))
+                  visibleTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.source === "saved" ? " (Saved)" : ""}
+                      {t.description ? ` — ${t.description}` : ""}
+                    </option>
+                  ))
                 ) : (
                   <option value="">No project types available</option>
                 )}
@@ -248,7 +278,9 @@ export default function CreateProjectModal({
             </div>
             {types && types.length > 0 && (
               <div className="project-modal-hint">
-                {selectedType?.description}
+                {hasNoFilterMatch
+                  ? "No project types match the filter."
+                  : selectedType?.description}
               </div>
             )}
             {/* Show validation error for selected template (friendly messages) */}
@@ -286,7 +318,11 @@ export default function CreateProjectModal({
             <Button
               type="submit"
               variant="default"
-              disabled={isCreating || !!selectedType?.validationError}
+              disabled={
+                isCreating ||
+                hasNoFilterMatch ||
+                !!selectedType?.validationError
+              }
             >
               <FolderPlus size={14} aria-hidden="true" />
               {isCreating ? "Creating…" : "Create"}

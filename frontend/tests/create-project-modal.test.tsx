@@ -344,3 +344,159 @@ describe("Create project modal - resolver list (Feature 90, Task 24)", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Create project modal - type filter keeps the submitted type in sync (task_2191963a)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const specs = [
+    {
+      id: "novel",
+      name: "Novel",
+      description: "Long-form fiction.",
+      folders: [{ name: "Workspace" }],
+    },
+    {
+      id: "blank",
+      name: "Blank",
+      description: "Only a Workspace folder.",
+      folders: [{ name: "Workspace" }],
+    },
+  ];
+
+  function stubFetch(): ReturnType<typeof vi.spyOn> {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : String(input);
+      if (url.endsWith("/api/project-types")) {
+        return {
+          ok: true,
+          json: async () => projectTypesListBody(specs),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          project: {
+            id: "p1",
+            name: "T",
+            createdAt: "2024-01-01T00:00:00.000Z",
+            config: { editorConfig: {} },
+          },
+          folders: [],
+          resources: [],
+        }),
+      } as Response;
+    });
+  }
+
+  function renderModal(onCreate = vi.fn()) {
+    render(
+      <CreateProjectModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onCreate={onCreate}
+        defaultName="T"
+        defaultType="novel"
+      />,
+    );
+    return onCreate;
+  }
+
+  it("submits and describes the type the filtered select shows, not the hidden default", async () => {
+    const fetchSpy = stubFetch();
+    const onCreate = renderModal();
+    await screen.findByRole("option", { name: /Blank/ });
+
+    fireEvent.change(screen.getByLabelText("Filter project types"), {
+      target: { value: "blank" },
+    });
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select.value).toBe("blank");
+    expect(screen.getByText("Only a Workspace folder.")).toBeTruthy();
+    expect(screen.queryByText("Long-form fiction.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    const post = fetchSpy.mock.calls.find(
+      (c: unknown[]) => (c[1] as RequestInit | undefined)?.method === "POST",
+    );
+    expect(JSON.parse(String((post?.[1] as RequestInit).body))).toEqual({
+      name: "T",
+      projectType: "blank",
+    });
+  });
+
+  it("keeps the chosen type when the filter is cleared", async () => {
+    stubFetch();
+    renderModal();
+    await screen.findByRole("option", { name: /Blank/ });
+    const filter = screen.getByLabelText("Filter project types");
+    fireEvent.change(filter, { target: { value: "blank" } });
+    fireEvent.change(filter, { target: { value: "" } });
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+      "blank",
+    );
+  });
+
+  it("disables Create when the filter matches no type, instead of submitting a hidden one", async () => {
+    const fetchSpy = stubFetch();
+    renderModal();
+    await screen.findByRole("option", { name: /Blank/ });
+
+    fireEvent.change(screen.getByLabelText("Filter project types"), {
+      target: { value: "zzz-no-match" },
+    });
+
+    const create = screen.getByRole("button", { name: /Create/i });
+    expect((create as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("No project types match the filter.")).toBeTruthy();
+    fireEvent.click(create);
+    expect(
+      fetchSpy.mock.calls.some(
+        (c: unknown[]) => (c[1] as RequestInit | undefined)?.method === "POST",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("Create project modal - Enter in the name field with no filter match (task_2191963a)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("does not submit", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => {
+        return {
+          ok: true,
+          json: async () =>
+            projectTypesListBody([
+              { id: "novel", name: "Novel", folders: [{ name: "Workspace" }] },
+            ]),
+        } as Response;
+      });
+    render(
+      <CreateProjectModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onCreate={vi.fn()}
+        defaultName="T"
+        defaultType="novel"
+      />,
+    );
+    await screen.findByRole("option", { name: /Novel/ });
+    fireEvent.change(screen.getByLabelText("Filter project types"), {
+      target: { value: "zzz" },
+    });
+    fireEvent.keyDown(screen.getByLabelText(/^Name/i), { key: "Enter" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(
+      fetchSpy.mock.calls.some(
+        (c: unknown[]) => (c[1] as RequestInit | undefined)?.method === "POST",
+      ),
+    ).toBe(false);
+  });
+});
