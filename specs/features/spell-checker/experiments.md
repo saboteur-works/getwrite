@@ -1985,7 +1985,7 @@ Scripted events in headless desktop Chromium, output shape only. In the first ru
 
 ## Android long-press (pasted)
 
-Task 58 (FR-47 measurement), run by the lead on 2026-10-26. The agent that wrote this entry ran no `adb` and touched no device; it pasted the lead's files and checked the prose below against them. No cause is stated for any value. OQ-15, OQ-16 and OQ-17 are open and are not resolved here.
+Task 58 (FR-47 measurement), run by the lead on 2026-10-26. The agent that wrote this entry ran no `adb` and touched no device; it pasted the lead's files and checked the prose below against them. No cause is stated for any value. OQ-15, OQ-16 and OQ-17 are open and are not resolved here. (Decided by the owner 2026-10-26; see the spec's OQ-15 to OQ-17.)
 
 ### Context
 
