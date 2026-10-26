@@ -543,7 +543,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-43, AC-18, AC-11 (UNMEASURED recorded where applicable). Packaged Electron output uses `pnpm electron:package` per the font feature's precedent (`specs/features/font-picker-and-typography-inputs/experiments.md` Task 25); builds only in the main checkout.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 53: Offline check on built web and packaged desktop
 **What:** Verify the checker underlines a planted misspelling with the network off in a built web app and in the packaged desktop app.

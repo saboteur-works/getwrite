@@ -1755,3 +1755,24 @@ No app module imports `createSpellWorker` yet, so a build of the committed tree 
 - `chunks/turbopack-worker-0sjn--fhq~1cg.js` (818 bytes), engine chunk `chunks/10na21_gh7_zi.js` (13,675 bytes, holds both `/_next/static/media/index.*` paths), `media/index.0_qr_d9pp33w1.aff` (3,086 bytes), `media/index.10xdz.pv.cbcu.dic` (551,762 bytes), `media/spell.worker.0sz-vkceg-mes.ts` (1,391 bytes).
 - `out/spell-probe.html` present. Served with `python3 -I -m http.server 4323 --bind 127.0.0.1` from `frontend/out` (stopped): worker chunk 200 (818), engine chunk 200 (13,675), `.aff` 200 (3,086), `.dic` 200 (551,762), `/spell-probe.html` 200.
 - Not run: the worker executing inside the Capacitor WebView (Android); the static server was fetched with curl only.
+
+## Task 52: THIRD_PARTY_SPELLCHECK.txt in the four outputs
+
+Date 2026-10-25. Main checkout, branch `feat/spell-checker`, HEAD `108ef780`, tree clean before the run. Builds ran outside the command sandbox with `GETWRITE_PROJECTS_DIR` set to an empty `mktemp -d` folder. `lsof -nP -iTCP:7340 -iTCP:3000 -iTCP:6006 -sTCP:LISTEN` before and after: empty. No consumer of `createSpellWorker` is needed for this check (the file is a `public/` asset), so no probe was used.
+
+Commands: `cd frontend && pnpm build` (exit 0); `pnpm build:native` (exit 0, "Native static export produced at .../frontend/out (18 top-level entries)"); `cd electron && pnpm build && pnpm build:worker` (exit 0), then `CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --config electron-builder.yml --dir --mac --arm64 -c.directories.output=<mktemp -d> -c.productName=GetWriteT52Probe -c.appId=works.saboteur.getwrite.t52probe` (exit 0; electron-builder 25.1.8, electron 34.5.8, signing skipped). The packaged app was a throwaway name and output folder under `$TMPDIR`, deleted afterwards; nothing under `~/Library/Application Support`, `~/Documents` or the repo `projects/` was read or written, and the packaged app was not launched. `cmp` compared each copy with the repo-root `THIRD_PARTY_SPELLCHECK.txt`.
+
+| Output | Path checked | Result |
+| --- | --- | --- |
+| Web build output | `frontend/.next` (excluding `standalone`) | `find` returns no file. Next.js does not copy `public/` into `.next`; the only copies under `.next` are inside `standalone`. The source `frontend/public/THIRD_PARTY_SPELLCHECK.txt` is identical to the root file (`cmp`). The web build serves `public/` from `frontend/public`, which holds the file: PRESENT at the served path (MEASURED), ABSENT from `.next` itself (MEASURED). |
+| Standalone server output | `frontend/.next/standalone/frontend/public/THIRD_PARTY_SPELLCHECK.txt` | PRESENT (MEASURED), `cmp` identical to the root file |
+| Native export | `frontend/out/THIRD_PARTY_SPELLCHECK.txt` | PRESENT (MEASURED), `cmp` identical |
+| Packaged Electron resources (mac arm64, unpacked `--dir`) | `GetWriteT52Probe.app/Contents/Resources/THIRD_PARTY_SPELLCHECK.txt` (the new `extraResources` entry) | PRESENT (MEASURED), `cmp` identical. Also present, identical, at `Contents/Resources/frontend/.next/standalone/frontend/public/THIRD_PARTY_SPELLCHECK.txt`. |
+
+Not measured: the dmg, Windows and Linux packages (`--dir` mac arm64 only); the file inside a running app.
+
+Observation: `frontend/.next/standalone/frontend/out/THIRD_PARTY_SPELLCHECK.txt` and the same path under the packaged `Resources/frontend/.next/standalone/frontend/out/` exist, i.e. the standalone output (and so the package) contains a copy of `frontend/out`, which was on disk from an earlier native build when `pnpm build` ran. Not investigated further.
+
+### is-buffer (open item from Task 51)
+
+`is-buffer` 2.0.5 (licence `MIT`, `Copyright (c) Feross Aboukhadijeh`, per its installed `package.json` and `LICENSE`) is a dependency of `nspell` 2.1.5 and its function body is in the emitted engine chunk (Task 31 section). `THIRD_PARTY_SPELLCHECK.txt` does not name it (grep for `is-buffer`: no match), and `frontend/package.json` `dependencies` does not list it (it is transitive). FR-42 requires naming each package that ships, and the MIT text requires its copyright notice to accompany copies of the code, so on this evidence the notice should name it. Recommendation (a decision for the owner, not made here): add a `Package: is-buffer@2.0.5` entry with its copyright line; the MIT text is already in the file once. FR-44 as written ("names no package absent from `dependencies`") would then need an exception for bundled transitive packages. The notice and `third-party-spellcheck.test.ts` are unchanged by this task.
