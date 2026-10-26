@@ -516,7 +516,13 @@ describe("the user word list reaches every open editor (Feature 96, FR-3, FR-4)"
       store.dispatch({
         type: "userWordList/load/fulfilled",
         payload: ["teh", "blorp"],
-        meta: { arg: undefined, requestId: "x", requestStatus: "fulfilled" },
+        meta: {
+          arg: undefined,
+          requestId: "x",
+          requestStatus: "fulfilled",
+          mutationSeq: 0,
+          inFlight: 0,
+        },
       });
     });
     expect(a.underlined()).toEqual([]);

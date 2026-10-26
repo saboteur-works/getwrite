@@ -29,6 +29,7 @@ import {
   type RevisionsState,
 } from "../../src/store/revisionsSlice";
 import type { RootState } from "../../src/store/store";
+import { initialUserWordListState } from "../../src/store/userWordListSlice";
 
 function createRevisionEntry(overrides: Partial<RevisionEntry>): RevisionEntry {
   const versionNumber = overrides.versionNumber ?? 1;
@@ -136,7 +137,7 @@ function createRootState(overrides?: {
       userListApplies: false,
       userListOverride: false,
     },
-    userWordList: { status: "idle", words: [], reason: null, errorMessage: "" },
+    userWordList: initialUserWordListState,
   } as RootState;
 }
 

@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import AppSettingsDialog from "../../components/AppSettings/AppSettingsDialog";
-import type { UserWordListState } from "../../src/store/userWordListSlice";
+import {
+  initialUserWordListState,
+  type UserWordListState,
+} from "../../src/store/userWordListSlice";
 
 /**
  * `AppSettingsDialog` persists through `getGlobalNoiseWords`/
@@ -36,6 +39,7 @@ const meta: Meta<typeof AppSettingsDialog> = {
   parameters: {
     a11y: { test: "error" },
     userWordList: {
+      ...initialUserWordListState,
       status: "loaded",
       words: [],
       reason: null,

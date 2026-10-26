@@ -19,7 +19,7 @@ const INNER_WHITESPACE = /\s/u;
 const CONTROL_CHARACTER = /\p{Cc}/u;
 
 /** Why a candidate word was refused. */
-export type SpellingWordRefusal = "invalid-word" | "too-long";
+type SpellingWordRefusal = "invalid-word" | "too-long";
 
 export type SpellingWordCheck =
   | { ok: true; word: string }

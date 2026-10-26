@@ -13,7 +13,9 @@ import { TextSelection } from "@tiptap/pm/state";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import spellingReducer from "../src/store/spellingSlice";
-import userWordListReducer from "../src/store/userWordListSlice";
+import userWordListReducer, {
+  initialUserWordListState,
+} from "../src/store/userWordListSlice";
 import { UserWordListTransportError } from "../src/lib/api/user-word-list";
 import * as projectSpelling from "../src/lib/api/project-spelling";
 import * as userWordList from "../src/lib/api/user-word-list";
@@ -605,6 +607,7 @@ function makeBothListsStore() {
     preloadedState: {
       spelling: makeSpellingStore().getState().spelling,
       userWordList: {
+        ...initialUserWordListState,
         status: "loaded" as const,
         words: [] as string[],
         reason: null,

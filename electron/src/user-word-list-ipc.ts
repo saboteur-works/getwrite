@@ -30,7 +30,7 @@ const INNER_WHITESPACE = /\s/u;
 const CONTROL_CHARACTER = /\p{Cc}/u;
 
 /** Why a call was refused or failed. */
-export type UserWordListFailureReason =
+type UserWordListFailureReason =
   | "invalid-word"
   | "too-long"
   | "list-full"

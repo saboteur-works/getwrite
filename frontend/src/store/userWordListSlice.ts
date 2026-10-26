@@ -12,6 +12,17 @@
  * a rejected mutation leaves state untouched and rejects with
  * `{ reason, message }` as the thunk payload. The project dictionary
  * (`spellingSlice`) is never read or written here (FR-17).
+ *
+ * Ordering. A mutation's result is the persisted list, so a read that began
+ * before or during a mutation must not replace it with an older list. Each
+ * mutation takes a sequence number on `pending` (`mutationSeq`) and counts as
+ * in flight until it settles. A read records `{ mutationSeq, inFlight }` when
+ * it starts and applies its words only if no mutation was in flight then, none
+ * has started since, and none is in flight now; otherwise it keeps the current
+ * words (still marking the status `loaded`). A mutation result is applied only
+ * if its sequence number exceeds `appliedMutationSeq`, so results arriving out
+ * of order cannot roll the list back. A failed read is unaffected: it still
+ * sets `failed` (`docs/standards/failure-visibility.md`).
  */
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
@@ -33,6 +44,14 @@ export interface UserWordListState {
   reason: string | null;
   /** Human-readable text for `reason`; empty unless `failed`. */
   errorMessage: string;
+  /** Count of mutations started; the sequence number of the latest. */
+  mutationSeq: number;
+  /** Mutations started and not yet settled. */
+  inFlight: number;
+  /** Highest mutation sequence number whose result is stored in `words`. */
+  appliedMutationSeq: number;
+  /** Sequence number of each unsettled mutation, by request id. */
+  pendingSeqs: Record<string, number>;
 }
 
 /** Payload of a rejected user-list thunk. */
@@ -41,11 +60,16 @@ export interface UserWordListFailure {
   message: string;
 }
 
-const initialState: UserWordListState = {
+/** The state before any read or mutation (also the base for fixtures). */
+export const initialUserWordListState: UserWordListState = {
   status: "idle",
   words: [],
   reason: null,
   errorMessage: "",
+  mutationSeq: 0,
+  inFlight: 0,
+  appliedMutationSeq: 0,
+  pendingSeqs: {},
 };
 
 /** Maps any thrown value to the `{ reason, message }` the state exposes. */
@@ -60,24 +84,34 @@ function toFailure(error: unknown): UserWordListFailure {
 
 type ThunkConfig = { rejectValue: UserWordListFailure };
 
-/** Reads the persisted list. Rejects with a failure payload on any error. */
-export const loadUserList = createAsyncThunk<string[], void, ThunkConfig>(
+type UserWordListRoot = { userWordList: UserWordListState };
+
+/** What a read saw of the mutations when it started. */
+interface ReadStartMeta {
+  mutationSeq: number;
+  inFlight: number;
+}
+
+/**
+ * Reads the persisted list. Rejects with a failure payload on any error. A
+ * successful read is also what clears the session override in
+ * `spellingAvailabilitySlice` (it listens for `loadUserList.fulfilled`).
+ */
+export const loadUserList = createAsyncThunk<
+  string[],
+  void,
+  ThunkConfig & { state: UserWordListRoot; fulfilledMeta: ReadStartMeta }
+>(
   "userWordList/load",
-  async (_arg, { rejectWithValue }) => {
+  async (_arg, { getState, rejectWithValue, fulfillWithValue }) => {
+    const { mutationSeq, inFlight } = getState().userWordList;
     try {
-      return await getUserWords();
+      return fulfillWithValue(await getUserWords(), { mutationSeq, inFlight });
     } catch (error) {
       return rejectWithValue(toFailure(error));
     }
   },
 );
-
-/**
- * "Retry" after a failed read (FR-16): the same read as `loadUserList`. A
- * successful result clears the session override in `spellingAvailabilitySlice`
- * (it listens for `loadUserList.fulfilled`); a failure leaves it as it was.
- */
-export const retryUserList = loadUserList;
 
 function createMutationThunk(
   type: string,
@@ -108,7 +142,7 @@ export const removeFromUserList = createMutationThunk(
 
 const userWordListSlice = createSlice({
   name: "userWordList",
-  initialState,
+  initialState: initialUserWordListState,
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -119,7 +153,12 @@ const userWordListSlice = createSlice({
       })
       .addCase(loadUserList.fulfilled, (state, action) => {
         state.status = "loaded";
-        state.words = action.payload;
+        const { mutationSeq, inFlight } = action.meta;
+        const isCurrent =
+          inFlight === 0 &&
+          state.inFlight === 0 &&
+          state.mutationSeq === mutationSeq;
+        if (isCurrent) state.words = action.payload;
         state.reason = null;
         state.errorMessage = "";
       })
@@ -131,16 +170,30 @@ const userWordListSlice = createSlice({
         state.errorMessage = failure.message;
       });
     for (const thunk of [addToUserList, removeFromUserList]) {
-      builder.addCase(thunk.fulfilled, (state, action) => {
-        state.words = action.payload;
-      });
+      builder
+        .addCase(thunk.pending, (state, action) => {
+          state.mutationSeq += 1;
+          state.inFlight += 1;
+          state.pendingSeqs[action.meta.requestId] = state.mutationSeq;
+        })
+        .addCase(thunk.fulfilled, (state, action) => {
+          const seq = state.pendingSeqs[action.meta.requestId] ?? 0;
+          delete state.pendingSeqs[action.meta.requestId];
+          state.inFlight = Math.max(0, state.inFlight - 1);
+          if (seq > state.appliedMutationSeq) {
+            state.words = action.payload;
+            state.appliedMutationSeq = seq;
+          }
+        })
+        .addCase(thunk.rejected, (state, action) => {
+          delete state.pendingSeqs[action.meta.requestId];
+          state.inFlight = Math.max(0, state.inFlight - 1);
+        });
     }
   },
 });
 
 export default userWordListSlice.reducer;
-
-type UserWordListRoot = { userWordList: UserWordListState };
 
 /** The stored list (empty unless the status is `loaded`). */
 export const selectUserWords = (state: UserWordListRoot): string[] =>

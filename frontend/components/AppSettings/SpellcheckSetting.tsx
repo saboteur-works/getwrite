@@ -4,7 +4,7 @@ import React from "react";
 import Switch from "../common/UI/Switch";
 import Button from "../common/UI/Button";
 import { useAppDispatch, useAppSelector } from "../../src/store/hooks";
-import { retryUserList } from "../../src/store/userWordListSlice";
+import { loadUserList } from "../../src/store/userWordListSlice";
 import { useSpellcheckEnabled } from "../../src/hooks/useSpellcheckEnabled";
 import {
   continueWithoutUserList,
@@ -59,7 +59,9 @@ export default function SpellcheckSetting(): JSX.Element {
   const onRetry = (): void => {
     if (isRetrying) return;
     setIsRetrying(true);
-    void dispatch(retryUserList());
+    // Retry after a failed read (FR-16): the same read; a success clears the
+    // session override in `spellingAvailabilitySlice`.
+    void dispatch(loadUserList());
   };
 
   return (

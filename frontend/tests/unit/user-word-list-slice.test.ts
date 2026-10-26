@@ -59,12 +59,22 @@ function makeStore() {
   });
 }
 
+/** The state a reader can see; excludes the slice's bookkeeping counters. */
+function visible(state: {
+  userWordList: ReturnType<typeof userWordListReducer>;
+}) {
+  const { status, words, reason, errorMessage } = state.userWordList;
+  return { status, words, reason, errorMessage };
+}
+
 function deferred<T>() {
   let resolve!: (v: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 beforeEach(() => {
@@ -132,11 +142,11 @@ describe("userWordListSlice", () => {
     mGet.mockResolvedValue(["Aria"]);
     const store = makeStore();
     await store.dispatch(loadUserList());
-    const before = store.getState().userWordList;
+    const before = visible(store.getState());
     const d = deferred<string[]>();
     mAdd.mockReturnValue(d.promise);
     const p = store.dispatch(addToUserList("Bree"));
-    expect(store.getState().userWordList).toEqual(before);
+    expect(visible(store.getState())).toEqual(before);
     d.resolve(["Aria", "Bree", "Cole"]);
     await p;
     expect(selectUserWords(store.getState())).toEqual(["Aria", "Bree", "Cole"]);
@@ -147,11 +157,11 @@ describe("userWordListSlice", () => {
     mGet.mockResolvedValue(["Aria", "Bree"]);
     const store = makeStore();
     await store.dispatch(loadUserList());
-    const before = store.getState().userWordList;
+    const before = visible(store.getState());
     const d = deferred<string[]>();
     mRemove.mockReturnValue(d.promise);
     const p = store.dispatch(removeFromUserList("Bree"));
-    expect(store.getState().userWordList).toEqual(before);
+    expect(visible(store.getState())).toEqual(before);
     d.resolve(["Aria"]);
     await p;
     expect(selectUserWords(store.getState())).toEqual(["Aria"]);
@@ -162,24 +172,24 @@ describe("userWordListSlice", () => {
     mGet.mockResolvedValue(["Aria"]);
     const store = makeStore();
     await store.dispatch(loadUserList());
-    const before = store.getState().userWordList;
+    const before = visible(store.getState());
     mAdd.mockRejectedValue(new UserWordListTransportError("list-full", "full"));
     const result = await store.dispatch(addToUserList("Bree"));
     expect(addToUserList.rejected.match(result)).toBe(true);
     expect(result.payload).toEqual({ reason: "list-full", message: "full" });
-    expect(store.getState().userWordList).toEqual(before);
+    expect(visible(store.getState())).toEqual(before);
   });
 
   it("a rejected remove leaves state unchanged and surfaces the error", async () => {
     mGet.mockResolvedValue(["Aria"]);
     const store = makeStore();
     await store.dispatch(loadUserList());
-    const before = store.getState().userWordList;
+    const before = visible(store.getState());
     mRemove.mockRejectedValue(new Error("boom"));
     const result = await store.dispatch(removeFromUserList("Aria"));
     expect(removeFromUserList.rejected.match(result)).toBe(true);
     expect(result.payload).toEqual({ reason: "boom", message: "boom" });
-    expect(store.getState().userWordList).toEqual(before);
+    expect(visible(store.getState())).toEqual(before);
   });
 
   it("FR-17: a word in the project list is unaffected by add and remove in the user list", async () => {
@@ -198,5 +208,116 @@ describe("userWordListSlice", () => {
     mRemove.mockResolvedValue([]);
     await store.dispatch(removeFromUserList("Aria"));
     expect(store.getState().spelling.lists).toEqual(projectBefore);
+  });
+  describe("ordering of reads and mutations", () => {
+    it("a read that started before an add and resolves after it keeps the added list", async () => {
+      const read = deferred<string[]>();
+      const add = deferred<string[]>();
+      mGet.mockReturnValue(read.promise);
+      mAdd.mockReturnValue(add.promise);
+      const store = makeStore();
+      const readP = store.dispatch(loadUserList());
+      const addP = store.dispatch(addToUserList("b"));
+      add.resolve(["a", "b"]);
+      await addP;
+      read.resolve(["a"]);
+      await readP;
+      const s = store.getState();
+      expect(selectUserWords(s)).toEqual(["a", "b"]);
+      expect(selectUserWordListStatus(s)).toBe("loaded");
+      expect(selectUserWordListReason(s)).toBeNull();
+    });
+
+    it("a read that starts while an add is in flight does not overwrite it", async () => {
+      const add = deferred<string[]>();
+      mAdd.mockReturnValue(add.promise);
+      mGet.mockResolvedValue(["a"]);
+      const store = makeStore();
+      const addP = store.dispatch(addToUserList("b"));
+      await store.dispatch(loadUserList());
+      add.resolve(["a", "b"]);
+      await addP;
+      expect(selectUserWords(store.getState())).toEqual(["a", "b"]);
+      expect(selectUserWordListStatus(store.getState())).toBe("loaded");
+    });
+
+    it("a read that resolves while an add is still in flight does not apply its list", async () => {
+      const read = deferred<string[]>();
+      const add = deferred<string[]>();
+      mGet.mockReturnValue(read.promise);
+      mAdd.mockReturnValue(add.promise);
+      const store = makeStore();
+      const readP = store.dispatch(loadUserList());
+      const addP = store.dispatch(addToUserList("b"));
+      read.resolve(["a"]);
+      await readP;
+      add.resolve(["a", "b"]);
+      await addP;
+      expect(selectUserWords(store.getState())).toEqual(["a", "b"]);
+    });
+
+    it("two adds resolving out of order keep the later one's list", async () => {
+      const first = deferred<string[]>();
+      const second = deferred<string[]>();
+      mAdd
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(second.promise);
+      const store = makeStore();
+      const p1 = store.dispatch(addToUserList("b"));
+      const p2 = store.dispatch(addToUserList("c"));
+      second.resolve(["a", "b", "c"]);
+      await p2;
+      first.resolve(["a", "b"]);
+      await p1;
+      expect(selectUserWords(store.getState())).toEqual(["a", "b", "c"]);
+    });
+
+    it("a read that starts during an add and resolves after it keeps the added list", async () => {
+      const read = deferred<string[]>();
+      const add = deferred<string[]>();
+      mAdd.mockReturnValue(add.promise);
+      mGet.mockReturnValue(read.promise);
+      const store = makeStore();
+      const addP = store.dispatch(addToUserList("b"));
+      const readP = store.dispatch(loadUserList());
+      add.resolve(["a", "b"]);
+      await addP;
+      read.resolve(["a"]);
+      await readP;
+      expect(selectUserWords(store.getState())).toEqual(["a", "b"]);
+    });
+
+    it("a read with no mutations still applies its list", async () => {
+      mGet.mockResolvedValue(["x"]);
+      const store = makeStore();
+      await store.dispatch(loadUserList());
+      mGet.mockResolvedValue(["x", "y"]);
+      await store.dispatch(loadUserList());
+      expect(selectUserWords(store.getState())).toEqual(["x", "y"]);
+    });
+
+    it("a read after a settled mutation applies its list", async () => {
+      mAdd.mockResolvedValue(["a", "b"]);
+      mGet.mockResolvedValue(["a", "b", "c"]);
+      const store = makeStore();
+      await store.dispatch(addToUserList("b"));
+      await store.dispatch(loadUserList());
+      expect(selectUserWords(store.getState())).toEqual(["a", "b", "c"]);
+    });
+
+    it("a read that fails while an add is in flight still fails", async () => {
+      const read = deferred<string[]>();
+      const add = deferred<string[]>();
+      mGet.mockReturnValue(read.promise);
+      mAdd.mockReturnValue(add.promise);
+      const store = makeStore();
+      const readP = store.dispatch(loadUserList());
+      const addP = store.dispatch(addToUserList("b"));
+      read.reject(new UserWordListTransportError("unreadable", "x"));
+      await readP;
+      expect(selectUserWordListStatus(store.getState())).toBe("failed");
+      add.resolve(["a", "b"]);
+      await addP;
+    });
   });
 });

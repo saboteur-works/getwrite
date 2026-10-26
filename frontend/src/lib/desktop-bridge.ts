@@ -101,7 +101,7 @@ export interface GlobalNoiseWordsSetResult {
  * redeclared because `frontend` cannot import across the `electron/src`
  * package boundary.
  */
-export type UserWordListResult =
+type UserWordListResult =
   | { ok: true; words: string[] }
   | {
       ok: false;

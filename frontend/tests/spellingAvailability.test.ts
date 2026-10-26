@@ -17,7 +17,6 @@ import spellingReducer, {
 } from "../src/store/spellingSlice";
 import userWordListReducer, {
   loadUserList,
-  retryUserList,
 } from "../src/store/userWordListSlice";
 import availabilityReducer, {
   MIN_CHROME_VERSION,
@@ -354,7 +353,7 @@ describe("recovery: Retry and Continue without my dictionary (Feature 96, FR-16)
     const store = await failedStore();
     store.dispatch(continueWithoutUserList());
     vi.mocked(getUserWords).mockResolvedValue(["zorblax"]);
-    await store.dispatch(retryUserList());
+    await store.dispatch(loadUserList());
     expect(getUserWords).toHaveBeenCalledTimes(2);
     expect(store.getState().userWordList.status).toBe("loaded");
     expect(store.getState().spellingAvailability.userListOverride).toBe(false);
@@ -366,7 +365,7 @@ describe("recovery: Retry and Continue without my dictionary (Feature 96, FR-16)
 
   it("a Retry that fails again keeps the failure paused (no override)", async () => {
     const store = await failedStore();
-    await store.dispatch(retryUserList());
+    await store.dispatch(loadUserList());
     expect(store.getState().userWordList.status).toBe("failed");
     expect(kinds(store)).toEqual(["user-list-failed"]);
   });
@@ -389,7 +388,7 @@ describe("recovery: Retry and Continue without my dictionary (Feature 96, FR-16)
     vi.mocked(getUserWords).mockReturnValue(
       new Promise<string[]>((_resolve, reject) => (fail = reject)),
     );
-    const pending = store.dispatch(retryUserList());
+    const pending = store.dispatch(loadUserList());
     expect(store.getState().userWordList.status).toBe("loading");
     expect(selectSpellCheckerState(store.getState()).status).toBe("active");
     expect(selectUserWordsNotApplied(store.getState())).toBe(true);

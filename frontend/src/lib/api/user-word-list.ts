@@ -28,7 +28,7 @@ import {
 import { reportTransportValidationFailure } from "./transport-validation";
 
 /** The user-word-list operations every runtime implements. */
-export interface UserWordListTransport {
+interface UserWordListTransport {
   /** The persisted list. Rejects on failure; never `[]` for a failed read. */
   getUserWords(): Promise<string[]>;
   /** Adds one word; resolves to the persisted list. */

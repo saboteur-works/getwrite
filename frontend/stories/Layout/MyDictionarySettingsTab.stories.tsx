@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import MyDictionarySettingsTab from "../../components/Layout/MyDictionarySettingsTab";
-import type { UserWordListState } from "../../src/store/userWordListSlice";
+import {
+  initialUserWordListState,
+  type UserWordListState,
+} from "../../src/store/userWordListSlice";
 
 /**
  * "My dictionary" App Settings section (Feature 96). The Storybook preview
@@ -11,6 +14,7 @@ import type { UserWordListState } from "../../src/store/userWordListSlice";
  * DELETE is refused, and restores it afterwards.
  */
 const loaded = (words: string[]): UserWordListState => ({
+  ...initialUserWordListState,
   status: "loaded",
   words,
   reason: null,
@@ -73,6 +77,7 @@ export const Populated: Story = {
 export const LoadFailed: Story = {
   parameters: {
     userWordList: {
+      ...initialUserWordListState,
       status: "failed",
       words: [],
       reason: "unreadable",

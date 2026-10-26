@@ -21,7 +21,7 @@ import {
  * `forbidden` answers every verb with the paired-device 403
  * `{ error, limit: "userWordList" }`.
  */
-export type UserWordListStubMode =
+type UserWordListStubMode =
   | { kind: "empty" }
   | { kind: "populated"; words: string[] }
   | { kind: "failure" }
