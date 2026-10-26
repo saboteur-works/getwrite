@@ -130,6 +130,7 @@ function createRootState(overrides?: {
       aliasTable: null,
       aliasTableErrorMessage: "",
     },
+    spellingAvailability: { engineFailure: null, unsupportedBrowser: null },
   } as RootState;
 }
 

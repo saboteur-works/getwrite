@@ -353,7 +353,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-19, FR-23, FR-26, AC-8. The status line is rendered in Task 45.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: App-wide switch module and hook
 **What:** Write the `localStorage`-backed switch module beside `user-preferences.ts`, with a window event, a `storage` listener and a React hook.
