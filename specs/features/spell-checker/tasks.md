@@ -573,7 +573,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-45, AC-19. Status of the release and merge belongs in `specs/product/getwrite.features.md`, not these files.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 56: Final suites
 **What:** Run every final suite from `frontend/` and record the results.
