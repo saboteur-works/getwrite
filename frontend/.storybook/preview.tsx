@@ -8,6 +8,8 @@ import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
 import searchReducer from "../src/store/searchSlice";
 import queryReducer from "../src/store/querySlice";
+import spellingReducer from "../src/store/spellingSlice";
+import spellingAvailabilityReducer from "../src/store/spellingAvailabilitySlice";
 import {
   APPEARANCE_CHANGED_EVENT,
   GLOBAL_APPEARANCE_STORAGE_KEY,
@@ -97,6 +99,8 @@ const mockStore = configureStore({
     editorConfig: editorConfigReducer,
     search: searchReducer,
     queries: queryReducer,
+    spelling: spellingReducer,
+    spellingAvailability: spellingAvailabilityReducer,
   },
   preloadedState: {
     projects: {

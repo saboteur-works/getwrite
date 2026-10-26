@@ -473,7 +473,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 3
 **Notes:** Satisfies FR-36, FR-26 (status line), FR-35, AC-15. Open `KeepRunningSetting.tsx` and the `Switch` source and stories before using props.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 46: Switch story and a11y test
 **What:** Add the switch row's Storybook story and a11y test.
