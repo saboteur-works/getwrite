@@ -15,8 +15,12 @@ import spellingReducer, {
   fetchSpellingLists,
   fetchSpellingAliasTable,
 } from "../src/store/spellingSlice";
+import userWordListReducer, {
+  loadUserList,
+} from "../src/store/userWordListSlice";
 import availabilityReducer, {
   MIN_CHROME_VERSION,
+  setUserListApplies,
   browserUnsupported,
   clearBrowserUnsupported,
   clearEngineFailure,
@@ -31,6 +35,12 @@ import type {
   SpellClient,
   SpellClientEvent,
 } from "../src/lib/spelling/spell-client";
+
+vi.mock("../src/lib/api/user-word-list", async (orig) => ({
+  ...(await orig<typeof import("../src/lib/api/user-word-list")>()),
+  getUserWords: vi.fn(),
+}));
+import { getUserWords } from "../src/lib/api/user-word-list";
 
 vi.mock("../src/lib/api/project-spelling", () => ({
   getSpellingLists: vi.fn(),
@@ -51,6 +61,7 @@ function makeStore() {
     reducer: {
       spelling: spellingReducer,
       spellingAvailability: availabilityReducer,
+      userWordList: userWordListReducer,
     },
   });
 }
@@ -226,5 +237,102 @@ describe("one toast per reason", () => {
     stop();
     store.dispatch(engineFailed("x"));
     expect(toastService.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("user list as a third input (Feature 96, FR-15, FR-23)", () => {
+  async function loadUser(store: TestStore, result: "ok" | "fail") {
+    vi.mocked(getUserWords).mockImplementation(async () => {
+      if (result === "fail") throw new Error("disk gone");
+      return ["zorblax"];
+    });
+    await store.dispatch(loadUserList());
+  }
+
+  it("a failed read pauses with user-list-failed and the reason", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    store.dispatch(setUserListApplies(true));
+    await loadUser(store, "fail");
+    const state = selectSpellCheckerState(store.getState());
+    expect(state.status).toBe("paused");
+    expect(kinds(store)).toEqual(["user-list-failed"]);
+    if (state.status === "paused")
+      expect(state.reasons[0].message).toBe(
+        "Your dictionary could not be loaded (disk gone).",
+      );
+  });
+
+  it("a not-yet-loaded list is loading (paused) and raises no toast", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    startUnavailableToasts(store);
+    store.dispatch(setUserListApplies(true));
+    expect(kinds(store)).toEqual(["loading"]);
+    expect(toastService.error).not.toHaveBeenCalled();
+  });
+
+  it("a loaded list leaves the checker active", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    store.dispatch(setUserListApplies(true));
+    await loadUser(store, "ok");
+    expect(selectSpellCheckerState(store.getState())).toEqual({
+      status: "active",
+    });
+  });
+
+  it("is not an input when it does not apply (paired device, switch off)", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    startUnavailableToasts(store);
+    await loadUser(store, "fail");
+    expect(selectSpellCheckerState(store.getState())).toEqual({
+      status: "active",
+    });
+    expect(toastService.error).not.toHaveBeenCalled();
+  });
+
+  it("toasts once per failure transition and re-arms after it clears", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    startUnavailableToasts(store);
+    store.dispatch(setUserListApplies(true));
+    await loadUser(store, "fail");
+    expect(toastService.error).toHaveBeenCalledTimes(1);
+    expect(toastService.error).toHaveBeenCalledWith(
+      "Your dictionary could not be loaded (disk gone).",
+      undefined,
+      { id: "spell-checker-user-list-failed" },
+    );
+    // unrelated changes while the failure persists do not re-toast it
+    store.dispatch(engineFailed("boom"));
+    expect(toastService.error).toHaveBeenCalledTimes(2); // engine toast only
+    store.dispatch(clearEngineFailure());
+    // a retry that fails again is a new failure transition (via loading)
+    await loadUser(store, "fail");
+    expect(toastService.error).toHaveBeenCalledTimes(3);
+    await loadUser(store, "ok");
+    expect(toastService.error).toHaveBeenCalledTimes(3);
+  });
+
+  it("turning the gate off clears the reason and re-arms the toast", async () => {
+    const store = makeStore();
+    await load(store, "ok", "ok");
+    startUnavailableToasts(store);
+    store.dispatch(setUserListApplies(true));
+    await loadUser(store, "fail");
+    store.dispatch(setUserListApplies(false));
+    expect(selectSpellCheckerState(store.getState()).status).toBe("active");
+    store.dispatch(setUserListApplies(true));
+    expect(toastService.error).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the project-list reasons alongside the user-list one", async () => {
+    const store = makeStore();
+    await load(store, "fail", "ok");
+    store.dispatch(setUserListApplies(true));
+    await loadUser(store, "fail");
+    expect(kinds(store)).toEqual(["lists-failed", "user-list-failed"]);
   });
 });

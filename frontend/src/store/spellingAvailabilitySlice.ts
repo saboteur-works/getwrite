@@ -16,6 +16,12 @@
  * unavailable reason, so it raises no toast. Every other reason is surfaced by
  * `startUnavailableToasts` once per reason until it clears, and remains in
  * the selector for the status line (rendered by the App Settings row).
+ *
+ * The writer's own word list (Feature 96, FR-15) is a third input. Whether it
+ * applies at all (the spelling switch is on and the device may use the list,
+ * `useUserListAvailable() === "available"`) is not Redux data, so the owner of
+ * that knowledge records it with `setUserListApplies`. While it is false the
+ * list is not read by the gate: no pause, no toast, whatever its status.
  */
 import {
   createSelector,
@@ -25,6 +31,7 @@ import {
 import type { SpellClient } from "../lib/spelling/spell-client";
 import { toastService } from "../lib/toast-service";
 import type { SpellingLoadStatus } from "./spellingSlice";
+import type { UserWordListStatus } from "./userWordListSlice";
 
 /** Lowest Chrome version the app supports (`.browserslistrc`); not raised. */
 export const MIN_CHROME_VERSION = 67;
@@ -32,6 +39,7 @@ export const MIN_CHROME_VERSION = 67;
 type UnavailableKind =
   | "lists-failed"
   | "alias-table-failed"
+  | "user-list-failed"
   | "engine-failed"
   | "browser-unsupported";
 
@@ -57,11 +65,18 @@ interface SpellingAvailabilityState {
   engineFailure: string | null;
   /** Set when the browser is below the minimum, or null. */
   unsupportedBrowser: UnsupportedBrowser | null;
+  /**
+   * True while the user word list is an input to the gate (switch on and the
+   * list available on this device). Defaults to false: fail closed, never
+   * pause the checker for a list nothing has asked to load.
+   */
+  userListApplies: boolean;
 }
 
 const initialState: SpellingAvailabilityState = {
   engineFailure: null,
   unsupportedBrowser: null,
+  userListApplies: false,
 };
 
 const slice = createSlice({
@@ -80,6 +95,9 @@ const slice = createSlice({
     clearBrowserUnsupported(state) {
       state.unsupportedBrowser = null;
     },
+    setUserListApplies(state, action: PayloadAction<boolean>) {
+      state.userListApplies = action.payload;
+    },
   },
 });
 
@@ -88,6 +106,7 @@ export const {
   clearEngineFailure,
   browserUnsupported,
   clearBrowserUnsupported,
+  setUserListApplies,
 } = slice.actions;
 export default slice.reducer;
 
@@ -124,7 +143,12 @@ interface AvailabilityRoot {
     aliasTableStatus: SpellingLoadStatus;
     aliasTableErrorMessage: string;
   };
-  spellingAvailability: SpellingAvailabilityState;
+  /** `userListApplies` may be absent (older fixtures): treated as false. */
+  spellingAvailability: Omit<SpellingAvailabilityState, "userListApplies"> & {
+    userListApplies?: boolean;
+  };
+  /** Absent only where the list cannot apply (read only when it does). */
+  userWordList?: { status: UserWordListStatus; errorMessage: string };
 }
 
 const select = {
@@ -132,6 +156,15 @@ const select = {
   listsError: (s: AvailabilityRoot) => s.spelling.errorMessage,
   aliasStatus: (s: AvailabilityRoot) => s.spelling.aliasTableStatus,
   aliasError: (s: AvailabilityRoot) => s.spelling.aliasTableErrorMessage,
+  /** Null when the user list is not an input, so its status is never read. */
+  userStatus: (s: AvailabilityRoot): UserWordListStatus | null =>
+    s.spellingAvailability.userListApplies && s.userWordList
+      ? s.userWordList.status
+      : null,
+  userError: (s: AvailabilityRoot): string =>
+    s.spellingAvailability.userListApplies && s.userWordList
+      ? s.userWordList.errorMessage
+      : "",
   engine: (s: AvailabilityRoot) => s.spellingAvailability.engineFailure,
   browser: (s: AvailabilityRoot) => s.spellingAvailability.unsupportedBrowser,
 };
@@ -153,9 +186,31 @@ function listReason(
   return { kind: "loading", message: `${label} is loading.` };
 }
 
+function hasLoading(reasons: PausedReason[]): boolean {
+  return reasons.some((x) => x.kind === "loading");
+}
+
+/**
+ * The user list's reason, or null when it is not an input or is loaded.
+ * `idle` counts as loading: the list applies but nothing has read it yet.
+ */
+function userListReason(
+  status: UserWordListStatus | null,
+  error: string,
+): PausedReason | null {
+  if (status === null || status === "loaded") return null;
+  if (status === "failed") {
+    return {
+      kind: "user-list-failed",
+      message: `Your dictionary could not be loaded${error ? ` (${error})` : ""}.`,
+    };
+  }
+  return { kind: "loading", message: "Your dictionary is loading." };
+}
+
 /**
  * The checker's state. `active` only when both lists and the alias table are
- * loaded, the engine has not failed, and the browser is supported. An empty
+ * loaded, the user list (when it applies) is loaded, the engine has not failed, and the browser is supported. An empty
  * loaded table is `loaded`, so it underlines as normal.
  */
 export const selectSpellCheckerState = createSelector(
@@ -164,6 +219,8 @@ export const selectSpellCheckerState = createSelector(
     select.listsError,
     select.aliasStatus,
     select.aliasError,
+    select.userStatus,
+    select.userError,
     select.engine,
     select.browser,
   ],
@@ -172,6 +229,8 @@ export const selectSpellCheckerState = createSelector(
     listsError,
     aliasStatus,
     aliasError,
+    userStatus,
+    userError,
     engine,
     browser,
   ): SpellCheckerState => {
@@ -194,6 +253,11 @@ export const selectSpellCheckerState = createSelector(
       if (alias) reasons.push(alias);
     } else {
       reasons.push({ kind: "loading", message: "Spelling data is loading." });
+    }
+    const user = userListReason(userStatus, userError);
+    // Loading is reported once across every input.
+    if (user && !(user.kind === "loading" && hasLoading(reasons))) {
+      reasons.push(user);
     }
     if (engine !== null) {
       reasons.push({
