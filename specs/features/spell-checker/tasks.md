@@ -604,7 +604,7 @@ FR/AC coverage: FR-1: 3, 4, 19. FR-2: 5, 7, 20. FR-3: 6, 7. FR-4: 7, 9, 10, 11, 
 **Estimate:** 1
 **Notes:** LEAD/OWNER HALT. Satisfies FR-47 (measurement). Tasks 59 and 60 do not start until OQ-15, OQ-16 and OQ-17 are resolved by the owner; the agent does not resolve them.
 
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 59: Red test for the touch spelling menu
 **What:** Write the failing tests for FR-47 from the recorded event sequence, using emulated touch events.

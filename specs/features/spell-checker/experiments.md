@@ -1972,7 +1972,7 @@ Steps, in order. Replace `<pid>` and `<your-sdk>` as needed; every command targe
    Then evaluate `window.__longpressProbe.log.length`; expect `0`.
 9. Long-press about 900 ms on the flagged word `wrold`, without moving the finger, then lift. A scripted press with `adb shell input swipe <x> <y> <x> <y> 900` is acceptable if that is how the lead drives the phone; write down which method was used (finger or `adb input`) because they may deliver different events. Do not tap anything in the context menu if one opens; dismiss it with Back and note whether it opened and which items it showed.
 10. Evaluate `window.__longpressProbe.dump()` and copy the returned JSON text (`Runtime.evaluate` with `returnByValue: true`, or copy from the Console). Save it as press A.
-11. Reload nothing. Evaluate `window.__longpressProbe.log.length = 0` to start press B with an empty log, then long-press about 900 ms on a non-flagged word (`fine`), same method as step 9, and copy `window.__longpressProbe.dump()` as press B.
+11. Do not reload. Evaluate `window.__longpressProbe.log.length = 0` to start press B with an empty log, then long-press about 900 ms on a non-flagged word (`fine`), same method as step 9, and copy `window.__longpressProbe.dump()` as press B.
 12. Optionally repeat steps 9 to 11 once with the other press method (finger versus `adb input`) and label it press A2 / B2.
 13. Stop the probe: evaluate `window.__longpressProbe.stop()`. Remove the forward: `adb forward --remove tcp:9222`. Delete the throwaway project through its card menu if it was created for this step.
 14. Paste under the heading "Android long-press (pasted)" below: device model, Android version, WebView version, keyboard app, the build commit, how each press was made, the pasted JSON for each press in a fenced `json` block, and in prose only what the JSON shows: the order of events delivered, the `contextmenu` fields (`isTrusted`, coordinates, `button`, `sourceCapabilities`, `defaultPrevented`), the selection state after the press, whether the hit test landed in `.spell-error` at the event coordinates and at the press-start coordinates, and which menu items opened. Label each MEASURED or UNMEASURED with the reason. State no cause.
@@ -1985,4 +1985,506 @@ Scripted events in headless desktop Chromium, output shape only. In the first ru
 
 ## Android long-press (pasted)
 
-pending lead run
+Task 58 (FR-47 measurement), run by the lead on 2026-10-26. The agent that wrote this entry ran no `adb` and touched no device; it pasted the lead's files and checked the prose below against them. No cause is stated for any value. OQ-15, OQ-16 and OQ-17 are open and are not resolved here.
+
+### Context
+
+- MEASURED: device Pixel 7 Pro; Android 17, build CP3A.260905.009; Android System WebView `com.google.android.webview` 155.0.8059.43 (the probe's `userAgent` also reports Chrome/155.0.8059.43); keyboard `com.google.android.inputmethod.latin/...LatinIME` (Gboard).
+- MEASURED: build is a debug APK of HEAD `ebc11e22` (includes Task 56, `e3b9e36e`), from `pnpm build:native` (exit 0), `pnpm run sync` (exit 0), `assembleDebug` (exit 0); 10,420,798 bytes. `adb install -r` reported Success; `lastUpdateTime` went from 2026-10-25 19:38:18 to 2026-10-26 00:20:56. The owner's start page showed 5/12/38 before and after. Network was on (not needed for the step).
+- MEASURED: the probe was injected through CDP `Runtime.evaluate` over the adb-forwarded `webview_devtools_remote_8429` socket and returned `longpress probe installed`; `log.length` was 0; `dom.editor` was reachable (`viewReachable: true` in both dumps).
+- MEASURED (supports the device clause of AC-21; Task 61 is the formal re-check): a throwaway project "Longpress Probe Test" was created through Start a new project (default Novel type); in Scene 1 the text `recieve teh wrold and some fine words` was typed; `.spell-error` marks appeared on `recieve`, `teh` and `wrold` with no reopen; `fine` and `words` were not marked.
+- MEASURED: both presses were scripted, not made by a finger: `adb shell input swipe x y x y 900`. Press A at device px (356, 961) on `wrold`; press B at device px (712, 961), intended on `fine`. Press A2 and B2 (finger): not run, UNMEASURED.
+
+### Menu observed
+
+Screenshots are in the lead's scratchpad (`lpA.png`, `lpB.png`), not in the repo.
+
+- MEASURED, press A: `EditorContextMenu` opened with Cut, Copy, Paste, Bold, Italic, Underline, Strikethrough, Inline Code, Select All. No spelling group. Cut and Copy rendered dimmed.
+- MEASURED, press B: the same items, no spelling group, Cut and Copy dimmed; the menu extended past the right edge of the screen (clipped).
+
+### What the JSON shows
+
+All values below were read from the two dumps pasted under "Pasted dumps".
+
+- MEASURED, order of events in both presses: `pointerdown` (`pointerType` "touch", `button` 0) > `touchstart` > `contextmenu` (capture) > `contextmenu-bubble` > `selectionchange` > `after-contextmenu` (+0 ms) > `pointercancel` > `touchcancel` > `after-contextmenu` (+300 ms). No `pointerup` or `touchend` was logged.
+- MEASURED, `contextmenu` fields in both presses: `isTrusted` true, `button` -1, `buttons` 0, `sourceCapabilities.firesTouchEvents` true, capture-phase `defaultPrevented` false, bubble-phase `defaultPrevented` true. Coordinates: press A (135, 324) against `pointerdown` (135.62, 324.95); press B (271, 324) against `pointerdown` (271.24, 324.95); each within 1 CSS px. Time from `pointerdown` to `contextmenu` by `perfNow`: press A 514.9 ms, press B 500.2 ms.
+- MEASURED, press A: the DOM selection was `wrold` (not collapsed, anchor offset 0, focus offset 5 in `span.spell-error`) at the `selectionchange` entry, at +0 ms and at +300 ms. The ProseMirror selection was collapsed at 52 (the end of the line, where typing ended) with `pmSelectedText` "" at all three snapshots. `view.posAtCoords` at the event coordinates and at the press-start coordinates returned pos 28 (inside 13), `insideSpellError` true, `docTextAround` "e teh wrold and ". `elementFromPoint` returned `html.gw-theme-dark.gw-density-comfortable` and `elementFromPointInsideSpellError` was false.
+- MEASURED, press B: the DOM selection was `words` (anchor offset 15, focus offset 20 in `p`, text " and some fine words ") at all three snapshots; the ProseMirror selection was again collapsed at 52 with `pmSelectedText` "". `view.posAtCoords` at the event coordinates and at the press-start coordinates returned pos 47 (inside 13), `insideSpellError` false, `docTextAround` "e fine words  ". `elementFromPoint` returned the same `html` element, `elementFromPointInsideSpellError` false. The press landed on the pos 47 side of `fine words` and the DOM selection is `words`, not `fine`; this is the non-flagged-word case, but the selected word is `words`.
+
+### Code reading (READ, not run; a reading of the code against the measured inputs)
+
+`frontend/components/Editor/EditorContextMenu.tsx`: `handlePointerDown` (line 287) sets `rightPointerDownRef.current = event.button === 2` (line 289). `handleContextMenu` (line 294) calls `captureEditorSelection(editor)` (line 296), reads and clears the ref (lines 297-298), and resolves the word with `posAtCoords` only when the ref was set (lines 300-306); otherwise it calls `findSpellRangeAt(editor.state, editor.state.selection.from)` (line 307). With the measured `button` 0 the ref is false, so the second path applies, and the measured `editor.state.selection.from` is 52, which is not inside `wrold`. `captureEditorSelection` (line 190) reads `selection.empty` into `isEmpty` (line 195), the same collapsed ProseMirror selection; Cut is `disabled={captured.isEmpty || captured.readOnly}` (line 498) and Copy `disabled={captured.isEmpty}` (line 506), consistent with the dimmed items. This is not a statement about why the WebView delivered the sequence it did.
+
+### Cleanup
+
+MEASURED: the probe's `stop()` was called; the adb forward was removed; the throwaway project was deleted through its card menu; the start page showed 5/12/38.
+
+### Pasted dumps
+
+Each block is the probe's `dump()` text exactly as the lead saved it (the file holds it as a JSON string; it was decoded once, with no edits). Scripted presses (`adb input swipe`), not a finger; the events a finger press delivers were not measured.
+
+Press A (on `wrold`):
+
+```json
+{
+  "meta": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 17; Pixel 7 Pro Build/CP3A.260905.009; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.8059.43 Mobile Safari/537.36",
+    "href": "https://localhost/",
+    "dumpedAtDateNow": 1792995720696,
+    "dumpedAtPerfNow": 60266.19999999553,
+    "viewReachable": true
+  },
+  "log": [
+    {
+      "type": "pointerdown",
+      "pointerType": "touch",
+      "pointerId": 6,
+      "button": 0,
+      "buttons": 1,
+      "clientX": 135.61904907226562,
+      "clientY": 324.952392578125,
+      "isTrusted": true,
+      "target": "span.spell-error",
+      "perfNow": 57410.09999999404,
+      "dateNow": 1792995717840
+    },
+    {
+      "type": "touchstart",
+      "touches": 1,
+      "changedTouches": 1,
+      "firstTouchClientX": 135.61904907226562,
+      "firstTouchClientY": 324.952392578125,
+      "isTrusted": true,
+      "cancelable": false,
+      "defaultPrevented": false,
+      "target": "span.spell-error",
+      "perfNow": 57410.79999999702,
+      "dateNow": 1792995717841
+    },
+    {
+      "type": "contextmenu",
+      "isTrusted": true,
+      "clientX": 135,
+      "clientY": 324,
+      "button": -1,
+      "buttons": 0,
+      "sourceCapabilities": {
+        "firesTouchEvents": true
+      },
+      "defaultPrevented": false,
+      "target": "span.spell-error",
+      "perfNow": 57925,
+      "dateNow": 1792995718355
+    },
+    {
+      "type": "contextmenu-bubble",
+      "isTrusted": true,
+      "clientX": 135,
+      "clientY": 324,
+      "button": -1,
+      "buttons": 0,
+      "sourceCapabilities": {
+        "firesTouchEvents": true
+      },
+      "defaultPrevented": true,
+      "target": "span.spell-error",
+      "perfNow": 58072.89999999851,
+      "dateNow": 1792995718503
+    },
+    {
+      "type": "selectionchange",
+      "perfNow": 58084.59999999404,
+      "dateNow": 1792995718515,
+      "selection": {
+        "text": "wrold",
+        "rangeCount": 1,
+        "isCollapsed": false,
+        "anchorNode": "span.spell-error",
+        "anchorNodeText": "wrold",
+        "anchorOffset": 0,
+        "focusNode": "span.spell-error",
+        "focusNodeText": "wrold",
+        "focusOffset": 5,
+        "view": "reachable",
+        "pmSelection": {
+          "type": "eV",
+          "from": 52,
+          "to": 52,
+          "anchor": 52,
+          "head": 52
+        },
+        "pmSelectedText": ""
+      }
+    },
+    {
+      "type": "after-contextmenu",
+      "after": "+0ms (next macrotask)",
+      "perfNow": 58085.19999999553,
+      "dateNow": 1792995718515,
+      "selection": {
+        "text": "wrold",
+        "rangeCount": 1,
+        "isCollapsed": false,
+        "anchorNode": "span.spell-error",
+        "anchorNodeText": "wrold",
+        "anchorOffset": 0,
+        "focusNode": "span.spell-error",
+        "focusNodeText": "wrold",
+        "focusOffset": 5,
+        "view": "reachable",
+        "pmSelection": {
+          "type": "eV",
+          "from": 52,
+          "to": 52,
+          "anchor": 52,
+          "head": 52
+        },
+        "pmSelectedText": ""
+      },
+      "hitAtEventCoords": {
+        "x": 135,
+        "y": 324,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 28,
+          "inside": 13
+        },
+        "domAtPosNode": "span.spell-error",
+        "insideSpellError": true,
+        "docTextAround": "e teh wrold and ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      },
+      "hitAtLastPointerOrTouch": {
+        "x": 135.61904907226562,
+        "y": 324.952392578125,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 28,
+          "inside": 13
+        },
+        "domAtPosNode": "span.spell-error",
+        "insideSpellError": true,
+        "docTextAround": "e teh wrold and ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      }
+    },
+    {
+      "type": "pointercancel",
+      "pointerType": "touch",
+      "pointerId": 6,
+      "button": -1,
+      "buttons": 0,
+      "clientX": 135.61904907226562,
+      "clientY": 324.952392578125,
+      "isTrusted": true,
+      "target": "span.spell-error",
+      "perfNow": 58148.19999999553,
+      "dateNow": 1792995718578
+    },
+    {
+      "type": "touchcancel",
+      "touches": 0,
+      "changedTouches": 1,
+      "firstTouchClientX": 135.61904907226562,
+      "firstTouchClientY": 324.952392578125,
+      "isTrusted": true,
+      "cancelable": false,
+      "defaultPrevented": false,
+      "target": "span.spell-error",
+      "perfNow": 58149.5,
+      "dateNow": 1792995718580
+    },
+    {
+      "type": "after-contextmenu",
+      "after": "+300ms",
+      "perfNow": 58225.5,
+      "dateNow": 1792995718656,
+      "selection": {
+        "text": "wrold",
+        "rangeCount": 1,
+        "isCollapsed": false,
+        "anchorNode": "span.spell-error",
+        "anchorNodeText": "wrold",
+        "anchorOffset": 0,
+        "focusNode": "span.spell-error",
+        "focusNodeText": "wrold",
+        "focusOffset": 5,
+        "view": "reachable",
+        "pmSelection": {
+          "type": "eV",
+          "from": 52,
+          "to": 52,
+          "anchor": 52,
+          "head": 52
+        },
+        "pmSelectedText": ""
+      },
+      "hitAtEventCoords": {
+        "x": 135,
+        "y": 324,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 28,
+          "inside": 13
+        },
+        "domAtPosNode": "span.spell-error",
+        "insideSpellError": true,
+        "docTextAround": "e teh wrold and ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      },
+      "hitAtLastPointerOrTouch": {
+        "x": 135.61904907226562,
+        "y": 324.952392578125,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 28,
+          "inside": 13
+        },
+        "domAtPosNode": "span.spell-error",
+        "insideSpellError": true,
+        "docTextAround": "e teh wrold and ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      }
+    }
+  ]
+}
+```
+
+Press B (intended on `fine`):
+
+```json
+{
+  "meta": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 17; Pixel 7 Pro Build/CP3A.260905.009; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.8059.43 Mobile Safari/537.36",
+    "href": "https://localhost/",
+    "dumpedAtDateNow": 1792995760260,
+    "dumpedAtPerfNow": 99829.69999999553,
+    "viewReachable": true
+  },
+  "log": [
+    {
+      "type": "pointerdown",
+      "pointerType": "touch",
+      "pointerId": 8,
+      "button": 0,
+      "buttons": 1,
+      "clientX": 271.23809814453125,
+      "clientY": 324.952392578125,
+      "isTrusted": true,
+      "target": "p",
+      "perfNow": 96981.59999999404,
+      "dateNow": 1792995757412
+    },
+    {
+      "type": "touchstart",
+      "touches": 1,
+      "changedTouches": 1,
+      "firstTouchClientX": 271.23809814453125,
+      "firstTouchClientY": 324.952392578125,
+      "isTrusted": true,
+      "cancelable": false,
+      "defaultPrevented": false,
+      "target": "p",
+      "perfNow": 96982.69999999553,
+      "dateNow": 1792995757413
+    },
+    {
+      "type": "contextmenu",
+      "isTrusted": true,
+      "clientX": 271,
+      "clientY": 324,
+      "button": -1,
+      "buttons": 0,
+      "sourceCapabilities": {
+        "firesTouchEvents": true
+      },
+      "defaultPrevented": false,
+      "target": "p",
+      "perfNow": 97481.79999999702,
+      "dateNow": 1792995757912
+    },
+    {
+      "type": "contextmenu-bubble",
+      "isTrusted": true,
+      "clientX": 271,
+      "clientY": 324,
+      "button": -1,
+      "buttons": 0,
+      "sourceCapabilities": {
+        "firesTouchEvents": true
+      },
+      "defaultPrevented": true,
+      "target": "p",
+      "perfNow": 97556.19999999553,
+      "dateNow": 1792995757986
+    },
+    {
+      "type": "selectionchange",
+      "perfNow": 97563.39999999851,
+      "dateNow": 1792995757994,
+      "selection": {
+        "text": "words",
+        "rangeCount": 1,
+        "isCollapsed": false,
+        "anchorNode": "p",
+        "anchorNodeText": " and some fine words ",
+        "anchorOffset": 15,
+        "focusNode": "p",
+        "focusNodeText": " and some fine words ",
+        "focusOffset": 20,
+        "view": "reachable",
+        "pmSelection": {
+          "type": "eV",
+          "from": 52,
+          "to": 52,
+          "anchor": 52,
+          "head": 52
+        },
+        "pmSelectedText": ""
+      }
+    },
+    {
+      "type": "after-contextmenu",
+      "after": "+0ms (next macrotask)",
+      "perfNow": 97563.59999999404,
+      "dateNow": 1792995757994,
+      "selection": {
+        "text": "words",
+        "rangeCount": 1,
+        "isCollapsed": false,
+        "anchorNode": "p",
+        "anchorNodeText": " and some fine words ",
+        "anchorOffset": 15,
+        "focusNode": "p",
+        "focusNodeText": " and some fine words ",
+        "focusOffset": 20,
+        "view": "reachable",
+        "pmSelection": {
+          "type": "eV",
+          "from": 52,
+          "to": 52,
+          "anchor": 52,
+          "head": 52
+        },
+        "pmSelectedText": ""
+      },
+      "hitAtEventCoords": {
+        "x": 271,
+        "y": 324,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 47,
+          "inside": 13
+        },
+        "domAtPosNode": "p",
+        "insideSpellError": false,
+        "docTextAround": "e fine words  ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      },
+      "hitAtLastPointerOrTouch": {
+        "x": 271.23809814453125,
+        "y": 324.952392578125,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 47,
+          "inside": 13
+        },
+        "domAtPosNode": "p",
+        "insideSpellError": false,
+        "docTextAround": "e fine words  ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      }
+    },
+    {
+      "type": "pointercancel",
+      "pointerType": "touch",
+      "pointerId": 8,
+      "button": -1,
+      "buttons": 0,
+      "clientX": 271.23809814453125,
+      "clientY": 324.952392578125,
+      "isTrusted": true,
+      "target": "p",
+      "perfNow": 97635.29999999702,
+      "dateNow": 1792995758065
+    },
+    {
+      "type": "touchcancel",
+      "touches": 0,
+      "changedTouches": 1,
+      "firstTouchClientX": 271.23809814453125,
+      "firstTouchClientY": 324.952392578125,
+      "isTrusted": true,
+      "cancelable": false,
+      "defaultPrevented": false,
+      "target": "p",
+      "perfNow": 97635.79999999702,
+      "dateNow": 1792995758066
+    },
+    {
+      "type": "after-contextmenu",
+      "after": "+300ms",
+      "perfNow": 97784.29999999702,
+      "dateNow": 1792995758214,
+      "selection": {
+        "text": "words",
+        "rangeCount": 1,
+        "isCollapsed": false,
+        "anchorNode": "p",
+        "anchorNodeText": " and some fine words ",
+        "anchorOffset": 15,
+        "focusNode": "p",
+        "focusNodeText": " and some fine words ",
+        "focusOffset": 20,
+        "view": "reachable",
+        "pmSelection": {
+          "type": "eV",
+          "from": 52,
+          "to": 52,
+          "anchor": 52,
+          "head": 52
+        },
+        "pmSelectedText": ""
+      },
+      "hitAtEventCoords": {
+        "x": 271,
+        "y": 324,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 47,
+          "inside": 13
+        },
+        "domAtPosNode": "p",
+        "insideSpellError": false,
+        "docTextAround": "e fine words  ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      },
+      "hitAtLastPointerOrTouch": {
+        "x": 271.23809814453125,
+        "y": 324.952392578125,
+        "method": "view.posAtCoords",
+        "posAtCoords": {
+          "pos": 47,
+          "inside": 13
+        },
+        "domAtPosNode": "p",
+        "insideSpellError": false,
+        "docTextAround": "e fine words  ",
+        "elementFromPoint": "html.gw-theme-dark.gw-density-comfortable",
+        "elementFromPointInsideSpellError": false
+      }
+    }
+  ]
+}
+```
+
+### Status of the open questions
+
+OQ-15, OQ-16 and OQ-17 are ready for the owner to decide from these numbers. They are not resolved in this entry.
