@@ -18,6 +18,7 @@ Text for the commit message and the pull request description. Facts only; measur
 ## Known gaps
 
 - Not synced: a word added on web is not on desktop or on the phone, and the reverse.
-- Not measured: a paired phone (the paired checks used `curl` and desktop Chromium on the same machine); finger presses on Android (all phone input was `adb shell input`); the desktop sharing toggle and restart through the UI (both were done through the bridge).
-- Seen once on the phone: editor text drew very light on the light surface in one screenshot. It did not recur in later screenshots (computed colour `rgb(26, 25, 22)` on `rgb(240, 237, 230)`). Not investigated.
+- On Android, a damaged list file is described with the generic "Something went wrong while reading it", not the "Its file is damaged" text shown on web.
+- A phone pairing over Chrome on Android 17 needs Chrome's local-network permission allowed; without it Chrome reports `ERR_TOO_MANY_RETRIES`.
+- Seen twice on the phone: in the first project opened after a launch, editor text drew very light on the light surface (`html` had the dark theme class while the surfaces had light values); later opens drew dark text. Cause not established.
 - Versions run are those in `experiments.md`: web in Chromium under Playwright, desktop as a throwaway packaged build, Android on a Pixel 7 Pro including offline. Other browsers and devices were not run.
