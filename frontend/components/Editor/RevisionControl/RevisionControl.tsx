@@ -263,12 +263,11 @@ export default function RevisionControl() {
               it. `shrink-0` on the button makes the input absorb the slack, so
               the control the user is aiming at keeps its size.
 
-              That is the diagnosis for a reported defect (Save unclickable
-              below 1920px), NOT a confirmed reproduction — the overlap does
-              not occur in the Storybook story, which renders this panel
-              full-bleed rather than inside the editor pane. See
-              `specs/features/agentic-qa/follow-ups.md` Task 7 for the
-              measurements and what verifying it needs.
+              Verified in the running app (2026-10-26): with these classes
+              removed, the card took the click at window widths 1024 to 1280.
+              The overlap does not occur in the Storybook story, which renders
+              this panel full-bleed rather than inside the editor pane. See
+              `specs/features/agentic-qa/follow-ups.md` Task 7.
             */}
             <div className="w-full min-w-0 lg:w-4/12 lg:max-w-sm">
               <h3 className="font-mono text-gw-nano uppercase tracking-label text-gw-secondary">

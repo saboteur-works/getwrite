@@ -287,7 +287,27 @@ reproduction. Verifying this properly needs a measurement in the running app
 at the reported viewport — ideally a new story that mounts the panel inside a
 realistic editor-pane shell, which would give the defect somewhere to
 reproduce.
-**Done:** [ ]
+
+**Verified in the running app, 2026-10-26.** `next dev` on throwaway project
+folders, Chromium (Playwright) at height 800, both sidebars open, a text
+resource in a folder four levels deep, Revision Control expanded and a revision
+name typed (Save enabled). `elementFromPoint` at the Save button's centre, per
+window width:
+
+| Width | With the fix | Fix removed (`min-w-0` on the column and input, `shrink-0` on the button) |
+| --- | --- | --- |
+| 800, 900, 1000 | button | button (narrow layout stacks the columns) |
+| 1024 | button | `H4` inside the canonical card; boxes overlap |
+| 1100, 1200, 1280 | button | `ARTICLE` (the canonical card); boxes overlap |
+| 1366, 1440 | button | button, but the boxes overlap |
+| 1600, 1920 | button | button |
+
+Without the fix, Save sat at x511 at every width from 1024 to 1440, matching
+the reported x505; with it, Save moved left with the column (x340 to x479). The
+page was fully reloaded between the two runs. The fix was restored afterwards
+and is unchanged. The repo's e2e test is still a guard only: no automated test
+reproduces the overlap.
+**Done:** [x]
 
 ### Task 8: Give the TipTap editing surface an accessible ARIA role (P3)
 **What:** Add an appropriate ARIA role (e.g. `role="textbox"` with
