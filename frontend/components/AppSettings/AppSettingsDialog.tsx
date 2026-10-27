@@ -12,6 +12,7 @@ import {
 import SharingSettings from "../Sharing/SharingSettings";
 import KeepRunningSetting from "./KeepRunningSetting";
 import SpellcheckSetting from "./SpellcheckSetting";
+import MyDictionarySettingsTab from "../Layout/MyDictionarySettingsTab";
 import { toastService } from "../../src/lib/toast-service";
 
 export interface AppSettingsDialogProps {
@@ -25,7 +26,7 @@ export interface AppSettingsDialogProps {
  * Distinct from `ProjectSettingsDialog.tsx`: this dialog is not scoped to any
  * project and is reachable with no login/account required — it must never
  * be gated on `isHostedAuthActive()` or an auth session. Today it manages
- * exactly one thing, the cross-project global noise-word list (FR-5), via
+ * the cross-project global noise-word list (FR-5), via
  * `getGlobalNoiseWords`/`setGlobalNoiseWords` (`lib/api/global-noise-words.ts`,
  * Task 11), which already resolve to the correct web/Electron/native-Android
  * backend with no sync/merge between them.
@@ -98,93 +99,102 @@ export default function AppSettingsDialog({
     >
       <DialogContent
         maxWidth="max-w-[560px]"
-        className="p-6"
+        className="flex flex-col overflow-hidden p-0"
         aria-describedby={undefined}
       >
-        <DialogTitle asChild>
-          <h2 className="font-sans text-gw-h2 text-gw-primary mb-2">
-            App Settings
-          </h2>
-        </DialogTitle>
-        <p className="text-sm text-gw-secondary mb-5">
-          Settings here apply across every project on this device, not to a
-          single project. No login is required.
-        </p>
+        <div className="shrink-0 px-6 pt-6">
+          <DialogTitle asChild>
+            <h2 className="font-sans text-gw-h2 text-gw-primary mb-2">
+              App Settings
+            </h2>
+          </DialogTitle>
+          <p className="text-sm text-gw-secondary mb-5">
+            Settings here apply across every project on this device, not to a
+            single project. No login is required.
+          </p>
+        </div>
 
-        <section className="flex flex-col gap-4">
-          <header>
-            <h3 className="text-sm font-semibold text-gw-primary">
-              Global noise words
-            </h3>
-            <p className="mt-1 text-sm text-gw-secondary">
-              Words or phrases flagged as noise in every project. You can
-              exclude one from a specific project in that project&rsquo;s own
-              Noise Words settings.
-            </p>
-          </header>
+        <div
+          data-testid="app-settings-body"
+          className="min-h-0 flex-1 overflow-y-auto px-6"
+        >
+          <section className="flex flex-col gap-4">
+            <header>
+              <h3 className="text-sm font-semibold text-gw-primary">
+                Global noise words
+              </h3>
+              <p className="mt-1 text-sm text-gw-secondary">
+                Words or phrases flagged as noise in every project. You can
+                exclude one from a specific project in that project&rsquo;s own
+                Noise Words settings.
+              </p>
+            </header>
 
-          {isLoading ? (
-            <p className="text-sm text-gw-secondary">Loading…</p>
-          ) : loadError ? (
-            <p role="alert" className="text-sm text-gw-secondary">
-              {loadError}
-            </p>
-          ) : words.length === 0 ? (
-            <p className="text-sm text-gw-secondary">
-              No noise words yet. Add one below.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {words.map((word) => (
-                <li
-                  key={word}
-                  className="flex items-center justify-between gap-2 rounded-md border-hairline border-gw-border bg-gw-chrome px-3 py-2"
-                >
-                  <span className="text-sm text-gw-primary">{word}</span>
-                  <button
-                    type="button"
-                    aria-label={`Remove noise word ${word}`}
-                    className="rounded-md border border-gw-border bg-transparent p-1.5 text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:opacity-50"
-                    disabled={isSaving}
-                    onClick={() => void handleRemove(word)}
+            {isLoading ? (
+              <p className="text-sm text-gw-secondary">Loading…</p>
+            ) : loadError ? (
+              <p role="alert" className="text-sm text-gw-secondary">
+                {loadError}
+              </p>
+            ) : words.length === 0 ? (
+              <p className="text-sm text-gw-secondary">
+                No noise words yet. Add one below.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {words.map((word) => (
+                  <li
+                    key={word}
+                    className="flex items-center justify-between gap-2 rounded-md border-hairline border-gw-border bg-gw-chrome px-3 py-2"
                   >
-                    <Trash2 size={13} aria-hidden="true" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                    <span className="text-sm text-gw-primary">{word}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove noise word ${word}`}
+                      className="rounded-md border border-gw-border bg-transparent p-1.5 text-gw-secondary transition-colors duration-150 hover:bg-gw-chrome2 disabled:opacity-50"
+                      disabled={isSaving}
+                      onClick={() => void handleRemove(word)}
+                    >
+                      <Trash2 size={13} aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          <form
-            className="flex items-center gap-3"
-            onSubmit={(e) => void handleAdd(e)}
-          >
-            <Input
-              ref={newWordRef}
-              className="flex-1"
-              placeholder="Add a noise word…"
-              value={newWord}
-              onChange={(e) => setNewWord(e.target.value)}
-              aria-label="New noise word"
-              disabled={isLoading || isSaving}
-            />
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={isLoading || isSaving || !newWord.trim()}
+            <form
+              className="flex items-center gap-3"
+              onSubmit={(e) => void handleAdd(e)}
             >
-              Add
-            </Button>
-          </form>
-        </section>
+              <Input
+                ref={newWordRef}
+                className="flex-1"
+                placeholder="Add a noise word…"
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value)}
+                aria-label="New noise word"
+                disabled={isLoading || isSaving}
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={isLoading || isSaving || !newWord.trim()}
+              >
+                Add
+              </Button>
+            </form>
+          </section>
 
-        <SpellcheckSetting />
+          <SpellcheckSetting />
 
-        <KeepRunningSetting />
+          <MyDictionarySettingsTab withSpellCheckSection />
 
-        <SharingSettings />
+          <KeepRunningSetting />
 
-        <div className="project-modal-actions mt-6">
+          <SharingSettings />
+        </div>
+
+        <div className="project-modal-actions mx-6 mb-6 mt-0 shrink-0">
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>

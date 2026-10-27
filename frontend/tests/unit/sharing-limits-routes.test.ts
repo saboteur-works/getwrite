@@ -37,6 +37,8 @@ const LIMITS_ROUTES = new Set([
   ...Object.keys(LIMITED_ROUTES),
   LIMITS_READ_ROUTE,
 ]);
+/** Feature 96: refuses every paired caller on every method; imports only the check. */
+const USER_WORD_LIST_ROUTE = "user-word-list/route.ts";
 /** The only lib/sharing modules a limits route may import. */
 const ALLOWED_MODULES = new Set([
   "limits-check",
@@ -104,6 +106,7 @@ describe("lib/sharing imports from app/", () => {
       .filter(
         (n) =>
           n !== `api/${PAIR_ROUTE}` &&
+          n !== `api/${USER_WORD_LIST_ROUTE}` &&
           !LIMITS_ROUTES.has(n.replace(/^api\//, "")),
       );
     expect(offenders).toEqual([]);
@@ -118,6 +121,17 @@ describe("lib/sharing imports from app/", () => {
       expect(imported.filter((m) => !ALLOWED_MODULES.has(m))).toEqual([]);
     },
   );
+});
+
+describe("user word list route (Feature 96)", () => {
+  it("imports only limits-check and calls checkUserWordListAccess on every method", () => {
+    const text = read(path.join(API_ROOT, USER_WORD_LIST_ROUTE));
+    expect(sharingImports(text)).toEqual(["limits-check"]);
+    expect(text.match(/checkUserWordListAccess\(request\)/g)).toHaveLength(2);
+    expect(text).toMatch(/export const GET = withStorageContext/);
+    expect(text).toMatch(/export const POST = withStorageContext/);
+    expect(text).toMatch(/export const DELETE = withStorageContext/);
+  });
 });
 
 describe("no writer, no electron import, no writing method", () => {

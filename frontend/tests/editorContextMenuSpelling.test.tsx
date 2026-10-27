@@ -1,5 +1,11 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  fireEvent,
+  act,
+  cleanup,
+} from "@testing-library/react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
@@ -7,7 +13,13 @@ import { TextSelection } from "@tiptap/pm/state";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import spellingReducer from "../src/store/spellingSlice";
+import userWordListReducer, {
+  initialUserWordListState,
+} from "../src/store/userWordListSlice";
+import { UserWordListTransportError } from "../src/lib/api/user-word-list";
 import * as projectSpelling from "../src/lib/api/project-spelling";
+import * as userWordList from "../src/lib/api/user-word-list";
+import type { SharingLimitsAnswer } from "../src/store/sharing-limits-transport-service";
 
 // The slice's transport service captures these functions at load time, so a
 // spy on the namespace would not reach it; the module itself is replaced.
@@ -15,6 +27,10 @@ vi.mock("../src/lib/api/project-spelling", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/lib/api/project-spelling")>()),
   ignoreSpellingWord: vi.fn(),
   addSpellingWord: vi.fn(),
+}));
+vi.mock("../src/lib/api/user-word-list", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/api/user-word-list")>()),
+  addUserWord: vi.fn(),
 }));
 import EditorContextMenu from "../components/Editor/EditorContextMenu";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
@@ -24,6 +40,13 @@ import SpellCheckDecorationExtension, {
   getSpellDocVersion,
   type SpellRange,
 } from "../components/Editor/Extensions/SpellCheckDecorationExtension";
+
+import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
+
+// Feature 96: the menu reads the sharing-limits role, so every render sits in
+// a provider (default role `exempt`).
+const render = (ui: React.ReactElement) =>
+  rtlRender(<StaticSharingLimitsProvider>{ui}</StaticSharingLimitsProvider>);
 
 /**
  * Task 40 (FR-29, AC-14, OQ-3): the flagged word under the pointer or caret
@@ -353,6 +376,7 @@ describe("EditorContextMenu spelling group (Task 41)", () => {
       "wild",
       "Ignore",
       "Add to project dictionary",
+      "Add to my dictionary",
       ...EXISTING_ITEMS,
     ]);
     const content = screen.getByRole("menu");
@@ -559,5 +583,217 @@ describe("EditorContextMenu Ignore and Add to project dictionary (Task 43)", () 
     openSpellingMenu(editor, async () => ({ status: "ok", suggestions: [] }));
     fireEvent.click(await screen.findByText("Ignore"));
     expect(ignore).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature 96, Task 15 (FR-6, FR-7, FR-14, FR-17, FR-21): "Add to my
+ * dictionary" beside "Add to project dictionary".
+ */
+const PAIRED: SharingLimitsAnswer = {
+  state: "paired",
+  limits: {
+    projectDeletion: true,
+    unlocking: true,
+    locking: true,
+    encryptionChanges: true,
+    permanentDeletion: true,
+  },
+};
+
+function makeBothListsStore() {
+  return configureStore({
+    reducer: { spelling: spellingReducer, userWordList: userWordListReducer },
+    preloadedState: {
+      spelling: makeSpellingStore().getState().spelling,
+      userWordList: {
+        ...initialUserWordListState,
+        status: "loaded" as const,
+        words: [] as string[],
+        reason: null,
+        errorMessage: "",
+      },
+    },
+  });
+}
+
+function openWithRole(
+  editor: Editor,
+  role?: SharingLimitsAnswer | { state: "unknown" },
+  store = makeBothListsStore(),
+) {
+  render(
+    <StaticSharingLimitsProvider value={role ? { state: role } : undefined}>
+      <Provider store={store}>
+        <EditorContextMenu
+          editor={editor}
+          requestSuggestions={async () => ({ status: "ok", suggestions: [] })}
+        >
+          <EditorContent editor={editor} data-testid="surface" />
+        </EditorContextMenu>
+      </Provider>
+    </StaticSharingLimitsProvider>,
+  );
+  const surface = screen.getByTestId("surface");
+  mockPosAtCoords(editor, 9);
+  rightPointerDown(surface);
+  fireEvent.contextMenu(surface, { clientX: 10, clientY: 10 });
+  return store;
+}
+
+describe("EditorContextMenu Add to my dictionary (Feature 96, Task 15)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    while (editors.length > 0) editors.pop()?.destroy();
+  });
+
+  it("is listed right after Add to project dictionary, with no removal or user-level Ignore entry", async () => {
+    const editor = mountEditor();
+    openWithRole(editor);
+    await screen.findByText("Add to my dictionary");
+    const labels = menuLabels();
+    expect(labels).toEqual([
+      "No suggestions",
+      "Ignore",
+      "Add to project dictionary",
+      "Add to my dictionary",
+      ...EXISTING_ITEMS,
+    ]);
+    expect(labels.filter((l) => /remove|forget/i.test(l))).toEqual([]);
+    expect(labels.filter((l) => l.startsWith("Ignore"))).toEqual(["Ignore"]);
+  });
+
+  it("is shown on the keyboard-originated menu (caret on the flagged word)", async () => {
+    const editor = mountEditor();
+    setCaret(editor, 9);
+    render(
+      <StaticSharingLimitsProvider>
+        <EditorContextMenu editor={editor}>
+          <EditorContent editor={editor} data-testid="surface" />
+        </EditorContextMenu>
+      </StaticSharingLimitsProvider>,
+    );
+    fireEvent.contextMenu(screen.getByTestId("surface"));
+    expect(await screen.findByText("Add to my dictionary")).toBeTruthy();
+  });
+
+  it("is shown on Android, where there is no sharing role", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    const editor = mountEditor();
+    openWithRole(editor, { state: "unknown" });
+    expect(await screen.findByText("Add to my dictionary")).toBeTruthy();
+  });
+
+  it("is absent on a paired device; Add to project dictionary stays", async () => {
+    const editor = mountEditor();
+    openWithRole(editor, PAIRED);
+    await screen.findByText("Add to project dictionary");
+    expect(screen.queryByText("Add to my dictionary")).toBeNull();
+  });
+
+  it("is absent while the role is unknown (fails closed)", async () => {
+    const editor = mountEditor();
+    openWithRole(editor, { state: "unknown" });
+    await screen.findByText("Add to project dictionary");
+    expect(screen.queryByText("Add to my dictionary")).toBeNull();
+  });
+
+  it("adds the word as written, stores the persisted list, closes the menu and leaves the project list unchanged", async () => {
+    const editor = mountEditor();
+    act(() => {
+      editor.view.dispatch(editor.state.tr.insertText("W", 7, 8));
+    });
+    flag(editor, [WROLD, TEH]);
+    const add = vi
+      .mocked(userWordList.addUserWord)
+      .mockResolvedValue(["Wrold"]);
+    const store = openWithRole(editor);
+    fireEvent.click(await screen.findByText("Add to my dictionary"));
+    await vi.waitFor(() =>
+      expect(store.getState().userWordList.words).toEqual(["Wrold"]),
+    );
+    expect(add).toHaveBeenCalledWith("Wrold");
+    expect(store.getState().spelling.lists.spellingProjectWords).toEqual([]);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("a word added to the project list can be added to the user list too, and the project list is not touched by it", async () => {
+    const editor = mountEditor();
+    vi.mocked(projectSpelling.addSpellingWord).mockResolvedValue({
+      spellingProjectWords: ["wrold"],
+      spellingIgnoredWords: [],
+    });
+    vi.mocked(userWordList.addUserWord).mockResolvedValue(["wrold"]);
+    const store = openWithRole(editor);
+    fireEvent.click(await screen.findByText("Add to project dictionary"));
+    await vi.waitFor(() =>
+      expect(store.getState().spelling.lists.spellingProjectWords).toEqual([
+        "wrold",
+      ]),
+    );
+    cleanup();
+    openWithRole(editor, undefined, store);
+    fireEvent.click(await screen.findByText("Add to my dictionary"));
+    await vi.waitFor(() =>
+      expect(store.getState().userWordList.words).toEqual(["wrold"]),
+    );
+    expect(store.getState().spelling.lists.spellingProjectWords).toEqual([
+      "wrold",
+    ]);
+  });
+
+  it("Add to project dictionary leaves the user list unchanged", async () => {
+    const editor = mountEditor();
+    vi.mocked(projectSpelling.addSpellingWord).mockResolvedValue({
+      spellingProjectWords: ["wrold"],
+      spellingIgnoredWords: [],
+    });
+    const store = openWithRole(editor);
+    fireEvent.click(await screen.findByText("Add to project dictionary"));
+    await vi.waitFor(() =>
+      expect(store.getState().spelling.lists.spellingProjectWords).toEqual([
+        "wrold",
+      ]),
+    );
+    expect(store.getState().userWordList.words).toEqual([]);
+  });
+
+  it("on failure toasts with the reason, stores nothing and leaves the word underlined", async () => {
+    const editor = mountEditor();
+    const toast = vi.spyOn(toastService, "error").mockReturnValue("t");
+    vi.mocked(userWordList.addUserWord).mockRejectedValue(
+      new UserWordListTransportError("disk-full", "The disk is full."),
+    );
+    const store = openWithRole(editor);
+    fireEvent.click(await screen.findByText("Add to my dictionary"));
+    await vi.waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(toast).toHaveBeenCalledWith(
+      "Could not add the word to your dictionary.",
+      "The disk is full.",
+    );
+    expect(store.getState().userWordList.words).toEqual([]);
+    expect(
+      editor.view.dom.querySelectorAll(".spell-error").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("is enabled in a read-only editor (it writes the list, not the document)", async () => {
+    const editor = mountEditor();
+    editor.setEditable(false);
+    openWithRole(editor);
+    const item = (await screen.findByText("Add to my dictionary")).closest(
+      "[role=menuitem]",
+    );
+    expect(item?.hasAttribute("data-disabled")).toBe(false);
+  });
+
+  it("works without a store in scope, doing nothing", async () => {
+    const editor = mountEditor();
+    const add = vi.mocked(userWordList.addUserWord);
+    add.mockClear();
+    openSpellingMenu(editor, async () => ({ status: "ok", suggestions: [] }));
+    fireEvent.click(await screen.findByText("Add to my dictionary"));
+    expect(add).not.toHaveBeenCalled();
   });
 });

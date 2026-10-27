@@ -672,6 +672,8 @@ describe("shared module state and import hygiene", () => {
       "app/api/project/delete/route.ts",
       "app/api/resource/revision/[resource-id]/route.ts",
       "app/api/sharing/limits/route.ts",
+      // Feature 96: always refuses a paired caller (checkUserWordListAccess).
+      "app/api/user-word-list/route.ts",
     ]);
     expect(offenders.filter((f) => !allowed.has(f))).toEqual([]);
   });

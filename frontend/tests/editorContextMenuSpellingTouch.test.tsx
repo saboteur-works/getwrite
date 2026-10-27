@@ -1,5 +1,10 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
@@ -12,6 +17,13 @@ import SpellCheckDecorationExtension, {
   getSpellDocVersion,
   type SpellRange,
 } from "../components/Editor/Extensions/SpellCheckDecorationExtension";
+
+import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
+
+// Feature 96: the menu reads the sharing-limits role, so every render sits in
+// a provider (default role `exempt`).
+const render = (ui: React.ReactElement) =>
+  rtlRender(<StaticSharingLimitsProvider>{ui}</StaticSharingLimitsProvider>);
 
 /**
  * Task 59 (FR-47, AC-22, OQ-15 a, OQ-16 b, OQ-17 c): a touch long-press.
@@ -170,6 +182,7 @@ describe("EditorContextMenu touch long-press (Task 59, FR-47, AC-22)", () => {
       "world",
       "Ignore",
       "Add to project dictionary",
+      "Add to my dictionary",
       ...EXISTING_ITEMS,
     ]);
   });

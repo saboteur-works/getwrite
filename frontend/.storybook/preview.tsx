@@ -10,6 +10,9 @@ import searchReducer from "../src/store/searchSlice";
 import queryReducer from "../src/store/querySlice";
 import spellingReducer from "../src/store/spellingSlice";
 import spellingAvailabilityReducer from "../src/store/spellingAvailabilitySlice";
+import userWordListReducer, {
+  type UserWordListState,
+} from "../src/store/userWordListSlice";
 import {
   APPEARANCE_CHANGED_EVENT,
   GLOBAL_APPEARANCE_STORAGE_KEY,
@@ -91,46 +94,66 @@ const resources: AnyResource[] = [
   },
 ];
 
-const mockStore = configureStore({
-  reducer: {
-    projects: projectReducer,
-    resources: resourcesReducer,
-    revisions: revisionsReducer,
-    editorConfig: editorConfigReducer,
-    search: searchReducer,
-    queries: queryReducer,
-    spelling: spellingReducer,
-    spellingAvailability: spellingAvailabilityReducer,
-  },
-  preloadedState: {
+const storeReducers = {
+  projects: projectReducer,
+  resources: resourcesReducer,
+  revisions: revisionsReducer,
+  editorConfig: editorConfigReducer,
+  search: searchReducer,
+  queries: queryReducer,
+  spelling: spellingReducer,
+  spellingAvailability: spellingAvailabilityReducer,
+  userWordList: userWordListReducer,
+};
+
+const basePreloadedState = {
+  projects: {
+    selectedProjectId: "test-proj-1",
     projects: {
-      selectedProjectId: "test-proj-1",
-      projects: {
-        "test-proj-1": {
-          id: "test-proj-1",
-          name: "Example Project",
-          rootPath: "/example-project",
-          folders: folders,
-          resources,
-        } as StoredProject,
-      },
+      "test-proj-1": {
+        id: "test-proj-1",
+        name: "Example Project",
+        rootPath: "/example-project",
+        folders: folders,
+        resources,
+      } as StoredProject,
     },
-    resources: { selectedResourceId: null, resources, folders },
-    revisions: {
-      resourceId: null,
-      requestedResourceId: null,
-      currentRevisionId: null,
-      currentRevisionContent: null,
-      revisions: [],
-      isLoading: false,
-      isSaving: false,
-      fetchingRevisionId: null,
-      deletingRevisionId: null,
-      errorMessage: "",
-    },
-    editorConfig: { headings: {} },
   },
+  resources: { selectedResourceId: null, resources, folders },
+  revisions: {
+    resourceId: null,
+    requestedResourceId: null,
+    currentRevisionId: null,
+    currentRevisionContent: null,
+    revisions: [],
+    isLoading: false,
+    isSaving: false,
+    fetchingRevisionId: null,
+    deletingRevisionId: null,
+    errorMessage: "",
+  },
+  editorConfig: { headings: {} },
+};
+
+const mockStore = configureStore({
+  reducer: storeReducers,
+  preloadedState: basePreloadedState,
 });
+
+/**
+ * The shared store, or, when a story sets `parameters.userWordList`, a fresh
+ * store whose `userWordList` slice is preloaded with that state (Feature 96)
+ * so the story neither shares nor leaks list state and makes no request.
+ */
+function storeFor(userWordList: UserWordListState | undefined) {
+  if (!userWordList) {
+    return mockStore;
+  }
+  return configureStore({
+    reducer: storeReducers,
+    preloadedState: { ...basePreloadedState, userWordList },
+  });
+}
 
 type StorybookColorMode = "light" | "dark";
 
@@ -164,7 +187,10 @@ function applyStorybookAppearance(colorMode: StorybookColorMode): void {
 
 const withStore = (
   Story: React.ComponentType,
-  context: { globals: Record<string, unknown> },
+  context: {
+    globals: Record<string, unknown>;
+    parameters: Record<string, unknown>;
+  },
 ) => {
   const colorMode = getColorModeFromGlobals(
     context.globals as Record<string, unknown>,
@@ -173,7 +199,11 @@ const withStore = (
   applyStorybookAppearance(colorMode);
 
   return (
-    <Provider store={mockStore}>
+    <Provider
+      store={storeFor(
+        context.parameters.userWordList as UserWordListState | undefined,
+      )}
+    >
       <div
         className={`appshell-shell ${colorMode === "dark" ? "appshell-theme-dark" : ""}`}
         style={{
@@ -188,6 +218,16 @@ const withStore = (
     </Provider>
   );
 };
+
+/**
+ * Per-story user word list state (Feature 96), read from
+ * `parameters.userWordList`: a full `UserWordListState`, e.g.
+ * `{ status: "loaded", words: ["Zorblax"], reason: null, errorMessage: "" }`
+ * (populated), `status: "failed"` with a `reason` (load failed), or
+ * `status: "loaded", words: []` (empty). Absent leaves the slice `idle`.
+ * The role comes from `parameters.sharingLimits` below: `{ state: { state:
+ * "exempt" } }` or `{ state: { state: "paired", limits } }`.
+ */
 
 /**
  * Per-story override of the paired-device limits (Feature 77), read from

@@ -95,6 +95,25 @@ export interface GlobalNoiseWordsSetResult {
   message?: string;
 }
 
+/**
+ * The persisted user word list, or why the call failed (Feature 96).
+ * Mirrors `electron/src/user-word-list-ipc.ts`'s `UserWordListResult`;
+ * redeclared because `frontend` cannot import across the `electron/src`
+ * package boundary.
+ */
+type UserWordListResult =
+  | { ok: true; words: string[] }
+  | {
+      ok: false;
+      reason:
+        | "invalid-word"
+        | "too-long"
+        | "list-full"
+        | "unreadable"
+        | "write-failed";
+      message: string;
+    };
+
 /** A successful DOCX import. */
 export interface DocxImportSuccessOutcome {
   readonly kind: "success";
@@ -257,6 +276,12 @@ export interface DesktopBridge {
   getGlobalNoiseWords(): Promise<string[]>;
   /** Persists the cross-project global noise-word list (FR-5b). */
   setGlobalNoiseWords(words: string[]): Promise<GlobalNoiseWordsSetResult>;
+  /** Returns the user word list from `userData` (Feature 96). */
+  getUserWordList(): Promise<UserWordListResult>;
+  /** Adds one word to the user word list; resolves to the persisted list. */
+  addUserWord(word: string): Promise<UserWordListResult>;
+  /** Removes one word from the user word list; resolves to the persisted list. */
+  removeUserWord(word: string): Promise<UserWordListResult>;
   /** Returns the sharing status (setting, effect, addresses, store state). */
   getSharingStatus(): Promise<SharingStatus>;
   /** Records the sharing setting; it takes effect on restart. */

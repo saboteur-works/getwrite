@@ -21,6 +21,7 @@ import SpellCheckDecorationExtension, {
   SPELL_CHECK_DECORATION_KEY,
 } from "../components/Editor/Extensions/SpellCheckDecorationExtension";
 import spellingReducer from "../src/store/spellingSlice";
+import userWordListReducer from "../src/store/userWordListSlice";
 import spellingAvailabilityReducer, {
   browserUnsupported,
   detectUnsupportedBrowser,
@@ -75,6 +76,7 @@ function makeStore() {
     reducer: {
       spelling: spellingReducer,
       spellingAvailability: spellingAvailabilityReducer,
+      userWordList: userWordListReducer,
     },
     preloadedState: { spelling: loadedSpelling },
   });
@@ -362,6 +364,7 @@ describe("the switch (FR-35, AC-15)", () => {
       reducer: {
         spelling: spellingReducer,
         spellingAvailability: spellingAvailabilityReducer,
+        userWordList: userWordListReducer,
       },
     });
     const createClient = vi.fn();
@@ -494,6 +497,54 @@ describe("a list change reaches every open editor of the project (Task 43, FR-32
     expect(b.underlined()).toEqual(["blorp"]);
     expect(a.worker.posted).toHaveLength(postedA);
     expect(b.worker.posted).toHaveLength(postedB);
+  });
+});
+
+describe("the user word list reaches every open editor (Feature 96, FR-3, FR-4)", () => {
+  it("drops the underline in two editors sharing a store when the slice stores a new list, with no worker request", async () => {
+    const store = makeStore();
+    const a = setup("<p>teh cat</p>", undefined, store);
+    const b = setup("<p>the teh blorp</p>", undefined, store);
+    await a.flush();
+    await b.flush();
+    expect(a.underlined()).toEqual(["teh"]);
+    expect(b.underlined()).toEqual(["teh", "blorp"]);
+    const postedA = a.worker.posted.length;
+    const postedB = b.worker.posted.length;
+
+    act(() => {
+      store.dispatch({
+        type: "userWordList/load/fulfilled",
+        payload: ["teh", "blorp"],
+        meta: {
+          arg: undefined,
+          requestId: "x",
+          requestStatus: "fulfilled",
+          mutationSeq: 0,
+          inFlight: 0,
+        },
+      });
+    });
+    expect(a.underlined()).toEqual([]);
+    expect(b.underlined()).toEqual([]);
+    expect(a.worker.posted).toHaveLength(postedA);
+    expect(b.worker.posted).toHaveLength(postedB);
+  });
+
+  it("still leaves out an Ignored word as before", async () => {
+    const h = setup("<p>teh blorp</p>");
+    act(() => {
+      h.store.dispatch({
+        type: "spelling/ignoreWord/fulfilled",
+        payload: {
+          projectId: "p",
+          lists: { spellingProjectWords: [], spellingIgnoredWords: ["teh"] },
+        },
+        meta: { arg: "teh", requestId: "x", requestStatus: "fulfilled" },
+      });
+    });
+    await h.flush();
+    expect(h.underlined()).toEqual(["blorp"]);
   });
 });
 

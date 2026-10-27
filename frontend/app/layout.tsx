@@ -11,6 +11,7 @@ import NativeBootstrap from "../components/native/NativeBootstrap";
 import DeviceNotPairedGuard from "../components/Sharing/DeviceNotPairedGuard";
 import SharingLimitsProvider from "../components/Sharing/SharingLimitsContext";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
+import UserWordListRuntime from "../components/preferences/UserWordListRuntime";
 
 /** Page metadata for Next.js layout — basic title for dev/storybook. */
 export const metadata: Metadata = { title: `GetWrite` };
@@ -48,6 +49,8 @@ export default function RootLayout({
             <DeviceNotPairedGuard />
           )}
           <SharingLimitsProvider>
+            {/* Feature 96 FR-18/FR-23: lazy load and focus re-read of the user word list. */}
+            <UserWordListRuntime />
             <TrashRefreshProvider>
               <div className="min-h-screen bg-gw-chrome text-gw-primary">
                 {children}

@@ -723,6 +723,9 @@ function installScrivenerBridge(options: { isSharingOn?: boolean } = {}): void {
     setSharingLimit: async () => ({ kind: "ok" as const }),
     getKeepRunningSetting: async () => ({ supported: true, enabled: false }),
     setKeepRunningSetting: async () => undefined,
+    getUserWordList: async () => ({ ok: true, words: [] }),
+    addUserWord: async () => ({ ok: true, words: [] }),
+    removeUserWord: async () => ({ ok: true, words: [] }),
   };
   (window as unknown as Record<string, unknown>).getwriteDesktop = bridge;
 }

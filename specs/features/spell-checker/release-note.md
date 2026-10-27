@@ -15,9 +15,8 @@ Text for the commit message and the pull request description. Facts only; measur
 
 ## Known gaps
 
-- Words cannot yet be kept across projects (Feature 96): there is no user-level dictionary, so each project keeps its own two lists.
 - Android keyboard: on the Pixel 7 Pro (WebView 155, Gboard) no underline was visible in any of 8 cases, with or without `spellcheck="false"`, and Gboard's suggestion strip appeared in all 8. Typing was not tested in that measurement. Checking works offline on the phone (underlines, the spelling menu and both settings).
-- The two lists are not in export or compile output.
+- The project lists are not in export or compile output.
 - ALL-CAPS acronyms are checked; each unknown one needs one Ignore or Add.
 - Entity names and aliases are picked up as soon as you declare, edit, rename or remove an entity in this window; a change made in another window or on another device is picked up when the project is next opened.
 - Versions run: Chromium 132 to 155. Chrome 67 to 131 (the repository floor is Chrome 67) was not run.

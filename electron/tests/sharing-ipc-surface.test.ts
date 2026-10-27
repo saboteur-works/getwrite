@@ -21,6 +21,11 @@ const EXISTING = [
   "getwrite:global-noise-words-get",
   "getwrite:global-noise-words-set",
 ];
+const USER_WORD_LIST = [
+  "getwrite:user-word-list-get",
+  "getwrite:user-word-list-add",
+  "getwrite:user-word-list-remove",
+];
 const NEW = [
   "getwrite:sharing-get-status",
   "getwrite:sharing-set-enabled",
@@ -52,7 +57,14 @@ function invokedChannels(source: string): string[] {
 describe("preload sharing surface", () => {
   it("invokes exactly the existing channels plus the four sharing ones, the three device ones, the two limits ones and the two keep-running ones", () => {
     expect(invokedChannels(preload).sort()).toEqual(
-      [...EXISTING, ...NEW, ...DEVICE, ...LIMITS, ...KEEP_RUNNING].sort(),
+      [
+        ...EXISTING,
+        ...NEW,
+        ...DEVICE,
+        ...LIMITS,
+        ...KEEP_RUNNING,
+        ...USER_WORD_LIST,
+      ].sort(),
     );
   });
 
@@ -66,6 +78,18 @@ describe("preload sharing surface", () => {
       expect(call, channel).toMatch(/keepRunning\.(get|set)/);
     }
     expect(main).toContain("createKeepRunningHandlers(");
+  });
+
+  it("main routes each user-word-list channel through createUserWordListHandlers", () => {
+    for (const channel of USER_WORD_LIST) {
+      const at = main.indexOf(`ipcMain.handle(\n    "${channel}"`);
+      const inline = main.indexOf(`ipcMain.handle("${channel}"`);
+      const start = at >= 0 ? at : inline;
+      expect(start, channel).toBeGreaterThan(-1);
+      const call = main.slice(start, main.indexOf(");", start) + 2);
+      expect(call, channel).toMatch(/userWordList\.(get|add|remove)/);
+    }
+    expect(main).toContain("createUserWordListHandlers(");
   });
 
   it("never invokes a non-literal channel (no passthrough)", () => {

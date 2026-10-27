@@ -2,8 +2,8 @@
  * @module known-words
  *
  * Pure known-word set for the spell checker (FR-17, FR-18). Decides whether a
- * word is known from the project's two spelling lists and the entity alias
- * table. The dictionary half of the decision is the engine's own, behind the
+ * word is known from the project's two spelling lists, the optional user word
+ * list (Feature 96) and the entity alias table. The dictionary half of the decision is the engine's own, behind the
  * engine seam; nothing here calls an engine.
  *
  * - Lists and entity terms match ignoring case; apostrophes normalise to `'`.
@@ -25,6 +25,12 @@ export interface KnownWordsInput {
   projectWords: readonly string[];
   /** The project's ignored words (`spellingIgnoredWords`). */
   ignoredWords: readonly string[];
+  /**
+   * The writer's personal dictionary (Feature 96, FR-3). Optional so callers
+   * with no user list (the paired-device path) still compile; folded like the
+   * project words.
+   */
+  userWords?: readonly string[];
   /** The entity alias table, from a read that rejects on failure. */
   aliasTable: EntityAliasTable;
 }
@@ -58,6 +64,7 @@ export function createKnownWords(input: KnownWordsInput): KnownWords {
   const listed = new Set<string>();
   for (const word of input.projectWords) listed.add(fold(word));
   for (const word of input.ignoredWords) listed.add(fold(word));
+  for (const word of input.userWords ?? []) listed.add(fold(word));
 
   const entityTerms = new Set<string>();
   for (const entry of Object.values(input.aliasTable.entities)) {

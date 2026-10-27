@@ -9,8 +9,13 @@ import spellingReducer, {
 } from "../../src/store/spellingSlice";
 import availabilityReducer, {
   browserUnsupported,
+  continueWithoutUserList,
   engineFailed,
+  setUserListApplies,
 } from "../../src/store/spellingAvailabilitySlice";
+import userWordListReducer, {
+  loadUserList,
+} from "../../src/store/userWordListSlice";
 import {
   SPELLCHECK_ENABLED_STORAGE_KEY,
   resetSpellcheckSessionValue,
@@ -42,10 +47,12 @@ function createStore() {
     reducer: {
       spelling: spellingReducer,
       spellingAvailability: availabilityReducer,
+      userWordList: userWordListReducer,
     },
     preloadedState: {
       spelling: loaded,
       spellingAvailability: availabilityReducer(undefined, { type: "@@init" }),
+      userWordList: userWordListReducer(undefined, { type: "@@init" }),
     },
   });
 }
@@ -144,5 +151,59 @@ export const UnavailableUnsupportedBrowser: Story = {
     await expect(await canvas.findByRole("status")).toHaveTextContent(
       "Spell checking needs Chrome 67 or newer; this is Chrome 60.",
     );
+  },
+};
+
+/** Puts the store in the state of a failed read of the writer's own list. */
+function failUserListRead(store: ReturnType<typeof createStore>): void {
+  store.dispatch(setUserListApplies(true));
+  store.dispatch(
+    loadUserList.rejected(new Error("unreadable"), "request-1", undefined, {
+      reason: "unreadable",
+      message: "The word list file could not be read.",
+    }),
+  );
+}
+
+/**
+ * Feature 96 (FR-16): the writer's own list could not be read. The status line
+ * gives the reason with Retry and "Continue without my dictionary".
+ */
+export const UserListReadFailed: Story = {
+  decorators: [withStore(failUserListRead)],
+  beforeEach: () => storeSwitch(null),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("status")).toHaveTextContent(
+      "Your dictionary could not be loaded. Its file couldn't be read.",
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Retry" }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Continue without my dictionary" }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * Feature 96 (FR-16): after "Continue without my dictionary" the persistent
+ * notice says the writer's own words are not applied, and the recovery
+ * buttons are gone.
+ */
+export const UserWordsNotApplied: Story = {
+  decorators: [
+    withStore((store) => {
+      failUserListRead(store);
+      store.dispatch(continueWithoutUserList());
+    }),
+  ],
+  beforeEach: () => storeSwitch(null),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("status")).toHaveTextContent(
+      "Your own words are not being applied.",
+    );
+    await expect(canvas.queryByRole("button", { name: "Retry" })).toBeNull();
   },
 };

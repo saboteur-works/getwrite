@@ -302,7 +302,7 @@ function writeWorkspaceConfig(
  * @param target - Absolute path of the file to replace.
  * @param contents - The complete new file contents.
  */
-function writeFileViaTemporary(target: string, contents: string): void {
+export function writeFileViaTemporary(target: string, contents: string): void {
   const directory = path.dirname(target);
   const temporary = path.join(
     directory,

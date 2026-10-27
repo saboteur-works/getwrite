@@ -8,13 +8,17 @@
  * test.
  */
 import React from "react";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import spellingReducer from "../../src/store/spellingSlice";
 import spellingAvailabilityReducer from "../../src/store/spellingAvailabilitySlice";
+import userWordListReducer from "../../src/store/userWordListSlice";
+import { setUserListApplies } from "../../src/store/spellingAvailabilitySlice";
+import { StaticSharingLimitsProvider } from "../../components/Sharing/SharingLimitsContext";
+import * as userWordTransport from "../../src/lib/api/user-word-list";
 import AppSettingsDialog from "../../components/AppSettings/AppSettingsDialog";
 import {
   getGlobalNoiseWords,
@@ -25,6 +29,14 @@ vi.mock("../../src/lib/api/global-noise-words", () => ({
   getGlobalNoiseWords: vi.fn(),
   setGlobalNoiseWords: vi.fn(),
 }));
+
+vi.mock("../../src/lib/api/user-word-list", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/api/user-word-list")>();
+  return { ...actual, getUserWords: vi.fn() };
+});
+
+const mockGetUserWords = vi.mocked(userWordTransport.getUserWords);
 
 const mockGetGlobalNoiseWords = getGlobalNoiseWords as unknown as ReturnType<
   typeof vi.fn
@@ -38,14 +50,22 @@ function renderDialog() {
     reducer: {
       spelling: spellingReducer,
       spellingAvailability: spellingAvailabilityReducer,
+      userWordList: userWordListReducer,
     },
   });
-  return render(
+  const view = render(
     <Provider store={store}>
-      <AppSettingsDialog isOpen onClose={() => undefined} />
+      <StaticSharingLimitsProvider value={{ state: { state: "exempt" } }}>
+        <AppSettingsDialog isOpen onClose={() => undefined} />
+      </StaticSharingLimitsProvider>
     </Provider>,
   );
+  return { ...view, store };
 }
+
+beforeEach(() => {
+  mockGetUserWords.mockResolvedValue([]);
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -184,5 +204,156 @@ describe("AppSettingsDialog", () => {
       ).toHaveFocus(),
     );
     expect(screen.getByText("App Settings")).toBeInTheDocument();
+  });
+  describe("My dictionary (Feature 96)", () => {
+    it("lists the section and shows the writer's words", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockResolvedValue(["zorblax"]);
+      renderDialog();
+      expect(
+        await screen.findByRole("heading", { name: /my dictionary/i }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("zorblax")).toBeInTheDocument();
+    });
+
+    it("shows no notice when the read has not failed", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      await screen.findByText("Spell check");
+      await waitFor(() =>
+        expect(store.getState().userWordList.status).toBe("loaded"),
+      );
+      expect(screen.queryByText(/could not be loaded/i)).toBeNull();
+      expect(screen.queryByText(/not being applied/i)).toBeNull();
+      expect(
+        screen.queryByRole("button", {
+          name: "Continue without my dictionary",
+        }),
+      ).toBeNull();
+    });
+
+    it("on a failed read shows the reason, Retry and Continue in the status line", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockRejectedValue(new Error("disk gone"));
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      const line = await screen.findByText(
+        /Your dictionary could not be loaded/i,
+        { selector: "[role=status] p" },
+      );
+      const region = line.closest("[role=status]") as HTMLElement;
+      expect(region).toHaveTextContent(
+        "Your dictionary could not be loaded. Something went wrong while reading it.",
+      );
+      expect(region).not.toHaveTextContent("disk gone");
+      expect(
+        within(region).getByRole("button", { name: "Retry" }),
+      ).toBeInTheDocument();
+      expect(
+        within(region).getByRole("button", {
+          name: "Continue without my dictionary",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a failed read once: Retry in Spell check, a short line in My dictionary", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockRejectedValue(
+        new userWordTransport.UserWordListTransportError(
+          "corrupt",
+          "The user word list is not valid JSON. Refusing to treat a corrupt file as an empty list.",
+        ),
+      );
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      await screen.findByText(/Your dictionary could not be loaded/i, {
+        selector: "[role=status] p",
+      });
+      expect(screen.getAllByText(/could not be loaded/i)).toHaveLength(1);
+      expect(
+        screen.getByText(/Its file is damaged and couldn't be read\./),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/corrupt|JSON|Refusing/i)).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
+      expect(
+        screen.getByText(
+          "Your words can't be shown until your dictionary loads.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 3, name: /my dictionary/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("after Continue a persistent status notice stays, without a dismiss control", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockRejectedValue(new Error("disk gone"));
+      const user = userEvent.setup();
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      await user.click(
+        await screen.findByRole("button", {
+          name: "Continue without my dictionary",
+        }),
+      );
+      const notice = await screen.findByText(
+        /your own words are not being applied/i,
+      );
+      const region = notice.closest("[role=status]") as HTMLElement;
+      expect(region).not.toBeNull();
+      expect(
+        within(region).queryByRole("button", { name: /dismiss|close/i }),
+      ).toBeNull();
+      expect(store.getState().spellingAvailability.userListOverride).toBe(true);
+    });
+
+    it("a successful Retry clears the notice", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockRejectedValue(new Error("disk gone"));
+      const user = userEvent.setup();
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      await user.click(
+        await screen.findByRole("button", {
+          name: "Continue without my dictionary",
+        }),
+      );
+      await screen.findByText(/your own words are not being applied/i);
+      mockGetUserWords.mockResolvedValue(["zorblax"]);
+      const section = screen
+        .getByRole("heading", { name: /my dictionary/i })
+        .closest("section") as HTMLElement;
+      await user.click(within(section).getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/your own words are not being applied/i),
+        ).toBeNull(),
+      );
+    });
+
+    it("Retry in the status line re-reads the list", async () => {
+      mockGetGlobalNoiseWords.mockResolvedValue([]);
+      mockGetUserWords.mockRejectedValue(new Error("disk gone"));
+      const user = userEvent.setup();
+      const { store } = renderDialog();
+      store.dispatch(setUserListApplies(true));
+      const line = await screen.findByText(
+        /Your dictionary could not be loaded/i,
+        { selector: "[role=status] p" },
+      );
+      const region = line.closest("[role=status]") as HTMLElement;
+      mockGetUserWords.mockResolvedValue(["zorblax"]);
+      await user.click(within(region).getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(store.getState().userWordList.status).toBe("loaded"),
+      );
+      expect(
+        screen.queryByText(/Your dictionary could not be loaded/i, {
+          selector: "[role=status] p",
+        }),
+      ).toBeNull();
+    });
   });
 });

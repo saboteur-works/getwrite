@@ -29,6 +29,7 @@ import {
   type RevisionsState,
 } from "../../src/store/revisionsSlice";
 import type { RootState } from "../../src/store/store";
+import { initialUserWordListState } from "../../src/store/userWordListSlice";
 
 function createRevisionEntry(overrides: Partial<RevisionEntry>): RevisionEntry {
   const versionNumber = overrides.versionNumber ?? 1;
@@ -130,7 +131,13 @@ function createRootState(overrides?: {
       aliasTable: null,
       aliasTableErrorMessage: "",
     },
-    spellingAvailability: { engineFailure: null, unsupportedBrowser: null },
+    spellingAvailability: {
+      engineFailure: null,
+      unsupportedBrowser: null,
+      userListApplies: false,
+      userListOverride: false,
+    },
+    userWordList: initialUserWordListState,
   } as RootState;
 }
 

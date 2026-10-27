@@ -11,7 +11,11 @@
 import { NextResponse } from "next/server";
 
 import { CLASSIFICATION_HEADER, parseClassification } from "./classify-request";
-import { LIMIT_REFUSAL_MESSAGES } from "./limits-copy";
+import {
+  LIMIT_REFUSAL_MESSAGES,
+  USER_WORD_LIST_REFUSAL_LIMIT,
+  USER_WORD_LIST_REFUSAL_MESSAGE,
+} from "./limits-copy";
 import { allOn, readLimits, type LimitKey, type Limits } from "./limits-store";
 
 type LimitDecision = "allowed" | "refused";
@@ -44,6 +48,23 @@ export function decideLimit(
 export function refusalFor(key: LimitKey, message?: string): NextResponse {
   return NextResponse.json(
     { error: message ?? LIMIT_REFUSAL_MESSAGES[key], limit: key },
+    { status: 403 },
+  );
+}
+
+/**
+ * Feature 96, FR-12: the user word list is always refused for a paired or
+ * unclassified caller, on every method (reads included), and the limits file
+ * is never read. Same 403 `{ error, limit }` shape as `refusalFor`, with a
+ * `limit` that is not a `LimitKey` (no new owner switch).
+ */
+export function checkUserWordListAccess(request: Request): NextResponse | null {
+  if (isExempt(request.headers.get(CLASSIFICATION_HEADER))) return null;
+  return NextResponse.json(
+    {
+      error: USER_WORD_LIST_REFUSAL_MESSAGE,
+      limit: USER_WORD_LIST_REFUSAL_LIMIT,
+    },
     { status: 403 },
   );
 }

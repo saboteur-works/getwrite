@@ -13,6 +13,7 @@ vi.mock("../components/TipTapEditor", () => ({
 
 import AppShell from "../components/Layout/AppShell";
 import { makeStore } from "../src/store/store";
+import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
@@ -22,7 +23,9 @@ describe("AppShell: App Settings from the settings menu", () => {
   it("opens the App Settings dialog and closes the menu", async () => {
     render(
       <Provider store={makeStore()}>
-        <AppShell showSidebars={false} project={null} resources={[]} />
+        <StaticSharingLimitsProvider>
+          <AppShell showSidebars={false} project={null} resources={[]} />
+        </StaticSharingLimitsProvider>
       </Provider>,
     );
     await flushPendingEffects();

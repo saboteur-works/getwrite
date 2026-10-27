@@ -26,14 +26,18 @@ import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { PROJECT_FILENAME } from "./project-config";
+import {
+  MAX_SPELLING_LIST_SIZE,
+  MAX_SPELLING_WORD_LENGTH,
+  checkSpellingWord,
+  foldSpellingWord,
+} from "./spelling-word-rules";
 
 export { InvalidProjectIdCoreError };
 
-/** Maximum length of one spelling word, in UTF-16 code units (FR-13, OQ-10). */
-export const MAX_SPELLING_WORD_LENGTH = 100;
-
-/** Maximum number of words held in each spelling list (FR-13, OQ-10). */
-export const MAX_SPELLING_LIST_SIZE = 5000;
+// The bounds live in the pure `spelling-word-rules.ts` (shared with the user
+// word list); re-exported so existing importers are unchanged.
+export { MAX_SPELLING_LIST_SIZE, MAX_SPELLING_WORD_LENGTH };
 
 /** A project's two spelling lists, defaults filled in (`[]` when absent). */
 export interface SpellingLists {
@@ -63,9 +67,6 @@ export class SpellingListFullError extends Error {
   }
 }
 
-const INNER_WHITESPACE = /\s/u;
-const CONTROL_CHARACTER = /\p{Cc}/u;
-
 function requireProjectRoot(projectId: string): string {
   const root = resolveProjectRoot(projectId);
   if (!root) throw new InvalidProjectIdCoreError(projectId);
@@ -74,23 +75,12 @@ function requireProjectRoot(projectId: string): string {
 
 /** Validates, NFC-normalises and trims a candidate word. @throws InvalidSpellingWordError */
 function requireSpellingWord(word: unknown): string {
-  if (typeof word !== "string") throw new InvalidSpellingWordError(word);
-  const normalised = word.normalize("NFC").trim();
-  if (
-    normalised.length === 0 ||
-    normalised.length > MAX_SPELLING_WORD_LENGTH ||
-    INNER_WHITESPACE.test(normalised) ||
-    CONTROL_CHARACTER.test(normalised)
-  ) {
-    throw new InvalidSpellingWordError(word);
-  }
-  return normalised;
+  const checked = checkSpellingWord(word);
+  if (!checked.ok) throw new InvalidSpellingWordError(word);
+  return checked.word;
 }
 
-/** Locale-independent fold used to detect duplicates. */
-function fold(word: string): string {
-  return word.normalize("NFC").toLowerCase();
-}
+const fold = foldSpellingWord;
 
 function readList(config: Record<string, unknown>, key: SpellingListKey) {
   const value = config[key];

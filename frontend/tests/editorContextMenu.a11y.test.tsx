@@ -1,8 +1,18 @@
 import React from "react";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  fireEvent,
+  act,
+  within,
+} from "@testing-library/react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
 import { Editor } from "@tiptap/core";
 import { EditorContent } from "@tiptap/react";
+import userWordListReducer from "../src/store/userWordListSlice";
 import { runAxe } from "./a11y/helpers/axe";
 import EditorContextMenu from "../components/Editor/EditorContextMenu";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
@@ -186,6 +196,13 @@ describe("a11y: EditorContextMenu", () => {
   });
 });
 
+import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
+
+// Feature 96: the menu reads the sharing-limits role, so every render sits in
+// a provider (default role `exempt`).
+const render = (ui: React.ReactElement) =>
+  rtlRender(<StaticSharingLimitsProvider>{ui}</StaticSharingLimitsProvider>);
+
 /**
  * Task 44 (FR-41 menu part, AC-14, AC-17): the spelling group in the flagged
  * state. Document "Hello wrold and teh", "wrold" flagged at 7-12. Real timers
@@ -296,4 +313,85 @@ describe("a11y: EditorContextMenu spelling group (Task 44)", () => {
       await runAxe(document.body, ["region"]);
     },
   );
+});
+
+/**
+ * Feature 96, Task 20 (FR-9): the "Add to my dictionary" entry in the
+ * flagged-word menu is a real menuitem, reachable with the arrow keys alone,
+ * and the menu stays axe-clean with it present.
+ */
+describe("a11y: EditorContextMenu Add to my dictionary (Feature 96, Task 20)", () => {
+  function openMenuWithUserList() {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const spellEditor = new Editor({
+      element,
+      extensions: [
+        ...baseSchemaExtensions,
+        SpellCheckDecorationExtension.configure({ isEnabled: () => true }),
+      ],
+      content: "<p>Hello wrold and teh</p>",
+    });
+    editors.push(spellEditor);
+    act(() => {
+      spellEditor.view.dispatch(
+        spellEditor.state.tr.setMeta(SPELL_CHECK_DECORATION_KEY, {
+          type: "set",
+          version: getSpellDocVersion(spellEditor.state),
+          ranges: [{ from: 7, to: 12 }],
+        }),
+      );
+    });
+    const store = configureStore({
+      reducer: { userWordList: userWordListReducer },
+    });
+    render(
+      <Provider store={store}>
+        <EditorContextMenu
+          editor={spellEditor}
+          requestSuggestions={async () => ({ status: "ok", suggestions: [] })}
+        >
+          <EditorContent editor={spellEditor} data-testid="prosemirror" />
+        </EditorContextMenu>
+      </Provider>,
+    );
+    vi.spyOn(spellEditor.view, "posAtCoords").mockReturnValue({
+      pos: 9,
+      inside: 9,
+    });
+    const surface = screen.getByTestId("prosemirror");
+    fireEvent.pointerDown(surface, { button: 2, pointerType: "mouse" });
+    fireEvent.contextMenu(surface, { clientX: 10, clientY: 10 });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("is a menuitem and axe is clean with it present", async () => {
+    openMenuWithUserList();
+    const menu = await screen.findByRole("menu", { name: "Editor options" });
+    const item = within(menu).getByRole("menuitem", {
+      name: "Add to my dictionary",
+    });
+    expect(item.hasAttribute("data-disabled")).toBe(false);
+    await flushPendingEffects();
+    await runAxe(document.body, ["region"]);
+  });
+
+  it("is reached with the arrow keys alone, straight after Add to project dictionary", async () => {
+    openMenuWithUserList();
+    const menu = await screen.findByRole("menu", { name: "Editor options" });
+    const target = within(menu).getByRole("menuitem", {
+      name: "Add to my dictionary",
+    });
+    const user = userEvent.setup();
+    const visited: string[] = [];
+    for (let i = 0; i < 12 && document.activeElement !== target; i += 1) {
+      await user.keyboard("{ArrowDown}");
+      visited.push(document.activeElement?.textContent ?? "");
+    }
+    expect(document.activeElement).toBe(target);
+    expect(visited.at(-2)).toBe("Add to project dictionary");
+  });
 });
