@@ -93,9 +93,11 @@ export function buildResourceTree(
   const rootResources = resources.filter((r) => !getEffectiveParentId(r));
   rootResources.forEach((r) => addToTree(r, tree, resources));
 
-  // Second pass: catch any resources whose parent folder was not in the tree
-  // (genuinely orphaned — folderId set but parent not present in resources).
-  // These will still trigger the warning, which is now a true positive.
+  // Second pass: catch any resources the first pass did not reach (parent id
+  // set, but no folder with that id was reached from the root). These trigger
+  // the warning. Warnings have been reported for projects whose parents did
+  // exist; that report has not been reproduced, so a warning here is not
+  // proof that the data is orphaned.
   resources.forEach((r) => {
     if (!tree[r.id]) addToTree(r, tree, resources);
   });
