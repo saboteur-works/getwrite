@@ -2567,3 +2567,21 @@ Name comparison (line numbers ignored): no finding on the branch that main lacks
 ### aria-hidden-focus, `EditorContextMenu` stories on main
 
 Not attempted this run (optional step skipped); main remains UNMEASURED.
+
+## Addendum: registry verification for the shipped packages (2026-10-26)
+
+Fills the section 7 gaps in "Decision" above (`docs/standards/package-selection.md`). Read with `npm view` from `registry.npmjs.org`, GitHub's repository API and npm's download counts API on 2026-10-26; nothing was installed or changed.
+
+| | `nspell` | `dictionary-en` | `is-buffer` (nspell's only dependency) |
+| --- | --- | --- | --- |
+| Latest version on the registry | 2.1.5 (the installed version) | 4.0.0 (the installed version) | 2.0.5 (the installed version) |
+| Licence | MIT | (MIT AND BSD) | MIT |
+| Installed version published | 2021-01-17 | 2023-11-03 | — |
+| Registry record last modified | 2022-06-22 | 2023-11-03 | 2022-06-19 |
+| Deprecated | no | no | no |
+| Maintainers | 1 (wooorm) | 1 (wooorm) | — |
+| Repository | `wooorm/nspell`, not archived, last push 2021-01-17, 9 open issues | `wooorm/dictionaries`, not archived, last push 2024-09-09, 15 open issues | — |
+| Weekly downloads (window returned by the API: 2026-06-25 to 2026-07-01) | 98,811 | 74,934 | — |
+| Declared `engines` / `peerDependencies` | none | none | — |
+
+Read from these facts: neither package is deprecated or archived, and each installed version is the latest. `nspell` has had no release since 2021-01-17 and has one maintainer; `dictionary-en` likewise has one maintainer. No peer dependency on React, Next.js or Node is declared, so section 8's peer check has nothing to conflict with. Whether the lack of `nspell` releases means it is finished or unmaintained is not established by these data; what would matter in practice is a defect report against it, and none has been met in this project.
