@@ -28,6 +28,9 @@
     // spell.worker.ts is reached only through `new Worker(new URL(...))` in
     // create-spell-worker.ts, which knip does not follow.
     "frontend": { "entry": ["src/lib/spelling/spell.worker.ts"] },
-    "cli": { "entry": ["src/getwrite-cli.ts"], "project": ["src/**/*.ts"] }
+    "cli": { "entry": ["src/getwrite-cli.ts"], "project": ["src/**/*.ts"] },
+    // scripts/after-pack.cjs is loaded by electron-builder through
+    // `afterPack` in electron-builder.yml, which knip does not read.
+    "electron": { "entry": ["scripts/after-pack.cjs"] }
   }
 }

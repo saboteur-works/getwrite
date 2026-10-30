@@ -451,8 +451,17 @@ Windows code-signing, electron-builder packaging config changes.
 **User stories:** US-8
 **Depends on:** Feature 13
 **Branch suggestion:** feat/signed-desktop-builds
-**Notes:** Partial — build and packaging already ship; signing/notarization
-is outstanding (tracked separately in the user's Electron Distribution TODO).
+**Notes:** Partial — build and packaging already ship. macOS signing and
+notarization are configured on `feat/signed-desktop-builds`
+(`forceCodeSigning` in `electron/electron-builder.yml`; Developer ID
+certificate and App Store Connect API key passed to the macOS job of
+`.github/workflows/build-electron.yml`, which checks `stapler validate` before
+upload). An `afterPack` hook (`electron/scripts/after-pack.cjs`) removes a
+dangling symlink in the standalone server that otherwise fails signing. A
+local signed build passed on 2026-10-30: both architectures notarized, and
+`codesign --verify`, `stapler validate` and `spctl` (source=Notarized
+Developer ID) all passed. Not yet verified by a signed CI build. Windows
+signing is outstanding.
 
 ### Feature 26: Trash UI — browse, restore, purge — Shipped
 

@@ -6,6 +6,7 @@ Paths are relative to `electron/` unless they start with `frontend/` or `docs/`.
 
 - `src/main.ts` + `src/preload.ts`, compiled by `tsc` to `dist/`. Bridge types: `frontend/src/lib/desktop-bridge.ts`.
 - `pnpm electron:build` = frontend `next build` -> electron `tsc` -> `build:worker` (esbuild). `pnpm electron:package` = electron-builder (`electron-builder.yml`). Unit tests: `tests/`, CI `.github/workflows/electron-checks.yml`.
+- macOS packaging has `forceCodeSigning: true`: it needs a valid Developer ID Application identity (keychain locally, `CSC_LINK` in CI). An unsigned local build needs `-c.mac.forceCodeSigning=false`. CI notarizes with an App Store Connect API key and fails the job unless `stapler validate` passes (`.github/workflows/build-electron.yml`).
 - Production log: `app.getPath("logs")/getwrite.log`.
 
 ## Server launch
