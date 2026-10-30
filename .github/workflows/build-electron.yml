@@ -35,7 +35,9 @@ jobs:
                     #
                     # Both arches are named explicitly rather than relying on the
                     # arch list in electron-builder.yml winning over the CLI flag.
-                    - os: macos-14
+                    # macos-14 images are retired on 2026-11-02 (brownouts
+                    # before then fail the job): actions/runner-images#13518.
+                    - os: macos-15
                       eb_args: --mac --x64 --arm64
                       artifact_glob: dist-electron/*.dmg
                     - os: windows-latest
