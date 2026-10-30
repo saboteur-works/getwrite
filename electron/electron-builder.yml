@@ -6,6 +6,9 @@ directories:
   buildResources: assets
 files:
   - dist/**
+# Removes dangling symlinks from the packaged standalone server before signing
+# (see the header of scripts/after-pack.cjs).
+afterPack: scripts/after-pack.cjs
 extraResources:
   - from: ../frontend/.next/standalone
     to: frontend/.next/standalone
@@ -65,6 +68,12 @@ mac:
   # electron-builder leaves the x64 dmg arch-less (GetWrite-<v>.dmg), which an
   # Apple Silicon user can grab by mistake and end up running under Rosetta.
   artifactName: ${productName}-${version}-${arch}.${ext}
+  # Fail the build rather than ship an unsigned app. The certificate comes from
+  # CSC_LINK in CI, or from the keychain locally. A local unsigned build needs
+  # -c.mac.forceCodeSigning=false. Notarization runs when APPLE_API_KEY,
+  # APPLE_API_KEY_ID and APPLE_API_ISSUER are set; without them it is skipped
+  # with only a warning, so build-electron.yml checks the staple itself.
+  forceCodeSigning: true
 win:
   target: nsis
 linux:
