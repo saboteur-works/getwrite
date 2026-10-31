@@ -10,7 +10,7 @@
 > `desktop-server-port.md` for conventions and process-safety rules; and the
 > save path as read in the code (below). Home-network sharing (Features 75, 76,
 > 77, 80) is merged to `main` and not released; the desktop server listens on
-> port 7340.
+> port 7340. Released in 2.3.0 (2026-10-30).
 >
 > **Gate 0 decision (Owner decision, Gate 0, 2026-10-11), settled and not
 > reopened:** this feature is a MEASUREMENT of what happens when two of the

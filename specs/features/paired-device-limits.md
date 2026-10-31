@@ -7,7 +7,7 @@
 > OQ-76 to OQ-85 in `specs/product/getwrite.md`; the merged code of Features 75
 > and 76; `specs/features/home-network-sharing.md` and
 > `specs/features/paired-device-management.md`. Features 75 and 76 are merged to
-> main and not released.
+> main and not released. Released in 2.3.0 (2026-10-30).
 >
 > **Release hold (Owner decision, Gate 2, 2026-10-09; unchanged):** nothing
 > containing Feature 75 is released until Features 77 and 80 are merged

@@ -5,7 +5,7 @@
 > `specs/product/getwrite.features.md`; US-27, FR-66 to FR-68 and the resolved
 > OQ-67 to OQ-75 in `specs/product/getwrite.md`; the shipped Feature 75 code
 > and `specs/features/home-network-sharing.md`. Feature 75 is merged to main
-> and not released.
+> and not released. Released in 2.3.0 (2026-10-30).
 >
 > **Release hold (Owner decisions, 2026-10-09):** nothing containing Feature
 > 75 is released until Features 76, 77 and 80 are all merged. This feature is
