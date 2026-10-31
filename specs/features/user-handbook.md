@@ -97,6 +97,9 @@ Result: 21 source files become 22 handbook pages plus `index.md`: 20 pages are m
   Resolution: Resolved (2026-10-14): a page's recorded base commit stands for its text; later behaviour-changing PRs update the pages they touch (product spec FR-69(j)). Before merge, list writer-visible commits since each page's base commit and re-check only pages those commits touch; a re-checked page's verified-against line gets the new sha (FR-10).
   Note (2026-10-31, owner decision): pages no longer carry a verified-against line. The re-check stays, reads each page's base commit from the verification record, and a re-checked page's new sha is written there (FR-10).
   Evidence: Triage resolution accepted at Gate 3 without objection, 2026-10-14.
+- OQ-7 (resolved): Before the handbook rewrite takes the stamps and evidence off the pages (FR-10, FR-13), what happens to (a) statements on `organize/project-types.md`, `write/editor-appearance.md` and `write/headings.md` that Features 90 and 91 added having only read them in code, (b) statements later PRs added to 18 pages after Feature 81 merged, which have no row in the verification record, and (c) the evidence paragraphs that sit after the stamp on those three pages? — Impact: FR-10, FR-11, FR-12, FR-13
+  Resolution: Resolved (2026-10-31): (a) each is run in the app, and kept, corrected or dropped by FR-12, as any other statement; (b) each gets a row in the verification record, run by FR-12 and FR-15, at a base commit recorded for its page; (c) those paragraphs are moved into the verification record, verbatim and with their source commits, before any page is edited.
+  Evidence: Owner decision, 2026-10-31 (answer "run them, add rows, yes"). Measured 2026-10-31: `git log 8dcebca4..origin/main` touches 18 of the 22 pages, and `verification.md` has no commit after `8dcebca4`.
 
 ## Out of scope (deferred)
 
