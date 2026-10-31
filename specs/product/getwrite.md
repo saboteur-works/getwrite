@@ -1572,21 +1572,28 @@ with the app without hand-rewriting it (see OQ-90).
   relatively. Consumers read from a release tag (release-please tags
   already exist), not from `main`. These are defaults chosen without the
   consuming repositories' stated requirements, which were not asked.
-  (h) Unreleased features (OQ-88): a feature merged but not released is
-  documented in a separate, clearly flagged "Upcoming" section, and each such
-  page MUST carry the front matter marker `status: unreleased` so consumers
-  can exclude it. "Released" means included in a tagged release
+  (h) Unreleased features (OQ-88, amended 2026-10-31): a statement about a
+  feature that is not in the latest release tag MUST sit in a section
+  labelled "Coming in the next release", and the label MUST NOT include a
+  version, commit, PR or merge detail; such statements may stay in the main
+  parts (feature spec `specs/features/user-handbook.md`, FR-9 and OQ-1). Each
+  page that is about such a feature MUST carry the front matter marker
+  `status: unreleased` so consumers can exclude it. "Released" means included in a tagged release
   (release-please); this is triage evidence of medium confidence (the
   release-please manifest and CHANGELOG contents were not read). Home-network
-  sharing (Features 75 to 77 and 80) is currently in this category.
+  sharing (Features 75 to 77 and 80) was in this category until it was
+  released in 2.3.0 (2026-10-30).
   (i) Runtimes (OQ-89): the desktop app is the main path. A "Differences by
   runtime" part covers hosted web and the CLI, and a page carries a short
   "Desktop only" (or similar) label where behaviour differs. Android is
   described as not yet available, not documented.
   (j) Currency (OQ-90): any feature that changes writer-visible behaviour
   MUST update the handbook in the same PR, as part of the pipeline's
-  definition of done. Each page MUST carry a "verified against version or
-  commit X" line, which is the evidence of accuracy for (b). A link check
+  definition of done. The verification record
+  (`specs/features/user-handbook/verification.md`) MUST hold the app version
+  and base commit each page was checked against, which is the evidence of
+  accuracy for (b); pages MUST NOT carry a verified-against line, version
+  stamp or commit reference (owner decision, 2026-10-31). A link check
   MUST be added. Where the app and the handbook disagree, the authority
   hierarchy (specs, then code, then docs) applies and the handbook is
   corrected.
@@ -3603,6 +3610,7 @@ Not stated by the owner: stable file paths or slugs, front matter, link style (r
 **OQ-88 (resolved): Are features that are merged but not released documented, hidden, or marked?**
 **Resolution:** Resolved (2026-10-14): option c. Merged-but-unreleased features are documented in a separate, clearly flagged "Upcoming" section, each such page carrying the machine-readable front matter marker `status: unreleased` so consumers can exclude it. "Released" means included in a tagged release (release-please); this is triage evidence, medium confidence (the manifest and CHANGELOG contents were not read). Home-network sharing (Features 75 to 77 and 80) is currently in this category.
 **Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "3c").
+**Note (2026-10-31, owner decision):** the "Upcoming" section is replaced by a section label, "Coming in the next release", that carries no version, commit, PR or merge detail; statements under it may stay in the main parts. See FR-69(h) and `specs/features/user-handbook.md` FR-9.
 At the time of writing this spec records home-network sharing (Features 75 to 77 and 80) as merged to `main` and not released (FR-67, FR-68 status text). The same question applies to any later unreleased feature. Options include documenting them, omitting them until release, or documenting them with a visible "not yet released" marking; how "released" is determined for a given handbook version is also open.
 **Impact:** FR-69(b), FR-69(e).
 **Owner:** Product owner.
@@ -3617,6 +3625,7 @@ The repository ships a desktop app (Electron), a hosted web mode with optional h
 **OQ-90 (resolved): How does the handbook stay accurate as features ship, and is updating it part of every later feature's definition of done?**
 **Resolution:** Resolved (2026-10-14): option a. Any feature that changes writer-visible behaviour MUST update the handbook in the same PR, as part of the pipeline's definition of done; each page carries a "verified against version/commit X" line as the evidence of accuracy for FR-69(b); a link check is added. Where the app and the handbook disagree, the authority hierarchy (specs, then code, then docs) applies and the handbook is corrected.
 **Evidence:** Owner decision, Gate 1, 2026-10-14 (answer "5a").
+**Note (2026-10-31, owner decision):** pages no longer carry the "verified against version/commit X" line. The verification record holds each page's app version and base commit, and how each statement was checked stays there, never in a page. See FR-69(j) and `specs/features/user-handbook.md` FR-10 and FR-13.
 The question as asked, not decided at the time: whether a handbook update is required for every feature that changes writer-visible behaviour, whether an automated or review-time check is expected, and who is responsible when the app and the handbook disagree. Also open: what evidence of "accurate" the owner will accept for FR-69(b) (for example a per-page verification record).
 **Impact:** FR-69(b); the pipeline's definition of done for later features.
 **Owner:** Product owner.
