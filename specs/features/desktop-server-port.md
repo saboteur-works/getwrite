@@ -7,7 +7,7 @@
 > 2026-10-10); `specs/product/getwrite.md`; the merged code of Features 75 to
 > 77; `specs/features/home-network-sharing.md` (FR-25, FR-31),
 > `paired-device-management.md` and `paired-device-limits.md` for conventions.
-> Features 75 to 77 are merged to `main` and not released.
+> Features 75 to 77 are merged to `main` and not released. Released in 2.3.0 (2026-10-30).
 >
 > **Release hold (Owner decision, Gate 2, 2026-10-09; updated 2026-10-10):**
 > nothing containing Feature 75 is released until Feature 80 is merged. With

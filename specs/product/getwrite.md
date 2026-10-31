@@ -1400,7 +1400,7 @@ with the app without hand-rewriting it (see OQ-90).
   check and Origin/Referer check are both skipped
   (`frontend/app/api/_tenant/with-storage-context.ts`), so nothing in the
   current account-free path would stop an unconfirmed device once the server
-  were reachable. Status: First slice merged, not released (Feature 75, PR #263,
+  were reachable. Status: First slice merged, released in 2.3.0 (Feature 75, PR #263,
   2026-10-09): the on/off setting, off by default, the bind, the address and
   sharing-on display are built; not met yet: the last-save-wins measurement and
   statement (Features 78 and 79); not fully met. Owner decisions,
@@ -1446,9 +1446,9 @@ with the app without hand-rewriting it (see OQ-90).
   missing or unreadable settings store MUST read as every limitation on.
   Consequence, stated plainly: after upgrading, an already-paired device can
   no longer delete projects, lock, unlock, change encryption or purge until
-  the writer switches that limit off at the desktop; Features 75 and 76 are
-  merged and unreleased, so the only affected installs are the owner's own
-  builds. The settings are one set for all paired devices; per-device limits
+  the writer switches that limit off at the desktop; Features 75, 76 and 77
+  were first released together, in 2.3.0, so the only affected installs are
+  the owner's own pre-release builds. The settings are one set for all paired devices; per-device limits
   are deferred, and if added later they MUST NOT be stored in
   `device-credentials.json`, because its schema would make an older build
   read a newer file as corrupt (read, not run). The settings MUST be changed
@@ -1504,9 +1504,9 @@ with the app without hand-rewriting it (see OQ-90).
   governed by a project-deletion limitation (Owner decision, 2026-10-09);
   purging from the Trash is separate and is governed by limitation (5). A
   per-device pairing credential is not an account (resolved: OQ-69). Status: First slice
-  merged, not released (Feature 75, PR #263, 2026-10-09): pairing and the gate
+  merged, released in 2.3.0 (Feature 75, PR #263, 2026-10-09): pairing and the gate
   are built; the device list, rename and revoke are also delivered (Feature
-  76, PR #264, 2026-10-10, merged and not released); not met yet: the
+  76, PR #264, 2026-10-10, merged, released in 2.3.0); not met yet: the
   capability limits and their toggles (Feature 77); not fully
   met. Owner decisions, 2026-10-09 (device confirmation;
   OQ-69 to OQ-73, OQ-75); Owner decision, Gate 1, 2026-10-10 (the pipeline lead's recommendation, accepted by the owner: 'Take your recs') (limits are settings;
@@ -1528,7 +1528,7 @@ with the app without hand-rewriting it (see OQ-90).
   unlock setting MUST say so beside it (resolved: OQ-80), and while
   unlocking is limited a paired device MUST NOT be offered the passphrase
   prompt (FR-67). The desktop build MUST remain fully functional with sharing off, no
-  network and no account. Status: First slice merged, not released (Feature 75,
+  network and no account. Status: First slice merged, released in 2.3.0 (Feature 75,
   PR #263, 2026-10-09): the unencrypted-HTTP statement is built; NOT yet met:
   no limitation on unlock or lock is enforced for a paired device, which
   can currently reach both (Feature 77); not fully met. Owner
