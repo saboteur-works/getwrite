@@ -190,12 +190,24 @@ async function aggregateForRoot(
   let isIncomplete = false;
   for (const e of entries) {
     if ("skipped" in e) {
-      isIncomplete = true;
+      // Filtered: a marker counts only for a matching document or with no id.
+      if (
+        memberIds === null ||
+        e.documentId === undefined ||
+        memberIds.has(e.documentId)
+      ) {
+        isIncomplete = true;
+      }
       continue;
     }
     if (!e.source && memberIds !== null) {
       // Filtered: only entries of a live, matching text document count.
-      if (e.documentId === undefined || !memberIds.has(e.documentId)) continue;
+      if (e.documentId === undefined) {
+        // Pre-upgrade entry: its document is unknown, so the figure may be low.
+        isIncomplete = true;
+        continue;
+      }
+      if (!memberIds.has(e.documentId)) continue;
     }
     const bucket = e.source ? imported : totals;
     bucket.added += e.added;

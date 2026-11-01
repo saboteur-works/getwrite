@@ -550,6 +550,70 @@ describe("filtered daily figure (Feature 98 Task 20)", () => {
     });
   });
 
+  describe("incomplete under a filter (FR-32)", () => {
+    const marker = (extra: Record<string, unknown> = {}) => ({
+      skipped: true,
+      timestamp: "2026-09-26T01:00:00.000Z",
+      ...extra,
+    });
+
+    it("an entry without documentId sets incomplete under a filter", async () => {
+      await seedDay([word(10, 0, { documentId: DOC_A }), word(5, 0)]);
+      expect((await read()).incomplete).toBe(true);
+    });
+
+    it("an entry without documentId does not set it with no filter", async () => {
+      await setConfig({});
+      await seedDay([word(5, 0)]);
+      expect((await read()).incomplete).toBe(false);
+    });
+
+    it("once the window holds only entries with a documentId the cause is gone", async () => {
+      await seedDay([word(10, 0, { documentId: DOC_A }), word(5, 0)]);
+      expect((await read()).incomplete).toBe(true);
+      await seedDay([
+        word(10, 0, { documentId: DOC_A }),
+        word(5, 0, { documentId: DOC_B }),
+      ]);
+      expect((await read()).incomplete).toBe(false);
+    });
+
+    it("an import entry without documentId does not set it", async () => {
+      await seedDay([
+        word(10, 0, { documentId: DOC_A }),
+        word(5, 0, { source: "docx" }),
+      ]);
+      expect((await read()).incomplete).toBe(false);
+    });
+
+    it("a marker for a matching document sets it", async () => {
+      await seedDay([marker({ documentId: DOC_A })]);
+      expect((await read()).incomplete).toBe(true);
+    });
+
+    it("a marker with no documentId sets it", async () => {
+      await seedDay([marker()]);
+      expect((await read()).incomplete).toBe(true);
+    });
+
+    it("a marker for a non-matching document does not set it", async () => {
+      await seedDay([marker({ documentId: DOC_B })]);
+      expect((await read()).incomplete).toBe(false);
+    });
+
+    it("with no filter every marker sets it, whatever its documentId", async () => {
+      await setConfig({});
+      for (const m of [
+        marker(),
+        marker({ documentId: DOC_A }),
+        marker({ documentId: DOC_B }),
+      ]) {
+        await seedDay([m]);
+        expect((await read()).incomplete).toBe(true);
+      }
+    });
+  });
+
   it("with no filter the result is exactly today's shape", async () => {
     await setConfig({ dailyWordGoal: 5 });
     await seedDay([word(10, 2), { skipped: true, timestamp: FROM }]);
