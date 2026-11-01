@@ -310,7 +310,7 @@ const RELATIVE_UNITS: readonly string[] = ["days", "weeks", "months"];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** True for a `{amount, unit}`-shaped value: the builder's "in the last". */
-function isRelativeDateValue(v: unknown): v is Record<string, unknown> {
+export function isRelativeDateValue(v: unknown): v is Record<string, unknown> {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
   return "amount" in v || "unit" in v;
 }
