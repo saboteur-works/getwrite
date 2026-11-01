@@ -1002,16 +1002,27 @@ export const WritingLogWordEntrySchema = z
     net: z.number().int(),
     timestamp: StrictIsoTimestamp,
     source: WritingLogSourceSchema.optional(),
+    /** Resource the save belonged to (Feature 98, FR-24); never on imports. */
+    documentId: UUID.optional(),
   })
   .strict()
   .refine((e) => e.net === e.added - e.deleted, {
     message: "net must equal added minus deleted",
     path: ["net"],
+  })
+  .refine((e) => e.source === undefined || e.documentId === undefined, {
+    message: "an import entry carries no documentId",
+    path: ["documentId"],
   });
 
 /** Marker entry recording a save whose diff could not be logged (FR-5). */
 export const WritingLogMarkerEntrySchema = z
-  .object({ skipped: z.literal(true), timestamp: StrictIsoTimestamp })
+  .object({
+    skipped: z.literal(true),
+    timestamp: StrictIsoTimestamp,
+    /** Resource whose save was skipped, when known (Feature 98, FR-24). */
+    documentId: UUID.optional(),
+  })
   .strict();
 
 /** Either writing-log entry variant. */

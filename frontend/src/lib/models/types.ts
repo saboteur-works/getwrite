@@ -435,6 +435,8 @@ interface WritingLogWordEntry {
   /** ISO 8601 instant. */
   timestamp: string;
   source?: WritingLogSource;
+  /** Resource id of the saved document; absent on imports and older entries. */
+  documentId?: string;
 }
 
 /** Writing-log marker: a save whose diff could not be logged. */
@@ -442,6 +444,8 @@ interface WritingLogMarkerEntry {
   skipped: true;
   /** ISO 8601 instant. */
   timestamp: string;
+  /** Resource id of the document whose save was skipped, when known. */
+  documentId?: string;
 }
 
 export type WritingLogEntry = WritingLogWordEntry | WritingLogMarkerEntry;
