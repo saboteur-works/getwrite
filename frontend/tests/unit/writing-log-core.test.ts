@@ -622,6 +622,41 @@ describe("filtered daily figure (Feature 98 Task 20)", () => {
       imported: { added: 0, deleted: 0, net: 0 },
       goal: 5,
       incomplete: true,
+      isFiltered: false,
+      hasNoMatch: false,
+    });
+  });
+
+  describe("isFiltered / hasNoMatch (FR-29)", () => {
+    it("a filter that matches reports isFiltered true and hasNoMatch false", async () => {
+      await seedDay([word(10, 0, { documentId: DOC_A })]);
+      const r = await read();
+      expect(r.isFiltered).toBe(true);
+      expect(r.hasNoMatch).toBe(false);
+    });
+
+    it("a filter that matches no live text document reports the real zero with hasNoMatch true", async () => {
+      await seedDoc(DOC_A, { status: "final" });
+      await seedDay([word(10, 0, { documentId: DOC_A })]);
+      const r = await read();
+      expect(r.isFiltered).toBe(true);
+      expect(r.hasNoMatch).toBe(true);
+      expect(r.totals).toEqual({ added: 0, deleted: 0, net: 0 });
+    });
+
+    it("no filter reports both false, even in a project with no documents", async () => {
+      await setConfig({});
+      await rm(`${ROOT}/resources`, { recursive: true, force: true });
+      const r = await read();
+      expect(r.isFiltered).toBe(false);
+      expect(r.hasNoMatch).toBe(false);
+    });
+
+    it("an unavailable figure still throws rather than reporting the flags", async () => {
+      await setConfig({ goalFilter: { op: "bogus" } });
+      expect(await outcome()).toBeInstanceOf(
+        GoalFilteredFigureUnavailableError,
+      );
     });
   });
 });

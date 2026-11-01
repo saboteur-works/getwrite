@@ -83,6 +83,10 @@ export interface WritingLogAggregate {
   goal: number | undefined;
   /** True when the window contains a marker entry (some writing was not counted). */
   incomplete: boolean;
+  /** True when a goal filter is applied to `totals` (Feature 98, FR-29). */
+  isFiltered: boolean;
+  /** True when the filter matched no live text document; `totals` is then a real zero. */
+  hasNoMatch: boolean;
 }
 
 function parseInstant(name: string, value: unknown): number {
@@ -140,7 +144,7 @@ function requireProjectRoot(projectId: string): string {
  * Aggregate the writing log for one local day, given the client's window.
  *
  * @throws InvalidProjectIdCoreError, InvalidWritingLogWindowError,
- *   WritingLogCorruptError; locked-access errors are rethrown unchanged.
+ *   WritingLogCorruptError, GoalFilteredFigureUnavailableError; locked-access errors are rethrown unchanged.
  */
 export async function getWritingLogAggregateCore(
   projectId: string,
@@ -219,6 +223,8 @@ async function aggregateForRoot(
     imported,
     goal: config.dailyWordGoal,
     incomplete: isIncomplete,
+    isFiltered: memberIds !== null,
+    hasNoMatch: memberIds !== null && memberIds.size === 0,
   };
 }
 

@@ -20,7 +20,10 @@ vi.mock("../../src/lib/models/writing-log-core", async (importActual) => {
 });
 
 import { GET, PUT } from "../../app/api/project/writing-log/route";
-import { getWritingLogAggregateCore } from "../../src/lib/models/writing-log-core";
+import {
+  getWritingLogAggregateCore,
+  GoalFilteredFigureUnavailableError,
+} from "../../src/lib/models/writing-log-core";
 import {
   MissingProjectKeyError,
   ProjectLockedError,
@@ -99,6 +102,8 @@ describe("GET /api/project/writing-log", () => {
     expect(json.totals).toEqual({ added: 10, deleted: 2, net: 8 });
     expect(json.incomplete).toBe(false);
     expect(json.goal).toBeUndefined();
+    expect(json.isFiltered).toBe(false);
+    expect(json.hasNoMatch).toBe(false);
     expect(getWritingLogAggregateCore).toHaveBeenCalledWith(id, FROM, TO);
   });
 
@@ -160,6 +165,50 @@ describe("GET /api/project/writing-log", () => {
       GET(get({ projectId: id, from: FROM, to: TO })),
     );
     expect(keyless.status).toBe(409);
+  });
+});
+
+describe("GET /api/project/writing-log under a goal filter (Feature 98, FR-29/FR-31)", () => {
+  it("returns isFiltered and hasNoMatch for a filter that matches no live text document", async () => {
+    const { dir, id, root } = await setup();
+    const project = JSON.parse(
+      await fs.readFile(path.join(root, PROJECT_FILENAME), "utf8"),
+    );
+    project.config = {
+      ...(project.config ?? {}),
+      goalFilter: { op: "eq", field: "status", value: "draft" },
+    };
+    await fs.writeFile(
+      path.join(root, PROJECT_FILENAME),
+      JSON.stringify(project),
+      "utf8",
+    );
+    const res = await withDir(dir, () =>
+      GET(get({ projectId: id, from: FROM, to: TO })),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.isFiltered).toBe(true);
+    expect(json.hasNoMatch).toBe(true);
+    expect(json.totals).toEqual({ added: 0, deleted: 0, net: 0 });
+  });
+
+  it("maps an unavailable filtered figure to a 500 failure with no totals", async () => {
+    const { dir, id } = await setup();
+    vi.mocked(getWritingLogAggregateCore).mockRejectedValueOnce(
+      new GoalFilteredFigureUnavailableError({
+        status: "failure",
+        reason: "read-failed",
+        cause: "corrupt",
+      }),
+    );
+    const res = await withDir(dir, () =>
+      GET(get({ projectId: id, from: FROM, to: TO })),
+    );
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(typeof json.error).toBe("string");
+    expect(json.totals).toBeUndefined();
   });
 });
 

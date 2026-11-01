@@ -608,6 +608,9 @@ export const WritingLogAggregateResponseSchema = z.object({
   imported: WritingLogTotalsSchema,
   goal: z.number().optional(),
   incomplete: z.boolean(),
+  // Feature 98 (FR-29): always present, so a body without them is malformed.
+  isFiltered: z.boolean(),
+  hasNoMatch: z.boolean(),
 });
 
 export const SetDailyWordGoalResponseSchema = z.object({
