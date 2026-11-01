@@ -72,7 +72,10 @@ import {
 } from "../../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
 import { toastService } from "../../src/lib/toast-service";
-import { notifyWritingLogGoalChanged } from "../../src/lib/writing-log-signal";
+import {
+  notifyAfterSidecarSave,
+  setGoalFilterActive,
+} from "../../src/lib/sidecar-save-signal";
 import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import { exportMarkdown, exportText } from "../../src/lib/api/export";
@@ -156,6 +159,13 @@ export default function Home(): JSX.Element {
    */
   const [selectedProject, setSelectedProject] =
     useState<SelectedProjectState | null>(null);
+
+  // Task 29 (FR-33): publish whether the open project has a goal filter, so
+  // every sidecar save path can signal the footer (`sidecar-save-signal.ts`).
+  const hasGoalFilter = Boolean(selectedProject?.config?.goalFilter);
+  useEffect(() => {
+    setGoalFilterActive(hasGoalFilter);
+  }, [hasGoalFilter]);
 
   const selectedResource = useAppSelector(
     (state) => selectResource(state.resources),
@@ -570,12 +580,11 @@ export default function Home(): JSX.Element {
 
     if (activeProjectDirectoryId) {
       const sent = applyUpdate(resource);
-      const hasGoalFilter = Boolean(selectedProject.config?.goalFilter);
       updateSidecar(resourceId, activeProjectDirectoryId, sent)
         .then(() => {
           // FR-33: a field edit can change which documents the goal filter
           // counts, so the footer re-reads, but only while a filter is set.
-          if (hasGoalFilter) notifyWritingLogGoalChanged();
+          notifyAfterSidecarSave();
         })
         .catch((err) => {
           // The resource was moved to Trash while this save was in flight; the

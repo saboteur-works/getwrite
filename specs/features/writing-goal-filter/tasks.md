@@ -265,7 +265,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 24
 **Estimate:** 2
 **Notes:** Requirements: FR-33. Prefer one shared place (the `updateSidecar` wrapper, or a single helper every caller uses) over repeating the call per call site, if the code allows; state the choice in a code comment and in the pull request text. If the filter-set state is not reachable from that place, say so and fall back to a shared helper taking the flag. Task 24's call site must keep working and not signal twice.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Final suites (all requirements)
 **What:** Run the full checks from `frontend/` and the electron tests and record the results.

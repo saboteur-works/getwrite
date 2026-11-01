@@ -5,6 +5,7 @@ import useAppSelector, { useAppDispatch } from "../../src/store/hooks";
 import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { updateSidecar } from "../../src/lib/api/resources";
+import { notifyAfterSidecarSave } from "../../src/lib/sidecar-save-signal";
 import type { AnyResource, TextResource } from "../../src/lib/models/types";
 import LabeledField from "./controls/LabeledField";
 import useSyncedControlledValue from "./controls/useSyncedControlledValue";
@@ -74,6 +75,7 @@ export default function WordCountGoalSection(): JSX.Element | null {
     if (!projectId) return;
     void updateSidecar(updated.id, projectId, updated, clearKeys)
       .then(() => {
+        notifyAfterSidecarSave();
         // A later successful save clears an earlier failure's message.
         setError(null);
       })

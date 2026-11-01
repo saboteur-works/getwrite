@@ -8,6 +8,7 @@ import {
   selectActiveProjectSubtypes,
 } from "../../src/store/projectsSlice";
 import { updateSidecar } from "../../src/lib/api/resources";
+import { notifyAfterSidecarSave } from "../../src/lib/sidecar-save-signal";
 import { toastService } from "../../src/lib/toast-service";
 import { unknownStatusLabel } from "../../src/lib/status-rollup";
 import { normalizeSubtypeLabel } from "../../src/lib/models/field-subtype-scope";
@@ -81,6 +82,7 @@ export default function SubtypeSection(): JSX.Element | null {
       isClearing ? ["resourceSubtype"] : undefined,
     )
       .then(() => {
+        notifyAfterSidecarSave();
         // `undefined` must be an explicit key: the reducer merges with a
         // shallow spread, which an omitted key would not overwrite.
         dispatch(

@@ -11,6 +11,7 @@ import {
   setNoiseTermDismissed,
   updateSidecar,
 } from "../../src/lib/api/resources";
+import { notifyAfterSidecarSave } from "../../src/lib/sidecar-save-signal";
 import { getNoiseWordLists } from "../../src/lib/api/project-noise-words";
 import { getGlobalNoiseWords } from "../../src/lib/api/global-noise-words";
 import {
@@ -139,6 +140,7 @@ export default function EntitySection(): JSX.Element | null {
     // write left the sidecar (and thus the alias table) unchanged.
     void updateSidecar(updated.id, projectId, updated, clearKeys)
       .then(() => {
+        notifyAfterSidecarSave();
         dispatch(refreshEntityAliasTables(projectId));
       })
       .catch(() => {
