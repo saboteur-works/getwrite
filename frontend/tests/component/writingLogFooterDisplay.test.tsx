@@ -30,6 +30,8 @@ function aggregate(over: Partial<Aggregate> = {}): Aggregate {
     imported: { added: 3000, deleted: 0, net: 3000 },
     goal: 1000,
     incomplete: false,
+    isFiltered: false,
+    hasNoMatch: false,
     ...over,
   };
 }

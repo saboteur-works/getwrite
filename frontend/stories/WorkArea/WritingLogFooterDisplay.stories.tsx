@@ -23,6 +23,8 @@ const WITH_GOAL: WritingLogAggregate = {
   imported: NO_IMPORT,
   goal: 1000,
   incomplete: false,
+  isFiltered: false,
+  hasNoMatch: false,
 };
 
 const meta: Meta<typeof WritingLogFooterDisplay> = {
