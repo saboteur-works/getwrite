@@ -36,6 +36,7 @@ import {
   LINE_HEIGHT_FLOOR_MESSAGE,
 } from "../editor-body-settings";
 import { z } from "zod";
+import { QueryASTSchema } from "../models/query-ast";
 import {
   AnyResourceSchema,
   ProjectTypeSchema,
@@ -623,6 +624,17 @@ export const SetDailyWordGoalResponseSchema = z.object({
 
 export const SetWordCountGoalResponseSchema = z.object({
   wordCountGoal: z.number().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// SetGoalFilterResponseSchema — Feature 98 Task 7. Matches
+// `goal-filter-core.ts`'s `{ goalFilter: QueryAST | undefined }`.
+// `goalFilter` is optional because `JSON.stringify` drops `undefined`-valued
+// keys (a clear) before the response leaves the server.
+// ---------------------------------------------------------------------------
+
+export const SetGoalFilterResponseSchema = z.object({
+  goalFilter: QueryASTSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
