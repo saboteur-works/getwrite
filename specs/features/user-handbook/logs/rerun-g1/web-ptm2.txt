@@ -1,0 +1,26 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 58989 port 52891 (throwaway projects dir; templates throwaway copy)
+M2 Save as copy on Article: new lines ["Saved a copy as “Article copy”.","Article copy","article-copy.json","Saved","Saved","SAVE","DELETE"]; saved files ["article-copy.json"]
+M2 saved article-copy.json: id=article-copy name="Article copy" description="Edited before copying."
+M2 built-in Article description after copy: "Short-form article project type with drafts and references."
+M2 selected after copy: name="Article copy"; buttons ["Save","Save as copy","Delete"]
+M2 Save on the saved copy: new lines ["Saved “Article copy”."]; files ["article-copy.json"]; wordCountGoal in file 2222
+M2 Delete confirm: [["Project Type Management","View built-in project types, and create, edit and delete your own.","Close","Saved “Article copy”.","TEMPLATES","Article","article_project_type.json","Built-in"],["Delete “Article copy”?","Projects already made from “Article copy” are not affected. The type can no longer be chosen for new projects.","CANCEL","DELETE"]]
+M2 after Cancel: files ["article-copy.json"] (before ["article-copy.json"])
+M2 after confirming Delete: files []; lines ["Deleted “Article copy”."]
+M2 blank parent save: ["Saved “Blank Parent”.","blank_parent.json","Saved","Saved","SAVE AS COPY","DELETE"]
+M2 blank_parent.json defaultFolders=[{"folder":"Workspace","name":"Chapter A"}]
+M2 word count goal input value after typing 1.5: "1"
+M2 goal 1.5 save: ["Saved “Goal Fraction”.","goal_fraction.json","SAVE AS COPY","DELETE"]
+M2 goal_fraction.json wordCountGoal=1
+M2 Close with an unsaved edit: [["Project Type Management","View built-in project types, and create, edit and delete your own.","Close","Saved “Goal Fraction”.","TEMPLATES","Article","article_project_type.json","Built-in"],["Unsaved changes","These project types have edits that are not saved: “Blank”. Save them, discard the edits, or keep editing.","KEEP EDITING","DISCARD","SAVE"]]
+M2 after Escape: dialogs ["Project Type Management"]; Blank description still edited=true
+M2 selecting another type with an unsaved edit: ["Project Type Management","Unsaved changes"]
+M2 after clicking outside the prompt (prompt box {"x":460,"y":360.5,"width":480,"height":179}): dialogs ["Project Type Management"]
+M2 after Discard: Name field "Novel"; dialogs ["Project Type Management"]
+M2 Blank description after Discard: "Minimal project type with only a Workspace folder."
+M2 browser Back with an unsaved edit: ["Project Type Management","Unsaved changes"]
+M2 Save in the prompt with a refused draft: dialogs ["Project Type Management"]; message ["Novel (built-in) already uses this id."]
+stop: recorded 58989(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

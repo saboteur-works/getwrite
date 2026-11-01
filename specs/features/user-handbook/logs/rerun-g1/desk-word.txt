@@ -1,0 +1,5 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+W dialog: [["Import from Word","NAME","SPLIT INTO RESOURCES AT","Heading 1","Heading 2","Heading 3","Heading 4","Heading 5","Heading 6","Don't split","PROJECT TYPE","Article","Blank","Game Writing","Novel","Poetry and Lyrics","Serial","CHOOSE A DIFFERENT SOURCE…","START"]]
+W labels and inputs: ["LABEL:Name","INPUT:one","LABEL:Split into resources atHeading 1Heading ","SELECT:Heading 1Heading 2Heading 3Heading 4Head","LABEL:Project typeArticleBlankGame WritingNove","SELECT:ArticleBlankGame WritingNovelPoetry and "]
+stop: recorded 93878(Electron),93879(Electron Helper (GPU)),93880(Electron Helper),93881(sh),93885(node),93904(node),93958(next-server (v16.2.6)),93973(Electron Helper (Renderer)); listener on 7340 after: none
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

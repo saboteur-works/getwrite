@@ -1,0 +1,30 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+Electron processes before (other apps would make the reopen check ambiguous): 0
+A electron pid 81388; isPackaged=false; userData throwaway=true
+A Scrivener dialog after choosing: [["Import from Scrivener","NAME","CHOOSE A DIFFERENT PROJECT…","START"]]
+A Scrivener result: [["Import from Scrivener","The Scrivener project was imported successfully.","# Scrivener Import Report","## Skipped Items","- \"Chapter Two\" (Manuscript/Chapter Two) — HYPERLINK field converted to plain text (link mark dropped): text=\"reference link\", url=\"https://example.com\"","- \"Untitled\" (Research/Untitled) — content.rtf could not be read: ENOENT: no such file or directory, open '/private/tmp/getwrite-handbook/g1-desk-mvwvk6u3-7f472d/fixtures/sample.scriv/Files/Data/CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC/content.rtf'","- \"Hex Escapes And Layout Words\" (Research/Hex Escapes And Layout Words) — One or more decoded C0 control characters (from \\'XX hex escapes) were dropped from this document's text.","- \"Old Draft\" (Archive/Old Draft) — StatusID \"-1\" does not match any configured Status id.","## Field Key Renames","- \"POV\" — key \"pov\" renamed to \"pov-scrivener\" (collided with a built-in or already-added field)","## Keyword Merges","- \"Case\" — merged from: Characters > Protagonists, Plot > Threads"]]
+A Scrivener project tree: ["[folder] Chapter One","  [resource] Chapter One","[folder] Chapter Two","  [resource] Chapter Two","  [resource] Scene One","[folder] Research","  [resource] Character Notes","  [resource] Backslash Newline Paragraphs","  [resource] Mixed Par And Backslash Newline","  [resource] Hex Escapes And Layout Words","[folder] Archive","  [resource] Old Draft"]
+A App Settings dialog: [["App Settings","Settings here apply across every project on this device, not to a single project. No login is required.","Global noise words","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.","No noise words yet. Add one below.","ADD","Spell check","Check spelling while I write","Underlines misspelled words in the editor. This applies to every project on this device.","My dictionary (0)","Words you added for every project. A word here is not underlined as a misspelling. This list is kept on this device or account, not in a project.","No words in your dictionary yet.","Add a word","ADD WORD","When the window closes","Keep GetWrite running after its window is closed","Off: closing the window quits GetWrite. On: GetWrite stays in the Dock, and home-network sharing, if it is on, keeps serving paired devices. Click the Dock icon to reopen the window; Cmd+Q quits.","Home network sharing","Share my projects on this network","Sharing is off","CLOSE"]]
+A keep-running switch default: checked=false
+A noise-word list after adding "desktopword": ["desktopword"]
+A manager top: [["Project Type Management","View built-in project types, and create, edit and delete your own.","Close","TEMPLATES","Article"]]
+A after Save as copy: <userData>/project-types exists=true files=["blank-copy.json"]; repo getwrite-config untouched: ""
+A Word import selects: [["1=Heading 1","2=Heading 2","3=Heading 3","4=Heading 4","5=Heading 5","6=Heading 6","none=Don't split"],["article=Article","blank=Blank","game_writing=Game Writing","novel=Novel","poetry_and_lyrics=Poetry and Lyrics","serial=Serial","blank-copy=Blank copy (Saved)"]]
+A Word import with saved type "blank-copy" deleted after the dialog loaded: [["Import from Word","That project type isn't recognized.","Choose a different project type and try again. The selected project type isn't recognized, so the import couldn't start.","CLOSE"]]; projects before 1 after 1
+A keep-running switch after clicking: checked=true
+A after closing the window with the switch on: app process alive=true; windows=0
+A after a reopen Apple event (what a Dock click sends): windows=1
+A reopened window shows: ["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite"]
+stop: recorded 81388(Electron),81389(Electron Helper (GPU)),81390(Electron Helper),81439(sh),81443(node),81462(node),81481(next-server (v16.2.6)),81537(Electron Helper (Renderer)); after SIGTERM: none alive; listener on 7340 after: none
+B restarted with the same userData: pid 83314
+B noise-word list after restart: ["desktopword"]
+B keep-running switch after restart: checked=true
+B keep-running switch after clicking: checked=false
+B after closing the window with the switch off: app process alive=false (exitCode 0)
+stop: recorded 83314(Electron),83315(Electron Helper (GPU)),83316(Electron Helper),83317(sh),83321(node),83340(node),83346(next-server (v16.2.6)),83410(Electron Helper (Renderer)); after SIGTERM: none alive; listener on 7340 after: none
+C window closed with the switch on: alive=true
+C after a quit Apple event (the app menu's Quit, Cmd+Q): alive=false (exitCode 0)
+stop: recorded 84030(Electron),84044(Electron Helper (GPU)),84080(Electron Helper),84081(sh),84085(node),84104(node),84111(next-server (v16.2.6)),84127(Electron Helper (Renderer)); after SIGTERM: none alive; listener on 7340 after: none
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
+Electron processes after: 0

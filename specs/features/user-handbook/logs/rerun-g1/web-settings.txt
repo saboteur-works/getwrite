@@ -1,0 +1,12 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 32363 port 58327 (throwaway projects dir; templates repo read-only)
+A Start Page buttons: ["Open project settings menu","Start a New Project","Create the first project"]
+A gear menu, no project open: ["User Preferences","App Settings","Project Type Manager","Help"]
+A App Settings dialog (path /): [["App Settings","Settings here apply across every project on this device, not to a single project. No login is required.","Global noise words","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.","No noise words yet. Add one below.","ADD","Spell check","Check spelling while I write","Underlines misspelled words in the editor. This applies to every project on this device.","My dictionary (0)","Words you added for every project. A word here is not underlined as a misspelling. This list is kept on this device or account, not in a project.","No words in your dictionary yet.","Add a word","ADD WORD","CLOSE"]]
+A gear menu, project open: ["User Preferences","App Settings","Project Settings","Project Type Manager","Help","Close Project"]
+A entity Quillfeather, no global word: []
+A App Settings after adding "quillfeather": [["App Settings","Settings here apply across every project on this device, not to a single project. No login is required.","Global noise words","Words or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.","quillfeather","ADD","Spell check","Check spelling while I write","Underlines misspelled words in the editor. This applies to every project on this device.","My dictionary (0)","Words you added for every project. A word here is not underlined as a misspelling. This list is kept on this device or account, not in a project.","No words in your dictionary yet.","Add a word","ADD WORD","CLOSE"]]
+A entity Quillfeather after the global word was added: ["\"Quillfeather\" also reads as a common English word or name, so this name may produce detected matches that aren't about this entity."]
+stop: recorded 32363(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

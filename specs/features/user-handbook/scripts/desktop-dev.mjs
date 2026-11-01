@@ -54,14 +54,16 @@ function buildFakeRoot(run, logName) {
   return fake;
 }
 
-export async function startDesktop(run) {
+export async function startDesktop(run, opts = {}) {
   if (!existsSync(ELECTRON_BIN)) throw new Error("electron binary missing");
   if (!existsSync(path.join(REPO, "frontend/.next/standalone/frontend/server.js"))) throw new Error("built standalone server missing; run pnpm build in frontend/");
   const logName = `gw-handbook-throwaway-${run.runId}`;
   const logDir = path.join(homedir(), "Library", "Logs", logName);
-  const fake = buildFakeRoot(run, logName);
+  // Handbook re-run addition: opts.reuse restarts into the same fake root and
+  // userData folder of this run (to check what survives a restart).
+  const fake = opts.reuse && existsSync(path.join(run.dir, "repo")) ? path.join(run.dir, "repo") : buildFakeRoot(run, logName);
   const userData = path.join(run.dir, "userdata");
-  mkdirSync(userData);
+  if (!existsSync(userData)) mkdirSync(userData);
   assertThrowaway(userData);
   const { _electron } = createRequire(path.join(REPO, "frontend/package.json"))("@playwright/test");
   const rec = new Recorder();
