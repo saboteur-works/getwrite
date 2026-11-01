@@ -76,6 +76,36 @@ describe("updateRevisionInPlace — writing log", () => {
     expect(result.writingLog).toBeUndefined();
   });
 
+  it("stamps the saved resource's id on a word entry", async () => {
+    const rev = await seed(doc("one two"));
+    await updateRevisionInPlace(
+      projectRoot,
+      resourceId,
+      rev.id,
+      doc("one two three"),
+    );
+    const entries = await allEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ added: 1, documentId: resourceId });
+  });
+
+  it("stamps the saved resource's id on a skipped-save marker", async () => {
+    const rev = await seed("legacy plain text");
+    await updateRevisionInPlace(
+      projectRoot,
+      resourceId,
+      rev.id,
+      doc("now tiptap words"),
+    );
+    const entries = await allEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({
+      skipped: true,
+      timestamp: expect.any(String),
+      documentId: resourceId,
+    });
+  });
+
   it("appends no entry and no signal when the words are identical", async () => {
     const rev = await seed(doc("one two three"));
     const result = await updateRevisionInPlace(

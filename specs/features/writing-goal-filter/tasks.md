@@ -166,7 +166,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 17
 **Estimate:** 3
 **Notes:** Requirements: FR-24, FR-25. Touches the primary save path; a log failure must still not fail the content save (existing behaviour). `copyResourceCore` appends no entry and must stay that way (F-10).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: FR-38 experiment: older build reading a day file with `documentId` (FR-38)
 **What:** Run and record the experiment in which the previous release reads and appends to a day file holding an entry with a `documentId`, on desktop and on a project folder opened by an older build.

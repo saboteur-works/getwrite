@@ -381,12 +381,14 @@ async function readPreviousContentForLog(
 }
 
 /**
- * Appends the writing-log entry for a canonical save; a save that adds and
+ * Appends the writing-log entry for a canonical save, stamped with the saved
+ * resource's id as `documentId`; a save that adds and
  * deletes no words appends nothing and returns no signal. Never throws except for
  * a locked project; any other failure is returned as a signal.
  */
 async function logCanonicalSave(
   projectRoot: string,
+  resourceId: string,
   previousRaw: string | null,
   newRaw: string,
 ): Promise<WritingLogSignal | undefined> {
@@ -397,7 +399,11 @@ async function logCanonicalSave(
     if (before !== null && after !== null) {
       const { added, deleted } = diffWords(before, after);
       if (added === 0 && deleted === 0) return undefined;
-      await appendWritingLogEntry(projectRoot, { added, deleted });
+      await appendWritingLogEntry(projectRoot, {
+        added,
+        deleted,
+        documentId: resourceId,
+      });
       return undefined;
     }
   } catch (error) {
@@ -406,7 +412,10 @@ async function logCanonicalSave(
     return { appendFailed: true };
   }
   try {
-    await appendWritingLogEntry(projectRoot, { skipped: true });
+    await appendWritingLogEntry(projectRoot, {
+      skipped: true,
+      documentId: resourceId,
+    });
     return { skipped: true };
   } catch (error) {
     if (isLockedAccessError(error)) throw error;
@@ -504,7 +513,12 @@ async function updateRevisionInPlaceLocked(
 
   // Logged only once the content is safely written; a logging failure is
   // signalled on the result and never fails or rolls back the save.
-  const writingLog = await logCanonicalSave(projectRoot, previousRaw, content);
+  const writingLog = await logCanonicalSave(
+    projectRoot,
+    resourceId,
+    previousRaw,
+    content,
+  );
 
   // Keep the derived content files (read by compile/export/search) in sync
   // with the canonical revision so they cannot drift behind the editor.
