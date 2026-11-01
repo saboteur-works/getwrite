@@ -64,6 +64,7 @@ import {
   shouldQuitWhenAllWindowsClosed,
   type KeepRunningSetting,
 } from "./keep-running";
+import { createCloseGuard, type CloseGuard } from "./window-close-guard";
 import { createSelectionHandleRegistry } from "./scrivener-import/selection-handles";
 import { createImportGuard } from "./scrivener-import/import-guard";
 import {
@@ -757,6 +758,62 @@ function registerDocxImportHandlers(): void {
   );
 }
 
+/** Set while a quit is under way, so a held close can carry it on. */
+let isQuitRequested = false;
+
+/** How long a closing window waits for the page's saves. */
+const BEFORE_CLOSE_TIMEOUT_MS = 5000;
+
+let nextBeforeCloseRequestId = 0;
+
+/** Asks the window's page to finish its saves and returns its answer. */
+function requestPageSaves(win: BrowserWindow): Promise<boolean> {
+  const requestId = ++nextBeforeCloseRequestId;
+  return new Promise<boolean>((resolve) => {
+    const onResult = (
+      event: Electron.IpcMainEvent,
+      answeredId: number,
+      saved: boolean,
+    ): void => {
+      if (event.sender !== win.webContents || answeredId !== requestId) return;
+      ipcMain.removeListener("getwrite:before-close-result", onResult);
+      resolve(saved === true);
+    };
+    ipcMain.on("getwrite:before-close-result", onResult);
+    win.webContents.send("getwrite:before-close", requestId);
+  });
+}
+
+function createWindowCloseGuard(win: BrowserWindow): CloseGuard {
+  return createCloseGuard({
+    flush: () => requestPageSaves(win),
+    shouldSkipFlush: () =>
+      win.webContents.isCrashed() ||
+      !isLocalOriginUrl(win.webContents.getURL(), localOrigin(PORT)),
+    timeoutMs: BEFORE_CLOSE_TIMEOUT_MS,
+    confirmCloseAnyway: async () => {
+      const { response } = await dialog.showMessageBox(win, {
+        type: "warning",
+        message: "Your last edits weren't saved",
+        detail:
+          "GetWrite couldn't save them. If you close now, they'll be lost.",
+        buttons: ["Keep Editing", "Close Anyway"],
+        defaultId: 0,
+        cancelId: 0,
+      });
+      return response === 1;
+    },
+    proceed: () => {
+      if (isQuitRequested) app.quit();
+      else win.close();
+    },
+    onKeepEditing: () => {
+      isQuitRequested = false;
+    },
+    log,
+  });
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1400,
@@ -772,6 +829,8 @@ function createWindow(): BrowserWindow {
   });
 
   win.once("ready-to-show", () => win.show());
+
+  win.on("close", createWindowCloseGuard(win).onClose);
 
   // Open external links (e.g. update-notice "View release notes" / "Download")
   // in the user's default browser rather than a chrome-less in-app window.
@@ -961,7 +1020,14 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
+// A quit closes the window first, and the window waits for the page's saves
+// (`window-close-guard.ts`). The server has to outlive those saves, so it stops
+// at will-quit, after every window has closed.
 app.on("before-quit", () => {
+  isQuitRequested = true;
+});
+
+app.on("will-quit", () => {
   serverProcess?.kill();
   logStream?.end();
 });

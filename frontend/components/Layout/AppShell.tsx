@@ -92,6 +92,8 @@ import Button from "../common/UI/Button/Button";
 import { type ExportFormat } from "../common/ExportPreviewModal";
 import UpdateNotice from "./UpdateNotice";
 import { APP_VERSION } from "../../src/lib/app-version";
+import { getDesktopBridge } from "../../src/lib/desktop-bridge";
+import { flushPendingSaves } from "../../src/lib/pending-saves";
 import { useAuthSession } from "../../src/lib/auth/use-auth-session";
 import {
   signOut as authSignOut,
@@ -501,6 +503,11 @@ export default function AppShell({
     (timestamp: string | undefined): string =>
       _formatRelativeTimestamp(timestamp, recentTimestampTick),
     [recentTimestampTick],
+  );
+
+  useEffect(
+    () => getDesktopBridge()?.setBeforeCloseHandler(flushPendingSaves),
+    [],
   );
 
   useEffect(() => {

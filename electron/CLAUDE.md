@@ -9,6 +9,10 @@ Paths are relative to `electron/` unless they start with `frontend/` or `docs/`.
 - macOS packaging has `forceCodeSigning: true`: it needs a valid Developer ID Application identity (keychain locally, `CSC_LINK` in CI). An unsigned local build needs `-c.mac.forceCodeSigning=false`. CI notarizes with an App Store Connect API key and fails the job unless `stapler validate` passes (`.github/workflows/build-electron.yml`).
 - Production log: `app.getPath("logs")/getwrite.log`.
 
+## Window close and quit
+
+- `src/window-close-guard.ts` holds the window's `close` until the page answers `getwrite:before-close` (`preload.ts`, `frontend/src/lib/pending-saves.ts`), within 5 s. A failed save or no answer shows **Keep Editing** / **Close Anyway**. `before-quit` only records the quit; the server stops at `will-quit`, after the window has closed. See `specs/features/window-close-save.md`.
+
 ## Server launch
 
 - Spawns `frontend/.next/standalone` (repo root, or `process.resourcesPath` when packaged) on the fixed port `PORT` in `src/server-config.ts` (7340; no override, no fallback). Bind env, window URL, readiness check, navigation guard, IPC sender check and displayed addresses all read it. Dev (`pnpm electron:dev`) uses it too; plain `pnpm dev` stays on 3000. Port blocks: ADR-023.

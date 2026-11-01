@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener; app=dist-electron/mac-arm64/GetWrite.app; delay=100ms
+  after Keep Editing: windows=1
+failkeep #0: saved=true; exited=true; act returned @1713; port gone @1835; win-close@3 req-start:PATCH@104 req-error:net::ERR_FAILED@106 dialog:Your last edits weren't saved:Keep Editing/Close Anyway:answer=Keep Editing@107 win-close@1612 req-start:PATCH@1713 req-done:200@1722 win-close@1727 wc-destroyed@1830 win-closed@1831 window-all-closed@1831 before-quit@1831 will-quit@1831 quit@1870
+failclose #1: saved=false; exited=true; act returned @106; port gone @218; win-close@2 req-start:PATCH@105 req-error:net::ERR_FAILED@109 dialog:Your last edits weren't saved:Keep Editing/Close Anyway:answer=Close Anyway@110 win-close@111 wc-destroyed@213 win-closed@213 window-all-closed@214 before-quit@214 will-quit@214 quit@228
+failclose #2: saved=false; exited=true; act returned @103; port gone @212; win-close@1 req-start:PATCH@103 req-error:net::ERR_FAILED@104 dialog:Your last edits weren't saved:Keep Editing/Close Anyway:answer=Close Anyway@105 win-close@106 wc-destroyed@208 win-closed@208 window-all-closed@208 before-quit@208 will-quit@209 quit@221
+  after Keep Editing on a quit: windows=1
+failquit #3: ERROR Cannot read properties of undefined (reading '_object')
+hung #4: saved=true; exited=true; act returned @104; port gone @5120; win-close@2 req-start:PATCH@2400 req-done:200@2420 dialog:Your last edits weren't saved:Keep Editing/Close Anyway:answer=Close Anyway@5005 win-close@5005 wc-destroyed@5108 win-closed@5108 window-all-closed@5108 before-quit@5108 will-quit@5109 quit@5124
+tally: {"failkeep":{"saved":1,"lost":0},"failclose":{"saved":0,"lost":2},"hung":{"saved":1,"lost":0}}
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

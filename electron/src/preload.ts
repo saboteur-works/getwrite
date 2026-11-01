@@ -208,9 +208,34 @@ export interface GetWriteDesktopBridge {
   getKeepRunningSetting(): Promise<KeepRunningSetting>;
   /** Records the keep-running setting; it applies at the next close. */
   setKeepRunningSetting(enabled: boolean): Promise<void>;
+  /**
+   * Sets what runs before the window closes or the app quits. The close waits
+   * for it; it resolves `true` when every save landed. Returns a remover.
+   */
+  setBeforeCloseHandler(handler: () => Promise<boolean>): () => void;
 }
 
+let beforeCloseHandler: (() => Promise<boolean>) | null = null;
+
+// A page with no handler holds no saves, so it answers straight away.
+ipcRenderer.on("getwrite:before-close", (_event, requestId: number) => {
+  const answer = (saved: boolean): void => {
+    ipcRenderer.send("getwrite:before-close-result", requestId, saved);
+  };
+  if (!beforeCloseHandler) {
+    answer(true);
+    return;
+  }
+  beforeCloseHandler().then(answer, () => answer(false));
+});
+
 const bridge: GetWriteDesktopBridge = {
+  setBeforeCloseHandler: (handler) => {
+    beforeCloseHandler = handler;
+    return () => {
+      if (beforeCloseHandler === handler) beforeCloseHandler = null;
+    };
+  },
   getWorkspaceDir: () => ipcRenderer.invoke("getwrite:workspace-dir"),
   chooseWorkspaceDir: () => ipcRenderer.invoke("getwrite:choose-workspace-dir"),
   restart: () => ipcRenderer.invoke("getwrite:restart"),

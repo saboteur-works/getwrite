@@ -40,6 +40,7 @@ import {
   shouldSyncEditorContent,
 } from "./Editor/loadDocumentIntoEditor";
 import { createPendingSourceCommit } from "./Editor/pendingSourceCommit";
+import { registerSaveFlusher } from "../src/lib/pending-saves";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
 export { resolveOffsetToPosition } from "./Editor/offset-resolver";
 import { setActiveEditor } from "./Editor/activeEditorRegistry";
@@ -632,6 +633,18 @@ export default function TipTapEditor({
       );
     };
   }, [scheduleSourceCommit, pendingSource]);
+
+  /** Desktop window close or quit: send a pending source edit, as on unmount. */
+  useEffect(
+    () =>
+      registerSaveFlusher("source", () => {
+        scheduleSourceCommit.cancel();
+        pendingSource.flushTo(
+          (markdown) => markdownToDocument(markdown) as TipTapDocument,
+        );
+      }),
+    [scheduleSourceCommit, pendingSource],
+  );
 
   /**
    * Registers this editor instance as the app's single "live editor" (Task

@@ -1,6 +1,7 @@
 import React from "react";
 import debounce from "lodash/debounce";
 import type { TipTapDocument } from "../../src/lib/models";
+import { registerSaveFlusher, trackSave } from "../../src/lib/pending-saves";
 import { patchRevisionContent } from "../../src/lib/api/resources";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
 import { countWords } from "../../src/lib/word-count";
@@ -104,8 +105,8 @@ export function useCanonicalAutosave({
     [canonicalRevisionId, currentRevisionId, projectId, selectedResourceId],
   );
 
-  const saveCanonicalRevisionNow = React.useCallback(
-    async (doc: TipTapDocument): Promise<void> => {
+  const attemptCanonicalSave = React.useCallback(
+    async (doc: TipTapDocument): Promise<boolean> => {
       const isForShownSelection = (): boolean =>
         isMountedRef.current && selectionKeyRef.current === selectionKey;
       if (isForShownSelection()) setSaveStatus("saving");
@@ -139,6 +140,7 @@ export function useCanonicalAutosave({
             }),
           );
         }
+        return true;
       } catch (error) {
         console.error("Failed to persist canonical revision content", error);
         if (isForShownSelection()) {
@@ -151,6 +153,7 @@ export function useCanonicalAutosave({
             "Open it again to check its content.",
           );
         }
+        return false;
       }
     },
     [
@@ -159,6 +162,15 @@ export function useCanonicalAutosave({
       selectionKey,
       dispatch,
     ],
+  );
+
+  const saveCanonicalRevisionNow = React.useCallback(
+    (doc: TipTapDocument): Promise<boolean> => {
+      const save = attemptCanonicalSave(doc);
+      trackSave(save);
+      return save;
+    },
+    [attemptCanonicalSave],
   );
 
   const debouncedPersistCanonicalRevisionContent = React.useMemo(
@@ -191,6 +203,21 @@ export function useCanonicalAutosave({
     window.addEventListener("beforeunload", sendPendingSave);
     return () => window.removeEventListener("beforeunload", sendPendingSave);
   }, [debouncedPersistCanonicalRevisionContent]);
+
+  // Desktop window close or quit: the main process waits for these saves. A
+  // save that failed earlier goes again, so it isn't lost silently.
+  React.useEffect(
+    () =>
+      registerSaveFlusher("queued", () => {
+        debouncedPersistCanonicalRevisionContent.flush();
+        if (failedSaveDoc) void saveCanonicalRevisionNow(failedSaveDoc);
+      }),
+    [
+      debouncedPersistCanonicalRevisionContent,
+      failedSaveDoc,
+      saveCanonicalRevisionNow,
+    ],
+  );
 
   React.useEffect(() => {
     if (saveStatus !== "saved") {

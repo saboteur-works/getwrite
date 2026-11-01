@@ -308,6 +308,11 @@ export interface DesktopBridge {
   ): Promise<SetSharingLimitResult>;
   /** Whether GetWrite keeps running after its window closes (macOS only). */
   getKeepRunningSetting(): Promise<KeepRunningSetting>;
+  /**
+   * Sets what runs before the window closes or the app quits. The close waits
+   * for it; it resolves `true` when every save landed. Returns a remover.
+   */
+  setBeforeCloseHandler(handler: () => Promise<boolean>): () => void;
   /** Records the keep-running setting; it applies at the next close. */
   setKeepRunningSetting(enabled: boolean): Promise<void>;
 }

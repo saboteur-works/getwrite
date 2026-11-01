@@ -1,0 +1,8 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener; app=dist-electron/mac-arm64/GetWrite.app; delay=2600ms
+close #0: saved=true; exited=true; act returned @111; port gone @130; req-start:PATCH@-107 req-done:200@-89 win-close@5 wc-destroyed@112 win-closed@112 window-all-closed@112 before-quit@113 will-quit@142 quit@142
+close #1: saved=true; exited=true; act returned @105; port gone @113; req-start:PATCH@-105 req-done:200@-88 win-close@2 wc-destroyed@106 win-closed@106 window-all-closed@106 before-quit@106 will-quit@123 quit@123
+close #2: saved=true; exited=true; act returned @103; port gone @111; req-start:PATCH@-101 req-done:200@-84 win-close@1 wc-destroyed@105 win-closed@105 window-all-closed@105 before-quit@105 will-quit@124 quit@124
+quitevent #3: saved=true; exited=true; act returned @132; port gone @132; req-start:PATCH@-101 req-done:200@-81 before-quit@131 win-close@143 wc-destroyed@145 win-closed@145 will-quit@145 quit@145
+quitevent #4: saved=true; exited=true; act returned @110; port gone @111; req-start:PATCH@-101 req-done:200@-91 before-quit@109 win-close@118 wc-destroyed@120 win-closed@120 will-quit@120 quit@120
+tally: {"close":{"saved":3,"lost":0},"quitevent":{"saved":2,"lost":0}}
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

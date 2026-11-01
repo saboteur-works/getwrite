@@ -1,0 +1,7 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener; app=dist-electron/mac-arm64/GetWrite.app; delay=100ms
+close #0: saved=false; exited=true; act returned @103; port gone @115; win-close@2 req-start:PATCH@103 wc-destroyed@104 win-closed@104 window-all-closed@104 before-quit@105 will-quit@118 quit@118 req-error:net::ERR_ABORTED@127
+close #1: saved=false; exited=true; act returned @104; port gone @114; win-close@2 req-start:PATCH@104 wc-destroyed@105 win-closed@105 window-all-closed@105 before-quit@105 will-quit@120 quit@120 req-error:net::ERR_ABORTED@126
+realclose #2: ERROR 63:128: execution error: System Events got an error: Can’t get window 1 of process "GetWrite". Invalid index. (-1719)
+realquit #3: ERROR 63:155: execution error: System Events got an error: Can’t get menu item "Quit GetWrite" of menu "GetWrite" of menu bar item "GetWrite" of menu bar 1 of process "GetWrite". (-1728)
+tally: {"close":{"saved":0,"lost":2}}
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

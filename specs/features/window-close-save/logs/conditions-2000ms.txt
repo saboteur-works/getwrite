@@ -1,0 +1,8 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener; app=dist-electron/mac-arm64/GetWrite.app; delay=2000ms
+close #0: saved=false; exited=true; act returned @105; port gone @123; win-close@3 req-start:PATCH@106 wc-destroyed@109 win-closed@109 window-all-closed@110 before-quit@110 will-quit@128 quit@128 req-error:net::ERR_ABORTED@140
+close #1: saved=false; exited=true; act returned @105; port gone @115; win-close@3 req-start:PATCH@105 wc-destroyed@107 win-closed@107 window-all-closed@107 before-quit@107 will-quit@125 quit@125 req-error:net::ERR_ABORTED@132
+close #2: saved=false; exited=true; act returned @104; port gone @112; win-close@2 req-start:PATCH@104 wc-destroyed@104 win-closed@105 window-all-closed@105 before-quit@105 will-quit@114 quit@114 req-error:net::ERR_ABORTED@120
+quitevent #3: saved=false; exited=true; act returned @137; port gone @137; before-quit@135 win-close@147 req-start:PATCH@148 wc-destroyed@149 win-closed@150 will-quit@150 quit@150 req-error:net::ERR_CONNECTION_REFUSED@154
+quitevent #4: saved=false; exited=true; act returned @148; port gone @148; before-quit@147 win-close@158 req-start:PATCH@159 req-error:net::ERR_CONNECTION_REFUSED@160 wc-destroyed@160 win-closed@161 will-quit@161 quit@161
+tally: {"close":{"saved":0,"lost":3},"quitevent":{"saved":0,"lost":2}}
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
