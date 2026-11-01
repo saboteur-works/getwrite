@@ -1,0 +1,26 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 46142 port 51446 (throwaway projects dir; templates repo read-only)
+default rendering: [{"t":"Level 1","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"40px","weight":"700","lineHeight":"52px","spacing":"0.4px"},{"t":"Level 2","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"28px","weight":"700","lineHeight":"36.4px","spacing":"normal"},{"t":"Level 3Level","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"17px","weight":"500","lineHeight":"22.1px","spacing":"normal"},{"t":"Level 5","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"700","lineHeight":"19.5px","spacing":"normal"},{"t":"Level 6","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"500","lineHeight":"19.5px","spacing":"0.6px"},{"t":"Body paragra","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"},{"t":"\n","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"}]
+H1 Font Family options: ["Use default","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","IBM Plex Sans","IBM Plex Sans Condensed","IBM Plex Mono","IBM Plex Serif","Arial","Georgia","Times New Roman","Courier New","Verdana","Trebuchet MS","serif","sans-serif","monospace","Other..."]
+H1 weights with IBM Plex Serif: ["Use default","Regular 400","Medium 500","Bold 700"]
+H1 weights with Inter: ["Use default","Regular 400","Medium 500","Bold 700"]
+H1 weights with Source Serif 4: ["Use default","Regular 400","Semibold 600","700 (current value)"]
+H1 weights with Arial: ["Use default","Regular 400","Bold 700"]
+H1 weights with serif: ["Use default","Regular 400","Bold 700"]
+after Add H4: buttons=["Remove H4","Add H5"]
+note for empty level: ["No styles set, so this level is not kept when you save."]
+text inputs: ["H2 Font Family other name","Body Line Height","Body Paragraph Spacing",null,"New tag name",null,null,null,null,null]
+heading Save with a refused name: alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] field="Bad;Name" config unchanged=true
+after heading Discard: H2 family="IBM Plex Serif"; H1 family="IBM Plex Serif"; open=true
+Discard in Heading Styles: H1 size="40"; Body size still="19"
+Discard buttons in the tab: 2; Body size after its Discard="15"
+dialog open after heading save=true; config.headings.h1={"fontSize":"60px","fontFamily":"IBM Plex Serif","fontWeight":"700","letterSpacing":"0.01em"}; rendered h1=["60px"]
+after a body save: headings kept={"fontSize":"60px","fontFamily":"IBM Plex Serif","fontWeight":"700","letterSpacing":"0.01em"}; body={"fontFamily":"IBM Plex Serif","fontSize":"18px","lineHeight":"1.8","paragraphSpacing":"16px"}
+rendered h1 after body save=["60px"]
+stored Domine: select shows "Other..."; text inputs=[["H1 Font Family other name","Domine"],["Body Line Height","1.8"],["Body Paragraph Spacing","16px"],[null,"Initial Draft"],["New tag name",""],[null,""],[null,""],[null,""],[null,""],[null,"2"]]
+stored weight lighter: ["lighter (current value)",["Use default","Regular 400","Bold 700","lighter (current value)"]]
+after open and close: stored family="Domine" weight="lighter"
+requests to anywhere but this server during the whole run: []; loaded font faces include Playfair: true
+stop: recorded 46142(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

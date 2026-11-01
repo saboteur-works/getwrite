@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 49808 port 51534 (throwaway projects dir; templates repo read-only)
+saved: body={"fontFamily":"Lato","fontSize":"20px","lineHeight":"1.8","paragraphSpacing":"30"}; dialog open=true
+rendered: {"family":"Lato, \"IBM Plex Serif\", serif","size":"20px","gap":0}
+after reload: {"family":"Lato, \"IBM Plex Serif\", serif","size":"20px","gap":0}
+fields after reload: size="20" family="Lato" spacing="30"
+stop: recorded 49808(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

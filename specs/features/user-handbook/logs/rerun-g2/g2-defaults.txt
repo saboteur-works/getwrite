@@ -1,0 +1,8 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 47895 port 51479 (throwaway projects dir; templates repo read-only)
+new Blank project: paragraph=[{"t":"Only a parag","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"}]; toolbar Line Height="1.8"
+gap: 16px
+color after theme switch: rgb(245, 244, 240)
+stop: recorded 47895(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

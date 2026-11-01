@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 90105 port 52423 (throwaway projects dir; templates repo read-only)
+500ms later: url=/; text=["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Close Test or open a clean slate for your next draft.","1 ACTIVE PROJECT","1 WRITING ASSETS","1 FOLDERS ORGANIZED","WRITING AT A GLANCE","1","Project ready to open and continue.","RESOURCES","1","FOLDERS"]; open buttons=["Open project settings menu","Open Close Test"]
+2500ms later: url=/; text=["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Close Test or open a clean slate for your next draft.","1 ACTIVE PROJECT","1 WRITING ASSETS","1 FOLDERS ORGANIZED","WRITING AT A GLANCE","1","Project ready to open and continue.","RESOURCES","1","FOLDERS"]; open buttons=["Open project settings menu","Open Close Test"]
+6000ms later: url=/; text=["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Close Test or open a clean slate for your next draft.","1 ACTIVE PROJECT","1 WRITING ASSETS","1 FOLDERS ORGANIZED","WRITING AT A GLANCE","1","Project ready to open and continue.","RESOURCES","1","FOLDERS"]; open buttons=["Open project settings menu","Open Close Test"]
+after clicking Open project: ["Get","Write","User Preferences","App Settings","Project Type Manager","Switch to dark mode"]
+stop: recorded 90105(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

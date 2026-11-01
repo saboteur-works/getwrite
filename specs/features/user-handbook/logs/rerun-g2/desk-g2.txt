@@ -1,0 +1,23 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+A electron pid 28414; isPackaged=false; userData throwaway=true
+Cmd+B (bold): <p><strong>Plain words here today</strong></p>
+Cmd+I (italic): <p>Plain words here today</p>
+Cmd+U (underline): <p><u>Plain words here today</u></p>
+Bold button: <p>Plain words here today</p>
+Italic button: <p><strong>Plain words here today</strong></p>
+Underline button: <p><strong><em>Plain words here today</em></strong></p>
+Strikethrough button: <p><strong><em><u>Plain words here today</u></em></strong></p>
+Inline code button: <p><strong><em><s><u>Plain words here today</u></s></em></strong></p>
+footer: ["Words: 4","Today's writing","Today: 0"]
+Meta+K: focused=["INPUT","Search resources...",null]
+Control+K: focused=["INPUT","Search resources...",null]
+after a heading save then a body save: headings.h1={"fontSize":"60px","fontFamily":"IBM Plex Serif","fontWeight":"700","letterSpacing":"0.01em"} body={"fontFamily":"IBM Plex Serif","fontSize":"18px","lineHeight":"1.8","paragraphSpacing":"16px"}
+footer: ["Words: 5","Today's writing","Today: 5","All changes saved · just now"]
+Today's writing window: ["Today's writing","No daily goal set","Added: 5","Deleted: 0","Net: 5","Imported (not counted toward goal): 0","Set the daily goal in Project Settings.","CLOSE"]
+typed then closed the window 100ms later (switch off): app exited=true; files={"2087b8":"Plain words here today more lastwords"}
+stop: recorded 28414(Electron),28415(Electron Helper (GPU)),28416(Electron Helper),28417(sh),28421(node),28440(node),28446(next-server (v16.2.6)),28511(node),28512(node),28513(Electron Helper (Renderer)); after SIGTERM: none alive; listener on 7340 after: none
+B after restart: editor text="Plain words here today more lastwords"; files={"2087b8":"Plain words here today more lastwords"}
+typed then quit 100ms later: app exited=true; files={"2087b8":"Plain words here today more lastwords"}
+stop: recorded 30135(Electron),30136(Electron Helper (GPU)),30137(Electron Helper),30138(sh),30142(node),30161(node),30215(next-server (v16.2.6)),30230(Electron Helper (Renderer)); after SIGTERM: none alive; listener on 7340 after: none
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

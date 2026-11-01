@@ -1,0 +1,26 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 1485 port 52611 (throwaway projects dir; templates repo read-only)
+Inter: {"faces":6,"loaded":2,"used":"Inter, \"IBM Plex Serif\", serif"}; external requests so far=0
+Merriweather: {"faces":4,"loaded":2,"used":"Merriweather, \"IBM Plex Serif\", serif"}; external requests so far=0
+Playfair Display: {"faces":4,"loaded":2,"used":"\"Playfair Display\", \"IBM Plex Serif\", serif"}; external requests so far=0
+Lato: {"faces":4,"loaded":2,"used":"Lato, \"IBM Plex Serif\", serif"}; external requests so far=0
+Source Serif 4: {"faces":4,"loaded":2,"used":"\"Source Serif 4\", \"IBM Plex Serif\", serif"}; external requests so far=0
+Playwrite IE: {"faces":4,"loaded":1,"used":"\"Playwrite IE\", \"IBM Plex Serif\", serif"}; external requests so far=0
+Fascinate Inline: {"faces":2,"loaded":2,"used":"\"Fascinate Inline\", \"IBM Plex Serif\", serif"}; external requests so far=0
+IBM Plex Sans: {"faces":4,"loaded":4,"used":"\"IBM Plex Sans\", \"IBM Plex Serif\", serif"}; external requests so far=0
+IBM Plex Sans Condensed: {"faces":4,"loaded":4,"used":"\"IBM Plex Sans Condensed\", \"IBM Plex Serif\", serif"}; external requests so far=0
+IBM Plex Mono: {"faces":4,"loaded":4,"used":"\"IBM Plex Mono\", \"IBM Plex Serif\", serif"}; external requests so far=0
+IBM Plex Serif: {"faces":8,"loaded":6,"used":"\"IBM Plex Serif\", serif"}; external requests so far=0
+Arial: {"faces":0,"loaded":0,"used":"Arial, \"IBM Plex Serif\", serif"}; external requests so far=0
+Georgia: {"faces":0,"loaded":0,"used":"Georgia, \"IBM Plex Serif\", serif"}; external requests so far=0
+Times New Roman: {"faces":0,"loaded":0,"used":"\"Times New Roman\", \"IBM Plex Serif\", serif"}; external requests so far=0
+Courier New: {"faces":0,"loaded":0,"used":"\"Courier New\", \"IBM Plex Serif\", serif"}; external requests so far=0
+Verdana: {"faces":0,"loaded":0,"used":"Verdana, \"IBM Plex Serif\", serif"}; external requests so far=0
+Trebuchet MS: {"faces":0,"loaded":0,"used":"\"Trebuchet MS\", \"IBM Plex Serif\", serif"}; external requests so far=0
+serif: {"faces":0,"loaded":0,"used":"serif"}; external requests so far=0
+sans-serif: {"faces":0,"loaded":0,"used":"sans-serif"}; external requests so far=0
+monospace: {"faces":0,"loaded":0,"used":"monospace"}; external requests so far=0
+external requests in the run: []
+stop: recorded 1485(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

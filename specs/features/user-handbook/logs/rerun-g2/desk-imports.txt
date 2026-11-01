@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+electron pid 31108; isPackaged=false; userData is throwaway: true
+W-36 docx import opened project "multi-heading"; day entries [{"file":"2026-11-01.json","added":14,"deleted":0,"net":14,"timestamp":"2026-11-01T19:11:40.013Z","source":"docx"}]
+   tree text ["Chapter One"]
+W-36 docx import project: dialog ["No daily goal set","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 14"]; footer ["Today's writing","Today: 0"]
+scriv STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button[aria-label=\'Import from Scrivener\'], button:has-text(\'Import from Scrivener\')')[22m
+stop: recorded 31108(Electron),31109(Electron Helper (GPU)),31110(Electron Helper),31111(sh),31115(node),31134(node),31140(next-server (v16.2.6)),31154(Electron Helper (Renderer)); after SIGTERM: none alive
+listener on 7340 after stop: none; throwaway log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

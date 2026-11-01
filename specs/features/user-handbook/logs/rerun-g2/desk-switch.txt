@@ -1,0 +1,8 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+typed then opened another document 100ms later, trial 1: saved=true
+typed then opened another document 100ms later, trial 2: saved=true
+typed then opened another document 100ms later, trial 3: saved=true
+typed then closed the project 100ms later, trial 1: saved=true
+SCRIPT ERROR page.click: Timeout 30000ms exceeded.
+stop: listener on 7340 after: none
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

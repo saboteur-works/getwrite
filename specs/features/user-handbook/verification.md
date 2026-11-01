@@ -1882,3 +1882,130 @@ CLI project create -t my_type (variable unset): exit 2; stderr ["Unknown project
 
 - **O-1.** A project whose `folders/` directory cannot be read (`chmod 000`) is listed as an ordinary card, "0 resources · 0 folders", with an **Open project** button, not as a "cannot be opened" card (`web-cards.txt`, TreeUnreadable). The app's "Its folders or resources could not be read" text was therefore not shown. Opening that project was not tried. This may be a case of a failure shown as absence (`docs/standards/failure-visibility.md`); the experiment that would settle it is to open the project and check whether it reports the unreadable folder or shows an empty project.
 - **O-2.** Run from a folder outside the repository, `getwrite-cli project types` listed no built-in types, and `project create -t my_type` with the variable unset reported "Available project type ids: (none)." (25.7). Whether the CLI finds built-in types only relative to the current folder is not established; running the same commands from the repository root would separate it.
+
+## 26. Group 2 re-run (OQ-8): write
+
+Re-run of every statement on the five `write/` pages, and rewrite of those pages to FR-9, FR-10, FR-13 and FR-14. POS task `task_f3d4fb66`. Run 2026-11-01.
+
+### 26.1 Version and base commit per page (FR-10)
+
+| Page | App version (root `package.json`) | Base commit | Latest release tag |
+| --- | --- | --- | --- |
+| `write/editor.md` | 2.3.0 | `330f3897` | `getwrite-v2.3.0` |
+| `write/writing-log.md` | 2.3.0 | `330f3897` | `getwrite-v2.3.0` |
+| `write/headings.md` | 2.3.0 | `330f3897` | `getwrite-v2.3.0` |
+| `write/editor-appearance.md` | 2.3.0 | `330f3897` | `getwrite-v2.3.0` |
+| `write/search.md` | 2.3.0 | `330f3897` | `getwrite-v2.3.0` |
+
+`git diff --stat getwrite-v2.3.0..330f3897 -- frontend electron cli android getwrite-config` prints nothing, so these statements describe 2.3.0 and no "Coming in the next release" label applies. The builds used are the ones section 25 made at `1c964c42`; no app file changed between that commit and `330f3897`.
+
+### 26.2 Methods
+
+- **Web:** "web build of the same frontend", as in 25.2, driven by Playwright Chromium on macOS.
+- **Desktop:** "desktop, Electron dev, fake root", as in 25.2. Windows were closed with `BrowserWindow.close()`, and quit was sent as an Apple event through `osascript` or by `app.quit()`. No real click on the window's close button or real Cmd+Q key press was used. The packaged app was not run.
+- **CLI:** the built CLI against throwaway folders, as in 25.2.
+- **Ports:** the owner's packaged GetWrite (pid 14478) held 7340 when the first web scripts started. Web runs use their own free port and did not touch it. The owner closed the app before any desktop run, and each desktop run's first line shows 7340 free. Some `sec*.txt` logs show a listener on 7340: those are this task's own desktop runs, started while the web scripts ran. Every run stopped only its recorded processes, and ended with `git status --short projects/` empty and its run folder removed.
+
+Logs: `logs/rerun-g2/`. Scripts: Task 4's `task4-sec1.mjs` to `task4-sec3f.mjs` and `task4-desk.mjs` (Scrivener button selector updated); new `g2-web.mjs` (one section per `g2-<section>.txt` log), `g2-desk.mjs`, `g2-desk2.mjs`, `g2-desk3.mjs`. In `g2-desk.mjs` the formatting lines (`desk-g2.txt`) are a flawed trial and are not evidence: each trial reused a paragraph whose marks earlier trials had toggled. `desk-quit.txt` has the clean trials.
+
+Superseded by `g2-*` logs because the Task 4 selectors no longer match the UI: the `H-05`, `H-11a`, `H-13`, `H-06`, `H-15`, `A-09` and `A-06` step errors in `sec2.txt`, the script error in `sec2b.txt`, and the `W-36` step error in `sec3c.txt` (rerun in `sec3d.txt`). `H-08` in `sec3f.txt` looked for a datalist that no longer exists.
+
+### 26.3 `write/editor.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G2-E01 | Rich-text editor opens for a text document | run | web, desktop | `sec1.txt` F-08; `desk-g2.txt` | kept |
+| G2-E02 | Toolbar applies bold, italic, underline, strikethrough, inline code | run | web, desktop | `sec1.txt` F-09; `desk-quit.txt` button trials, each mark present | kept |
+| G2-E03 | On a Mac, Cmd+B, Cmd+I, Cmd+U apply to the selection | run | web, desktop | `sec1.txt` F-10; `desk-quit.txt` | kept, labelled Mac |
+| G2-E04 | Live word count in the footer | run | web, desktop | `sec1.txt` F-11 (250 ms after typing, "Words: 8") | kept |
+| G2-E05 | Saved about 2.5 seconds after you stop typing; footer says All changes saved | run | web | `g2-saving.txt`: first save request 2502 and 2503 ms after typing | kept |
+| G2-E06 | Opening another document before then saves to the typed-in document | run | web, desktop | `g2-saving.txt`; `desk-switch.txt` 3 of 3 | kept |
+| G2-E07 | A failed save after moving on brings up "Your last edits to the previous document were not saved" | run | web | `g2-saving.txt`: non-GET requests aborted, message and "Open it again to check its content." shown | kept |
+| G2-E08 | Closing the project before then shows Close project?, Keep Editing and Close Project; text is saved either way | run | web, desktop | `g2-closedialog.txt`: dialog text; saved with the dialog open and after Keep Editing; Close Project chosen at once 3 of 3 saved. `desk-switch.txt`: one desktop trial saved | corrected; the old page said the save is simply sent on closing |
+| G2-E09 | In the browser, reloading before then saves the text | run | web | `g2-saving.txt` | kept, labelled browser |
+| G2-E10 | Edit as Markdown, confirm, one-way conversion, the list of what is removed | run | web | `g2-markdown.txt`: dialog text, then one plain-text field | added |
+| G2-E11 | Old: in Markdown mode, edits just before opening another document go to the typed-in document | run | web | `g2-markdown.txt`: 3 of 3 saved to the right document | true; dropped from the page as history of a fix |
+| G2-E12 | Good to know: closing the desktop window straight after typing can lose the last words; wait for All changes saved | run | desktop | `desk-g2.txt`, `desk-quit.txt`, `desk-close-alone.txt`; see 26.8 O-3 | added; replaces "was not tested" |
+| G2-E13 | Old: Ctrl+B, Ctrl+I, Ctrl+U apply nothing on macOS | run | web, desktop | `sec1.txt`; `desk-quit.txt` | true; dropped, the reader acts on Cmd |
+| G2-E14 | Old: no character or paragraph count | run | web | `sec1.txt` F-11 | true; dropped, describes an absence |
+| G2-E15 | Old: "Windows and Linux were not run" | - | - | FR-13: what was not tried | dropped; shortcuts labelled Mac |
+
+### 26.4 `write/search.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G2-Q01 | On a Mac, Cmd+K or Ctrl+K opens search | run | web, desktop | `sec1.txt` SE-01; `desk-g2.txt` focus moves to "Search resources..." | kept, labelled Mac |
+| G2-Q02 | Typing a name shows results; clicking opens | run | web | `sec1.txt` SE-02, SE-03 | kept |
+| G2-Q03 | With one result, Enter opens it | run | web | `sec1.txt` SE-03 | kept |
+| G2-Q04 | Windows and Linux behaviour | - | - | not run | not stated |
+
+### 26.5 `write/headings.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G2-H01 | Buttons Heading 1 to 6 make the line that level; always present | run | web | `sec2.txt` H-01, H-04, H-12 | kept |
+| G2-H02 | Project Settings, Editor tab; Heading Styles above Body Text Styles | run | web | `sec2.txt` H-05, H-03; `g2-body.txt` | kept |
+| G2-H03 | H1 to H3, Add H4, then Add H5 and Add H6; Remove on added levels only | run | web | `sec2.txt` H-12; `g2-headings.txt` | kept |
+| G2-H04 | Font Size in pixels; Letter Spacing in em | run | web | `sec2.txt` H-07 (0.01 at 40px is 0.4px); `g2-headings.txt` (60 gives 60px) | kept |
+| G2-H05 | Font Family list and order, ending in Other... | run | web | `g2-body.txt`, `g2-headings.txt` | kept; read from code before (OQ-7) |
+| G2-H06 | Bundled fonts need no internet connection | run | web | `g2-fonts.txt`: each of the 11, font faces present and loaded, 0 requests outside the server. Not run with the network off | kept |
+| G2-H07 | The six device fonts and three general styles | run | web | `g2-fonts.txt`: 0 font faces supplied by GetWrite, name used in the stack | kept |
+| G2-H08 | Other... shows a name field; an uninstalled font shows in IBM Plex Serif | run | web | `g2-body.txt`: stack `"My Missing Font", "IBM Plex Serif", serif`. The glyphs drawn were not compared | kept |
+| G2-H09 | Refused characters, message, Save Changes does nothing, text stays, Discard clears | run | web | `g2-body.txt`: all 11 characters; 0 non-GET requests on save; `g2-headings.txt` | kept; read from code before (OQ-7). Control characters not typed and not stated |
+| G2-H10 | Old: a saved unlisted family appears as an extra entry | run | web | `g2-headings.txt`: Domine shows as Other... with the name in the field; stored value unchanged on open and close | corrected, then cut as detail; the toolbar does show an extra entry |
+| G2-H11 | Font Weight: Use default or a weight offered for the font | run | web | `g2-headings.txt`: lists for IBM Plex Serif, Inter, Source Serif 4, Arial, serif; a stored weight shows as "(current value)" | kept; read from code before (OQ-7) |
+| G2-H12 | Color control; custom color stays in both themes, others change | run | web | `g2-color.txt`: H1 18,52,86 in light and dark; H2 changes | kept |
+| G2-H13 | Old: "the pipette button" | run | web | `g2-color.txt`: no button beside the control; `sec2.txt` H-11 | dropped |
+| G2-H14 | Editor doesn't change until Save Changes | run | web | `sec2.txt` H-13 | kept |
+| G2-H15 | Discard puts the section back, leaves the dialog open, others keep edits; each of the three sections has its own | run | web | `g2-headings.txt`; `g2-ptbody.txt` Default Revision Name | kept |
+| G2-H16 | Defaults: H4 17px medium; H5 body size bold; H6 body size medium, wider spacing; all IBM Plex Serif | run | web | `g2-hdefaults.txt`: at body 15 and 22, H4 stays 17 and H5, H6 follow | kept |
+| G2-H17 | Good to know: empty added level isn't kept; the note | run | web | `g2-headings.txt`; `sec2.txt` H-12 | kept |
+| G2-H18 | Old: a Body Text Styles save after a Heading Styles save emptied the headings | run | web, desktop | `g2-headings.txt`; `desk-g2.txt`: headings kept on both | removed, no longer occurs |
+| G2-H19 | Old: Save Changes left the dialog open | run | web | `g2-headings.txt` | true; cut as detail |
+
+### 26.6 `write/editor-appearance.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G2-A01 | Body Text Styles fields; font, size and spacing apply and last after a reload | run | web | `g2-spacing.txt` (30px gives 30px); `g2-bodysave.txt` (font and size) | kept |
+| G2-A02 | Line Height: plain number of at least 1.8; empty means 1.8; no upper limit | run | web | `g2-body.txt`: 1.2, 0, normal, 150%, 2em, 24px, 1.79 refused; 1.8 and 9 stored; `g2-ptbody.txt`: empty renders 1.8 | kept; read from code before (OQ-7) |
+| G2-A03 | Refused: message, text stays, nothing saved | run | web | `g2-body.txt` | kept |
+| G2-A04 | Toolbar font control has no Other... | run | web | `g2-body.txt` | kept; read from code before (OQ-7) |
+| G2-A05 | Font and size show what is at the cursor, including in a heading | run | web | `g2-body.txt`: heading 40, paragraph 15. See O-5 | kept |
+| G2-A06 | Old: a font not in the list shows as an extra entry; showing it changes nothing | run | web | `g2-body.txt` shows the entry; "changes nothing" not checked for the toolbar | cut as detail |
+| G2-A07 | Toolbar Line Height changes one paragraph; any number above 0, below 1.8 allowed | run | web | `g2-body.txt`: 1.2 changes only the first paragraph | kept; read from code before (OQ-7) |
+| G2-A08 | Toolbar refusal and message; paragraph left as it was | run | web | `g2-body.txt`: 0, -1 and empty. Letters can't be typed in this number field, so "not a number" is removed | corrected |
+| G2-A09 | Paragraph without its own value follows the project; field shows the value; own value is kept | run | web | `g2-body.txt`: body 3 gives second paragraph 45px and field 3; first stays 18px and field 1.2 | kept |
+| G2-A10 | New Blank project defaults | run | web | `g2-defaults.txt`: 15px, 27px (1.8), 16px gap; toolbar 1.8 | kept |
+| G2-A11 | A project type can set body text; a project from it starts with it | run | web, CLI | `sec2.txt` A-10 (CLI, custom spec); `g2-ptbody.txt` (saved in the manager, project created in the UI) | kept |
+| G2-A12 | Refused typed font names block saving in a project type | run | web | `g2-ptfont.txt`: message, no saved file | true; cut from this page as detail |
+| G2-A13 | Text color follows the theme | run | web | `g2-defaults.txt` | kept; color values cut |
+| G2-A14 | Good to know: Paragraph Spacing needs a unit; a number alone removes the gap | run | web | `g2-spacing.txt`; see O-4 | added |
+| G2-A15 | Old: older versions stamped "1.5" on paragraphs | - | - | history (FR-13) | dropped, not re-run |
+
+### 26.7 `write/writing-log.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G2-W01 | Footer shows Today's writing and the figure, with and without a goal | run | web, desktop | `sec3b.txt` W-02, W-03, W-04; `desk-g2.txt` | kept |
+| G2-W02 | "Today" is the local calendar day | run | web | `sec3a.txt` W-16: three time zones | kept |
+| G2-W03 | Details window figures and closing it | run | web, desktop | `sec3b.txt` W-05, W-11; `desk-g2.txt` | kept |
+| G2-W04 | Daily goal field and rules | run | web | `sec3b.txt` W-17, W-18 | kept |
+| G2-W05 | Total goal and per-document goal; neither is in the footer; progress bar | run | web | `sec3b.txt` W-20, W-24, W-25, W-26; `sec3f.txt` | kept |
+| G2-W06 | Each autosave records words added and deleted | run | web | `sec3c.txt` W-27 | kept |
+| G2-W07 | Moved paragraph and reordered words count nothing | run | web | `sec3c.txt` W-30, W-31; `sec3e.txt` | kept |
+| G2-W08 | Capitalization and punctuation count one added and one deleted; a swap the same | run | web | `sec3c.txt` W-32, W-35 | kept |
+| G2-W09 | A word added and deleted between saves isn't counted | run | web | `sec3c.txt` W-33 | kept |
+| G2-W10 | A named revision adds no entry; earlier-revision edits aren't autosaved; the footer text | run | web | `sec3c.txt`, `sec3e.txt` W-28 | kept |
+| G2-W11 | Word, Scrivener and plain-text imports logged once, on the Imported line, not toward the goal | run | web, desktop, CLI | `desk-imports.txt` Word; `desk-scriv.txt` Scrivener; `sec3d.txt` plain text and W-37 | kept |
+| G2-W12 | No backfill: a project with no log shows zero | run | web | `sec3d.txt` W-38 | kept |
+| G2-W13 | Day files in `meta/writing-log`, UTC names, local day worked out on view | run | web | `sec3c.txt` W-41 to W-43 (server in Pacific/Kiritimati) | kept |
+| G2-W14 | Good to know: "Today's count may be incomplete" for a save not compared; text still saved | run | web | `sec3c.txt` W-40; `sec3d.txt` W-39b | kept, internal detail cut |
+| G2-W15 | Good to know: "Today's count is unavailable" | run | web | `sec3b.txt` W-15 | kept |
+| G2-W16 | Old: reindex doesn't change the log; entries are only added; no red | run | web, CLI | `sec3c.txt` W-45; `sec3b.txt` red scan | true; cut, the reader wouldn't act on them |
+
+### 26.8 Observations (recorded, not fixed; causes not established)
+
+- **O-3, closing the desktop window straight after typing.** Words typed 100 ms before `BrowserWindow.close()` were missing from `content.txt`, and from the editor after a restart, in 7 of 10 trials: 1 of 1 saved in `desk-g2.txt`; 2 of 3 lost in `desk-quit.txt`; 5 of 6 lost in `desk-close-alone.txt`, which ran with nothing else running. With a quit Apple event, 5 of 5 were saved. With `app.quit()`, 5 of 5 were lost (one more in `desk-g2.txt`, 2 in each of the other two). All on the Electron dev run. `useCanonicalAutosave.ts:191` flushes the waiting save on `beforeunload`. Whether that request completes before the process exits was not measured. To settle it: log the save request's completion against process exit on a packaged build, with a real click on the close button and a real Cmd+Q.
+- **O-4, Paragraph Spacing is not checked.** Saved with no message: `30` (gap 0), `abc` (gap 0), `-5px` (gap -5px). `30px` and `2em` give 30px; empty gives 16px. The field's placeholder reads "e.g. 1em". This may fall under `docs/standards/failure-visibility.md`; no cause or fix examined.
+- **O-5, toolbar font control after saving a typed font.** In `g2-body.txt` the control read IBM Plex Serif at first reading after Project Settings closed, and My Missing Font at a later reading in the same paragraph. Not investigated.

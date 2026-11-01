@@ -1,0 +1,7 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 63593 port 51816 (throwaway projects dir; templates repo read-only)
+rendered: [{"t":"Body line on","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"},{"t":"Level 1","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"40px","weight":"700","lineHeight":"52px","spacing":"0.4px"},{"t":"Level 2","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"28px","weight":"700","lineHeight":"36.4px","spacing":"normal"},{"t":"Level 3","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"20px","weight":"500","lineHeight":"26px","spacing":"normal"},{"t":"Level 4","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"17px","weight":"500","lineHeight":"22.1px","spacing":"normal"},{"t":"Level 5","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"700","lineHeight":"19.5px","spacing":"normal"},{"t":"Level 6","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"500","lineHeight":"19.5px","spacing":"0.6px"},{"t":"\n","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"}]
+with body 22: [["Body line on","22px"],["Level 4","17px"],["Level 5","22px"],["Level 6","22px"],["\n","22px"]]
+stop: recorded 63593(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -57,7 +57,7 @@ try {
   });
   await step("scriv", async () => {
     await stubPicker(path.join(fx, "sample.scriv"));
-    await page.click("button[aria-label='Import from Scrivener'], button:has-text('Import from Scrivener')");
+    await page.click("button[aria-label='Import from Scrivener'], button:has-text('Import from Scrivener'), button:has-text('Import Scrivener 3 Project')");
     await page.waitForTimeout(600);
     await page.click("button:has-text('CHOOSE SCRIVENER PROJECT')");
     await page.waitForTimeout(1500);

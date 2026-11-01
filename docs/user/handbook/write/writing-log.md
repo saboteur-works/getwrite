@@ -8,63 +8,52 @@ summary: How GetWrite records the words you write each day, shows today's figure
 
 GetWrite keeps a record of the words you write each day, so you can see whether you wrote today and compare it with a daily goal.
 
-Not yet in a release (merged after 2.2.0).
+## See today's writing
 
-## The footer display
+The editor's footer shows **Today's writing** with today's figure next to it:
 
-At the bottom of the editor, **Today's writing** shows today's figure next to it:
-
-- With a goal set: `Today: 5 / 20`.
-- With no goal: `Today: 5` (today's net words).
-
-Select **Today's writing** (hover it to see "Show today's writing details") to open a details window. It shows Added, Deleted and Net words, a separate **Imported (not counted toward goal)** figure, and "Today's count may be incomplete" when that applies. The window is read-only: set the goal in Project Settings. Press Esc or **Close** to dismiss it; focus returns to the button. No red colour was found in the footer or the window in the states checked. If today's figure cannot be read, it says "Today's count is unavailable" rather than showing zero.
+- With a goal set: `Today: 5 / 20`
+- With no goal: `Today: 5`
 
 "Today" is your local calendar day.
 
-## Setting a daily goal
+Select **Today's writing** to see the words **Added**, **Deleted** and **Net** (added minus deleted), and a separate **Imported (not counted toward goal)** figure. Press Esc or select **Close** to close the window.
 
-Not yet in a release (merged after 2.2.0).
+## Set a daily goal
 
-Open **Project Settings** and use **Daily word goal**. It is in the **Writing Goals** tab. Enter a whole number of words (0 or more), or leave it empty to clear the goal. This is separate from any total word-count goal for the project.
+Open **Project Settings**, select the **Writing Goals** tab, and find **Daily word goal**. Enter a whole number of words, 0 or more, and select **Save daily goal**. Leave the field empty to clear the goal.
 
-## Total and per-resource word-count goals
+## Set other word-count goals
 
-Not yet in a release (merged after 2.2.0).
+You can also set two other goals. Neither appears in the footer.
 
-Beyond the daily goal above, GetWrite also has two other word-count goals you can set, change, or clear from inside the app:
+- **For the whole project:** in the same tab, use **Total word-count goal**.
+- **For one document:** in that document's sidebar, use **Word count goal**. A progress bar then shows your words against the goal, for example "5 / 10 words · 50%".
 
-- **A total goal for the whole project** — also in **Project Settings**, **Writing Goals** tab, in the field below "Daily word goal", labeled "Total word-count goal".
-- **A goal for one resource** — in that resource's own sidebar, under a "Word count goal" section (shown for text resources only). When set, a progress bar appears in that section.
-
-Neither is shown in the footer described above, and neither was shown in red. See [Project Configuration](../protect-and-finish/project-configuration.md) for details on the project-wide field.
+See [Project Configuration](../protect-and-finish/project-configuration.md) for more on the project-wide goal.
 
 ## What is counted
 
-Not yet in a release (merged after 2.2.0).
+Each autosave compares the document's new text with its previous text and records the words added and deleted.
 
-- Each autosave of a document's current (canonical) revision that adds or deletes at least one word adds an entry: words added, words deleted, and net (added minus deleted). Saving a named revision added no entry, and edits made while viewing an earlier revision were not autosaved (the footer read "Autosave unavailable for non-canonical revisions").
-- Words are compared between the previous and new saved text without regard to their order. A paragraph you move counts as nothing, and retyping the same words in a different order counts nothing. Words must match exactly, so a change in capitalization or attached punctuation counts as one word deleted and one added. A word you add and delete between two saves is not counted. An autosave that adds and deletes no words adds no entry; a save that swaps one word for another is counted as one added and one deleted.
-- A Word (docx), Scrivener, or plain-text (.txt) import is logged once, on the day of the import, and shown on the separate Imported line. Imported words were not counted toward the daily goal.
-- There is no backfill: a project with no writing-log files showed zero for today (Added, Net and Imported all 0) although its document held text.
+Words are compared regardless of their order:
 
-## If a save could not be counted
+- A paragraph you move counts as nothing. So does retyping the same words in a different order.
+- Words must match exactly. Changing a capital letter or attached punctuation (`three` to `Three`, or `four` to `four,`) counts as one word deleted and one added.
+- Swapping one word for another counts as one added and one deleted.
+- A word you add and delete between two saves isn't counted.
 
-Not yet in a release (merged after 2.2.0).
+These don't count:
 
-If the previous content of a document could not be read, or is legacy plain text, that save is not counted. GetWrite records that it was skipped and adds "Today's count may be incomplete" to the footer display. In the plain-text case a message "Today's word count may be incomplete: this save couldn't be counted." appeared.
+- **Saving a named revision.** Only autosaves of the document's current revision count. While you view an earlier revision, the footer says "Autosave unavailable for non-canonical revisions".
+- **Imports.** A Word, Scrivener or plain-text import is recorded once, on the day of the import. It shows only on the **Imported** line, and it doesn't count toward your daily goal.
+- **Text written before the log began.** A project with no log shows zero for today, even if its documents hold text.
 
 ## Where it is stored
 
-Not yet in a release (merged after 2.2.0).
+Each day is a file in the `meta/writing-log` folder inside your project folder. Files are named by date in UTC, so a file's date can differ from your local day. GetWrite works out your local day when you view the figures.
 
-Each day is a file at `meta/writing-log/YYYY-MM-DD.json` in your project folder, named by the UTC date of the entry. Entries are only added, never edited. Your local day is worked out from each entry's timestamp when you view it. Running `getwrite-cli reindex <projectRoot>` did not change the log.
+## Good to know
 
-## Warnings and limits
-
-- A moved paragraph counted as nothing: cutting a paragraph and pasting it at the end of the document saved different content and added no entry.
-- Retyping five words in reverse order added 0 and deleted 0.
-- A change of capitalization (`three` to `Three`) or of attached punctuation (`four` to `four,`) counted as one word added and one deleted.
-- When the day's log file was not valid JSON, the footer and the details window read "Today's count is unavailable".
-- A save whose previous content was plain text, or whose revision file was missing, was recorded as skipped and the footer then read "Today's count may be incomplete".
-
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a.
+- If the footer says "Today's count may be incomplete", GetWrite couldn't compare a save with the document's previous text, so it didn't count that save. Your text is still saved.
+- If the footer says "Today's count is unavailable", GetWrite couldn't read today's record. It shows this message instead of a zero.

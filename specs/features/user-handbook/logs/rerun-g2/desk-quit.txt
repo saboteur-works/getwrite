@@ -1,0 +1,42 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+Cmd+B, selection="line 1 text": <strong>line 1 text</strong>
+Cmd+B again, selection="line 2 text": line 2 text
+Ctrl+B, selection="line 3 text": line 3 text
+Cmd+I, selection="line 4 text": <em>line 4 text</em>
+Cmd+I again, selection="line 5 text": line 5 text
+Ctrl+I, selection="line 6 text": line 6 text
+Cmd+U, selection="line 7 text": <u>line 7 text</u>
+Cmd+U again, selection="line 8 text": line 8 text
+Ctrl+U, selection="line 9 text": line 9 text
+Bold button, selection="line 10 text": <strong>line 10 text</strong>
+Italic button, selection="line 11 text": <strong><em>line 11 text</em></strong>
+Underline button, selection="line 12 text": <strong><em><u>line 12 text</u></em></strong>
+Strikethrough button, selection="line 13 text": <strong><em><s><u>line 13 text</u></s></em></strong>
+Inline code button, selection="line 14 text": <code>line 14 text</code>
+close trial 1, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+quit-event trial 1, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+close trial 2, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+quit-event trial 2, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+close trial 3, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+quit-event trial 3, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+app.quit trial 1, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+app.quit trial 2, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,11 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 85525 port 52298 (throwaway projects dir; templates throwaway copy)
+project type options: ["Article — Short-form article project type with drafts and references.","Blank — Minimal project type with only a Workspace folder.","Game Writing — Project type optimized for game writing (video game or tabletop RPG). Includes folders for lore, characters, quests, and dialogue.","Novel — Project type optimized for long-form fiction. Includes drafts, research, and assets.","Poetry and Lyrics — Project type optimized for poetry and song lyrics. Includes drafts, research, and assets.","Serial — Serialized fiction project type for episodes or installments.","Blank copy (Saved) — Minimal project type with only a Workspace folder."]
+project from the saved type: {"fontFamily":"Lato, \"IBM Plex Serif\", serif","fontSize":"18px","lineHeight":"32.4px","inline":null}
+line height left empty: stored=undefined
+rendered={"fontFamily":"Lato, \"IBM Plex Serif\", serif","fontSize":"18px","lineHeight":"32.4px","inline":null}; toolbar Line Height="1.8"
+Default Revision Name section: visible buttons=["Discard changes","Save Changes"]; field="Initial Draft"
+after its Discard: field="Initial Draft"
+stop: recorded 85525(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
