@@ -40,7 +40,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 1, 2
 **Estimate:** 3
 **Notes:** Requirements: FR-2, FR-3, FR-35 (core). Model on `word-count-goal-core.ts:45-67`. Follow `docs/standards/security.md` sections 2 and 3 and `docs/standards/storage-context.md` section 2a. Setting a goal not touching the filter is tested here; the goal cores themselves are not edited unless that test fails.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Goal membership core (FR-6, FR-8, FR-10, FR-12, FR-17, FR-18)
 **What:** Add a server-side core that evaluates the stored filter over live resources and returns the matching live text resource ids, or a typed failure or a typed no-match result.
@@ -49,7 +49,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 1, 2, 3
 **Estimate:** 5
 **Notes:** Requirements: FR-6, FR-8, FR-10, FR-12, FR-17, FR-18. Membership uses the same evaluator as a smart folder with an `evaluationTime` fixed by the caller. This core is reused by Phase 2 (Task 20). It must not write to `querySlice`. A cache or index is a non-goal until Task 28.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Filtered total core (FR-10, FR-13, FR-14)
 **What:** Add a core that returns the filtered total word count as the sum of `userMetadata.wordCount ?? wordCount ?? 0` over the members from Task 5, plus the unavailable and no-match states.
@@ -94,7 +94,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Requirements: FR-2, FR-8, FR-22, FR-41. Uses `ast-chip-bridge.ts` helpers read-only; do not edit that file in this task. Estimate assumes the bridge can be wrapped; if it must change, split a follow-up task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Goal filter section component with stories (FR-7, FR-19, FR-20, FR-21, FR-22, FR-37)
 **What:** Add the "Goal filter" section using the query builder with its own `useQueryBuilderState` instance, explicit Save and Clear buttons, and the status and alert lines.
@@ -157,7 +157,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 2
 **Estimate:** 2
 **Notes:** Requirements: FR-24, FR-25. Edits `schemas.ts` after Task 2. F-9: an older release's strict schema will reject an entry with this key; Task 19 measures the effect before any release writes it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Write `documentId` on canonical saves and skipped-save markers (FR-24)
 **What:** Pass the saved resource's id into `logCanonicalSave` so every new word entry, filtered or not, and every marker whose document is known carries `documentId`.
