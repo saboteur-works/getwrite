@@ -638,6 +638,37 @@ export const SetGoalFilterResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// GoalFilteredTotalResponseSchema — Feature 98 Task 8. Matches
+// `goal-filtered-total-core.ts`'s `GoalFilteredTotalResult`. Every member is
+// strict so an `unavailable` body carrying a `total` key is malformed: a
+// failure can never parse as a number (`docs/standards/failure-visibility.md`).
+// ---------------------------------------------------------------------------
+
+export const GoalFilteredTotalResponseSchema = z.union([
+  z.strictObject({ status: z.literal("not-filtered") }),
+  z.strictObject({
+    status: z.literal("total"),
+    total: z.number().finite().nonnegative(),
+  }),
+  z.strictObject({ status: z.literal("no-match"), total: z.literal(0) }),
+  z.strictObject({
+    status: z.literal("unavailable"),
+    reason: z.literal("invalid-filter"),
+    message: z.string(),
+  }),
+  z.strictObject({
+    status: z.literal("unavailable"),
+    reason: z.literal("missing-field"),
+    fields: z.array(z.string()),
+  }),
+  z.strictObject({
+    status: z.literal("unavailable"),
+    reason: z.literal("read-failed"),
+    cause: z.enum(["locked", "missing-sidecar", "corrupt", "unreadable"]),
+  }),
+]);
+
+// ---------------------------------------------------------------------------
 // SetMentionHighlightDurationResponseSchema — Entity mention navigation,
 // Task 8. Mirrors SetWordCountGoalResponseSchema's shape exactly: matches
 // `mention-highlight-duration-core.ts`'s
