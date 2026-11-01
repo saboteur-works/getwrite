@@ -58,7 +58,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Requirements: FR-10, FR-13, FR-14. The result type must make a number impossible in the unavailable branch (discriminated union).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Set and clear transport: route, native backend, web stub, `lib/api` module (FR-35, FR-36)
 **What:** Add the HTTP route under `withStorageContext`, the native in-process backend with its `.web-stub.ts` pair, and a `lib/api` module on `createTransport` for set and clear, with response schemas.
@@ -67,7 +67,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 4
 **Estimate:** 5
 **Notes:** Requirements: FR-35, FR-36. No new paired-device limit switch is added. Edits `src/lib/api/schemas.ts`; Tasks 8 and 22 edit it too and are chained after this one. Check how existing native backends are registered (a shared registry file may also be edited here).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Filtered total transport (FR-35, FR-36)
 **What:** Add the read route, native backend, web stub and `lib/api` module that return the filtered total result from Task 6.
@@ -184,7 +184,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 5, 17
 **Estimate:** 5
 **Notes:** Requirements: FR-25, FR-26, FR-27, FR-28, FR-31 (core part), FR-5. Reuse Task 5; do not re-implement membership. The window cap (26 hours, 3 day files) is unchanged.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Incomplete flag under a filter (FR-32)
 **What:** Raise `incomplete` under a filter when the window holds a non-import word entry without a `documentId`, and limit which markers raise it.
