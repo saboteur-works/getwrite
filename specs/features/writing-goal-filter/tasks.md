@@ -85,7 +85,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 7, 8
 **Estimate:** 3
 **Notes:** Requirements: FR-35. Test-only task; if it exposes a divergence, fix it in the owning transport file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Tab-side filter draft helper (FR-2, FR-8, FR-22, FR-41)
 **What:** Add a pure module that turns a stored AST into builder groups while keeping conditions on unknown fields visible, detects incomplete conditions, and runs the shared validation before a save.
@@ -112,7 +112,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 11
 **Estimate:** 3
 **Notes:** Requirements: FR-19, FR-23. Edits `AppShell.tsx`, so Task 16 and any other AppShell task depend on this one. F-8: the panels are mounted for the dialog's lifetime and the dialog is `max-w-[900px]`; check the builder fits.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Escape closes the open picker, not the dialog (FR-42)
 **What:** Read the value picker and the dialog primitive, then make Escape close an open field or value picker without closing the dialog.
@@ -139,7 +139,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Requirements: FR-9, FR-14. Booleans in the return type use the naming prefixes (for example `isFiltered`, `isUnavailable`). New file only; `DataView.tsx` is edited in Task 16.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Data view goal bar: filtered label, no-match and unavailable states (FR-5, FR-9, FR-11, FR-12, FR-13, FR-15, FR-16)
 **What:** Make the Data view goal section show the filtered total with "Counting selected documents", the no-match line and the unavailable line, leaving every other figure unchanged.
@@ -202,7 +202,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 8, 21
 **Estimate:** 3
 **Notes:** Requirements: FR-29, FR-35, FR-36. Edits `src/lib/api/schemas.ts`, chained after Tasks 2, 7 and 8.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Footer and details dialog filtered states (FR-30, FR-31, FR-34)
 **What:** Show "Counting selected documents", the real zero with "No documents match your goal filter", and the existing unavailable line in the footer and the details dialog, keeping the Imported line.
