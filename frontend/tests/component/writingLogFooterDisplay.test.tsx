@@ -230,4 +230,104 @@ describe("WritingLogFooterDisplay", () => {
     render(<WritingLogFooterDisplay projectId={null} />);
     expect(mocked).not.toHaveBeenCalled();
   });
+
+  describe("goal filter states (Feature 98)", () => {
+    it("filtered figure shows the label in footer and dialog", async () => {
+      mocked.mockResolvedValue(aggregate({ isFiltered: true }));
+      render(<WritingLogFooterDisplay projectId="p1" />);
+      expect(await screen.findByText("Today: 420 / 1000")).toBeTruthy();
+      expect(screen.getByText("Counting selected documents")).toBeTruthy();
+      expect(
+        screen.queryByText("No documents match your goal filter"),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+      const dialog = await screen.findByRole("dialog");
+      await within(dialog).findByText("Net: 420");
+      expect(
+        within(dialog).getByText("Counting selected documents"),
+      ).toBeTruthy();
+    });
+
+    it("no-match filter shows 0, the label and the no-match line in both", async () => {
+      mocked.mockResolvedValue(
+        aggregate({
+          isFiltered: true,
+          hasNoMatch: true,
+          totals: { added: 0, deleted: 0, net: 0 },
+        }),
+      );
+      render(<WritingLogFooterDisplay projectId="p1" />);
+      expect(await screen.findByText("Today: 0 / 1000")).toBeTruthy();
+      expect(screen.getByText("Counting selected documents")).toBeTruthy();
+      expect(
+        screen.getByText("No documents match your goal filter"),
+      ).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+      const dialog = await screen.findByRole("dialog");
+      await within(dialog).findByText("Net: 0");
+      expect(
+        within(dialog).getByText("Counting selected documents"),
+      ).toBeTruthy();
+      expect(
+        within(dialog).getByText("No documents match your goal filter"),
+      ).toBeTruthy();
+    });
+
+    it("a failure shows unavailable and no number or filtered label in both", async () => {
+      mocked.mockRejectedValue(new Error("filtered figure not computable"));
+      render(<WritingLogFooterDisplay projectId="p1" />);
+      expect(
+        await screen.findByText("Today's count is unavailable"),
+      ).toBeTruthy();
+      expect(screen.queryByText(/Today: \d/)).toBeNull();
+      expect(screen.queryByText("Counting selected documents")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+      const dialog = await screen.findByRole("dialog");
+      await within(dialog).findByText("Today's count is unavailable");
+      expect(within(dialog).queryByText(/Net:/)).toBeNull();
+      expect(within(dialog).queryByText(/Imported/)).toBeNull();
+    });
+
+    it("keeps the unfiltered import total and unfiltered strings", async () => {
+      mocked.mockResolvedValue(
+        aggregate({
+          isFiltered: true,
+          totals: { added: 10, deleted: 0, net: 10 },
+          imported: { added: 777, deleted: 0, net: 777 },
+        }),
+      );
+      render(<WritingLogFooterDisplay projectId="p1" />);
+      await screen.findByText("Today: 10 / 1000");
+      fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        await within(dialog).findByText(
+          "Imported (not counted toward goal): 777",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("unfiltered aggregate shows no filter text and no red", async () => {
+      mocked.mockResolvedValue(aggregate());
+      const { container } = render(<WritingLogFooterDisplay projectId="p1" />);
+      await screen.findByText("Today: 420 / 1000");
+      expect(screen.queryByText("Counting selected documents")).toBeNull();
+      expect(
+        screen.queryByText("No documents match your goal filter"),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Today's writing" }));
+      await screen.findByRole("dialog");
+      expect(document.body.innerHTML).not.toMatch(/red/i);
+      expect(container.innerHTML).not.toMatch(/red/i);
+    });
+
+    it("filtered and incomplete shows both markers", async () => {
+      mocked.mockResolvedValue(
+        aggregate({ isFiltered: true, incomplete: true }),
+      );
+      render(<WritingLogFooterDisplay projectId="p1" />);
+      await screen.findByText("Counting selected documents");
+      expect(screen.getByText(/today's count may be incomplete/i)).toBeTruthy();
+    });
+  });
 });

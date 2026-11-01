@@ -109,6 +109,10 @@ export default function WritingLogDetailsDialog({
               </span>
             </>
           )}
+          {aggregate?.isFiltered && <span>Counting selected documents</span>}
+          {aggregate?.isFiltered && aggregate.hasNoMatch && (
+            <span>No documents match your goal filter</span>
+          )}
           {isIncomplete && <span>Today&apos;s count may be incomplete</span>}
         </div>
         <p className="mt-3 text-gw-small text-gw-secondary">
