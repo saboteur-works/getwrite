@@ -70,7 +70,9 @@ With a filter set, `aggregateForRoot` (`writing-log-core.ts`) evaluates membersh
 
 Data written by an older release: the effect of a `documentId` key on an older build has not been measured. Reading the schema code suggests an older build, whose entry schemas are `.strict()`, would reject a day file holding such an entry, but that is a reading, not a run. The experiment (FR-38, Task 19) is still to be recorded in `specs/features/writing-goal-filter/experiments.md`.
 
-Footer and details dialog under a filter (Tasks 23 and 24 of the feature) are specified but not yet implemented. The specified text is "Counting selected documents" with the figure, "No documents match your goal filter" on a no-match, the existing "Today's count is unavailable" when the read fails, and the existing "Today's count may be incomplete" when `incomplete` is set. The imported line stays and shows the unfiltered import total.
+Footer and details dialog under a filter (Tasks 23 and 24 of the feature): when the aggregate has `isFiltered`, both `WritingLogFooterDisplay.tsx` and `WritingLogDetailsDialog.tsx` show "Counting selected documents" beside the figure, and "No documents match your goal filter" when `hasNoMatch` is set. The existing "Today's count is unavailable" (failed read) and "Today's count may be incomplete" (`incomplete`) are unchanged, and the imported line stays and shows the unfiltered import total.
+
+The footer re-reads on the goal-change signal (`notifyWritingLogGoalChanged`). With a filter set, it is raised by saving or clearing the filter in Project Settings, and by `app/(app)/page.tsx` after a resolved metadata field save (the `updateSidecar` call there), only while `config.goalFilter` is set. Known limitation: the other sidecar saves call `updateSidecar` without the signal (`SubtypeSection.tsx`, `EntitySection.tsx`, `RemoveEntityControl.tsx`, `WordCountGoalSection.tsx`), so a change made through one of them that alters which documents the filter matches is not reflected in the footer until its next read.
 
 Daily goal
 
