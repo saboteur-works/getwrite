@@ -4,7 +4,7 @@ Source spec: `specs/features/writing-goal-filter.md`. Granularity: story points 
 
 Conventions for every task: no `any`; boolean names take an `is`, `has`, `should`, `can`, `did` or `will` prefix; one module per concern; tests are written first where practical; a new component, prop or context gets Storybook coverage per `docs/standards/storybook-implementation.md` (a new context requirement also needs a Storybook decorator, or `pnpm test:e2e` fails). Handbook pages under `docs/user/handbook/` are not part of this feature. Tasks that name the same file are chained by dependency and must not run concurrently. `next build` and `build:native` work only in the main checkout, not in worktrees; any task that needs a build or `pnpm test:e2e` runs in the main checkout. Config key name used throughout: `goalFilter`.
 
-Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. Release checks and final suites are Tasks 25 to 29.
+Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. Release checks and final suites are Tasks 25 to 30; Task 29 (added at Gate 5) extends Task 24.
 
 ### Task 1: Goal filter validation module and shared bounds (FR-2, FR-41)
 **What:** Add one module that validates a goal filter AST: schema, no `ref` or `param` node, at least one complete condition, depth 4 and 50 condition nodes from one shared constant, and no clock-dependent condition.
@@ -160,8 +160,8 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Done:** [x]
 
 ### Task 18: Write `documentId` on canonical saves and skipped-save markers (FR-24)
-**What:** Pass the saved resource's id into `logCanonicalSave` so every new word entry, filtered or not, and every marker whose document is known carries `documentId`.
-**Files:** frontend/src/lib/models/revision-core.ts (`logCanonicalSave` :388-416, call in `updateRevisionInPlaceLocked` :507), existing revision-core tests
+**What:** Pass the saved resource's id into `logCanonicalSave` so every new word entry, filtered or not, and every marker whose document is known carries `documentId`. Add an optional `documentId` to both `WritingLogEntryInput` variants in `writing-log.ts`; `buildEntry` writes it only when present, and import entries carry none.
+**Files:** frontend/src/lib/models/revision-core.ts (`logCanonicalSave` :388-416, call in `updateRevisionInPlaceLocked` :507), frontend/src/lib/models/writing-log.ts, existing revision-core tests
 **Done when:** tests written first pass and confirm: a canonical save writes an entry whose `documentId` equals the resource id; a skipped save writes a marker with the `documentId`; a non-canonical save appends none; importers still write entries with no `documentId`; existing content-loss and writing-log tests pass unmodified; `pnpm typecheck` clean.
 **Depends on:** 17
 **Estimate:** 3
@@ -174,7 +174,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Done when:** `experiments.md` records, for the installed `/Applications/GetWrite.app` (2.2.0) and for a 2.3.0 build taken from the release, the exact steps, the day file used, what the log showed, whether a canonical save still stored the writer's text, and a verdict on whether the effect is limited to that UTC day's log (unavailable or failed log entries for that day) and the text still saves; no other record is needed. If the effect is worse than limited, the task halts and the result goes to the owner, with the tolerant-reader-a-release-earlier fallback named.
 **Depends on:** 18
 **Estimate:** 3
-**Notes:** Requirements: FR-38. Owner needed to launch the installed apps (opening apps is blocked in the sandbox). Use throwaway folders only; never `~/Documents/GetWrite` or `~/Library/Application Support/getwrite-electron/`; point each build at a throwaway workspace and user-data folder. State in the record which parts were measured and which are inferred; name no cause that the run did not discriminate. This task must be complete before any release that writes `documentId`.
+**Notes:** Requirements: FR-38. The lead runs Task 19 first, using a local packaged build of main as the 2.3.0 stand-in (`git diff getwrite-v2.3.0 main -- frontend/src/lib/models/schemas.ts frontend/src/lib/models/writing-log.ts` prints nothing, so the two read the log identically), with throwaway folders. The installed 2.2.0 is attempted; if the tooling can't drive it, it goes to the owner (opening apps is blocked in the sandbox). Use throwaway folders only; never `~/Documents/GetWrite` or `~/Library/Application Support/getwrite-electron/`; point each build at a throwaway workspace and user-data folder. State in the record which parts were measured and which are inferred; name no cause that the run did not discriminate. This task must be complete before any release that writes `documentId`.
 **Done:** [ ]
 
 ### Task 20: Filtered daily figure in the aggregate core (FR-25, FR-26, FR-27, FR-28, FR-31)
@@ -255,20 +255,29 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Done when:** `experiments.md` has a table with, for each of (a) filtered total and (b) filtered daily read and each of web, desktop and native: the project size, wall time, files read and memory, with the method; typing and autosave are shown not to block while a read runs; no cache or index is added by this task.
 **Depends on:** 16, 19, 24
 **Estimate:** 5
-**Notes:** Requirements: FR-39. The native device part needs the owner (Pixel 7 Pro and adb, which fail inside the sandbox; retry outside). Record what was not measured instead of estimating it. Use a generated large project in a throwaway folder. Depends on Task 19 only because both write `experiments.md`. Do not name a cause for any slow figure without an experiment that discriminates it.
+**Notes:** Requirements: FR-39. The lead runs Task 28's web and desktop parts; the native part remains the owner's (Pixel 7 Pro and adb, which fail inside the sandbox; retry outside). Record what was not measured instead of estimating it. Use a generated large project in a throwaway folder. Depends on Task 19 only because both write `experiments.md`. Do not name a cause for any slow figure without an experiment that discriminates it.
 **Done:** [ ]
 
-### Task 29: Final suites (all requirements)
+### Task 29: Footer re-reads after every sidecar save under a filter (FR-33)
+**What:** Make every resolved `updateSidecar` call, not only the page's metadata field save from Task 24, call `notifyWritingLogGoalChanged` while a filter is set. `SubtypeSection`, `EntitySection`, `RemoveEntityControl` and `WordCountGoalSection` call `updateSidecar` without the signal; a search for other `updateSidecar` callers finds the rest.
+**Files:** the module that defines `updateSidecar` or its client wrapper (found by search), `frontend/components/` callers `SubtypeSection`, `EntitySection`, `RemoveEntityControl`, `WordCountGoalSection` and any other caller the search finds, tests beside each
+**Done when:** tests written first pass and confirm: a resolved save through each of those paths, plus any other `updateSidecar` caller a search finds, calls `notifyWritingLogGoalChanged` when a filter is set, does not when none is set, and a rejected save does not.
+**Depends on:** 24
+**Estimate:** 2
+**Notes:** Requirements: FR-33. Prefer one shared place (the `updateSidecar` wrapper, or a single helper every caller uses) over repeating the call per call site, if the code allows; state the choice in a code comment and in the pull request text. If the filter-set state is not reachable from that place, say so and fall back to a shared helper taking the flag. Task 24's call site must keep working and not signal twice.
+**Done:** [ ]
+
+### Task 30: Final suites (all requirements)
 **What:** Run the full checks from `frontend/` and the electron tests and record the results.
 **Files:** none (fixes go to the owning files)
 **Done when:** `pnpm typecheck`, `pnpm lint`, `pnpm test:ci` and `pnpm test:e2e` all exit 0 from `frontend/`, the electron package tests exit 0, and `pnpm knip` from the repo root reports no new unused export from this feature; the exit codes are recorded in the pull request text.
-**Depends on:** 14, 16, 19, 25, 27, 28
+**Depends on:** 14, 16, 19, 25, 27, 28, 29
 **Estimate:** 2
 **Notes:** Run in the main checkout, not a worktree (builds only work there). Stop `pnpm storybook` before `pnpm test:e2e`, which builds and serves Storybook itself on :6006; e2e may need running outside the sandbox. A missing Storybook decorator for a new context shows up here. Requirement coverage check: every FR-1 to FR-42 appears in at least one task above.
 **Done:** [ ]
 
 ## Summary
-- Total tasks: 29
-- Total estimated effort: 90 story points
-- Critical path: 3 → 5 → 20 → 21 → 22 → 23 → 24 → 26 → 27 → 29
+- Total tasks: 30
+- Total estimated effort: 92 story points
+- Critical path: 3 → 5 → 20 → 21 → 22 → 23 → 24 → 26 → 27 → 30
 - Risks: Task 19 (FR-38) can halt the Phase 2 release for the owner and needs a person to run installed apps; Task 18 touches the primary save path; Task 13 (FR-42) may find no defect or need a change in a shared dialog primitive; Task 10 assumes the chip bridge can be wrapped without edits; Tasks 19, 27 and 28 (native part) need the owner; Task 28 may show a cost that needs a cache, which is outside this feature; Tasks 2, 7, 8 and 22 all edit `src/lib/api/schemas.ts` and Tasks 12 and 16 both edit `AppShell.tsx`, so they are chained and cannot run in parallel; builds and e2e run only in the main checkout.
