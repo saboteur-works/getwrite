@@ -8,6 +8,79 @@ import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
 import StatusRollup from "./StatusRollup";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
+import {
+  useFilteredGoalTotal,
+  type FilteredGoalTotal,
+} from "../../src/hooks/useFilteredGoalTotal";
+
+const GOAL_FILTER_LABEL = "Counting selected documents";
+const GOAL_FILTER_NO_MATCH = "No documents match your goal filter";
+const GOAL_TOTAL_UNAVAILABLE = "Total word count is unavailable";
+
+const LOADING_TOTAL: FilteredGoalTotal = {
+  state: { status: "loading" },
+  isFiltered: true,
+  isLoading: true,
+  isNoMatch: false,
+  isUnavailable: false,
+};
+
+/**
+ * Wraps `useFilteredGoalTotal` so a figure read for an earlier filter (or
+ * project) is never shown. When the filter turns on, or the project changes
+ * while it is on, the first render reports `loading` instead of the hook's
+ * previous result (the hook resets to loading only in its effect).
+ */
+export function useDataViewFilteredTotal(
+  projectId: string,
+  isFilterSet: boolean,
+): FilteredGoalTotal {
+  const total = useFilteredGoalTotal(projectId, isFilterSet);
+  const readKey = isFilterSet ? projectId : null;
+  const lastReadKeyRef = React.useRef<string | null>(readKey);
+  const isNewRead = readKey !== null && readKey !== lastReadKeyRef.current;
+  React.useEffect(() => {
+    lastReadKeyRef.current = readKey;
+  });
+  return isNewRead ? LOADING_TOTAL : total;
+}
+
+function FilteredGoalBar({
+  filteredGoalTotal,
+  goal,
+}: {
+  filteredGoalTotal: FilteredGoalTotal;
+  goal: number;
+}): JSX.Element {
+  if (filteredGoalTotal.isUnavailable) {
+    return (
+      <p role="alert" className="font-mono text-[10px] text-gw-secondary">
+        {GOAL_TOTAL_UNAVAILABLE}
+      </p>
+    );
+  }
+  const { state } = filteredGoalTotal;
+  if (state.status !== "total" && state.status !== "no-match") {
+    return (
+      <p role="status" className="font-mono text-[10px] text-gw-secondary">
+        Loading word count…
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      <p className="font-mono text-[10px] text-gw-secondary">
+        {GOAL_FILTER_LABEL}
+      </p>
+      <WordCountProgressBar current={state.total} goal={goal} />
+      {filteredGoalTotal.isNoMatch ? (
+        <p role="status" className="font-mono text-[10px] text-gw-secondary">
+          {GOAL_FILTER_NO_MATCH}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 const STUB_WORD_THRESHOLD = 50;
 
@@ -50,6 +123,12 @@ export interface DataViewProps {
   onResourceClick?: (id: string) => void;
   /** When true, shows an evaluating banner above the resource list. */
   isEvaluating?: boolean;
+  /**
+   * Filtered goal total (Feature 98). When `isFiltered`, the Writing Goal
+   * section shows it instead of the total of `resources`; every other figure
+   * is unchanged. Omit, or pass a not-filtered state, for the current behaviour.
+   */
+  filteredGoalTotal?: FilteredGoalTotal;
   className?: string;
 }
 
@@ -71,6 +150,7 @@ export default function DataView({
   onSelectFolder,
   onResourceClick,
   isEvaluating = false,
+  filteredGoalTotal,
   className = "",
 }: DataViewProps): JSX.Element {
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
@@ -192,7 +272,14 @@ export default function DataView({
 
       {wordCountGoal && wordCountGoal > 0 ? (
         <CollapsibleSection title="Writing Goal">
-          <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
+          {filteredGoalTotal?.isFiltered ? (
+            <FilteredGoalBar
+              filteredGoalTotal={filteredGoalTotal}
+              goal={wordCountGoal}
+            />
+          ) : (
+            <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
+          )}
         </CollapsibleSection>
       ) : null}
 

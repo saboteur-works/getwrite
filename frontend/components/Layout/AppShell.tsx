@@ -60,7 +60,7 @@ import EditView from "../WorkArea/EditView";
 import MediaView from "../WorkArea/Media/MediaView";
 import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
-import DataView from "../WorkArea/DataView";
+import DataView, { useDataViewFilteredTotal } from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
@@ -325,6 +325,12 @@ export default function AppShell({
   const projectStatuses = useAppSelector(
     selectActiveProjectStatuses,
     shallowEqual,
+  );
+  // Filtered writing-goal total for the Data view; reads nothing when no
+  // `config.goalFilter` is set and never touches the smart-folder query state.
+  const filteredGoalTotal = useDataViewFilteredTotal(
+    project?.id ?? "",
+    Boolean(project?.id && project.config?.goalFilter),
   );
   // The project's tags (`config.tags`) for the Tags chip's value box. Read
   // through the existing tags transport (no new route) as soon as a project is
@@ -1504,6 +1510,7 @@ export default function AppShell({
                                     statusRollupResources={liveResources}
                                     statuses={projectStatuses}
                                     project={project ?? undefined}
+                                    filteredGoalTotal={filteredGoalTotal}
                                     folders={liveFolders}
                                     isEvaluating={
                                       activeSmartFolderId
