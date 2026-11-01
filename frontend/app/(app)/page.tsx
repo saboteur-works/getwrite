@@ -72,6 +72,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
 import { toastService } from "../../src/lib/toast-service";
+import { notifyWritingLogGoalChanged } from "../../src/lib/writing-log-signal";
 import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import { exportMarkdown, exportText } from "../../src/lib/api/export";
@@ -569,21 +570,28 @@ export default function Home(): JSX.Element {
 
     if (activeProjectDirectoryId) {
       const sent = applyUpdate(resource);
-      updateSidecar(resourceId, activeProjectDirectoryId, sent).catch((err) => {
-        // The resource was moved to Trash while this save was in flight; the
-        // server refused it rather than bring the resource back
-        // (note_131ecc62). The writer deleted it, so nothing is reported.
-        if (err instanceof ResourceGoneError) return;
-        console.error("Error updating resource metadata:", err);
-        // The change is already on screen; a failed save used to leave it
-        // there with no message, and it was gone after a reload (measured,
-        // note_13ae633c). Put back the keys this edit changed and say so.
-        revertUnsavedChange(resourceId, resource, sent);
-        toastService.error(
-          "Change not saved",
-          `Your change to \u201C${resource.name}\u201D could not be saved and was undone. Try again.`,
-        );
-      });
+      const hasGoalFilter = Boolean(selectedProject.config?.goalFilter);
+      updateSidecar(resourceId, activeProjectDirectoryId, sent)
+        .then(() => {
+          // FR-33: a field edit can change which documents the goal filter
+          // counts, so the footer re-reads, but only while a filter is set.
+          if (hasGoalFilter) notifyWritingLogGoalChanged();
+        })
+        .catch((err) => {
+          // The resource was moved to Trash while this save was in flight; the
+          // server refused it rather than bring the resource back
+          // (note_131ecc62). The writer deleted it, so nothing is reported.
+          if (err instanceof ResourceGoneError) return;
+          console.error("Error updating resource metadata:", err);
+          // The change is already on screen; a failed save used to leave it
+          // there with no message, and it was gone after a reload (measured,
+          // note_13ae633c). Put back the keys this edit changed and say so.
+          revertUnsavedChange(resourceId, resource, sent);
+          toastService.error(
+            "Change not saved",
+            `Your change to \u201C${resource.name}\u201D could not be saved and was undone. Try again.`,
+          );
+        });
     } else {
       console.error(
         "updateResource: no active project directory id; sidecar not persisted",

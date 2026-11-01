@@ -16,6 +16,7 @@ vi.mock("../../src/lib/api/writing-log", () => ({
 import { getTodayWritingLog } from "../../src/lib/api/writing-log";
 import WritingLogFooterDisplay from "../../components/WorkArea/WritingLogFooterDisplay";
 import {
+  notifyWritingLogGoalChanged,
   reportWritingLogSignal,
   resetWritingLogSessionIncomplete,
 } from "../../src/lib/writing-log-signal";
@@ -229,6 +230,19 @@ describe("WritingLogFooterDisplay", () => {
     mocked.mockClear();
     render(<WritingLogFooterDisplay projectId={null} />);
     expect(mocked).not.toHaveBeenCalled();
+  });
+
+  it("re-reads when the goal-changed signal fires (filter saved or cleared)", async () => {
+    mocked.mockResolvedValue(aggregate());
+    render(<WritingLogFooterDisplay projectId="p1" />);
+    await screen.findByText("Today: 420 / 1000");
+    expect(mocked).toHaveBeenCalledTimes(1);
+    mocked.mockResolvedValue(
+      aggregate({ totals: { added: 9, deleted: 0, net: 9 } }),
+    );
+    act(() => notifyWritingLogGoalChanged());
+    await screen.findByText("Today: 9 / 1000");
+    expect(mocked).toHaveBeenCalledTimes(2);
   });
 
   describe("goal filter states (Feature 98)", () => {
