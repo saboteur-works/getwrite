@@ -1,0 +1,6 @@
+CLI project types, variable unset: exit 0; stdout ["Saved project types were not included: GETWRITE_SAVED_PROJECT_TYPES_DIR is not set. Export it to the saved project types folder to include them."]; stderr [""]
+CLI project types, variable set to the folder: exit 0; stdout ["my_type\tMy Type\tsaved","Skipped saved project type file bad_type.json (invalid)."]; stderr [""]
+CLI project create --project-type bad_type (variable set): exit 2; stdout [""]; stderr ["Unknown project type \"bad_type\". Available project type ids: my_type.","Skipped saved project type file bad_type.json (invalid)."]
+CLI project create -t my_type (variable set): exit 0; stdout ["Created project at: /private/tmp/getwrite-handbook/g1-cli-mvwvuy4d-49b3ca/projects/mine2","Folders: 1, Resources: 0"]; stderr [""]
+CLI project create -t my_type (variable unset): exit 2; stdout [""]; stderr ["Unknown project type \"my_type\". Available project type ids: (none).","Saved project types were not included: GETWRITE_SAVED_PROJECT_TYPES_DIR is not set. Export it to the saved project types folder to include them."]
+removed: true

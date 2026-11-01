@@ -1,0 +1,46 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 43994 port 62845 (throwaway projects dir; templates throwaway copy)
+M list: ["Articlearticle_project_type.jsonBuilt-in","Blankblank_project_type.jsonBuilt-in","Game Writinggame_documentation.jsonBuilt-in","Novelnovel_project_type.jsonBuilt-in","Poetry and Lyricspoetry_and_lyrics_type.jsonBuilt-in","Serialserial_project_type.jsonBuilt-in"]
+M built-in Article buttons: ["Save as copy"]
+M-copy STEP ERROR locator.fill: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').first().getByLabel('Description', { exact: true }).first()[22m
+M list after copy: ["Articlearticle_project_type.jsonBuilt-in","Blankblank_project_type.jsonBuilt-in","Game Writinggame_documentation.jsonBuilt-in","Novelnovel_project_type.jsonBuilt-in","Poetry and Lyricspoetry_and_lyrics_type.jsonBuilt-in","Serialserial_project_type.jsonBuilt-in","Save as copy"]
+M buttons on the saved copy: ["Save as copy"]
+M id field on the saved copy: readOnly=true disabled=false
+M-saved-buttons STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').first().getByRole('button', { name: 'Save', exact: true }).first()[22m
+M-delete STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').first().getByRole('button', { name: 'Delete', exact: true }).first()[22m
+M new draft buttons: ["Save"]; id editable=true
+M new draft Save: new lines ["Saved “ZZ Type”.","zz_type.json","Saved","Saved","SAVE AS COPY","DELETE"]; files ["zz_type.json"]
+M id after first save: editable=false readOnly=true
+M refuse [clash id]: new lines ["Novel (built-in) already uses this id."]; file written: []
+M refuse [clash name]: new lines ["Novel (built-in) already uses this name."]; file written: []
+M refuse [blank name]: new lines ["Name must not be blank."]; file written: []
+M refuse [blank status]: new lines ["Status label must not be blank."]; file written: []
+M refuse [dup status]: new lines ["Duplicate status label."]; file written: []
+M refuse [blank folder]: new lines ["Folder name must not be blank."]; file written: []
+M refuse [blank subfolder]: new lines ["Subfolder name must not be blank."]; file written: []
+M refuse [blank parent]: new lines ["Saved “T blank parent”.","t_blank_parent.json","SAVE AS COPY","DELETE"]; file written: ["t_blank_parent.json"]
+M refuse [similar siblings]: new lines ["Folder name “Chapter 1!” is too similar to “Chapter 1”."]; file written: []
+M refuse [similar subfolders]: new lines ["Subfolder name “part-1” is too similar to “Part 1”."]; file written: []
+M refuse [blank starter doc]: new lines ["Starter document name must not be blank."]; file written: []
+M refuse [id blank]: new lines ["ID must not be blank."]; file written: []
+M refuse [id chars]: new lines ["ID can use only lowercase letters, numbers, hyphens (-) and underscores (_)."]; file written: []
+M refuse [id long]: new lines ["ID must be 64 characters or fewer."]; file written: []
+M refuse [goal negative]: new lines ["Word count goal must be a whole number of 0 or more."]; file written: []
+M refuse [goal fraction]: new lines ["Saved “T goal fraction”.","t_goal_fraction.json","SAVE AS COPY","DELETE"]; file written: ["t_goal_fraction.json"]
+M refuse [no folders]: new lines ["Add at least one folder. A new project needs a folder to hold its documents."]; file written: []
+M refuse [two docs same name]: new lines ["Saved “T two docs same name”.","t_two_docs_same_name.json","SAVE AS COPY","DELETE"]; file written: ["t_two_docs_same_name.json"]
+M refuse [trim]: new lines ["Saved “Spaced Type”.","trim_type.json","SAVE AS COPY","DELETE"]; file written: ["trim_type.json"]
+M trim saved: name="Spaced Type" folders=[{"name":"Workspace"}]
+M Add Resource lines (Folder left empty): ["FOLDER","Leave empty to use the first folder.","TYPE","text","image","audio","TEMPLATE","REMOVE RESOURCE"]
+M save with empty starter Folder: ["Saved “Empty Folder Doc”.","empty_folder_doc.json","SAVE AS COPY","DELETE"]; files ["empty_folder_doc.json","t_blank_parent.json","t_goal_fraction.json","t_two_docs_same_name.json","trim_type.json","zz_type.json"]
+M-unsaved STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').first().getByRole('button', { name: 'Close', exact: true })[22m
+M-unsaved-refused STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').first().getByRole('button', { name: 'New Project Type', exact: true }).first()[22m
+M create dialog type options: ["Article — Short-form article project type with drafts and references.","Blank — Minimal project type with only a Workspace folder.","Game Writing — Project type optimized for game writing (video game or tabletop RPG). Includes folders for lore, characters, quests, and dialogue.","Novel — Project type optimized for long-form fiction. Includes drafts, research, and assets.","Poetry and Lyrics — Project type optimized for poetry and song lyrics. Includes drafts, research, and assets.","Serial — Serialized fiction project type for episodes or installments.","Empty Folder Doc (Saved)","T blank parent (Saved)","T goal fraction (Saved)","T two docs same name (Saved)","Spaced Type (Saved)","ZZ Type (Saved)"]
+M project from saved type "Empty Folder Doc": tree ["[folder] Workspace","  [resource] Starter","[folder] Second"]
+M one unusable file: ["1 saved project type file could not be used."]; list []
+M two unusable files: ["2 saved project type files could not be used."]
+M saved-types folder unreadable: ["Saved project types could not be read."]
+M built-in templates unchanged at end: true
+stop: recorded 43994(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

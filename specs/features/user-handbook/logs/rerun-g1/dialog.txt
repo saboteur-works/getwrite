@@ -1,0 +1,7 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 99869 port 52414 (throwaway projects dir; templates repo read-only)
+Create Resource button STEP ERROR locator.click: Timeout 30000ms exceeded.
+Workspace options > Create: dialog [["New resource","TITLE","TYPE","Document","Image","Audio","Folder","PARENT FOLDER","Workspace","CANCEL","CREATE"]]; selects [["Document","Image","Audio","Folder"]]
+stop: recorded 99869(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

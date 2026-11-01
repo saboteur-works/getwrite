@@ -1,0 +1,27 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 4047 port 64209 (throwaway projects dir; templates throwaway copy)
+TYPE Article outline: ["[folder] Workspace","  [folder] Articles","    [folder] Article 1","  [resource] Article Outline","[folder] References","  [folder] Fact Checking","[folder] Sources","  [folder] Interviews & Transcripts","[folder] Ideas"]
+TYPE Article recent files: ["RECENT FILES","1 shown","Article Outline","text","Created just now","METADATA"]
+TYPE Blank outline: ["[folder] Workspace"]
+TYPE Blank recent files: ["RECENT FILES","0 shown","No files yet. Use Create Resource to add your first text, image, or audio item.","METADATA"]
+TYPE Game Writing outline: ["[folder] Workspace","  [folder] Lore","    [folder] Factions","    [folder] History","    [folder] Geography & Worldbuilding","    [folder] Characters","  [folder] Quests & Story Arcs","  [folder] Dialogue & Scripts","[folder] Research","[folder] Notes"]
+TYPE Game Writing recent files: ["RECENT FILES","0 shown","No files yet. Use Create Resource to add your first text, image, or audio item.","METADATA"]
+TYPE Novel outline: ["[folder] Workspace","  [folder] Front Matter","  [folder] Prologue","  [folder] Chapters","    [folder] Chapter 1","      [resource] Scene 1","  [folder] Epilogue","[folder] Story Elements","  [folder] Characters","    [resource] Character Profile","  [folder] Items","    [resource] Item Profile","  [folder] Locations","    [resource] Location Profile","[folder] Outline","[folder] Notes"]
+TYPE Novel recent files: ["RECENT FILES","4 shown","Location Profile","text","Created just now","Item Profile","text","Created just now","Character Profile","text","Created just now","Scene 1","text","Created just now","METADATA"]
+TYPE Poetry and Lyrics outline: ["[folder] Workspace","[folder] Inspiration","  [folder] Phrases & Fragments","  [folder] Influences","[folder] Experiments"]
+TYPE Poetry and Lyrics recent files: ["RECENT FILES","0 shown","No files yet. Use Create Resource to add your first text, image, or audio item.","METADATA"]
+TYPE Serial outline: ["[folder] Workspace","  [folder] Parts","    [folder] Part 1","      [resource] Scene 1","[folder] Story Elements","  [folder] Characters","  [folder] Items","  [folder] Locations","[folder] Outline","[folder] Notes"]
+TYPE Serial recent files: ["RECENT FILES","1 shown","Scene 1","text","Created just now","METADATA"]
+P-12 gear menu items on Start Page: ["User Preferences","App Settings","Project Type Manager","Help"]
+P-12 manager header and list: ["Project Type Management","TEMPLATES","article_project_type.json","blank_project_type.json","game_documentation.json","novel_project_type.json","poetry_and_lyrics_type.json","serial_project_type.json","NEW PROJECT TYPE"]
+P-12 buttons: ["Close","Articlearticle_project_type.jsonBuilt-in","Blankblank_project_type.jsonBuilt-in","Game Writinggame_documentation.jsonBuilt","Novelnovel_project_type.jsonBuilt-in","Poetry and Lyricspoetry_and_lyrics_type.","Serialserial_project_type.jsonBuilt-in","New Project Type","Save as copy","Add Status","Remove","Remove","Remove","Remove","Add Folder","Remove","Remove","Remove","Remove","Add Default Folder","Remove","Remove","Remove","Remove","Add Resource","Remove Resource"]
+P-14 STEP ERROR page.click: Timeout 30000ms exceeded.
+P-13 after filling new type: list ["ZZ Test Type","new draft","UNSAVED CHANGES"]
+P-15 default folder / default resource controls present: ["Add Status","Add Folder","Add Default Folder","Add Resource"]
+P-15 after clicking Add Default Folder and Add Resource: remove buttons 3
+P-14/16 template files changed on disk (throwaway copy): []; files now ["article_project_type.json","blank_project_type.json","game_documentation.json","novel_project_type.json","poetry_and_lyrics_type.json","project-type.schema.json","serial_project_type.json"]
+P-14/16 persistence STEP ERROR page.click: Timeout 30000ms exceeded.
+P-16 files still on disk: ["article_project_type.json","blank_project_type.json","game_documentation.json","novel_project_type.json","poetry_and_lyrics_type.json","project-type.schema.json","serial_project_type.json"]
+stop: recorded 4047(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

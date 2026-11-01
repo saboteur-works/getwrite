@@ -43,6 +43,17 @@ export async function startWeb(run, opts = {}) {
     assertThrowaway(copy);
     templatesDir = copy;
   }
+  // Handbook re-run addition: opts.savedTypes gives the server a throwaway
+  // GETWRITE_SAVED_PROJECT_TYPES_DIR under the run folder; without it the
+  // variable is unset, as in a plain `pnpm start`.
+  delete env.GETWRITE_SAVED_PROJECT_TYPES_DIR;
+  let savedTypesDir = null;
+  if (opts.savedTypes) {
+    savedTypesDir = path.join(run.dir, "saved-types");
+    mkdirSync(savedTypesDir);
+    assertThrowaway(savedTypesDir);
+    env.GETWRITE_SAVED_PROJECT_TYPES_DIR = savedTypesDir;
+  }
   Object.assign(env, {
     PORT: String(port),
     HOSTNAME: "127.0.0.1",
@@ -58,7 +69,7 @@ export async function startWeb(run, opts = {}) {
   }
   const rec = new Recorder();
   rec.add(child.pid, "node");
-  const handle = { port, pid: child.pid, child, rec, projectsDir, templatesDir, serverLog, baseUrl: `http://127.0.0.1:${port}`, run, portsBefore: pre };
+  const handle = { port, pid: child.pid, child, rec, projectsDir, templatesDir, savedTypesDir, serverLog, baseUrl: `http://127.0.0.1:${port}`, run, portsBefore: pre };
   for (let i = 0; i < 300; i++) {
     if (child.exitCode !== null) {
       await stopWeb(handle);

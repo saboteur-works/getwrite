@@ -1,0 +1,11 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 76139 port 59717 (throwaway projects dir; templates repo read-only)
+T-order run 1: created Doc One, Picture, Tone; before reload: ["[folder] Workspace","  [resource] Doc One","  [resource] Picture","  [resource] Tone"]
+T-order run 1: after reload: ["[folder] Workspace","  [resource] Tone","  [resource] Doc One","  [resource] Picture"]
+T-order run 2: created Doc One, Picture, Tone; before reload: ["[folder] Workspace","  [resource] Doc One","  [resource] Picture","  [resource] Tone"]
+T-order run 2: after reload: ["[folder] Workspace","  [resource] Tone","  [resource] Picture","  [resource] Doc One"]
+T-order run 3: created Doc One, Picture, Tone; before reload: ["[folder] Workspace","  [resource] Doc One","  [resource] Picture","  [resource] Tone"]
+T-order run 3: after reload: ["[folder] Workspace","  [resource] Picture","  [resource] Tone","  [resource] Doc One"]
+stop: recorded 76139(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

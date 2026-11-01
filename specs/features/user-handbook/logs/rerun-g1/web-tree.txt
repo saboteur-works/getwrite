@@ -1,0 +1,17 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 52358 port 50120 (throwaway projects dir; templates repo read-only)
+T-folder run 1: rows right after creating folder "Sub 1" under Workspace (no reload, no expand): ["Workspace","Sub 1"]
+T-folder run 1: rows after expanding (no reload): ["Workspace","Sub 1"]
+T-folder run 1: rows after reload: ["Workspace","Sub 1"]
+T-folder run 2: rows right after creating folder "Sub 2" under Workspace (no reload, no expand): ["Workspace","Sub 2"]
+T-folder run 2: rows after expanding (no reload): ["Workspace","Sub 2"]
+T-folder run 2: rows after reload: ["Workspace","Sub 2"]
+T-folder run 3: rows right after creating folder "Sub 3" under Workspace (no reload, no expand): ["Workspace","Sub 3"]
+T-folder run 3: rows after expanding (no reload): ["Workspace","Sub 3"]
+T-folder run 3: rows after reload: ["Workspace","Sub 3"]
+T-order run 1 STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button:has-text(\'CREATE RESOURCE\')')[22m
+T-order run 2 STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button:has-text(\'CREATE RESOURCE\')')[22m
+T-order run 3 STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button:has-text(\'CREATE RESOURCE\')')[22m
+stop: recorded 52358(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
