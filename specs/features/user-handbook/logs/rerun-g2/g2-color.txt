@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 48820 port 51503 (throwaway projects dir; templates repo read-only)
+H1 Color control: ["color","#000000"]; sibling buttons: []
+saved: headings.h1={"fontSize":"40px","fontFamily":"IBM Plex Serif","fontWeight":"700","letterSpacing":"0.01em","color":"#123456"}
+light: [["h1","rgb(18, 52, 86)"],["h2","rgb(26, 25, 22)"],["p","rgb(26, 25, 22)"]]
+dark: [["h1","rgb(18, 52, 86)"],["h2","rgb(245, 244, 240)"],["p","rgb(245, 244, 240)"]]
+stop: recorded 48820(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

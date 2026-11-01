@@ -1,0 +1,17 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 91942 port 52451 (throwaway projects dir; templates repo read-only)
+trial 1, +500ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","Doc One","SMART FOLDERS","EDIT"]; open buttons=["Open project menu","Open project settings menu"]
+trial 1, +2500ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","Doc One","SMART FOLDERS","EDIT"]; open buttons=["Open project menu","Open project settings menu"]
+trial 1, +6000ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","Doc One","SMART FOLDERS","EDIT"]; open buttons=["Open project menu","Open project settings menu"]
+no Open button; reloading
+trial 2, +500ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER"]; open buttons=["Open project menu","Open project settings menu"]
+trial 2, +2500ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER"]; open buttons=["Open project menu","Open project settings menu"]
+trial 2, +6000ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER"]; open buttons=["Open project menu","Open project settings menu"]
+no Open button; reloading
+trial 3, +500ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER"]; open buttons=["Open project menu","Open project settings menu"]
+trial 3, +2500ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER"]; open buttons=["Open project menu","Open project settings menu"]
+trial 3, +6000ms: url=/; dialogs=1; first lines=["Get","Write","Close Test","RESOURCES","Workspace","SMART FOLDERS","EDIT","ORGANIZER"]; open buttons=["Open project menu","Open project settings menu"]
+no Open button; reloading
+stop: recorded 91942(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

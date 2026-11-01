@@ -1,0 +1,39 @@
+ports before: 7340: 28446(node); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 29430 port 50973 (throwaway projects dir; templates throwaway copy)
+A-03/04/05/08 default body p style on a Blank project: {"family":"\"IBM Plex Serif\", serif","size":"15px","lh":"27px","color":"rgb(26, 25, 22)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":null,"gaps":[16,16]}
+A-03/04/05 project.json config keys: ["maxRevisions","statuses","customNoiseWords","excludedGlobalNoiseWords","autoPrune","editorConfig","metadataRevision"]; editor-related: {"editorConfig":{"headings":{"h1":{"fontSize":"40px","fontFamily":"IBM Plex Serif","fontWeight":"700","letterSpacing":"0.01em"},"h2":{"fontSize":"28px","fontFamily":"IBM Plex Serif","fontWeight":"700"},"h3":{"fontSize":"20px","fontFamily":"IBM Plex Serif","fontWeight":"500"}},"body":{"fontFamily":"IBM Plex Serif","fontSize":"15px","paragraphSpacing":"16px","lineHeight":"1.8"}}}
+A-05 toolbar Line Height field value: "1.8"
+H-01/H-04 caret in one line (no selection), clicked Heading 1..6: tags ["H1","H2","H3","H4","H5","H6"]
+H-04 editor structure: ["P:First paragraph.","P:Second paragraph.","P:Third paragraph.","H1:Heading line 1","H2:Heading line 2","H3:Heading line 3","H4:Heading line 4","H5:Heading line 5","H6:Heading line 6","P:","P:"]
+H-07..H-11 default h1 style: {"size":"40px","family":"\"IBM Plex Serif\", serif","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"}; h2: {"size":"28px","family":"\"IBM Plex Serif\", serif","weight":"700","ls":"normal","color":"rgb(26, 25, 22)","lh":"36.4px"}; h3: {"size":"20px","family":"\"IBM Plex Serif\", serif","weight":"500","ls":"normal","color":"rgb(26, 25, 22)","lh":"26px"}; h4: {"size":"17px","family":"\"IBM Plex Serif\", serif","weight":"500","ls":"normal","color":"rgb(26, 25, 22)","lh":"22.1px"}
+H-05 gear menu items: ["User Preferences","App Settings","Project Settings","Project Type Manager","Switch to dark mode","Help","Close Project"]
+H-05 Project Settings tab buttons: ["Close","Editor","Default Revision Name","Manage Tags","Metadata","Timeline","Organizer","Writing Goals","Spelling","Noise Words","Entities","Project Encryption","Add H4","Discard changes"]
+H-05 any tab/button named exactly 'Heading Styles': 0; text 'Heading Styles' occurrences in dialog: 2
+H-03/H-12 Editor tab visible text: ["Project Encryption","Heading Styles","Configure project-specific heading styles for the editor. H1 through H3 are always available, and you can add H4 through H6 as needed.","H1","Set the typography attributes applied to H1 in the editor.","FONT SIZE","FONT FAMILY","Use default","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","IBM Plex Sans","IBM Plex Sans Condensed"]
+H-07..H-11 controls (labels, default values): ["INPUT:H1 Font Size=40|ph=e.g. 32","SELECT:H1 Font Family=IBM Plex Serif","SELECT:H1 Font Weight=700","INPUT:H1 Letter Spacing=0.01|ph=e.g. 0.08","INPUT:H1 Color=#000000","INPUT:H2 Font Size=28|ph=e.g. 32","SELECT:H2 Font Family=IBM Plex Serif","SELECT:H2 Font Weight=700","INPUT:H2 Letter Spacing=|ph=e.g. 0.08","INPUT:H2 Color=#000000","INPUT:H3 Font Size=20|ph=e.g. 32","SELECT:H3 Font Family=IBM Plex Serif","SELECT:H3 Font Weight=500","INPUT:H3 Letter Spacing=|ph=e.g. 0.08","INPUT:H3 Color=#000000"]
+H-09 H1 weight options: [":Use default","400:Regular 400","500:Medium 500","700:Bold 700"]
+H-05 STEP ERROR page.$eval: Failed to find element matching selector "[role=dialog] input[aria-label="H1 Font Family"]"
+H-11 Color control: {"type":"color","value":"#000000"}; pipette button label 'Choose H1 color' present: 0
+H-11a STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').locator('button[aria-label="Choose H1 color"]')[22m
+H-13 typed H1 size 99 and spacing 0.2 without Save: editor h1 before={"size":"40px","family":"\"IBM Plex Serif\", serif","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"} after={"size":"40px","family":"\"IBM Plex Serif\", serif","weight":"700","ls":"0.4px","color":"rgb(26, 25, 22)","lh":"52px"}; dialog preview style: {"size":"99px","ls":"19.8px"}
+H-13 STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').getByRole('button', { name: 'Cancel', exact: true }).filter({ visible: true }).first()[22m
+H-06 STEP ERROR locator.fill: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').locator('input[aria-label="H1 Font Family"]')[22m
+H-15 light: h1(custom color)=rgb(26, 25, 22); h2(no custom color)=rgb(26, 25, 22); h3=rgb(26, 25, 22); p=rgb(26, 25, 22); html class="gw-theme-light gw-density-comfortable"
+H-15 STEP ERROR page.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('button[aria-label="Open project settings menu"]')[22m
+H-12 after Add H4: headings controls ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size","Body Font Size"]; buttons ["Remove H4","Add H5"]
+H-12 after Add H5, Add H6: ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size","H5 Font Size","H6 Font Size","Body Font Size"]; buttons ["Remove H4","Remove H5","Remove H6"]
+H-12 remove controls for H1..H3 present: []
+H-12 Remove H6 buttons: 1
+H-12 after removing H6: ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size","H5 Font Size","Body Font Size"]
+H-12 after Save with H4 size 22 (H5 left empty): dialog count=1; editor h4 style={"size":"22px","family":"\"IBM Plex Serif\", serif","weight":"500","ls":"normal","color":"rgb(26, 25, 22)","lh":"28.6px"}
+H-12 after save and reload, heading levels listed: ["H1 Font Size","H2 Font Size","H3 Font Size","H4 Font Size"]
+H-12 toolbar heading buttons now: ["Heading 1","Heading 2","Heading 3","Heading 4","Heading 5","Heading 6"]
+A-09 Body Text Styles field default values/placeholders: []
+A-09 STEP ERROR locator.fill: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').locator('input[aria-label="Font Size"]')[22m
+A-06 STEP ERROR locator.fill: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').locator('input[aria-label="Line Height"]')[22m
+A-10 CLI project create --spec <custom spec: body Lato 18px, lineHeight 2.4, paragraphSpacing 40px>: exit=0; ["Created project at: /private/tmp/getwrite-handbook/t4sec2-mvy7gr41-95f1ca/projects/11111111-2222-4333-8444-555555555555","Folders: 1, Resources: 0",""]
+A-10 project.json editorConfig.body of the new project: {"fontFamily":"Lato","fontSize":"18px","paragraphSpacing":"40px","lineHeight":"2.4"}
+A-10 rendered body p in that project: {"family":"Lato, \"IBM Plex Serif\", serif","size":"18px","lh":"43.2px","color":"rgb(26, 25, 22)","mt":"0px","mb":"0px","pt":"0px","pb":"0px","inlineStyle":null,"gaps":[40]}; toolbar Line Height field="2.4"
+stop: recorded 29430(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 37891(node); 3000: no listener; 6006: no listener; projects: (empty)

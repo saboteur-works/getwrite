@@ -1,0 +1,51 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 56217 port 51675 (throwaway projects dir; templates repo read-only)
+paragraph defaults: [{"t":"A first para","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"},{"t":"A second par","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"27px","spacing":"normal"}]
+Editor tab text: ["Project Settings","Configure editor typography, tags, and metadata for this project.","Close","Editor","Default Revision Name","Manage Tags","Metadata","Timeline","Organizer","Writing Goals","Spelling","Noise Words","Entities","Project Encryption","Heading Styles","Configure project-specific heading styles for the editor. H1 through H3 are always available, and you can add H4 through H6 as needed.","H1","Set the typography attributes applied to H1 in the editor.","FONT SIZE","FONT FAMILY","Use default","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","IBM Plex Sans","IBM Plex Sans Condensed","IBM Plex Mono","IBM Plex Serif","Arial","Georgia","Times New Roman","Courier New","Verdana","Trebuchet MS","serif","sans-serif","monospace","Other...","FONT WEIGHT","Use default","Regular 400","Medium 500","Bold 700","LETTER SPACING","COLOR","PREVIEW","The quick brown fox jumps over the lazy dog","H2","Set the typography attributes applied to H2 in the editor.","FONT SIZE","FONT FAMILY","Use default","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","IBM Plex Sans","IBM Plex Sans Condensed","IBM Plex Mono","IBM Plex Serif","Arial","Georgia","Times New Roman","Courier New","Verdana","Trebuchet MS","serif","sans-serif","monospace","Other...","FONT WEIGHT","Use default","Regular 400"]
+aria-labels in the tab: ["Project settings sections","H1 Font Size","H1 Font Family","H1 Font Weight","H1 Letter Spacing","H1 Color","H1 preview","H2 Font Size","H2 Font Family","H2 Font Weight","H2 Letter Spacing","H2 Color","H2 preview","H3 Font Size","H3 Font Family","H3 Font Weight","H3 Letter Spacing","H3 Color","H3 preview","Body Font Size","Body Font Family","Body Line Height","Body Paragraph Spacing","Body text preview","New tag name","Set tag color","Rename Document group","Move Document group up","Move Document group down","Rename Synopsis","Field type for Synopsis","Move Synopsis up","Move Synopsis down","Remove Synopsis","Rename key of Synopsis","Rename Notes","Field type for Notes","Move Notes up","Move Notes down","Remove Notes","Rename key of Notes","Status","Move Status up","Move Status down","Options for Status","Rename Point of View","Field type for Point of View","Move Point of View up","Move Point of View down","Remove Point of View","Rename key of Point of View","Add field to Document","Rename Timeline group","Move Timeline group up","Move Timeline group down","Delete Timeline group","Rename Story Date","Field type for Story Date","Move Story Date up","Move Story Date down","Remove Story Date","Rename key of Story Date","Rename Duration (minutes)","Field type for Duration (minutes)","Move Duration (minutes) up","Move Duration (minutes) down","Remove Duration (minutes)","Rename key of Duration (minutes)","Rename Story End Date","Field type for Story End Date","Move Story End Date up","Move Story End Date down","Remove Story End Date","Rename key of Story End Date","Add field to Timeline","Add schema group"]
+Body Font Family options: ["Use default","Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","IBM Plex Sans","IBM Plex Sans Condensed","IBM Plex Mono","IBM Plex Serif","Arial","Georgia","Times New Roman","Courier New","Verdana","Trebuchet MS","serif","sans-serif","monospace","Other..."]
+after Other...: ["Body Font Family other name","Body Line Height","Body Paragraph Spacing",null,"New tag name",null,null,null,null,null]
+typed "Bad\"Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad\"Name"
+typed "Bad'Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad'Name"
+typed "Bad;Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad;Name"
+typed "Bad{Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad{Name"
+typed "Bad}Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad}Name"
+typed "Bad\\Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad\\Name"
+typed "Bad(Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad(Name"
+typed "Bad)Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad)Name"
+typed "Bad<Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad<Name"
+typed "Bad>Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad>Name"
+typed "Bad,Name": alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."] fieldValue="Bad,Name"
+Save Changes with Bad;Name: non-GET requests=0; config unchanged=true; field="Bad;Name"; alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."]
+typed My Missing Font: alerts=[]
+after Discard: family="IBM Plex Serif"; settings still open=true
+saved typed font: config.body={"fontFamily":"My Missing Font","fontSize":"15px","lineHeight":"1.8","paragraphSpacing":"16px"}
+paragraph with the typed font: {"fontFamily":"\"My Missing Font\", \"IBM Plex Serif\", serif","fontSize":"15px","lineHeight":"27px","inline":null}
+toolbar font control: value="IBM Plex Serif"; options=["Inter","Merriweather","Playfair Display","Lato","Source Serif 4","Playwrite IE","Fascinate Inline","IBM Plex Sans","IBM Plex Sans Condensed","IBM Plex Mono","IBM Plex Serif","Arial","Georgia","Times New Roman","Courier New","Verdana","Trebuchet MS","serif","sans-serif","monospace"]
+body line height "1.2": alerts=["Line height must be a number of at least 1.8."] field="1.2" config unchanged=true
+body line height "0": alerts=["Line height must be a number of at least 1.8."] field="0" config unchanged=true
+body line height "normal": alerts=["Line height must be a number of at least 1.8."] field="normal" config unchanged=true
+body line height "150%": alerts=["Line height must be a number of at least 1.8."] field="150%" config unchanged=true
+body line height "2em": alerts=["Line height must be a number of at least 1.8."] field="2em" config unchanged=true
+body line height "24px": alerts=["Line height must be a number of at least 1.8."] field="24px" config unchanged=true
+body line height "1.79": alerts=["Line height must be a number of at least 1.8."] field="1.79" config unchanged=true
+body line height "1.8": alerts=[] config.body.lineHeight="1.8"
+body line height "9": alerts=[] config.body.lineHeight="9"
+body line height "": alerts=[] config.body.lineHeight=undefined
+after saving 2.4: [{"t":"A first para","fontFamily":"\"My Missing Font\", \"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"36px","spacing":"normal"},{"t":"A second par","fontFamily":"\"My Missing Font\", \"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"36px","spacing":"normal"}]
+toolbar Line Height shows "2.4" with an unset paragraph (body 2.4)
+toolbar "0": message=["Line height must be a number greater than 0."] field="0"
+  after leaving the field: field="2.4" message=["Line height must be a number greater than 0."] paragraphs=["36px","36px"]
+toolbar "-1": message=["Line height must be a number greater than 0."] field="-1"
+  after leaving the field: field="2.4" message=["Line height must be a number greater than 0."] paragraphs=["36px","36px"]
+toolbar "": message=["Line height must be a number greater than 0."] field=""
+  after leaving the field: field="2.4" message=["Line height must be a number greater than 0."] paragraphs=["36px","36px"]
+toolbar 1.2 (below the settings floor): paragraphs=[{"t":"A first para","fontFamily":"\"My Missing Font\", \"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"18px","spacing":"normal"},{"t":"A second par","fontFamily":"\"My Missing Font\", \"IBM Plex Serif\", serif","fontSize":"15px","weight":"400","lineHeight":"36px","spacing":"normal"}]; field="1.2"
+body changed to 3: paragraphs=[["A first para","18px"],["A second par","45px"]]
+second (unset) paragraph: toolbar Line Height="3"
+first (own value) paragraph: toolbar Line Height="1.2"
+in a Heading 1: font="IBM Plex Serif" size="40"; rendered=[{"t":"A heading li","fontFamily":"\"IBM Plex Serif\", serif","fontSize":"40px","weight":"700","lineHeight":"52px","spacing":"0.4px"}]
+in a paragraph: font="My Missing Font" size="15"
+stop: recorded 56217(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,34 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+close trial 1, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+close trial 2, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+close trial 3, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+close trial 4, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+close trial 5, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+close trial 6, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+quit-event trial 1, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+quit-event trial 2, 100ms after typing: exited=true; word in content.txt=true
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=true
+app.quit trial 1, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+app.quit trial 2, 100ms after typing: exited=true; word in content.txt=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+  after restart: word in the editor=false
+stop: after SIGTERM: none alive; listener on 7340 after: none
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

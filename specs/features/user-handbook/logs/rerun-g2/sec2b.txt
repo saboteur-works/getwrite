@@ -1,0 +1,9 @@
+ports before: 7340: 37891(node); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 38493 port 51224 (throwaway projects dir; templates repo read-only)
+start: editorConfig keys=["headings","body"]; headings keys=["h1","h2","h3"]; h1={"size":"40px","weight":"700"}
+after headings Save (H1 size 60): headings keys=["h1","h2","h3"] h1.fontSize=60px; body={"fontFamily":"IBM Plex Serif","fontSize":"15px","paragraphSpacing":"16px","lineHeight":"1.8"}; editor h1={"size":"60px","weight":"700"}
+SCRIPT ERROR locator.fill: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for locator('[role=dialog]').locator('input[aria-label="Font Size"]')[22m |  |     at ~/Repositories/getwrite/specs/features/user-handbook/scripts/task4-sec2b.mjs:28:60 |     at async withWeb (~/Repositories/getwrite/specs/features/user-handbook/scripts/task3-lib.mjs:26:11)
+PAGE AT ERROR "Get\nWrite\nSave Order\nRESOURCES\nWorkspace\nDoc One\nSMART FOLDERS\nEDIT\nORGANIZER\nDATA\nDIFF\nTIMELINE\nENTITIES\nGRAPH\nTRASH\n⌘K\nDoc One\n\n|\n\nEDITING CANONICAL REVISION\n\nREVISION CONTROL\n\nSAVE, BROWSE, AND RESTORE DOCUMENT REVISIONS.\n\nEXPAND\nInter\nMerriweather\nPlayfair Display\nLato\nSource Serif 4\nPlaywrite IE\nFascinate Inline\nIBM Plex Sans\nIBM Plex Sans Condensed\nIBM Plex Mono\nIBM Plex Serif\nArial\nGeorgia\nTimes New Roman\nCourier New\nVerdana\nTrebuchet MS\nserif\nsans-serif\nmonospace\nTitle line\n\n\n\n\nWords: 2\n|\nNode: Heading 1\n|\nToday's writing\nToday: 2\nAll changes saved · 23s ago\nMETADATA\nDOC ONE\nPROSE DIAG"
+stop: recorded 38493(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 39798(node); 3000: no listener; 6006: no listener; projects: (empty)

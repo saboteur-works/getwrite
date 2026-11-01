@@ -1,0 +1,9 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 68349 port 51882 (throwaway projects dir; templates throwaway copy)
+font fields: ["H1 Font Size","H1 Font Family","H1 Font Weight","H2 Font Size","H2 Font Family","H2 Font Weight","H3 Font Size","H3 Font Family","H3 Font Weight","H4 Font Size","H4 Font Family","H4 Font Weight","H5 Font Size","H5 Font Family","H5 Font Weight","H6 Font Size","H6 Font Family","H6 Font Weight","Body Font Size","Body Font Family"]
+first family field=H1 Font Family; options end=["monospace","Other..."]
+typed Bad;Name: alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."]; field="Bad;Name"
+Save with a refused name: saved files=[]; alerts=["A font name cannot contain quotes, semicolons, braces, backslashes, parentheses, angle brackets, commas or control characters."]
+stop: recorded 68349(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

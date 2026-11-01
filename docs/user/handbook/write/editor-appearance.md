@@ -6,35 +6,41 @@ summary: What sets the look of the writing surface and the body text and heading
 
 # Editor Appearance
 
-This guide covers what controls the look of the writing surface and what you can change yourself.
+You can change how a project's text looks in **Project Settings**, and adjust single paragraphs from the editor's toolbar.
 
-## What you can change
+## Change your body text
 
-**Heading styles** are set in the **Editor** tab of **Project Settings** (gear menu), in the **Heading Styles** section: the size, font, weight, letter spacing and color of each heading level, per project. See [Headings](headings.md) for details.
+Open **Project Settings** from the settings menu (the gear icon), select the **Editor** tab, and find **Body Text Styles**. It has these fields:
 
-**Body text** is set in the same tab, in the **Body Text Styles** section. It has **Font Family** (a dropdown of the bundled and system fonts plus **Other...** for a typed name; see [Headings](headings.md) for the list and the characters a typed name cannot contain), **Font Size**, **Line Height** and **Paragraph Spacing** fields and a **Save Changes** button. **Save Changes** does nothing while a field holds a value it refuses, whether that is the **Line Height** field or a typed font name with a refused character. The message shows beside the field, the refused text stays in it, and nothing is saved until you correct it or pick a font from the dropdown. The same holds for the font names in **Heading Styles** and in a project type's editor settings. Saving 20px, Lato and a 30px paragraph spacing changed the paragraphs to 20px Lato with a 30px gap between them, and the values were the same after a reload.
+- **Font Family**: the same list as for headings. See [Choose a font](headings.md#choose-a-font).
+- **Font Size**
+- **Line Height**: a plain number of at least 1.8. Leave it empty to use 1.8.
+- **Paragraph Spacing**: the gap between paragraphs, with its unit, such as `30px` or `2em`.
 
-Not yet in a release (merged after 2.2.0).
+Select **Save Changes** to apply them.
 
-The editor toolbar's font control lists the fixed font names only, with no **Other...**; to use a name that is not in the list, set it in Project Settings or in a project type. The font control and the font size field show the font and size of the text where the cursor is, as it appears on screen, so inside a heading they show the heading's style. A font that is not in the list shows as an extra entry at the end; showing it changes nothing. The editor toolbar also has a **Line Height** field. A paragraph's line height is unset until you set one from this field; an unset paragraph follows the project's body line height. The field shows the value in effect: the paragraph's own line height if it has one, otherwise the project's body line height (1.8 if the project sets none). It accepts any number greater than 0, with no 1.8 minimum; text that is empty, not a number, zero or negative is refused with "Line height must be a number greater than 0." and the paragraph is left as it was. The message stays under the field, and when you leave the field the box goes back to showing the value in effect rather than the refused text.
+If **Line Height** is below 1.8 or isn't a plain number, GetWrite says "Line height must be a number of at least 1.8." and saves nothing. What you typed stays in the field so you can correct it. Nothing is saved while a typed font name is refused, either.
 
-## Body text defaults
+**Heading Styles** is in the same tab. See [Headings](headings.md).
 
-A new Blank project's body text:
+## Use the toolbar
 
-- **Typeface:** IBM Plex Serif
-- **Font size:** 15px
-- **Line height:** 1.8. Paragraphs have no line height of their own, so they follow this value, and the toolbar's Line Height field shows it.
-- **Paragraph spacing:** a 16px gap between paragraphs
+The toolbar's font control lists the same fonts, without **Other...**. To use a font that isn't in the list, set it in **Project Settings**.
 
-A project type's template sets the body text when a project is created (checked by creating a project from a custom template file with the command-line tool). A template with Lato, 18px and a 40px paragraph spacing gave a project with 18px Lato and a 40px gap; a template line height of 2.4 was stored (before this change the paragraphs still rendered at 1.5; paragraphs now follow the body line height).
+The font control and the font size field show the font and size of the text where your cursor is, so inside a heading they show the heading's style.
 
-Text color follows the light or dark theme: paragraph text read rgb(26, 25, 22) in the light theme and rgb(245, 244, 240) after switching to dark.
+The toolbar's **Line Height** field changes one paragraph. It accepts any number greater than 0, so it can go below 1.8. Anything else brings up "Line height must be a number greater than 0." and leaves the paragraph as it was.
 
-## Warnings and limits
+A paragraph without its own line height follows the project's. The field shows the value that applies to the paragraph. A paragraph you've set keeps its value when the project's line height changes.
 
-- The **Body Text Styles** line height must be a plain number of at least 1.8 (no upper limit), or empty to use 1.8. Anything lower, or a value such as `normal`, a percentage, or one with `em` or `px`, is refused with "Line height must be a number of at least 1.8."; the value you typed stays in the field, the message is announced as an alert, and nothing is saved. The value is refused, not rounded up.
-- A paragraph with a line height of its own keeps it when the body line height changes. A stored paragraph line height of "1.5" (what older versions stamped on every paragraph) is read as unset, so those paragraphs now follow the body line height.
-- Saving **Body Text Styles** after saving **Heading Styles** left project.json with an empty `headings` set (two runs); see [Headings](headings.md).
+## What a new project starts with
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a. The line height behaviour above (Feature 90) was read from the code in `paragraph-leading.ts`, `editor-body-settings.ts` and `BodySettingsModal.tsx`. In a packaged build (Task 39 record in experiments.md), Body Text Styles refused "1.2" and "0" with the alert and saved nothing, and the toolbar Line Height field, after "0" was refused and the field was left (blur and Tab), showed 1.8 again with the message still shown and the paragraphs unchanged. The rest was not re-measured. The **Font Family** dropdown and the toolbar font list (Feature 91, unreleased) were read from the code in `fonts.ts`, `FontFamilySelect.tsx`, `TypographyFields.tsx` and `BodySettingsModal.tsx`, not checked in the running app. The blocking of Save Changes for a refused typed font name was found missing in the built app by a check that typed `Bad;Name` and saw a save sent with "Bad"; the fix was tested in unit tests, not re-run in the built app for this page.
+A new Blank project's body text is IBM Plex Serif at 15px, with a line height of 1.8 and a 16px gap between paragraphs.
+
+A [project type](../organize/project-types.md) can set its own body text. A project made from that type starts with those settings.
+
+Text color follows the light or dark theme.
+
+## Good to know
+
+- **Paragraph Spacing** needs a unit. GetWrite doesn't check this field, so a number on its own, such as `30`, removes the gap between paragraphs. Type `30px` instead.

@@ -6,40 +6,49 @@ summary: Apply heading levels in the editor and set how each level looks for a p
 
 # Headings
 
-The editor has six heading levels, and you can set how each one looks per project.
+The editor has six heading levels, and you can set how each one looks in each project.
 
-## Using headings
+## Apply a heading
 
-The editor's toolbar has buttons **Heading 1** to **Heading 6**. Put the cursor in a line and click one to make that line a heading of that level.
+The editor's toolbar has the buttons **Heading 1** to **Heading 6**. Put the cursor in a line and click one to make that line a heading of that level. All six buttons are always there.
 
-## Customizing heading styles
+## Change how headings look
 
-Open the gear menu in the app shell, choose **Project Settings**, and select the **Editor** tab. The **Heading Styles** section is at the top of that tab, above **Body Text Styles**. Heading styles are saved per project and appear in the editor right after you click **Save Changes**.
+Open **Project Settings** from the settings menu (the gear icon) and select the **Editor** tab. The **Heading Styles** section is at the top, above **Body Text Styles**.
 
-Not yet in a release (merged after 2.2.0).
+The section lists H1 to H3, with an **Add H4** button. **Add H5** and **Add H6** appear in turn. An added level has a **Remove** button, for example **Remove H4**. H1 to H3 can't be removed.
 
-For each heading level you can set:
+For each level, you can set:
 
-- **Font Size** — the size of the heading, in pixels.
-- **Font Family** — the typeface, chosen from a dropdown. It lists the bundled fonts (Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono, IBM Plex Serif), then Arial, Georgia, Times New Roman, Courier New, Verdana, Trebuchet MS, serif, sans-serif and monospace, then **Other...**. **Other...** shows a text field for a font name; if that font is not installed on the device, text shows in IBM Plex Serif. A typed name containing a quote, apostrophe, semicolon, brace, backslash, parenthesis, angle bracket, comma or control character is refused with a message beside the field, and **Save Changes** does nothing while any heading level holds a refused name (the refused text stays in the field until you correct it, choose a font from the dropdown, or click **Discard changes**). A saved family that is not in the list (for example Domine, which is no longer offered) appears as an extra entry and is not changed unless you edit it. The bundled fonts ship with GetWrite and load without a network request.
-- **Font Weight** — Use default, or a numeric weight offered for the chosen font (for example Regular 400, Medium 500 and Bold 700 for IBM Plex Serif; 400 and 700 for a system, generic or typed font). A saved weight the select does not offer appears as an extra entry.
-- **Letter Spacing** — spacing between letters, in `em`.
-- **Color** — a custom heading color, set with the color control next to the pipette button.
+- **Font Size**: the size of the heading, in pixels.
+- **Font Family**: the typeface. See [Choose a font](#choose-a-font).
+- **Font Weight**: **Use default**, or a weight offered for the chosen font, such as **Regular 400** or **Bold 700**.
+- **Letter Spacing**: the space between letters, in `em`.
+- **Color**: a color of your own for the heading. It stays the same in the light and dark themes. Headings without their own color change with the theme.
 
-The section lists H1 to H3 and an **Add H4** button; **Add H5** and **Add H6** appear in turn. Each added level has a **Remove** button (for example **Remove H4**). H1 to H3 have none.
+The editor doesn't change until you select **Save Changes**. **Discard changes** puts this section back to what was last saved and leaves **Project Settings** open. Other sections keep their unsaved edits. **Body Text Styles** and **Default Revision Name** each have their own **Discard changes** button.
 
-A heading level you have not styled still has a default look. H1 to H3 use the defaults shown in the section. H4 to H6 are in IBM Plex Serif: H4 at 17px, medium weight; H5 at the body text size, bold; H6 at the body text size, medium weight with slightly wider letter spacing. Adding a level and setting a style replaces its default.
+### Choose a font
 
-Changes are staged in the dialog as you edit: the editor does not change until you click **Save Changes**. **Discard changes** puts this section back to what was last saved and leaves Project Settings open; other sections keep their unsaved edits. **Body Text Styles** and **Default Revision Name** have the same button.
+The **Font Family** list has:
 
-A heading with a custom color kept that color when the theme was switched to dark; headings without one changed with the theme.
+- fonts that come with GetWrite, so they need no internet connection: Inter, Merriweather, Playfair Display, Lato, Source Serif 4, Playwrite IE, Fascinate Inline, IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono and IBM Plex Serif
+- common fonts from your device: Arial, Georgia, Times New Roman, Courier New, Verdana and Trebuchet MS
+- general styles: serif, sans-serif and monospace
+- **Other...**, which shows a field where you can type a font name
 
-## Warnings and limits
+If a typed font isn't installed on your device, the text shows in IBM Plex Serif.
 
-- In the runs this page was verified from, saving **Body Text Styles** after saving **Heading Styles** left project.json with an empty `headings` set (two runs). In one of them the editor's H1 was 40px again and the dialog read 40 after a reload. A later change (unreleased) makes a Body Text Styles save keep the stored headings; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked.
-- **Save Changes** left the dialog open.
-- Clicking the pipette button changed nothing visible in the browser used for this check; the color was set through the color control itself.
-- An added level with nothing set is not kept when you save; the section says so ("No styles set, so this level is not kept when you save.") until you set a style. After saving with H4 set to 22 and H5 left empty, a reload listed H1 to H4 only.
-- The toolbar showed buttons Heading 1 to Heading 6 from the start, whether or not H4 to H6 had been added.
+A typed name can't contain quotes, semicolons, braces, backslashes, parentheses, angle brackets or commas. If it does, a message says so, and **Save Changes** does nothing. Correct the name, pick a font from the list, or select **Discard changes**.
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 0343e19a. The **Font Family** and **Font Weight** entries (Feature 91, unreleased) were read from the code in `fonts.ts`, `FontFamilySelect.tsx` and `FontWeightSelect.tsx`, not checked in the running app.
+## Default heading styles
+
+A level you haven't styled still has a default look. H1 to H3 use the values shown in the section. H4 to H6 are in IBM Plex Serif:
+
+- **H4:** 17px, medium weight
+- **H5:** the size of your body text, bold
+- **H6:** the size of your body text, medium weight, with slightly wider letter spacing
+
+## Good to know
+
+- An added level with nothing set isn't kept when you save. The section says "No styles set, so this level is not kept when you save." until you set a style.

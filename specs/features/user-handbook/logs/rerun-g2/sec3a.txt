@@ -1,0 +1,13 @@
+ports before: 7340: 39798(node); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 40542 port 51284 (throwaway projects dir; templates repo read-only)
+now: local Sun Nov 01 2026 12:15:34 GMT-0700 (Mountain Standard Time); UTC 2026-11-01T19:15:34.493Z
+W-16 footer in the default context (system timezone) after saving: ["Words: 4","Node: Body","Today's writing","Today: 4","All changes saved · just now"]
+W-42 files in meta/writing-log: ["2026-11-01.json"]; UTC date now 2026-11-01
+W-27/W-43 day file content: [{"entries":[{"added":4,"deleted":0,"net":4,"timestamp":"2026-11-01T19:15:45.972Z"}]}]
+entry timestamp T0 = 2026-11-01T19:15:45.972Z
+W-16 context tz=UTC: browser clock set to 2026-11-02T02:00:07.200Z (Mon Nov 02 2026 02:00:07 GMT+0000); footer: ["Today's writing","Today: 0"]
+W-16 context tz=Etc/GMT+12: browser clock set to 2026-11-02T02:00:07.174Z (Sun Nov 01 2026 14:00:07 GMT-1200); footer: ["Today's writing","Today: 4"]
+W-16 context tz=Etc/GMT-14: browser clock set to 2026-11-02T02:00:07.204Z (Mon Nov 02 2026 16:00:07 GMT+1400); footer: ["Today's writing","Today: 4"]
+stop: recorded 40542(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

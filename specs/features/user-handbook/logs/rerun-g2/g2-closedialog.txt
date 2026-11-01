@@ -1,0 +1,16 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 96543 port 52534 (throwaway projects dir; templates repo read-only)
+dialog text: ["Close project?","You have unsaved changes that may still be syncing. Close the project anyway and return to Start Page?","Editor content","KEEP EDITING","CLOSE PROJECT"]; html role=dialog; heading=["Close project?"]
+dialog showing: file="words"; dialogs=1; on Start Page=false
+buttons: ["Keep Editing","Close Project"]
+dialog left open 4s: file="words one"; dialogs=1; on Start Page=false
+after Keep Editing: file="words one"; dialogs=0; on Start Page=false
+trial 1: Close Project chosen straight away, 3s later: file="words one now1"; dialogs=0; on Start Page=true
+  word saved=true
+trial 2: Close Project chosen straight away, 3s later: file="words one now1 now2"; dialogs=0; on Start Page=true
+  word saved=true
+trial 3: Close Project chosen straight away, 3s later: file="words one now1 now2 now3"; dialogs=0; on Start Page=true
+  word saved=true
+stop: recorded 96543(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

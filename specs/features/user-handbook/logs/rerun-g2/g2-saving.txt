@@ -1,0 +1,12 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 59339 port 51730 (throwaway projects dir; templates repo read-only)
+first save request after 2503ms to /api/resource/revision/304ade89-955b-481e-bf10-c6000089c12b; saved=true
+typed then opened another document within 100ms: files={"304ade":"timed words switched","9378ec":""}
+typed then reloaded within 100ms: files={"304ade":"timed words switched reloaded","9378ec":""}
+typed then closed the project within 100ms: files={"304ade":"timed words switched reloaded closed","9378ec":""}
+Markdown controls: ["Toggle Markdown controls","Edit as Markdown"]
+markdown-switch STEP ERROR locator.click: Timeout 30000ms exceeded. | Call log: | [2m  - waiting for getByRole('button', { name: /Edit as Markdown/i }).first()[22m
+save refused after moving on: new lines=["Doc Two","Doc Two","This document could not be loaded.","Its content is still on disk and has not been changed. Editing is unavailable until it loads, so nothing can be written over it.","TRY AGAIN","Words: 0","Autosave unavailable for non-canonical revisions","DOC TWO","0.0","Your last edits to the previous document were not saved","Open it again to check its content."]
+stop: recorded 59339(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
