@@ -15,6 +15,43 @@ import { effectiveStatuses } from "../../src/lib/models/default-statuses";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import "./field-picker.css";
 
+// ─── Escape handling ──────────────────────────────────────────────────────────
+
+/**
+ * While `isActive`, the first Escape press calls `onEscape` and is marked
+ * default-prevented so an enclosing Radix Dialog does not also close
+ * (Feature 98 FR-42).
+ *
+ * Same idea as SchemaManager.tsx's inline-edit listener, but registered on
+ * `window` rather than `document`: Radix's useEscapeKeydown listens on
+ * `document` in the capture phase, and SchemaManager's listener wins only
+ * because it is registered on mount, before the dialog's. A picker registers
+ * when it opens, after the dialog's listener, so a `document` listener would
+ * run second and be too late. `window` capture runs before any `document`
+ * listener whatever the registration order. The event is not stopped, so the
+ * focused control's own onKeyDown still runs.
+ */
+export function useEscapeClosesPopup(
+  isActive: boolean,
+  onEscape: () => void,
+): void {
+  const onEscapeRef = useRef(onEscape);
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  }, [onEscape]);
+  useEffect(() => {
+    if (!isActive) return;
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onEscapeRef.current();
+    }
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [isActive]);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FieldPickerSource = "builtin" | "project" | "system";
@@ -224,6 +261,8 @@ export default function FieldPicker({
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [isOpen, closeMenu]);
+
+  useEscapeClosesPopup(isOpen, closeMenu);
 
   useEffect(() => {
     if (isOpen) {

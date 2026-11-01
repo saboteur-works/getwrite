@@ -10,6 +10,7 @@ import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import { getOperatorOption } from "./operator-utils";
 import RefHoverPreview from "./RefHoverPreview";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
+import { useEscapeClosesPopup } from "./FieldPicker";
 import "./value-picker.css";
 
 // ─── Value types ──────────────────────────────────────────────────────────────
@@ -332,6 +333,7 @@ function MultiOptionInput({
 }): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  useEscapeClosesPopup(isOpen, () => setIsOpen(false));
 
   const selected: string[] =
     Array.isArray(value) && (value.length === 0 || typeof value[0] === "string")
@@ -461,6 +463,7 @@ export function SingleRefInput({
   const [inputVal, setInputVal] = useState("");
   const [suggestions, setSuggestions] = useState<ResourceOption[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  useEscapeClosesPopup(suggestions.length > 0, () => setSuggestions([]));
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>): void {
     const q = e.target.value;
@@ -546,6 +549,7 @@ function MultiRefInput({
   const currentRefs = isResourceRefArray(value) ? value : [];
   const [inputVal, setInputVal] = useState("");
   const [suggestions, setSuggestions] = useState<ResourceOption[]>([]);
+  useEscapeClosesPopup(suggestions.length > 0, () => setSuggestions([]));
 
   const isAtCap =
     maxSelections !== undefined && currentRefs.length >= maxSelections;

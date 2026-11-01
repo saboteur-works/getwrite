@@ -460,3 +460,65 @@ describe("ProjectSettingsDialog goal filter section (Feature 98 Task 12, FR-19, 
     expect(notifyWritingLogGoalChanged).not.toHaveBeenCalled();
   });
 });
+
+const ESCAPE_FIELDS: FilterChipField[] = [
+  { key: "status", label: "Status", type: "text" },
+  {
+    key: "tags",
+    label: "Tags",
+    type: "resource-ref",
+    tagOptions: [
+      { id: "t1", name: "alpha" },
+      { id: "t2", name: "alpine" },
+    ],
+  },
+];
+const TAGS_FILTER = { op: "eq", field: "tags", value: "x" };
+
+describe("ProjectSettingsDialog goal filter Escape handling (Feature 98 Task 13, FR-42)", () => {
+  async function renderOnWritingGoals(
+    storedFilter: unknown,
+  ): Promise<ReturnType<typeof vi.fn>> {
+    const onOpenChange = vi.fn();
+    await renderDialog(undefined, {
+      goalFilterFields: ESCAPE_FIELDS,
+      initialGoalFilter: storedFilter,
+      onOpenChange,
+    });
+    await userEvent
+      .setup()
+      .click(screen.getByRole("tab", { name: "Writing Goals" }));
+    return onOpenChange;
+  }
+
+  it("Escape with the field picker open closes the picker and leaves the dialog open", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = await renderOnWritingGoals(STATUS_EQ);
+    const panel = panelFor("Writing Goals");
+    await user.click(
+      within(panel).getByRole("button", { name: "Field: Status" }),
+    );
+    expect(within(panel).getByLabelText("Search fields")).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(within(panel).queryByLabelText("Search fields")).toBeNull();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("Escape with the value picker's suggestion list open closes the list and leaves the dialog open", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = await renderOnWritingGoals(TAGS_FILTER);
+    const panel = panelFor("Writing Goals");
+    await user.type(within(panel).getByLabelText("Search resource"), "al");
+    expect(within(panel).getByRole("listbox")).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(within(panel).queryByRole("listbox")).toBeNull();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("Escape with no picker open still closes the dialog", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = await renderOnWritingGoals(STATUS_EQ);
+    await user.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
