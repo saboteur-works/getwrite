@@ -175,7 +175,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 18
 **Estimate:** 3
 **Notes:** Requirements: FR-38. The lead runs Task 19 first, using a local packaged build of main as the 2.3.0 stand-in (`git diff getwrite-v2.3.0 main -- frontend/src/lib/models/schemas.ts frontend/src/lib/models/writing-log.ts` prints nothing, so the two read the log identically), with throwaway folders. The installed 2.2.0 is attempted; if the tooling can't drive it, it goes to the owner (opening apps is blocked in the sandbox). Use throwaway folders only; never `~/Documents/GetWrite` or `~/Library/Application Support/getwrite-electron/`; point each build at a throwaway workspace and user-data folder. State in the record which parts were measured and which are inferred; name no cause that the run did not discriminate. This task must be complete before any release that writes `documentId`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Filtered daily figure in the aggregate core (FR-25, FR-26, FR-27, FR-28, FR-31)
 **What:** Make the aggregate, with a filter set, sum non-import word entries that carry a `documentId` of a live text document matching the filter at read time, using the Task 5 membership core.

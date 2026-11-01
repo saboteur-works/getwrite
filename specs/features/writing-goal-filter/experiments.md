@@ -73,3 +73,24 @@ Peak RSS is the high-water mark of the whole process, which kept growing across 
 - Peak memory of the full server process or the app; only the Node test process was observed.
 
 Task 28 is not complete. No cache or index was added.
+
+## FR-38: an older build reading a day file with `documentId` (Task 19)
+
+Run 2026-11-01 by the pipeline lead. Script: `scripts/older-build.mjs`. Logs: `logs/older-build-*.txt`. Each build ran with a throwaway `--user-data-dir` and a `workspace.json` pointing at a throwaway projects folder, driven by Playwright. `~/Documents/GetWrite` kept the same modified time, the runs started with 7340 free, and each ended with its run folder removed. The packaged apps append to `~/Library/Logs/GetWrite/getwrite.log`.
+
+Builds: the installed `/Applications/GetWrite.app` (reports 2.2.0, Developer ID signed), and a local unsigned packaged build reporting 2.3.0 as the stand-in for the 2.3.0 release. The stand-in holds the window-close fix (#319) and predates this feature; `git diff getwrite-v2.3.0 main -- frontend/src/lib/models/schemas.ts frontend/src/lib/models/writing-log.ts frontend/src/lib/models/writing-log-core.ts` prints nothing. The released 2.3.0 app itself was not run.
+
+Method: create a project and document, type and save, quit. Add `documentId` to the day file's entries, as a newer build would. Reopen, read the footer and details window, type and save, read the files, restart, read again. `documentId` here was added by the script, not written by the feature's code.
+
+| Observation | 2.2.0, today's day file | Stand-in, today's day file | Stand-in, day file 4 days old |
+| --- | --- | --- | --- |
+| Project and document open | yes | yes | yes |
+| Footer and details window | "Today's count is unavailable" | "Today's count is unavailable" | normal figures |
+| New text in `content.txt` and after restart | yes | yes | yes |
+| Save status in the footer | "Saved · just now" | "Saved · just now" | "Saved · just now" |
+| Message after the save | "Today's word count may be incomplete: this save couldn't be recorded." | same | none |
+| New log entry | not added; the day file is unchanged | not added; the day file is unchanged | added to today's file |
+
+Verdict against FR-38: the effect is limited to the log for days in today's window, and the writer's text still saves. The owner's condition is met, so the older-build behaviour is accepted and documented, and the tolerant-reader fallback isn't needed.
+
+What is lost on the older build: while the affected file is in today's window, today's figure is unavailable and that build's saves add no log entries. A day file outside the window had no effect. Inferred, not run: because a local day can span two UTC day files (`writing-log-core.ts`), the effect could last for the local day and not one UTC day.
