@@ -13,7 +13,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Requirements: FR-2, FR-41. F-15: the implementer MUST confirm no other clock-dependent route exists (search intrinsics and the advanced JSON editor) and record the result in a code comment and in the task's pull request text. If a string-length bound is needed, add it to the same constant with its value stated in the code. Smart-folder evaluation must not change.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Add `goalFilter` to the project config and keep it through load and write (FR-1, FR-4, FR-5)
 **What:** Add the optional `goalFilter` (query AST) to the config schemas, types, normalisation and API response schema so it round-trips, and make sure project creation and project types carry none.
@@ -22,7 +22,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Requirements: FR-1, FR-4, FR-5. F-11: `normalizeProjectConfig` rebuilds from named keys, so an unnamed key is dropped on read. A stored value that fails the AST schema must still be readable by the config loader so later tasks can report it unavailable (FR-6); decide whether the schema stores it as a loose value and validate with Task 1 at use. Edits `schemas.ts`, `types.ts`, `project.ts` and `api/schemas.ts`, so later tasks touching those files depend on this one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Failure-aware listing and strict goal evaluation input (FR-17, FR-18)
 **What:** Add a resource listing that returns empty only for a missing `resources/` directory and rethrows every other error, and a strict evaluation-input loader for goals that fails on a config read error, a sidecar read error and a `resources/<id>` directory with no sidecar.
@@ -31,7 +31,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Requirements: FR-17, FR-18. Model on `pruneExecutor.ts:9-18`. Do not change `listResourceIds` or its seven callers listed in F-1. Failure-visibility standard: a failure must never return the same value as empty. Word counts for the goal come from `userMetadata.wordCount ?? wordCount ?? 0` (Task 5), so the loader need not read `content.txt` for goals; confirm and state the choice in a comment.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Set and clear core for the goal filter (FR-2, FR-3, FR-41, FR-35)
 **What:** Add a core that validates and writes `goalFilter` under `withMetaLock` through `updateProjectJson`, deleting the key to clear it and touching no other key.
