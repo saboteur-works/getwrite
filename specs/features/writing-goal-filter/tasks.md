@@ -76,7 +76,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 6, 7
 **Estimate:** 3
 **Notes:** Requirements: FR-35, FR-36. Depends on Task 7 only because both edit `src/lib/api/schemas.ts`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Phase 1 parity test across core, route and native (FR-35)
 **What:** Add one test that runs the same fixtures through the cores, the HTTP route and the native backend for set, clear and filtered total, and asserts identical results and errors.
@@ -103,7 +103,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 7, 10
 **Estimate:** 5
 **Notes:** Requirements: FR-7, FR-19, FR-20, FR-21, FR-22, FR-37 (neutral colours, no red, meaning in words). New props need stories per the storybook standard. Read the existing `DailyWordGoalField.tsx` and the builder components and stories before using any prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Wire the section into Project Settings and the shell config (FR-19, FR-23)
 **What:** Render the section in the Writing Goals panel, pass the field list and resource and folder resolvers from the shell, accept `"goalFilter"` in `ProjectGoalSavedHandler`, update the shell's config copy after a save or clear, and signal the goal-change refresh.
@@ -193,7 +193,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 20
 **Estimate:** 3
 **Notes:** Requirements: FR-32. Same file as Task 20, hence the chain.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Aggregate response fields and transport parity (FR-29, FR-35, FR-36)
 **What:** Add fields reporting whether the aggregate is filtered and whether the filter matched no live text document to `WritingLogAggregate` and `WritingLogAggregateResponseSchema`, identical on HTTP and native.
