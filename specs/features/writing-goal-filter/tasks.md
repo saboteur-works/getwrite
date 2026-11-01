@@ -121,7 +121,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 12
 **Estimate:** 3
 **Notes:** Requirements: FR-42. The spec calls the defect likely, not confirmed: the first step is to read `FieldPicker.tsx:326-328`, the value picker and the dialog's Escape handler, and to reproduce the failure in a test before fixing. If Escape already works, record that in the test names and stop with no source change.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Writing Goals tab accessibility tests (FR-37)
 **What:** Add axe tests for the Writing Goals tab with a filter set, with an invalid stored filter and with a missing-field condition, and verify keyboard operation of every builder control inside the dialog.
@@ -148,7 +148,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 12, 15
 **Estimate:** 5
 **Notes:** Requirements: FR-5, FR-9, FR-11, FR-12, FR-13, FR-15, FR-16. Edits `AppShell.tsx`, hence the dependency on Task 12. Neutral colours only; meaning carried by words.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Add `documentId` to writing-log word and marker entries (FR-24, FR-25)
 **What:** Add an optional `documentId` (validated as a resource id) to word entries and marker entries while keeping entries without it valid, and pin that import entries carry none.
@@ -211,7 +211,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 22
 **Estimate:** 3
 **Notes:** Requirements: FR-30, FR-31, FR-34, FR-37.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Footer re-read after filter change and after a sidecar field save (FR-33)
 **What:** Re-read the footer after the filter is saved or cleared, on mount and on the existing refresh token, and after a resolved sidecar field save through `notifyWritingLogGoalChanged` only while a filter is set.
@@ -229,7 +229,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 22
 **Estimate:** 2
 **Notes:** Requirements: FR-40 (SHOULD). Handbook pages are out of scope.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Sharing smoke test (FR-35)
 **What:** Run `pnpm test:sharing-smoke` and record the result.
