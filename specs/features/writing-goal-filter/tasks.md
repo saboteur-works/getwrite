@@ -130,7 +130,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 13
 **Estimate:** 2
 **Notes:** Requirements: FR-37. Follows `docs/standards/accessibility.md`. Depends on Task 13 because a fix may touch the same files.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Filtered total hook (FR-9, FR-14)
 **What:** Add a hook that reads the filtered total from the Task 8 transport when a filter is set, re-reads on mount of the Data view and on the goal-change signal, and writes nothing to the shared query state.
@@ -220,7 +220,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 12, 23
 **Estimate:** 2
 **Notes:** Requirements: FR-33. Depends on 23 for the footer file and on 12 for the config copy that says whether a filter is set.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Update feature docs and the OpenAPI file (FR-40)
 **What:** Describe the filter, the `documentId` entry field, the new aggregate fields and the unavailable and no-match states in the docs and the API description.
