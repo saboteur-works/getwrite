@@ -56,7 +56,7 @@ function stringArray(v: MetadataValue): string[] | undefined {
  * Build a ResourceBase from raw sidecar data, extracting typed system fields.
  * Fields not present in sidecar fall back to safe defaults.
  */
-function sidecarToResourceBase(
+export function sidecarToResourceBase(
   id: string,
   sidecar: Record<string, MetadataValue>,
 ): ResourceBase {
@@ -93,7 +93,7 @@ async function loadProjectConfig(projectRoot: string): Promise<ProjectConfig> {
   }
 }
 
-function flattenUserMetadata(
+export function flattenUserMetadata(
   rawSidecar: Record<string, MetadataValue>,
 ): Record<string, MetadataValue> {
   // User metadata fields are nested under userMetadata in the JSON.
