@@ -242,6 +242,7 @@ export default function FieldPicker({
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const closeMenu = useCallback(() => {
     setIsOpen(false);
@@ -310,11 +311,15 @@ export default function FieldPicker({
   function handleSelect(field: FieldPickerField): void {
     onSelect(field);
     closeMenu();
+    // The focused option unmounts with the list; return focus to the trigger
+    // so a keyboard user is not dropped to the page.
+    triggerRef.current?.focus();
   }
 
   return (
     <div className="field-picker" ref={wrapperRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="field-picker__trigger"
         disabled={disabled}
