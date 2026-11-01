@@ -18,6 +18,7 @@ import {
   validateWritingLogWindow,
   MAX_WINDOW_DAY_FILES,
 } from "../../src/lib/models/writing-log-core";
+import { loadProjectConfig } from "../../src/lib/models/project-config";
 import { createKeyring } from "../../src/lib/models/crypto/keyring";
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
@@ -152,6 +153,25 @@ describe("writing-log-core (Feature 59 Task 9)", () => {
       expect("dailyWordGoal" in cfg).toBe(false);
       expect(cfg.wordCountGoal).toBe(80000);
       expect(cfg.maxRevisions).toBe(9);
+    });
+
+    it("setting the daily goal leaves a stored goalFilter unchanged and readable (Feature 98, FR-4)", async () => {
+      const goalFilter = {
+        op: "and",
+        children: [{ op: "gte", field: "userMetadata.rating", value: 3 }],
+      };
+      await writeFile(
+        `${ROOT}/project.json`,
+        projectJson({ goalFilter }),
+        "utf8",
+      );
+      expect((await loadProjectConfig(ROOT)).goalFilter).toEqual(goalFilter);
+      await setDailyWordGoalCore(PID, 250);
+      const config = await loadProjectConfig(ROOT);
+      expect(config.dailyWordGoal).toBe(250);
+      expect(config.goalFilter).toEqual(goalFilter);
+      const raw = JSON.parse(await readFile(`${ROOT}/project.json`, "utf8"));
+      expect(raw.config.goalFilter).toEqual(goalFilter);
     });
 
     it("accepts 0 and rejects negative and non-integer values", async () => {

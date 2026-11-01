@@ -12,6 +12,11 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     maxRevisions: config?.maxRevisions ?? 50,
     wordCountGoal: config?.wordCountGoal,
     dailyWordGoal: config?.dailyWordGoal,
+    // Feature 98, FR-1: omitted entirely when absent so a project that never
+    // sets a goal filter never gains the key.
+    ...(config?.goalFilter !== undefined
+      ? { goalFilter: config.goalFilter }
+      : {}),
     statuses: config?.statuses ?? [],
     // Left undefined (not defaulted to []) when absent, unlike `statuses`:
     // FR-18's DEFAULT_RELATIONSHIP_TYPES fallback is applied at read time by

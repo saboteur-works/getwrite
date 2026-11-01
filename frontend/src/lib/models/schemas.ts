@@ -304,6 +304,13 @@ export const ProjectConfigSchema = z.object({
   maxRevisions: z.number().int().nonnegative().optional(),
   wordCountGoal: z.number().int().nonnegative().optional(),
   dailyWordGoal: z.number().int().nonnegative().optional(),
+  /**
+   * Optional query AST limiting which text documents count toward the goals
+   * (Feature 98). Kept as a loose value on purpose: a stored value that fails
+   * the AST schema must still load so the goal can be reported unavailable
+   * (FR-6). It is validated with `goal-filter-validation` where it is used.
+   */
+  goalFilter: z.unknown().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
   /** Ordered resource-subtype labels (Feature 72, FR-1); absent means none. */

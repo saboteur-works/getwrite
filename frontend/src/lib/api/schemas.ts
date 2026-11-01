@@ -185,6 +185,8 @@ const ApiProjectConfigSchema = z.object({
   maxRevisions: z.number().optional(),
   wordCountGoal: z.number().optional(),
   dailyWordGoal: z.number().int().nonnegative().optional(),
+  // Goal filter (Feature 98, FR-1). Loose on purpose; see ProjectConfigSchema.
+  goalFilter: z.unknown().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
   // Ordered subtype labels (Feature 72, FR-1). Must be declared or a project

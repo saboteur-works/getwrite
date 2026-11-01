@@ -95,6 +95,12 @@ export interface ProjectConfig {
   wordCountGoal?: number;
   /** Target net words per day (Feature 59). Unset means no daily goal. */
   dailyWordGoal?: number;
+  /**
+   * Query AST limiting which text documents count toward the goals (Feature
+   * 98). Typed `unknown` because a stored value may fail the AST schema and
+   * must still load; validate it before use. Absent means no filter.
+   */
+  goalFilter?: unknown;
   /** How long (seconds, 1-10) a mention-jump highlight lasts (Entity mention navigation, FR-10). Unset means the 2-second default. */
   mentionHighlightDurationSeconds?: number;
   /** Custom status values available to the project (e.g., ["Draft","Complete"]). */
