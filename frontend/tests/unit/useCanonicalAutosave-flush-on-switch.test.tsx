@@ -25,6 +25,7 @@ vi.mock("../../src/store/hooks", () => ({
 }));
 
 import { useCanonicalAutosave } from "../../components/WorkArea/useCanonicalAutosave";
+import { flushPendingSaves } from "../../src/lib/pending-saves";
 
 /**
  * note_f13a655b: switching resource (or reloading) within the 2.5 s debounce
@@ -168,5 +169,57 @@ describe("useCanonicalAutosave — pending save on switch and unmount", () => {
     });
     rerender({ resourceId: "resource-b", revisionId: "rev-b" });
     expect(patchRevisionContent).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCanonicalAutosave — flushPendingSaves (desktop window close)", () => {
+  const DOC = {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "A" }] }],
+  } as never;
+  const PROPS = {
+    projectId: "p1",
+    selectedResourceId: "r1",
+    currentRevisionId: "v1",
+    canonicalRevisionId: "v1",
+  };
+
+  beforeEach(() => {
+    patchRevisionContent.mockReset();
+  });
+
+  it("sends the waiting save and reports when it has finished", async () => {
+    let finish: (value: unknown) => void = () => {};
+    patchRevisionContent.mockReturnValue(
+      new Promise((resolve) => (finish = resolve)),
+    );
+    const { result } = renderHook(() => useCanonicalAutosave(PROPS as never));
+    act(() => result.current.queueAutosave(DOC));
+
+    let isFlushed: boolean | undefined;
+    const flush = flushPendingSaves().then((ok) => (isFlushed = ok));
+    await waitFor(() => expect(patchRevisionContent).toHaveBeenCalledOnce());
+    expect(isFlushed).toBeUndefined();
+    finish({});
+    await flush;
+    expect(isFlushed).toBe(true);
+  });
+
+  it("reports failure when the waiting save fails", async () => {
+    patchRevisionContent.mockRejectedValue(new Error("network"));
+    const { result } = renderHook(() => useCanonicalAutosave(PROPS as never));
+    act(() => result.current.queueAutosave(DOC));
+    await expect(flushPendingSaves()).resolves.toBe(false);
+  });
+
+  it("tries a save that failed earlier again", async () => {
+    patchRevisionContent.mockRejectedValueOnce(new Error("network"));
+    const { result } = renderHook(() => useCanonicalAutosave(PROPS as never));
+    act(() => result.current.saveNow(DOC));
+    await waitFor(() => expect(result.current.saveStatus).toBe("error"));
+
+    patchRevisionContent.mockResolvedValueOnce({});
+    await expect(flushPendingSaves()).resolves.toBe(true);
+    expect(patchRevisionContent).toHaveBeenCalledTimes(2);
   });
 });

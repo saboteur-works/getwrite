@@ -32,6 +32,7 @@ vi.mock("../components/Sharing/SharingLimitsContext", () => ({
 
 function installEffectiveBridge(): void {
   (window as unknown as Record<string, unknown>).getwriteDesktop = {
+    setBeforeCloseHandler: vi.fn(() => () => undefined),
     chooseWorkspaceDir: vi.fn(),
     getSharingStatus: vi.fn(async () => ({
       enabled: true,

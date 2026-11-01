@@ -36,4 +36,4 @@ The conversion is one-way. The prompt lists what will be removed, which can incl
 
 ## Good to know
 
-- In the desktop app, your last words can be lost if you close the window straight after typing. Before you close the window, wait until the footer says **All changes saved**.
+- In the desktop app, your last words can be lost if you close the window or quit straight after typing. Before you do either, wait until the footer says **All changes saved**.
