@@ -1,10 +1,22 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import ProjectSettingsDialog from "../components/Layout/ProjectSettingsDialog";
+import ProjectSettingsDialog, {
+  type ProjectGoalSavedHandler,
+  type ProjectSettingsDialogProps,
+} from "../components/Layout/ProjectSettingsDialog";
+import type { FilterChipField } from "../components/QueryBuilder/FilterChip";
+import { setGoalFilter } from "../src/lib/api/goal-filter";
+import { notifyWritingLogGoalChanged } from "../src/lib/writing-log-signal";
 import projectReducer, {
   setProject,
   setSelectedProjectId,
@@ -18,6 +30,10 @@ import { runAxe } from "./a11y/helpers/axe";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
 vi.mock("../src/lib/api/writing-log", () => ({ setDailyWordGoal: vi.fn() }));
+vi.mock("../src/lib/api/goal-filter", () => ({ setGoalFilter: vi.fn() }));
+vi.mock("../src/lib/writing-log-signal", () => ({
+  notifyWritingLogGoalChanged: vi.fn(),
+}));
 vi.mock("../src/lib/api/word-count-goal", () => ({
   setWordCountGoal: vi.fn(),
 }));
@@ -38,7 +54,10 @@ vi.mock("../src/lib/api/mention-highlight-duration", () => ({
   setMentionHighlightDuration: vi.fn(),
 }));
 
-async function renderDialog(features?: ProjectFeatureFlags): Promise<void> {
+async function renderDialog(
+  features?: ProjectFeatureFlags,
+  extraProps: Partial<ProjectSettingsDialogProps> = {},
+): Promise<void> {
   const store = configureStore({
     reducer: {
       projects: projectReducer,
@@ -65,6 +84,7 @@ async function renderDialog(features?: ProjectFeatureFlags): Promise<void> {
         projectPath="/story"
         initialDailyWordGoal={300}
         initialWordCountGoal={50000}
+        {...extraProps}
       />
     </Provider>,
   );
@@ -285,5 +305,158 @@ describe("ProjectSettingsDialog Project Encryption tab", () => {
     await renderDialog();
     await user.click(screen.getByRole("tab", { name: "Project Encryption" }));
     await runAxe(document.body);
+  });
+});
+
+const GOAL_FIELDS: FilterChipField[] = [
+  { key: "status", label: "Status", type: "text" },
+  { key: "wordCount", label: "Word count", type: "number" },
+];
+const STATUS_EQ = { op: "eq", field: "status", value: "draft" };
+
+function GoalFilterHarness(): JSX.Element {
+  // Mirrors the owner of project.config in app/(app)/page.tsx: the saved
+  // filter comes back in as `initialGoalFilter` when the dialog is reopened.
+  const [isOpen, setIsOpen] = React.useState<boolean>(true);
+  const [filter, setFilter] = React.useState<unknown>(STATUS_EQ);
+  const onSaved: ProjectGoalSavedHandler = (key, goal) => {
+    if (key === "goalFilter") setFilter(goal ?? undefined);
+  };
+  const store = configureStore({
+    reducer: {
+      projects: projectReducer,
+      resources: resourcesReducer,
+      revisions: revisionsReducer,
+      editorConfig: editorConfigReducer,
+      spelling: spellingReducer,
+    },
+  });
+  return (
+    <Provider store={store}>
+      <button type="button" onClick={() => setIsOpen((v) => !v)}>
+        toggle dialog
+      </button>
+      <ProjectSettingsDialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        onSaveHeadingSettings={vi.fn()}
+        onSaveBodySettings={vi.fn()}
+        initialDefaultRevisionName="Initial Draft"
+        onSaveDefaultRevisionName={vi.fn()}
+        projectId="p1"
+        projectPath="/story"
+        goalFilterFields={GOAL_FIELDS}
+        initialGoalFilter={filter}
+        onProjectGoalSaved={onSaved}
+      />
+    </Provider>
+  );
+}
+
+describe("ProjectSettingsDialog goal filter section (Feature 98 Task 12, FR-19, FR-23)", () => {
+  beforeEach(() => {
+    vi.mocked(setGoalFilter).mockReset();
+    vi.mocked(setGoalFilter).mockResolvedValue({ goalFilter: STATUS_EQ });
+    vi.mocked(notifyWritingLogGoalChanged).mockReset();
+  });
+
+  it("renders the goal filter section below both goal fields", async () => {
+    await renderDialog(undefined, { goalFilterFields: GOAL_FIELDS });
+    const panel = panelFor("Writing Goals");
+    const heading = within(panel).getByRole("heading", {
+      name: "Goal filter",
+      hidden: true,
+    });
+    const daily = within(panel).getByLabelText("Daily word goal");
+    const total = within(panel).getByLabelText("Total word-count goal");
+    const after = (a: Node, b: Node): boolean =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after(daily, heading)).toBe(true);
+    expect(after(total, heading)).toBe(true);
+  });
+
+  it("renders no goal filter section when projectId is not set", async () => {
+    await renderDialog(undefined, {
+      projectId: undefined,
+      goalFilterFields: GOAL_FIELDS,
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Goal filter", hidden: true }),
+    ).toBeNull();
+  });
+
+  it("keeps an unsaved edit across a switch to another tab and back", async () => {
+    const user = userEvent.setup();
+    await renderDialog(undefined, {
+      goalFilterFields: GOAL_FIELDS,
+      initialGoalFilter: STATUS_EQ,
+    });
+    await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    const panel = panelFor("Writing Goals");
+    const value = within(panel).getByDisplayValue("draft");
+    await user.clear(value);
+    await user.type(value, "final");
+    await user.click(screen.getByRole("tab", { name: "Organizer" }));
+    await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    expect(
+      within(panelFor("Writing Goals")).getByDisplayValue("final"),
+    ).toBeVisible();
+    expect(setGoalFilter).not.toHaveBeenCalled();
+  });
+
+  it("shows the saved filter in a reopened dialog and signals the goal change", async () => {
+    const user = userEvent.setup();
+    const saved = { op: "eq", field: "status", value: "final" };
+    vi.mocked(setGoalFilter).mockResolvedValue({ goalFilter: saved });
+    render(<GoalFilterHarness />);
+    await flushPendingEffects();
+    await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    const value = screen.getByDisplayValue("draft");
+    await user.clear(value);
+    await user.type(value, "final");
+    await user.click(screen.getByRole("button", { name: "Save goal filter" }));
+    await waitFor(() =>
+      expect(notifyWritingLogGoalChanged).toHaveBeenCalledTimes(1),
+    );
+    // The open modal hides the outside button from the accessibility tree.
+    const toggle = screen.getByRole("button", {
+      name: "toggle dialog",
+      hidden: true,
+    });
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+    await flushPendingEffects();
+    await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    expect(await screen.findByDisplayValue("final")).toBeInTheDocument();
+  });
+
+  it("signals the goal change after a clear and passes null to the handler", async () => {
+    const user = userEvent.setup();
+    const onProjectGoalSaved = vi.fn();
+    vi.mocked(setGoalFilter).mockResolvedValue({ goalFilter: undefined });
+    await renderDialog(undefined, {
+      goalFilterFields: GOAL_FIELDS,
+      initialGoalFilter: STATUS_EQ,
+      onProjectGoalSaved,
+    });
+    await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    await user.click(screen.getByRole("button", { name: "Clear goal filter" }));
+    await waitFor(() =>
+      expect(onProjectGoalSaved).toHaveBeenCalledWith("goalFilter", null),
+    );
+    expect(notifyWritingLogGoalChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not signal a goal change when the save fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(setGoalFilter).mockRejectedValue(new Error("Disk is full."));
+    await renderDialog(undefined, {
+      goalFilterFields: GOAL_FIELDS,
+      initialGoalFilter: STATUS_EQ,
+    });
+    await user.click(screen.getByRole("tab", { name: "Writing Goals" }));
+    await user.click(screen.getByRole("button", { name: "Save goal filter" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(notifyWritingLogGoalChanged).not.toHaveBeenCalled();
   });
 });

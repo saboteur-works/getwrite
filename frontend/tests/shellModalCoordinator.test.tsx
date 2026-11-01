@@ -13,6 +13,7 @@ import projectReducer from "../src/store/projectsSlice";
 import resourcesReducer from "../src/store/resourcesSlice";
 import revisionsReducer from "../src/store/revisionsSlice";
 import editorConfigReducer from "../src/store/editorConfigSlice";
+import spellingReducer from "../src/store/spellingSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { StoredProject } from "../src/store/projectsSlice";
 import type { Folder } from "../src/lib/models/types";
@@ -128,6 +129,36 @@ describe("ShellModalCoordinator — project settings dialog", () => {
       />,
     );
     expect(screen.queryByText("Project Settings")).toBeNull();
+  });
+});
+
+describe("ShellModalCoordinator — goal filter forwarding (Feature 98 Task 12)", () => {
+  it("passes the stored goal filter and field list to the Writing Goals tab", () => {
+    // A set projectId also mounts the Spelling tab, which reads `spelling`.
+    const store = configureStore({
+      reducer: {
+        projects: projectReducer,
+        resources: resourcesReducer,
+        revisions: revisionsReducer,
+        editorConfig: editorConfigReducer,
+        spelling: spellingReducer,
+      },
+    });
+    render(
+      <Provider store={store}>
+        <ShellModalCoordinator
+          {...makeDefaultProps({
+            isProjectSettingsOpen: true,
+            projectId: "p1",
+            goalFilterFields: [
+              { key: "status", label: "Status", type: "text" },
+            ],
+            initialGoalFilter: { op: "eq", field: "status", value: "draft" },
+          })}
+        />
+      </Provider>,
+    );
+    expect(screen.getByDisplayValue("draft")).toBeInTheDocument();
   });
 });
 

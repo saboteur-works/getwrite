@@ -36,6 +36,7 @@ import {
 import { fetchSpellingState } from "../../src/store/spellingSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import AppShell from "../../components/Layout/AppShell";
+import type { ProjectGoalSavedHandler } from "../../components/Layout/ProjectSettingsDialog";
 import StartPage, {
   type StartPageProjectEntry,
   type StartPageCreateResult,
@@ -101,6 +102,7 @@ interface SelectedProjectState {
   config?: {
     wordCountGoal?: number;
     dailyWordGoal?: number;
+    goalFilter?: unknown;
     defaultRevisionName?: string;
   };
 }
@@ -302,6 +304,7 @@ export default function Home(): JSX.Element {
       config: {
         wordCountGoal: projectFiles.project.config?.wordCountGoal,
         dailyWordGoal: projectFiles.project.config?.dailyWordGoal,
+        goalFilter: projectFiles.project.config?.goalFilter,
         defaultRevisionName: projectFiles.project.config?.defaultRevisionName,
       },
     });
@@ -353,6 +356,7 @@ export default function Home(): JSX.Element {
       config: {
         wordCountGoal: p.project.config?.wordCountGoal,
         dailyWordGoal: p.project.config?.dailyWordGoal,
+        goalFilter: p.project.config?.goalFilter,
         defaultRevisionName: p.project.config?.defaultRevisionName,
       },
     });
@@ -1043,10 +1047,7 @@ export default function Home(): JSX.Element {
   };
 
   /** Applies a saved writing goal to the open project's config (D-14). */
-  const handleProjectGoalSaved = (
-    key: "dailyWordGoal" | "wordCountGoal",
-    goal: number | null,
-  ): void => {
+  const handleProjectGoalSaved: ProjectGoalSavedHandler = (key, goal): void => {
     setSelectedProject((prev) =>
       prev
         ? { ...prev, config: { ...prev.config, [key]: goal ?? undefined } }

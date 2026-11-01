@@ -1226,6 +1226,10 @@ export default function AppShell({
                     initialDailyWordGoal={project?.config?.dailyWordGoal}
                     initialWordCountGoal={project?.config?.wordCountGoal}
                     onProjectGoalSaved={onProjectGoalSaved}
+                    initialGoalFilter={project?.config?.goalFilter}
+                    goalFilterFields={availableFields}
+                    resolveGoalFilterResourceOptions={resolveResourceOptions}
+                    resolveGoalFilterFolderOptions={resolveFolderOptions}
                     initialMentionHighlightDurationSeconds={
                       project?.config?.mentionHighlightDurationSeconds
                     }

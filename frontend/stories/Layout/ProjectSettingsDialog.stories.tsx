@@ -96,6 +96,23 @@ export const WithDailyGoal: Story = {
 };
 
 /**
+ * A goal filter is stored; the Writing Goals tab shows it as editable
+ * conditions below the two goal fields. Nothing is saved until Save or Clear
+ * is pressed, so the story makes no request.
+ */
+export const WithGoalFilter: Story = {
+  args: {
+    ...baseArgs,
+    initialDailyWordGoal: 500,
+    goalFilterFields: [
+      { key: "status", label: "Status", type: "text" },
+      { key: "wordCount", label: "Word count", type: "number" },
+    ],
+    initialGoalFilter: { op: "eq", field: "status", value: "draft" },
+  },
+};
+
+/**
  * The Metadata tab hosts the Subtypes list editor above the field manager.
  * The panel is force-mounted, so it is present in the DOM from first render;
  * select the "Metadata" tab to see it.
