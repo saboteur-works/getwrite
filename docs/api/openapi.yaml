@@ -403,19 +403,84 @@ components:
 
     WritingLogAggregate:
       type: object
-      required: [totals, imported, incomplete]
+      required: [totals, imported, incomplete, isFiltered, hasNoMatch]
       properties:
         totals:
-          $ref: "#/components/schemas/WritingLogTotals"
+          allOf:
+            - $ref: "#/components/schemas/WritingLogTotals"
+          description: |
+            Non-import entries. With a goal filter set, only entries that carry a
+            `documentId` of a live, matching text document.
         imported:
-          $ref: "#/components/schemas/WritingLogTotals"
+          allOf:
+            - $ref: "#/components/schemas/WritingLogTotals"
+          description: Import entries; never filtered and never counted toward the goal
         goal:
           type: integer
           minimum: 0
           description: "`dailyWordGoal`; absent when none is set"
         incomplete:
           type: boolean
-          description: True when the window contains a skipped-save marker entry
+          description: |
+            True when the window contains a skipped-save marker entry. With a goal
+            filter set, a marker raises it only when it has no `documentId` or its
+            `documentId` is a matching document, and a non-import word entry without
+            a `documentId` also raises it.
+        isFiltered:
+          type: boolean
+          description: True when a goal filter (`config.goalFilter`) is applied to `totals`
+        hasNoMatch:
+          type: boolean
+          description: True when the goal filter matched no live text document; `totals` is then a real zero
+
+    GoalFilteredTotal:
+      description: |
+        Result of reading the filtered total word count. A number exists only in the
+        `total` and `no-match` members; an `unavailable` member never carries `total`.
+      oneOf:
+        - type: object
+          required: [status]
+          properties:
+            status: { type: string, enum: [not-filtered] }
+          additionalProperties: false
+        - type: object
+          required: [status, total]
+          properties:
+            status: { type: string, enum: [total] }
+            total: { type: number, minimum: 0 }
+          additionalProperties: false
+        - type: object
+          required: [status, total]
+          description: The filter matched no live text document
+          properties:
+            status: { type: string, enum: [no-match] }
+            total: { type: integer, enum: [0] }
+          additionalProperties: false
+        - type: object
+          required: [status, reason, message]
+          properties:
+            status: { type: string, enum: [unavailable] }
+            reason: { type: string, enum: [invalid-filter] }
+            message: { type: string }
+          additionalProperties: false
+        - type: object
+          required: [status, reason, fields]
+          properties:
+            status: { type: string, enum: [unavailable] }
+            reason: { type: string, enum: [missing-field] }
+            fields:
+              type: array
+              items: { type: string }
+          additionalProperties: false
+        - type: object
+          required: [status, reason, cause]
+          properties:
+            status: { type: string, enum: [unavailable] }
+            reason: { type: string, enum: [read-failed] }
+            cause:
+              type: string
+              enum: [locked, missing-sidecar, corrupt, unreadable]
+          additionalProperties: false
 
     Error:
       type: object
@@ -651,6 +716,14 @@ paths:
         overlapping at most 3 UTC day files. A failing window is rejected, not clamped.
         Non-import entries are summed into `totals`; entries with a `source` (imports)
         are summed into `imported` and are excluded from any goal comparison.
+
+        When the project has a goal filter (`config.goalFilter`), `totals` counts only
+        word entries that carry a `documentId` of a live, matching text document; entries
+        without a `documentId` are left out, and `isFiltered` is true. A filter that
+        matches no live text document returns zero totals with `hasNoMatch` true. If the
+        filtered figure cannot be computed, the response is HTTP 500 with no totals.
+        Writing `documentId` on canonical saves is not implemented yet, so until it is,
+        a filtered figure leaves out every entry.
       parameters:
         - name: projectId
           in: query
@@ -697,7 +770,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "500":
-          description: Unhandled failure, including a corrupt or schema-invalid day file (`WritingLogCorruptError` is not caught by the route, so there is no dedicated error body)
+          description: |
+            A goal filter is set and the filtered figure cannot be computed (invalid stored
+            filter, a condition on a field the project no longer defines, or a read failure).
+            The body is `{ error }` and carries no totals; a client must not show a number.
+            Also any other unhandled failure, including a corrupt or schema-invalid day file
+            (`WritingLogCorruptError` is not caught by the route, so there is no dedicated error body)
     put:
       summary: Set or clear the daily word goal
       description: |
@@ -741,6 +819,104 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/goal-filter:
+    put:
+      summary: Set or clear the writing-goal filter
+      description: |
+        Sets `config.goalFilter` in `project.json` to a query AST, or clears it (deletes
+        the key) when `null`. The filter chooses which text documents count toward the
+        total word-count goal and the daily goal. No other config key is touched. The AST
+        must pass the query schema, hold no `ref` or `param` node, hold at least one
+        condition, stay within depth 4 and 50 conditions, and use no relative date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, goalFilter]
+              properties:
+                projectId:
+                  $ref: "#/components/schemas/UUID"
+                goalFilter:
+                  oneOf:
+                    - $ref: "#/components/schemas/QueryAST"
+                    - type: "null"
+      responses:
+        "200":
+          description: The stored filter (absent after a clear)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goalFilter:
+                    $ref: "#/components/schemas/QueryAST"
+        "400":
+          description: Invalid JSON, invalid projectId, missing `goalFilter`, or a filter the validator refuses (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/goal-filtered-total:
+    get:
+      summary: Read the filtered total word count for the project goal
+      description: |
+        Evaluates `config.goalFilter` on the server over the project's live resources and
+        sums `userMetadata.wordCount ?? wordCount ?? 0` of the matching text resources.
+        Nothing is cached. An `unavailable` result is a 200 body with no `total`, never a
+        number and never an error status.
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: The filtered total result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalFilteredTotal"
+        "400":
+          description: Invalid projectId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Unhandled failure that the core does not classify as a read problem
           content:
             application/json:
               schema:

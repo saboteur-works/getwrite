@@ -16,8 +16,9 @@ Storage layout
 
 Entries
 
-- Word entry: `{ added, deleted, net, timestamp, source? }`. `net` is stored and the schema requires `net === added - deleted`. `source` is `"docx"`, `"scrivener"`, or `"plaintext"` and marks an import.
-- Marker entry: `{ skipped: true, timestamp }`, with no word counts. It records a save whose words could not be counted (see Skipped saves).
+- Word entry: `{ added, deleted, net, timestamp, source?, documentId? }`. `net` is stored and the schema requires `net === added - deleted`. `source` is `"docx"`, `"scrivener"`, or `"plaintext"` and marks an import.
+- Marker entry: `{ skipped: true, timestamp, documentId? }`, with no word counts. It records a save whose words could not be counted (see Skipped saves).
+- `documentId` (Feature 98) is an optional resource id on a word entry or a marker entry, naming the document the save belonged to. An import entry (one with `source`) carries none, and the schema refuses an entry that has both (`WritingLogWordEntrySchema`). Both entry schemas stay `.strict()`. An entry without `documentId` stays valid. **Not yet written:** the schema accepts the field, but the canonical-save path (`logCanonicalSave` in `revision-core.ts`) does not pass the resource id yet, so today's saves append entries without it. Writing it is Task 18 of the feature and had not landed when this was written. Until it lands, every entry has no `documentId`, so a filtered daily figure leaves them all out (see Goal filter).
 
 What is logged
 
@@ -52,7 +53,24 @@ Reads
 
 `GET /api/project/writing-log` ([openapi](../api/openapi.yaml)) and its native counterpart take a required `from`/`to` window: the ISO start and end instants of the client's local day (`localDayWindow` in `frontend/src/lib/api/writing-log.ts`). `validateWritingLogWindow` (`frontend/src/lib/models/writing-log-core.ts`, shared by HTTP and native) requires both to be ISO instants, `to` after `from`, a window of at most 26 hours, and at most 3 overlapping UTC day files. A failing window is rejected (HTTP 400, or a thrown error on native, since the native backend calls the same core), never clamped, and there is no server-timezone fallback. The window only selects which UTC day files load; it is never a path component.
 
-The aggregate (`WritingLogAggregate`) sums non-import entries into `totals`, sums entries with a `source` into `imported`, and reports `goal` and `incomplete` (a marker entry lies in the window). Imported words are shown separately and are excluded from the goal comparison.
+The aggregate (`WritingLogAggregate`) sums non-import entries into `totals`, sums entries with a `source` into `imported`, and reports `goal` and `incomplete` (a marker entry lies in the window). Imported words are shown separately and are excluded from the goal comparison. It also reports two booleans added by Feature 98, both always present in the response (`WritingLogAggregateResponseSchema` treats a body without them as malformed): `isFiltered` (a goal filter is applied to `totals`) and `hasNoMatch` (the filter matched no live text document, so `totals` is a real zero). With no filter set, both are `false` and every other field is as before.
+
+Goal filter
+
+Feature 98. Spec: [specs/features/writing-goal-filter.md](../../specs/features/writing-goal-filter.md). A project may store one filter, `config.goalFilter`, a query AST (never a reference to a saved query), that chooses which documents count toward both goals. It is set and cleared in the Writing Goals tab of Project Settings and through `PUT /api/project/goal-filter` ([word-count-goals.md](./word-count-goals.md#goal-filter) describes that route and the total's read route). With no filter set, the daily figure is the unfiltered figure described above.
+
+With a filter set, `aggregateForRoot` (`writing-log-core.ts`) evaluates membership when the figure is read (`evaluateGoalMembership`, run on the server by the HTTP route and in-process on native). Nothing is cached.
+
+- **Counted:** non-import word entries in the window that carry a `documentId` whose document is live (not in Trash), is of type `text`, and matches the filter at the moment of reading. Added, deleted and net are summed over those.
+- **Left out:** word entries without a `documentId`, and entries whose document is trashed, purged or no longer matches. A trashed or purged document is not a failure, so the figure can shrink; restoring a document (same id) brings its entries back. A copy has its own id and is evaluated on its own fields. The original's entries are not attributed to it.
+- **Imports:** unchanged. They carry no `documentId`, stay in `imported`, and never count toward the daily goal, filtered or not. `imported` is the unfiltered import total.
+- **`incomplete` under a filter:** raised by a non-import word entry without a `documentId` (its document is unknown, so the figure may be low), and by a marker with no `documentId` or whose `documentId` is a matching document. A marker for a non-matching document does not raise it. With no filter set, a word entry without a `documentId` does not raise it and every marker keeps its current effect.
+- **No match:** a filter that selects no live text document returns `totals` of 0, `isFiltered: true` and `hasNoMatch: true`.
+- **Unavailable:** if membership cannot be computed (an invalid stored filter, a condition on a field the project no longer defines, or a read failure on the listing, a sidecar or the project config), `aggregateForRoot` throws `GoalFilteredFigureUnavailableError`. The HTTP route maps it to **HTTP 500** with an `{ error }` body and no totals; the native backend rejects with the same error. A client must show "Today's count is unavailable", never a number. A read does not rewrite or remove an invalid stored filter.
+
+Data written by an older release: the effect of a `documentId` key on an older build has not been measured. Reading the schema code suggests an older build, whose entry schemas are `.strict()`, would reject a day file holding such an entry, but that is a reading, not a run. The experiment (FR-38, Task 19) is still to be recorded in `specs/features/writing-goal-filter/experiments.md`.
+
+Footer and details dialog under a filter (Tasks 23 and 24 of the feature) are specified but not yet implemented. The specified text is "Counting selected documents" with the figure, "No documents match your goal filter" on a no-match, the existing "Today's count is unavailable" when the read fails, and the existing "Today's count may be incomplete" when `incomplete` is set. The imported line stays and shows the unfiltered import total.
 
 Daily goal
 
