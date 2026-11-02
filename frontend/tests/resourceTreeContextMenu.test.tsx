@@ -74,4 +74,58 @@ describe("ResourceTree context menu", () => {
     expect(onResourceAction).toHaveBeenCalledTimes(1);
     expect(onResourceAction).toHaveBeenCalledWith("copy", scene.id, "Scene A");
   });
+
+  it("choosing a row menu item does not select that row", async () => {
+    const now = new Date().toISOString();
+    const project = createProject({ name: "proj_1" });
+    const rootId = generateUUID();
+    const root = {
+      id: rootId,
+      slug: "root",
+      name: "Root",
+      type: "folder",
+      folderId: null,
+      createdAt: now,
+      updatedAt: now,
+      userMetadata: {},
+    } as unknown as AnyResource;
+    const scene = createTextResource({
+      name: "Scene A",
+      folderId: rootId,
+      plainText: "Hello",
+    });
+    const onResourceAction = vi.fn();
+    const testStore = makeStore();
+    testStore.dispatch(
+      setProject({
+        id: project.id,
+        name: project.name,
+        resources: [root, scene],
+      } as never),
+    );
+    testStore.dispatch(setSelectedProjectId(project.id));
+    testStore.dispatch(setFolders([root as never]));
+    testStore.dispatch(setResources([scene as never]));
+
+    render(
+      <Provider store={testStore}>
+        <ResourceTree onResourceAction={onResourceAction} />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand Root" }));
+    fireEvent.click(
+      screen.getByText("Scene A").closest('[role="treeitem"]') as HTMLElement,
+    );
+    expect(testStore.getState().resources.selectedResourceId).toBe(scene.id);
+
+    fireEvent.click(screen.getByRole("button", { name: "Root options" }));
+    fireEvent.click(await screen.findByText("New Smart Folder"));
+
+    expect(onResourceAction).toHaveBeenCalledWith(
+      "smart-folder",
+      rootId,
+      "Root",
+    );
+    expect(testStore.getState().resources.selectedResourceId).toBe(scene.id);
+  });
 });

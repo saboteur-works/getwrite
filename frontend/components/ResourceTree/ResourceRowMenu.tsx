@@ -69,6 +69,12 @@ export default function ResourceRowMenu({
         collisionPadding={8}
         className="resource-row-menu"
         aria-label={`${resourceName} options`}
+        // The menu is portaled, but React still bubbles its clicks to the
+        // treeitem this menu sits inside, which selects that row. Selecting a
+        // row closes the query builder, so New Smart Folder opened Data view
+        // with no builder. Only clicks are stopped: Escape is handled by a
+        // document listener and must keep reaching it.
+        onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
