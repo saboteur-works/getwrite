@@ -12,6 +12,8 @@ import {
 } from "../components/QueryBuilder/operator-utils";
 import { buildFieldPickerFields } from "../components/QueryBuilder/FieldPicker";
 import { filterResourceOptionsByScope } from "../components/Sidebar/folderScope";
+import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
+import type { MetadataSchema } from "../src/lib/models/types";
 
 const FIELD_TEXT: FilterChipField = {
   key: "synopsis",
@@ -260,6 +262,70 @@ describe("FilterChip — saved queries in FieldPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: /Select a field/i }));
     fireEvent.click(screen.getByText("@Act 2 Scenes"));
     expect(onRefChange).toHaveBeenCalledWith("q-1", "Act 2 Scenes");
+  });
+});
+
+// ─── Field picker sections and badges (metadata-query Task 14) ────────────────
+
+describe("FilterChip — field picker keeps each field's source layer", () => {
+  const schema: MetadataSchema = {
+    groups: [
+      ...DEFAULT_METADATA_SCHEMA.groups,
+      {
+        id: "characters",
+        label: "Characters",
+        folderId: "folder-characters",
+        fields: [
+          { key: "age", label: "Age", type: "number" },
+          { key: "oldNote", label: "Old note", type: "text", deprecated: true },
+        ],
+      },
+    ],
+  };
+
+  function openPicker(): HTMLElement {
+    render(
+      <FilterChip
+        field={null}
+        operator={null}
+        value={null}
+        availableFields={buildFieldPickerFields(schema, [], [], false, [
+          "Scene",
+        ])}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Select a field/i }));
+    return screen.getByRole("listbox", { name: "Select a field" });
+  }
+
+  function rowFor(list: HTMLElement, label: string): HTMLElement {
+    const row = Array.from(list.querySelectorAll('[role="option"]')).find(
+      (el) =>
+        el.querySelector(".field-picker__item-label")?.textContent === label,
+    );
+    if (!row) throw new Error(`No picker row labelled ${label}`);
+    return row as HTMLElement;
+  }
+
+  it("badges built-in, project and system fields by their layer", () => {
+    const list = openPicker();
+    expect(rowFor(list, "Status")).toHaveTextContent("builtin");
+    expect(rowFor(list, "Age")).toHaveTextContent("project");
+    expect(rowFor(list, "Subtype")).toHaveTextContent("system");
+  });
+
+  it("groups the fields under Built-in, Project and System headings", () => {
+    const list = openPicker();
+    const headers = Array.from(
+      list.querySelectorAll(".field-picker__section-header"),
+    ).map((el) => el.textContent);
+    expect(headers).toEqual(["Built-in", "Project", "System"]);
+  });
+
+  it("shows a folder-scoped field's scope and a deprecated field's badge", () => {
+    const list = openPicker();
+    expect(rowFor(list, "Age")).toHaveTextContent("Characters only");
+    expect(rowFor(list, "Old note")).toHaveTextContent("deprecated");
   });
 });
 

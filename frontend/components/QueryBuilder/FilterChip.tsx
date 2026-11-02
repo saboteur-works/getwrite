@@ -63,6 +63,12 @@ export interface FilterChipField {
   tagOptions?: ResourceOption[];
   /** Set on the Tags field when reading the project's tags failed (not "no tags"). */
   tagsReadFailed?: boolean;
+  /** Picker section and badge; set by buildFieldPickerFields. Absent reads as "project". */
+  source?: FieldPickerSource;
+  /** Picker annotation for a folder-scoped project field, e.g. "Characters only". */
+  folderScope?: string;
+  /** When true, the picker shows the field muted with a "deprecated" badge. */
+  deprecated?: boolean;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -452,7 +458,9 @@ function toPickerFields(fields: FilterChipField[]): FieldPickerField[] {
     key: f.key,
     label: f.label,
     type: f.type,
-    source: "project" as FieldPickerSource,
+    source: f.source ?? "project",
+    folderScope: f.folderScope,
+    deprecated: f.deprecated,
     options: f.options,
   }));
 }
