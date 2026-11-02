@@ -125,7 +125,7 @@ beforeEach(async () => {
       id: "project-internal-id",
       name: "F87 Project",
       rootPath: `/projects/${PROJECT_ID}`,
-      config: {},
+      config: { statuses: ["Draft", "In review", "Published"] },
     },
     folders: [],
     resources: [{ ...loaded, plaintext: "", wordCount: 0 }],

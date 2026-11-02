@@ -40,7 +40,7 @@ import { shallowEqual } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
 import { selectResource } from "../../src/store/resourcesSlice";
 import {
-  selectEffectiveProjectStatuses,
+  selectActiveProjectStatuses,
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
   selectSynopsisEnabled,
@@ -241,7 +241,7 @@ export default function MetadataSidebar({
   );
 
   const projectStatuses = useAppSelector(
-    (state) => selectEffectiveProjectStatuses(state),
+    (state) => selectActiveProjectStatuses(state),
     shallowEqual,
   );
 

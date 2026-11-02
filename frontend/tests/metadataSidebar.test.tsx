@@ -430,7 +430,7 @@ describe("MetadataSidebar", () => {
     expect(onChangeField).toHaveBeenCalledWith("status", "review");
   });
 
-  describe("Status control (effective statuses, D-20)", () => {
+  describe("Status control (project statuses only, FR-4)", () => {
     async function renderStatus(
       statuses: string[] | undefined,
       userMetadata: Record<string, MetadataValue>,
@@ -464,9 +464,14 @@ describe("MetadataSidebar", () => {
     const optionTexts = (el: HTMLSelectElement): string[] =>
       Array.from(el.options).map((o) => o.value);
 
-    it("offers the built-in statuses when none are configured", async () => {
+    it("offers no statuses, not Draft/In review/Published, when none are configured", async () => {
       const { status } = await renderStatus(undefined, {});
-      expect(optionTexts(status)).toEqual(["Draft", "In review", "Published"]);
+      expect(optionTexts(status)).toEqual([]);
+    });
+
+    it("offers no statuses for an empty configured list", async () => {
+      const { status } = await renderStatus([], {});
+      expect(optionTexts(status)).toEqual([]);
     });
 
     it("offers the configured list unchanged when statuses are configured", async () => {
@@ -475,13 +480,19 @@ describe("MetadataSidebar", () => {
     });
 
     it("shows the first option and writes nothing on mount for a resource with no stored status", async () => {
-      const { status, onChangeField } = await renderStatus(undefined, {});
-      expect(status.selectedOptions[0]?.value).toBe("Draft");
+      const { status, onChangeField } = await renderStatus(
+        ["Outline", "Final"],
+        {},
+      );
+      expect(status.selectedOptions[0]?.value).toBe("Outline");
       expect(onChangeField).not.toHaveBeenCalled();
     });
 
     it("stores a selected status as before", async () => {
-      const { status, onChangeField } = await renderStatus(undefined, {});
+      const { status, onChangeField } = await renderStatus(
+        ["Outline", "Published"],
+        {},
+      );
       fireEvent.change(status, { target: { value: "Published" } });
       expect(onChangeField).toHaveBeenCalledWith("status", "Published");
     });

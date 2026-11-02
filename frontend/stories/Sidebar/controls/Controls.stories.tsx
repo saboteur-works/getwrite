@@ -17,7 +17,7 @@ export const Default: StoryObj = {
     <div className="p-4 w-96 bg-gw-chrome">
       <NotesInput />
       <div className="mt-4">
-        <StatusSelector />
+        <StatusSelector options={["Draft", "In review", "Published"]} />
       </div>
       <div className="mt-4">
         <MultiSelectList label="Characters" items={["Alice", "Bob", "Eve"]} />

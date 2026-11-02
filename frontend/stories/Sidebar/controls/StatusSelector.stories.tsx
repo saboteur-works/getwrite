@@ -13,7 +13,12 @@ type Story = StoryObj<typeof StatusSelector>;
 
 export const Default: Story = {
   args: {
-    value: "review",
+    value: "In review",
+    options: ["Draft", "In review", "Published"],
     onChange: (value: string) => console.log("status", value),
   },
+};
+
+export const NoOptions: Story = {
+  args: { onChange: (value: string) => console.log("status", value) },
 };

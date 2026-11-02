@@ -63,6 +63,20 @@ describe("Sidebar Controls", () => {
     expect(onChange).toHaveBeenCalledWith("review");
   });
 
+  it("StatusSelector offers only the options it is given and none by default", () => {
+    const { unmount } = render(<StatusSelector />);
+    expect(
+      (screen.getByLabelText("status-select") as HTMLSelectElement).options,
+    ).toHaveLength(0);
+    unmount();
+    render(<StatusSelector options={["Outline", "Final"]} />);
+    const sel = screen.getByLabelText("status-select") as HTMLSelectElement;
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual([
+      "Outline",
+      "Final",
+    ]);
+  });
+
   it.skip("MultiSelectList toggles selection (userEvent + waitFor)", async () => {
     const onChangeMock = vi.fn();
     const onChange = (v: string[]) => onChangeMock(v);

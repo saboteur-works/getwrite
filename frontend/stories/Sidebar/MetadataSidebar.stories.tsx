@@ -60,6 +60,7 @@ export const Interactive: Story = {
               rootPath: "/story",
               folders: [],
               resources: [{ id: resource.id, name: resource.name }],
+              statuses: ["Draft", "In review", "Published"],
               features: {
                 timeline: true,
                 pov: true,
@@ -166,6 +167,7 @@ function makeStoreWithResource(
               synopsis: true,
               notes: true,
             },
+            statuses: ["Draft", "In review", "Published"],
             ...projectOverrides,
           } as StoredProject,
         },

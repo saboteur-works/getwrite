@@ -11,7 +11,6 @@ import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
 import { INTRINSIC_FIELDS } from "../../src/lib/models/query-intrinsics";
 import { fuzzyMatch } from "../../src/lib/models/field-dedup";
-import { effectiveStatuses } from "../../src/lib/models/default-statuses";
 import EditContextMenu from "../common/UI/ContextMenu/EditContextMenu";
 import "./field-picker.css";
 
@@ -154,13 +153,10 @@ export function buildFieldPickerFields(
       // `options` array and rendered only "select…" (POS task_ee247eec).
       // Mirrors the "statuses" intrinsic override below, which does the same
       // for the separate resource.statuses multiselect field.
-      // The `status` chip offers the effective list (configured statuses, else
-      // the built-in vocabulary; FR-23). The intrinsic "statuses" branch
-      // below stays configured-only.
+      // The `status` chip offers the project's configured statuses only; with
+      // none configured the list is empty (no built-in fallback).
       const options =
-        field.key === "status"
-          ? effectiveStatuses(projectStatuses)
-          : field.options;
+        field.key === "status" ? (projectStatuses ?? []) : field.options;
       fields.push({
         key: field.key,
         label: field.label,

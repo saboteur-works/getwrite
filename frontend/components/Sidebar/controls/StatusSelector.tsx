@@ -1,14 +1,16 @@
 import React from "react";
-import { BUILT_IN_STATUSES } from "../../../src/lib/models/default-statuses";
 import LabeledField from "./LabeledField";
 import useSyncedControlledValue from "./useSyncedControlledValue";
+
+/** Stable empty list so the default `options` keeps one reference. */
+const NO_OPTIONS: string[] = [];
 
 export interface StatusSelectorProps {
   value?: string;
   onChange?: (value: string) => void;
   className?: string;
   ariaLabel?: string;
-  /** Ordered list of status strings to render as options. Defaults to the built-in statuses. */
+  /** Ordered list of status strings to render as options. Defaults to an empty list. */
   options?: string[];
 }
 
@@ -17,7 +19,7 @@ export default function StatusSelector({
   onChange,
   className = "",
   ariaLabel = "status-select",
-  options = BUILT_IN_STATUSES,
+  options = NO_OPTIONS,
 }: StatusSelectorProps) {
   const defaultValue = options[0] ?? "";
   const [status, setStatus] = useSyncedControlledValue(

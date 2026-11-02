@@ -317,8 +317,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(screen.queryByText("Explicit Status Scene")).toBeNull();
   });
 
-  // FR-23 / FR-25: with no configured statuses the filter's Status select
-  // offers the effective list (the built-in statuses).
+  // FR-4: the filter's Status select offers the project's configured list
+  // only; with none configured there is no built-in fallback.
   function renderNoStatusesProject(
     resources: ReturnType<typeof createTextResource>[],
   ) {
@@ -347,7 +347,26 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
   }
 
-  it("offers the effective statuses in the Status select with no configured statuses", () => {
+  it("offers exactly the configured statuses, in order, in the Status select", () => {
+    const { store } = makeFilterableStore();
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const select = screen.getByLabelText(
+      "Filter by status",
+    ) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+      "All statuses",
+      "Draft",
+      "Final",
+      "No status",
+    ]);
+  });
+
+  it("offers no listed statuses (not Draft/In review/Published) in the Status select with none configured", () => {
     renderNoStatusesProject([
       createTextResource({
         name: "Unset Status Scene",
@@ -360,13 +379,7 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
       "Filter by status",
     ) as HTMLSelectElement;
     const labels = Array.from(select.options).map((o) => o.textContent);
-    expect(labels).toEqual([
-      "All statuses",
-      "Draft",
-      "In review",
-      "Published",
-      "No status",
-    ]);
+    expect(labels).toEqual(["All statuses", "No status"]);
   });
 
   it("card display unchanged: a never-statused card in a no-statuses project still shows an empty status", () => {
@@ -386,7 +399,7 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(card?.textContent ?? "").not.toContain("Draft");
   });
 
-  it("recorded known behaviour (OQ-8): with no configured statuses, filtering by Draft hides never-statused cards while No status shows them", () => {
+  it("with no configured statuses, No status shows never-statused cards (no Draft option exists to filter by)", () => {
     renderNoStatusesProject([
       createTextResource({
         name: "Unset Status Scene",
@@ -394,11 +407,6 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
         folderId: FOLDER_ID,
       }),
     ]);
-
-    fireEvent.change(screen.getByLabelText("Filter by status"), {
-      target: { value: "Draft" },
-    });
-    expect(screen.queryByText("Unset Status Scene")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Filter by status"), {
       target: { value: NO_STATUS_FILTER_VALUE },
