@@ -210,7 +210,7 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
 
     expect(
       screen.getByText(
-        "No statuses are configured for this project, so every resource shows under No status.",
+        "No statuses are configured for this project, so every resource shows under No status. Add them in Project Settings, Metadata tab.",
       ),
     ).toBeInTheDocument();
     const rows = rollupRows();
@@ -237,7 +237,7 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
     ).toBe(false);
     expect(
       screen.queryByText(
-        "No statuses are configured for this project, so every resource shows under No status.",
+        "No statuses are configured for this project, so every resource shows under No status. Add them in Project Settings, Metadata tab.",
       ),
     ).not.toBeInTheDocument();
   });
@@ -248,7 +248,7 @@ describe("AppShell — By status roll-up wiring (Feature 60, Task 6)", () => {
 
     expect(
       screen.getByText(
-        "No statuses are configured for this project, so every resource shows under No status.",
+        "No statuses are configured for this project, so every resource shows under No status. Add them in Project Settings, Metadata tab.",
       ),
     ).toBeInTheDocument();
   });
