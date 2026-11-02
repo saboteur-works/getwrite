@@ -651,20 +651,24 @@ export default function Home(): JSX.Element {
   };
 
   /**
-   * Updates the publication status in a resource's metadata.
+   * Updates the status in a resource's metadata (Feature 99 FR-3).
    *
-   * @param status     - The new status value (`"draft"`, `"in-review"`, or
-   *   `"published"`).
+   * A string is stored as `userMetadata.status`. `null` is "No status": the
+   * key is left out of `userMetadata`, which `updateSidecarCore` replaces
+   * wholesale, so no `clearKeys` is sent (it deletes top-level keys only).
+   *
+   * @param status     - The chosen status label, or `null` for none.
    * @param resourceId - ID of the target resource.
    */
-  const handleChangeStatus = (
-    status: "draft" | "in-review" | "published",
-    resourceId: string,
-  ) => {
-    updateResource(resourceId, (r) => ({
-      ...r,
-      userMetadata: { ...r.userMetadata, status },
-    }));
+  const handleChangeStatus = (status: string | null, resourceId: string) => {
+    updateResource(resourceId, (r) => {
+      if (status !== null) {
+        return { ...r, userMetadata: { ...r.userMetadata, status } };
+      }
+      const rest = { ...r.userMetadata };
+      delete rest.status;
+      return { ...r, userMetadata: rest };
+    });
   };
 
   const handleChangeDynamicMetadata = (

@@ -68,7 +68,7 @@ vi.mock("../../src/lib/api/projects", () => ({
           type: "text",
           folderId: null,
           orderIndex: 0,
-          userMetadata: { status: "Outline" },
+          userMetadata: { status: "Outline", synopsis: "Opening" },
         },
       ],
     }),
@@ -78,7 +78,7 @@ type ShellProps = {
   project?: {
     resources?: { id: string; userMetadata?: { status?: string } }[];
   } | null;
-  onChangeStatus?: (status: string, resourceId: string) => void;
+  onChangeStatus?: (status: string | null, resourceId: string) => void;
   children?: React.ReactNode;
 };
 
@@ -202,5 +202,63 @@ describe("page.tsx metadata save failure (note_13ae633c)", () => {
     expect(toastError).not.toHaveBeenCalled();
     expect(screen.getByTestId("shown-status")).toHaveTextContent("Draft");
     expect(storedStatus(store)).toBe("Draft");
+  });
+
+  describe("choosing No status (Feature 99 FR-3)", () => {
+    const sentUserMetadata = (): Record<string, unknown> =>
+      (
+        updateSidecar.mock.calls[0][2] as {
+          userMetadata: Record<string, unknown>;
+        }
+      ).userMetadata;
+
+    it("saves userMetadata without a status key and keeps the other keys", async () => {
+      updateSidecar.mockResolvedValue(undefined);
+      const store = await renderOpenedPage();
+
+      act(() => shellProps.onChangeStatus?.(null, "res-1"));
+
+      await waitFor(() => expect(updateSidecar).toHaveBeenCalledTimes(1));
+      const sent = sentUserMetadata();
+      expect("status" in sent).toBe(false);
+      expect(sent.synopsis).toBe("Opening");
+      expect(storedStatus(store)).toBeUndefined();
+      expect(screen.getByTestId("shown-status")).toHaveTextContent("(none)");
+    });
+
+    it("passes no clearKeys to updateSidecar", async () => {
+      updateSidecar.mockResolvedValue(undefined);
+      await renderOpenedPage();
+
+      act(() => shellProps.onChangeStatus?.(null, "res-1"));
+
+      await waitFor(() => expect(updateSidecar).toHaveBeenCalledTimes(1));
+      expect(updateSidecar.mock.calls[0]).toHaveLength(3);
+    });
+
+    it("still saves a string status as userMetadata.status", async () => {
+      updateSidecar.mockResolvedValue(undefined);
+      await renderOpenedPage();
+
+      act(() => shellProps.onChangeStatus?.("Draft", "res-1"));
+
+      await waitFor(() => expect(updateSidecar).toHaveBeenCalledTimes(1));
+      expect(sentUserMetadata().status).toBe("Draft");
+    });
+
+    it("restores the removed status when the save is rejected", async () => {
+      updateSidecar.mockRejectedValue(
+        new Error("Failed to update sidecar (500)"),
+      );
+      const store = await renderOpenedPage();
+
+      act(() => shellProps.onChangeStatus?.(null, "res-1"));
+
+      await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(screen.getByTestId("shown-status")).toHaveTextContent("Outline"),
+      );
+      expect(storedStatus(store)).toBe("Outline");
+    });
   });
 });
