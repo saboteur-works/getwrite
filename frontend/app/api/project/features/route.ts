@@ -5,20 +5,20 @@
  * `project.json`: the `config.features` opt-in flags (Timeline, POV, Synopsis,
  * Notes), `config.organizerCardBody` (Organizer card-body source), and
  * `config.relationshipTypes` (the project's entity-relationship-type
- * vocabulary, FR-19).
+ * vocabulary, FR-19), `config.subtypes` and `config.statuses` (ordered lists).
  *
  * Route:
  * - `POST /api/project/features` — replaces the provided block(s)
  *
- * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[]; subtypes?: string[] }`
- * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[]; subtypes?: string[] }`
+ * POST body: `{ projectId: string; features?: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[]; subtypes?: string[]; statuses?: string[] }`
+ * Success:   `{ features: ProjectFeatureFlags; organizerCardBody?: OrganizerCardBodyConfig; relationshipTypes?: string[]; subtypes?: string[]; statuses?: string[] }`
  * Failure:   `{ error: string }`
  *
  * The underlying helper acquires the project lock and does NOT bump
  * `metadataRevision` — see `project-features.ts`.
  *
  * Concurrency: each block (`features`, `organizerCardBody`, `relationshipTypes`,
- * `subtypes`) is replaced whole, so the write is last-write-wins per block.
+ * `subtypes`, `statuses`) is replaced whole, so the write is last-write-wins per block.
  * Overlapping requests for different blocks keep both (the `project.json` file
  * lock). Between two devices the newest write to a block wins, so an item added
  * to a list on the other device can be dropped when this device writes its
@@ -41,6 +41,7 @@ interface UpdateFeaturesBody {
   organizerCardBody?: OrganizerCardBodyConfig;
   relationshipTypes?: string[];
   subtypes?: string[];
+  statuses?: string[];
 }
 
 async function handlePost(req: NextRequest): Promise<Response> {
@@ -57,6 +58,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     organizerCardBody,
     relationshipTypes,
     subtypes,
+    statuses,
   } = body;
 
   const resolved = resolveProjectPath(projectId);
@@ -66,12 +68,13 @@ async function handlePost(req: NextRequest): Promise<Response> {
     features === undefined &&
     organizerCardBody === undefined &&
     relationshipTypes === undefined &&
-    subtypes === undefined
+    subtypes === undefined &&
+    statuses === undefined
   ) {
     return NextResponse.json(
       {
         error:
-          "Provide at least one of: features, organizerCardBody, relationshipTypes, subtypes.",
+          "Provide at least one of: features, organizerCardBody, relationshipTypes, subtypes, statuses.",
       },
       { status: 400 },
     );
@@ -86,6 +89,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
         organizerCardBody,
         relationshipTypes,
         subtypes,
+        statuses,
       }),
     );
   } catch (error) {

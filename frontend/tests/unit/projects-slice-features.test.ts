@@ -20,6 +20,7 @@ import projectsReducer, {
   updateProjectOrganizerCardBody,
   updateProjectRelationshipTypes,
   updateProjectSubtypes,
+  updateProjectStatuses,
   selectActiveProjectSubtypes,
   selectActiveProjectFeatures,
   selectActiveProjectOrganizerCardBody,
@@ -567,6 +568,77 @@ describe("projectsSlice — subtypes (Feature 72, FR-1/FR-3/FR-4)", () => {
       }),
     );
     expect(selectActiveProjectSubtypes(store.getState())).toEqual(["Scene"]);
+  });
+});
+
+describe("projectsSlice — updateProjectStatuses (Feature 99, FR-10)", () => {
+  it("posts the list and mirrors result.statuses into the project so the selector changes with no reload", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, statuses: ["Old"] });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ features: {}, statuses: ["Outline", "Draft"] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await store.dispatch(
+      updateProjectStatuses({
+        projectId: "project-1",
+        statuses: [" Outline ", "Draft"],
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: "project-1",
+        statuses: [" Outline ", "Draft"],
+      }),
+    });
+    expect(selectActiveProjectStatuses(store.getState())).toEqual([
+      "Outline",
+      "Draft",
+    ]);
+  });
+
+  it("rejection leaves the project's list unchanged and exposes the message", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, statuses: ["Draft"] });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Duplicate status label." }), {
+        status: 400,
+      }),
+    );
+
+    const result = await store.dispatch(
+      updateProjectStatuses({ projectId: "project-1", statuses: ["a", "A"] }),
+    );
+
+    expect(result.type).toBe("projects/updateProjectStatuses/rejected");
+    expect(result.payload).toBe("Duplicate status label.");
+    expect(selectActiveProjectStatuses(store.getState())).toEqual(["Draft"]);
+  });
+
+  it("another feature-config thunk does not erase the list when the server echoes it", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, statuses: ["Draft"] });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ features: { pov: true }, statuses: ["Draft"] }),
+        { status: 200 },
+      ),
+    );
+    await store.dispatch(
+      updateProjectFeatures({
+        projectId: "project-1",
+        features: { pov: true },
+      }),
+    );
+    expect(selectActiveProjectStatuses(store.getState())).toEqual(["Draft"]);
   });
 });
 

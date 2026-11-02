@@ -144,7 +144,7 @@ describe("POST /api/project/features", () => {
     expect(res.status).toBe(200);
   });
 
-  it("still returns 400 when none of features/organizerCardBody/relationshipTypes/subtypes is provided", async () => {
+  it("still returns 400 when none of features/organizerCardBody/relationshipTypes/subtypes/statuses is provided", async () => {
     const projectsDir = await makeProjectsDir();
     const projectId = generateUUID();
     await writeProject(projectsDir, projectId);
@@ -156,7 +156,7 @@ describe("POST /api/project/features", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe(
-      "Provide at least one of: features, organizerCardBody, relationshipTypes, subtypes.",
+      "Provide at least one of: features, organizerCardBody, relationshipTypes, subtypes, statuses.",
     );
   });
 
@@ -314,5 +314,87 @@ describe("POST /api/project/features — overlapping requests (Feature 93, Task 
       expect(stored.config.features?.timeline).toBe(true);
       expect(stored.config.subtypes).toEqual(["Scene", "Chapter"]);
     }
+  });
+});
+
+describe("POST /api/project/features — statuses (Feature 99, FR-10/FR-11)", () => {
+  async function readStored(projectPath: string): Promise<string> {
+    return fs.readFile(path.join(projectPath, PROJECT_FILENAME), "utf8");
+  }
+
+  it("accepts a body carrying only statuses, replaces the list in order, trims, and returns it", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({
+          projectId,
+          statuses: [" Outline ", "Draft", "Final"],
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).statuses).toEqual(["Outline", "Draft", "Final"]);
+    const stored = JSON.parse(await readStored(projectPath)) as {
+      config: { statuses?: string[] };
+    };
+    expect(stored.config.statuses).toEqual(["Outline", "Draft", "Final"]);
+  });
+
+  it("accepts an empty list and stores it as empty", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(featuresRequest({ projectId, statuses: [] }) as never),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).statuses).toEqual([]);
+    const stored = JSON.parse(await readStored(projectPath)) as {
+      config: { statuses?: string[] };
+    };
+    expect(stored.config.statuses).toEqual([]);
+  });
+
+  it("returns 400 'Status label must not be blank.' for a blank entry and leaves project.json unchanged", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+    const before = await readStored(projectPath);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(featuresRequest({ projectId, statuses: ["Draft", "  "] }) as never),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain(
+      "Status label must not be blank.",
+    );
+    expect(await readStored(projectPath)).toBe(before);
+  });
+
+  it("returns 400 'Duplicate status label.' for a case/spacing duplicate and leaves project.json unchanged", async () => {
+    const projectsDir = await makeProjectsDir();
+    const projectId = generateUUID();
+    const projectPath = await writeProject(projectsDir, projectId);
+    const before = await readStored(projectPath);
+
+    const res = await withProjectsDir(projectsDir, () =>
+      POST(
+        featuresRequest({
+          projectId,
+          statuses: ["In review", " in REVIEW "],
+        }) as never,
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("Duplicate status label.");
+    expect(await readStored(projectPath)).toBe(before);
   });
 });

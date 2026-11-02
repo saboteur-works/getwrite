@@ -541,6 +541,11 @@ export const updateProjectSubtypes = makeFeatureConfigThunk<{
   subtypes: string[];
 }>("projects/updateProjectSubtypes", ({ subtypes }) => ({ subtypes }));
 
+export const updateProjectStatuses = makeFeatureConfigThunk<{
+  projectId: string;
+  statuses: string[];
+}>("projects/updateProjectStatuses", ({ statuses }) => ({ statuses }));
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -790,6 +795,7 @@ const projectsSlice = createSlice({
       updateProjectOrganizerCardBody,
       updateProjectRelationshipTypes,
       updateProjectSubtypes,
+      updateProjectStatuses,
     ] as const;
 
     for (const thunk of featureConfigThunks) {
@@ -803,6 +809,7 @@ const projectsSlice = createSlice({
           organizerCardBody: result.organizerCardBody ?? undefined,
           relationshipTypes: result.relationshipTypes ?? undefined,
           subtypes: result.subtypes ?? undefined,
+          statuses: result.statuses ?? [],
         };
         return state;
       });
