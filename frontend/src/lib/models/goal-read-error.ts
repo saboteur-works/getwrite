@@ -25,7 +25,7 @@ export type GoalReadCause =
   | "unreadable";
 
 /** Node errno codes that mean a stored file could not be read. */
-export const FILE_READ_ERRNO_CODES: ReadonlySet<string> = new Set([
+const FILE_READ_ERRNO_CODES: ReadonlySet<string> = new Set([
   "ENOENT",
   "ENOTDIR",
   "EISDIR",
@@ -39,7 +39,7 @@ export const FILE_READ_ERRNO_CODES: ReadonlySet<string> = new Set([
 ]);
 
 /** True when `err` is a Node filesystem error with a known read-problem code. */
-export function isFileReadError(err: unknown): err is NodeJS.ErrnoException {
+function isFileReadError(err: unknown): err is NodeJS.ErrnoException {
   if (typeof err !== "object" || err === null) return false;
   const code = (err as { code?: unknown }).code;
   return typeof code === "string" && FILE_READ_ERRNO_CODES.has(code);

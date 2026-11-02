@@ -29,7 +29,7 @@ import {
  * Writes nothing to the Redux store (`querySlice` is untouched).
  */
 
-export type FilteredGoalTotalState =
+type FilteredGoalTotalState =
   | GoalFilteredTotalResult
   | { status: "loading" }
   | { status: "unavailable"; reason: "request-failed" };
