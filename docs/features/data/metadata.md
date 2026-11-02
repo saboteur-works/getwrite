@@ -95,7 +95,7 @@ Apart from `status`, the built-in fields are optional and gated by the per-proje
 
 ✏️ **notes** \[String]: Free-text notes for the resource.
 
-✏️ **status** \["draft" | "in-review" | "published"]: Publication status of the resource. The available values are defined by `config.statuses` in `project.json`.
+✏️ **status** (string): Publication status of the resource. A document has none until one is chosen. The values offered are defined by `config.statuses` in `project.json`, edited in Project Settings, Metadata tab.
 
 ✏️ **characters** \[String[]]: Character names associated with the resource.
 
