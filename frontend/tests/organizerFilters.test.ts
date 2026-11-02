@@ -196,15 +196,24 @@ describe("filterChildren", () => {
       expect(result).toEqual([matching]);
     });
 
-    it("uses the default status when no status is set on the resource", () => {
-      const usesDefault = makeText("t1", { userMetadata: {} });
+    it("does not match a listed status against a resource with no stored status", () => {
+      const unset = makeText("t1", { userMetadata: {} });
       const result = filterChildren(
-        [usesDefault],
-        { ...initialOrganizerFilterState, status: "Draft" },
+        [unset],
+        { ...initialOrganizerFilterState, status: "Outline" },
         [],
-        "Draft",
       );
-      expect(result).toEqual([usesDefault]);
+      expect(result).toEqual([]);
+    });
+
+    it("matches a stored status that is not in any list by its exact value", () => {
+      const offList = makeText("t1", { userMetadata: { status: "Published" } });
+      const result = filterChildren(
+        [offList],
+        { ...initialOrganizerFilterState, status: "Published" },
+        [],
+      );
+      expect(result).toEqual([offList]);
     });
 
     it("matches the 'no status' sentinel against resources with no resolved status", () => {
@@ -214,7 +223,6 @@ describe("filterChildren", () => {
         [noStatus, hasStatus],
         { ...initialOrganizerFilterState, status: NO_STATUS_FILTER_VALUE },
         [],
-        "",
       );
       expect(result).toEqual([noStatus]);
     });

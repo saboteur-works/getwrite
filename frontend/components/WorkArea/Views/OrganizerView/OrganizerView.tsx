@@ -173,7 +173,6 @@ export default function OrganizerView({
     (s) => selectActiveProjectStatuses(s),
     shallowEqual,
   );
-  const defaultStatus = statuses[0] ?? "";
   // The filter's Status select offers the configured list only.
   const filterStatusOptions = statuses;
   // Card body source is project-configured (field / text-excerpt / none); the
@@ -302,12 +301,7 @@ export default function OrganizerView({
     return result;
   }, [refFields, allChildren]);
 
-  const visibleChildren = filterChildren(
-    allChildren,
-    filterState,
-    refFields,
-    defaultStatus,
-  );
+  const visibleChildren = filterChildren(allChildren, filterState, refFields);
 
   // FR-9: whether any filter is currently active, used to distinguish a
   // genuinely empty folder from one filtered down to zero visible cards.
@@ -525,7 +519,6 @@ export default function OrganizerView({
                     notesEnabled: isNotesEnabled,
                     textExcerpt: excerpts[child.id],
                   })}
-                  defaultStatus={defaultStatus}
                   isSelected={child.id === selectedResourceId}
                   onOpen={() => handleOpen(child.id)}
                   onSelect={() => handleSelect(child.id)}
@@ -558,7 +551,6 @@ export default function OrganizerView({
                       textExcerpt: excerpts[activeDragChild.id],
                     },
                   )}
-                  defaultStatus={defaultStatus}
                   isSelected={activeDragChild.id === selectedResourceId}
                 />
               </div>

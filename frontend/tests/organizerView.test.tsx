@@ -187,11 +187,8 @@ function makeFilterableStore() {
     plainText: "one two three four five six seven eight nine ten",
     folderId: FOLDER_ID,
     userMetadata: {
-      // Explicit non-Draft status: `OrganizerView` resolves an *unset*
-      // status to the project's first configured status (its `defaultStatus`
-      // fallback), so an explicit, differing status is needed here to keep
-      // this resource reliably distinguishable from the Draft-status ones in
-      // every filter combination below.
+      // Explicit non-Draft status, kept distinguishable from the
+      // Draft-status ones in every filter combination below.
       status: "Final",
       [CHARACTER_FIELD_KEY]: { id: "r-bob", name: "Bob" },
     },
@@ -269,11 +266,6 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
   });
 
   it("matches a resource with no status set when 'No status' is selected (FR-2)", () => {
-    // `OrganizerView` resolves an unset status to the project's first
-    // configured status (its `defaultStatus` fallback), so a genuine "no
-    // status" match is only observable with no configured statuses — an
-    // empty `statuses` list, distinct from `makeFilterableStore`'s
-    // `["Draft", "Final"]` fixture used by the other filter tests.
     const store = makeStore();
     const rNoStatus = createTextResource({
       name: "Unset Status Scene",
@@ -412,6 +404,87 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
       target: { value: NO_STATUS_FILTER_VALUE },
     });
     expect(screen.getByText("Unset Status Scene")).toBeTruthy();
+  });
+
+  function renderOutlineDraftProject(
+    resources: ReturnType<typeof createTextResource>[],
+  ) {
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "",
+        folders: [],
+        resources: [],
+        statuses: ["Outline", "Draft"],
+      }),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_ID));
+    store.dispatch(
+      setFolders([{ ...makeFolder(FOLDER_ID, "Folder A"), slug: "folder-a" }]),
+    );
+    store.dispatch(setResources(resources));
+    store.dispatch(setSelectedResourceId(FOLDER_ID));
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+  }
+
+  it("with list [Outline, Draft], a card with no stored status shows no Status line and only the No status filter returns it (FR-5)", () => {
+    renderOutlineDraftProject([
+      createTextResource({
+        name: "Unset Doc",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+      }),
+      createTextResource({
+        name: "Drafted Doc",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+        userMetadata: { status: "Draft" },
+      }),
+    ]);
+    // Only the card with a stored status has a Status line.
+    expect(screen.getAllByText(/Status:/)).toHaveLength(1);
+    expect(screen.getByText(/Status:/)).toHaveTextContent("Draft");
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const select = screen.getByLabelText("Filter by status");
+
+    fireEvent.change(select, { target: { value: "Outline" } });
+    expect(screen.queryByText("Unset Doc")).toBeNull();
+
+    fireEvent.change(select, { target: { value: NO_STATUS_FILTER_VALUE } });
+    expect(screen.getByText("Unset Doc")).toBeTruthy();
+    expect(screen.queryByText("Drafted Doc")).toBeNull();
+
+    fireEvent.change(select, { target: { value: "Draft" } });
+    expect(screen.getByText("Drafted Doc")).toBeTruthy();
+    expect(screen.queryByText("Unset Doc")).toBeNull();
+  });
+
+  it("a stored status not in the list still shows on its card, and the filter options are the list only (FR-6)", () => {
+    renderOutlineDraftProject([
+      createTextResource({
+        name: "Published Doc",
+        plainText: "one two",
+        folderId: FOLDER_ID,
+        userMetadata: { status: "Published" },
+      }),
+    ]);
+    expect(screen.getByText(/Status:/)).toHaveTextContent("Published");
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const select = screen.getByLabelText(
+      "Filter by status",
+    ) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+      "All statuses",
+      "Outline",
+      "Draft",
+      "No status",
+    ]);
   });
 
   it("excludes a non-text resource and narrows text resources by word-count range (FR-3, FR-4)", () => {

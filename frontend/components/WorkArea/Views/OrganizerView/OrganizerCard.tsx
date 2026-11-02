@@ -50,8 +50,6 @@ export interface OrganizerCardProps {
    * without leaving the current view.
    */
   onSelect?: () => void;
-  /** Fallback status shown when the resource has no status set. Defaults to the first project status. */
-  defaultStatus?: string;
   /**
    * Whether this card's resource is the current globally-selected resource;
    * applies the established selected-row highlight when true.
@@ -146,7 +144,6 @@ export default function OrganizerCard({
   body,
   onOpen,
   onSelect,
-  defaultStatus = "",
   isSelected = false,
   cardRef,
   dragHandleAttributes,
@@ -160,7 +157,7 @@ export default function OrganizerCard({
   /** Most relevant timestamp used for human-readable date display. */
   const updated = resource.updatedAt ?? resource.createdAt ?? "";
   /** Normalized status value shown in the metadata footer. */
-  const status = (resource.userMetadata?.status as string) || defaultStatus;
+  const status = (resource.userMetadata?.status as string | undefined) ?? "";
   /** Icon component matching this resource's type. */
   const TypeIcon = getResourceTypeIcon(resource.type);
   /** `id` of the disabled-reason hint element, referenced by the handle's `aria-describedby`. */
@@ -249,7 +246,7 @@ export default function OrganizerCard({
         {resource.type === "text" && (
           <div>Words: {(resource as TextResource).wordCount ?? "—"}</div>
         )}
-        <div className="ml-auto">Status: {status}</div>
+        {status && <div className="ml-auto">Status: {status}</div>}
         {onOpen && (
           <button
             type="button"

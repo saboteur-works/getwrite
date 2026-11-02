@@ -99,21 +99,17 @@ export function organizerFilterReducer(
   }
 }
 
-/** Resolves a card's displayed status the same way `OrganizerCard` does. */
-function resolveStatus(resource: AnyResource, defaultStatus: string): string {
-  return (resource.userMetadata?.status as string | undefined) || defaultStatus;
+/** Resolves a card's displayed status: the stored value only, `""` when none. */
+function resolveStatus(resource: AnyResource): string {
+  return (resource.userMetadata?.status as string | undefined) ?? "";
 }
 
 /**
  * FR-2: status predicate. Matches "no status" (`NO_STATUS_FILTER_VALUE`)
  * against a resource whose resolved status is empty.
  */
-function matchesStatus(
-  resource: AnyResource,
-  statusFilter: string,
-  defaultStatus: string,
-): boolean {
-  const resolved = resolveStatus(resource, defaultStatus);
+function matchesStatus(resource: AnyResource, statusFilter: string): boolean {
+  const resolved = resolveStatus(resource);
   if (statusFilter === NO_STATUS_FILTER_VALUE) {
     return resolved === "";
   }
@@ -185,7 +181,6 @@ export function filterChildren(
   children: AnyResource[],
   state: OrganizerFilterState,
   refFields: MetadataField[],
-  defaultStatus = "",
 ): AnyResource[] {
   const activeRefFilterEntries = Object.entries(state.refFilters).filter(
     ([, value]) => value !== undefined && value !== "",
@@ -195,7 +190,7 @@ export function filterChildren(
 
   return children.filter((child) => {
     if (state.status !== undefined) {
-      if (!matchesStatus(child, state.status, defaultStatus)) {
+      if (!matchesStatus(child, state.status)) {
         return false;
       }
     }
