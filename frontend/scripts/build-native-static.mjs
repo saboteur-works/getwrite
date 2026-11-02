@@ -53,6 +53,7 @@ import {
 } from "node:fs";
 import { cpSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureConfigLink } from "./ensure-config-link.mjs";
@@ -159,8 +160,14 @@ function assembleFilteredAppCopy() {
 
 function runNativeBuild() {
   log("Running `next build` (output: export) against the shadow root...");
-  const nextBin = join(buildDir, "node_modules", ".bin", "next");
-  const result = spawnSync(nextBin, ["build"], {
+  // Run Next's own entry with this Node, resolved from the real frontend/.
+  // pnpm's `.bin/next` shim locates Next by a path relative to its own
+  // location; reached through the shadow root's node_modules link, that path
+  // lands one folder short (frontend/node_modules/.pnpm, which doesn't exist).
+  const nextEntry = createRequire(join(frontendRoot, "package.json")).resolve(
+    "next/dist/bin/next",
+  );
+  const result = spawnSync(process.execPath, [nextEntry, "build"], {
     cwd: buildDir,
     stdio: "inherit",
     env: {
