@@ -94,3 +94,42 @@ Method: create a project and document, type and save, quit. Add `documentId` to 
 Verdict against FR-38: the effect is limited to the log for days in today's window, and the writer's text still saves. The owner's condition is met, so the older-build behaviour is accepted and documented, and the tolerant-reader fallback isn't needed.
 
 What is lost on the older build: while the affected file is in today's window, today's figure is unavailable and that build's saves add no log entries. A day file outside the window had no effect. Inferred, not run: because a local day can span two UTC day files (`writing-log-core.ts`), the effect could last for the local day and not one UTC day.
+
+## Task 26: sharing smoke test
+
+Run 2026-11-01: `pnpm --filter getwrite-frontend test:sharing-smoke`, exit 0. "enumerated entries: 102; exceptions: 4 ...; checks: 34; failures: 0". Run on the branch before the fix in `8ac86b00`, which changed no sharing code. Task 30 repeats it.
+
+## Task 28, web and desktop parts: read cost over HTTP and typing
+
+Run 2026-11-01 by the pipeline lead, on an Apple M4 Pro. Script: `scripts/measure-http.mjs`. Logs: `logs/measure-web.txt`, `logs/measure-desktop.txt`. Web is the built standalone server driven by Playwright Chromium. Desktop is a local unsigned packaged build at `8ac86b00`, driven in its own window. Generated projects were copied from one real document, half with status Draft, with a day file of 205 entries, on a warm local disk. Filter: status is Draft. Seven reads each; figures are the median, with the server's resident memory after that read.
+
+| Documents | Read | Web, filter on | Desktop, filter on | Web, filter off | Desktop, filter off |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 500 | Total | 44 ms, 173 MB | 60 ms, 158 MB | 1 ms | 2 ms |
+| 500 | Daily | 27 ms, 187 MB | 40 ms, 159 MB | 2 ms | 2 ms |
+| 5,000 | Total | 378 ms, 260 MB | 557 ms, 174 MB | 1 ms | 1 ms |
+| 5,000 | Daily | 242 ms, 294 MB | 370 ms, 175 MB | 2 ms | 2 ms |
+| 20,000 | Total | 1,669 ms, 338 MB | 2,562 ms, 179 MB | 1 ms | 2 ms |
+| 20,000 | Daily | 1,192 ms, 348 MB | 1,743 ms, 176 MB | 1 ms | 2 ms |
+
+Files read were counted at the core level only, in the earlier part of this record. Memory is measured after reads in one long-running process, so it isn't a per-read cost.
+
+Typing on the 5,000-document project: 102 keys over 3 rounds, each followed by an autosave.
+
+| | Web, filter off | Web, filter on | Desktop, filter off | Desktop, filter on |
+| --- | ---: | ---: | ---: | ---: |
+| Keydown to next frame, median | 3 ms | 3 ms | 3 ms | 3 ms |
+| Keydown to next frame, max | 25 ms | 23 ms | 26 ms | 24 ms |
+| Long tasks, count | 112 | 113 | 112 | 114 |
+| Longest task | 498 ms | 497 ms | 568 ms | 556 ms |
+| Save request | 6-7 ms | 6-8 ms | 7-11 ms | 8-11 ms |
+
+Result: at 5,000 documents, typing and autosave with a filter on matched filter off. Typing at 20,000 documents was not measured. The long tasks were similar with the filter off, and their source was not investigated.
+
+Not measured: Android (Task 28's remaining part, needs the owner), real projects, a cold disk, encrypted projects. No performance limit is promised, and no cache is added.
+
+## Real-app check (Stage 6.5)
+
+Run 2026-11-01 on the packaged build at `8ac86b00`. Script: `scripts/exercise.mjs`. Log: `logs/exercise.txt`. Throwaway profile. Confirmed through the UI: setting and clearing a filter; footer, details window and Data view figures with the label; typing in a matching and an excluded document; a field change moving a document in and out without a text save; the no-match line; a deleted field showing unavailable with "This field no longer exists."; Escape closing a picker and leaving the dialog open; and the builder fitting the dialog. The stored filter was left as stored after a read. An earlier run of this script found the total always unavailable, fixed in `8ac86b00`.
+
+Finding, not a defect of this feature: `logs/default-status.txt`. A new document's Status control shows "Draft" while its sidecar has `userMetadata: {}`. Both a smart folder and a goal filter on "Status is Draft" leave it out until Draft is chosen by hand. Why the control shows Draft was not established.

@@ -238,7 +238,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 19, 24
 **Estimate:** 1
 **Notes:** Requirements: FR-35. Find the script with `grep test:sharing-smoke package.json */package.json`. It may need running outside the sandbox (a local server and ports); retry outside only after a sandbox denial. Depends on Task 19 because both append to `experiments.md`. Run in the main checkout.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Manual pairing check (FR-35)
 **What:** Confirm on a paired device that Project Settings opens, the filter saves and the filter applies to the goals, and record it.

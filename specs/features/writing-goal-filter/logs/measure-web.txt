@@ -1,0 +1,18 @@
+mode=web; server pid 53187; RSS before reads 159 MB; 7 reads each; first read reported apart
+500 docs, filter on, total: first 55 ms; median 44 ms; max 55 ms; HTTP 200; {"status":"total","total":1250}; server RSS 173 MB
+500 docs, filter on, daily: first 27 ms; median 27 ms; max 37 ms; HTTP 200; {"totals":{"added":100,"deleted":0,"net":100},"imported":{"added":0,"deleted":0,"net":0},"incomplete":false,"i; server RSS 187 MB
+500 docs, filter off, total: first 2 ms; median 1 ms; max 2 ms; HTTP 200; {"status":"not-filtered"}; server RSS 187 MB
+500 docs, filter off, daily: first 2 ms; median 2 ms; max 2 ms; HTTP 200; {"totals":{"added":205,"deleted":0,"net":205},"imported":{"added":0,"deleted":0,"net":0},"incomplete":false,"i; server RSS 187 MB
+5000 docs, filter on, total: first 378 ms; median 378 ms; max 392 ms; HTTP 200; {"status":"total","total":12500}; server RSS 260 MB
+5000 docs, filter on, daily: first 264 ms; median 242 ms; max 264 ms; HTTP 200; {"totals":{"added":100,"deleted":0,"net":100},"imported":{"added":0,"deleted":0,"net":0},"incomplete":false,"i; server RSS 294 MB
+5000 docs, filter off, total: first 2 ms; median 1 ms; max 2 ms; HTTP 200; {"status":"not-filtered"}; server RSS 295 MB
+5000 docs, filter off, daily: first 2 ms; median 2 ms; max 2 ms; HTTP 200; {"totals":{"added":205,"deleted":0,"net":205},"imported":{"added":0,"deleted":0,"net":0},"incomplete":false,"i; server RSS 295 MB
+20000 docs, filter on, total: first 1523 ms; median 1669 ms; max 1796 ms; HTTP 200; {"status":"total","total":50000}; server RSS 338 MB
+20000 docs, filter on, daily: first 1193 ms; median 1192 ms; max 1214 ms; HTTP 200; {"totals":{"added":100,"deleted":0,"net":100},"imported":{"added":0,"deleted":0,"net":0},"incomplete":false,"i; server RSS 348 MB
+20000 docs, filter off, total: first 2 ms; median 1 ms; max 2 ms; HTTP 200; {"status":"not-filtered"}; server RSS 348 MB
+20000 docs, filter off, daily: first 3 ms; median 1 ms; max 3 ms; HTTP 200; {"totals":{"added":205,"deleted":0,"net":205},"imported":{"added":0,"deleted":0,"net":0},"incomplete":false,"i; server RSS 347 MB
+typing, filter off: project open took 4502 ms
+typing, filter off: keydown to next frame median 3 ms, max 25 ms over 102 keys; long tasks 112, longest 498 ms; saves 3, durations [7,6,7] ms; footer ["Today's writing","Today: 226"]
+typing, filter on: project open took 2439 ms
+typing, filter on: keydown to next frame median 3 ms, max 23 ms over 102 keys; long tasks 113, longest 497 ms; saves 3, durations [6,6,8] ms; footer ["Today's writing","Today: 100","Counting selected documents"]
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
