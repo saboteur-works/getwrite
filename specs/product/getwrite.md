@@ -75,11 +75,11 @@ version.
   location- or folder-based scoping, not multi-valued (one subtype per
   resource), not backed by a catch-all or "general" subtype, and not a merge
   with the entity declaration (`entityKind`, FR-35). The first slice also
-  has no rename operation, cannot restrict built-in fields, does not make
-  subtype selectable in the query builder or smart folders, does not have
+  has no rename operation, cannot restrict built-in fields, does not have
   the import pipelines assign subtypes, and ships no subtype list in any
   built-in project type (see Out of Scope (Deferred)). Owner decisions,
-  2026-10-08 (ideation; Gate 1).
+  2026-10-08 (ideation; Gate 1). Subtype is selectable in the query builder,
+  smart folders and the goal filter since 2026-11-01 (see OQ-62).
 - Hosted multi-tenant access and Android are addressed only as later
   milestones (see Functional Requirements); this spec does not treat them as
   shipped even though technical foundations exist. They are pursued on a
@@ -826,9 +826,11 @@ with the app without hand-rewriting it (see OQ-90).
   existing folder-scoped group mechanism (a metadata group's optional
   folder id) is left exactly as it is: it and subtype restriction are
   independent, and both MUST pass for a field to be presented. Fields
-  hidden by subtype scope MUST remain fully queryable, unchanged; making
-  subtype itself selectable in the query builder or smart folders is not in
-  this slice. The Organizer card body, Organizer filters and the Timeline
+  hidden by subtype scope MUST remain fully queryable, unchanged. Subtype
+  itself MUST be selectable as a field in the query builder, and so in smart
+  folders, Data view queries and the goal filter (FR-79); a stored label is
+  compared as the project's list spells it. Added 2026-11-01, reversing the
+  first slice's exclusion (OQ-62). The Organizer card body, Organizer filters and the Timeline
   MUST be unchanged. Status: Shipped. Owner decisions (ideation,
   2026-10-08): the restriction is optional per field; unrestricted is the
   default; no general bucket exists. Resolved (OQ-62, OQ-63, OQ-64, OQ-66):
@@ -3523,6 +3525,7 @@ were built around.
 **OQ-62 (resolved): Do fields hidden by subtype scope still participate in saved queries, smart folders and the Data view, and must subtype itself be queryable in the first slice?**
 **Resolution:** Fields hidden by subtype scope remain fully queryable, unchanged. Making subtype itself selectable in the query builder or smart folders is deferred and not in the first slice (see Out of Scope (Deferred)).
 **Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: `query-evaluator.ts` reads the sidecar and never consults sidebar visibility. Constraint noted by triage: the eventual sidecar identifier for subtype must not be able to collide with a custom field's key, because queries flatten custom-field values over top-level sidecar keys.
+**Amendment (2026-11-01):** Owner decision during the review of Feature 98: subtype itself is now selectable everywhere the query builder appears (query builder, smart folders, Data view queries, goal filter). The ruling that fields hidden by subtype scope stay queryable is unchanged.
 **Impact:** FR-58, FR-57, FR-10, FR-34.
 
 **OQ-63 (resolved): Can built-in (default-schema) fields be restricted by subtype, or only custom fields?**
@@ -4004,8 +4007,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 - Resource subtype follow-ups (FR-57 to FR-62, resolved: OQ-58, OQ-60, OQ-62,
   OQ-63, OQ-65; Owner decision, Gate 1, 2026-10-08), deferred or excluded
   from the first slice: a rename operation for subtypes (renaming is remove
-  plus add); restricting built-in (default-schema) fields by subtype; making
-  subtype selectable in the query builder and smart folders; the import
+  plus add); restricting built-in (default-schema) fields by subtype; the import
   pipelines assigning a subtype; and which built-in project types should
   ship a subtype list (no built-in type ships one yet, a deferred content
   decision). These are deferred, not decided against.

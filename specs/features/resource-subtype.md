@@ -61,7 +61,8 @@ hides are kept, not cleared.
   OQ-63).
 - Subtype is not selectable in the query builder or smart folders, and
   fields hidden by subtype stay queryable, unchanged (Owner decision,
-  OQ-62).
+  OQ-62). Amended 2026-11-01 (Owner decision): subtype is now selectable
+  there, as a query field named Subtype; the ruling on hidden fields stands.
 - Organizer card body, Organizer filters and the Timeline are unchanged
   (Owner decision, OQ-66).
 - The existing folder-scoped group mechanism (`MetadataGroupSchema.folderId`)
@@ -179,7 +180,7 @@ All nine questions raised before Gate 3 were answered by the owner at Gate 3 on 
 
 - A rename operation for subtypes (renaming is remove plus add). Product spec, Out of Scope (Deferred).
 - Restricting built-in (default-schema) fields by subtype.
-- Making subtype selectable in the query builder and smart folders.
+- Making subtype selectable in the query builder and smart folders. Delivered 2026-11-01 with Feature 98; see `specs/features/writing-goal-filter.md` FR-43.
 - Resource templates and duplicate/copy carrying subtype (Feature 73, FR-62).
 - Which built-in project types should ship a subtype list (a deferred content decision).
 - Bulk-assigning a subtype to many resources, and showing subtype on tree rows, Organizer cards or the Data view.

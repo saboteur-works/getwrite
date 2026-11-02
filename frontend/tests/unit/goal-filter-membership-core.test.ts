@@ -93,6 +93,21 @@ describe("evaluateGoalMembership", () => {
     });
   });
 
+  it("selects text resources by subtype", async () => {
+    await seedProject({
+      subtypes: ["Scene"],
+      goalFilter: { op: "eq", field: "resourceSubtype", value: "Scene" },
+    });
+    await seedResource("scene", { resourceSubtype: "scene" });
+    await seedResource("outline", { resourceSubtype: "Outline" });
+    await seedResource("none", {});
+    await seedResource("image", { type: "image", resourceSubtype: "Scene" });
+    expect(await evaluateGoalMembership(root, NOW)).toEqual({
+      status: "members",
+      ids: ["scene"],
+    });
+  });
+
   it("excludes a trashed resource and includes it again once restored", async () => {
     await seedProject({ goalFilter: statusDraft });
     await seedResource("a", draftSidecar());

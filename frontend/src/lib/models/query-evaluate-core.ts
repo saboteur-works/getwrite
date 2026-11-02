@@ -70,6 +70,7 @@ export function sidecarToResourceBase(
     createdAt: str(sidecar.createdAt) ?? new Date(0).toISOString(),
     updatedAt: str(sidecar.updatedAt),
     statuses: stringArray(sidecar.statuses),
+    resourceSubtype: str(sidecar.resourceSubtype),
   };
 
   if (base.type === "text" && num(sidecar.wordCount) !== undefined) {

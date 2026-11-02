@@ -137,3 +137,20 @@ Finding, not a defect of this feature: `logs/default-status.txt`. A new document
 ## Task 27: manual pairing check
 
 2026-11-01, run by the owner on a paired Pixel 7 in Chrome, against the packaged build at `8ac86b00` with a throwaway folder. Project Settings opened on the paired device and the filter saved. With the filter set, the daily figure went from 6 / 5 to 4 / 5, and the total goal from 6 / 10 to 4 / 10. As reported by the owner. One run. The owner also reported that the "Counting selected documents" label showed.
+
+## Subtype field, FR-43 (2026-11-01, PR #321 review)
+
+Run in the built web server with a throwaway projects folder (`scripts/exercise-subtype.mjs`, `logs/exercise-subtype.txt`). Not run on desktop or Android; the field list and evaluator are the same code on each.
+
+- Two documents, Keep (5 words, Scene) and Skip (3 words, Outline), daily goal 20. No filter: `Today: 8 / 20`. Subtype is Scene: `Today: 5 / 20` with "Counting selected documents". Skip set to Scene: `8 / 20`. Skip set back to Outline: `5 / 20`.
+- Stored: `{"op":"eq","field":"resourceSubtype","value":"Scene"}`. The tab reopened showing Subtype and Scene.
+- The smart folder builder offers Subtype with the values Scene and Outline. `POST /api/project/query/evaluate` for Subtype is Outline returned one id.
+
+Observed, not changed by this work:
+
+- Workspace row menu, New Smart Folder: the Data view opened with no builder (0 "+ Add group" buttons). The "New smart folder" button beside Smart Folders opened it. Cause not established; one reading is the selection effect in `AppShell.tsx` (around lines 447-452) closing the builder when a folder is selected. Selecting a folder and watching whether the builder closes would settle it.
+- In the builder, every field's picker badge reads "project", including system fields: `FilterChip.tsx:455` sets that source on all of them.
+
+## Goal filter tab test timeout (2026-11-01)
+
+CI failed `goal-filter-tab.a11y.test.tsx` "announces errors…" at the 5 s default. Run alone with no added load, it took 1.6 s and the file passed. With 60 busy processes on the same machine, all 5 tests hit the 5 s limit in 3 of 3 runs. With a 30 s limit under the same load, all 5 passed in 3 of 3 runs, taking 4.9-12.1 s each. CI's own load was not measured.

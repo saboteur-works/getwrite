@@ -136,6 +136,7 @@ export function buildFieldPickerFields(
   projectStatuses?: string[],
   projectTags?: Tag[],
   tagsReadFailed?: boolean,
+  projectSubtypes?: string[],
 ): FieldPickerField[] {
   const fields: FieldPickerField[] = [];
   const effectiveSchema = schema ?? DEFAULT_METADATA_SCHEMA;
@@ -177,10 +178,13 @@ export function buildFieldPickerFields(
   for (const f of INTRINSIC_FIELDS) {
     // Statuses are project-defined, so their options are injected at build time
     // rather than declared on the intrinsic. Only override when statuses exist.
-    const options =
+    const statusOptions =
       f.key === "statuses" && projectStatuses && projectStatuses.length > 0
         ? projectStatuses
         : f.options;
+    // Subtypes are project-defined too; an empty list offers no values.
+    const options =
+      f.key === "resourceSubtype" ? (projectSubtypes ?? []) : statusOptions;
     fields.push({
       key: f.key,
       label: f.label,

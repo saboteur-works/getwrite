@@ -131,6 +131,26 @@ describe("FieldPicker — saved queries section", () => {
 });
 
 describe("buildFieldPickerFields — intrinsic options", () => {
+  it("offers Subtype with the project's subtype list as its values", () => {
+    const fields = buildFieldPickerFields(
+      undefined,
+      undefined,
+      undefined,
+      false,
+      ["Scene", "Chapter"],
+    );
+    const subtype = fields.find((f) => f.key === "resourceSubtype");
+    expect(subtype?.label).toBe("Subtype");
+    expect(subtype?.options).toEqual(["Scene", "Chapter"]);
+  });
+
+  it("offers Subtype with no values when the project has no list", () => {
+    const subtype = buildFieldPickerFields().find(
+      (f) => f.key === "resourceSubtype",
+    );
+    expect(subtype?.options).toEqual([]);
+  });
+
   it("surfaces the Type intrinsic's select options", () => {
     const typeField = FIELDS.find((f) => f.key === "type");
     expect(typeField?.source).toBe("system");

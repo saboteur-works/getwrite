@@ -1,0 +1,16 @@
+footer with no filter: ["Today's writing","Today: 8 / 20"]
+field picker, searching "subtype": ["SUBTYPE\nPROJECT"]
+Value options: ["select...","Scene","Outline"]
+after save: status=["Goal filter saved."]; alert=[]
+stored: {"op":"eq","field":"resourceSubtype","value":"Scene"}
+footer with Subtype is Scene: ["Today's writing","Today: 5 / 20","Counting selected documents"]
+footer after giving Skip the subtype Scene: ["Today's writing","Today: 8 / 20","Counting selected documents"]
+footer after setting Skip back to Outline: ["Today's writing","Today: 5 / 20","Counting selected documents"]
+reopened tab mentions Subtype: true; Value=Scene
+smart-folder query route, Subtype is Outline: 200 {"ids":["addbb51a-7a48-429b-9590-6cfcc8d0d278"]}
+workspace menu: ["Create","New Smart Folder","Rename","Move to…","Copy","Duplicate","Delete","Export"]
+after Workspace menu > New Smart Folder: builder open=0; selected resources header=["Get","Write","Goals","RESOURCES"]
+smart folder buttons: ["New smart folder"]
+field picker, searching "subtype": ["SUBTYPE\nPROJECT"]
+smart-folder builder Value options: ["select...","Scene","Outline"]
+server stop: "none"

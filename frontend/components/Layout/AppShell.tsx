@@ -29,6 +29,7 @@ import {
   selectActiveProjectDirectoryId,
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
+  selectActiveProjectSubtypes,
   selectTimelineViewEnabled,
   selectEntitiesEnabled,
 } from "../../src/store/projectsSlice";
@@ -326,6 +327,10 @@ export default function AppShell({
     selectActiveProjectStatuses,
     shallowEqual,
   );
+  const projectSubtypes = useAppSelector(
+    selectActiveProjectSubtypes,
+    shallowEqual,
+  );
   // Filtered writing-goal total for the Data view; reads nothing when no
   // `config.goalFilter` is set and never touches the smart-folder query state.
   // The route derives the project root from the on-disk directory id, not
@@ -382,8 +387,15 @@ export default function AppShell({
         projectStatuses,
         projectTags,
         currentTagRead?.failed ?? false,
+        projectSubtypes,
       ),
-    [metadataSchema, projectStatuses, projectTags, currentTagRead?.failed],
+    [
+      metadataSchema,
+      projectStatuses,
+      projectTags,
+      currentTagRead?.failed,
+      projectSubtypes,
+    ],
   );
   const resolveResourceOptions = React.useCallback(
     (refFolder: string | undefined, includeSubfolders?: boolean) => {
