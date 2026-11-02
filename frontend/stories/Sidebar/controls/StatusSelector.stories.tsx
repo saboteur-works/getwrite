@@ -22,3 +22,35 @@ export const Default: Story = {
 export const NoOptions: Story = {
   args: { onChange: (value: string) => console.log("status", value) },
 };
+
+export const NoValue: Story = {
+  args: {
+    value: "",
+    options: ["Draft", "In review", "Published"],
+    onChange: (value: string) => console.log("status", value),
+  },
+};
+
+export const OffList: Story = {
+  args: {
+    value: "Archived",
+    options: ["Draft", "In review", "Published"],
+    onChange: (value: string) => console.log("status", value),
+  },
+};
+
+export const EmptyList: Story = {
+  args: {
+    value: "",
+    options: [],
+    onChange: (value: string) => console.log("status", value),
+  },
+};
+
+export const EmptyListOffList: Story = {
+  args: {
+    value: "Archived",
+    options: [],
+    onChange: (value: string) => console.log("status", value),
+  },
+};

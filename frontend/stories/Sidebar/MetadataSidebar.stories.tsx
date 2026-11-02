@@ -196,6 +196,43 @@ function makeStoreWithResource(
   return store;
 }
 
+export const StatusNotSet: Story = {
+  render: () => {
+    const resource = createTextResource({ name: "Chapter One", plainText: "" });
+    return (
+      <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
+export const StatusNotInList: Story = {
+  render: () => {
+    const resource = createTextResource({
+      name: "Chapter One",
+      plainText: "",
+      userMetadata: { status: "Archived" },
+    });
+    return (
+      <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
+export const NoStatusesConfigured: Story = {
+  render: () => {
+    const resource = createTextResource({ name: "Chapter One", plainText: "" });
+    return (
+      <Provider store={makeStoreWithResource(resource, { statuses: [] })}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
 export const WithSynopsis: Story = {
   render: () => {
     const resource = createTextResource({

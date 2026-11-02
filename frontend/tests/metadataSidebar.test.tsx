@@ -466,26 +466,43 @@ describe("MetadataSidebar", () => {
 
     it("offers no statuses, not Draft/In review/Published, when none are configured", async () => {
       const { status } = await renderStatus(undefined, {});
-      expect(optionTexts(status)).toEqual([]);
+      expect(optionTexts(status)).toEqual([""]);
     });
 
-    it("offers no statuses for an empty configured list", async () => {
+    it("offers only No status and shows the hint for an empty configured list", async () => {
       const { status } = await renderStatus([], {});
-      expect(optionTexts(status)).toEqual([]);
+      expect(optionTexts(status)).toEqual([""]);
+      const hint = screen.getByText(
+        "No statuses yet. Add them in Project Settings, Metadata tab.",
+      );
+      expect(status.getAttribute("aria-describedby")).toBe(hint.id);
     });
 
-    it("offers the configured list unchanged when statuses are configured", async () => {
+    it("offers No status then the configured list unchanged", async () => {
       const { status } = await renderStatus(["Outline", "Final"], {});
-      expect(optionTexts(status)).toEqual(["Outline", "Final"]);
+      expect(optionTexts(status)).toEqual(["", "Outline", "Final"]);
     });
 
-    it("shows the first option and writes nothing on mount for a resource with no stored status", async () => {
+    it("shows No status, not the first listed status, and writes nothing on mount when no status is stored", async () => {
       const { status, onChangeField } = await renderStatus(
         ["Outline", "Final"],
         {},
       );
-      expect(status.selectedOptions[0]?.value).toBe("Outline");
+      expect(status.selectedOptions[0]?.textContent).toBe("No status");
+      expect(status.value).toBe("");
       expect(onChangeField).not.toHaveBeenCalled();
+    });
+
+    it("marks a stored status not in the list and sends an empty string for No status", async () => {
+      const { status, onChangeField } = await renderStatus(["Outline"], {
+        status: "Published",
+      });
+      expect(status.value).toBe("Published");
+      expect(status.selectedOptions[0]?.textContent).toBe(
+        "Published (not in the current list)",
+      );
+      fireEvent.change(status, { target: { value: "" } });
+      expect(onChangeField).toHaveBeenCalledWith("status", "");
     });
 
     it("stores a selected status as before", async () => {
