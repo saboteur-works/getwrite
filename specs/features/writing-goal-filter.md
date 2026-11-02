@@ -107,6 +107,7 @@ Phase 1 is the total goal (FR-1 to FR-16 and the shared requirements); Phase 2 i
 40. FR-40 (both): User documentation (`docs/features/writing-log.md`, `docs/features/word-count-goals.md`) and `docs/api/openapi.yaml` SHOULD be updated to describe the filter, the new entry field, the new aggregate fields and the unavailable and no-match states. [US-5]
 41. FR-41 (both): A filter containing a clock-dependent condition, such as a relative date ("in the last N days"), MUST be refused when saving, with the plain line "A goal filter can't use a relative date, because the figure would change without any edit." Both the core and the tab MUST check. The check walks the AST for a `gte` node whose value is a `{amount, unit}` object (F-15; `isRelativeDateValue` is not exported and would need to be shared, not copied). The implementer MUST confirm no other clock-dependent route exists. [US-1]
 42. FR-42 (both): While a field or value picker in the tab's builder is open, Escape MUST close the picker and not the dialog, using the capture-phase listener pattern of `SchemaManager.tsx:374-397`, with a test. Read, not run: `FieldPicker.tsx:326-328` handles Escape on its search input only, and the dialog's Escape handler listens on `document` in the capture phase, so Escape in a picker likely closes the whole dialog; this is a likely defect, not a confirmed one. The value picker and the dialog primitive were not read, so the implementer MUST check them first. [US-3]
+43. FR-43 (both): The goal filter MUST offer a field labelled Subtype, with the project's subtype list as its values, through the shared query field list, so smart folders and Data view queries offer it too. A stored label MUST compare as the project's list spells it under `normalizeSubtypeLabel`; a label no longer in the list compares as stored. Added 2026-11-01 (Owner decision, PR #321 review; product FR-58 and OQ-62 amended). [US-1]
 
 ## Resolved questions
 
@@ -127,6 +128,7 @@ Gate 3 owner decisions, 2026-11-01. "Read" means decided from reading code, not 
 - RQ-13: Likely defect from reading (FR-42): while a picker is open, Escape closes the picker and not the dialog. See FR-42.
 - RQ-14: The footer re-reads after a resolved sidecar save through `notifyWritingLogGoalChanged`, only while a filter is set. See FR-33.
 - RQ-15: A clock-dependent condition is refused when saving, by the core and the tab. Rejected: allowing it. See FR-41.
+- RQ-16: Subtype is added to the shared query field list, not to the goal filter's alone (Owner decision, PR #321 review, 2026-11-01, amending product OQ-62). Rejected: a goal-filter-only field. See FR-43.
 
 ## Open questions
 
