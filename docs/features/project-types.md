@@ -33,7 +33,7 @@ This is the developer reference for the project-type JSON format, validation, an
   - `name` (string): resource title.
   - `type` (string): resource type (e.g. `text`).
   - `template` (string, optional): initial plain text for the resource.
-- `statuses` (array of strings, optional), `relationshipTypes` (array of
+- `statuses` (array of strings, optional — seeds the project's status list, `config.statuses`; validated by `StatusListSchema`. The list is editable after creation in Project Settings, Metadata tab (Feature 99); the type editor shows "No statuses defined. Resources will use no status." when a type has none), `relationshipTypes` (array of
   strings, optional — seeds the project's list of entity-relationship types,
   e.g. `["ally of", "rival of"]`), `subtypes` (array of strings, optional —
   seeds the project's resource-subtype list, Feature 72; validated by

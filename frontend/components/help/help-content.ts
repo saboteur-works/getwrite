@@ -360,7 +360,7 @@ export const HELP_TABS: HelpTabDefinition[] = [
           ],
           [
             strong("Status"),
-            " - where the draft stands (for example Draft or Revised). The available choices come from the project type.",
+            " - where the draft stands (for example Draft or Revised). A document has no status until you choose one. The choices are your project's status list, which you edit in Project Settings, Metadata tab.",
           ],
           [
             strong("Point of View"),
