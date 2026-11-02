@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener; app=./dist-electron/mac-arm64/GetWrite.app; condition=old-file
+launched: version 2.3.0; pid 89658; env dir null
+A before the new field: footer=["Words: 3","Today's writing","Today: 3","All changes saved · just now"]; day files={"2026-11-01.json":[{"added":3,"deleted":0,"net":3,"timestamp":"2026-11-01T23:57:47.999Z"}]}
+B files after adding documentId: {"2026-10-28.json":[{"added":3,"deleted":0,"net":3,"timestamp":"2026-10-28T23:57:51.148Z","documentId":"07aa5fbd-7a33-4b7e-a0fe-dd941948d156"}]}
+launched: version 2.3.0; pid 90251; env dir null
+C project opened: on project page=true
+D editor text="first words here"; footer=["Words: 3","Today's writing","Today: 0","All changes saved · not saved yet"]
+E details window: ["Today's writing","No daily goal set","Added: 0","Deleted: 0","Net: 0","Imported (not counted toward goal): 0","Set the daily goal in Project Settings.","CLOSE"]
+F 3.3s after typing: footer=["Words: 5","Today's writing","Today: 2","Saved · just now"]; toasts=["",""]
+G content.txt="first words here second words"; day files={"2026-10-28.json":[{"added":3,"deleted":0,"net":3,"timestamp":"2026-10-28T23:57:51.148Z","documentId":"07aa5fbd-7a33-4b7e-a0fe-dd941948d156"}],"2026-11-01.json":[{"added":2,"deleted":0,"net":2,"timestamp":"2026-11-01T23:58:01.854Z"}]}
+launched: version 2.3.0; pid 90823; env dir null
+H after restart: editor text="first words here second words"; footer=["Words: 5","Today's writing","Today: 2","All changes saved · not saved yet"]
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -270,6 +270,18 @@ const nextConfig = {
           // rule as above.
           "../../store/transport/native-word-count-goal-backend":
             "./src/store/transport/native-word-count-goal-backend.web-stub",
+          // goal-filter Task 7: lib/api/goal-filter.ts also lives in
+          // src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-goal-filter-backend" — same rule
+          // as above.
+          "../../store/transport/native-goal-filter-backend":
+            "./src/store/transport/native-goal-filter-backend.web-stub",
+          // goal-filter Task 8: lib/api/goal-filtered-total.ts also lives in
+          // src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-goal-total-backend" — same rule
+          // as above.
+          "../../store/transport/native-goal-total-backend":
+            "./src/store/transport/native-goal-total-backend.web-stub",
           // entity-graph-settings Task 6: lib/api/entity-graph-settings.ts
           // also lives in src/lib/api/, so its dynamic import's literal
           // specifier is "../../store/transport/native-entity-graph-settings-backend"

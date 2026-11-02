@@ -8,10 +8,16 @@ import type { WritingLogAggregate } from "../../src/lib/api/writing-log";
  * stubs `globalThis.fetch` (the pattern used by `TrashView.stories.tsx`); the
  * returned function restores it.
  */
-function setup(aggregate: WritingLogAggregate) {
+function setup(aggregate: WritingLogAggregate | null) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (): Promise<Response> =>
-    ({ ok: true, json: async () => aggregate }) as Response;
+    aggregate === null
+      ? ({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: "unavailable" }),
+        } as Response)
+      : ({ ok: true, json: async () => aggregate } as Response);
   return () => {
     globalThis.fetch = originalFetch;
   };
@@ -23,6 +29,8 @@ const WITH_GOAL: WritingLogAggregate = {
   imported: NO_IMPORT,
   goal: 1000,
   incomplete: false,
+  isFiltered: false,
+  hasNoMatch: false,
 };
 
 const meta: Meta<typeof WritingLogFooterDisplay> = {
@@ -95,5 +103,78 @@ export const IncompleteMarker: Story = {
   beforeEach: () => setup({ ...WITH_GOAL, incomplete: true }),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await within(canvasElement).findByText("Today's count may be incomplete");
+  },
+};
+
+const FILTERED: WritingLogAggregate = { ...WITH_GOAL, isFiltered: true };
+
+/** A goal filter is set: the figure counts only the selected documents. */
+export const Filtered: Story = {
+  beforeEach: () => setup(FILTERED),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Today: 550 / 1000");
+    await expect(canvas.getByText("Counting selected documents")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button"));
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await dialog.findByText("Net: 550");
+    await expect(dialog.getByText("Counting selected documents")).toBeVisible();
+  },
+};
+
+/** The filter matches no documents: a real zero with an explanatory line. */
+export const FilteredNoMatch: Story = {
+  beforeEach: () =>
+    setup({
+      ...FILTERED,
+      hasNoMatch: true,
+      totals: { added: 0, deleted: 0, net: 0 },
+    }),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Today: 0 / 1000");
+    await expect(
+      canvas.getByText("No documents match your goal filter"),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button"));
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await dialog.findByText("Net: 0");
+    await expect(
+      dialog.getByText("No documents match your goal filter"),
+    ).toBeVisible();
+  },
+};
+
+/** The filtered figure cannot be computed: unavailable, never a number. */
+export const FilteredUnavailable: Story = {
+  beforeEach: () => setup(null),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Today's count is unavailable");
+    await expect(canvas.queryByText(/Today: \d/)).toBeNull();
+    await userEvent.click(canvas.getByRole("button"));
+    const dialog = within(await within(document.body).findByRole("dialog"));
+    await dialog.findByText("Today's count is unavailable");
+  },
+};
+
+/** Filtered and incomplete: both markers show, with the unfiltered import line. */
+export const FilteredIncomplete: Story = {
+  beforeEach: () =>
+    setup({
+      ...FILTERED,
+      incomplete: true,
+      imported: { added: 12000, deleted: 0, net: 12000 },
+    }),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Counting selected documents");
+    await expect(
+      canvas.getByText("Today's count may be incomplete"),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button"));
+    await within(document.body).findByText(
+      "Imported (not counted toward goal): 12000",
+    );
   },
 };

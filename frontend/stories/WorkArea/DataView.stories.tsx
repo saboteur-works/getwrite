@@ -128,6 +128,55 @@ export const GoalAchieved: Story = {
   },
 };
 
+const goalFilterProject: Project = {
+  id: "abcd-1234-goal-filter",
+  name: "Novel in Progress",
+  createdAt: new Date().toISOString(),
+  config: { wordCountGoal: 80000, editorConfig: { headings: {} } },
+};
+
+export const WithGoalFilter: Story = {
+  args: {
+    project: goalFilterProject,
+    resources: resourcesWithWords,
+    filteredGoalTotal: {
+      state: { status: "total", total: 12000 },
+      isFiltered: true,
+      isLoading: false,
+      isNoMatch: false,
+      isUnavailable: false,
+    },
+  },
+};
+
+export const WithGoalFilterNoMatch: Story = {
+  args: {
+    project: goalFilterProject,
+    resources: resourcesWithWords,
+    filteredGoalTotal: {
+      state: { status: "no-match", total: 0 },
+      isFiltered: true,
+      isLoading: false,
+      isNoMatch: true,
+      isUnavailable: false,
+    },
+  },
+};
+
+export const WithGoalFilterUnavailable: Story = {
+  args: {
+    project: goalFilterProject,
+    resources: resourcesWithWords,
+    filteredGoalTotal: {
+      state: { status: "unavailable", reason: "request-failed" },
+      isFiltered: true,
+      isLoading: false,
+      isNoMatch: false,
+      isUnavailable: true,
+    },
+  },
+};
+
 export const SortedByLastEdited: Story = {
   args: {
     project: {

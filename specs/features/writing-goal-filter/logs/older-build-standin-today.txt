@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener; app=./dist-electron/mac-arm64/GetWrite.app; condition=today
+launched: version 2.3.0; pid 87879; env dir null
+A before the new field: footer=["Words: 3","Today's writing","Today: 3","All changes saved · just now"]; day files={"2026-11-01.json":[{"added":3,"deleted":0,"net":3,"timestamp":"2026-11-01T23:57:09.602Z"}]}
+B files after adding documentId: {"2026-11-01.json":[{"added":3,"deleted":0,"net":3,"timestamp":"2026-11-01T23:57:09.602Z","documentId":"bc67a3e4-7578-40d9-b983-786d5c57de5c"}]}
+launched: version 2.3.0; pid 88590; env dir null
+C project opened: on project page=true
+D editor text="first words here"; footer=["Words: 3","Today's writing","Today's count is unavailable","All changes saved · not saved yet"]
+E details window: ["Today's writing","Today's writing details","Today's count is unavailable","Set the daily goal in Project Settings.","CLOSE"]
+F 3.3s after typing: footer=["Words: 5","Today's writing","Today's count is unavailable","Saved · just now","Today's word count may be incomplete: this save couldn't be recorded."]; toasts=["","Today's word count may be incomplete: this save couldn't be recorded.",""]
+G content.txt="first words here second words"; day files={"2026-11-01.json":[{"added":3,"deleted":0,"net":3,"timestamp":"2026-11-01T23:57:09.602Z","documentId":"bc67a3e4-7578-40d9-b983-786d5c57de5c"}]}
+launched: version 2.3.0; pid 89169; env dir null
+H after restart: editor text="first words here second words"; footer=["Words: 5","Today's writing","Today's count is unavailable","All changes saved · not saved yet"]
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

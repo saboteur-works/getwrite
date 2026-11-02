@@ -1,0 +1,12 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 69318 port 65266 (throwaway projects dir; templates repo read-only)
+status control shows: "Draft"
+sidecar userMetadata: {}
+smart-folder evaluate, status is Draft: [200,"{\"ids\":[]}"]
+stored: {"op":"eq","field":"status","value":"Draft"}
+goal total, status is Draft: {"status":"no-match","total":0}
+smart-folder evaluate after choosing by hand: [200,"{\"ids\":[\"fe493f55-9f59-40b6-93f9-cae2643b59cc\"]}"]
+after choosing Draft by hand: sidecar userMetadata {"status":"Draft"}; goal total {"status":"total","total":0}
+stop: recorded 69318(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

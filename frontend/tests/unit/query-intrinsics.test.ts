@@ -99,6 +99,7 @@ describe("INTRINSIC_FIELDS registry", () => {
     "createdAt",
     "updatedAt",
     "statuses",
+    "resourceSubtype",
     "tags",
     "linkedFrom",
     "linksTo",
@@ -256,6 +257,34 @@ describe("updatedAt field", () => {
   it("returns null when updatedAt is not set", () => {
     const noUpdate: ResourceBase = { ...baseResource, updatedAt: undefined };
     expect(field.read(noUpdate, ctx)).toBeNull();
+  });
+});
+
+describe("resourceSubtype field", () => {
+  const field = INTRINSIC_FIELDS.find((f) => f.key === "resourceSubtype")!;
+  const withLabels = (subtypes: string[]): QueryContext => ({
+    ...ctx,
+    config: { ...ctx.config, subtypes },
+  });
+
+  it("is offered as a select labelled Subtype", () => {
+    expect(field.label).toBe("Subtype");
+    expect(field.type).toBe("select");
+  });
+
+  it("returns null when the resource has no subtype", () => {
+    expect(field.read(baseResource, withLabels(["Scene"]))).toBeNull();
+  });
+
+  it("reads a stored label as the project list spells it", () => {
+    const resource = { ...baseResource, resourceSubtype: " scene " };
+    expect(field.read(resource, withLabels(["Scene"]))).toBe("Scene");
+  });
+
+  it("reads a label no longer in the list as stored", () => {
+    const resource = { ...baseResource, resourceSubtype: "Outline" };
+    expect(field.read(resource, withLabels(["Scene"]))).toBe("Outline");
+    expect(field.read(resource, ctx)).toBe("Outline");
   });
 });
 

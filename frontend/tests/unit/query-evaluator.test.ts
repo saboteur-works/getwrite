@@ -262,10 +262,14 @@ describe("FR-20 — a field carrying appliesTo stays queryable regardless of sub
     expect(withSub).toEqual([R1, R3]);
   });
 
-  it("can query resourceSubtype itself as a stored key, leaving other fields unaffected", async () => {
+  it("can query resourceSubtype itself, leaving other fields unaffected", async () => {
     const result = await ids(
       { op: "eq", field: "resourceSubtype", value: "Memoir" },
-      { sidecars: withSubtypes },
+      {
+        resources: resources.map((r) =>
+          r.id === R1 ? { ...r, resourceSubtype: "Memoir" } : r,
+        ),
+      },
     );
     expect(result).toEqual([R1]);
   });

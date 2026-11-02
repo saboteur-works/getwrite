@@ -256,6 +256,8 @@ export function stubAppShellFetch(
             totals: { added: 0, deleted: 0, net: 0 },
             imported: { added: 0, deleted: 0, net: 0 },
             incomplete: false,
+            isFiltered: false,
+            hasNoMatch: false,
           }),
           text: async () => "",
         } as Response;

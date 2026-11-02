@@ -467,4 +467,51 @@ describe("models/project-creator", () => {
       await removeDirRetry(tmp);
     }
   });
+
+  it("copies no goalFilter from any built-in project type (Feature 98, FR-5)", async () => {
+    const dir = path.resolve(
+      __dirname,
+      "../../../getwrite-config/templates/project-types",
+    );
+    const specs = (await fs.readdir(dir)).filter(
+      (f) => f.endsWith(".json") && f !== "project-type.schema.json",
+    );
+    expect(specs.length).toBeGreaterThanOrEqual(6);
+    for (const file of specs) {
+      const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-goal-"));
+      try {
+        const { project } = await createAndAssertProject(path.join(dir, file), {
+          projectRoot: tmp,
+        });
+        expect("goalFilter" in (project.config ?? {})).toBe(false);
+        const onDisk = JSON.parse(
+          await fs.readFile(path.join(tmp, "project.json"), "utf8"),
+        );
+        expect("goalFilter" in (onDisk.config ?? {})).toBe(false);
+        await flushIndexer();
+      } finally {
+        await removeDirRetry(tmp);
+      }
+    }
+  });
+
+  it("refuses a project-type spec that carries a goalFilter (Feature 98, FR-5)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-goal-spec-"));
+    try {
+      const spec = {
+        id: "test-goal-filter",
+        name: "Goal Filter Spec",
+        folders: [{ name: "Workspace" }],
+        goalFilter: { op: "gte", field: "userMetadata.rating", value: 3 },
+      };
+      await expect(
+        createAndAssertProject(
+          spec as unknown as Parameters<typeof createAndAssertProject>[0],
+          { projectRoot: tmp },
+        ),
+      ).rejects.toThrow(/goalFilter/);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

@@ -103,6 +103,10 @@ export default function WritingLogFooterDisplay({
       </button>
       <HoverTipSurface id={TOOLTIP_ID} />
       <span>{summary}</span>
+      {aggregate?.isFiltered && <span>Counting selected documents</span>}
+      {aggregate?.isFiltered && aggregate.hasNoMatch && (
+        <span>No documents match your goal filter</span>
+      )}
       {isIncomplete && <span>Today&apos;s count may be incomplete</span>}
       <WritingLogDetailsDialog
         isOpen={isDetailsOpen}

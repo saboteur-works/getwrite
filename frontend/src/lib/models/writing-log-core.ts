@@ -16,6 +16,10 @@ import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { loadProjectConfig } from "./project-config";
 import { readWritingLogEntries } from "./writing-log";
+import {
+  evaluateGoalMembership,
+  type GoalMembershipResult,
+} from "./goal-filter-membership-core";
 
 export { InvalidProjectIdCoreError };
 
@@ -46,6 +50,23 @@ export class InvalidDailyWordGoalError extends Error {
   }
 }
 
+/**
+ * A goal filter is set but the filtered daily figure cannot be computed
+ * (Feature 98, FR-31). Carries the failure so a caller shows "unavailable",
+ * never a number.
+ */
+export class GoalFilteredFigureUnavailableError extends Error {
+  constructor(
+    public readonly failure: Extract<
+      GoalMembershipResult,
+      { status: "failure" }
+    >,
+  ) {
+    super(`Filtered daily figure is unavailable: ${failure.reason}`);
+    this.name = "GoalFilteredFigureUnavailableError";
+  }
+}
+
 interface WritingLogTotals {
   added: number;
   deleted: number;
@@ -62,6 +83,10 @@ export interface WritingLogAggregate {
   goal: number | undefined;
   /** True when the window contains a marker entry (some writing was not counted). */
   incomplete: boolean;
+  /** True when a goal filter is applied to `totals` (Feature 98, FR-29). */
+  isFiltered: boolean;
+  /** True when the filter matched no live text document; `totals` is then a real zero. */
+  hasNoMatch: boolean;
 }
 
 function parseInstant(name: string, value: unknown): number {
@@ -119,7 +144,7 @@ function requireProjectRoot(projectId: string): string {
  * Aggregate the writing log for one local day, given the client's window.
  *
  * @throws InvalidProjectIdCoreError, InvalidWritingLogWindowError,
- *   WritingLogCorruptError; locked-access errors are rethrown unchanged.
+ *   WritingLogCorruptError, GoalFilteredFigureUnavailableError; locked-access errors are rethrown unchanged.
  */
 export async function getWritingLogAggregateCore(
   projectId: string,
@@ -129,6 +154,29 @@ export async function getWritingLogAggregateCore(
   const projectRoot = requireProjectRoot(projectId);
   validateWritingLogWindow(from, to);
   return aggregateForRoot(projectRoot, from as string, to as string);
+}
+
+/**
+ * Live matching document ids when a goal filter is set, else `null`
+ * (unfiltered: today's behaviour). Membership is evaluated on every read.
+ * @throws GoalFilteredFigureUnavailableError when membership is unknown.
+ */
+async function resolveFilterMembers(
+  projectRoot: string,
+  config: ProjectConfig,
+): Promise<Set<string> | null> {
+  if (config.goalFilter === undefined) return null;
+  const result = await evaluateGoalMembership(projectRoot, new Date());
+  switch (result.status) {
+    case "not-filtered":
+      return null;
+    case "members":
+      return new Set(result.ids);
+    case "no-match":
+      return new Set();
+    case "failure":
+      throw new GoalFilteredFigureUnavailableError(result);
+  }
 }
 
 /** Root-keyed aggregation (re-validates the window). Exported for tests. */
@@ -141,23 +189,42 @@ async function aggregateForRoot(
   const entries = await readWritingLogEntries(projectRoot, from, to);
   const totals: WritingLogTotals = { added: 0, deleted: 0, net: 0 };
   const imported: WritingLogTotals = { added: 0, deleted: 0, net: 0 };
+  const config = await loadProjectConfig(projectRoot);
+  const memberIds = await resolveFilterMembers(projectRoot, config);
   let isIncomplete = false;
   for (const e of entries) {
     if ("skipped" in e) {
-      isIncomplete = true;
+      // Filtered: a marker counts only for a matching document or with no id.
+      if (
+        memberIds === null ||
+        e.documentId === undefined ||
+        memberIds.has(e.documentId)
+      ) {
+        isIncomplete = true;
+      }
       continue;
+    }
+    if (!e.source && memberIds !== null) {
+      // Filtered: only entries of a live, matching text document count.
+      if (e.documentId === undefined) {
+        // Pre-upgrade entry: its document is unknown, so the figure may be low.
+        isIncomplete = true;
+        continue;
+      }
+      if (!memberIds.has(e.documentId)) continue;
     }
     const bucket = e.source ? imported : totals;
     bucket.added += e.added;
     bucket.deleted += e.deleted;
     bucket.net += e.net;
   }
-  const config = await loadProjectConfig(projectRoot);
   return {
     totals,
     imported,
     goal: config.dailyWordGoal,
     incomplete: isIncomplete,
+    isFiltered: memberIds !== null,
+    hasNoMatch: memberIds !== null && memberIds.size === 0,
   };
 }
 

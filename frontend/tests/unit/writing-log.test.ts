@@ -80,6 +80,34 @@ describe("writing-log model (Feature 59 Task 3)", () => {
     expect(e).toMatchObject({ source: "docx" });
   });
 
+  it("writes documentId only when supplied; an import entry has none", async () => {
+    const id = "123e4567-e89b-42d3-a456-426614174000";
+    const withId = await appendWritingLogEntry(
+      ROOT,
+      { added: 1, deleted: 0, documentId: id },
+      "2026-09-26T10:00:00Z",
+    );
+    const marker = await appendWritingLogEntry(
+      ROOT,
+      { skipped: true, documentId: id },
+      "2026-09-26T10:00:01Z",
+    );
+    const without = await appendWritingLogEntry(
+      ROOT,
+      { added: 1, deleted: 0 },
+      "2026-09-26T10:00:02Z",
+    );
+    const imported = await appendWritingLogEntry(
+      ROOT,
+      { added: 9, deleted: 0, source: "docx" },
+      "2026-09-26T10:00:03Z",
+    );
+    expect(withId).toMatchObject({ documentId: id });
+    expect(marker).toMatchObject({ skipped: true, documentId: id });
+    expect(without).not.toHaveProperty("documentId");
+    expect(imported).not.toHaveProperty("documentId");
+  });
+
   it("20 concurrent appends lose none", async () => {
     await Promise.all(
       Array.from({ length: 20 }, (_, i) =>

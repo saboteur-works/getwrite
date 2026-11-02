@@ -7,6 +7,7 @@ import type {
   ResourceRef,
 } from "./types";
 import type { BacklinkIndex } from "./backlinks";
+import { normalizeSubtypeLabel } from "./field-subtype-scope";
 
 /** Where the evaluator reads an intrinsic field's value from. */
 export type IntrinsicFieldSource =
@@ -118,6 +119,26 @@ export const INTRINSIC_FIELDS: readonly IntrinsicField[] = [
     type: "multiselect",
     source: "resource",
     read: (resource) => resource.statuses ?? [],
+  },
+  {
+    // A stored label matches the project's list under `normalizeSubtypeLabel`
+    // (Feature 72), so it reads as the list's spelling, the one the Value
+    // picker offers and the sidebar shows. A label no longer in the list reads
+    // as stored.
+    key: "resourceSubtype",
+    label: "Subtype",
+    type: "select",
+    source: "resource",
+    read: (resource, context) => {
+      const stored = resource.resourceSubtype;
+      if (stored === undefined) return null;
+      const key = normalizeSubtypeLabel(stored);
+      return (
+        context.config.subtypes?.find(
+          (label) => normalizeSubtypeLabel(label) === key,
+        ) ?? stored
+      );
+    },
   },
   {
     key: "tags",

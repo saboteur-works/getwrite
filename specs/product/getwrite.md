@@ -75,11 +75,11 @@ version.
   location- or folder-based scoping, not multi-valued (one subtype per
   resource), not backed by a catch-all or "general" subtype, and not a merge
   with the entity declaration (`entityKind`, FR-35). The first slice also
-  has no rename operation, cannot restrict built-in fields, does not make
-  subtype selectable in the query builder or smart folders, does not have
+  has no rename operation, cannot restrict built-in fields, does not have
   the import pipelines assign subtypes, and ships no subtype list in any
   built-in project type (see Out of Scope (Deferred)). Owner decisions,
-  2026-10-08 (ideation; Gate 1).
+  2026-10-08 (ideation; Gate 1). Subtype is selectable in the query builder,
+  smart folders and the goal filter since 2026-11-01 (see OQ-62).
 - Hosted multi-tenant access and Android are addressed only as later
   milestones (see Functional Requirements); this spec does not treat them as
   shipped even though technical foundations exist. They are pursued on a
@@ -277,6 +277,11 @@ with the app without hand-rewriting it (see OQ-90).
   OQ-120 to OQ-129.) Source: the owner's request of
   2026-10-25 ("the last thing I want to add before release"); the concept
   (`specs/concept.md`) has no spell-checker entry and is not edited.
+- US-34: As a writer on deadline, I want to choose which of my documents
+  count toward the project's word-count goal and daily goal, so that notes,
+  research and drafts I set aside do not inflate my progress. [Next]
+  (Added 2026-11-01; FR-79. Owner-chosen scope, 2026-11-01. Resolved:
+  OQ-130, OQ-131.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -821,9 +826,11 @@ with the app without hand-rewriting it (see OQ-90).
   existing folder-scoped group mechanism (a metadata group's optional
   folder id) is left exactly as it is: it and subtype restriction are
   independent, and both MUST pass for a field to be presented. Fields
-  hidden by subtype scope MUST remain fully queryable, unchanged; making
-  subtype itself selectable in the query builder or smart folders is not in
-  this slice. The Organizer card body, Organizer filters and the Timeline
+  hidden by subtype scope MUST remain fully queryable, unchanged. Subtype
+  itself MUST be selectable as a field in the query builder, and so in smart
+  folders, Data view queries and the goal filter (FR-79); a stored label is
+  compared as the project's list spells it. Added 2026-11-01, reversing the
+  first slice's exclusion (OQ-62). The Organizer card body, Organizer filters and the Timeline
   MUST be unchanged. Status: Shipped. Owner decisions (ideation,
   2026-10-08): the restriction is optional per field; unrestricted is the
   default; no general bucket exists. Resolved (OQ-62, OQ-63, OQ-64, OQ-66):
@@ -1194,7 +1201,9 @@ with the app without hand-rewriting it (see OQ-90).
   project-type spec or by editing `project.json`; no in-app control was
   found. No per-resource goal field was found in the sidecar schema. The
   per-resource goal MUST be a new optional sidecar field validated in
-  `schemas.ts`. Goal progress MUST NOT be indicated in red. [US-20]
+  `schemas.ts`. Goal progress MUST NOT be indicated in red. Amended
+  2026-11-01: the project goal's progress may be limited to the documents
+  chosen under FR-79; the per-resource goal is not affected. [US-20]
 - FR-48: The product MUST keep a daily writing log recording, per project per
   day, words added, words deleted and net words (added minus deleted), and
   MUST let a writer set a daily goal and compare the day's figures against
@@ -1234,7 +1243,11 @@ with the app without hand-rewriting it (see OQ-90).
   resolved). `snapshotBeforeDestructiveWrite` returns null for both an
   unreadable and a non-destructive case, so this requirement needs its own
   read or a distinguishable result. The log MUST be persisted through the
-  storage adapter and fail closed when locked (OQ-46, resolved). [US-21]
+  storage adapter and fail closed when locked (OQ-46, resolved). Amended
+  2026-11-01: where this requirement compares the day's figures against the
+  daily goal, FR-79 lets a writer limit which documents count toward it; the
+  filter is applied when the figure is read, and a log entry gains an
+  optional document ID. With no filter set, nothing here changes. [US-21]
 - FR-49: The product MUST compute prose diagnostics with no AI or network
   dependency. Status: Not started. Sequencing: follows the FR-48 pass (OQ-42,
   resolved). Decided by the owner 2026-09-26:
@@ -2046,6 +2059,50 @@ with the app without hand-rewriting it (see OQ-90).
   suggestion time, download size and memory, including a long document on
   each platform with Android included (OQ-129). Resolved: OQ-120 to OQ-129.
   [US-33]
+- FR-79: A writer MUST be able to choose which documents count toward the
+  project's writing goals, by setting conditions in the Writing Goals tab of
+  Project Settings with the same query builder used for smart folders. Added
+  2026-11-01 (owner-chosen scope). Decided (Owner decision, 2026-11-01): (1)
+  For the daily goal the filter applies when the figure is read, not when a
+  save happens; changing the filter, or a document's fields, changes today's
+  figure. (2) One filter covers both the total word-count goal (FR-47) and
+  the daily goal (FR-48); the per-document goal (FR-47) is not affected. (3)
+  The conditions are stored in the project's config, not as a reference to a
+  saved query, so deleting a smart folder cannot change a goal. (4)
+  Writing-log entries from before this feature, which do not record a
+  document, are left out of a filtered figure, and the existing "Today's
+  count may be incomplete" message is shown. With no filter set, both goals
+  MUST behave exactly as they do today. Imports stay on their separate line
+  and never count toward the daily goal (FR-48). A failed filter evaluation
+  MUST show the existing unavailable state for that figure and MUST NOT show
+  a zero (`docs/standards/failure-visibility.md`). Because the daily goal is
+  filtered when read, a writing-log entry needs a new optional document ID so
+  it can be matched to a document at that time. Facts. Read, not run
+  (2026-11-01): (1) writing-log entries are `{ added, deleted, net,
+  timestamp, source? }` or a marker `{ skipped, timestamp }`
+  (`frontend/src/lib/models/schemas.ts`), written by `logCanonicalSave` in
+  `frontend/src/lib/models/revision-core.ts`, and carry no document
+  identity. (2) The total goal's progress is shown in
+  `frontend/components/WorkArea/DataView.tsx`. Resolved (Owner decision,
+  Gate 1, 2026-11-01): OQ-130 and OQ-131. (5) A log entry whose document is
+  not live (moved to Trash or purged) is left out of a filtered figure and
+  is not an evaluation failure, so the figure can shrink. Restoring the
+  document (same ID) brings its entries back. A copy has its own ID and is
+  evaluated on its own fields; the original's entries are not attributed to
+  it. The metadata of trashed documents is not read to keep the figure
+  stable. A failure to list documents MUST count as a failed evaluation
+  (the unavailable state), never as an empty list. Evidence, read not run:
+  `listResourceIds` returns `[]` when `readdir` throws
+  (`frontend/src/lib/models/backlinks.ts:96-98`). (6) While a filter is set,
+  a short neutral label beside each filtered figure, and in the Writing
+  Goals tab, says so, for example "Counting selected documents"; the exact
+  wording is for the feature spec. (7) A filter that matches no documents
+  shows a real zero with that label and a line such as "No documents match
+  your goal filter", distinct from a failure. (8) Failure states follow from
+  this requirement: the daily figure reuses "Today's count is unavailable";
+  the total goal shows an equivalent line, because `DataView.tsx:193-195`
+  has no unavailable state today. Colours are neutral (red is reserved).
+  [US-34]
 
 ## Constraints
 
@@ -3468,6 +3525,7 @@ were built around.
 **OQ-62 (resolved): Do fields hidden by subtype scope still participate in saved queries, smart folders and the Data view, and must subtype itself be queryable in the first slice?**
 **Resolution:** Fields hidden by subtype scope remain fully queryable, unchanged. Making subtype itself selectable in the query builder or smart folders is deferred and not in the first slice (see Out of Scope (Deferred)).
 **Evidence:** Owner decision, Gate 1, 2026-10-08. Code evidence, confirmed by the owner: `query-evaluator.ts` reads the sidecar and never consults sidebar visibility. Constraint noted by triage: the eventual sidecar identifier for subtype must not be able to collide with a custom field's key, because queries flatten custom-field values over top-level sidecar keys.
+**Amendment (2026-11-01):** Owner decision during the review of Feature 98: subtype itself is now selectable everywhere the query builder appears (query builder, smart folders, Data view queries, goal filter). The ruling that fields hidden by subtype scope stay queryable is unchanged.
 **Impact:** FR-58, FR-57, FR-10, FR-34.
 
 **OQ-63 (resolved): Can built-in (default-schema) fields be restricted by subtype, or only custom fields?**
@@ -3862,6 +3920,18 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Impact:** FR-78; US-33; to be set after the engine spike.
 **Owner:** Product owner.
 
+**OQ-130 (resolved): When a filtered daily figure is read, what happens to log entries whose document has since been deleted, moved to Trash, or restored, and to entries from a duplicate or copy?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-11-01; option a): a log entry whose document is not live (trashed or purged) is left out of a filtered figure and is not an evaluation failure, so the figure can shrink. Restoring the document (same ID) brings its entries back. A copy has its own ID and is evaluated on its own fields; the original's entries are not attributed to it. Rejected: reading trashed documents' metadata to keep the figure stable. A failure to list documents MUST count as a failed evaluation, never as an empty list (evidence, read not run: `listResourceIds` returns `[]` when `readdir` throws, `frontend/src/lib/models/backlinks.ts:96-98`). Applied in FR-79.
+**Impact:** FR-79; US-34; the FR-79 note on FR-48. The filter is evaluated against a document's fields when the figure is read (Owner decision, 2026-11-01), so an entry whose document cannot be found has no fields to test.
+**Owner:** Product owner.
+**Evidence:** Not checked: how a log entry's document ID would be matched after a delete, a Trash move or restore, or a copy. Whether a missing document counts as excluded or as a failed evaluation (which must show the unavailable state, not a zero) is not decided here.
+
+**OQ-131 (resolved): What does the writer see to know a goal figure is filtered, and what does it show when the filter matches no documents?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-11-01; option a for both parts). Cue: while a filter is set, a short neutral label beside each filtered figure and in the Writing Goals tab says so, for example "Counting selected documents"; exact wording is for the feature spec. Rejected: showing it only in the tab and details window. No match: a filter matching no documents shows a real zero with the label and a line such as "No documents match your goal filter", distinct from a failure. Rejected: a bare zero. Failure states follow from FR-79: the daily figure reuses "Today's count is unavailable"; the total goal gets an equivalent line, because `DataView.tsx:193-195` has no unavailable state today. Colours are neutral (red is reserved). Applied in FR-79.
+**Impact:** FR-79; US-34; the Writing Goals tab, the total goal's progress in `DataView.tsx`, and the daily goal display.
+**Owner:** Product owner.
+**Evidence:** Not checked: whether the total goal's progress has an unavailable state today. A filter that matches nothing is a real zero and must be told apart from a failed evaluation (`docs/standards/failure-visibility.md`); how each is worded and shown is not decided here.
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -3937,8 +4007,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 - Resource subtype follow-ups (FR-57 to FR-62, resolved: OQ-58, OQ-60, OQ-62,
   OQ-63, OQ-65; Owner decision, Gate 1, 2026-10-08), deferred or excluded
   from the first slice: a rename operation for subtypes (renaming is remove
-  plus add); restricting built-in (default-schema) fields by subtype; making
-  subtype selectable in the query builder and smart folders; the import
+  plus add); restricting built-in (default-schema) fields by subtype; the import
   pipelines assigning a subtype; and which built-in project types should
   ship a subtype list (no built-in type ships one yet, a deferred content
   decision). These are deferred, not decided against.

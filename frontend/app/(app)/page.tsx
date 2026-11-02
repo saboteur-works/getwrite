@@ -36,6 +36,7 @@ import {
 import { fetchSpellingState } from "../../src/store/spellingSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import AppShell from "../../components/Layout/AppShell";
+import type { ProjectGoalSavedHandler } from "../../components/Layout/ProjectSettingsDialog";
 import StartPage, {
   type StartPageProjectEntry,
   type StartPageCreateResult,
@@ -71,6 +72,10 @@ import {
 } from "../../src/store/resourcesSlice";
 import { shallowEqual } from "react-redux";
 import { toastService } from "../../src/lib/toast-service";
+import {
+  notifyAfterSidecarSave,
+  setGoalFilterActive,
+} from "../../src/lib/sidecar-save-signal";
 import { ResourceGoneError } from "../../src/lib/models/resource-gone-error";
 import { setEditorConfig } from "../../src/store/editorConfigSlice";
 import { exportMarkdown, exportText } from "../../src/lib/api/export";
@@ -101,6 +106,7 @@ interface SelectedProjectState {
   config?: {
     wordCountGoal?: number;
     dailyWordGoal?: number;
+    goalFilter?: unknown;
     defaultRevisionName?: string;
   };
 }
@@ -153,6 +159,13 @@ export default function Home(): JSX.Element {
    */
   const [selectedProject, setSelectedProject] =
     useState<SelectedProjectState | null>(null);
+
+  // Task 29 (FR-33): publish whether the open project has a goal filter, so
+  // every sidecar save path can signal the footer (`sidecar-save-signal.ts`).
+  const hasGoalFilter = Boolean(selectedProject?.config?.goalFilter);
+  useEffect(() => {
+    setGoalFilterActive(hasGoalFilter);
+  }, [hasGoalFilter]);
 
   const selectedResource = useAppSelector(
     (state) => selectResource(state.resources),
@@ -302,6 +315,7 @@ export default function Home(): JSX.Element {
       config: {
         wordCountGoal: projectFiles.project.config?.wordCountGoal,
         dailyWordGoal: projectFiles.project.config?.dailyWordGoal,
+        goalFilter: projectFiles.project.config?.goalFilter,
         defaultRevisionName: projectFiles.project.config?.defaultRevisionName,
       },
     });
@@ -353,6 +367,7 @@ export default function Home(): JSX.Element {
       config: {
         wordCountGoal: p.project.config?.wordCountGoal,
         dailyWordGoal: p.project.config?.dailyWordGoal,
+        goalFilter: p.project.config?.goalFilter,
         defaultRevisionName: p.project.config?.defaultRevisionName,
       },
     });
@@ -565,21 +580,27 @@ export default function Home(): JSX.Element {
 
     if (activeProjectDirectoryId) {
       const sent = applyUpdate(resource);
-      updateSidecar(resourceId, activeProjectDirectoryId, sent).catch((err) => {
-        // The resource was moved to Trash while this save was in flight; the
-        // server refused it rather than bring the resource back
-        // (note_131ecc62). The writer deleted it, so nothing is reported.
-        if (err instanceof ResourceGoneError) return;
-        console.error("Error updating resource metadata:", err);
-        // The change is already on screen; a failed save used to leave it
-        // there with no message, and it was gone after a reload (measured,
-        // note_13ae633c). Put back the keys this edit changed and say so.
-        revertUnsavedChange(resourceId, resource, sent);
-        toastService.error(
-          "Change not saved",
-          `Your change to \u201C${resource.name}\u201D could not be saved and was undone. Try again.`,
-        );
-      });
+      updateSidecar(resourceId, activeProjectDirectoryId, sent)
+        .then(() => {
+          // FR-33: a field edit can change which documents the goal filter
+          // counts, so the footer re-reads, but only while a filter is set.
+          notifyAfterSidecarSave();
+        })
+        .catch((err) => {
+          // The resource was moved to Trash while this save was in flight; the
+          // server refused it rather than bring the resource back
+          // (note_131ecc62). The writer deleted it, so nothing is reported.
+          if (err instanceof ResourceGoneError) return;
+          console.error("Error updating resource metadata:", err);
+          // The change is already on screen; a failed save used to leave it
+          // there with no message, and it was gone after a reload (measured,
+          // note_13ae633c). Put back the keys this edit changed and say so.
+          revertUnsavedChange(resourceId, resource, sent);
+          toastService.error(
+            "Change not saved",
+            `Your change to \u201C${resource.name}\u201D could not be saved and was undone. Try again.`,
+          );
+        });
     } else {
       console.error(
         "updateResource: no active project directory id; sidecar not persisted",
@@ -1043,10 +1064,7 @@ export default function Home(): JSX.Element {
   };
 
   /** Applies a saved writing goal to the open project's config (D-14). */
-  const handleProjectGoalSaved = (
-    key: "dailyWordGoal" | "wordCountGoal",
-    goal: number | null,
-  ): void => {
+  const handleProjectGoalSaved: ProjectGoalSavedHandler = (key, goal): void => {
     setSelectedProject((prev) =>
       prev
         ? { ...prev, config: { ...prev.config, [key]: goal ?? undefined } }

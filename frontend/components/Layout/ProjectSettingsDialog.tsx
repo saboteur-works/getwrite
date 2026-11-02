@@ -28,6 +28,10 @@ import TagsManagerModal from "../common/TagsManagerModal";
 import SchemaManager from "../SchemaManager/SchemaManager";
 import DailyWordGoalField from "./DailyWordGoalField";
 import WordCountGoalField from "./WordCountGoalField";
+import GoalFilterSection from "./GoalFilterSection";
+import type { FilterChipField } from "../QueryBuilder/FilterChip";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
+import { notifyWritingLogGoalChanged } from "../../src/lib/writing-log-signal";
 import NoiseWordsSettingsTab from "./NoiseWordsSettingsTab";
 import SpellingSettingsTab from "./SpellingSettingsTab";
 import MentionHighlightDurationField from "./MentionHighlightDurationField";
@@ -45,9 +49,13 @@ import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
  * saved value (`null` when cleared), so a reopened dialog shows it (D-14).
  */
 export type ProjectGoalSavedHandler = (
-  key: "dailyWordGoal" | "wordCountGoal",
-  goal: number | null,
+  ...args:
+    | [key: "dailyWordGoal" | "wordCountGoal", goal: number | null]
+    | [key: "goalFilter", goal: unknown]
 ) => void;
+
+/** Stable empty list so an omitted `goalFilterFields` does not re-seed the builder. */
+const NO_GOAL_FILTER_FIELDS: FilterChipField[] = [];
 
 export interface ProjectSettingsDialogProps {
   open: boolean;
@@ -68,6 +76,17 @@ export interface ProjectSettingsDialogProps {
   initialWordCountGoal?: number;
   /** Called after a Writing Goals field saves, so the owner of the project's config can update it (D-14). */
   onProjectGoalSaved?: ProjectGoalSavedHandler;
+  /** Currently saved `config.goalFilter`, if any (Feature 98, FR-19). */
+  initialGoalFilter?: unknown;
+  /** The project's query-builder field list for the goal filter section. */
+  goalFilterFields?: FilterChipField[];
+  /** Resource typeahead options for the goal filter's resource-ref chips. */
+  resolveGoalFilterResourceOptions?: (
+    refFolder: string | undefined,
+    includeSubfolders?: boolean,
+  ) => ResourceOption[];
+  /** Folder typeahead options for the goal filter's folder-ref chips. */
+  resolveGoalFilterFolderOptions?: () => ResourceOption[];
   /**
    * Currently saved `config.mentionHighlightDurationSeconds`, if any
    * (Entity mention navigation, Task 10). Omitted when the project has
@@ -150,6 +169,10 @@ export default function ProjectSettingsDialog({
   initialDailyWordGoal,
   initialWordCountGoal,
   onProjectGoalSaved,
+  initialGoalFilter,
+  goalFilterFields = NO_GOAL_FILTER_FIELDS,
+  resolveGoalFilterResourceOptions,
+  resolveGoalFilterFolderOptions,
   initialMentionHighlightDurationSeconds,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
@@ -291,6 +314,17 @@ export default function ProjectSettingsDialog({
                     onSaved={(goal) =>
                       onProjectGoalSaved?.("wordCountGoal", goal)
                     }
+                  />
+                  <GoalFilterSection
+                    projectId={projectId}
+                    storedFilter={initialGoalFilter}
+                    fields={goalFilterFields}
+                    resolveResourceOptions={resolveGoalFilterResourceOptions}
+                    resolveFolderOptions={resolveGoalFilterFolderOptions}
+                    onSaved={(goalFilter) => {
+                      notifyWritingLogGoalChanged();
+                      onProjectGoalSaved?.("goalFilter", goalFilter);
+                    }}
                   />
                 </>
               ) : null}

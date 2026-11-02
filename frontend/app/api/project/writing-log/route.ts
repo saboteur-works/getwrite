@@ -12,12 +12,15 @@
  *
  * `projectId` is validated as a UUID and the project root is derived from it
  * by the core; no client-supplied path is accepted. Locked-access errors are
- * rethrown for `withStorageContext` to map to 401/409.
+ * rethrown for `withStorageContext` to map to 401/409. An unavailable filtered
+ * figure (`GoalFilteredFigureUnavailableError`) maps to HTTP 500 with an
+ * `error` string and no totals; the native backend rejects with the same error.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import {
   getWritingLogAggregateCore,
+  GoalFilteredFigureUnavailableError,
   InvalidDailyWordGoalError,
   InvalidProjectIdCoreError,
   InvalidWritingLogWindowError,
@@ -39,6 +42,11 @@ function mapCoreError(error: unknown): Response {
     error instanceof InvalidDailyWordGoalError
   ) {
     return badRequest(error.message);
+  }
+  // A filtered figure that cannot be computed is a failure, never a number
+  // (Feature 98, FR-31). The message names the reason only.
+  if (error instanceof GoalFilteredFigureUnavailableError) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
   // Locked-access errors (and everything else) propagate to withStorageContext.
   throw error;

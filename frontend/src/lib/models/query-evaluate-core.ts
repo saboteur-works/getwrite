@@ -56,7 +56,7 @@ function stringArray(v: MetadataValue): string[] | undefined {
  * Build a ResourceBase from raw sidecar data, extracting typed system fields.
  * Fields not present in sidecar fall back to safe defaults.
  */
-function sidecarToResourceBase(
+export function sidecarToResourceBase(
   id: string,
   sidecar: Record<string, MetadataValue>,
 ): ResourceBase {
@@ -70,6 +70,7 @@ function sidecarToResourceBase(
     createdAt: str(sidecar.createdAt) ?? new Date(0).toISOString(),
     updatedAt: str(sidecar.updatedAt),
     statuses: stringArray(sidecar.statuses),
+    resourceSubtype: str(sidecar.resourceSubtype),
   };
 
   if (base.type === "text" && num(sidecar.wordCount) !== undefined) {
@@ -93,7 +94,7 @@ async function loadProjectConfig(projectRoot: string): Promise<ProjectConfig> {
   }
 }
 
-function flattenUserMetadata(
+export function flattenUserMetadata(
   rawSidecar: Record<string, MetadataValue>,
 ): Record<string, MetadataValue> {
   // User metadata fields are nested under userMetadata in the JSON.

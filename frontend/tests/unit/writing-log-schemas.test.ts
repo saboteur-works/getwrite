@@ -108,3 +108,62 @@ describe("WritingLogDayFileSchema", () => {
     ).toBe(false);
   });
 });
+
+describe("documentId on writing-log entries (Feature 98, FR-24/FR-25)", () => {
+  const documentId = "3f2b8c1e-9d4a-4e6b-8a1c-5b7d2e9f0a34";
+
+  it("parses a word entry and a marker entry with a valid documentId", () => {
+    expect(
+      WritingLogWordEntrySchema.safeParse({ ...word, documentId }).success,
+    ).toBe(true);
+    expect(
+      WritingLogMarkerEntrySchema.safeParse({ ...marker, documentId }).success,
+    ).toBe(true);
+  });
+  it("rejects an invalid documentId on either variant", () => {
+    for (const bad of ["", "not-a-uuid", "../etc", 7]) {
+      expect(
+        WritingLogWordEntrySchema.safeParse({ ...word, documentId: bad })
+          .success,
+      ).toBe(false);
+      expect(
+        WritingLogMarkerEntrySchema.safeParse({ ...marker, documentId: bad })
+          .success,
+      ).toBe(false);
+    }
+  });
+  it("still parses entries without documentId", () => {
+    expect(WritingLogWordEntrySchema.safeParse(word).success).toBe(true);
+    expect(WritingLogMarkerEntrySchema.safeParse(marker).success).toBe(true);
+  });
+  it("rejects an import entry (source) that carries a documentId", () => {
+    for (const source of ["docx", "scrivener", "plaintext"]) {
+      expect(
+        WritingLogWordEntrySchema.safeParse({ ...word, source, documentId })
+          .success,
+      ).toBe(false);
+    }
+  });
+  it("stays strict for every other key", () => {
+    expect(
+      WritingLogWordEntrySchema.safeParse({ ...word, documentId, extra: 1 })
+        .success,
+    ).toBe(false);
+    expect(
+      WritingLogMarkerEntrySchema.safeParse({ ...marker, documentId, extra: 1 })
+        .success,
+    ).toBe(false);
+  });
+  it("parses a day file mixing entries with and without documentId", () => {
+    expect(
+      WritingLogDayFileSchema.safeParse({
+        entries: [
+          word,
+          { ...word, documentId },
+          marker,
+          { ...marker, documentId },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+});

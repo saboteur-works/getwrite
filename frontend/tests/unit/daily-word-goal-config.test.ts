@@ -70,3 +70,56 @@ describe("dailyWordGoal (Feature 59, FR-6/FR-13)", () => {
     expect(unset.project.config?.dailyWordGoal).toBeUndefined();
   });
 });
+
+describe("goalFilter config key (Feature 98, FR-1/FR-4/FR-5)", () => {
+  const filter = { op: "gte", field: "userMetadata.rating", value: 3 };
+
+  it("parses a config with a filter and keeps it", () => {
+    expect(
+      ProjectConfigSchema.parse({ goalFilter: filter }).goalFilter,
+    ).toEqual(filter);
+  });
+
+  it("stores a value that fails the AST schema as-is, so the loader can still read it", () => {
+    const bad = { op: "bogus" };
+    expect(ProjectConfigSchema.safeParse({ goalFilter: bad }).success).toBe(
+      true,
+    );
+    expect(
+      normalizeProjectConfig({ editorConfig: {}, goalFilter: bad }).goalFilter,
+    ).toEqual(bad);
+  });
+
+  it("survives normalizeProjectConfig unchanged", () => {
+    expect(
+      normalizeProjectConfig({ editorConfig: {}, goalFilter: filter })
+        .goalFilter,
+    ).toEqual(filter);
+  });
+
+  it("leaves the key absent when no filter is set", () => {
+    expect("goalFilter" in ProjectConfigSchema.parse({})).toBe(false);
+    expect("goalFilter" in normalizeProjectConfig({ editorConfig: {} })).toBe(
+      false,
+    );
+    expect("goalFilter" in normalizeProjectConfig(undefined)).toBe(false);
+  });
+
+  it("survives the API response schema and is absent when unset", () => {
+    const parsed = ProjectApiEntrySchema.parse({
+      project: {
+        ...apiProject,
+        config: { goalFilter: filter, editorConfig: {} },
+      },
+      folders: [],
+      resources: [],
+    });
+    expect(parsed.project.config?.goalFilter).toEqual(filter);
+    const unset = ProjectApiEntrySchema.parse({
+      project: { ...apiProject, config: { editorConfig: {} } },
+      folders: [],
+      resources: [],
+    });
+    expect("goalFilter" in (unset.project.config ?? {})).toBe(false);
+  });
+});

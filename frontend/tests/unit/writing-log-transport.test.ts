@@ -16,7 +16,10 @@ import {
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import { GET } from "../../app/api/project/writing-log/route";
 import { createNativeWritingLogTransport } from "../../src/store/transport/native-writing-log-backend";
-import { InvalidWritingLogWindowError } from "../../src/lib/models/writing-log-core";
+import {
+  GoalFilteredFigureUnavailableError,
+  InvalidWritingLogWindowError,
+} from "../../src/lib/models/writing-log-core";
 import { appendWritingLogEntry } from "../../src/lib/models/writing-log";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
 import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
@@ -96,6 +99,8 @@ describe("getTodayWritingLog / setDailyWordGoal — HTTP", () => {
     imported: { added: 0, deleted: 0, net: 0 },
     goal: 300,
     incomplete: false,
+    isFiltered: false,
+    hasNoMatch: false,
   };
 
   it("sends the local day's window as from/to query params, never in the path", async () => {
@@ -206,6 +211,70 @@ describe("getTodayWritingLog / setDailyWordGoal — HTTP", () => {
     );
   });
 
+  it("parses and returns isFiltered and hasNoMatch from the body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              totals: { added: 0, deleted: 0, net: 0 },
+              imported: { added: 0, deleted: 0, net: 0 },
+              incomplete: false,
+              isFiltered: true,
+              hasNoMatch: true,
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+    const r = await httpWritingLogTransport.getWritingLog("p", "a", "b");
+    expect(r.isFiltered).toBe(true);
+    expect(r.hasNoMatch).toBe(true);
+  });
+
+  it("reports and rejects a body missing the new fields, without passing the body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              totals: { added: 1, deleted: 0, net: 1 },
+              imported: { added: 0, deleted: 0, net: 0 },
+              incomplete: false,
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+    await expect(
+      httpWritingLogTransport.getWritingLog("p", "a", "b"),
+    ).rejects.toThrow("malformed");
+    const calls = vi.mocked(reportTransportValidationFailure).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toBe("writing-log.getWritingLog");
+    expect(JSON.stringify(calls[0])).not.toContain('"net":1');
+  });
+
+  it("rejects a 500 from an unavailable filtered figure and fabricates no zero", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ error: "unavailable" }), {
+            status: 500,
+          }),
+        ),
+    );
+    await expect(
+      httpWritingLogTransport.getWritingLog("p", "a", "b"),
+    ).rejects.toThrow("unavailable");
+  });
+
   it("exposes the http transport object", () => {
     expect(typeof httpWritingLogTransport.getWritingLog).toBe("function");
   });
@@ -287,6 +356,93 @@ describe("native backend", () => {
     expect(JSON.parse(JSON.stringify(nativeResult))).toEqual(httpBody);
     expect(nativeResult.totals.net).toBe(8);
     expect(nativeResult.goal).toBe(250);
+  });
+
+  it("returns the same filter fields as the HTTP route for the same filtered fixtures", async () => {
+    const filter = { op: "eq", field: "status", value: "draft" };
+    const projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-wl-flt-"));
+    tmpDirs.push(projectsDir);
+    const httpId = generateUUID();
+    const httpRoot = path.join(projectsDir, httpId);
+    await fs.mkdir(httpRoot, { recursive: true });
+    const withFilter = {
+      ...createProject({ name: "h" }),
+      config: { dailyWordGoal: 250, goalFilter: filter },
+    };
+    await fs.writeFile(
+      path.join(httpRoot, PROJECT_FILENAME),
+      JSON.stringify(withFilter),
+    );
+    await appendWritingLogEntry(
+      httpRoot,
+      { added: 10, deleted: 2 },
+      "2026-09-26T01:00:00.000Z",
+    );
+
+    const original = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    let httpBody: Record<string, unknown>;
+    try {
+      const url = new URL("http://localhost/api/project/writing-log");
+      url.searchParams.set("projectId", httpId);
+      url.searchParams.set("from", FROM);
+      url.searchParams.set("to", TO);
+      const res = await GET(new Request(url) as never);
+      expect(res.status).toBe(200);
+      httpBody = (await res.json()) as Record<string, unknown>;
+    } finally {
+      if (original === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+      else process.env.GETWRITE_PROJECTS_DIR = original;
+    }
+
+    const fsLike = createFakeCapacitorFilesystem();
+    const adapter = capacitorFsAdapter(fsLike);
+    const id = generateUUID();
+    const root = path.join("/projects", id);
+    await adapter.mkdir(root, { recursive: true });
+    await adapter.writeFile(
+      path.join(root, PROJECT_FILENAME),
+      JSON.stringify(withFilter),
+    );
+    await runInStorageContext({ tenantRoot: "/projects", adapter }, () =>
+      appendWritingLogEntry(
+        root,
+        { added: 10, deleted: 2 },
+        "2026-09-26T01:00:00.000Z",
+      ),
+    );
+    const native = createNativeWritingLogTransport({
+      fs: fsLike,
+      projectsDir: "/projects",
+    });
+    const nativeResult = await native.getWritingLog(id, FROM, TO);
+
+    expect(JSON.parse(JSON.stringify(nativeResult))).toEqual(httpBody);
+    expect(nativeResult.isFiltered).toBe(true);
+    expect(nativeResult.hasNoMatch).toBe(true);
+    expect(nativeResult.totals.net).toBe(0);
+  });
+
+  it("rejects an unavailable filtered figure like the route's failure, never a number", async () => {
+    const fsLike = createFakeCapacitorFilesystem();
+    const adapter = capacitorFsAdapter(fsLike);
+    const id = generateUUID();
+    const root = path.join("/projects", id);
+    await adapter.mkdir(root, { recursive: true });
+    await adapter.writeFile(
+      path.join(root, PROJECT_FILENAME),
+      JSON.stringify({
+        ...createProject({ name: "u" }),
+        config: { goalFilter: { op: "bogus" } },
+      }),
+    );
+    const native = createNativeWritingLogTransport({
+      fs: fsLike,
+      projectsDir: "/projects",
+    });
+    await expect(native.getWritingLog(id, FROM, TO)).rejects.toBeInstanceOf(
+      GoalFilteredFigureUnavailableError,
+    );
   });
 
   it("rejects the same windows as the core (missing, non-ISO, unordered, over cap)", async () => {

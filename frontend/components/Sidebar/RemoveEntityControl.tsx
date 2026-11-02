@@ -6,6 +6,7 @@ import { selectResource, updateResource } from "../../src/store/resourcesSlice";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { refreshEntityAliasTables } from "../../src/store/entity-alias-refresh";
 import { updateSidecar } from "../../src/lib/api/resources";
+import { notifyAfterSidecarSave } from "../../src/lib/sidecar-save-signal";
 import {
   listEntityRelationshipsOrThrow,
   removeEntityRelationshipsForEntity,
@@ -189,6 +190,7 @@ export default function RemoveEntityControl(): JSX.Element | null {
           withoutEntityFields(resource),
           ["entityKind", "aliases"],
         );
+        notifyAfterSidecarSave();
 
         // Success sequence (FR-19): every step below that depends on this
         // component still being mounted runs BEFORE the `updateResource`

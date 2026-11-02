@@ -39,8 +39,13 @@ export class InvalidWritingLogTimestampError extends Error {
  * (never by the client), so an entry carries no date or path.
  */
 export type WritingLogEntryInput =
-  | { added: number; deleted: number; source?: WritingLogSource }
-  | { skipped: true };
+  | {
+      added: number;
+      deleted: number;
+      source?: WritingLogSource;
+      documentId?: string;
+    }
+  | { skipped: true; documentId?: string };
 
 /**
  * Parse an ISO instant (or Date) and return the normalized UTC ISO string.
@@ -117,13 +122,20 @@ function buildEntry(
   input: WritingLogEntryInput,
   timestamp: string,
 ): WritingLogEntry {
-  if ("skipped" in input) return { skipped: true, timestamp };
+  if ("skipped" in input) {
+    return {
+      skipped: true,
+      timestamp,
+      ...(input.documentId ? { documentId: input.documentId } : {}),
+    };
+  }
   return {
     added: input.added,
     deleted: input.deleted,
     net: input.added - input.deleted,
     timestamp,
     ...(input.source ? { source: input.source } : {}),
+    ...(input.documentId ? { documentId: input.documentId } : {}),
   };
 }
 

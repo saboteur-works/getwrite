@@ -36,6 +36,7 @@ import {
   LINE_HEIGHT_FLOOR_MESSAGE,
 } from "../editor-body-settings";
 import { z } from "zod";
+import { QueryASTSchema } from "../models/query-ast";
 import {
   AnyResourceSchema,
   ProjectTypeSchema,
@@ -185,6 +186,8 @@ const ApiProjectConfigSchema = z.object({
   maxRevisions: z.number().optional(),
   wordCountGoal: z.number().optional(),
   dailyWordGoal: z.number().int().nonnegative().optional(),
+  // Goal filter (Feature 98, FR-1). Loose on purpose; see ProjectConfigSchema.
+  goalFilter: z.unknown().optional(),
   statuses: z.array(z.string()).optional(),
   relationshipTypes: z.array(z.string()).optional(),
   // Ordered subtype labels (Feature 72, FR-1). Must be declared or a project
@@ -605,6 +608,9 @@ export const WritingLogAggregateResponseSchema = z.object({
   imported: WritingLogTotalsSchema,
   goal: z.number().optional(),
   incomplete: z.boolean(),
+  // Feature 98 (FR-29): always present, so a body without them is malformed.
+  isFiltered: z.boolean(),
+  hasNoMatch: z.boolean(),
 });
 
 export const SetDailyWordGoalResponseSchema = z.object({
@@ -622,6 +628,48 @@ export const SetDailyWordGoalResponseSchema = z.object({
 export const SetWordCountGoalResponseSchema = z.object({
   wordCountGoal: z.number().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// SetGoalFilterResponseSchema — Feature 98 Task 7. Matches
+// `goal-filter-core.ts`'s `{ goalFilter: QueryAST | undefined }`.
+// `goalFilter` is optional because `JSON.stringify` drops `undefined`-valued
+// keys (a clear) before the response leaves the server.
+// ---------------------------------------------------------------------------
+
+export const SetGoalFilterResponseSchema = z.object({
+  goalFilter: QueryASTSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// GoalFilteredTotalResponseSchema — Feature 98 Task 8. Matches
+// `goal-filtered-total-core.ts`'s `GoalFilteredTotalResult`. Every member is
+// strict so an `unavailable` body carrying a `total` key is malformed: a
+// failure can never parse as a number (`docs/standards/failure-visibility.md`).
+// ---------------------------------------------------------------------------
+
+export const GoalFilteredTotalResponseSchema = z.union([
+  z.strictObject({ status: z.literal("not-filtered") }),
+  z.strictObject({
+    status: z.literal("total"),
+    total: z.number().finite().nonnegative(),
+  }),
+  z.strictObject({ status: z.literal("no-match"), total: z.literal(0) }),
+  z.strictObject({
+    status: z.literal("unavailable"),
+    reason: z.literal("invalid-filter"),
+    message: z.string(),
+  }),
+  z.strictObject({
+    status: z.literal("unavailable"),
+    reason: z.literal("missing-field"),
+    fields: z.array(z.string()),
+  }),
+  z.strictObject({
+    status: z.literal("unavailable"),
+    reason: z.literal("read-failed"),
+    cause: z.enum(["locked", "missing-sidecar", "corrupt", "unreadable"]),
+  }),
+]);
 
 // ---------------------------------------------------------------------------
 // SetMentionHighlightDurationResponseSchema — Entity mention navigation,

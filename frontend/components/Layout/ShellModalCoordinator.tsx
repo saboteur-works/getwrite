@@ -30,6 +30,8 @@ import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu"
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 import type { CompileOptions } from "../common/CompilePreviewModal";
+import type { FilterChipField } from "../QueryBuilder/FilterChip";
+import type { ResourceOption } from "../Sidebar/controls/ResourceRefInput";
 
 export interface SyncBlocker {
   id: string;
@@ -102,6 +104,17 @@ export interface ShellModalCoordinatorProps {
   initialWordCountGoal?: number;
   /** Forwarded to ProjectSettingsDialog's Writing Goals fields (D-14). */
   onProjectGoalSaved?: ProjectGoalSavedHandler;
+  /** Currently saved `config.goalFilter`, for the Writing Goals tab of ProjectSettingsDialog. */
+  initialGoalFilter?: unknown;
+  /** Query-builder field list for the goal filter section. */
+  goalFilterFields?: FilterChipField[];
+  /** Resource typeahead options for the goal filter section. */
+  resolveGoalFilterResourceOptions?: (
+    refFolder: string | undefined,
+    includeSubfolders?: boolean,
+  ) => ResourceOption[];
+  /** Folder typeahead options for the goal filter section. */
+  resolveGoalFilterFolderOptions?: () => ResourceOption[];
   /** Currently saved `config.mentionHighlightDurationSeconds`, for the Entities tab of ProjectSettingsDialog. */
   initialMentionHighlightDurationSeconds?: number;
   isPreferencesModalOpen: boolean;
@@ -191,6 +204,10 @@ export default function ShellModalCoordinator({
   initialDailyWordGoal,
   initialWordCountGoal,
   onProjectGoalSaved,
+  initialGoalFilter,
+  goalFilterFields,
+  resolveGoalFilterResourceOptions,
+  resolveGoalFilterFolderOptions,
   initialMentionHighlightDurationSeconds,
   isPreferencesModalOpen,
   setIsPreferencesModalOpen,
@@ -370,6 +387,10 @@ export default function ShellModalCoordinator({
         initialDailyWordGoal={initialDailyWordGoal}
         initialWordCountGoal={initialWordCountGoal}
         onProjectGoalSaved={onProjectGoalSaved}
+        initialGoalFilter={initialGoalFilter}
+        goalFilterFields={goalFilterFields}
+        resolveGoalFilterResourceOptions={resolveGoalFilterResourceOptions}
+        resolveGoalFilterFolderOptions={resolveGoalFilterFolderOptions}
         initialMentionHighlightDurationSeconds={
           initialMentionHighlightDurationSeconds
         }

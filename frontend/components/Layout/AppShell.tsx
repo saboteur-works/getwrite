@@ -29,6 +29,7 @@ import {
   selectActiveProjectDirectoryId,
   selectActiveProjectMetadataSchema,
   selectActiveProjectStatuses,
+  selectActiveProjectSubtypes,
   selectTimelineViewEnabled,
   selectEntitiesEnabled,
 } from "../../src/store/projectsSlice";
@@ -60,7 +61,7 @@ import EditView from "../WorkArea/EditView";
 import MediaView from "../WorkArea/Media/MediaView";
 import DiffViewController from "../WorkArea/DiffViewController";
 import OrganizerView from "../WorkArea/Views/OrganizerView/OrganizerView";
-import DataView from "../WorkArea/DataView";
+import DataView, { useDataViewFilteredTotal } from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
@@ -326,6 +327,21 @@ export default function AppShell({
     selectActiveProjectStatuses,
     shallowEqual,
   );
+  const projectSubtypes = useAppSelector(
+    selectActiveProjectSubtypes,
+    shallowEqual,
+  );
+  // Filtered writing-goal total for the Data view; reads nothing when no
+  // `config.goalFilter` is set and never touches the smart-folder query state.
+  // The route derives the project root from the on-disk directory id, not
+  // from `project.id` (the two differ), as the writing-log footer does.
+  const goalTotalProjectId = project?.rootPath
+    ? getProjectDirectoryId(project.rootPath)
+    : "";
+  const filteredGoalTotal = useDataViewFilteredTotal(
+    goalTotalProjectId,
+    Boolean(goalTotalProjectId && project?.config?.goalFilter),
+  );
   // The project's tags (`config.tags`) for the Tags chip's value box. Read
   // through the existing tags transport (no new route) as soon as a project is
   // active, independent of the builder, so a saved Tags chip restored before
@@ -371,8 +387,15 @@ export default function AppShell({
         projectStatuses,
         projectTags,
         currentTagRead?.failed ?? false,
+        projectSubtypes,
       ),
-    [metadataSchema, projectStatuses, projectTags, currentTagRead?.failed],
+    [
+      metadataSchema,
+      projectStatuses,
+      projectTags,
+      currentTagRead?.failed,
+      projectSubtypes,
+    ],
   );
   const resolveResourceOptions = React.useCallback(
     (refFolder: string | undefined, includeSubfolders?: boolean) => {
@@ -1226,6 +1249,10 @@ export default function AppShell({
                     initialDailyWordGoal={project?.config?.dailyWordGoal}
                     initialWordCountGoal={project?.config?.wordCountGoal}
                     onProjectGoalSaved={onProjectGoalSaved}
+                    initialGoalFilter={project?.config?.goalFilter}
+                    goalFilterFields={availableFields}
+                    resolveGoalFilterResourceOptions={resolveResourceOptions}
+                    resolveGoalFilterFolderOptions={resolveFolderOptions}
                     initialMentionHighlightDurationSeconds={
                       project?.config?.mentionHighlightDurationSeconds
                     }
@@ -1500,6 +1527,7 @@ export default function AppShell({
                                     statusRollupResources={liveResources}
                                     statuses={projectStatuses}
                                     project={project ?? undefined}
+                                    filteredGoalTotal={filteredGoalTotal}
                                     folders={liveFolders}
                                     isEvaluating={
                                       activeSmartFolderId
