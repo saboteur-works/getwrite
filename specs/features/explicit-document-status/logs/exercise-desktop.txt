@@ -1,0 +1,28 @@
+desktop packaged=false url=http://localhost:7340/
+== 1. Blank project, no statuses
+sidebar: shown="No status" options=["No status"] hint=["No statuses yet. Add them in Project Settings, Metadata tab."]
+Alpha stored userMetadata: {}; config.statuses=[]
+Data view By status message: ["No statuses are configured for this project, so every resource shows under No status. Add them in Project Settings, Metadata tab."]
+field picker "status": ["STATUS BUILTIN","STATUSES SYSTEM"]
+Status chip value options (no statuses): ["select..."]
+== 2. Statuses editor
+section after adding Outline, Draft: ["Statuses","Define the statuses a document can be given, such as Outline or Draft. Removing a status does not change any document that already has it.","Outline","Draft","New status","ADD"]; stored=["Outline","Draft"]
+duplicate "draft ": error=["Duplicate status label."]; stored=["Outline","Draft"]
+blank: error=["Status label must not be blank."]; stored=["Outline","Draft"]
+after Move Draft up: stored=["Draft","Outline"]
+== 3. Sidebar after editing, no reload
+Alpha sidebar: shown="No status" options=["No status","Draft","Outline"] hint=[]
+after choosing Draft: shown="Draft" options=["No status","Draft","Outline"] hint=[]; stored={"status":"Draft"}
+after choosing No status: shown="No status" options=["No status","Draft","Outline"] hint=[]; stored={}
+Alpha={"status":"Outline"} Beta={"status":"Draft"}
+== 4. Off-list: remove Draft from the list
+stored list=["Outline"]; Beta stored={"status":"Draft"}
+Beta sidebar: shown="Draft (not in the current list)" options=["No status","Draft (not in the current list)","Outline"] hint=[]
+evaluate status=Draft: 200 {"ids":["ca5b1191-3f3d-4428-a77b-f3fe6bea9365"]}
+evaluate status=Outline: 200 {"ids":["78871d37-e332-4c81-950b-cee76f352ba3"]}
+== 5. Organizer
+cards: ["Alpha text file 11/2/2026 Words: 0 Status: Outline Open","Beta text file 11/2/2026 Words: 0 Status: Draft Open","Gamma text file 11/2/2026 Words: 0 Open"]
+filter options: ["All statuses","Outline","No status"]
+filter Outline: ["Clear filters to reorder cards Alpha text file 11/2/2026 Words: 0 Status: Outlin"]
+filter No status: ["Clear filters to reorder cards Gamma text file 11/2/2026 Words: 0 Open"]
+desktop stop: {"stop":{"recorded":"6908(Electron),6912(Electron Helper (GPU)),6913(Electron Helper),6914(sh),6918(node),6937(node),6943(next-server (v16.2.6)),7023(node),7024(Electron Helper (Renderer)),7188((node))","stages":["after SIGTERM: none alive"]},"listenersOnApp":"none","logDirRemoved":true}

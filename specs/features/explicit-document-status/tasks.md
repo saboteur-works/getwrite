@@ -31,7 +31,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Requirements: FR-3, FR-13 (write and revert tests). Spec F-9: `updateSidecarCore` replaces `userMetadata` wholesale, so omitting the key removes it; do not add `status` to `SIDECAR_CLEARABLE_KEYS` because `clearKeys` deletes top-level sidecar keys only. The conversion of `""` to `null` lives in AppShell's `case "status"` so `MetadataSidebar.tsx` (Tasks 3 and 5) is not edited here. The same path serves web, desktop, a paired device (`lib/api/resources.ts:314`) and Android (`native-resource-backend.ts:127`); no transport file should need a change, and if one does, stop and say so rather than editing it unlisted.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Creation stores no status; explicit sources still do (FR-1, FR-8)
 **What:** Pin with tests that creating a document stores no status, that a status carried by a resource template or a Scrivener import is kept, and that nothing in these paths writes a status on load.
@@ -40,7 +40,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Requirements: FR-1, FR-8. Spec F-5: the factory, templates, persistence and `resource.ts` were read and none sets a status, so this task is expected to add tests only. If a test fails because production code does write a status, stop and report the file instead of editing it: it is not on this task's list and the spec's finding would be wrong.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Remove the built-in status fallback (FR-4, FR-13)
 **What:** Delete `BUILT_IN_STATUSES`, `effectiveStatuses()` and `selectEffectiveProjectStatuses`, and point every reader at `selectActiveProjectStatuses` so the lists offered are the project's `config.statuses` only.
@@ -49,7 +49,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** none
 **Estimate:** 5
 **Notes:** Requirements: FR-4 (source of the three lists), FR-13. Spec F-2 and F-10 list the readers; `OrganizerView.tsx` and `MetadataSidebar.tsx` both read the fallback, so both are edited here and Tasks 4, 5 and 9 chain after this one. This task only swaps the list source; the "No status" option, off-list marker and hint are Task 5, the card fallback is Task 4, and the query builder empty and off-list cases are Task 9. Do not name `StatusSelector`'s empty-list rendering a feature here. Task 6 also edits `projectsSlice.ts` and `projects-slice-features.test.ts` and is chained after this task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Organizer card and filter resolve the stored status only (FR-5, FR-6, FR-13)
 **What:** Remove `defaultStatus` from the Organizer card, view and filter so a document with no stored status shows no status and matches only the "No status" filter option.
@@ -58,7 +58,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Requirements: FR-5, FR-6 (filter side), FR-13. This is defect D-28. The "No status" option already exists (`OrganizerFilterBar.tsx:206`, `NO_STATUS_FILTER_VALUE`, Feature 24 FR-1) and is not edited, so `OrganizerFilterBar.tsx` is not listed; if its a11y or tests need a change, add it only after reporting it. Chained after Task 3 because both edit `OrganizerView.tsx`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Sidebar Status control: "No status", off-list marker, empty hint (FR-2, FR-6, FR-7, FR-13)
 **What:** Give `StatusSelector` a first "No status" option shown when nothing is stored, mark a stored value that is not in the list with `unknownStatusLabel`, and render the empty-list hint tied by `aria-describedby`, following `SubtypeSection.tsx`.
@@ -67,7 +67,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Requirements: FR-2, FR-6, FR-7 (sidebar), FR-13; FR-3's control side (the "No status" option emits `""`, which Task 1 converts to removal). Follow `components/Sidebar/SubtypeSection.tsx:104-130` for the empty option, the marked off-list option and the hint. `unknownStatusLabel` is exported from `src/lib/status-rollup.ts:16`. Check `useSyncedControlledValue` still follows an external change when the value becomes `""`. Chained after Task 3 because both edit `StatusSelector.tsx` and `MetadataSidebar.tsx`. No new context is required, so no Storybook decorator should be needed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Project features route, thunk and transports accept `statuses` (FR-10, FR-11, FR-13)
 **What:** Extend `POST /api/project/features`, `updateFeatureConfig`, the HTTP and native transports and the slice with `statuses`, validated by a new `StatusListSchema`, and add an `updateProjectStatuses` thunk that mirrors `result.statuses` into the project.
@@ -76,7 +76,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Requirements: FR-10 (route, thunk, transports, no paired-device limit), FR-11 (server side), FR-13 (route, `updateFeatureConfig` and native backend tests). Mirror how `subtypes` is handled at every one of these sites (F-11); `SubtypeListSchema` is the model. Run under `withStorageContext` exactly as the route already does; add no client-supplied path. Chained after Task 3 because both edit `projectsSlice.ts` and `projects-slice-features.test.ts`. If the location of the paired-device limit tests is not found by search, report that instead of creating a parallel file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Statuses editor in Project Settings, Metadata tab (FR-10, FR-11, FR-12, FR-13)
 **What:** Add a `StatusesSettings` section beside Subtypes with add, remove and reorder controls that save the whole ordered list through `updateProjectStatuses`, with per-entry validation and a visible error on a failed save.
@@ -85,7 +85,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 6
 **Estimate:** 5
 **Notes:** Requirements: FR-10 (editor, live update, error on failed save), FR-11 (client side), FR-12, FR-13. Reuse the same per-entry check as the server through `StatusListSchema` or the shared `labelListSchema` rather than a second copy of the rules. Editing is allowed on a paired device and is not a paired-device limit (verified in Task 6); do not gate the section. Handbook is out of scope. If `SubtypesSettings` already reads a project id from context, the new component needs the same context, and the existing Storybook decorator must cover it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Data view "By status" message points to Project Settings (RQ-5, FR-7, FR-13)
 **What:** Change the no-statuses message in `StatusRollup` to "No statuses are configured for this project, so every resource shows under No status. Add them in Project Settings, Metadata tab." and test it.
@@ -94,7 +94,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 1
 **Estimate:** 1
 **Notes:** Requirements: RQ-5, FR-7 (Data view message), FR-13. This reopens copy that `docs/features/status-rollup.md:15` records as user-confirmed; that note is updated in Task 10 and the owner's Gate 3 decision (RQ-5) authorises the change. The handbook page `docs/user/handbook/views/data.md` repeats the old sentence and is out of scope; Task 10 reports it for the next handbook pass.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Query builder `status` field with an empty or off-list value (RQ-6, FR-4, FR-13)
 **What:** First verify that the `status` field renders through `ValuePicker`'s `SelectPickerInput`, then make an empty status list give an empty value list with no hint and an off-list saved value show as "(unknown)".
@@ -103,7 +103,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Requirements: RQ-6, FR-4 (query builder clause), FR-13. If the verification shows the `status` field uses a different input (a text input, or a chip list), the off-list "(unknown)" label may not appear; in that case fix it in `ValuePicker.tsx` (listed) in the smallest way that gives the spec's behaviour, and say so in the report rather than widening scope. The label here is "(unknown)", not the sidebar's "(not in the current list)"; the spec states this difference on purpose (RQ-6, F-13). Chained after Task 3 because both edit `FieldPicker.tsx`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Documentation and spec amendments (FR-9, RQ-5)
 **What:** Update the prose that describes the fallback and add the dated amendments recording the reversal in Feature 86, Feature 24 and the feature list.
@@ -112,7 +112,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 4, 5, 7, 8, 9
 **Estimate:** 3
 **Notes:** Requirements: FR-9, RQ-5 (docs). The product spec was amended already (OQ-93 reversal, US-35, D-28 resolved) and must not be redone. Spec F-14 notes the owner cited `status-rollup.md` line 16; the text is on line 15. Do not use the spec-wide Prettier pass on specs. Report to the lead that `docs/user/handbook/views/data.md` repeats the old Data view sentence, which the next handbook pass should update. Amendments follow the file's existing amendment style; read how earlier amendments in the same file are written before adding one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Final suites (all requirements)
 **What:** Run the full checks and record the results, fixing nothing outside the owning files.
@@ -121,7 +121,7 @@ Requirement coverage (every FR and RQ-5/RQ-6 appears in at least one task):
 **Depends on:** 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 **Estimate:** 2
 **Notes:** Requirements: FR-13 (suites), FR-8 (no migration or stray write was added). Run in the main checkout, not a worktree (builds only work there). Stop `pnpm storybook` before `pnpm test:e2e`, which builds and serves Storybook itself on :6006; e2e may need running outside the sandbox. A new context requirement on a component needs a Storybook decorator, and a missing one shows up here as an e2e failure. `pnpm knip` may already exit 1 on findings that predate this branch; compare against `main` and state which findings are new.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 11
