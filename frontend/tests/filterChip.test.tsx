@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import FilterChip, {
   type FilterChipField,
   type FilterChipValue,
@@ -672,5 +672,69 @@ describe("Tags field operators and condition form (Feature 86 D-19)", () => {
       id: "tag-alpha",
       name: "alpha",
     });
+  });
+});
+
+// ─── Status chip (Feature 99 Task 9, RQ-6, FR-4, F-13) ────────────────────────
+
+describe("FilterChip — Status chip value input", () => {
+  function renderStatusChip(
+    projectStatuses: string[] | undefined,
+    value: FilterChipValue,
+  ): void {
+    const statusField = buildFieldPickerFields(undefined, projectStatuses).find(
+      (f) => f.key === "status",
+    );
+    if (!statusField) throw new Error("status field missing");
+    render(
+      <FilterChip
+        field={statusField as FilterChipField}
+        operator="is"
+        value={value}
+      />,
+    );
+  }
+
+  function valueSelect(): HTMLSelectElement {
+    return screen.getByRole("combobox", { name: "Value" }) as HTMLSelectElement;
+  }
+
+  function valueOptions(): string[] {
+    return Array.from(valueSelect().options).map((o) => o.textContent ?? "");
+  }
+
+  // Verification (Task 9): the chip renders its own select, not ValuePicker's
+  // SelectPickerInput, so the off-list label is added in FilterChip itself.
+  it("renders the status value as the chip's own select (not SelectPickerInput) listing the project's statuses in order", () => {
+    renderStatusChip(["Outline", "Draft", "Final"], null);
+    expect(valueSelect().className).toContain("filter-chip__select");
+    expect(valueSelect().className).not.toContain("picker-select");
+    expect(valueOptions()).toEqual(["select...", "Outline", "Draft", "Final"]);
+  });
+
+  it("with no statuses keeps the field offered with an empty value list and no hint", () => {
+    for (const statuses of [[], undefined]) {
+      renderStatusChip(statuses, null);
+      expect(valueOptions()).toEqual(["select..."]);
+      expect(screen.queryByText(/no statuses/i)).toBeNull();
+      expect(screen.queryByText(/project settings/i)).toBeNull();
+      cleanup();
+    }
+  });
+
+  it("shows a saved off-list value as 'Published (unknown)' and keeps it selected", () => {
+    renderStatusChip(["Outline", "Draft"], "Published");
+    expect(valueOptions()).toEqual([
+      "select...",
+      "Published (unknown)",
+      "Outline",
+      "Draft",
+    ]);
+    expect(valueSelect().value).toBe("Published");
+  });
+
+  it("shows an off-list saved value as unknown when the project has no statuses", () => {
+    renderStatusChip([], "Published");
+    expect(valueOptions()).toEqual(["select...", "Published (unknown)"]);
   });
 });

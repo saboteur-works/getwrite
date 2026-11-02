@@ -354,14 +354,23 @@ function ValueInput({
     case "select":
     case "multiselect": {
       const opts = field.options ?? [];
+      const current = typeof value === "string" ? value : "";
+      // Feature 99 Task 9 (RQ-6, F-13) verification: the live chip's `status`
+      // value input is this `<select>`, not ValuePicker's SelectPickerInput
+      // (FilterChip imports only SingleRefInput from ValuePicker). It lacked
+      // SelectPickerInput's off-list "(unknown)" option, so a saved value no
+      // longer in the project's list silently showed as "select...". The
+      // same label is given here.
+      const isOffList = current !== "" && !opts.includes(current);
       return (
         <select
           className="filter-chip__select"
-          value={typeof value === "string" ? value : ""}
+          value={current}
           aria-label="Value"
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">select...</option>
+          {isOffList && <option value={current}>{current} (unknown)</option>}
           {opts.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
