@@ -133,3 +133,7 @@ Not measured: Android (Task 28's remaining part, needs the owner), real projects
 Run 2026-11-01 on the packaged build at `8ac86b00`. Script: `scripts/exercise.mjs`. Log: `logs/exercise.txt`. Throwaway profile. Confirmed through the UI: setting and clearing a filter; footer, details window and Data view figures with the label; typing in a matching and an excluded document; a field change moving a document in and out without a text save; the no-match line; a deleted field showing unavailable with "This field no longer exists."; Escape closing a picker and leaving the dialog open; and the builder fitting the dialog. The stored filter was left as stored after a read. An earlier run of this script found the total always unavailable, fixed in `8ac86b00`.
 
 Finding, not a defect of this feature: `logs/default-status.txt`. A new document's Status control shows "Draft" while its sidecar has `userMetadata: {}`. Both a smart folder and a goal filter on "Status is Draft" leave it out until Draft is chosen by hand. Why the control shows Draft was not established.
+
+## Task 27: manual pairing check
+
+2026-11-01, run by the owner on a paired Pixel 7 in Chrome, against the packaged build at `8ac86b00` with a throwaway folder. Project Settings opened on the paired device and the filter saved. With the filter set, the daily figure went from 6 / 5 to 4 / 5, and the total goal from 6 / 10 to 4 / 10. As reported by the owner. One run. Whether the "Counting selected documents" label showed wasn't reported.

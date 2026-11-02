@@ -247,7 +247,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Depends on:** 26
 **Estimate:** 1
 **Notes:** Requirements: FR-35. Owner needed: a person must pair a second device with the desktop app and operate it. Do not mark done without the owner's result. Use a throwaway project, not real writing.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Measurement: filtered total and filtered daily read cost (FR-39)
 **What:** Measure wall time, files read and memory for the filtered total and the filtered daily read on a large project, on web, desktop and a native device, and record the figures.
@@ -255,7 +255,7 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Done when:** `experiments.md` has a table with, for each of (a) filtered total and (b) filtered daily read and each of web, desktop and native: the project size, wall time, files read and memory, with the method; typing and autosave are shown not to block while a read runs; no cache or index is added by this task.
 **Depends on:** 16, 19, 24
 **Estimate:** 5
-**Notes:** Requirements: FR-39. The lead runs Task 28's web and desktop parts; the native part remains the owner's (Pixel 7 Pro and adb, which fail inside the sandbox; retry outside). Record what was not measured instead of estimating it. Use a generated large project in a throwaway folder. Depends on Task 19 only because both write `experiments.md`. Do not name a cause for any slow figure without an experiment that discriminates it.
+**Notes:** Requirements: FR-39. The lead runs Task 28's web and desktop parts; the native part remains the owner's (Pixel 7 Pro and adb, which fail inside the sandbox; retry outside). Record what was not measured instead of estimating it. Use a generated large project in a throwaway folder. Depends on Task 19 only because both write `experiments.md`. Do not name a cause for any slow figure without an experiment that discriminates it. The owner decided at Gate 6, 2026-11-01, that the Android part follows after merge, tracked as POS `task_9949252c`; the web and desktop parts are recorded in experiments.md. This task stays open.
 **Done:** [ ]
 
 ### Task 29: Footer re-reads after every sidecar save under a filter (FR-33)
@@ -273,8 +273,8 @@ Phase 1 (total goal) is Tasks 1 to 16. Phase 2 (daily goal) is Tasks 17 to 24. R
 **Done when:** `pnpm typecheck`, `pnpm lint`, `pnpm test:ci` and `pnpm test:e2e` all exit 0 from `frontend/`, the electron package tests exit 0, and `pnpm knip` from the repo root reports no new unused export from this feature; the exit codes are recorded in the pull request text.
 **Depends on:** 14, 16, 19, 25, 27, 28, 29
 **Estimate:** 2
-**Notes:** Run in the main checkout, not a worktree (builds only work there). Stop `pnpm storybook` before `pnpm test:e2e`, which builds and serves Storybook itself on :6006; e2e may need running outside the sandbox. A missing Storybook decorator for a new context shows up here. Requirement coverage check: every FR-1 to FR-42 appears in at least one task above.
-**Done:** [ ]
+**Notes:** Run in the main checkout, not a worktree (builds only work there). Stop `pnpm storybook` before `pnpm test:e2e`, which builds and serves Storybook itself on :6006; e2e may need running outside the sandbox. A missing Storybook decorator for a new context shows up here. Requirement coverage check: every FR-1 to FR-42 appears in at least one task above. Run 2026-11-01 on the branch: typecheck clean; lint 0 errors; test:ci 9229 passed, 7 expected fail, 1 skipped; test:e2e 247 passed, 1 skipped; electron 565 passed; sharing smoke passed; knip reports nothing this branch added, and exits 1 on findings that predate it. Test:e2e, electron and smoke ran before the commit that removed `export` from three symbols; typecheck, lint and test:ci ran after it. Ticked by owner decision with Task 28's Android part open.
+**Done:** [x]
 
 ## Summary
 - Total tasks: 30

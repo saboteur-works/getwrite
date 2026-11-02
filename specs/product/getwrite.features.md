@@ -3187,7 +3187,7 @@ helped, and the installed desktop app gains nothing from this feature.
 **Notes:** Partial: built on `fix/window-close-save`, not merged or released. Found by the handbook re-run (O-3). Measurements in `specs/features/window-close-save/experiments.md`. When released, FR-14 removes the Good to know item from `write/editor.md`.
 ---
 
-### Feature 98: Choose which documents count toward writing goals — Not started
+### Feature 98: Choose which documents count toward writing goals — Partial
 
 **Value:** A writer on deadline can say which documents count toward the project's total word-count goal and daily goal, so notes, research and set-aside drafts do not inflate progress, and every goal figure says when it is filtered.
 **Vertical slice:** Data: the filter conditions stored in project `config`, and an optional document ID on writing-log entries. Logic: the filter evaluated against documents when a figure is read, for the total goal and the daily goal, with a failed evaluation kept distinct from a real zero. Interface: the query builder in the Writing Goals tab of Project Settings, the filtered total goal in the Data view, the filtered daily figure, and a neutral label wherever a figure is filtered.
@@ -3195,7 +3195,7 @@ helped, and the installed desktop app gains nothing from this feature.
 **User stories:** US-34
 **Depends on:** Feature 59, Feature 61
 **Branch suggestion:** feat/writing-goal-filter
-**Notes:** Product spec FR-79 and US-34, added 2026-11-01 (owner-chosen scope); OQ-130 and OQ-131 resolved at Gate 1, 2026-11-01 and carried in FR-79, not reopened. One feature, not two (owner decision): a filter that affected only the total goal for a while would mislead writers. Task phases, in order: the total goal first, then the daily goal. No dependency on anything unbuilt. Nothing here was run by the feature breakdown.
+**Notes:** Product spec FR-79 and US-34, added 2026-11-01 (owner-chosen scope); OQ-130 and OQ-131 resolved at Gate 1, 2026-11-01 and carried in FR-79, not reopened. One feature, not two (owner decision): a filter that affected only the total goal for a while would mislead writers. Task phases, in order: the total goal first, then the daily goal. No dependency on anything unbuilt. Nothing here was run by the feature breakdown. Partial: built on `feat/writing-goal-filter`, not merged or released; the Android read cost isn't measured (POS `task_9949252c`).
 ---
 
 ## Coverage check
