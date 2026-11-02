@@ -38,13 +38,13 @@ export default function StatusSelector({
   const hintId = useId();
   const [status, setStatus] = useSyncedControlledValue(value ?? "", onChange);
   const isOffList = status !== "" && !options.includes(status);
-  const showHint = options.length === 0;
+  const shouldShowHint = options.length === 0;
 
   return (
     <LabeledField label="Status" className={className}>
       <select
         aria-label={ariaLabel}
-        aria-describedby={showHint ? hintId : undefined}
+        aria-describedby={shouldShowHint ? hintId : undefined}
         className="w-full mt-2 p-2 border border-gw-border bg-gw-chrome2 px-3 py-2 text-gw-label text-gw-primary outline-none transition-colors duration-150 placeholder:text-gw-secondary focus:border-gw-border-md disabled:cursor-not-allowed disabled:opacity-50"
         value={status}
         onChange={(e) => setStatus(e.target.value)}
@@ -59,7 +59,7 @@ export default function StatusSelector({
           </option>
         ))}
       </select>
-      {showHint && (
+      {shouldShowHint && (
         <p id={hintId} className="text-gw-label text-gw-secondary mt-1">
           {EMPTY_LIST_HINT}
         </p>
