@@ -24,7 +24,6 @@
  * unrecognised error is rethrown, not converted into a failure result.
  */
 import path from "node:path";
-import { ZodError } from "zod";
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
 import {
   GoalEvaluationInputError,
@@ -32,7 +31,7 @@ import {
 } from "./goal-evaluation-input";
 import { validateGoalFilter } from "./goal-filter-validation";
 import { readFile } from "./io";
-import { isLockedAccessError } from "./locked-access";
+import { classifyGoalReadError, type GoalReadCause } from "./goal-read-error";
 import { PROJECT_FILENAME } from "./project-config";
 import type { QueryAST } from "./query-ast";
 import { evaluate } from "./query-evaluator";
@@ -41,11 +40,7 @@ import { MetadataSchemaSchema } from "./schemas";
 import type { MetadataSchema } from "./types";
 
 /** What kind of read problem made the membership unknown. */
-export type GoalMembershipReadCause =
-  | "locked"
-  | "missing-sidecar"
-  | "corrupt"
-  | "unreadable";
+export type GoalMembershipReadCause = GoalReadCause;
 
 export type GoalMembershipResult =
   | { status: "not-filtered" }
@@ -68,12 +63,8 @@ function readFailure(cause: GoalMembershipReadCause): GoalMembershipResult {
  * known read problems (the caller rethrows those).
  */
 function classifyReadError(err: unknown): GoalMembershipReadCause | null {
-  if (isLockedAccessError(err)) return "locked";
   if (err instanceof GoalEvaluationInputError) return "missing-sidecar";
-  if (err instanceof SyntaxError || err instanceof ZodError) return "corrupt";
-  const code = (err as NodeJS.ErrnoException | null)?.code;
-  if (typeof code === "string") return "unreadable";
-  return null;
+  return classifyGoalReadError(err, "goal-filter-membership");
 }
 
 interface StoredGoalConfig {

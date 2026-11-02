@@ -328,9 +328,14 @@ export default function AppShell({
   );
   // Filtered writing-goal total for the Data view; reads nothing when no
   // `config.goalFilter` is set and never touches the smart-folder query state.
+  // The route derives the project root from the on-disk directory id, not
+  // from `project.id` (the two differ), as the writing-log footer does.
+  const goalTotalProjectId = project?.rootPath
+    ? getProjectDirectoryId(project.rootPath)
+    : "";
   const filteredGoalTotal = useDataViewFilteredTotal(
-    project?.id ?? "",
-    Boolean(project?.id && project.config?.goalFilter),
+    goalTotalProjectId,
+    Boolean(goalTotalProjectId && project?.config?.goalFilter),
   );
   // The project's tags (`config.tags`) for the Tags chip's value box. Read
   // through the existing tags transport (no new route) as soon as a project is

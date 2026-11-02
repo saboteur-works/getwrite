@@ -313,6 +313,13 @@ describe("evaluateGoalMembership", () => {
     );
   });
 
+  it("rethrows an error whose code is not a file-read code", async () => {
+    await seedProject({ goalFilter: statusDraft });
+    const odd = Object.assign(new Error("odd"), { code: "ERR_ODD" });
+    failReadsEndingWith("project.json", odd);
+    await expect(evaluateGoalMembership(root, NOW)).rejects.toThrow("odd");
+  });
+
   it("never writes project.json", async () => {
     await seedProject({ goalFilter: statusDraft });
     await seedResource("a", draftSidecar());

@@ -20,12 +20,11 @@
  * Nothing is cached: every call re-reads membership and sidecars (FR-14). An
  * unrecognised error is rethrown, not converted into a result.
  */
-import { ZodError } from "zod";
 import {
   evaluateGoalMembership,
   type GoalMembershipReadCause,
 } from "./goal-filter-membership-core";
-import { isLockedAccessError } from "./locked-access";
+import { classifyGoalReadError } from "./goal-read-error";
 import { readSidecar } from "./sidecar";
 
 export type GoalFilteredTotalResult =
@@ -42,10 +41,7 @@ export type GoalFilteredTotalResult =
 
 /** Map a thrown sidecar read error to a cause; `null` when not recognised. */
 function classifyReadError(err: unknown): GoalMembershipReadCause | null {
-  if (isLockedAccessError(err)) return "locked";
-  if (err instanceof SyntaxError || err instanceof ZodError) return "corrupt";
-  const code = (err as NodeJS.ErrnoException | null)?.code;
-  return typeof code === "string" ? "unreadable" : null;
+  return classifyGoalReadError(err, "goal-filtered-total");
 }
 
 function readFailed(cause: GoalMembershipReadCause): GoalFilteredTotalResult {

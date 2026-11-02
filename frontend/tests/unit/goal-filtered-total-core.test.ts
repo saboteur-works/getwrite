@@ -249,4 +249,12 @@ describe("evaluateGoalFilteredTotal", () => {
       "unexpected",
     );
   });
+
+  it("rethrows an error whose code is not a file-read code", async () => {
+    await seedProject({ goalFilter: statusDraft });
+    const odd = Object.assign(new Error("odd"), { code: "ERR_ODD" });
+    vi.mocked(io.readFile).mockImplementation((() =>
+      Promise.reject(odd)) as typeof io.readFile);
+    await expect(evaluateGoalFilteredTotal(root, NOW)).rejects.toThrow("odd");
+  });
 });

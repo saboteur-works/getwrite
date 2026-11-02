@@ -1,0 +1,36 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+status options: ["Draft","In review","Published"]
+tab text: ["Goal filter","Choose which documents count toward both goals. Leave empty to count every text document.","NO CONDITIONS — CLICK \"+ ADD GROUP\" TO START","+ ADD GROUP","CLEAR GOAL FILTER","SAVE GOAL FILTER"]
+baseline footer: ["Today's writing","Today: 8 / 20"]
+baseline Data view goal area: ["Goals","Goals Overview","Writing Goal","8 / 100 words · 8%","3 words","5 words","WORD COUNT GOAL","WORD COUNT GOAL"]
+section buttons: ["Select a field","Chip actions","+ Add condition","+ Add group","Clear goal filter","Save goal filter"]
+field button: Select a field
+Escape with the picker open: dialog open=true; picker open=1
+chip after choosing Status: ["Goal filter","Choose which documents count toward both goals. Leave empty to count every text document.","All of","Any of","STATUS","is","is not","is any of","is none of","─────────────","is empty","has any value","select...","Draft","In review","Published"]
+value control: SELECT
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+after save: status=["Goal filter saved."]; alert=[]
+stored: {"op":"eq","field":"status","value":"Draft"}
+filtered footer: ["Today's writing","Today: 5 / 20","Counting selected documents"]
+details: ["Today's writing","Daily goal: 20","Added: 5","Deleted: 0","Net: 5","Imported (not counted toward goal): 0","Counting selected documents","Set the daily goal in Project Settings.","CLOSE"]
+filtered Data view goal area: ["Goals","Goals Overview","Writing Goal","Total word count is unavailable","3 words","5 words","WORD COUNT GOAL","WORD COUNT GOAL"]
+after typing in a matching document: ["Today's writing","Today: 6 / 20","Counting selected documents"]
+after typing in an excluded document: ["Today's writing","Today: 6 / 20","Counting selected documents"]
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+excluded document changed to match, no save of its text: ["Today's writing","Today: 10 / 20","Counting selected documents"]
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+changed back: ["Today's writing","Today: 6 / 20","Counting selected documents"]
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+nothing matches: footer=["Today's writing","Today: 0 / 20","Counting selected documents","No documents match your goal filter"]
+no-match Data view goal area: ["Goals","Goals Overview","Writing Goal","Total word count is unavailable","4 words","6 words","WORD COUNT GOAL","WORD COUNT GOAL"]
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+deleted field: footer=["Today's writing","Today's count is unavailable"]
+deleted-field Data view goal area: ["Goals","Goals Overview","Writing Goal","Total word count is unavailable","7 words","4 words","WORD COUNT GOAL","WORD COUNT GOAL"]
+deleted field, tab: ["gone_field: This field no longer exists.","GONE_FIELD"]
+deleted field left as stored: {"op":"eq","field":"gone_field","value":"x"}
+  [goal-filtered-total] 200 {"status":"unavailable","reason":"read-failed","cause":"unreadable"}
+after clear: status=["Goal filter cleared."]
+cleared footer: ["Today's writing","Today: 11 / 20"]
+cleared Data view goal area: ["Goals","Goals Overview","Writing Goal","11 / 100 words · 11%","7 words","4 words","WORD COUNT GOAL","WORD COUNT GOAL"]
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
