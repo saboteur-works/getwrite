@@ -136,4 +136,4 @@ Finding, not a defect of this feature: `logs/default-status.txt`. A new document
 
 ## Task 27: manual pairing check
 
-2026-11-01, run by the owner on a paired Pixel 7 in Chrome, against the packaged build at `8ac86b00` with a throwaway folder. Project Settings opened on the paired device and the filter saved. With the filter set, the daily figure went from 6 / 5 to 4 / 5, and the total goal from 6 / 10 to 4 / 10. As reported by the owner. One run. Whether the "Counting selected documents" label showed wasn't reported.
+2026-11-01, run by the owner on a paired Pixel 7 in Chrome, against the packaged build at `8ac86b00` with a throwaway folder. Project Settings opened on the paired device and the filter saved. With the filter set, the daily figure went from 6 / 5 to 4 / 5, and the total goal from 6 / 10 to 4 / 10. As reported by the owner. One run. The owner also reported that the "Counting selected documents" label showed.
