@@ -722,8 +722,8 @@ paths:
         without a `documentId` are left out, and `isFiltered` is true. A filter that
         matches no live text document returns zero totals with `hasNoMatch` true. If the
         filtered figure cannot be computed, the response is HTTP 500 with no totals.
-        Writing `documentId` on canonical saves is not implemented yet, so until it is,
-        a filtered figure leaves out every entry.
+        Canonical saves write `documentId` on every new word entry and skipped-save
+        marker; entries written before that carry none and are left out under a filter.
       parameters:
         - name: projectId
           in: query
@@ -832,7 +832,7 @@ paths:
         the key) when `null`. The filter chooses which text documents count toward the
         total word-count goal and the daily goal. No other config key is touched. The AST
         must pass the query schema, hold no `ref` or `param` node, hold at least one
-        condition, stay within depth 4 and 50 conditions, and use no relative date.
+        condition, stay within depth 4 and 50 conditions, and use no relative date (an "in the last N days" condition).
       requestBody:
         required: true
         content:
