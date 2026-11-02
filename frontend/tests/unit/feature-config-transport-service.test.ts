@@ -47,4 +47,13 @@ describe("feature-config-transport-service (T9e regression)", () => {
     expect(body).not.toHaveProperty("projectPath");
     expect(body).not.toHaveProperty("projectRoot");
   });
+
+  it("postFeatureConfig sends statuses in the POST body (Feature 99, FR-10)", async () => {
+    await postFeatureConfig(directoryUuid, { statuses: ["Outline", "Draft"] });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.projectId).toBe(directoryUuid);
+    expect(body.statuses).toEqual(["Outline", "Draft"]);
+  });
 });

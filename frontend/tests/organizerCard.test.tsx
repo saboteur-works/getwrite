@@ -10,6 +10,22 @@ import {
 } from "../src/lib/models/resource";
 
 describe("OrganizerCard", () => {
+  it("shows no Status line when the resource has no stored status (FR-5)", () => {
+    const res = createTextResource({ name: "No Status Doc", plainText: "a b" });
+    render(<OrganizerCard resource={res} showBody={false} />);
+    expect(screen.queryByText(/Status:/i)).toBeNull();
+  });
+
+  it("shows a stored status that is not in any list (FR-5, FR-6)", () => {
+    const res = createTextResource({
+      name: "Off List Doc",
+      plainText: "a b",
+      userMetadata: { status: "Published" },
+    });
+    render(<OrganizerCard resource={res} showBody={false} />);
+    expect(screen.getByText(/Status:/i)).toHaveTextContent("Published");
+  });
+
   it("renders title, type, date, body and metadata when showBody is true", () => {
     const plainText = Array.from({ length: 42 }, (_, i) => `word${i + 1}`).join(
       " ",

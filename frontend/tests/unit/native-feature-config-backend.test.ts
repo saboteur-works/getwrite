@@ -155,3 +155,48 @@ describe("native feature-config transport — subtypes (Feature 72, FR-3)", () =
     }
   });
 });
+
+describe("native feature-config transport — statuses (Feature 99, FR-10/FR-11)", () => {
+  it("writes statuses and returns the same trimmed result the HTTP core does", async () => {
+    const guard = guardAgainstFetch();
+    try {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = generateUUID();
+      await seedProject(fs, projectId);
+      const transport = createNativeFeatureConfigTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+
+      const result = await transport.updateFeatureConfig(projectId, {
+        statuses: [" Outline ", "Draft"],
+      });
+
+      expect(result.statuses).toEqual(["Outline", "Draft"]);
+    } finally {
+      guard.restore();
+    }
+  });
+
+  it("rejects a blank or duplicate list with the same messages as the HTTP path", async () => {
+    const guard = guardAgainstFetch();
+    try {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = generateUUID();
+      await seedProject(fs, projectId);
+      const transport = createNativeFeatureConfigTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+
+      await expect(
+        transport.updateFeatureConfig(projectId, { statuses: ["A", " "] }),
+      ).rejects.toThrow("Status label must not be blank.");
+      await expect(
+        transport.updateFeatureConfig(projectId, { statuses: ["A", "a"] }),
+      ).rejects.toThrow("Duplicate status label.");
+    } finally {
+      guard.restore();
+    }
+  });
+});

@@ -282,6 +282,10 @@ with the app without hand-rewriting it (see OQ-90).
   research and drafts I set aside do not inflate my progress. [Next]
   (Added 2026-11-01; FR-79. Owner-chosen scope, 2026-11-01. Resolved:
   OQ-130, OQ-131.)
+- US-35: As a writer on deadline, I want to give a document a status only
+  when I choose one, and to set up my project's own statuses, so that
+  what I see on a document matches what my filters and counts find. [Next]
+  (Added 2026-11-02; FR-80. Owner-chosen scope, 2026-11-02.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -355,13 +359,9 @@ with the app without hand-rewriting it (see OQ-90).
   box of a condition on Tags offers the project's tags, not resources; and the
   value list of a condition on Status offers the same statuses the sidebar's
   Status control offers for that project, so the two share one notion of the
-  project's statuses (resolved: OQ-93): when a project has no statuses
-  configured, the built-in list "Draft", "In review", "Published" is offered
-  everywhere a status list is offered (the sidebar Status control, the query
-  builder's Status value list and the Organizer status filter), is not written
-  into the project's config, and needs no migration; a resource with no status
-  keeps today's display (the sidebar shows the first option; the Organizer
-  resolves it to the default status). A smart folder already saved with
+  project's statuses (resolved: OQ-93; amended 2026-11-02, see FR-80: a
+  project offers only the statuses it defines, there is no built-in fallback
+  list, and a resource has a status only when one is chosen). A smart folder already saved with
   "includes all of" is not migrated or rewritten: the evaluation reads the
   existing saved shape (`and` with a single `in` child carrying several
   values) as "every listed value", so existing folders return the corrected
@@ -2103,6 +2103,30 @@ with the app without hand-rewriting it (see OQ-90).
   the total goal shows an equivalent line, because `DataView.tsx:193-195`
   has no unavailable state today. Colours are neutral (red is reserved).
   [US-34]
+- FR-80: A document MUST have a status only when the writer chooses one or a
+  source provides one explicitly (for example a Scrivener import). Added
+  2026-11-02 (owner decision, reversing OQ-93). (a) Nothing assigns a
+  default status; a document with no stored status reads as "No status"
+  everywhere it is shown: the sidebar control, the Organizer card and
+  filter, the query builder, smart folders, the goal filter and the status
+  roll-up. (b) The statuses offered MUST be exactly the project's own list
+  (`config.statuses`); a project that defines none offers none, and the
+  built-in list "Draft", "In review", "Published" is no longer offered
+  anywhere. The query builder's separate multi-select "Statuses" field
+  (`resource.statuses`, FR-26 of Feature 86) already offers only the
+  project's list and is unchanged. (c) A writer MUST be able to add, remove and reorder a project's
+  statuses after creation in Project Settings; today only creation from a
+  project type or a Scrivener import sets them. Editing the
+  project's status list is allowed on a paired device, as editing the
+  subtype list is; it is not one of the paired-device limits. (d) A stored status that is
+  not in the project's list MUST stay visible on the document, marked as
+  not in the current list, and MUST NOT be offered in filter lists. (e) No
+  stored file is migrated or rewritten; the only writes are the writer's own
+  saves of a document's status or of the project's list. Feature record:
+  `specs/features/explicit-document-status.md`. [US-35]
+  Gate 1, 2026-11-02: (b) and (c) clarified by owner decision; Blank and
+  other project types that seed no statuses start with none (no default is
+  seeded).
 
 ## Constraints
 
@@ -3704,7 +3728,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 **OQ-93 (resolved): When a project has no statuses configured, which statuses do the sidebar and the query and filter value lists offer?**
 **Options:** (a) the built-in list the sidebar uses today ("Draft", "In review", "Published"), offered everywhere; (b) none anywhere, with the writer prompted to define statuses first; (c) the built-in list is written into the project's config at creation so there is one stored list. Observed (D-20, D-28): with `config.statuses` empty, the sidebar offers the built-in list while the query Status chip's list is empty, and the Organizer Status filter's "Draft" returned cards never given a status; causes read in code, not run.
-**Resolution:** Resolved (2026-10-16): option (a). With no statuses configured, the built-in list "Draft", "In review", "Published" (the sidebar's existing fallback, `StatusSelector.tsx:14`) is offered everywhere a status list is offered: the sidebar Status control, the query builder's Status value list and the Organizer status filter. It is not written into config; no migration. Sub-decision: a resource with no status keeps today's display (the sidebar shows the first option; the Organizer resolves it to the default status per `specs/features/organizer-card-filtering.md`). D-28 is not addressed by Feature 86 and stays as recorded.
+**Resolution:** Resolved (2026-10-16): option (a). With no statuses configured, the built-in list "Draft", "In review", "Published" (the sidebar's existing fallback, `StatusSelector.tsx:14`) is offered everywhere a status list is offered: the sidebar Status control, the query builder's Status value list and the Organizer status filter. It is not written into config; no migration. Sub-decision: a resource with no status keeps today's display (the sidebar shows the first option; the Organizer resolves it to the default status per `specs/features/organizer-card-filtering.md`). D-28 is not addressed by Feature 86 and stays as recorded. Amendment, 2026-11-02 (owner decision): reversed. A project offers only the statuses it defines; the built-in list "Draft", "In review", "Published" is no longer offered anywhere, and a document has a status only when one is chosen (no default). See FR-80 and Feature 99.
 **Evidence:** Owner decision, Gate 1, 2026-10-16.
 **Impact:** FR-9 (Status options), FR-10, FR-26.
 **Owner:** Product owner.

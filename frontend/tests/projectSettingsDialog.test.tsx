@@ -120,6 +120,22 @@ describe("ProjectSettingsDialog", () => {
     );
   });
 
+  it("shows both the Subtypes and Statuses sections under the Metadata tab (Feature 99)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ tags: [] }),
+    } as Response);
+
+    await renderDialog();
+
+    expect(
+      screen.getByRole("heading", { name: "Subtypes", hidden: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Statuses", hidden: true }),
+    ).toBeInTheDocument();
+  });
+
   it("renders Heading Styles and Body Text Styles together under the Editor tab", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,

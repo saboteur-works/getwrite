@@ -1,0 +1,29 @@
+Pixel 7 Pro, debug build of fix/explicit-document-status at 69d4b6d5 (APK built 2026-11-02 14:19), throwaway project "F99 check"
+(owner decision: left on the phone for the owner to delete; no other project opened). Two runs: the first stopped in step 3 on a
+script error (metadata panel closed before choosing Beta's status); the second resumed in the same project at that point.
+
+-- run 1
+created F99 check at files/projects/0dbb749f-6fee-47c3-877d-4bab53ed5aa3
+== 1. No statuses
+sidebar: shown="No status" options=["No status"] hint=["No statuses yet. Add them in Project Settings, Metadata tab."]; Alpha stored={}; config.statuses=[]
+== 2. Statuses editor
+stored after adding Outline, Draft: ["Outline","Draft"]
+duplicate: error=["Duplicate status label."]; stored=["Outline","Draft"]
+after Move Draft up: ["Draft","Outline"]
+== 3. Choose and clear
+Alpha: shown="No status" options=["No status","Draft","Outline"] hint=[]
+after Draft: shown="Draft" options=["No status","Draft","Outline"] hint=[]; stored={"status":"Draft"}
+after No status: shown="No status" options=["No status","Draft","Outline"] hint=[]; stored={}
+ERROR (script) status select not visible: the metadata panel was closed before Beta's status was chosen
+
+-- run 2 (resume)
+resuming in F99 check at files/projects/0dbb749f-6fee-47c3-877d-4bab53ed5aa3
+Alpha={"status":"Outline"} Beta={"status":"Draft"} Gamma={}
+== 4. Remove Draft from the list
+list=["Outline"]; Beta stored={"status":"Draft"}
+Beta: shown="Draft (not in the current list)" options=["No status","Draft (not in the current list)","Outline"] hint=[]
+== 5. Organizer
+cards: ["Alpha text file 11/2/2026 Words: 0 Status: Outline Open","Beta text file 11/2/2026 Words: 0 Status: Draft Open","Gamma text file 11/2/2026 Words: 0 Open"]
+filter options: ["All statuses","Outline","No status"]
+filter Outline: ["Clear filters to reorder cards Alpha text file 11/2/2026 Words: 0 Status: Outlin"]
+filter No status: ["Clear filters to reorder cards Gamma text file 11/2/2026 Words: 0 Open"]

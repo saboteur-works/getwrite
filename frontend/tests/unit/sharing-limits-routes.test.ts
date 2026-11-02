@@ -53,6 +53,9 @@ const UNLIMITED_ROUTES = [
   "project/[project-id]/trash/restore/route.ts",
   "folder/[folder-id]/delete/route.ts",
   "resource/[resource-id]/delete/route.ts",
+  // Feature 99, FR-10: editing the status list (a `statuses` body) is allowed
+  // on a paired device, as the subtype list is; it is not a limit.
+  "project/features/route.ts",
 ];
 
 function walk(dir: string, accept: (name: string) => boolean): string[] {
@@ -180,6 +183,22 @@ describe("routes outside the limited set", () => {
     expect(start).toBeGreaterThan(-1);
     const slice = text.slice(start, text.indexOf("\n}\n", start));
     expect(slice).not.toMatch(/checkLimit|enforceEncryptionLimits/);
+  });
+
+  it("sharing-limits has exactly the five switches; none is added for statuses (Feature 99, FR-10)", () => {
+    const text = read(path.join(SRC_ROOT, "lib/sharing/limits-store.ts"));
+    const block = /const LIMIT_KEYS = \[([\s\S]*?)\] as const/.exec(text);
+    expect(block).not.toBeNull();
+    const keys = [...(block as RegExpExecArray)[1].matchAll(/"([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(keys).toEqual([
+      "projectDeletion",
+      "unlocking",
+      "locking",
+      "encryptionChanges",
+      "permanentDeletion",
+    ]);
   });
 
   it("only the limited routes (and the read route) call checkLimit", () => {

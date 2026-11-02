@@ -63,6 +63,117 @@ describe("Sidebar Controls", () => {
     expect(onChange).toHaveBeenCalledWith("review");
   });
 
+  it("StatusSelector offers only the options it is given and none by default", () => {
+    const { unmount } = render(<StatusSelector />);
+    expect(
+      Array.from(
+        (screen.getByLabelText("status-select") as HTMLSelectElement).options,
+      ).map((o) => o.value),
+    ).toEqual([""]);
+    unmount();
+    render(<StatusSelector options={["Outline", "Final"]} />);
+    const sel = screen.getByLabelText("status-select") as HTMLSelectElement;
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual([
+      "",
+      "Outline",
+      "Final",
+    ]);
+  });
+
+  describe("StatusSelector explicit status (Feature 99)", () => {
+    const sel = () =>
+      screen.getByLabelText("status-select") as HTMLSelectElement;
+    const values = () => Array.from(sel().options).map((o) => o.value);
+    const texts = () => Array.from(sel().options).map((o) => o.textContent);
+    const HINT = "No statuses yet. Add them in Project Settings, Metadata tab.";
+
+    it("shows No status as chosen, not the first listed status, when nothing is stored", () => {
+      render(<StatusSelector value="" options={["Outline", "Draft"]} />);
+      expect(texts()).toEqual(["No status", "Outline", "Draft"]);
+      expect(sel().selectedOptions[0]?.textContent).toBe("No status");
+      expect(sel().value).toBe("");
+    });
+
+    it("shows No status when the value prop is undefined", () => {
+      render(<StatusSelector options={["Outline", "Draft"]} />);
+      expect(sel().value).toBe("");
+    });
+
+    it("chooses a stored listed status", () => {
+      render(<StatusSelector value="Draft" options={["Outline", "Draft"]} />);
+      expect(sel().value).toBe("Draft");
+    });
+
+    it("emits an empty string when No status is chosen", () => {
+      const onChange = vi.fn();
+      render(
+        <StatusSelector
+          value="Draft"
+          onChange={onChange}
+          options={["Outline", "Draft"]}
+        />,
+      );
+      fireEvent.change(sel(), { target: { value: "" } });
+      expect(onChange).toHaveBeenCalledWith("");
+    });
+
+    it("follows an external change of the value to empty", () => {
+      const { rerender } = render(
+        <StatusSelector value="Draft" options={["Outline", "Draft"]} />,
+      );
+      rerender(<StatusSelector value="" options={["Outline", "Draft"]} />);
+      expect(sel().value).toBe("");
+    });
+
+    it("marks a stored value not in the list, chooses it, and lets it be replaced", () => {
+      const onChange = vi.fn();
+      render(
+        <StatusSelector
+          value="Published"
+          onChange={onChange}
+          options={["Outline", "Draft"]}
+        />,
+      );
+      expect(texts()).toEqual([
+        "No status",
+        "Published (not in the current list)",
+        "Outline",
+        "Draft",
+      ]);
+      expect(sel().value).toBe("Published");
+      fireEvent.change(sel(), { target: { value: "" } });
+      expect(onChange).toHaveBeenLastCalledWith("");
+      fireEvent.change(sel(), { target: { value: "Draft" } });
+      expect(onChange).toHaveBeenLastCalledWith("Draft");
+      expect(sel().value).toBe("Draft");
+    });
+
+    it("renders with an empty list, shows No status and the hint tied by aria-describedby", () => {
+      render(<StatusSelector value="" options={[]} />);
+      expect(values()).toEqual([""]);
+      expect(texts()).toEqual(["No status"]);
+      const hint = screen.getByText(HINT);
+      expect(hint.id).not.toBe("");
+      expect(sel().getAttribute("aria-describedby")).toBe(hint.id);
+    });
+
+    it("shows both the marked value and the hint for an off-list value with an empty list", () => {
+      render(<StatusSelector value="Published" options={[]} />);
+      expect(texts()).toEqual([
+        "No status",
+        "Published (not in the current list)",
+      ]);
+      expect(sel().value).toBe("Published");
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+    });
+
+    it("shows no hint when the list is not empty", () => {
+      render(<StatusSelector value="" options={["Outline"]} />);
+      expect(screen.queryByText(/No statuses yet/)).toBeNull();
+      expect(sel().getAttribute("aria-describedby")).toBeNull();
+    });
+  });
+
   it.skip("MultiSelectList toggles selection (userEvent + waitFor)", async () => {
     const onChangeMock = vi.fn();
     const onChange = (v: string[]) => onChangeMock(v);

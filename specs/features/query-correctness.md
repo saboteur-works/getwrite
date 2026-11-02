@@ -122,6 +122,19 @@ FR-34: (Added after the FR-4 stop; Owner decision, FR-4 stop, 2026-10-16, findin
 
 FR-35: (Added after the FR-4 stop; Owner decision, FR-4 stop, 2026-10-16, findings F-5 and F-6.) The FR-16 measurement confirmed the misbehaviour on `createdAt` and `updatedAt` and custom date fields behaved correctly, so option (b) of FR-16 is implemented on the intrinsic timestamp fields only; the F-6 observation (`createdAt` "is before" omitting a resource whose stored UTC string begins with the compared date) is covered by the same local-calendar-day comparison. Custom date fields stay unchanged. [US-2]
 
+### Amendment (2026-11-02): Feature 99
+
+Feature 99 (`specs/features/explicit-document-status.md`, FR-4, FR-5, FR-9)
+reverses FR-23 and FR-25 above; the original text is kept. The built-in
+Draft/In review/Published fallback (`default-statuses.ts`, `BUILT_IN_STATUSES`,
+`effectiveStatuses`, `selectEffectiveProjectStatuses`) is removed, so the
+sidebar Status control, the query builder `status` chip and the Organizer
+filter offer only the project's `config.statuses`, which may be empty. FR-25's
+Organizer default status is removed: the card and filter resolve the stored
+status only (`defaultStatus` is gone). FR-26 is unchanged. FR-24's "keep showing
+the first option" is also replaced: a resource with no stored status shows "No
+status".
+
 ## Open questions
 
 - OQ-1: What shape should a new save of "includes all of" use, and how does reopening map it back? The saved shape is `and[ in(field, [A, B]) ]` and FR-6 reads it as every listed value, so the evaluator needs the rule whatever new saves do (existing folders are not migrated, OQ-94). Option (a): keep writing `and[ in(field, [A, B]) ]`. Pros: one shape, nothing changes in `chipToAst` or the stub, reopen (FR-8) is unambiguous because `chipToAst` writes `and` of one `in` only for this operator (a one-chip group emits the bare child). Cons: the evaluator's meaning for `and`-of-one-`in` stays a special case that a hand-writer of the same shape also gets. Option (b): write one `in` per value, `and[ in(f,[A]), in(f,[B]) ]`, the shape `query-evaluator.test.ts:922` uses and the evaluator already evaluates correctly. Pros: no special case for new saves. Cons: it is the same AST as a group of two "includes" chips joined by "and", so reopening cannot tell them apart and one of the two UI forms changes (a writer's two chips would reopen as one "includes all of" chip, or the reverse); the single-value case is the bare `in`, which means "includes". Option (c): a new explicit node or operator for "all of". Pros: unambiguous. Cons: a schema change in `query-ast.ts`, a persisted-format change for a defect fix, and old folders still need FR-6. Option (d): (a) now, revisit with a new node when a later feature extends the AST. — Impact: FR-6, FR-8, FR-9. **Resolved (Owner decision, Gate 3, 2026-10-16):** (a) new saves keep writing `and[ in(field, [A, B]) ]`; no new node; the stub and `chipToAst` agree on that shape. See FR-9.

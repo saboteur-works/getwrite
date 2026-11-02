@@ -185,10 +185,7 @@ export interface AppShellProps {
   /** Metadata callback for notes field updates. */
   onChangeNotes?: (text: string, resourceId: string) => void;
   /** Metadata callback for status updates. */
-  onChangeStatus?: (
-    status: "draft" | "in-review" | "published",
-    resourceId: string,
-  ) => void;
+  onChangeStatus?: (status: string | null, resourceId: string) => void;
   /** Metadata callback for point-of-view updates. */
   onChangePOV?: (pov: ResourceRef, resourceId: string) => void;
   /** Metadata callback for dynamic metadata updates. */
@@ -1086,8 +1083,10 @@ export default function AppShell({
               onChangeNotes?.(value as string, id);
               break;
             case "status":
+              // The sidebar reports "No status" as "" or null; the handler
+              // takes null (Feature 99 FR-3).
               onChangeStatus?.(
-                value as "draft" | "in-review" | "published",
+                typeof value === "string" && value !== "" ? value : null,
                 id,
               );
               break;

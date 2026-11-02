@@ -14,7 +14,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Project } from "../lib/models";
 import { DEFAULT_METADATA_SCHEMA } from "../lib/models/default-metadata-schema";
-import { effectiveStatuses } from "../lib/models/default-statuses";
 import { DEFAULT_RELATIONSHIP_TYPES } from "../lib/models/default-relationship-types";
 import type {
   MetadataField,
@@ -542,6 +541,11 @@ export const updateProjectSubtypes = makeFeatureConfigThunk<{
   subtypes: string[];
 }>("projects/updateProjectSubtypes", ({ subtypes }) => ({ subtypes }));
 
+export const updateProjectStatuses = makeFeatureConfigThunk<{
+  projectId: string;
+  statuses: string[];
+}>("projects/updateProjectStatuses", ({ statuses }) => ({ statuses }));
+
 /**
  * Initial state for the `projects` slice.
  */
@@ -791,6 +795,7 @@ const projectsSlice = createSlice({
       updateProjectOrganizerCardBody,
       updateProjectRelationshipTypes,
       updateProjectSubtypes,
+      updateProjectStatuses,
     ] as const;
 
     for (const thunk of featureConfigThunks) {
@@ -804,6 +809,7 @@ const projectsSlice = createSlice({
           organizerCardBody: result.organizerCardBody ?? undefined,
           relationshipTypes: result.relationshipTypes ?? undefined,
           subtypes: result.subtypes ?? undefined,
+          statuses: result.statuses ?? [],
         };
         return state;
       });
@@ -898,27 +904,10 @@ const EMPTY_STATUSES: string[] = [];
  */
 export const selectActiveProjectStatuses = (state: any): string[] => {
   const id = state?.projects?.selectedProjectId;
-  return state?.projects?.projects?.[id]?.statuses ?? EMPTY_STATUSES;
+  const statuses: string[] | undefined =
+    state?.projects?.projects?.[id]?.statuses;
+  return statuses && statuses.length > 0 ? statuses : EMPTY_STATUSES;
 };
-
-/** The slice of root state `selectEffectiveProjectStatuses` reads. */
-type EffectiveStatusesState = {
-  projects?: {
-    selectedProjectId?: string | null;
-    projects?: Record<string, { statuses?: string[] } | undefined>;
-  };
-};
-
-/**
- * Selects the effective statuses for the active project: its configured list
- * when non-empty, else the shared built-in list (stable reference). A pure
- * read; nothing is written (FR-23).
- *
- * @param state - Redux root state (structural subset, see `EffectiveStatusesState`).
- */
-export const selectEffectiveProjectStatuses = (
-  state: EffectiveStatusesState,
-): string[] => effectiveStatuses(selectActiveProjectStatuses(state));
 
 /**
  * Selects the ordered relationship-types array for the currently active

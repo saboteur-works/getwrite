@@ -93,7 +93,7 @@ For each expanded folder, direct resources are filtered by `folderId` and mapped
 - Title: `resource.title ?? resource.name ?? "Untitled"`
 - Body preview: `resource.metadata?.notes`
 - Updated date: `resource.updatedAt ?? resource.createdAt`
-- Status: `resource.metadata?.status ?? "unknown"`
+- Status: the stored `userMetadata.status` only; a document with no stored status shows no Status line (there is no default status). A stored value that is not in the project list still shows.
 - Word count: `resource.metadata?.wordCount ?? "unknown"`
 
 ## Interaction Behavior

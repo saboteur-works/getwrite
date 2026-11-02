@@ -20,6 +20,7 @@ import projectsReducer, {
   updateProjectOrganizerCardBody,
   updateProjectRelationshipTypes,
   updateProjectSubtypes,
+  updateProjectStatuses,
   selectActiveProjectSubtypes,
   selectActiveProjectFeatures,
   selectActiveProjectOrganizerCardBody,
@@ -32,13 +33,9 @@ import projectsReducer, {
   selectEntitiesEnabled,
   selectEntityHighlightingEnabled,
   selectActiveProjectRelationshipTypes,
-  selectEffectiveProjectStatuses,
+  selectActiveProjectStatuses,
   buildStoredProject,
 } from "../../src/store/projectsSlice";
-import {
-  BUILT_IN_STATUSES,
-  effectiveStatuses,
-} from "../../src/lib/models/default-statuses";
 import type { Project } from "../../src/lib/models/types";
 
 function makeStore() {
@@ -574,54 +571,105 @@ describe("projectsSlice — subtypes (Feature 72, FR-1/FR-3/FR-4)", () => {
   });
 });
 
-describe("effective statuses (FR-23, FR-27)", () => {
-  const BUILT_IN = ["Draft", "In review", "Published"];
-
-  it("effectiveStatuses returns configured statuses as they are", () => {
-    const configured = ["Idea", "Done"];
-    expect(effectiveStatuses(configured)).toBe(configured);
-  });
-
-  it("effectiveStatuses returns the built-in list for an empty or absent list", () => {
-    expect(effectiveStatuses([])).toEqual(BUILT_IN);
-    expect(effectiveStatuses(undefined)).toEqual(BUILT_IN);
-    expect(BUILT_IN_STATUSES).toEqual(BUILT_IN);
-  });
-
-  it("selectEffectiveProjectStatuses returns the configured list as it is", () => {
+describe("projectsSlice — updateProjectStatuses (Feature 99, FR-10)", () => {
+  it("posts the list and mirrors result.statuses into the project so the selector changes with no reload", async () => {
     const store = makeStore();
-    seedProject(store, { statuses: ["Idea", "Done"] });
-    expect(selectEffectiveProjectStatuses(store.getState())).toEqual([
-      "Idea",
-      "Done",
+    seedProject(store, { editorConfig: {}, statuses: ["Old"] });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ features: {}, statuses: ["Outline", "Draft"] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await store.dispatch(
+      updateProjectStatuses({
+        projectId: "project-1",
+        statuses: [" Outline ", "Draft"],
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/project/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: "project-1",
+        statuses: [" Outline ", "Draft"],
+      }),
+    });
+    expect(selectActiveProjectStatuses(store.getState())).toEqual([
+      "Outline",
+      "Draft",
     ]);
   });
 
-  it("selectEffectiveProjectStatuses returns the built-in list for an empty or absent list and with no project selected", () => {
+  it("rejection leaves the project's list unchanged and exposes the message", async () => {
     const store = makeStore();
-    expect(selectEffectiveProjectStatuses(store.getState())).toEqual(BUILT_IN);
-    seedProject(store, { statuses: [] });
-    expect(selectEffectiveProjectStatuses(store.getState())).toEqual(BUILT_IN);
+    seedProject(store, { editorConfig: {}, statuses: ["Draft"] });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Duplicate status label." }), {
+        status: 400,
+      }),
+    );
+
+    const result = await store.dispatch(
+      updateProjectStatuses({ projectId: "project-1", statuses: ["a", "A"] }),
+    );
+
+    expect(result.type).toBe("projects/updateProjectStatuses/rejected");
+    expect(result.payload).toBe("Duplicate status label.");
+    expect(selectActiveProjectStatuses(store.getState())).toEqual(["Draft"]);
   });
 
-  it("selectEffectiveProjectStatuses keeps one reference across calls when no statuses are configured", () => {
+  it("another feature-config thunk does not erase the list when the server echoes it", async () => {
+    const store = makeStore();
+    seedProject(store, { editorConfig: {}, statuses: ["Draft"] });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ features: { pov: true }, statuses: ["Draft"] }),
+        { status: 200 },
+      ),
+    );
+    await store.dispatch(
+      updateProjectFeatures({
+        projectId: "project-1",
+        features: { pov: true },
+      }),
+    );
+    expect(selectActiveProjectStatuses(store.getState())).toEqual(["Draft"]);
+  });
+});
+
+describe("active project statuses (FR-4)", () => {
+  it("returns the project's own list in order", () => {
+    const store = makeStore();
+    seedProject(store, { statuses: ["Outline", "Draft", "Final"] });
+    expect(selectActiveProjectStatuses(store.getState())).toEqual([
+      "Outline",
+      "Draft",
+      "Final",
+    ]);
+  });
+
+  it("returns an empty list, not a built-in vocabulary, for an empty or absent list and with no project selected", () => {
+    expect(selectActiveProjectStatuses(makeStore().getState())).toEqual([]);
+    const empty = makeStore();
+    seedProject(empty, { statuses: [] });
+    expect(selectActiveProjectStatuses(empty.getState())).toEqual([]);
+    const absent = makeStore();
+    seedProject(absent, {});
+    expect(selectActiveProjectStatuses(absent.getState())).toEqual([]);
+  });
+
+  it("keeps one empty-array reference across calls when no statuses are configured", () => {
     const store = makeStore();
     seedProject(store, {});
-    const first = selectEffectiveProjectStatuses(store.getState());
+    const first = selectActiveProjectStatuses(store.getState());
     store.dispatch(setSelectedProjectId("project-1"));
-    expect(selectEffectiveProjectStatuses(store.getState())).toBe(first);
-  });
-
-  it("selectEffectiveProjectStatuses is a pure read: state is unchanged and the configured list is not mutated", () => {
-    const store = makeStore();
-    seedProject(store, {});
-    const before = store.getState();
-    const snapshot = JSON.stringify(before);
-    selectEffectiveProjectStatuses(before);
-    expect(store.getState()).toBe(before);
-    expect(JSON.stringify(before)).toBe(snapshot);
-    const configured = Object.freeze(["Idea"]) as string[];
-    expect(() => effectiveStatuses(configured)).not.toThrow();
+    expect(selectActiveProjectStatuses(store.getState())).toBe(first);
+    expect(selectActiveProjectStatuses(makeStore().getState())).toBe(first);
   });
 });
 

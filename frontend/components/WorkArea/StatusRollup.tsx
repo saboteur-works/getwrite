@@ -11,7 +11,7 @@ const STATUS_ROLLUP_COPY = {
   staleNote: "Word counts for some older resources may read low.",
   noResources: "No text resources yet.",
   noStatusesConfigured:
-    "No statuses are configured for this project, so every resource shows under No status.",
+    "No statuses are configured for this project, so every resource shows under No status. Add them in Project Settings, Metadata tab.",
   tableCaption: "Resources and words by status",
   statusHeader: "Status",
   resourcesHeader: "Resources",

@@ -60,6 +60,7 @@ export const Interactive: Story = {
               rootPath: "/story",
               folders: [],
               resources: [{ id: resource.id, name: resource.name }],
+              statuses: ["Draft", "In review", "Published"],
               features: {
                 timeline: true,
                 pov: true,
@@ -166,6 +167,7 @@ function makeStoreWithResource(
               synopsis: true,
               notes: true,
             },
+            statuses: ["Draft", "In review", "Published"],
             ...projectOverrides,
           } as StoredProject,
         },
@@ -193,6 +195,43 @@ function makeStoreWithResource(
   });
   return store;
 }
+
+export const StatusNotSet: Story = {
+  render: () => {
+    const resource = createTextResource({ name: "Chapter One", plainText: "" });
+    return (
+      <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
+export const StatusNotInList: Story = {
+  render: () => {
+    const resource = createTextResource({
+      name: "Chapter One",
+      plainText: "",
+      userMetadata: { status: "Archived" },
+    });
+    return (
+      <Provider store={makeStoreWithResource(resource)}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
+
+export const NoStatusesConfigured: Story = {
+  render: () => {
+    const resource = createTextResource({ name: "Chapter One", plainText: "" });
+    return (
+      <Provider store={makeStoreWithResource(resource, { statuses: [] })}>
+        <MetadataSidebar />
+      </Provider>
+    );
+  },
+};
 
 export const WithSynopsis: Story = {
   render: () => {

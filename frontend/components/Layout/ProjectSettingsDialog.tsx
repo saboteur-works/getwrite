@@ -38,6 +38,7 @@ import MentionHighlightDurationField from "./MentionHighlightDurationField";
 import EntityFeatureToggles from "../preferences/EntityFeatureToggles";
 import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings";
 import SubtypesSettings from "../preferences/SubtypesSettings";
+import StatusesSettings from "../preferences/StatusesSettings";
 import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
 import TimelineViewToggle from "../preferences/TimelineViewToggle";
 import OrganizerCardBodySettings from "../preferences/OrganizerCardBodySettings";
@@ -283,6 +284,7 @@ export default function ProjectSettingsDialog({
               className={`${PANEL_CLASS} flex flex-col gap-6`}
             >
               <SubtypesSettings />
+              <StatusesSettings />
               <SchemaManager onClose={handleClose} />
             </TabsContent>
 

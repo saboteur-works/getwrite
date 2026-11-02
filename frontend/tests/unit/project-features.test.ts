@@ -390,6 +390,79 @@ describe("updateFeatureConfig — subtypes (Feature 72, FR-1/FR-2)", () => {
   });
 });
 
+describe("updateFeatureConfig — statuses (Feature 99, FR-10/FR-11)", () => {
+  it("replaces the stored list wholesale, in order, with trimmed entries", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, statuses: ["Old"] });
+    try {
+      const result = await updateFeatureConfig(dir, {
+        statuses: ["  Outline ", "Draft", "Final"],
+      });
+      const saved = await readProject(dir);
+      expect(saved.config?.statuses).toEqual(["Outline", "Draft", "Final"]);
+      expect(result.statuses).toEqual(["Outline", "Draft", "Final"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("accepts an explicit empty list and stores it as empty", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, statuses: ["Draft"] });
+    try {
+      const result = await updateFeatureConfig(dir, { statuses: [] });
+      expect((await readProject(dir)).config?.statuses).toEqual([]);
+      expect(result.statuses).toEqual([]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("rejects a blank entry with 'Status label must not be blank.' and leaves project.json unchanged", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, statuses: ["Draft"] });
+    try {
+      const before = await fs.readFile(
+        path.join(dir, PROJECT_FILENAME),
+        "utf8",
+      );
+      await expect(
+        updateFeatureConfig(dir, { statuses: ["Ok", "   "] }),
+      ).rejects.toThrow("Status label must not be blank.");
+      expect(await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8")).toBe(
+        before,
+      );
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("rejects a case/spacing duplicate with 'Duplicate status label.' and leaves project.json unchanged", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, statuses: ["Draft"] });
+    try {
+      const before = await fs.readFile(
+        path.join(dir, PROJECT_FILENAME),
+        "utf8",
+      );
+      await expect(
+        updateFeatureConfig(dir, { statuses: ["In review", " in REVIEW "] }),
+      ).rejects.toThrow("Duplicate status label.");
+      expect(await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8")).toBe(
+        before,
+      );
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
+  it("leaves a stored statuses list untouched when only features is provided", async () => {
+    const dir = await makeTmpProject({ editorConfig: {}, statuses: ["Draft"] });
+    try {
+      await updateFeatureConfig(dir, { features: { pov: true } });
+      expect((await readProject(dir)).config?.statuses).toEqual(["Draft"]);
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+});
+
 describe("updateFeatureConfig — lock order (Feature 92, Task 10)", () => {
   const settle = () => new Promise<void>((r) => setTimeout(r, 50));
 

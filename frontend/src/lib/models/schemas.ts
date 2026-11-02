@@ -742,6 +742,17 @@ function labelListSchema(blankMessage: string, duplicateMessage: string) {
 }
 
 /**
+ * Feature 99, FR-11: the project status list. Each entry is trimmed, not
+ * blank, and unique under `normalizeSubtypeLabel`; an empty list is valid.
+ * Used by the features write (`updateFeatureConfig`) and the project-type
+ * `statuses` field, so the rules live in one place.
+ */
+export const StatusListSchema = labelListSchema(
+  "Status label must not be blank.",
+  "Duplicate status label.",
+);
+
+/**
  * Feature 90, FR-28 (c): adds an issue at `path(index)` for each entry whose
  * `slugify` value equals that of an earlier entry in the same group, naming
  * both. Blank names are skipped (the field schema already refuses them).
@@ -851,10 +862,7 @@ export const ProjectTypeSchema = z
     defaultResources: z.array(ProjectTypeResourceSchema).optional(),
     defaultFolders: z.array(ProjectTypeDefaultFolderSchema).optional(),
     editorConfig: EditorConfigSchema.optional(),
-    statuses: labelListSchema(
-      "Status label must not be blank.",
-      "Duplicate status label.",
-    ).optional(),
+    statuses: StatusListSchema.optional(),
     relationshipTypes: labelListSchema(
       "Relationship type must not be blank.",
       "Duplicate relationship type.",

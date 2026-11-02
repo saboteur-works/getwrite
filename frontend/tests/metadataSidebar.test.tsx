@@ -430,7 +430,7 @@ describe("MetadataSidebar", () => {
     expect(onChangeField).toHaveBeenCalledWith("status", "review");
   });
 
-  describe("Status control (effective statuses, D-20)", () => {
+  describe("Status control (project statuses only, FR-4)", () => {
     async function renderStatus(
       statuses: string[] | undefined,
       userMetadata: Record<string, MetadataValue>,
@@ -464,24 +464,52 @@ describe("MetadataSidebar", () => {
     const optionTexts = (el: HTMLSelectElement): string[] =>
       Array.from(el.options).map((o) => o.value);
 
-    it("offers the built-in statuses when none are configured", async () => {
+    it("offers no statuses, not Draft/In review/Published, when none are configured", async () => {
       const { status } = await renderStatus(undefined, {});
-      expect(optionTexts(status)).toEqual(["Draft", "In review", "Published"]);
+      expect(optionTexts(status)).toEqual([""]);
     });
 
-    it("offers the configured list unchanged when statuses are configured", async () => {
+    it("offers only No status and shows the hint for an empty configured list", async () => {
+      const { status } = await renderStatus([], {});
+      expect(optionTexts(status)).toEqual([""]);
+      const hint = screen.getByText(
+        "No statuses yet. Add them in Project Settings, Metadata tab.",
+      );
+      expect(status.getAttribute("aria-describedby")).toBe(hint.id);
+    });
+
+    it("offers No status then the configured list unchanged", async () => {
       const { status } = await renderStatus(["Outline", "Final"], {});
-      expect(optionTexts(status)).toEqual(["Outline", "Final"]);
+      expect(optionTexts(status)).toEqual(["", "Outline", "Final"]);
     });
 
-    it("shows the first option and writes nothing on mount for a resource with no stored status", async () => {
-      const { status, onChangeField } = await renderStatus(undefined, {});
-      expect(status.selectedOptions[0]?.value).toBe("Draft");
+    it("shows No status, not the first listed status, and writes nothing on mount when no status is stored", async () => {
+      const { status, onChangeField } = await renderStatus(
+        ["Outline", "Final"],
+        {},
+      );
+      expect(status.selectedOptions[0]?.textContent).toBe("No status");
+      expect(status.value).toBe("");
       expect(onChangeField).not.toHaveBeenCalled();
     });
 
+    it("marks a stored status not in the list and sends an empty string for No status", async () => {
+      const { status, onChangeField } = await renderStatus(["Outline"], {
+        status: "Published",
+      });
+      expect(status.value).toBe("Published");
+      expect(status.selectedOptions[0]?.textContent).toBe(
+        "Published (not in the current list)",
+      );
+      fireEvent.change(status, { target: { value: "" } });
+      expect(onChangeField).toHaveBeenCalledWith("status", "");
+    });
+
     it("stores a selected status as before", async () => {
-      const { status, onChangeField } = await renderStatus(undefined, {});
+      const { status, onChangeField } = await renderStatus(
+        ["Outline", "Published"],
+        {},
+      );
       fireEvent.change(status, { target: { value: "Published" } });
       expect(onChangeField).toHaveBeenCalledWith("status", "Published");
     });

@@ -196,12 +196,9 @@ describe("buildFieldPickerFields — intrinsic options", () => {
     ]);
   });
 
-  // Changed in Task 18 (FR-28, D-20): this test used to assert that the
-  // builtin Status field has no options when none are configured. The `status`
-  // chip now offers the effective list (FR-23), so it asserts that instead.
-  it("offers the effective statuses for the builtin Status field when none are configured", () => {
+  it("gives the builtin Status field an empty list when none are configured (no built-in fallback)", () => {
     const statusField = FIELDS.find((f) => f.key === "status");
-    expect(statusField?.options).toEqual(["Draft", "In review", "Published"]);
+    expect(statusField?.options ?? []).toEqual([]);
   });
 
   it("leaves the intrinsic Statuses field with its empty configured-only list when none are configured", () => {
@@ -224,14 +221,11 @@ describe("buildFieldPickerFields — intrinsic options", () => {
     ]);
   });
 
-  // D-20 (FR-22, FR-23): with no configured statuses the Status chip's value
-  // list is the effective list.
-  it("offers the effective list for the Status chip with no configured statuses", () => {
-    const expected = ["Draft", "In review", "Published"];
+  it("gives the Status chip an empty list with no configured statuses, never Draft/In review/Published", () => {
     for (const projectStatuses of [[], undefined]) {
       const fields = buildFieldPickerFields(undefined, projectStatuses);
       const statusField = fields.find((f) => f.key === "status");
-      expect(statusField?.options ?? []).toEqual(expected);
+      expect(statusField?.options ?? []).toEqual([]);
     }
   });
 });

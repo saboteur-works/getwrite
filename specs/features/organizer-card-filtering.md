@@ -232,3 +232,15 @@ original set rather than being interleaved with it.
 - Filtering by fields other than Status, word count, and resource-reference
   fields (e.g. arbitrary text/select/date metadata fields) — a plausible
   follow-on, not requested by FR-26.
+
+### Amendment (2026-11-02): Feature 99
+
+Feature 99 (`specs/features/explicit-document-status.md`, FR-5, FR-9) amends
+FR-2 above. The owner decided that a document has no status unless one is
+chosen, so the Organizer no longer resolves a missing status to a default.
+FR-2's "(or default status, per existing `OrganizerCard` resolution)" no longer
+applies: the resolved status is the stored status only, a card with no stored
+status shows no status, and it matches only the "no status set" option of FR-1,
+which governs (this resolves D-28). A stored status that is not in the list
+still shows on its card and still matches a filter on that exact value. The
+original text of FR-2 is kept above unchanged.

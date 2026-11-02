@@ -30,6 +30,7 @@ export interface FeatureConfigUpdate {
   organizerCardBody?: OrganizerCardBodyConfig;
   relationshipTypes?: string[];
   subtypes?: string[];
+  statuses?: string[];
 }
 
 /** The persisted feature configuration returned by the route. */
@@ -38,6 +39,7 @@ export interface FeatureConfigResult {
   organizerCardBody?: OrganizerCardBodyConfig | null;
   relationshipTypes?: string[];
   subtypes?: string[];
+  statuses?: string[];
 }
 
 function getApiErrorMessage(errorBody: unknown, fallback: string): string {
@@ -54,7 +56,7 @@ export interface FeatureConfigTransport {
    *   this is distinct from `project.json`'s internal `id` field — callers
    *   must source it via `selectActiveProjectDirectoryId` /
    *   `getProjectDirectoryId`, never `project.id`).
-   * @param update - Blocks to replace (`features`, `organizerCardBody`, and/or `relationshipTypes`).
+   * @param update - Blocks to replace (`features`, `organizerCardBody`, and/or `relationshipTypes`, `subtypes` and/or `statuses`).
    * @returns The persisted feature configuration.
    */
   updateFeatureConfig(
@@ -111,7 +113,7 @@ const resolveFeatureConfigTransport: () => Promise<FeatureConfigTransport> =
  *   this is distinct from `project.json`'s internal `id` field — callers
  *   must source it via `selectActiveProjectDirectoryId` /
  *   `getProjectDirectoryId`, never `project.id`).
- * @param update - Blocks to replace (`features`, `organizerCardBody`, and/or `relationshipTypes`).
+ * @param update - Blocks to replace (`features`, `organizerCardBody`, and/or `relationshipTypes`, `subtypes` and/or `statuses`).
  * @returns The persisted feature configuration.
  * @throws {Error} When the route (or, on native, the underlying core)
  *   rejects the update.

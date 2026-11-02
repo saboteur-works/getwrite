@@ -6,7 +6,8 @@
  * Notes, Entities), `config.organizerCardBody` (what Organizer cards render
  * as their body), and `config.relationshipTypes` (the project's
  * entity-relationship-type vocabulary, FR-19), and `config.subtypes` (the
- * project's resource-subtype list, Feature 72).
+ * project's resource-subtype list, Feature 72), and `config.statuses` (the
+ * project's ordered status list, Feature 99).
  *
  * This helper acquires the per-project lock (outer) so toggle writes cannot race the
  * schema/migration writes in `metadata-schema.ts`, and does its read, mutate and
@@ -23,6 +24,7 @@ import {
   ProjectFeatureFlagsSchema,
   OrganizerCardBodyConfigSchema,
   SubtypeListSchema,
+  StatusListSchema,
 } from "./schemas";
 import type { ProjectFeatureFlags, OrganizerCardBodyConfig } from "./types";
 
@@ -42,6 +44,12 @@ export interface FeatureConfigUpdate {
    * with a `ZodError`.
    */
   subtypes?: string[];
+  /**
+   * Replacement status list (Feature 99). Omit to leave the existing list
+   * untouched. Blank or duplicate entries (under `normalizeSubtypeLabel`) are
+   * rejected with a `ZodError`; an empty list is stored as empty.
+   */
+  statuses?: string[];
 }
 
 /** The persisted feature configuration after an update. */
@@ -50,12 +58,13 @@ export interface FeatureConfigResult {
   organizerCardBody?: OrganizerCardBodyConfig;
   relationshipTypes?: string[];
   subtypes?: string[];
+  statuses?: string[];
 }
 
 /**
  * Validates and persists a partial feature-configuration update to
  * `project.json`. Each provided block (`features` / `organizerCardBody` /
- * `relationshipTypes` / `subtypes`) replaces the existing block wholesale; an omitted
+ * `relationshipTypes` / `subtypes` / `statuses`) replaces the existing block wholesale; an omitted
  * block is left unchanged.
  *
  * The read-modify-write runs under the project lock, then the file lock, and updates `updatedAt`. It
@@ -95,6 +104,10 @@ export async function updateFeatureConfig(
     update.subtypes !== undefined
       ? SubtypeListSchema.parse(update.subtypes)
       : undefined;
+  const nextStatuses =
+    update.statuses !== undefined
+      ? StatusListSchema.parse(update.statuses)
+      : undefined;
 
   const release = await acquireLock(projectRoot);
   try {
@@ -113,6 +126,9 @@ export async function updateFeatureConfig(
       if (nextSubtypes !== undefined) {
         config.subtypes = nextSubtypes;
       }
+      if (nextStatuses !== undefined) {
+        config.statuses = nextStatuses;
+      }
 
       project.config = config;
       project.updatedAt = new Date().toISOString();
@@ -123,6 +139,7 @@ export async function updateFeatureConfig(
           organizerCardBody: config.organizerCardBody,
           relationshipTypes: config.relationshipTypes,
           subtypes: config.subtypes,
+          statuses: config.statuses,
         },
       };
     });

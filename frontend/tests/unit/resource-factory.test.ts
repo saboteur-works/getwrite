@@ -67,6 +67,32 @@ describe("models/resource factory regressions (T007)", () => {
     expect(Date.parse(folder.createdAt)).not.toBeNaN();
   });
 
+  // Feature 99 FR-1: creating a document stores no status of its own.
+  it("FR-1: a created text resource has no status key in userMetadata", () => {
+    const created = createResourceOfType("text", {
+      name: "No status",
+      type: "text",
+      folderId,
+      orderIndex: 0,
+      text: { plainText: "Body" },
+    });
+
+    expect(Object.keys(created.userMetadata ?? {})).not.toContain("status");
+  });
+
+  it("FR-1: other userMetadata passed at creation is kept and no status is added", () => {
+    const created = createResourceOfType("text", {
+      name: "Has meta",
+      type: "text",
+      folderId,
+      orderIndex: 0,
+      userMetadata: { chapter: 2 },
+      text: { plainText: "Body" },
+    });
+
+    expect(created.userMetadata).toEqual({ chapter: 2 });
+  });
+
   it("rejects unsupported resource payloads at validation and dispatch boundaries", () => {
     expect(() =>
       validateResource({
