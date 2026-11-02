@@ -12,7 +12,10 @@ import {
   getLocalResources,
   writeResourceToFile,
 } from "../../src/lib/models/resource";
-import { readSidecar } from "../../src/lib/models/sidecar";
+import {
+  readSidecar,
+  sidecarPathForProject,
+} from "../../src/lib/models/sidecar";
 import {
   buildResourceSidecarData,
   readResourceExcerpts,
@@ -92,6 +95,54 @@ describe("models/resource persistence regressions (T007)", () => {
         type: resource.type,
         folderId,
       });
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  // Feature 99 FR-1 / FR-8: nothing in create, persist or load writes a status.
+  it("FR-1: a persisted text resource's sidecar has no status anywhere", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-resource-nostatus-"),
+    );
+
+    try {
+      const resource = createTextResource({
+        name: "Unstatused",
+        folderId,
+        plainText: "Body",
+      });
+      await writeResourceToFile(projectRoot, resource);
+
+      const sidecar = await readSidecar(projectRoot, resource.id);
+      expect(sidecar).not.toBeNull();
+      expect(Object.keys(sidecar?.userMetadata ?? {})).not.toContain("status");
+      expect(Object.keys(sidecar ?? {})).not.toContain("status");
+    } finally {
+      await removeDirRetry(projectRoot);
+    }
+  });
+
+  it("FR-8: reading local resources leaves a status-less sidecar byte-identical", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-resource-noload-write-"),
+    );
+
+    try {
+      const resource = createTextResource({
+        name: "Untouched",
+        folderId,
+        plainText: "Body",
+        userMetadata: { section: "intro" },
+      });
+      await writeResourceToFile(projectRoot, resource);
+      const sidecarFile = sidecarPathForProject(projectRoot, resource.id);
+      const before = await fs.readFile(sidecarFile);
+
+      await getLocalResources(projectRoot);
+
+      const after = await fs.readFile(sidecarFile);
+      expect(after.equals(before)).toBe(true);
     } finally {
       await removeDirRetry(projectRoot);
     }

@@ -17,7 +17,11 @@ import {
 import { saveResourceTemplateFromResource } from "../../src/lib/models/resource-templates";
 import { createAndAssertProject } from "./helpers/project-creator";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
-import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
+import {
+  readSidecar,
+  sidecarPathForProject,
+  writeSidecar,
+} from "../../src/lib/models/sidecar";
 import {
   createResourceCore,
   updateSidecarCore,
@@ -903,6 +907,71 @@ describe("models/resource-templates — createResourceFromTemplate on the app pe
       if (!("id" in created)) throw new Error("expected a resource");
       expect(created.userMetadata).toBeUndefined();
       await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("Feature 99 FR-1: a status in the template's userMetadata is kept exactly, on the resource and in the sidecar", async () => {
+    const tmp = await makeBareDir();
+    try {
+      await saveResourceTemplate(tmp, {
+        id: "t-status",
+        name: "Statused",
+        type: "text",
+        userMetadata: { status: "Outline", mood: "calm" },
+      });
+      const created = await createResourceFromTemplate(tmp, "t-status");
+      if (!("id" in created)) throw new Error("expected a resource");
+      const expected = { status: "Outline", mood: "calm" };
+      expect(created.userMetadata).toEqual(expected);
+      expect((await sidecarOf(tmp, created.id)).userMetadata).toEqual(expected);
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("Feature 99 FR-1: a template with userMetadata but no status creates a resource with no status", async () => {
+    const tmp = await makeBareDir();
+    try {
+      await saveResourceTemplate(tmp, {
+        id: "t-nostatus",
+        name: "Unstatused",
+        type: "text",
+        userMetadata: { mood: "calm" },
+      });
+      const created = await createResourceFromTemplate(tmp, "t-nostatus");
+      if (!("id" in created)) throw new Error("expected a resource");
+      expect(Object.keys(created.userMetadata ?? {})).not.toContain("status");
+      const stored = (await sidecarOf(tmp, created.id)).userMetadata;
+      expect(stored).toEqual({ mood: "calm" });
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
+  it("Feature 99 FR-8: loading a project leaves a status-less resource sidecar byte-identical", async () => {
+    const { tmp, projectPath } = await makeProject();
+    try {
+      const id = await seedTextResource(projectPath, {
+        name: "No status",
+        orderIndex: 0,
+      });
+      await flushIndexer();
+      const sidecarFile = sidecarPathForProject(projectPath, id);
+      const before = await fs.readFile(sidecarFile);
+
+      await loadProjectFromDisk(projectPath);
+      await getLocalResources(projectPath);
+      await flushIndexer();
+
+      const after = await fs.readFile(sidecarFile);
+      expect(after.equals(before)).toBe(true);
+      expect(
+        Object.keys((await sidecarOf(projectPath, id)).userMetadata ?? {}),
+      ).not.toContain("status");
     } finally {
       await removeDirRetry(tmp);
     }
