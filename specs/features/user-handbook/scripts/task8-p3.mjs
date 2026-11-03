@@ -52,7 +52,7 @@ await withWeb("t8-p3", {}, async ({ h, page }) => {
     await page.goto(h.baseUrl + "/"); await tick(page, 1500);
     await createProject(page, h, "Cfg Three", "Blank");
     await page.click('button[aria-label="Open project settings menu"]'); await page.click("text=Close Project"); await tick(page, 1500);
-    await page.click('button[aria-label="App Settings"]'); await tick(page, 600);
+    await page.click('button[aria-label="Open project settings menu"]'); await page.locator('[role=menu][aria-label="Project settings menu"] >> text=App Settings').click(); await tick(page, 600);
     await page.fill('input[aria-label="New noise word"]', "mirth"); await page.keyboard.press("Enter"); await tick(page, 1200);
     await closeDlg(page);
     await page.click('button[aria-label="Open Cfg Three"]'); await tick(page, 2000);

@@ -1,0 +1,13 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+electron pid 99419; isPackaged=false; userData is throwaway: true
+desktop Revision Control cards: ["Initial Draft v1 •… [CANONICAL]"]
+desktop tabs: ["EDIT","ORGANIZER","DATA","DIFF","TIMELINE","ENTITIES","GRAPH","TRASH"]
+desktop delete dialog: "Delete Desk Doc\n\nThis will move the resource to Trash. Proceed?\n\nCANCEL\nDELETE"
+desktop tree after delete: ["[folder] Workspace"]
+desktop .trash files: ["meta/refs-f812.json","meta/resource-f812.meta.json","resources/f812-f812/content.tiptap.json","resources/f812-f812/content.txt","revisions/f812/v-1/content.bin","revisions/f812/v-1/metadata.json"]
+desktop Trash tab: "Trash\n0 of 1 item selected\nRESTORE SELECTED\nDELETE SELECTED PERMANENTLY\nEMPTY TRASH\nDesk Doc"
+desktop after restore: report "1 of 1 restored."; tree ["[folder] Workspace","  [resource] Desk Doc"]
+stop: recorded 99419(Electron),99420(Electron Helper (GPU)),99421(Electron Helper),99422(sh),99426(node),99445(node),99455(next-server (v16.2.6)),99574(Electron Helper (Renderer)); after SIGTERM: none alive
+listener on 7340 after stop: none; throwaway log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -50,7 +50,7 @@ await withWeb("t8-p1", {}, async ({ h, page }) => {
   });
   await S("PC-08 subtypes", async () => {
     await openSettings(page, "Metadata");
-    for (const n of ["Scene", "Chapter", "Act"]) { await page.fill("input[aria-label=subtype-new]", n); await page.locator("[role=dialog] button:text-is('ADD'), dialog button:text-is('ADD'), [role=dialog] button:text-is('Add'), dialog button:text-is('Add')").first().click(); await tick(page, 900); }
+    for (const n of ["Scene", "Chapter", "Act"]) { await page.fill("#subtype-new", n); await page.locator("#subtype-new").locator("xpath=following::button[normalize-space()='Add' or normalize-space()='ADD'][1]").click(); await tick(page, 900); }
     say("PC-08 config.subtypes after adding Scene, Chapter, Act in Metadata tab: " + J(cfg(pd).subtypes));
     say("PC-08 subtype controls: " + J(await page.$$eval("[role=dialog] button[aria-label], dialog button[aria-label]", (o) => o.map((x) => x.getAttribute("aria-label")).filter((l) => /subtype|Scene|Chapter|Act/i.test(l)))));
     const down = page.locator("[role=dialog] button[aria-label*='Move Scene down'], dialog button[aria-label*='Move Scene down'], [role=dialog] button[aria-label*='Move down'], dialog button[aria-label*='Move down']").first();

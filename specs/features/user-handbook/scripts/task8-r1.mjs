@@ -100,12 +100,14 @@ await withWeb("t8-r1", {}, async ({ h, page }) => {
   });
   await S("RS-08 metadata", async () => {
     await openSettings(page, "Metadata");
+    // Re-run 2026-11-02 (group 3): a project now offers only statuses it defines (unreleased Feature 99), so add one first.
+    if (await page.locator("#status-new").count()) { await page.fill("#status-new", "Published"); await page.locator("#status-new").locator("xpath=following::button[normalize-space()='Add'][1]").click(); await tick(page, 900); say("RS-08 added status Published in the Statuses editor"); }
     for (const n of ["Synopsis", "Notes", "Timeline"]) { const c = page.getByRole("checkbox", { name: new RegExp("^" + n) }).first(); if (!(await c.isChecked().catch(() => false))) await c.click().catch(() => {}); await tick(page, 700); }
     await closeSettings(page);
     await treeClick(page, "Chapter Doc");
     const sb = await sidebarText(page);
     say("RS-08 sidebar section headings: " + J(sb.split("\n").filter((l) => /^[A-Z][A-Z /()-]+$/.test(l))));
-    await page.selectOption("select[aria-label=status]", { label: "Published" }).catch(async () => say("status select missing"));
+    await page.locator("select[aria-label=status]").first().selectOption({ label: "Published" }).catch(async (e) => say("status select: " + String(e.message).split("\n")[0] + " options=" + J(await page.locator("select[aria-label=status] option").allInnerTexts())));
     if (await page.locator("textarea[aria-label=notes]").count()) { await page.fill("textarea[aria-label=notes]", "a note"); await page.locator("textarea[aria-label=notes]").blur(); }
     await tick(page, 2000);
     say("RS-08 sidecar userMetadata: " + J(sidecarByName(h, "Chapter Doc").json.userMetadata));

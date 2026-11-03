@@ -7,6 +7,8 @@ await withWeb("t8-p8", {}, async ({ h, page }) => {
   const pd = projectDir(h);
   await createNode(page, "Doc One", "text");
   await typeInto(page, "Doc One", "0123456789 ".repeat(30));
+  // Re-run 2026-11-02 (group 3): a project now offers only statuses it defines (unreleased Feature 99), so add one first.
+  await openSettings(page, "Metadata"); await page.fill("#status-new", "Published"); await page.locator("#status-new").locator("xpath=following::button[normalize-space()='Add'][1]").click(); await tick(page, 1000); await closeDlg(page); await page.keyboard.press("Escape");
   await treeClick(page, "Doc One"); await page.selectOption("select[aria-label=status]", { label: "Published" }); await tick(page, 1800);
   await S("PC-11 by hand", async () => {
     const o = readPj(pd); o.config.features = { timelineView: true }; writePj(pd, o);

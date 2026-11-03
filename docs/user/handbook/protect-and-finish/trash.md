@@ -4,27 +4,41 @@ order: 190
 summary: Deleted resources and folders go to a project Trash tab, where they can be restored or permanently deleted.
 ---
 
-# Deleting and recovering resources (Trash)
+# Trash
 
-When you delete a resource or a folder, it isn't erased immediately. GetWrite moves it to a **Trash** area inside the project folder (a hidden `.trash` folder), keeping its content, metadata, and revision history. Deleting a folder moves its entire contents — every resource and sub-folder inside it — to Trash together.
+When you delete a resource or a folder, GetWrite moves it to the project's Trash. It keeps its content, its details and its revision history, so you can bring it back. Trash works in the browser and in the desktop app.
 
-The **Trash** tab (alongside Edit, Organizer, Data, Diff, Timeline, Entities, and Graph) lists everything currently trashed in the project. A trashed folder is one entry, with the resources and folders that were inside it listed beneath it. Tick the checkboxes of one item or several, then choose **Restore selected** or **Delete selected permanently**; each asks you to confirm. **Empty trash** deletes everything in Trash at once, after a confirmation.
+## Delete a resource or folder
 
-In a web run, a folder Parent holding a folder Child, which held a folder Grandchild with a document in it, was deleted from Parent's row menu. The Trash tab then showed one entry, "Parent", listing "folder: Child", "folder: Grandchild" and "resource: Leaf doc". Selecting it and choosing **Restore selected** returned all of it: the tree showed Parent, Child, Grandchild and Leaf doc again, each folder under the same parent as before. This is the only nesting depth tried in the app (three folders deep), and it is not in a release yet (merged after 2.2.0).
+Choose **Delete** in the item's options menu, then confirm. Deleting a folder moves everything in it to Trash too, including the folders inside it.
 
-Restoring an item puts it back where it was: in a run, a document deleted from between two others came back between them. If its original folder no longer exists, it's restored to the project root instead, and a notice says so. A name collision with something already there is resolved by appending "(restored)" to the name — a restored "Dup" came back as "Dup (restored)" with a notice.
+## Find what's in Trash
 
-A custom reference field (field type **Ref**) in another resource that pointed at a since-deleted resource is cleared of its link when the resource is deleted, and re-linked automatically when the resource is restored, where possible. A field you pointed somewhere else in the meantime is left alone, and a notice says that its reference could not be restored automatically.
+Open the **Trash** tab, next to **Edit**, **Organizer**, **Data** and the other views. It lists everything you have deleted from the project. A deleted folder is one entry, with the resources and folders that were inside it listed under it.
 
-Permanently deleting an item from Trash cannot be undone: the confirmation says so, and afterwards the item was gone from the Trash list, from the resource tree and from the `.trash` folder.
+## Restore items
 
-Trash is available on web and desktop.
+1. In the **Trash** tab, tick one or more items.
+2. Choose **Restore selected**, then confirm.
 
-## Warnings and limits
+A restored item goes back where it was. A deleted folder comes back with everything that was inside it.
 
-- Permanent deletion cannot be undone ("Permanently delete 1 item? This cannot be undone.").
-- The confirmation for deleting a single resource reads "This will move the resource to Trash. Proceed?"; the one for a folder reads "This will move the folder and everything in it to Trash. Proceed?".
-- In the run this page was verified from, deleting a resource did not change the built-in **Point of View** field of another resource that pointed at it (the field kept its link and its name, before and after the restore); a custom **Ref** field was cleared and re-linked as described above. A later change (unreleased) makes delete clear the built-in Point of View reference in a project whose metadata fields were never edited; this change was re-checked on the web app with the same steps and the observation no longer occurred; the desktop app was not re-checked.
-- In a test of the earlier code (not the app), deleting a folder with a child and a grandchild folder failed with a "no such file or directory" error and left part of the folder in Trash. That is not what the web run above showed after the change. Restoring a folder's contents on their own, name conflicts on restoring a nested folder, Trash with more than one entry, and encrypted projects were not tried in that run.
+- If the item's folder no longer exists, it goes back to the top level of the project, and a notice tells you.
+- If something with the same name is already there, the restored item gets "(restored)" added to its name, and a notice tells you.
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit 3a3ea9f7.
+## Delete items permanently
+
+- To delete chosen items, tick them and choose **Delete selected permanently**.
+- To delete everything in Trash, choose **Empty trash**.
+
+Both ask you to confirm. Permanent deletion can't be undone.
+
+## How references to a deleted resource work
+
+A **Ref** or **Point of View** field in another document can point at the resource you delete. While the resource is in Trash, that field is no longer linked to it, but it still shows the resource's name. When you restore the resource, the field links to it again.
+
+If you pointed the field at something else while the resource was in Trash, GetWrite leaves your choice alone. A notice says that the reference could not be restored automatically.
+
+## Good to know
+
+- The notice about a reference that could not be restored names the document by an id, not by its title. Check the **Ref** and **Point of View** fields of the documents that pointed at the restored resource.

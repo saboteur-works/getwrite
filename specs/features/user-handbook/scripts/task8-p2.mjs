@@ -12,7 +12,7 @@ await withWeb("t8-p2", {}, async ({ h, page }) => {
   await createNode(page, "Doc One", "text"); await typeInto(page, "Doc One", "Some words for the card and the goal. ".repeat(6));
   await S("PC-08 subtypes", async () => {
     await openSettings(page, "Metadata");
-    for (const n of ["Scene", "Chapter", "Act"]) { await page.fill("#subtype-new", n); await page.locator("[role=dialog] button:text-is('ADD'), dialog button:text-is('ADD'), [role=dialog] button:text-is('Add'), dialog button:text-is('Add')").first().click(); await tick(page, 900); }
+    for (const n of ["Scene", "Chapter", "Act"]) { await page.fill("#subtype-new", n); await page.locator("#subtype-new").locator("xpath=following::button[normalize-space()='Add' or normalize-space()='ADD'][1]").click(); await tick(page, 900); }
     say("PC-08 config.subtypes after adding Scene, Chapter, Act in the Metadata tab: " + J(cfg(pd).subtypes));
     await page.locator("[role=dialog] button[aria-label='Move Scene down'], dialog button[aria-label='Move Scene down']").first().click(); await tick(page, 900);
     say("PC-08 config.subtypes after Move Scene down: " + J(cfg(pd).subtypes));
@@ -81,7 +81,7 @@ await withWeb("t8-p2", {}, async ({ h, page }) => {
     say("PC-22 config.customNoiseWords after adding 'gloom' in Project Settings > Noise Words: " + J(cfg(pd).customNoiseWords));
     await closeDlg(page);
     await page.click('button[aria-label="Open project settings menu"]'); await page.click("text=Close Project"); await tick(page, 1500);
-    await page.click('button[aria-label="App Settings"]'); await tick(page, 600);
+    await page.click('button[aria-label="Open project settings menu"]'); await page.locator('[role=menu][aria-label="Project settings menu"] >> text=App Settings').click(); await tick(page, 600);
     say("PC-23 App Settings dialog: " + J((await dlg(page)).split("\n").slice(0, 8)));
     await page.fill('input[aria-label="New noise word"]', "mirth"); await page.keyboard.press("Enter"); await tick(page, 1200);
     say("PC-23 App Settings after adding 'mirth': " + J((await dlg(page)).split("\n").filter((l) => /mirth/i.test(l))));

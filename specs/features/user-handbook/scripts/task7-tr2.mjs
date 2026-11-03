@@ -24,7 +24,7 @@ await withWeb("t7-tr2", {}, async ({ h, page }) => {
   say("Linker controls: " + J(await page.evaluate(() => [...document.querySelectorAll("[aria-label=friend],[aria-label=mfriends]")].map((e) => e.tagName + "|" + e.getAttribute("aria-label") + "|" + e.type))));
   const pick = async (field, typed, name) => { await page.fill(`input[aria-label=${field}]`, typed); await tick(page, 900); await page.locator(`li:text-is('${name}')`).first().click(); await tick(page, 1800); };
   await treeClick(page, "Linker"); await pick("friend", "Tar", "Target");
-  await treeClick(page, "Linker2"); await page.click('button[aria-label="add-metadata-field"]').catch(() => {});
+  await treeClick(page, "Linker2"); await page.click('button[aria-label="Add field"]').catch(() => {});
   await page.keyboard.press("Escape");
   await treeClick(page, "Linker2");
   say("Linker2 has friend control: " + (await page.locator("input[aria-label=friend]").count()));

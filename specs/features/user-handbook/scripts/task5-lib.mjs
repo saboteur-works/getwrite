@@ -19,7 +19,7 @@ export async function sidebarText(page) {
   return i < 0 ? "(no METADATA heading)" : t.slice(i + 10);
 }
 export async function addSidebarField(page, name, label, type, group) {
-  await page.click('button[aria-label="add-metadata-field"]');
+  await page.click('button[aria-label="Add field"]');
   await page.fill('input[aria-label="field-name"]', name);
   await page.fill('input[aria-label="field-label"]', label);
   await page.selectOption('select[aria-label="field-type"]', { label: type });
@@ -31,7 +31,7 @@ export async function createNode(page, title, type, via = "Workspace", file) {
   await page.click(`button[aria-label="${via} options"]`);
   await page.click(".resource-context-menu-item:has-text('Create')");
   await page.locator("[role=dialog] input[type=text], dialog input[type=text]").first().fill(title);
-  if (type && type !== "text") await page.selectOption("select", type);
+  if (type && type !== "text") await page.locator("[role=dialog] select, dialog select").first().selectOption(type);
   if (file) await page.setInputFiles("input[type=file]", file);
   await page.locator("[role=dialog] button:has-text('Create'), dialog button:has-text('Create')").last().click();
   await page.waitForTimeout(2500);
