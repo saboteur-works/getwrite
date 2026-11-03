@@ -2013,3 +2013,156 @@ Superseded by `g2-*` logs because the Task 4 selectors no longer match the UI: t
 ### 26.9 Correction to O-3 (2026-11-01)
 
 O-3's "With a quit Apple event, 5 of 5 were saved" holds only on the Electron dev run. On a packaged build of the same app code, the quit event lost 6 of 6 (`specs/features/window-close-save/experiments.md`, E1). This note amends row G2-E12: `write/editor.md` now covers quitting as well as closing the window. The packaged measurements and the fix are on `fix/window-close-save`. The Good to know item stays until the fix is released, then FR-14 removes it.
+
+## 27. Group 3 re-run (OQ-8): protect-and-finish
+
+Re-run of every statement on the five `protect-and-finish/` pages, and rewrite of those pages to FR-9, FR-10, FR-13 and FR-14. `index.md`: one summary updated (compiling, "just" to "only"). POS task `task_47c22d68`. Run 2026-11-02.
+
+### 27.1 Version and base commit per page (FR-10)
+
+| Page | App version (root `package.json`) | Base commit | Latest release tag |
+| --- | --- | --- | --- |
+| `protect-and-finish/resources.md` | 2.3.0 | `296abe05` | `getwrite-v2.3.0` |
+| `protect-and-finish/compiling.md` | 2.3.0 | `296abe05` | `getwrite-v2.3.0` |
+| `protect-and-finish/revisions.md` | 2.3.0 | `296abe05` | `getwrite-v2.3.0` |
+| `protect-and-finish/trash.md` | 2.3.0 | `296abe05` | `getwrite-v2.3.0` |
+| `protect-and-finish/project-configuration.md` | 2.3.0 | `296abe05` | `getwrite-v2.3.0` |
+
+Unlike groups 1 and 2, the base is not the tag's app code: `git diff --stat getwrite-v2.3.0..296abe05 -- frontend electron cli android getwrite-config` reports 144 files changed. The app PRs merged since the tag (`git log --merges --first-parent getwrite-v2.3.0..main`) are #319 (window close and save), #321 (goal filter, Feature 98), #322 (native build script), #323 (query builder badge, row menu clicks) and #324 (explicit document status, Feature 99). Release status was decided per statement (27.8). Only Feature 99 changes a statement on these pages. #321 adds a goal filter to the Writing Goals tab; the old page did not describe it and this pass adds nothing about it.
+
+All ten "Not yet in a release" notes these pages carried (section 7, entries 18 to 27) are now released: each introducing commit listed there (`1c8687605`, `c0c60902`, `e4e250f2b`, `9c488c9d8`, `e57412b3f`, `6537acb10`, `6ada2cd67`, `9dc3b1b8`, `10792afe2`, `7ec5a054e`, `e184b85f`, `28a94c7c8`) gives `git merge-base --is-ancestor <c> getwrite-v2.3.0` exit 0. The notes are removed. The same check put the trash nested-folder fix (`6d6464a5`), reference clearing on delete (`324b5da4`, `6da9264a`), the "cannot be opened" project card (`8c6fd5139`), the Trash wording (`a5fe929fb`), the goal fields keeping saved values (`853ab371`) and tag editing (`00c84e871`) in 2.3.0. No commit since the tag touches `frontend/src/lib/models/trash.ts`. D-3 (Start Page compile left out root documents) is fixed in 2.3.0 (Feature 87); C-02 lists and compiles both documents.
+
+### 27.2 Methods
+
+- **Web:** a fresh `pnpm --filter getwrite-frontend build` at `296abe05`, with `.next/static` copied into the standalone output, served from a throwaway projects folder by `web-standalone.mjs` on a free port and driven by Playwright Chromium on macOS.
+- **Desktop:** "desktop, Electron dev, fake root", as in 25.2, through `desktop-dev.mjs`, with a fresh `getwrite-electron` build. Throwaway user data; `isPackaged=false`. The packaged app was not run.
+- **CLI:** a fresh `getwrite-cli` build against throwaway folders.
+- **Ports and processes:** the owner's GetWrite (pid 45978) held 7340 during the web runs; web runs used their own ports and did not touch it. The owner quit it before the desktop runs, whose first lines show 7340 free. Every run stopped only its recorded processes and ended with `git status --short projects/` empty and its run folder removed.
+
+Logs: `logs/rerun-g3/`. Scripts: the Task 7 and Task 8 scripts, with these changes for the current UI. `task5-lib.mjs`: the type select is found inside the dialog, and the field button is `Add field`. `task7-tr2.mjs`: the same `Add field` label. `task8-p1.mjs` and `task8-p2.mjs`: the subtype input is `#subtype-new`, and its own Add button is pressed (the Metadata tab now has a second Add button, for statuses). `task8-p2.mjs` and `task8-p3.mjs`: App Settings is opened from the gear menu (it moved there in 2.3.0, `90593068e`). `task8-r1.mjs` and `task8-p8.mjs`: a status is added first, because a Blank project now has none (Feature 99).
+
+Superseded runs, not kept: the first `task8-p1`, `p2`, `p3` and `p8` runs of the day (old selectors, and p2 ran before its fix was saved). Kept runs with a step error, identical to October's: `task8-p3.txt` PC-24..26 (hand-made folders holding only `project.json` are not listed, so "Open My Novel" is not found; the examples were run in `task8-p4.txt`, as in October), and `task8-p2.txt` PC-22/23 (the exclusion checkbox did not change state in that script; `task8-p3.txt` PC-23 ticks and unticks it, as in October).
+
+Normalized diffs against `logs/task7/` and `logs/task8/` (ids, ports, times masked) show, apart from the changes in 27.8: a Spelling tab in Project Settings; "Create, edit and delete project-scoped tags" in Manage Tags; the goal fields showing saved values on reopening (PC-18); "cannot be opened" cards for a broken or nameless `project.json` (PC-03, PC-29); the desktop delete dialog reading "This will move the resource to Trash. Proceed?"; and a desktop compile download (`will-download` fired, `desk-cmp.txt` held both documents). The October desktop compile had no download; Feature 88 found its hook's `require` failed and fixed the script, with no product change.
+
+Link check: `node specs/features/user-handbook/scripts/check-links.mjs` reports 50 files, 102 relative links and anchors resolved, 22 of 22 pages linked from `index.md`, and 14 failing assertions. All 14 are "does not end with a 'Verified against GetWrite' line", for the 14 pages rewritten in groups 1 to 3; FR-10 now forbids that line, so the assertion is out of date. No link or anchor is unresolved. Copy check: `check-copy.sh docs/user/handbook/protect-and-finish` gives no FAIL lines; REVIEW lines (`config`, JSON, id, Canonical, entity) are kept for this reader.
+
+### 27.3 `protect-and-finish/resources.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G3-R01 | A resource is a document, image, audio clip or folder; New resource offers Document, Image, Audio, Folder | run | web | `task8-r1.txt` RS-01 | kept |
+| G3-R02 | Rename or move keeps links pointing at it | run | web | `task8-r1.txt` RS-02: same id after rename and move; Ref stored id unchanged | kept |
+| G3-R03 | Document opens in Edit with the 14 toolbar buttons | run | web | `task8-r1.txt` RS-04 | kept |
+| G3-R04 | Image in the Media tab; Image section with size in pixels, make and model when present | run | web | `task8-r1.txt` RS-05: 64 × 48 px, Canon, TestCam | kept; one file, so "when the file holds them" |
+| G3-R05 | Audio: Play, then Pause, and a Seek slider; Audio section with format and length | run | web | `task8-r1.txt` RS-06: Play to Pause and back, MP3, 3s | kept |
+| G3-R06 | Folder opens the Organizer with one card per item | run | web | `task8-r1.txt` RS-07 | kept |
+| G3-R07 | All three kinds take the same details such as Status; with Notes and Timeline on, notes and the three dates | run | web | `task8-r1.txt` RS-08: sidebar headings for document, image and audio; status and notes stored | kept |
+| G3-R08 | Documents keep revisions; images and audio have none | run | web | `task8-r1.txt` RS-09; `task7-rv4.txt` | kept |
+| G3-R09 | Good to know: a Ref field shows the old name after a rename and still points at it | run | web | `task8-r1.txt` RS-02 (input "Inner Doc", stored id unchanged) | kept |
+| G3-R10 | Old: Seek slider stays at 0 when clicked or moved with arrow keys | run | web (headless Chromium) | `task8-r1.txt` RS-06: currentTime 0, seekableEnd 0 | dropped; seen only in headless Chromium, not generalised to a writer's browser (FR-13) |
+| G3-R11 | Old: example sizes, values and test-file details | - | - | FR-13 | dropped |
+
+### 27.4 `protect-and-finish/compiling.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G3-C01 | Compiling never changes anything in the project | run | web | `task8-c1.txt` C-12: files and digest equal before and after, project dialog and entity dialog | kept |
+| G3-C02 | Start Page, Manage, Package; project menu, Compile Project; both open Compile Project | run | web, desktop | `task8-c1.txt` C-02, C-03; `task8-c3.txt` menu item; `task8-desk.txt` dialog | kept |
+| G3-C03 | Tick resources or Select All / Select None; count shown; Compile as txt, md, pdf, docx; Compile (n) | run | web, desktop | `task8-c1.txt` C-05; `task8-desk.txt` | kept |
+| G3-C04 | One file named after the project, downloaded; each document starts with its title, then its text | run | web, desktop | `task8-c1.txt` C-05 (txt, md, pdf, docx); `task8-desk.txt` (txt, `will-download`, both documents) | kept; desktop txt only |
+| G3-C05 | Tree order; a document in a folder comes where the folder is; drag to change | run | web | `task8-c1.txt` C-06: after dragging Gamma Doc above Beta Doc, list and file begin with Gamma Doc | kept |
+| G3-C06 | Start Page compile includes documents held by no folder | run | web | `task8-c2.txt` C-02: Inner Doc and Root Doc listed and compiled | kept; the October limit (D-3) is removed |
+| G3-C07 | Entity Mentions lists resources that mention or link to the entity | run | web | `task8-c1.txt` C-08 | kept |
+| G3-C08 | Compile this entity's resources; Compile Entity Resources; fixed list in tree order; formats | run | web | `task8-c1.txt` C-09/10/11 | kept |
+| G3-C09 | Only documents go in; an image is marked "excluded — not a text resource" | run | web | `task8-c1.txt` C-09 (txt holds the two documents); label read in `EntityCompileResourceList.tsx:86` for its casing | kept; audio not in the set, so the page names images only |
+| G3-C10 | Good to know: a ticked image counts towards the number but is not in the file | run | web | `task8-c1.txt` C-05: 6 selected with Pic X, 5 documents in the file | kept |
+| G3-C11 | Old: desktop compile gave no download | run | desktop | `task8-desk.txt`: download fired and file written | dropped; contradicted |
+| G3-C12 | Old: example file contents, sizes and test names | - | - | FR-13 | dropped |
+
+### 27.5 `protect-and-finish/revisions.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G3-V01 | Text documents keep revisions; images and audio have none | run | web | `task7-rv4.txt` | kept |
+| G3-V02 | Revision Control panel above the editor in Edit; Expand | run | web, desktop | `task7-rv1.txt` RV-05; `task7-desk.txt` cards | kept |
+| G3-V03 | Card with name and version; View Revision shows Revision content | run | web | `task7-rv1.txt` RV-01 | kept; see O-7 |
+| G3-V04 | One canonical revision, shown and saved into; a new document starts with v1, canonical | run | web | `task7-rv1.txt` S1, RV-04/03 | kept |
+| G3-V05 | Revision name, Save; name at the top of the card; no rename | run | web | `task7-rv1.txt` RV-08, RV-12 | kept |
+| G3-V06 | Set as Canonical or Roll Back: becomes canonical, editor shows it, typing saves into it; version kept; others stay | run | web | `task7-rv1.txt` RV-06, RV-02; `task7-rv2.txt` (v30 in 60) | kept |
+| G3-V07 | Protect on any card, then Unprotect; Protected badge; both badges on a protected canonical; no change to name or content | run | web | `task7-rv1.txt` RV-13/15/17 | kept |
+| G3-V08 | Delete Revision; none on the canonical card | run | web | `task7-rv1.txt` RV-07, RV-19 | kept |
+| G3-V09 | Protected revision refuses delete with "Protected revisions cannot be deleted. Unprotect it first." | run | web | `task7-rv1.txt` RV-18, RV-19 | kept |
+| G3-V10 | GetWrite doesn't remove revisions on its own; no limit in Project Settings | run | web | `task7-rv2.txt` RV-20 (60 kept through edits, switching, canonical change, reload); `task7-rv1.txt` RV-21 (every tab) | kept |
+| G3-V11 | `getwrite-cli prune <project-folder>`; 50 by default; `--max`, `-m` | run | CLI | `task7-rv2.txt` C1, C2, C3; `task7-cli1.txt` help | kept |
+| G3-V12 | Oldest removed first; canonical never removed and counts, even protected; other protected never removed, don't count | run | CLI | `task7-rv2.txt` C1 (v2 to v11 removed), C2, C3, C6 | kept |
+| G3-V13 | Example: max 3, six revisions, two protected: oldest unprotected non-canonical removed, five remain | run | CLI | `task7-rv2.txt` C2 Other | kept |
+| G3-V14 | One line per document, by id, with the number removed | run | CLI | `task7-rv2.txt` | kept |
+| G3-V15 | Good to know: no confirmation, no preview option | run | CLI | `task7-rv2.txt`; `task7-cli1.txt` | kept |
+| G3-V16 | Good to know: more revisions than the maximum with protected ones | run | CLI | `task7-rv2.txt` C3 Prot (6 after `-m 1`) | kept |
+| G3-V17 | Good to know: `maxRevisions` and `autoPrune` have no effect | run | CLI | `task7-rv2.txt` C4, C5; `task8-p7.txt` | kept |
+| G3-V18 | Old: a revision with no name shows as "Revision vN" | run | web | `task7-rv3.txt` (after removing the name by hand) | dropped; Save is disabled with no name, so a writer meets it only by editing files |
+| G3-V19 | Old: screen-reader names of the Protect buttons; badge icon detail; `metadata.name` | run | web | `task7-rv1.txt` | true; cut as detail |
+
+### 27.6 `protect-and-finish/trash.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G3-T01 | Delete moves to Trash, keeping content, details and revisions | run | web, desktop | `task7-tr1.txt` TR-01/02; `task7-desk.txt` `.trash` files | kept |
+| G3-T02 | Delete in the options menu, then confirm; a folder takes everything in it, including folders | run | web | `task7-tr1.txt` TR-03 (Fold with Sub and Deep) | kept |
+| G3-T03 | Trash tab next to the views; a folder is one entry with its contents listed | run | web, desktop | `task7-tr1.txt`; `task7-desk.txt` tabs | kept |
+| G3-T04 | Tick items, Restore selected, confirm; back where it was; a folder with its contents | run | web, desktop | `task7-tr1.txt` TR-05, TR-07, TR-03; `task7-desk.txt` "1 of 1 restored." | kept |
+| G3-T05 | Missing folder: top level, with a notice | run | web | `task7-tr1.txt` TR-08 | kept |
+| G3-T06 | Name taken: "(restored)" added, with a notice | run | web | `task7-tr1.txt` TR-09 | kept |
+| G3-T07 | Delete selected permanently; Empty trash; both confirm; can't be undone | run | web | `task7-tr1.txt` TR-11, TR-06 | kept |
+| G3-T08 | Ref and Point of View fields: not linked while in Trash, still show the name, linked again on restore | run | web | `task7-tr1.txt` TR-10 (Point of View); `task7-tr2.txt` (Ref) | kept; Point of View added, released in 2.3.0 |
+| G3-T09 | A repointed field is left alone, with the notice | run | web | `task7-tr2.txt` | kept |
+| G3-T10 | Good to know: the notice names the document by an id | run | web | `task7-tr2.txt`: "\"friend\" on resource 98e48d95-…" | added |
+| G3-T11 | Trash works in the browser and the desktop app | run | web, desktop | `task7-tr1.txt`; `task7-desk.txt` | kept |
+| G3-T12 | Old: hidden `.trash` folder; dialog wording; "not tried" list; history of fixes | - | - | FR-13 | dropped |
+
+### 27.7 `protect-and-finish/project-configuration.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G3-P01 | Project folder with a generated name, holding `project.json`, `folders`, `resources` | run | web | `task8-p1.txt` PC-01 | kept |
+| G3-P02 | Plain JSON; `jq` can change it | run | web | `task8-p2.txt` PC-34 (jq 1.8.1) | kept |
+| G3-P03 | In the browser, a change shows after reload and reopening | run | web | `task8-p1.txt` PC-27 | kept, labelled browser |
+| G3-P04 | `name` shown on the Start Page and at the top; required | run | web | `task8-p1.txt` PC-03; `task8-p9.txt` PC-03 | kept |
+| G3-P05 | `description` kept, not shown on the Start Page | run | web | `task8-p1.txt` PC-04 | kept |
+| G3-P06 | `statuses`: the Status choices in order | run | web | `task8-p1.txt` PC-07; `task8-p4.txt` PC-24; `task8-p2.txt` PC-34 | kept, wording true on both 2.3.0 and `main` |
+| G3-P07 | `subtypes` in order; managed in the Metadata tab; sidebar order | run | web | `task8-p1.txt` PC-08; `task8-p2.txt` PC-08 | kept |
+| G3-P08 | `features` keys; none in a new project; switches in Metadata, Timeline, Entities tabs; Enable Timeline view switches the fields on too; highlighting only with `entities` | run | web | `task8-p1.txt` PC-09, PC-11, PC-12; `task8-p9.txt` | kept |
+| G3-P09 | `organizerCardBody`: Card body source, None, Text excerpt, a field; 200 by default | run | web | `task8-p2.txt` PC-13; `task8-p8.txt` PC-13 | kept |
+| G3-P10 | `dailyWordGoal` and `wordCountGoal`: whole numbers, 0 or more; where set; Data view progress | run | web | `task8-p2.txt` PC-14, PC-16, PC-17, PC-21 | kept |
+| G3-P11 | `customNoiseWords`; `excludedGlobalNoiseWords` with App Settings from the gear menu and the checkbox | run | web | `task8-p2.txt` PC-22, PC-23; `task8-p3.txt` PC-23 | kept |
+| G3-P12 | `tags`, `tagAssignments`; Manage Tags; a hand-added tag appears after reopening | run | web | `task8-p2.txt` PC-32, PC-33 | kept |
+| G3-P13 | `maxRevisions` 50 and `autoPrune` true in a new project, no effect | run | web, CLI | `task8-p1.txt` PC-05/06; `task8-p7.txt` | kept |
+| G3-P14 | A document's goal is in its sidebar, Word count goal | run | web | `task8-p2.txt` PC-19, PC-20 | kept |
+| G3-P15 | Make a project by hand: `id`, `name`, `createdAt`; folder name needn't match | run | web | `task8-p4.txt` PC-25 (the example JSON as run) | kept |
+| G3-P16 | Good to know: wrong type in `config` gives a card that can't be opened; others appear; correcting it brings it back | run | web | `task8-p4.txt`, `task8-p5.txt`, `task8-p6.txt` PC-29 | corrected; the old body said no projects at all were listed |
+| G3-P17 | Good to know: no `name` gives a card that can't be opened; files still on disk and unchanged | run | web | `task8-p9.txt` PC-03 | corrected; the old page said it was not listed |
+| G3-P18 | Good to know: `timelineView` by hand doesn't switch the fields on | run | web | `task8-p8.txt` PC-11 | kept |
+| G3-P19 | Old: example "Novel Draft" with top-level `maxRevisions` and `autoPrune` | run | web | `task8-p4.txt` PC-26 | dropped; its top-level values have no effect, so it misleads |
+| G3-P20 | Old: a new Blank project offers Draft, In review and Published | run | web | `task8-p1.txt` PC-07: only "No status" at `296abe05` | dropped; the 2.3.0 fallback was not run at this base, and Feature 99 removes it |
+| G3-P21 | Old: progress bar colours; status messages; example values | - | - | FR-13 | dropped |
+| G3-P22 | Coming: a new Blank project has no statuses; Statuses in the Metadata tab, add, remove, reorder; saved in `config.statuses` | run | web | `task8-p1.txt` PC-05/06 (`statuses: []`); `task8-r1.txt` RS-08; `specs/features/explicit-document-status/logs/exercise-web.txt` steps 2 and 4 | kept, Coming |
+| G3-P23 | Coming: Status list starts with No status; a status only once chosen; No status removes it | run | web | `task8-p1.txt` PC-07; `exercise-web.txt` step 3 | kept, Coming |
+| G3-P24 | Coming: "No statuses yet. Add them in Project Settings, Metadata tab." | run | web | `task8-p2.txt` PC-20 | kept, Coming |
+
+### 27.8 "Coming in the next release" statements (FR-9, FR-11)
+
+| Page | Section | Statement | Introducing commit or PR | Ancestor of `getwrite-v2.3.0` |
+| --- | --- | --- | --- | --- |
+| `protect-and-finish/project-configuration.md` | Coming in the next release | A new Blank project has no statuses; the Statuses editor in the Metadata tab (G3-P22) | #324, merge `296abe05` | no (exit 1) |
+| `protect-and-finish/project-configuration.md` | Coming in the next release | The Status list starts with No status; No status removes a status (G3-P23) | #324, merge `296abe05` | no (exit 1) |
+| `protect-and-finish/project-configuration.md` | Coming in the next release | The no-statuses hint (G3-P24) | #324, merge `296abe05` | no (exit 1) |
+
+When the next release tag contains `296abe05`, the section's three items move into the `statuses` bullet and the label is removed.
+
+### 27.9 Observations (recorded, not fixed; causes not established)
+
+- **O-6, the restore notice names a document by its id.** "\"Target\": these references could not be restored automatically — \"friend\" on resource 98e48d95-…" (`task7-tr2.txt`). The field key and the document id are shown, not the field label or the document's title. The page's Good to know item covers it.
+- **O-7, View Revision shows the stored format.** The **Revision content** area showed the revision as the editor's JSON document (`{"type": "doc", "content": [...]}`), not as formatted text (`task7-rv1.txt` RV-01). The page says only that it shows the content. Not investigated.
+- **O-8, compiled PDF size.** `cmp-one.pdf` was 69434 bytes; October's was 2102 bytes for the same steps (`task8-c1.txt` C-05). Both begin `%PDF-1.3` and hold one page. Not investigated.
+- **O-9, Seek slider in headless Chromium.** As in October, `currentTime` and `seekableEnd` stayed 0 after clicking the track (`task8-r1.txt` RS-06). Not run in a headed browser or the desktop app.

@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 18104 port 64715 (throwaway projects dir; templates repo read-only)
+sidebar goal section labels textContent: []
+Writing Goals buttons textContent: ["Save Changes","Save Changes","Save Changes","Save daily goal","Save word-count goal","Save goal filter","Save highlight duration"]
+Writing Goals labels/headings: ["Font Size","Font Family","Font Weight","Letter Spacing","Color","Font Size","Font Family","Font Weight","Letter Spacing","Color","Font Size","Font Family","Font Weight","Letter Spacing","Color","Font Size","Font Family","Line Height","Paragraph Spacing","Default name","Color","New subtype","New status","Timeline","Point of View","Synopsis","Notes","Options (one per line)","Enable Timeline view","Card body source","Daily writing goal","Daily word goal","Project word-count goal","Total word-count goal","Goal filter","Project dictionary (0)","Ignored words (0)","Custom noise words","Add a custom noise word","Global noise words","Entities","Mention-jump highlight duration","Highlight duration (seconds)","Encryption"]
+Metadata tab subtype buttons textContent: ["Add","Add"]
+Noise Words buttons/labels: ["Add H4","Add Tag","Add","Add","Add field","Add field","Add Group","+ Add group","Add a custom noise word","Add word"]
+stop: recorded 18104(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

@@ -1,0 +1,10 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 11979 port 64618 (throwaway projects dir; templates repo read-only)
+PC-29 visible text with Broken One config.statuses='oops': ["Get","Write","LOCAL-FIRST WRITING STUDIO","GetWrite","Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Good One or open a clean slate for your next draft.","1 ACTIVE PROJECT","0 WRITING ASSETS","1 FOLDERS ORGANIZED","WRITING AT A GLANCE","1","Project ready to open and continue.","RESOURCES","0","FOLDERS","1","START A NEW PROJECT","LIBRARY","Projects","Open a project or manage its packaging and metadata.","PROJECT","Good One","0 resources · 1 folder","LAST EDITED 8S AGO","blank","/private/tmp/getwrite-handbook/t8-p5-mw0043im-a6e44b/projects/381bd250-dac5-4163-b8a9-6e628029d325","OPEN PROJECT","READY TO WRITE","PROJECT · CANNOT BE OPENED","99c5b94e-1d5d-4482-997a-58e5b44237cc","Its project.json file does not match the format GetWrite expects, so it cannot be opened.","The project’s files are still on disk and unchanged."]
+PC-29 console error/warn messages: ["error: Failed to load resource: the server responded with a status of 404 (Not Found)"]
+PC-29 toasts/alerts in the page: [""]
+PC-29 after restoring the file: ["Shape books, series, and scene libraries with a calm editorial workspace. Pick up where you left off in Good One or open a clean slate for your next draft.","2 ACTIVE PROJECTS","Broken One","Good One"]
+PC-29 server log (lines mentioning projects/error, throwaway paths replaced): ["Project \"99c5b94e-1d5d-4482-997a-58e5b44237cc\" has an unusable project.json (invalid-manifest)."]
+stop: recorded 11979(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)

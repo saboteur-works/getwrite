@@ -1,0 +1,15 @@
+ports before: 7340: no listener; 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+electron pid 1797; isPackaged=false; userData is throwaway: true
+desktop windows hooked: 1
+desktop Compile Project dialog: ["Compile Project","Select which resources to include in the compiled output.","SELECT ALL","SELECT NONE","Workspace","Doc B","Doc A","2 resource(s) selected","Include section headers","COMPILE AS","txt","md","pdf","docx","CLOSE","COMPILE (2)"]
+desktop will-download events: ["desk-cmp.txt"]
+desktop compiled file desk-cmp.txt: "Doc B\n=====\n\nBee text.\n\n\nDoc A\n=====\n\nAy text."
+desktop dialog after compile: null
+desktop page text lines mentioning compile/download/saved: []
+desktop console messages: ["log: [HMR] connected","warning: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy ","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","warning: [react-tooltip] Do not set `style.border`. Use `border` prop instead.","log: [Fast Refresh] rebuilding","log: [Fast Refresh] done in 167ms"]
+desktop session is default session: true
+desktop app log lines (compile/download/error): ["[2026-11-03T01:17:21.251Z] POST /api/compile/text 200 in 215ms (next.js: 209ms, proxy.ts: 1447µs, application-code: 5ms)"]
+stop: recorded 1797(Electron),1798(Electron Helper (GPU)),1799(Electron Helper),1800(sh),1804(node),1824(node),1830(next-server (v16.2.6)),1898(Electron Helper (Renderer)); after SIGTERM: none alive
+listener on 7340 after stop: none; throwaway log folder removed: true
+removed run folder: true; ports after: 7340: no listener; 3000: no listener; 6006: no listener; projects: (empty)
