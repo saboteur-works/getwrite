@@ -1,0 +1,28 @@
+ports before: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 54367 port 49590 (throwaway projects dir; templates repo read-only)
+settings panel open: false
+shift-click Dave at [556,347] (element there text|entity-graph-node|Dave): focal="Current focal point: Dave." opacities={"Eve":"0.15","Carol":"0.15","Bob":"0.15","Dave":"1","Alice":"1"}
+G-28 shift-click undimmed Alice at [740,639] (element there text|entity-graph-node|Alice): focal="Current focal point: Alice." tab=["GRAPH"] opacities={"Eve":"0.15","Carol":"0.15","Bob":"1","Dave":"1","Alice":"1"}
+G-28 shift-click dimmed Eve at [875,668] (element there text|entity-graph-node|Eve): focal="Current focal point: Eve." tab=["GRAPH"] opacities={"Eve":"1","Carol":"1","Bob":"1","Dave":"0.15","Alice":"0.15"}
+settings panel open: true
+panel open: node Eve opacity 1 at [680,530] element there text|entity-graph-node|Eve
+panel open: node Carol opacity 1 at [596,622] element there text|entity-graph-node|Carol
+panel open: node Bob opacity 1 at [555,501] element there text|entity-graph-node|Bob
+panel open: node Dave opacity 0.15 at [424,282] element there text|entity-graph-node|Dave
+panel open: node Alice opacity 0.15 at [485,392] element there text|entity-graph-node|Alice
+panel open: shift-click undimmed Carol at [596,622] (element there text|entity-graph-node|Carol): focal="Current focal point: Carol." opacities={"Eve":"1","Carol":"1","Bob":"1","Dave":"0.15","Alice":"0.15"}
+panel open: shift-click dimmed Dave at [508,190] (element there text|entity-graph-node|Dave): focal="Current focal point: Dave." opacities={"Eve":"0.15","Carol":"0.15","Bob":"0.15","Dave":"1","Alice":"1"}
+settings panel rect [x,y,w,h]: [732,212,288,312]
+settings panel open: false
+Carol dragged [852,869] -> [877,367] (target [876,368]); element there with panel closed: text|entity-graph-node|Carol
+panel open again: true; element at Carol [877,367]: FIELDSET|entity-graph-settings-panel|
+panel open, Carol under it: shift-click Carol: focal before="Current focal point: Dave." after="Current focal point: Dave."
+panel open, Carol under it: plain click Carol: tab=["GRAPH"]
+settings panel open: false
+panel closed: shift-click Carol at [877,367] (element there rect|entity-graph-canvas-background|): focal="Current focal point: Carol."
+G-30 shift-click Bob (element there null): focal="Current focal point: Carol."
+G-30 after the Edit tab and back: focal="No focal point set."
+G-30 after a page reload: focal="No focal point set."
+stop: recorded 54367(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener; projects: (empty)

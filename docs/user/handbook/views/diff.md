@@ -6,16 +6,18 @@ summary: Compares a document's canonical revision with another revision and mark
 
 # Diff View
 
-The Diff View compares two versions of a document. With a text document selected, open the **Diff** tab: the canonical revision is shown on the left, and selecting **Compare** beside a revision in the **Revisions** list shows that revision's text on the right under **Historical**.
+The Diff View compares two versions of a document, so you can see what changed since an earlier [revision](../protect-and-finish/revisions.md).
 
-Differences are marked in both panes. In a test where "cat" was changed to "dog" and a sentence was replaced by another, the changed word and sentence were struck through with a blue-gray tint in the canonical pane, and the words they differ from had a green tint in the historical pane; unchanged text stayed plain. A changed passage showed as one marked span in each pane; there was no separate marking for "modified".
+## Compare a revision with the current text
 
-Not yet in a release: the marks now run from the older revision to the canonical one, the usual direction for a comparison. Text that is in the compared revision but no longer in the canonical text is struck through with a blue-gray tint in the **Historical** pane, and text that is new in the canonical text has a green tint in the **Canonical** pane. A key above the panes says so ("Tinted in Canonical: new since that revision. Struck through in Historical: not in the canonical text.") while a revision is being compared. Checked in component tests and in Storybook, not in the running app.
+1. Select a document and open the **Diff** tab.
+2. The current text, the canonical revision, is on the left under **Canonical**. The **Revisions** list shows the document's revisions.
+3. Choose **Compare** beside a revision. Its text appears on the right under **Historical**.
 
-Every document has a [revision history](../protect-and-finish/revisions.md): a new text document listed one revision, **Initial Draft** (v1, canonical), in the Diff tab. Selecting an earlier revision shows its wording next to the current text.
+## Read the marks
 
-## Warnings and limits
+- Text that is new since that revision has a green tint in the **Canonical** pane.
+- Text from that revision that is no longer in the current text is struck through in the **Historical** pane.
+- Text that is the same in both stays plain.
 
-None recorded.
-
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit c3f768ee.
+A key above the panes repeats this while you compare: "Tinted in Canonical: new since that revision. Struck through in Historical: not in the canonical text."

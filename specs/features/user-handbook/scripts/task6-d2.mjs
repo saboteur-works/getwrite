@@ -1,5 +1,5 @@
 // Task 6, web build: views/data.md D-15 (where the Words figure comes from). Run OUTSIDE the sandbox.
-import { withWeb, say, J, bodyText, step, createProject, createNode, treeClick, typeInto, reloadProject, sidecars, projectDir, sidecarByName } from "./task6-lib.mjs";
+import { withWeb, say, J, bodyText, step, createProject, createNode, treeClick, typeInto, reloadProject, sidecars, projectDir, sidecarByName, addStatus } from "./task6-lib.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 const tbl = (page) => page.evaluate(() => [...document.querySelectorAll("table tr")].map((r) => [...r.children].map((c) => c.innerText.trim()).join(" | ")));
@@ -7,6 +7,7 @@ const rows = async (page) => { const l = (await bodyText(page)).split("\n"); ret
 const sc = (h, n) => { const s = sidecarByName(h, n).json; return `wordCount=${s.wordCount} keys=${Object.keys(s).join(",")}`; };
 await withWeb("t6-d2", {}, async ({ h, page }) => {
   await createProject(page, h, "Wc", "Blank");
+  await addStatus(page, "In review"); // Re-run 2026-11-03 (group 4): Blank has no statuses (Feature 99)
   await createNode(page, "X", "text"); await createNode(page, "Y", "text");
   await typeInto(page, "X", "one two three four five six seven eight nine ten");
   await typeInto(page, "Y", "alpha beta gamma delta");

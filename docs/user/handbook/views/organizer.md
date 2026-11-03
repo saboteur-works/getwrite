@@ -6,52 +6,65 @@ summary: Shows a folder's contents as a board of cards that can be filtered and 
 
 # Organizer View
 
-The Organizer View shows a folder's contents as a board of cards.
+The Organizer View shows a folder's contents as a board of cards, which you can filter and reorder.
 
-## What it shows
+## Open a folder in the Organizer
 
-Select a folder in the [resource tree](../organize/resource-tree.md) and its contents are laid out as cards, left to right and top to bottom (three to a row in a window 1400 pixels wide). Folders inside the folder come first, then its resources in the same order as in the resource tree. Each card shows the item's title, its kind ("text file", "image file", "audio file" or "folder file"), a date, a word count for a text document, its status, a drag handle and an **Open** button.
+Select a folder in the [resource tree](../organize/resource-tree.md). If the **Edit** tab is showing, GetWrite switches to the **Organizer** tab.
 
-A text document's card shows a preview of its content only when the card body is set to **Text excerpt** (see "Card body" below). Cards for image and audio resources show the same details as the others; no thumbnail and no inline audio player appeared on them.
+The cards run left to right, then top to bottom. Folders come first, then the other items in resource-tree order.
 
-## Card body
+Each card shows:
 
-Each card can show a line of context beneath its title. Until you choose a source, cards show no body line. To choose one, open **Project Settings**, select the **Organizer** tab (**Organizer Card Body**) and pick a **Card body source**: **None**, **Text excerpt**, or a metadata field. The list offered Synopsis, Notes, Status, Point of View, Story Date, Duration (minutes), Story End Date and any custom field you added; Status and a custom text field were checked, and each showed its value on the card. With **Text excerpt** an **Excerpt length (characters)** setting appears, and the card shows the start of the text, cut off.
+- The item's title and its kind, such as "text file", "image file", "audio file" or "folder file".
+- A date, and a word count for a document.
+- Its status.
+- A drag handle and an **Open** button.
 
-Not yet in a release (merged after 2.2.0).
+## Choose what the cards show
 
-The **Hide bodies** button in the view header hides the body line; it then reads **Show bodies**, and selecting it shows the body again.
+Each card can show a line under its title. Until you choose what goes there, the cards show no such line.
 
-## Filtering
+1. Open **Project Settings** and choose the **Organizer** tab.
+2. Under **Card body source**, choose **None**, **Text excerpt** or a field, such as **Status**, **Synopsis** or a field you added yourself.
 
-Not yet in a release (merged after 2.2.0).
+**Text excerpt** shows the start of each document's text. When you choose it, an **Excerpt length (characters)** setting appears.
 
-Select **Filters** at the top of the view to open the filter bar:
+To hide the line for a while, choose **Hide bodies** at the top of the view. The button then reads **Show bodies**. Choose it to bring the line back.
 
-- **Status** — a dropdown offering **All statuses**, each status in the project's status list, and **No status**. In a new Blank project, whose status list was empty, only **All statuses** and **No status** were offered. A later change (unreleased) makes the dropdown offer Draft, In review and Published when the project has no configured statuses (re-checked in the running web app in a new Blank project with the Workspace folder selected: the dropdown offered All statuses, Draft, In review, Published and No status, and the project's status list stayed empty). How cards are shown or matched under that change was not re-checked in the app.
-- **Minimum words** and **Maximum words** — a word-count range. Only text documents have a word count, so while this filter is active the cards for images, audio files and folders are hidden.
-- **Advanced filters** — expands more dropdowns: one for Point of View and one for each resource-reference field the project defines (for example a "Pov Char" field), each listing the values present among the current folder's cards.
+## Filter the cards
 
-Active filters combine: a card must match all of them to stay visible. Each filter has its own clear control (**Clear status filter**, **Clear word count filter**, **Clear Pov Char filter**), and a **Clear all filters** button appears once any filter is active; it was absent with no filter active. When filters exclude every card the grid shows "No cards match the current filters."; an empty folder shows "This folder is empty." Filter selections do not carry over: a status filter set in one folder was cleared after moving to another folder and back.
+Choose **Filters** at the top of the view to open the filter bar.
 
-## Reordering cards
+- **Status:** shows only the cards with the status you pick.
+- **Minimum words** and **Maximum words:** show only documents within that word range. Only documents have a word count, so images, audio and folders are hidden while this filter is on.
+- **Advanced filters:** opens a list for **Point of View** and one for each reference field you added, such as a "POV character" field. Each list offers only the values that the cards in this folder use.
 
-Not yet in a release (merged after 2.2.0).
+A card must match every filter you set. Each filter has its own clear button, such as **Clear status filter**. Once any filter is on, a **Clear all filters** button appears too.
 
-Drag a card by its handle (**Drag to reorder**) to a new position among its siblings. In a test the card moved, its order was saved, and the resource tree listed the resources in the new order straight away and after a reload.
+When no card matches, the board says "No cards match the current filters." An empty folder says "This folder is empty."
 
-The handle also works from the keyboard: focus it, press Space to pick the card up, press an arrow key (ArrowLeft was used) to move it, and press Space to drop it. A message in a live region read "R2 moved to position 1 of 4"; whether a screen reader announces it was not checked. Escape after picking up a card left the order unchanged.
+Filters apply to one folder at a time. When you open another folder, they are cleared.
 
-While a filter is active the handle is disabled (`aria-disabled`, not in the tab order); dragging it changed nothing, and its title reads "Clear filters to reorder cards".
+## Reorder the cards
 
-## When it appears
+Drag a card by its handle to a new place among the other cards. The new order is saved, and the resource tree shows it straight away.
 
-When the Edit view is showing, selecting a folder in the resource tree switches the work area to the Organizer. This happened for a folder holding text and an image, for a folder holding only text documents, and for the top-level Workspace folder. While the Data view was showing, selecting a folder left the Data view open.
+You can also use the keyboard:
 
-## Warnings and limits
+1. Move the focus to the card's handle.
+2. Press Space to pick the card up.
+3. Press the arrow keys to move it.
+4. Press Space to drop it, or Escape to put it back where it was.
 
-- Cards for image and audio resources showed no thumbnail and no audio player in the checks.
-- With statuses configured, resources that had never been given a status were matched by the **Draft** filter (the sidebar shows "Draft" for them), and the **No status** filter showed no cards. A later change (unreleased) changes the filter's list only, not how cards are shown or matched: in a project with no configured statuses, a card with no status still shows blank, picking **Draft** does not show it, and **No status** does. In a project with configured statuses nothing in this note changed. Shown by tests, not re-checked in the running app.
-- Cards list folders first; the resource tree listed the same folder's resources first and its folders after.
+You can't reorder cards while a filter is on. The handle's tooltip then says "Clear filters to reorder cards".
 
-Verified against GetWrite 2.2.0 (root package.json) plus unreleased changes, base commit c3f768ee.
+## Good to know
+
+- Image and audio cards show only their details. They don't show the picture or play the clip.
+- The Organizer puts folders before the other items. The resource tree lists the same folder's documents first and its folders after them.
+
+## Coming in the next release
+
+- A card shows a status only when you have chosen one for that item.
+- The **Status** filter lists only the statuses set for the project, then **No status**. **No status** shows every card that has no status.

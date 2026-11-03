@@ -1,0 +1,11 @@
+ports before: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 14319 port 65265 (throwaway projects dir; templates repo read-only)
+Alice's sidebar relationships: "\nRELATED ENTITY\nChoose an entity…\nBob\nRELATIONSHIP TYPE\nChoose a type…\nally of\nrival of\nparent of\nchild of\nsibling of\nmentor of\nmember of\nADD\nis a source of Bob — mentor of\nREMOVE\nENTITIES MENTIONED\nENTITY MENTIONS\nCOMPILE THIS ENTITY'S RESOURCES\n\nNo associated resources to compile.\n\n+ ADD FIELD"
+Bob's sidebar relationships: "\nRELATED ENTITY\nChoose an entity…\nAlice\nRELATIONSHIP TYPE\nChoose a type…\nally of\nrival of\nparent of\nchild of\nsibling of\nmentor of\nmember of\nADD\nis a target of Alice — mentor of\nREMOVE\nENTITIES MENTIONED\nENTITY MENTIONS\nCOMPILE THIS ENTITY'S RESOURCES\n\nNo associated resources to compile.\n\n+ ADD FIELD"
+edges: ["Alice → Bob (mentor of)"] ; nodes: {"Alice":[741,530],"Bob":[619,530]}
+authored edge geometry in screen px (x1,y1 = start, x2,y2 = end, marker-end on the end): {"start":[741,530],"end":[619,530],"markerEnd":"url(#entity-graph-arrowhead-_r_41_)","markerStart":null}
+canvas text labels near the edge: ["Alice","Bob"]
+hover tooltip: "Alice → Bob (mentor of)"
+stop: recorded 14319(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener; projects: (empty)

@@ -2166,3 +2166,178 @@ When the next release tag contains `296abe05`, the section's three items move in
 - **O-7, View Revision shows the stored format.** The **Revision content** area showed the revision as the editor's JSON document (`{"type": "doc", "content": [...]}`), not as formatted text (`task7-rv1.txt` RV-01). The page says only that it shows the content. Not investigated.
 - **O-8, compiled PDF size.** `cmp-one.pdf` was 69434 bytes; October's was 2102 bytes for the same steps (`task8-c1.txt` C-05). Both begin `%PDF-1.3` and hold one page. Not investigated.
 - **O-9, Seek slider in headless Chromium.** As in October, `currentTime` and `seekableEnd` stayed 0 after clicking the track (`task8-r1.txt` RS-06). Not run in a headed browser or the desktop app.
+
+## 28. Group 4 re-run (OQ-8): views
+
+Re-run of every statement on the six `views/` pages, and rewrite of those pages to FR-9, FR-10, FR-13 and FR-14. `index.md`: no change (the six summaries still match). POS task `task_d3870a5b`. Run 2026-11-03.
+
+### 28.1 Version and base commit per page (FR-10)
+
+| Page | App version (root `package.json`) | Base commit | Latest release tag |
+| --- | --- | --- | --- |
+| `views/organizer.md` | 2.3.0 | `34471a7a` | `getwrite-v2.3.0` |
+| `views/data.md` | 2.3.0 | `34471a7a` | `getwrite-v2.3.0` |
+| `views/diff.md` | 2.3.0 | `34471a7a` | `getwrite-v2.3.0` |
+| `views/timeline.md` | 2.3.0 | `34471a7a` | `getwrite-v2.3.0` |
+| `views/entity-roster.md` | 2.3.0 | `34471a7a` | `getwrite-v2.3.0` |
+| `views/entity-relationship-graph.md` | 2.3.0 | `34471a7a` | `getwrite-v2.3.0` |
+
+`34471a7a` is the merge of #325 (docs only). `git diff --stat 296abe05..34471a7a -- frontend electron cli android getwrite-config` is empty, so the app code is the group 3 base (27.1), with the same five app PRs since the tag. View code changed since the tag (`git log getwrite-v2.3.0..HEAD` on the view components): `OrganizerCard.tsx`, `OrganizerView.tsx`, `organizerFilters.ts` (`c2dbb11c`, `71ea9f79`, Feature 99), `StatusRollup.tsx` (`d728b106`, Feature 99: the no-statuses message gains "Add them in Project Settings, Metadata tab.") and `DataView.tsx` (`948cfdf5`, Feature 98: goal bar states for the goal filter). The old pages did not describe the goal bar; this pass adds nothing about it.
+
+All "Not yet in a release" notes these pages carried are now released. Section 7 entries 10 to 17 and 30 to 34 (`e9c66aa1`, `9ebc46d2`, `7d0554535`, `39da2d11e`, `e8432687`, `7ef350e78`, `107952b18`, `aac3e724e`, `6ada2cd67`, `cdc24490a`, `85b27533`, `491de176b`, `6d0cbe967`, `13f1017e`, `9dc3b1b8a`, `e184b85f0`, `10792afe2`, `7ec5a054e`, `075fae063`) and the section 24 notes (`99223909` tab tooltips, `c7da333b` Diff direction, `d372c6ce` the Data view word fix, `20c02006` and `8cc335c5` the Organizer status notes) all give `git merge-base --is-ancestor <c> getwrite-v2.3.0` exit 0. The notes are removed.
+
+### 28.2 Methods
+
+- **Web:** the group 3 build (`pnpm --filter getwrite-frontend build` at `296abe05`, 2026-11-02 15:50, `.next/static` copied into the standalone output; no app change since), served from a throwaway projects folder by `web-standalone.mjs` on a free port and driven by Playwright Chromium on macOS (MacIntel, 1400 × 900).
+- **Desktop and CLI:** not used. No statement on these pages needs them, as in October (12.2).
+- **Ports and processes:** the owner's GetWrite (pid 55637) held 7340 during every run; the web runs used their own ports and did not touch it. Every run stopped only its recorded server and ended with `listener after: none`, `removed: true` and `git status --short projects/` empty.
+
+Logs: `logs/rerun-g4/`, one per Task 6 script, plus `task6-g7.txt`. Script changes, each marked "Re-run 2026-11-03 (group 4)": `task6-lib.mjs` gains `addStatus` (a new Blank project has no statuses, Feature 99); `task6-d2.mjs` adds "In review" and `task6-o1b.mjs` adds "Draft" before choosing it; `task6-r3.mjs` opens App Settings from the gear menu (`90593068e`). New script `task6-g7.mjs` (G-28, G-30 and the settings-panel check, 28.7).
+
+Superseded runs, not kept: the first `task6-d2`, `o1b` and `r3` runs of the day (old selectors, and no status to choose), and two earlier runs of `task6-g7` (the first had no panel-open case; the second overwrote its log; the kept run places a node under the panel on purpose). Kept runs with a step error, identical to October's: `task6-o1.txt` O-23 (the folder click times out; `task6-o1b.txt` has the result) and `task6-t4.txt` T-50 (the hover; `task6-t5.txt` has the tooltips). `task6-t5.txt` is the full script; October kept it as two logs (`t6-t5-overview-zoom.txt`, `t6-t5-tooltips.txt`).
+
+Normalized diffs against `logs/task6/` (ids, ports, times, dates masked), apart from ordering of the same items, show: Feature 99 in the Organizer (28.3, 28.9) and the Data view message; a Spelling tab in Project Settings and spelling controls in App Settings; App Settings in the gear menu; tab tooltips that now name Project Settings (D-32 gone); the Diff marks reversed and a key above the panes (`c7da333b`, released); the Data view showing 10 words straight after a Status is chosen (D-29 gone); a sidebar tag shown straight after it is created; the Statuses editor in the Metadata tab; the Timeline drawn 43 px higher on the page. The remaining October observations repeat: D-27 (no media on cards), D-30, D-31, D-33, D-34, D-35.
+
+Link check: `check-links.mjs` reports 50 files, 103 relative links and anchors resolved, 22 of 22 pages linked from `index.md`, and 20 failing assertions, all "does not end with a 'Verified against GetWrite' line" for the 20 pages rewritten in groups 1 to 4 (out of date under FR-10, as in 27.2). Copy check: `check-copy.sh docs/user/handbook/views` gives no FAIL lines; REVIEW lines (entity, node, canonical, focal, focus, metadata, Timeline fields) are on-screen labels or explained on the page.
+
+### 28.3 `views/organizer.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G4-O01 | From the Edit tab, selecting a folder switches to Organizer | run | web | `task6-o1b.txt` O-23 (Texts, Mixed, Workspace) | kept |
+| G4-O02 | Old: from the Data tab, selecting a folder leaves Data open | - | - | no such step in `logs/task6/` or `logs/rerun-g4/` | dropped; the October row O-23 cites a step its log does not hold |
+| G4-O03 | Cards left to right, top to bottom; folders first, then resource-tree order | run | web | `task6-o1.txt` O-02 (three per row at 1400 px; Texts, Mixed, then Pic, Tune, Doc A, Doc B) | kept |
+| G4-O04 | Card: title, kind, date, word count for a document, status, handle, Open | run | web | `task6-o1.txt` O-03..05; `task6-o1b.txt` O-08 (`Status: Draft`) | kept; "Its status" is true on 2.3.0 and `main` |
+| G4-O05 | Organizer tab, Card body source: None, Text excerpt or a field; Excerpt length appears with Text excerpt; no line until chosen | run | web | `task6-o1.txt` O-08, O-03; `task6-o1b.txt` O-08 (Status, Mood) | kept |
+| G4-O06 | Hide bodies, then Show bodies | run | web | `task6-o1.txt` O-09 | kept |
+| G4-O07 | Status filter shows the cards with the chosen status | run | web | `task6-o2.txt` O-10 (In review → F1, Published → F2, O1) | kept |
+| G4-O08 | Word filters; non-documents hidden while on | run | web | `task6-o2.txt` O-11, O-12 | kept |
+| G4-O09 | Advanced filters: Point of View and each reference field, values present only | run | web | `task6-o2.txt` O-13 | kept |
+| G4-O10 | Filters combine; a clear button each; Clear all filters once any is on | run | web | `task6-o2.txt` O-14, O-15 | kept |
+| G4-O11 | "No cards match the current filters." and "This folder is empty." | run | web | `task6-o2.txt` O-16 | kept |
+| G4-O12 | Filters are cleared on opening another folder | run | web | `task6-o2.txt` O-17 | kept |
+| G4-O13 | Drag by the handle; order saved; tree shows it straight away | run | web (Playwright pointer drag) | `task6-o3.txt` O-18, O-19 | kept |
+| G4-O14 | Keyboard: focus handle, Space, arrows, Space; Escape puts it back | run | web | `task6-o3.txt` O-20 | kept; live-region text not on the page |
+| G4-O15 | No reordering while a filter is on; tooltip "Clear filters to reorder cards" | run | web | `task6-o3.txt` O-21, O-22 (`title=Clear filters to reorder cards`) | kept |
+| G4-O16 | Good to know: image and audio cards show no picture or player | run | web | `task6-o1b.txt` (`img 0, audio 0, bg 0`) | kept (D-27) |
+| G4-O17 | Good to know: folders first in the Organizer, last in the tree | run | web | `task6-o1.txt` O-02 | kept |
+| G4-O18 | Coming: a card shows a status only once one is chosen | run | web | `task6-o1.txt` (no `Status:` on any card); `task6-o1b.txt` O-08 (`Status: Draft` on Doc A only) | kept, Coming (28.9) |
+| G4-O19 | Coming: the Status filter lists only the project's statuses, then No status; No status shows cards with none | run | web | `task6-o2.txt` O-10 (new Blank: All statuses / No status; with statuses: Draft → none, No status → Other, Empty, Pic, F3) | kept, Coming (28.9) |
+| G4-O20 | Old: 2.3.0 status behaviour (a card with no status shows the first status; Draft matches those cards; No status shows none; the Draft, In review, Published fallback list) | run | web | October `t6-o2.txt` at `c3f768ee`; not run at this base | dropped; Feature 99 removes it, and the released behaviour was not run here (as G3-P20) |
+| G4-O21 | Old: pixel positions, handle attributes, live-region text | run | web | `task6-o1.txt`, `task6-o3.txt` | true; cut as detail |
+
+### 28.4 `views/data.md` and `views/diff.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G4-D01 | Data tab; heading "<name> Overview" | run | web | `task6-d1.txt` D-01 | kept |
+| G4-D02 | Resources: documents and images counted, folders not | run | web | `task6-d1.txt` D-02 (6 → 7 after one image and one folder) | kept; audio not run, so not named |
+| G4-D03 | Total words across the documents | run | web | `task6-d1.txt` D-03 (695) | kept |
+| G4-D04 | With a smart folder selected, the two figures follow it | run | web | `task6-d1.txt` D-16 (2, 90) | kept |
+| G4-D05 | By status: columns Status, Resources, Words; count and words per status | run | web | `task6-d1.txt` D-06..08 | kept |
+| G4-D06 | Rows in status order, unused statuses at 0 | run | web | `task6-d1.txt` D-09 | kept |
+| G4-D07 | A status not in the list gets a row marked "(not in the current list)" | run | web | `task6-d1.txt` D-10 | kept |
+| G4-D08 | No status row last | run | web | `task6-d1.txt` D-11 | kept |
+| G4-D09 | With no statuses, the section says so and counts every document under No status | run | web | `task6-d1.txt` D-12 (message, `No status / 1 / 0`) | kept; paraphrase, true on 2.3.0 and `main` (the `main` text adds a sentence) |
+| G4-D10 | "No text resources yet." instead of the table | run, read code | web | `task6-d1.txt` D-13 (empty project); `StatusRollup.tsx` `noResources` | kept |
+| G4-D11 | The table counts documents only, whole project, not the smart folder | run | web | `task6-d1.txt` D-14, D-16 | kept |
+| G4-D12 | Resources list: kind, words, updated; newest first; Last edited, Name; Needs content for 50 words or fewer | run | web | `task6-d1.txt` D-04 | kept |
+| G4-D13 | Old limit: choosing a Status stores 0 words, and the table shows 0 | run | web | `task6-d2.txt`: `wordCount=10` and `In review / 1 / 10` straight away | removed; D-29 no longer happens (the Feature 87 fix, in 2.3.0; `d372c6ce` records its re-check) |
+| G4-D14 | Old limit: the sidebar shows Draft for a document with no status | - | - | not run at 2.3.0; `main` shows No status (Feature 99) | dropped |
+| G4-D15 | Old: a hand-set `wordCount` is not shown; "Word counts for some older resources may read low." | run | web | `task6-d2.txt` (777 not shown); `task6-d1.txt` (sentence on screen) | not on the page; the sentence is on screen and the case only comes from editing files |
+| G4-F01 | Diff tab: Canonical left, Revisions list, Compare, Historical right | run | web | `task6-f1.txt` DF-01 | kept |
+| G4-F02 | New text tinted green in Canonical; text no longer present struck through in Historical; same text plain | run | web | `task6-f1.txt` (`diff-added` dog, A bell rang far away in Canonical; `diff-removed` line-through cat, The door was open in Historical) | corrected; the direction the October note expected, now in the release |
+| G4-F03 | Key above the panes while comparing | run | web | `task6-f1.txt` | kept |
+| G4-F04 | Old: a new document lists Initial Draft (v1, canonical); framing sentences | run | web | `task6-f1.txt` DF-03 | true; cut as detail |
+
+### 28.5 `views/timeline.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G4-T01 | Timeline tab, Enable Timeline view; turns the Timeline fields on; fields off turns the view off | run | web | `task6-t3.txt` T-03, T-04; `task6-s1.txt` | kept |
+| G4-T02 | Greyed tab; tooltip "The Timeline view is off. Turn it on in Project Settings → Timeline." | run | web | `task6-t3.txt` T-07 | corrected; D-32 no longer happens |
+| G4-T03 | Story Date / Time (day, or day and time); Duration with min, hr, day, yr; End Date / Time with Override | run | web | `task6-t7.txt` (sidebar text and inputs); `task6-t3.txt` T-09 | kept |
+| G4-T04 | Duration or end date: a bar as long as the scene; date only: a thin line with no label | run | web | `task6-t7.txt` T-10; `task6-t5.txt` (pins, no text) | kept |
+| G4-T05 | Undated scenes left off; count of dated scenes; "NO DATED SCENES" | run | web | `task6-t3.txt` T-21..23 | kept |
+| G4-T06 | Timeline tab; a date set while it is open appears | run | web | `task6-t3.txt` T-05, T-06 | kept; "no document needs to be selected" dropped, every run had one selected |
+| G4-T07 | Earliest to latest with a margin; scrolls sideways | run | web | `task6-t3.txt` T-11, T-24, T-33 | kept |
+| G4-T08 | − and + buttons; 100% to 1000%; opens at 200% | run | web | `task6-t3.txt` T-27 | kept |
+| G4-T09 | Ctrl or Cmd and scroll zooms; scroll alone doesn't | run | web (macOS) | `task6-t4.txt` T-12 | kept |
+| G4-T10 | In a span of days, zooming in adds the time to the labels | run | web | `task6-t5.txt` (from 400%) | kept |
+| G4-T11 | A row per folder with name and count; Workspace scenes last, "WORKSPACE" | run | web | `task6-t3.txt` T-18, T-19 | kept |
+| G4-T12 | Overlapping scenes one above the other; row taller | run | web | `task6-t3.txt` T-29, T-30 | kept |
+| G4-T13 | Gap labels between far-apart scenes, in hours, days or weeks | run | web | `task6-t5.txt`, `task6-t6.txt`, `task6-t4.txt` T-28 | kept |
+| G4-T14 | Name cut with "…"; a narrow chip shows the first word | run | web | `task6-t8.txt` T-45, T-46 | kept |
+| G4-T15 | A color per POV; key with two or more; Outline entry | run | web | `task6-t4.txt` T-16, T-17, T-36 | kept |
+| G4-T16 | Tooltip: name, Date, POV, Duration or Point event, Source, Notes, status | run | web | `task6-t5.txt` T-50, T-51 (Morning, Noon, Evening) | kept |
+| G4-T17 | Click selects the scene; sidebar; Timeline stays | run | web | `task6-t4.txt` T-14 | kept |
+| G4-T18 | Good to know: scenes hours apart can overlap on screen | run | web | `task6-t3.txt` (Dawn and Midday at x466 and x467, same y, 200%) | kept (D-30) |
+| G4-T19 | Good to know: a day label can repeat at lower zoom | run | web | `task6-t5.txt` 100% (`May 1, May 2, May 2, May 3`) | kept (D-31) |
+| G4-T20 | Old limit: tab tooltips say User Preferences | run | web | `task6-t3.txt`, `task6-r1.txt`, `task6-g3.txt` | removed |
+| G4-T21 | Old: pixel sizes, opacities, filters, tick counts, the 5% margin, pill width, row heights, the unlabeled row from a hand edit | run | web | `task6-t3.txt` to `task6-t8.txt` | true; cut as detail |
+
+### 28.6 `views/entity-roster.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G4-E01 | Entities tab, Entities; greyed tab tooltip naming Project Settings | run | web | `task6-r1.txt` ER-16; `task6-s1.txt` ER-15 | corrected; D-32 no longer happens |
+| G4-E02 | Alphabetical | run | web | `task6-r1.txt` ER-11 | kept |
+| G4-E03 | Name, kind, aliases | run | web | `task6-r1.txt` ER-02, ER-03 | kept |
+| G4-E04 | "3 mentions in 2 documents"; "No mentions yet" | run | web | `task6-r1.txt` ER-04, ER-05 | kept |
+| G4-E05 | Ambiguous claim when two entities share a name or alias | run | web | `task6-r1.txt`, `task6-r2.txt` ER-07 | kept |
+| G4-E06 | Noise-prone: short terms, common words, project list, App Settings list | run | web | `task6-r1.txt` (Al, It, Is, Will); `task6-r3.txt` ER-08 (Zed, Bob) | kept |
+| G4-E07 | Dismiss; stays for that term; flagged again when the term changes; no Dismiss on an ambiguous claim | run | web | `task6-r2.txt` ER-09, ER-10 | kept |
+| G4-E08 | The list is read-only | run | web | `task6-r1.txt` ER-14 | kept |
+| G4-E09 | Click, Enter or Space opens the document; aliases and Entity Mentions in its sidebar | run | web | `task6-r2.txt` ER-12, ER-13 | kept |
+| G4-E10 | Good to know: a project noise word flags entities only after the project is opened again | run | web | `task6-r3.txt` ER-08 (Zed: `{}` after adding, flagged after the project was reopened) | kept (D-33) |
+| G4-E11 | "Excluded in this project" changes the flags | run | web | `task6-r3.txt` (checkbox stayed false; `excluded=[]`), as October | not on the page; the script's click did not change the checkbox (as G3 PC-22/23) |
+
+### 28.7 `views/entity-relationship-graph.md`
+
+| ID | Statement | Label | Runtime | Evidence | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| G4-G01 | Same setting as the Entities view; greyed Graph tab tooltip naming Project Settings | run | web | `task6-g3.txt` G-34; `task6-s1.txt` | corrected; D-32 no longer happens |
+| G4-G02 | Every entity is a node, with or without connections | run | web | `task6-g2.txt` (Hermit) | kept |
+| G4-G03 | Five kinds; Authored relationships and Co-occurrence on at first | run | web | `task6-g2.txt` G-03 | kept |
+| G4-G04 | Authored: solid arrow, from the entity it was added on; name in the tooltip and list, not on the line | run | web | `task6-g2.txt` G-04; `task6-g6.txt` G-05 | kept |
+| G4-G05 | Co-occurrence: dashed, thicker with more shared documents | run | web | `task6-g2.txt` G-06 | kept |
+| G4-G06 | Backlinks, Proximity mentions (one per document, fainter farther apart), Shared tags/metadata | run | web | `task6-g2.txt` G-07..09 | kept |
+| G4-G07 | Several kinds of line at once | run | web | `task6-g2.txt` G-10 | kept |
+| G4-G08 | Graph settings beside Reset view; five switches and Focal hop radius; applies and saves at once; no Save | run | web | `task6-g2.txt` G-11, G-12 | kept |
+| G4-G09 | Pan by dragging empty space; zoom by scrolling | run | web (Playwright pointer drag) | `task6-g2.txt` G-13, G-14 | kept |
+| G4-G10 | Click, Enter or Space opens the document | run | web | `task6-g2.txt` G-15 | kept |
+| G4-G11 | Drag moves only that node; lines follow; no keyboard move | run | web (Playwright pointer drag) | `task6-g2.txt` G-16, G-18 | kept |
+| G4-G12 | Pointing at a line shows what it stands for | run | web | `task6-g2.txt` G-20; `task6-g3.txt` G-27 (`Alice → Bob (mentor of)`) | kept; the example is a tooltip seen |
+| G4-G13 | A moved node stays after leaving, reload, reopening; adding entities, hop radius and connection changes don't move it | run | web (Playwright pointer drag) | `task6-g3.txt` G-22, G-23; `task6-g4.txt` (Backlinks on: unchanged now, on return, after reload) | corrected; the October limit (D-35) is now the plain statement |
+| G4-G14 | Shift-click sets the focal point; centers; dims beyond the radius; radius 1 at first | run | web | `task6-g3.txt` G-19, G-25, G-26; `task6-g5.txt` | kept |
+| G4-G15 | Dimmed nodes and lines can still be clicked, dragged and pointed at | run | web | `task6-g4.txt`, `task6-g5.txt` G-27; `task6-g7.txt` (shift-click on dimmed Eve) | kept; see O-10 for `task6-g3.txt` |
+| G4-G16 | Shift-click another node moves the focus | run | web | `task6-g7.txt` G-28 (undimmed Alice, dimmed Eve, panel closed) | kept; `task6-g3.txt` G-28 did not move it (O-10) |
+| G4-G17 | The focal point isn't saved with the project | run | web | `task6-g3.txt` G-30 (`project.json` has only `entityGraphFocalHopRadius`) | corrected; "none when you come back" dropped (O-11) |
+| G4-G18 | The list: every entity with its kind, every connection in words; in step with the graph | run | web | `task6-g2.txt` G-31, G-32 | kept |
+| G4-G19 | Set <name> as focal point; Clear focal point | run | web | `task6-g3.txt` G-29 | kept |
+| G4-G20 | Lines can't be reached by keyboard; no tooltip on focus | run | web | `task6-g2.txt` G-21 | kept |
+| G4-G21 | No adding or removing relationships; Relationships section in the sidebar | run | web | `task6-g3.txt` G-35 | kept |
+| G4-G22 | Good to know: while the settings panel is open, nodes under it can't be clicked or shift-clicked; closing it reaches them | run | web | `task6-g7.txt`: Carol dragged under the panel (rect 732,212,288,312); element there `FIELDSET` of the panel; shift-click and click did nothing; panel closed, shift-click set Carol | added |
+| G4-G23 | Old: tooltip "house" against list "House" for a shared field | run | web | `task6-g2.txt` (`Dave and Carol share field house` / `House`) | still happens (D-34); not on the page, the reader would do nothing differently |
+| G4-G24 | Old: positions file path and contents; line widths and opacities; list size | run | web | `task6-g2.txt`, `task6-g3.txt` | true; cut as detail |
+| G4-G25 | Old: long-press, tap, phone | - | - | not run (as G-17, G-19, G-25) | dropped |
+
+### 28.8 Statements moved, not carried
+
+The Organizer status statements of 2.3.0 (G4-O20) and the 2.2.0 sidebar fallback (G4-D14) are left off: they are the released behaviour, and this base has Feature 99. When the next release contains `296abe05`, the two Coming items on `views/organizer.md` become plain statements and the question does not arise.
+
+### 28.9 "Coming in the next release" statements (FR-9, FR-11)
+
+| Page | Section | Statement | Introducing commit or PR | Ancestor of `getwrite-v2.3.0` |
+| --- | --- | --- | --- | --- |
+| `views/organizer.md` | Coming in the next release | A card shows a status only when one is chosen (G4-O18) | #324 (`71ea9f79`), merge `296abe05` | no (exit 1) |
+| `views/organizer.md` | Coming in the next release | The Status filter lists only the project's statuses, then No status; No status shows cards with none (G4-O19) | #324 (`c2dbb11c`, `71ea9f79`), merge `296abe05` | no (exit 1) |
+
+When the next release tag contains `296abe05`, the first item moves into the card list ("Its status, once you have chosen one") and the second into the Status filter bullet, and the label is removed.
+
+### 28.10 Observations (recorded, not fixed; causes not established unless stated)
+
+- **O-10, the graph settings panel covers nodes.** In `task6-g3.txt` (October and now) dragging, clicking and shift-clicking some dimmed nodes did nothing while the panel was open. `task6-g7.txt` placed Carol under the open panel on purpose: the element at Carol's position was the panel's `FIELDSET`, and click and shift-click did nothing; with the panel closed, shift-click worked. Nodes outside the panel responded with it open. This discriminates the October "not reproduced" note: the condition is the panel over the node, not dimming. The page's Good to know item covers it.
+- **O-11, focal point on returning to the graph.** `task6-g3.txt`: after the Edit tab and back, the focal point (Dave) was kept. `task6-g5.txt`: after a click on a node opened its document and the Graph tab was chosen again, there was none. `task6-g7.txt`: after the Edit tab and back, there was none. The two Edit-tab runs disagree; not separated, so the page states only that it is not saved with the project.
+- **O-12, Organizer and tree order of folders.** Repeats October's observation (folders first on cards, last in the tree); on the page as Good to know.
+- **O-13, App Settings content.** App Settings now also holds the spell-check switch and My dictionary (`task6-r3.txt`); not on these pages.

@@ -18,3 +18,13 @@ export async function reloadProject(page, name) {
 import { expandAll } from "./task5-lib.mjs";
 export const cards = (page) => page.evaluate(() => [...document.querySelectorAll("[aria-labelledby^='res-']")].map((c) => ({ title: (c.querySelector("h3")?.innerText || c.innerText.split("\n")[0]), text: c.innerText.replace(/\n+/g, " | ").slice(0, 200), img: [...c.querySelectorAll("img")].map((i) => ({ w: i.naturalWidth })), audio: [...c.querySelectorAll("audio")].map((a) => ({ controls: a.controls })) })));
 export const tick = (page, ms = 1200) => page.waitForTimeout(ms);
+// Re-run 2026-11-03 (group 4): a new Blank project has no statuses (Feature 99), so a
+// script that chooses a status adds it first in Project Settings, Metadata tab.
+export async function addStatus(page, name) {
+  await openSettings(page, "Metadata");
+  await page.fill("#status-new", name);
+  await page.locator("#status-new").locator("xpath=following::button[normalize-space()='Add'][1]").click();
+  await page.waitForTimeout(1000);
+  await closeSettings(page);
+  await page.waitForTimeout(600);
+}
