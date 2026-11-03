@@ -1,5 +1,5 @@
 // Task 6, web build: views/organizer.md O-03..O-09, O-23 (second part). Run OUTSIDE the sandbox.
-import { reloadProject, withWeb, say, J, bodyText, step, createProject, createNode, treeClick, tabs, clickTab, typeInto, openSettings, closeSettings, dialogText, treeRows, outline, expandAll, cards, dumpButtons, sidecars, addSidebarField } from "./task6-lib.mjs";
+import { reloadProject, withWeb, say, J, bodyText, step, createProject, createNode, treeClick, tabs, clickTab, typeInto, openSettings, closeSettings, dialogText, treeRows, outline, expandAll, cards, dumpButtons, sidecars, addSidebarField, addStatus } from "./task6-lib.mjs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 await withWeb("t6-o1b", {}, async ({ h, page }) => {
@@ -36,6 +36,7 @@ await withWeb("t6-o1b", {}, async ({ h, page }) => {
     }
   });
   await step("O-08 Status as body", async () => {
+    await addStatus(page, "Draft"); // Re-run 2026-11-03 (group 4): Blank has no statuses (Feature 99)
     await treeClick(page, "Doc A"); await page.selectOption("select[aria-label=status]", { label: "Draft" }); await page.waitForTimeout(1500);
     await openSettings(page, "Organizer");
     await page.locator("[role=dialog] select:has(option:text-is('Text excerpt'))").selectOption({ label: "Status" }); await page.waitForTimeout(1200);

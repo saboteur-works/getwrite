@@ -26,7 +26,8 @@ await withWeb("t6-r3", {}, async ({ h, page }) => {
   });
   await step("global", async () => {
     await page.goto(h.baseUrl + "/"); await page.waitForTimeout(1500);
-    await page.click("button:has-text('APP SETTINGS')"); await tick(page, 1200);
+    // Re-run 2026-11-03 (group 4): App Settings moved into the gear menu in 2.3.0 (90593068e).
+    await page.click('button[aria-label="Open project settings menu"]'); await page.locator('[role=menu][aria-label="Project settings menu"] >> text=App Settings').click(); await tick(page, 1200);
     say("App Settings dialog: " + J(await page.evaluate(() => { const d = document.querySelector("[role=dialog], dialog"); return d ? d.innerText : "(none)"; })));
     say("App Settings controls: " + J(await page.evaluate(() => [...document.querySelectorAll("[role=dialog] input, dialog input, [role=dialog] button, dialog button")].map((e) => `${e.tagName}|${e.getAttribute("aria-label") || ""}|${(e.innerText || e.placeholder || "").slice(0, 30)}`))));
     const gi = page.locator("[role=dialog] input[type=text], dialog input[type=text]").first();

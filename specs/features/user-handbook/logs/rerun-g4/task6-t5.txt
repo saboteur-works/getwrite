@@ -1,0 +1,33 @@
+ports before: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 71250 port 64453 (throwaway projects dir; templates repo read-only)
+T-41/T-42/T-28 timeline text at 200%: ["6 SCENES","ALL","MARA","ELENA","−","200%","+","POV","Mara","Elena","Outline","MAY 1","MAY 2","MAY 2","MAY 3","MAY 3","MAY 4","ACT ONE","4 scenes","Morning","Evening","Night","· 6h ·","· 4h ·","ACT TWO","2 scenes","· 3d ·"]
+T-28 gap labels: ["· 6h ·","· 4h ·","· 3d ·"]
+T-43..T-47 chips: ["Morning|text=\"Morning\"|65x28@466,217","Noon|text=\"\"|2x28@596,223","Evening|text=\"Evening\"|32.5x28@726,217","Night|text=\"Night\"|10.8x28@845,217","D1|text=\"\"|2x28@466,279","D2|text=\"\"|2x28@2026,279"]
+T-18/T-53 row heights: ["ACT ONE / 4 scenes / Morning /|h=56","ACT TWO / 2 scenes / · 3d ·|h=56"]
+T-47 pin vs row: {"pinH":28,"pinW":2,"rowH":56,"pinTop":223,"rowTop":209}
+T-13/T-26/T-28/T-44..47 per zoom level:
+100%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":30.9x28","Noon:\"\":2x28","Evening:\"Evening\":15.5x28","Night:\"Night\":10x28","D1:\"\":2x28","D2:\"\":2x28"]
+150%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":48x28","Noon:\"\":2x28","Evening:\"Evening\":24x28","Night:\"Night\":10x28","D1:\"\":2x28","D2:\"\":2x28"]
+200%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":65x28","Noon:\"\":2x28","Evening:\"Evening\":32.5x28","Night:\"Night\":10.8x28","D1:\"\":2x28","D2:\"\":2x28"]
+300%: ticks(6)=["May 1","May 2","May 2","May 3"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":99.1x28","Noon:\"\":2x28","Evening:\"Evening\":49.5x28","Night:\"Night\":16.5x28","D1:\"\":2x28","D2:\"\":2x28"]
+400%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":133.2x28","Noon:\"\":2x28","Evening:\"Evening\":66.6x28","Night:\"Night\":22.2x28","D1:\"\":2x28","D2:\"\":2x28"]
+600%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":201.4x28","Noon:\"\":2x28","Evening:\"Evening\":100.7x28","Night:\"Night\":33.5x28","D1:\"\":2x28","D2:\"\":2x28"]
+800%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":269.5x28","Noon:\"\":2x28","Evening:\"Evening\":134.8x28","Night:\"Night\":44.9x28","D1:\"\":2x28","D2:\"\":2x28"]
+1000%: ticks(20)=["May 1  03:00","May 1  06:00","May 1  12:00","May 1  15:00"] gaps=["· 6h ·","· 4h ·","· 3d ·"] chips=["Morning:\"Morning\":337.7x28","Noon:\"\":2x28","Evening:\"Evening\":168.9x28","Night:\"Night\":56.3x28","D1:\"\":2x28","D2:\"\":2x28"]
+zoom for tooltips: 200%
+T-50 tooltip for Morning: chipRect=[466,217,65,28] tips=[{"cls":"","text":"Morning | DATE | May 1 06:00 | POV | Mara | DURATION | 3h | SOURCE | Act One | NOTES | First sentence of the long note. More words follow here to make the note long. More words follow here to make the note l… | IN REVIEW","parts":["Morning[w700]","DATE[w400]","May 1  06:00[w400]","POV[w400]","Mara[w400]","DURATION[w400]","3h[w400]","SOURCE[w400]","Act One[w400]","NOTES[w400]","First sentence of the long note. More words follow here to m[w400]","In review[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[484,115,230,215]}]
+T-52 element at tooltip center for Morning: DIV.; tooltip bottom 330 vs chip top 217
+T-50 tooltip for Noon: chipRect=[596,223,2,28] tips=[{"cls":"","text":"Noon | DATE | May 1 12:00 | POV | Elena | DURATION | Point event | SOURCE | Act One","parts":["Noon[w700]","DATE[w400]","May 1  12:00[w400]","POV[w400]","Elena[w400]","DURATION[w400]","Point event[w400]","SOURCE[w400]","Act One[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[611,115,155,120]}]
+T-52 element at tooltip center for Noon: DIV.timeline-legend; tooltip bottom 235 vs chip top 223
+T-50 tooltip for Evening: chipRect=[726,217,32,28] tips=[{"cls":"","text":"Evening | DATE | May 1 18:00 | DURATION | 2h | SOURCE | Act One","parts":["Evening[w700]","DATE[w400]","May 1  18:00[w400]","DURATION[w400]","2h[w400]","SOURCE[w400]","Act One[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[744,117,155,103]}]
+T-52 element at tooltip center for Evening: DIV.timeline-legend; tooltip bottom 220 vs chip top 217
+T-50 tooltip for Night: chipRect=[845,217,11,28] tips=[{"cls":"","text":"Night | DATE | May 1 23:30 | POV | Mara | DURATION | 30m | SOURCE | Act One","parts":["Night[w700]","DATE[w400]","May 1  23:30[w400]","POV[w400]","Mara[w400]","DURATION[w400]","30m[w400]","SOURCE[w400]","Act One[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[863,115,155,120]}]
+T-52 element at tooltip center for Night: DIV.timeline-legend; tooltip bottom 235 vs chip top 217
+T-50 tooltip for D1: chipRect=[466,279,2,28] tips=[{"cls":"","text":"D1 | DATE | May 1 06:00 | DURATION | Point event | SOURCE | Act Two","parts":["D1[w700]","DATE[w400]","May 1  06:00[w400]","DURATION[w400]","Point event[w400]","SOURCE[w400]","Act Two[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[481,179,155,103]}]
+T-52 element at tooltip center for D1: DIV.; tooltip bottom 282 vs chip top 279
+T-50 tooltip for D2: chipRect=[978,279,2,28] tips=[{"cls":"","text":"D2 | DATE | May 4 06:00 | POV | Elena | DURATION | Point event | SOURCE | Act Two","parts":["D2[w700]","DATE[w400]","May 4  06:00[w400]","POV[w400]","Elena[w400]","DURATION[w400]","Point event[w400]","SOURCE[w400]","Act Two[w400]"],"opacity":"1","bg":"rgb(236, 234, 227)","z":"200","pos":"absolute","rect":[810,162,155,120]}]
+T-52 element at tooltip center for D2: DIV.; tooltip bottom 282 vs chip top 279
+T-14 after clicking the Evening chip: tab=["TIMELINE"] sidebar="EVENING"
+stop: recorded 71250(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener; projects: (empty)

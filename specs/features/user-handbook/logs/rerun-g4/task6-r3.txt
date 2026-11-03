@@ -1,0 +1,16 @@
+ports before: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 25633 port 65485 (throwaway projects dir; templates repo read-only)
+ER-08 baseline (no custom, no global words): flagged={}
+custom input count=1
+Noise Words tab after adding Zed: ["Project Encryption","Noise Words","","Words flagged as noise when mentioned as entities in this project. Add your own custom words below, and choose which words from your cross-project global list should not apply to this project.","","Custom noise words","Zed","Add a custom noise word","ADD WORD","Global noise words","","Words from your cross-project global list. Check a word to exclude it from applying within this project only.","","No global noise words yet."]
+project.json config noise lists: {"customNoiseWords":["Zed"],"excludedGlobalNoiseWords":[]}
+ER-08 after custom noise word Zed: flagged={}
+App Settings dialog: "App Settings\n\nSettings here apply across every project on this device, not to a single project. No login is required.\n\nGlobal noise words\n\nWords or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.\n\nNo noise words yet. Add one below.\n\nADD\nSpell check\nCheck spelling while I write\n\nUnderlines misspelled words in the editor. This applies to every project on this device.\n\nMy dictionary (0)\n\nWords you added for every project. A word here is not underlined as a misspelling. This list is kept on this device or account, not in a project.\n\nNo words in your dictionary yet.\n\nAdd a word\nADD WORD\nCLOSE"
+App Settings controls: ["INPUT|New noise word|Add a noise word…","BUTTON||ADD","INPUT||","INPUT||","BUTTON||ADD WORD","BUTTON||CLOSE"]
+App Settings after adding Bob: "App Settings\n\nSettings here apply across every project on this device, not to a single project. No login is required.\n\nGlobal noise words\n\nWords or phrases flagged as noise in every project. You can exclude one from a specific project in that project’s own Noise Words settings.\n\nBob\nADD\nSpell check\nCheck spelling while I write\n\nUnderlines misspelled words in the editor. This applies to every project on this device.\n\nMy dictionary (0)\n\nWords you added for every project. A word here is not underlined as a misspelling. This list is kept on this device or account, not in a project.\n\nNo words in yo"
+ER-08 after global noise word Bob: flagged={"Bob":"Needs attention: noise-prone alias.","Zed":"Needs attention: noise-prone alias."}
+project Noise Words tab lists the global word: ["Global noise words","","Words from your cross-project global list. Check a word to exclude it from applying within this project only.","","Bob","Excluded in this project"] ; checkboxes=["Excluded in this project=false"]
+ER-08 after excluding the global word Bob in this project: flagged={"Bob":"Needs attention: noise-prone alias.","Zed":"Needs attention: noise-prone alias."} ; excluded=[]
+stop: recorded 25633(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener; projects: (empty)
