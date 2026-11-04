@@ -226,7 +226,6 @@ export default function ShellModalCoordinator({
   projectTypesSavedStatus = "ok",
   resources,
   folders,
-  project,
   isProjectEncrypted = false,
   syncBlockers,
   onDeleteConfirm,
@@ -364,7 +363,7 @@ export default function ShellModalCoordinator({
             : undefined
         }
         resources={[...(resources ?? []), ...(folders ?? [])]}
-        projectId={project?.id}
+        projectId={projectId}
         preview={compileModal.preview}
         onClose={() => setCompileModal({ open: false })}
         onConfirmCompile={(selectedIds, options) => {

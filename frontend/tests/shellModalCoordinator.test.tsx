@@ -7,6 +7,16 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: vi.fn(), push: vi.fn() }),
 }));
 
+const readCompileDefaultsMock = vi.hoisted(() =>
+  vi.fn<(projectId: string) => Promise<string[] | undefined>>(
+    async () => undefined,
+  ),
+);
+vi.mock("../src/lib/api/saved-defaults-read", () => ({
+  readCompileDefaults: readCompileDefaultsMock,
+  readExportDefaults: vi.fn(async () => undefined),
+}));
+
 import ShellModalCoordinator from "../components/Layout/ShellModalCoordinator";
 import type { ShellModalCoordinatorProps } from "../components/Layout/ShellModalCoordinator";
 import projectReducer from "../src/store/projectsSlice";
@@ -359,5 +369,27 @@ describe("ShellModalCoordinator — project types modal dismissal (FR-17)", () =
     expect(setOpen).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Name")).toHaveValue("Mine edited");
     await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+});
+
+describe("ShellModalCoordinator — compile saved defaults wiring (Feature 101 Task 6)", () => {
+  it("reads the compile defaults by the project directory id, not project.id", async () => {
+    render(
+      <Provider store={makeStore()}>
+        <ShellModalCoordinator
+          {...makeDefaultProps({
+            compileModal: { open: true },
+            projectId: "dir-uuid-1",
+            project: {
+              id: "internal-id",
+            } as ShellModalCoordinatorProps["project"],
+          })}
+        />
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(readCompileDefaultsMock).toHaveBeenCalledWith("dir-uuid-1"),
+    );
+    expect(readCompileDefaultsMock).not.toHaveBeenCalledWith("internal-id");
   });
 });
