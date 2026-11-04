@@ -18,7 +18,27 @@ vi.mock("../../src/lib/models/sidecar", async () => {
 
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
-import { mutateSidecar, writeSidecar } from "../../src/lib/models/sidecar";
+import {
+  mutateSidecar,
+  readSidecar,
+  writeSidecar,
+} from "../../src/lib/models/sidecar";
+import * as io from "../../src/lib/models/io";
+import type { StorageAdapter } from "../../src/lib/models/io";
+import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import {
+  runInStorageContext,
+  type StorageContext,
+} from "../../src/lib/models/storage-context";
+import {
+  createKeyring,
+  type Keyring,
+} from "../../src/lib/models/crypto/keyring";
+import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
+import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
+import { isLockedAccessError } from "../../src/lib/models/locked-access";
+import { __resetIndexerForTests } from "../../src/lib/models/indexer-queue";
+import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import { listRevisions, writeRevision } from "../../src/lib/models/revision";
 import { updateSidecarCore } from "../../src/lib/models/resource-crud-core";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
@@ -347,5 +367,108 @@ describe("annotation core, read (Task 14, FR-22)", () => {
       "utf8",
     );
     await expect(listAnnotationsCore(projectId, resourceId)).rejects.toThrow();
+  });
+});
+
+// Feature 101, Task 13 (FR-21): an encrypted project seals annotation bodies
+// as it seals the sidecar, and a locked project refuses reads and writes.
+// Fixture as in revision-locked-access.test.ts: an in-memory adapter routed
+// through the real `workspaceEncryptionAdapter`.
+describe("annotations in an encrypted project (FR-21)", () => {
+  const WORKSPACE = "/ws";
+  const SECRET = "the sealed note body";
+  let base: StorageAdapter;
+  let keyring: Keyring;
+  let encProjectId: string;
+  let encRoot: string;
+  let ctx: StorageContext;
+  let encResourceId: string;
+  const previousAdapter = io.getStorageAdapter();
+
+  beforeEach(async () => {
+    __resetIndexerForTests();
+    base = createMemoryAdapter();
+    encProjectId = generateUUID();
+    encRoot = `${WORKSPACE}/${encProjectId}`;
+    await base.mkdir(encRoot, { recursive: true });
+    keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(encProjectId);
+    await writeProjectMarker(encRoot, base);
+    ctx = {
+      tenantRoot: WORKSPACE,
+      adapter: workspaceEncryptionAdapter(base, WORKSPACE, keyring),
+      projectRoot: encRoot,
+    };
+    encResourceId = generateUUID();
+    await runInStorageContext(ctx, () =>
+      writeSidecar(encRoot, encResourceId, {
+        id: encResourceId,
+        slug: "r",
+        type: "text",
+        name: "R",
+        orderIndex: 0,
+        folderId: null,
+        createdAt: T0,
+        updatedAt: T0,
+      } as Record<string, MetadataValue>),
+    );
+  });
+
+  afterEach(() => {
+    io.setStorageAdapter(previousAdapter);
+    __resetIndexerForTests();
+  });
+
+  it("stores the body sealed, as the sidecar is, and reads it back unlocked", async () => {
+    await runInStorageContext(ctx, () =>
+      addAnnotationCore(
+        encProjectId,
+        encResourceId,
+        newInput({ body: SECRET }),
+      ),
+    );
+    const sidecarFile = `${encRoot}/meta/resource-${encResourceId}.meta.json`;
+    const raw = await base.readFile(sidecarFile, "utf8");
+    expect(raw).not.toContain(SECRET);
+    expect(raw).not.toContain("annotations");
+    const read = await runInStorageContext(ctx, () =>
+      readSidecar(encRoot, encResourceId),
+    );
+    expect((read?.annotations as unknown as { body: string }[])[0]?.body).toBe(
+      SECRET,
+    );
+  });
+
+  it("refuses annotation writes and reads once the workspace is locked", async () => {
+    await runInStorageContext(ctx, () =>
+      addAnnotationCore(
+        encProjectId,
+        encResourceId,
+        newInput({ body: SECRET }),
+      ),
+    );
+    keyring.lock();
+    const locked = (err: unknown): boolean => isLockedAccessError(err);
+    await expect(
+      runInStorageContext(ctx, () =>
+        addAnnotationCore(encProjectId, encResourceId, newInput()),
+      ),
+    ).rejects.toSatisfy(locked);
+    await expect(
+      runInStorageContext(ctx, () =>
+        updateAnnotationCore(encProjectId, encResourceId, generateUUID(), "x"),
+      ),
+    ).rejects.toSatisfy(locked);
+    await expect(
+      runInStorageContext(ctx, () =>
+        deleteAnnotationCore(encProjectId, encResourceId, generateUUID()),
+      ),
+    ).rejects.toSatisfy(locked);
+    await expect(
+      runInStorageContext(ctx, () => readSidecar(encRoot, encResourceId)),
+    ).rejects.toSatisfy(locked);
   });
 });

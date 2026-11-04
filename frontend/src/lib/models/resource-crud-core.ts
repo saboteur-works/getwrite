@@ -48,6 +48,7 @@ import {
 } from "./resource-initial-revision";
 import { loadResourceContent } from "../tiptap-utils";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
+import { remapCopiedAnnotations } from "./annotation-copy";
 import {
   SIDECAR_UNCHANGED,
   mutateSidecar,
@@ -313,12 +314,13 @@ export async function copyResourceCore(
     await cp(srcDir, dstDir, { recursive: true });
   }
 
-  const newSidecar = {
+  // The copy gets its own annotation ids in the sidecar and the document (FR-21).
+  const newSidecar = await remapCopiedAnnotations(projectRoot, newId, {
     ...(sourceSidecar ?? {}),
     id: newId,
     name: newName,
     createdAt: new Date().toISOString(),
-  };
+  });
 
   await writeSidecar(projectRoot, newId, newSidecar);
 

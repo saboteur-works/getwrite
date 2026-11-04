@@ -40,6 +40,7 @@ import {
 import { loadResourceContent } from "../tiptap-utils";
 import { revisionDir } from "./revision";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
+import { remapCopiedAnnotations } from "./annotation-copy";
 import { readFolderTree } from "./folder-utils";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
@@ -522,12 +523,12 @@ export async function duplicateResource(
   }
 
   // clone sidecar metadata, replacing id
-  const newMeta = { ...meta, id: newId } as Record<string, unknown>;
-  await writeSidecar(
-    projectRoot,
-    newId,
-    newMeta as Record<string, MetadataValue>,
-  );
+  // The duplicate gets its own annotation ids in the sidecar and the document (FR-21).
+  const newMeta = await remapCopiedAnnotations(projectRoot, newId, {
+    ...meta,
+    id: newId,
+  } as Record<string, MetadataValue>);
+  await writeSidecar(projectRoot, newId, newMeta);
 
   if (isText) {
     // The revision holds the duplicate's own document, written last (FR-29).
