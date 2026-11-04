@@ -18,7 +18,7 @@
  * - This module enqueues no index task itself; `mutateSidecar` keeps its own
  *   post-write enqueue.
  */
-import { mutateSidecar, SIDECAR_UNCHANGED } from "./sidecar";
+import { mutateSidecar, readSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { UUID as UuidSchema } from "./schemas";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
@@ -107,6 +107,27 @@ async function mutateAnnotations(
     if (next === SIDECAR_UNCHANGED) return SIDECAR_UNCHANGED;
     return { ...current, annotations: next as unknown as MetadataValue };
   });
+}
+
+/**
+ * List a text resource's annotations in stored order. A sidecar that cannot
+ * be read rejects (the underlying error propagates); an empty list means the
+ * resource has none, never that the read failed.
+ *
+ * @throws InvalidProjectIdCoreError, InvalidAnnotationResourceIdError,
+ *   AnnotationResourceNotFoundError, AnnotationResourceTypeError; read and
+ *   locked-access errors unchanged.
+ */
+export async function listAnnotationsCore(
+  projectId: string,
+  resourceId: string,
+): Promise<Annotation[]> {
+  const validId = requireResourceId(resourceId);
+  const projectRoot = requireProjectRoot(projectId);
+  const sidecar = await readSidecar(projectRoot, validId);
+  if (sidecar === null) throw new AnnotationResourceNotFoundError();
+  if (sidecar.type !== "text") throw new AnnotationResourceTypeError();
+  return storedAnnotations(sidecar);
 }
 
 /**

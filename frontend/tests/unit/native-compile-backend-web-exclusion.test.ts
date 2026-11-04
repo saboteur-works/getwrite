@@ -118,6 +118,7 @@ describe("native-compile-backend web-bundle exclusion", () => {
 describe.each([
   ["compile-defaults", "native-compile-defaults-backend"],
   ["export-defaults", "native-export-defaults-backend"],
+  ["annotations", "native-annotations-backend"],
 ])("%s native backend web-bundle exclusion", (client, backend) => {
   const frontendRoot = path.resolve(__dirname, "..", "..");
   const backendPath = path.join("src", "store", "transport", `${backend}.ts`);

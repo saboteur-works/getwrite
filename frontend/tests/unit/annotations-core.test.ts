@@ -27,6 +27,7 @@ import type { MetadataValue } from "../../src/lib/models/types";
 import {
   addAnnotationCore,
   deleteAnnotationCore,
+  listAnnotationsCore,
   updateAnnotationCore,
   AnnotationNotFoundError,
   AnnotationResourceNotFoundError,
@@ -313,5 +314,38 @@ describe("annotation core, FR-15 no effect on text", () => {
     delete restBefore.annotations;
     expect(rest).toEqual(restBefore);
     expect(rest.wordCount).toBe(4);
+  });
+});
+
+describe("annotation core, read (Task 14, FR-22)", () => {
+  it("returns the stored annotations, or an empty list when there are none", async () => {
+    expect(await listAnnotationsCore(projectId, resourceId)).toEqual([]);
+    const added = await addAnnotationCore(projectId, resourceId, newInput());
+    expect(await listAnnotationsCore(projectId, resourceId)).toEqual([added]);
+  });
+
+  it("refuses an invalid project id, an invalid resource id, a missing and a non-text resource", async () => {
+    await expect(
+      listAnnotationsCore("not-a-uuid", resourceId),
+    ).rejects.toBeInstanceOf(InvalidProjectIdCoreError);
+    await expect(listAnnotationsCore(projectId, "x")).rejects.toBeInstanceOf(
+      InvalidAnnotationResourceIdError,
+    );
+    await expect(
+      listAnnotationsCore(projectId, generateUUID()),
+    ).rejects.toBeInstanceOf(AnnotationResourceNotFoundError);
+    const image = await makeResource("image");
+    await expect(listAnnotationsCore(projectId, image)).rejects.toBeInstanceOf(
+      AnnotationResourceTypeError,
+    );
+  });
+
+  it("rejects, rather than returning an empty list, when the sidecar cannot be read", async () => {
+    await fs.writeFile(
+      path.join(projectRoot, "meta", `resource-${resourceId}.meta.json`),
+      "{ not json",
+      "utf8",
+    );
+    await expect(listAnnotationsCore(projectId, resourceId)).rejects.toThrow();
   });
 });
