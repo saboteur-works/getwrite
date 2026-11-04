@@ -9,6 +9,10 @@ export type InvertedIndex = Record<string, Record<string, number>>;
 
 const INDEX_DIR = "meta/index";
 const INDEX_FILE = "inverted.json";
+// Annotation bodies (Feature 101, FR-20) live in their own file, same shape,
+// so a prose rebuild never rewrites them and a body hit stays distinguishable
+// from a prose hit.
+const ANNOTATION_INDEX_FILE = "annotations.json";
 
 const STOP_WORDS = new Set([
   "a",
@@ -65,8 +69,11 @@ async function ensureIndexDir(projectRoot: string) {
   await mkdir(path.join(projectRoot, INDEX_DIR), { recursive: true });
 }
 
-async function loadIndex(projectRoot: string): Promise<InvertedIndex> {
-  const p = path.join(projectRoot, INDEX_DIR, INDEX_FILE);
+async function loadIndex(
+  projectRoot: string,
+  file: string = INDEX_FILE,
+): Promise<InvertedIndex> {
+  const p = path.join(projectRoot, INDEX_DIR, file);
   try {
     const raw = await readFile(p, "utf8");
     return JSON.parse(raw) as InvertedIndex;
@@ -83,9 +90,13 @@ async function loadIndex(projectRoot: string): Promise<InvertedIndex> {
 }
 
 /** Writes the index file. Callers hold `withMetaLock` (see `updateIndex`). */
-async function saveIndex(projectRoot: string, index: InvertedIndex) {
+async function saveIndex(
+  projectRoot: string,
+  index: InvertedIndex,
+  file: string = INDEX_FILE,
+) {
   await ensureIndexDir(projectRoot);
-  const p = path.join(projectRoot, INDEX_DIR, INDEX_FILE);
+  const p = path.join(projectRoot, INDEX_DIR, file);
   await atomicWriteFile(p, JSON.stringify(index, null, 2), {
     writeOptions: "utf8",
     durable: process.env.GETWRITE_DURABLE_META === "1",
@@ -100,11 +111,12 @@ async function saveIndex(projectRoot: string, index: InvertedIndex) {
 async function updateIndex(
   projectRoot: string,
   change: (index: InvertedIndex) => void,
+  file: string = INDEX_FILE,
 ): Promise<void> {
   await withMetaLock(projectRoot, async () => {
-    const index = await loadIndex(projectRoot);
+    const index = await loadIndex(projectRoot, file);
     change(index);
-    await saveIndex(projectRoot, index);
+    await saveIndex(projectRoot, index, file);
   });
 }
 
@@ -174,6 +186,62 @@ export async function removeResourceFromIndex(
   await updateIndex(projectRoot, (index) =>
     purgeTermsForResource(index, resourceId),
   );
+  await updateIndex(
+    projectRoot,
+    (index) => purgeTermsForResource(index, resourceId),
+    ANNOTATION_INDEX_FILE,
+  );
+}
+
+/**
+ * Replace a resource's entries in the annotation-body index with the terms of
+ * `bodies` (every stored annotation, attached or detached). An empty list
+ * removes the resource's entries. The prose index is not touched.
+ */
+export async function indexAnnotationBodies(
+  projectRoot: string,
+  resourceId: string,
+  bodies: readonly string[],
+): Promise<void> {
+  const counts: Record<string, number> = {};
+  for (const body of bodies) {
+    for (const t of tokenize(body)) counts[t] = (counts[t] ?? 0) + 1;
+  }
+  await updateIndex(
+    projectRoot,
+    (index) => {
+      purgeTermsForResource(index, resourceId);
+      for (const [t, c] of Object.entries(counts)) {
+        index[t] = index[t] ?? {};
+        index[t][resourceId] = c;
+      }
+    },
+    ANNOTATION_INDEX_FILE,
+  );
+}
+
+/**
+ * Resource ids whose annotation bodies contain every query term (AND), best
+ * first. A missing annotation index is empty; a locked project throws.
+ */
+export async function searchAnnotationBodies(
+  projectRoot: string,
+  query: string,
+): Promise<string[]> {
+  const index = await loadIndex(projectRoot, ANNOTATION_INDEX_FILE);
+  const terms = tokenize(query);
+  if (terms.length === 0) return [];
+  const scores: Record<string, number> = {};
+  for (const t of terms) {
+    for (const [rid, freq] of Object.entries(index[t] ?? {})) {
+      scores[rid] = (scores[rid] ?? 0) + freq;
+    }
+  }
+  return Object.keys(scores)
+    .filter((rid) => terms.every((t) => (index[t]?.[rid] ?? 0) > 0))
+    .sort((a, b) =>
+      scores[b]! !== scores[a]! ? scores[b]! - scores[a]! : a < b ? -1 : 1,
+    );
 }
 
 /**
@@ -265,6 +333,8 @@ export async function reindexMissingResources(
 const invertedIndex = {
   indexResource,
   removeResourceFromIndex,
+  indexAnnotationBodies,
+  searchAnnotationBodies,
   search,
   reindexMissingResources,
 };

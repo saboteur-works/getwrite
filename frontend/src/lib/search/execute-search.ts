@@ -18,7 +18,11 @@
 import type { Dirent } from "node:fs";
 import path from "node:path";
 import { readFile, readdir } from "../models/io";
-import { search, tokenize } from "../models/inverted-index";
+import {
+  search,
+  searchAnnotationBodies,
+  tokenize,
+} from "../models/inverted-index";
 import { computeProximityScore } from "../models/search-scoring";
 import { readSidecar } from "../models/sidecar";
 import type { MetadataValue, Project } from "../models/types";
@@ -221,7 +225,15 @@ export async function executeSearch(
   const tagAssignments = await loadTagAssignments(projectRoot);
 
   const terms = tokenize(query);
-  const rankedIds = await search(projectRoot, query);
+  const proseIds = await search(projectRoot, query);
+  // Candidate step (Feature 101, FR-20 index half): resources whose annotation
+  // bodies match are added after the prose hits, once each. Snippet and
+  // "Note:" labelling for them is Task 23.
+  const proseSet = new Set(proseIds);
+  const bodyIds = (await searchAnnotationBodies(projectRoot, query)).filter(
+    (id) => !proseSet.has(id),
+  );
+  const rankedIds = [...proseIds, ...bodyIds];
 
   const candidates: ScoredCandidate[] =
     terms.length > 1

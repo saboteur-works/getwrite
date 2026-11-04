@@ -15,8 +15,9 @@
  * - Nothing here touches revisions, `content.txt`, the document or the word
  *   count, and no stored value or message is logged.
  * - Locked-access errors are not caught and propagate unchanged.
- * - This module enqueues no index task itself; `mutateSidecar` keeps its own
- *   post-write enqueue.
+ * - Every write also enqueues an index task explicitly (annotation bodies are
+ *   indexed by `indexer-queue.ts`, FR-20), on top of `mutateSidecar`'s own
+ *   post-write enqueue; the second task is idempotent.
  */
 import { mutateSidecar, readSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { UUID as UuidSchema } from "./schemas";
@@ -107,6 +108,20 @@ async function mutateAnnotations(
     if (next === SIDECAR_UNCHANGED) return SIDECAR_UNCHANGED;
     return { ...current, annotations: next as unknown as MetadataValue };
   });
+  enqueueAnnotationIndex(projectRoot, validId);
+}
+
+/**
+ * Queue a re-index after a write. The dynamic import avoids a static cycle
+ * with the indexer queue, as `sidecar.ts` does. Fire-and-forget: the write
+ * has already succeeded, and an enqueue failure must not fail it.
+ */
+function enqueueAnnotationIndex(projectRoot: string, resourceId: string): void {
+  void import("./indexer-queue")
+    .then((m) => m.enqueueIndex(projectRoot, resourceId))
+    .catch(() => {
+      /* the write stands; the sidecar write's own enqueue is the backstop */
+    });
 }
 
 /**

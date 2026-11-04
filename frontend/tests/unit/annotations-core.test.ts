@@ -42,6 +42,13 @@ import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import { listRevisions, writeRevision } from "../../src/lib/models/revision";
 import { updateSidecarCore } from "../../src/lib/models/resource-crud-core";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import {
+  indexResource,
+  reindexMissingResources,
+  removeResourceFromIndex,
+  search,
+} from "../../src/lib/models/inverted-index";
+import { executeSearch } from "../../src/lib/search/execute-search";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { MetadataValue } from "../../src/lib/models/types";
 import {
@@ -470,5 +477,90 @@ describe("annotations in an encrypted project (FR-21)", () => {
     await expect(
       runInStorageContext(ctx, () => readSidecar(encRoot, encResourceId)),
     ).rejects.toSatisfy(locked);
+  });
+});
+
+describe("annotation core, index (Task 22, FR-20 index half)", () => {
+  const found = async (query: string): Promise<string[]> =>
+    (await executeSearch(projectRoot, query, {}, 10)).map((h) => h.resourceId);
+
+  it("a body-only match reaches the candidate list, under a source separate from prose", async () => {
+    // The quote is not in the text: this annotation is detached.
+    await addAnnotationCore(
+      projectId,
+      resourceId,
+      newInput({ body: "zephyrwort needs a citation", quote: "not in text" }),
+    );
+    await flushIndexer();
+    expect(await found("zephyrwort")).toEqual([resourceId]);
+    expect(await search(projectRoot, "zephyrwort")).toEqual([]);
+    const indexDir = path.join(projectRoot, "meta", "index");
+    expect(
+      await fs.readFile(path.join(indexDir, "inverted.json"), "utf8"),
+    ).not.toContain("zephyrwort");
+    expect(
+      await fs.readFile(path.join(indexDir, "annotations.json"), "utf8"),
+    ).toContain("zephyrwort");
+  });
+
+  it("a body edit and a body delete change the index with no manual reindex", async () => {
+    const input = newInput({ body: "alpharune first" });
+    await addAnnotationCore(projectId, resourceId, input);
+    await flushIndexer();
+    expect(await found("alpharune")).toEqual([resourceId]);
+    await updateAnnotationCore(projectId, resourceId, input.id, "betarune now");
+    await flushIndexer();
+    expect(await found("alpharune")).toEqual([]);
+    expect(await found("betarune")).toEqual([resourceId]);
+    await deleteAnnotationCore(projectId, resourceId, input.id);
+    await flushIndexer();
+    expect(await found("betarune")).toEqual([]);
+  });
+
+  it("keeps annotation terms across a from-scratch prose reindex and the missing-resource pass", async () => {
+    await addAnnotationCore(
+      projectId,
+      resourceId,
+      newInput({ body: "gammarune kept" }),
+    );
+    await flushIndexer();
+    // What `reindex` does per resource: rebuild the prose entry.
+    await indexResource(projectRoot, {
+      id: resourceId,
+      name: "R",
+      type: "text",
+      plainText: CONTENT,
+    } as unknown as Parameters<typeof indexResource>[1]);
+    await reindexMissingResources(projectRoot);
+    await flushIndexer();
+    expect(await found("gammarune")).toEqual([resourceId]);
+  });
+
+  it("returns a resource matching in prose and in a body once", async () => {
+    await indexResource(projectRoot, {
+      id: resourceId,
+      name: "R",
+      type: "text",
+      plainText: CONTENT,
+    } as unknown as Parameters<typeof indexResource>[1]);
+    await addAnnotationCore(
+      projectId,
+      resourceId,
+      newInput({ body: "the fox is a metaphor" }),
+    );
+    await flushIndexer();
+    expect(await found("fox")).toEqual([resourceId]);
+  });
+
+  it("drops a resource's annotation terms when the resource leaves the index", async () => {
+    await addAnnotationCore(
+      projectId,
+      resourceId,
+      newInput({ body: "deltarune gone" }),
+    );
+    await flushIndexer();
+    expect(await found("deltarune")).toEqual([resourceId]);
+    await removeResourceFromIndex(projectRoot, resourceId);
+    expect(await found("deltarune")).toEqual([]);
   });
 });
