@@ -1,11 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { RevisionEntry } from "../src/store/revisionsSlice";
 import {
   setResources,
   setSelectedResourceId,
 } from "../src/store/resourcesSlice";
-import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
+import {
+  selectActiveProjectDirectoryId,
+  setProject,
+  setSelectedProjectId,
+} from "../src/store/projectsSlice";
+import { editorPositionKey } from "../components/Editor/editorPositionMemory";
 import { createTextResource } from "../src/lib/models/resource";
 
 // Mock the TipTapEditor to avoid loading the real Editor in jsdom.
@@ -27,12 +32,15 @@ vi.mock("../components/TipTapEditor", () => {
     default: ({
       value,
       onChange,
+      positionKey,
     }: {
       value?: string;
       onChange?: (v: string, doc: { type: "doc"; content: unknown[] }) => void;
+      positionKey?: string;
     }) => (
       <textarea
         data-testid="tiptap-mock"
+        data-position-key={positionKey ?? ""}
         value={value}
         onChange={(e) =>
           onChange && onChange(e.target.value, { type: "doc", content: [] })
@@ -79,6 +87,70 @@ function createRevisionEntry(
     isProtected: false,
   };
 }
+
+/**
+ * Renders `EditView` for one text resource with the given revisions, the
+ * editor mock exposing the `positionKey` it was given.
+ */
+function renderWithRevisions(currentIsCanonical: boolean): {
+  store: ReturnType<typeof makeStore>;
+  resourceId: string;
+} {
+  const store = makeStore();
+  const resource = createTextResource({ name: "Draft", plainText: "hello" });
+  const canonical = createRevisionEntry(resource.id, "rev-canonical", true);
+  const previous = createRevisionEntry(resource.id, "rev-previous", false);
+  vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    ok: false,
+    status: 404,
+    json: async () => ({}),
+  } as Response);
+  store.dispatch(
+    setProject({
+      id: "project-1",
+      name: "Project",
+      rootPath: "/tmp/project",
+      resources: [{ id: resource.id, name: resource.name }],
+    }),
+  );
+  store.dispatch(setSelectedProjectId("project-1"));
+  store.dispatch(setResources([resource]));
+  store.dispatch(setSelectedResourceId(resource.id));
+  seedRevisions(
+    store,
+    resource.id,
+    [canonical, previous],
+    currentIsCanonical ? canonical.id : previous.id,
+  );
+  render(
+    <Provider store={store}>
+      <EditView initialContent="Draft" />
+    </Provider>,
+  );
+  return { store, resourceId: resource.id };
+}
+
+describe("EditView position memory key (editor-position-memory FR-1, FR-7)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("passes the project and document key while the current revision is shown", () => {
+    const { store, resourceId } = renderWithRevisions(true);
+    const projectDirectoryId = selectActiveProjectDirectoryId(store.getState());
+    expect(projectDirectoryId).toBeTruthy();
+    expect(
+      screen.getByTestId("tiptap-mock").getAttribute("data-position-key"),
+    ).toBe(editorPositionKey(projectDirectoryId as string, resourceId));
+  });
+
+  it("passes no key while an older revision is shown", () => {
+    renderWithRevisions(false);
+    expect(
+      screen.getByTestId("tiptap-mock").getAttribute("data-position-key"),
+    ).toBe("");
+  });
+});
 
 describe("EditView", () => {
   it("shows autosave unavailable and unsaved warning when editing a non-canonical revision", async () => {

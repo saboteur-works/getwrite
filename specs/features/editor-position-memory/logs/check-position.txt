@@ -1,0 +1,17 @@
+ports before: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener
+git status --short projects/ BEFORE: (empty)
+server pid 64019 port 57879 (throwaway projects dir; templates repo read-only)
+after typing Long: {"editorMounted":true,"marker":null,"anchor":18461,"head":18461,"docSize":18462,"scrollTop":3643,"scrollHeight":5162,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":18460}
+elements that scroll: ["div.tiptap.tiptap-editor-content sh=5162 ch=625","div.flex-1.min-h-0.overflow-y-auto sh=821 ch=734"]
+OQ-1 after a mouse-wheel scroll of 900 over the editor: {"editorMounted":true,"marker":null,"anchor":18461,"head":18461,"docSize":18462,"scrollTop":900,"scrollHeight":5162,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":18460}
+Long, cursor placed and scrolled (before leaving): {"editorMounted":true,"marker":null,"anchor":3842,"head":3842,"docSize":18462,"scrollTop":900,"scrollHeight":5162,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":18460}
+Short, first time this session: {"editorMounted":true,"marker":null,"anchor":1,"head":1,"docSize":2,"scrollTop":0,"scrollHeight":625,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":0}
+Long, back after switching documents: {"editorMounted":true,"marker":null,"anchor":3842,"head":3842,"docSize":18462,"scrollTop":900,"scrollHeight":5162,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":18460} (same editor element: false)
+RESULT document switch: cursor restored; scrollTop restored
+Long, back after the Data tab: {"editorMounted":true,"marker":null,"anchor":3842,"head":3842,"docSize":18462,"scrollTop":900,"scrollHeight":5162,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":18460} (same editor element: false)
+RESULT tab switch: cursor restored; scrollTop restored
+saves in the 4s after returning (no edit made): 0 []
+undo once after the restore: text length 18460 -> 18460
+Long after a page reload: {"editorMounted":true,"marker":null,"anchor":1,"head":1,"docSize":18462,"scrollTop":0,"scrollHeight":5162,"clientHeight":625,"scrollerClass":"tiptap tiptap-editor-content","textLength":18460}
+stop: recorded 64019(next-server (v16.2.6)); listener after: none
+removed: true; ports after: 7340: 55637(GetWrite); 3000: no listener; 6006: no listener; projects: (empty)

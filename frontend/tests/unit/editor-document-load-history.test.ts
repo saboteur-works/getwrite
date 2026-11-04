@@ -3,7 +3,10 @@ import { describe, it, expect, afterEach } from "vitest";
 import { Editor } from "@tiptap/core";
 import type { Content } from "@tiptap/react";
 import { baseSchemaExtensions } from "../../components/Editor/editorExtensions";
-import { loadDocumentIntoEditor } from "../../components/Editor/loadDocumentIntoEditor";
+import {
+  loadDocumentIntoEditor,
+  settleCreatedEditor,
+} from "../../components/Editor/loadDocumentIntoEditor";
 
 /**
  * A resource's content as it arrives from disk — the `value` the editor's
@@ -123,4 +126,88 @@ describe("loadDocumentIntoEditor", () => {
 
     expect(editor.getText()).toBe("Chapter two.");
   }, 20000);
+});
+
+/**
+ * `settleCreatedEditor` runs in `TipTapEditor`'s `onCreate`. With a recorded
+ * position it puts the selection back where the writer left it
+ * (`specs/features/editor-position-memory.md`, FR-3, FR-5). These use a real
+ * headless editor, as the tests above do, created with its content the way
+ * `TipTapEditor` is once the document has loaded.
+ */
+describe("settleCreatedEditor", () => {
+  const twoParagraphs: Content = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "First paragraph of the chapter." }],
+      },
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "Second paragraph, where I was." }],
+      },
+    ],
+  };
+
+  function createWith(
+    content: Content,
+    onUpdate: () => void = () => {},
+  ): Editor {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = new Editor({
+      element,
+      extensions: baseSchemaExtensions,
+      content,
+      onUpdate,
+    });
+    editors.push(editor);
+    return editor;
+  }
+
+  it("puts the cursor at the start when there is no record, as before", () => {
+    const editor = createWith(twoParagraphs);
+    editor.commands.setTextSelection(20);
+    settleCreatedEditor(editor);
+    expect(editor.state.selection.from).toBe(1);
+    expect(editor.state.selection.empty).toBe(true);
+  });
+
+  it("restores a recorded cursor", () => {
+    const editor = createWith(twoParagraphs);
+    settleCreatedEditor(editor, { anchor: 40, head: 40 });
+    expect(editor.state.selection.anchor).toBe(40);
+    expect(editor.state.selection.head).toBe(40);
+  });
+
+  it("restores a recorded selection, keeping its direction", () => {
+    const editor = createWith(twoParagraphs);
+    settleCreatedEditor(editor, { anchor: 50, head: 36 });
+    expect(editor.state.selection.anchor).toBe(50);
+    expect(editor.state.selection.head).toBe(36);
+  });
+
+  it("moves a position past the end of a shorter document to the end", () => {
+    const editor = createWith(twoParagraphs);
+    const size = editor.state.doc.content.size;
+    settleCreatedEditor(editor, { anchor: size + 100, head: size + 100 });
+    // The last place text can go: just inside the last paragraph's end.
+    expect(editor.state.selection.head).toBe(size - 1);
+    expect(editor.state.selection.empty).toBe(true);
+  });
+
+  it("changes nothing in the document, emits no update and leaves nothing to undo", () => {
+    let updates = 0;
+    const editor = createWith(twoParagraphs, () => {
+      updates += 1;
+    });
+    const before = editor.getJSON();
+    settleCreatedEditor(editor, { anchor: 40, head: 45 });
+    expect(editor.getJSON()).toEqual(before);
+    expect(updates).toBe(0);
+    expect(editor.can().undo()).toBe(false);
+    editor.commands.undo();
+    expect(editor.getJSON()).toEqual(before);
+  });
 });
