@@ -1,6 +1,11 @@
 import type { Editor } from "@tiptap/core";
 import type { Content } from "@tiptap/react";
 import isEqual from "lodash/isEqual";
+import { TextSelection } from "@tiptap/pm/state";
+import {
+  resolveRestoredSelection,
+  type EditorPosition,
+} from "./editorPositionMemory";
 import {
   normalizeParagraphLeadingInDocument,
   type LeadingJsonNode,
@@ -109,9 +114,37 @@ export function normalizeStoredContent(content: Content): Content {
 
 /**
  * The part of `TipTapEditor`'s `onCreate` that follows the math migration:
- * collapse the cursor to the start, outside the undo stack. It no longer stamps
- * a leading on every paragraph, so opening a document changes nothing in it.
+ * place the cursor, outside the undo stack. It no longer stamps a leading on
+ * every paragraph, so opening a document changes nothing in it.
+ *
+ * With no `recorded` position the cursor goes to the start, as it always has.
+ * With one (`editorPositionMemory.ts`, `specs/features/editor-position-memory.md`
+ * FR-3) the selection is put back where the writer left it, each end clamped
+ * to the document's current size and then moved to the nearest place text can
+ * be selected (`TextSelection.between`), keeping the selection's direction.
+ * Either way the transaction only moves the selection: the document is not
+ * changed, so no update is emitted and nothing is saved (FR-5).
  */
-export function settleCreatedEditor(editor: Editor): void {
-  editor.chain().setMeta("addToHistory", false).setTextSelection(0).run();
+export function settleCreatedEditor(
+  editor: Editor,
+  recorded: Pick<EditorPosition, "anchor" | "head"> | null = null,
+): void {
+  if (!recorded) {
+    editor.chain().setMeta("addToHistory", false).setTextSelection(0).run();
+    return;
+  }
+  const { anchor, head } = resolveRestoredSelection(
+    recorded,
+    editor.state.doc.content.size,
+  );
+  editor
+    .chain()
+    .setMeta("addToHistory", false)
+    .command(({ tr }) => {
+      tr.setSelection(
+        TextSelection.between(tr.doc.resolve(anchor), tr.doc.resolve(head)),
+      );
+      return true;
+    })
+    .run();
 }

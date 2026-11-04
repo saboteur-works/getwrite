@@ -26,6 +26,7 @@ import { countWords } from "../../src/lib/word-count";
 import SpellCheckEditorCue from "./SpellCheckEditorCue";
 import WritingLogFooterDisplay from "./WritingLogFooterDisplay";
 import { setActiveEditorResourceId } from "../Editor/activeEditorRegistry";
+import { editorPositionKey } from "../Editor/editorPositionMemory";
 
 export interface EditViewProps {
   /** Initial editor content (HTML or plain text) */
@@ -89,6 +90,15 @@ export default function EditView({
   // name. This is what `useRevisionContent`/`useCanonicalAutosave` send as
   // `projectId` to the tenant-scoped revision/resource routes.
   const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
+  // Where the writer was in this document is remembered for the session
+  // (`specs/features/editor-position-memory.md`), except while an older
+  // revision is shown (FR-7). Not gated on `isEditingCanonicalRevision`: that
+  // is false until the document's revisions have loaded, which can be after
+  // the editor has been created for it.
+  const positionKey =
+    projectDirectoryId && selectedResource && !isViewingNonCanonical
+      ? editorPositionKey(projectDirectoryId, selectedResource.id)
+      : undefined;
   const { content, tipTapDoc, setContent, setTipTapDoc, loadState, retryLoad } =
     useRevisionContent({
       initialContent,
@@ -434,6 +444,7 @@ export default function EditView({
                 isEditingCanonicalRevision ? saveNow : undefined
               }
               onNodeTypesChange={setNodeTypes}
+              positionKey={positionKey}
               readonly={false}
             />
           </div>

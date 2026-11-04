@@ -39,6 +39,10 @@ import {
   settleCreatedEditor,
   shouldSyncEditorContent,
 } from "./Editor/loadDocumentIntoEditor";
+import {
+  useEditorPositionMemory,
+  type EditorPositionMemory,
+} from "./Editor/useEditorPositionMemory";
 import { createPendingSourceCommit } from "./Editor/pendingSourceCommit";
 import { registerSaveFlusher } from "../src/lib/pending-saves";
 import MarkdownSwitchWarningModal from "./Editor/MarkdownSwitchWarningModal";
@@ -160,6 +164,14 @@ export interface TipTapEditorProps {
    * saved (for example a non-canonical revision).
    */
   onFlushPendingSource?: (doc: TipTapDocument) => void;
+  /**
+   * Identifies the document shown, from `editorPositionKey`
+   * (`Editor/editorPositionMemory.ts`). When set, the cursor and scroll
+   * position are remembered for this session and put back when the document
+   * returns (`specs/features/editor-position-memory.md`). Omitted, the editor
+   * starts at the top, as before.
+   */
+  positionKey?: string;
 }
 
 /**
@@ -205,6 +217,7 @@ export default function TipTapEditor({
   readonly = false,
   onNodeTypesChange,
   onFlushPendingSource,
+  positionKey,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectResolvedEditorConfig);
   // The active project's on-disk directory basename — the `projectId`
@@ -330,6 +343,9 @@ export default function TipTapEditor({
   // Last emitted label list, joined, so repeat emits for the same node context
   // are suppressed (avoids churn on every keystroke / selection nudge).
   const lastNodeLabelsKeyRef = useRef<string | null>(null);
+  // Set after `useEditor` below; read by its init-time handlers, which run
+  // after the first render has finished.
+  const positionMemoryRef = useRef<EditorPositionMemory | null>(null);
 
   /**
    * Compute the node-type labels at the editor's current selection and notify
@@ -518,12 +534,14 @@ export default function TipTapEditor({
       /**
        * Reports the node type(s) at the new selection as the cursor moves.
        */
-      onSelectionUpdate: ({ editor }) => {
+      onSelectionUpdate: ({ editor, transaction }) => {
         emitNodeTypes(editor);
+        positionMemoryRef.current?.recordSelection(editor, transaction);
       },
       /**
        * Migrates legacy math string representations to node-based format and
-       * collapses the cursor to the start. It no longer stamps a leading on
+       * puts the cursor back where the writer left this document this session,
+       * or at the start (`useEditorPositionMemory`). It no longer stamps a leading on
        * every paragraph: leading is unset unless the writer sets it, and
        * legacy stored values are normalised on the way in
        * (`normalizeStoredContent`). Marked `addToHistory: false` — see
@@ -531,7 +549,9 @@ export default function TipTapEditor({
        */
       onCreate: ({ editor }) => {
         migrateMathStrings(editor);
-        settleCreatedEditor(editor);
+        if (!positionMemoryRef.current?.restore(editor)) {
+          settleCreatedEditor(editor);
+        }
         // Populate the initial node-type indicator for the starting cursor.
         emitNodeTypes(editor);
       },
@@ -541,6 +561,13 @@ export default function TipTapEditor({
       editorProps: { attributes: EDITOR_SURFACE_ATTRIBUTES },
     },
     [headingsConfigKey],
+  );
+
+  // Cursor and scroll position per document, this session only.
+  positionMemoryRef.current = useEditorPositionMemory(
+    editor,
+    positionKey,
+    mode === "rich",
   );
 
   // Debounced and incremental checks, caret word, lazy worker; no check in
@@ -704,7 +731,10 @@ export default function TipTapEditor({
       // silences `onUpdate`, but does nothing to history, so undo used to
       // walk past the writer's own first keystroke and empty a document they
       // had only opened (note_68cf31b0).
+      positionMemoryRef.current?.beginLoad();
       loadDocumentIntoEditor(editor, (value as Content) || "");
+      // Back to where the writer left this document, or the start.
+      positionMemoryRef.current?.restore(editor);
       // A resource load gets a full spell check (FR-21).
       requestFullCheck();
       // The content swap resets the selection; refresh the node-type indicator
