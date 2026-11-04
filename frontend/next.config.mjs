@@ -276,6 +276,15 @@ const nextConfig = {
           // as above.
           "../../store/transport/native-goal-filter-backend":
             "./src/store/transport/native-goal-filter-backend.web-stub",
+          // compile-defaults-annotations-native-pdf Task 4:
+          // lib/api/compile-defaults.ts and export-defaults.ts also live in
+          // src/lib/api/, so their dynamic import specifiers are
+          // "../../store/transport/native-{compile,export}-defaults-backend"
+          // — same rule as above.
+          "../../store/transport/native-compile-defaults-backend":
+            "./src/store/transport/native-compile-defaults-backend.web-stub",
+          "../../store/transport/native-export-defaults-backend":
+            "./src/store/transport/native-export-defaults-backend.web-stub",
           // goal-filter Task 8: lib/api/goal-filtered-total.ts also lives in
           // src/lib/api/, so its dynamic import's literal specifier is
           // "../../store/transport/native-goal-total-backend" — same rule

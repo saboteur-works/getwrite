@@ -111,3 +111,60 @@ describe("native-compile-backend web-bundle exclusion", () => {
     expect(stubContents).not.toMatch(/require\(\s*["']node:/);
   });
 });
+
+// Feature 101 Task 4 (FR-3): the same exclusion for the saved-defaults
+// backends. Each is referenced only from its lib/api client, aliased in
+// next.config.mjs, and its web-stub is node:*-free.
+describe.each([
+  ["compile-defaults", "native-compile-defaults-backend"],
+  ["export-defaults", "native-export-defaults-backend"],
+])("%s native backend web-bundle exclusion", (client, backend) => {
+  const frontendRoot = path.resolve(__dirname, "..", "..");
+  const backendPath = path.join("src", "store", "transport", `${backend}.ts`);
+  const stubPath = path.join(
+    "src",
+    "store",
+    "transport",
+    `${backend}.web-stub.ts`,
+  );
+  const clientPath = path.join("src", "lib", "api", `${client}.ts`);
+
+  it("is referenced only from its lib/api client", () => {
+    const importRe = new RegExp(`${backend}(?!\\.web-stub)["']`);
+    const offenders: string[] = [];
+    for (const dir of ["src", "app"].map((d) => path.join(frontendRoot, d))) {
+      if (!fs.existsSync(dir)) continue;
+      for (const file of collectSourceFiles(dir)) {
+        const relative = path.relative(frontendRoot, file);
+        if ([clientPath, backendPath, stubPath].includes(relative)) continue;
+        if (importRe.test(fs.readFileSync(file, "utf8"))) {
+          offenders.push(relative);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the client carries the literal dynamic import specifier", () => {
+    const contents = fs.readFileSync(
+      path.join(frontendRoot, clientPath),
+      "utf8",
+    );
+    expect(contents).toContain(`import("../../store/transport/${backend}")`);
+  });
+
+  it("next.config.mjs aliases the specifier to the web-stub", () => {
+    const config = fs.readFileSync(
+      path.join(frontendRoot, "next.config.mjs"),
+      "utf8",
+    );
+    expect(config).toContain(`"../../store/transport/${backend}":`);
+    expect(config).toContain(`${backend}.web-stub`);
+  });
+
+  it("the web-stub contains no reference to node:* built-ins", () => {
+    const stub = fs.readFileSync(path.join(frontendRoot, stubPath), "utf8");
+    expect(stub).not.toMatch(/from\s+["']node:/);
+    expect(stub).not.toMatch(/require\(\s*["']node:/);
+  });
+});
