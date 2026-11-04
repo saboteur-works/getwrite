@@ -105,3 +105,13 @@ Morning brought fog and a single bell.
 The result is a valid PDF (`checkPdfValidity`) with no `warning`. The run is from this branch, which has not changed the PDF render path since `main`.
 
 Side observation (not part of the task, cause not established): with the paragraph "Seven passed; none stopped" (a semicolon, no final period) the server path threw `RangeError: Offset is outside the bounds of the DataView` from fontkit `TTFSubset._addGlyph` during `renderToBuffer`, deterministically on 3 runs. Replacing the semicolon with a comma and adding a period made it render. Which of the two changes mattered was not discriminated (the semicolon variant also lacked the final period); an experiment would render a paragraph that differs by only one of them. The fixed document avoids the semicolon.
+
+### Native PDF render path design (Task 25, FR-25, FR-27, FR-24 green)
+
+Chosen: a browser-side render behind a seam, not rendering outside the WebView. New module `frontend/src/lib/export/pdf-render.ts` exports `PdfRenderer`, `renderPdfOnServer` (`renderToBuffer` plus Buffer-to-ArrayBuffer, the default) and `renderPdfInBrowser` (`pdf(<Document/>).toBlob()` then `Blob.arrayBuffer()`). `compilePdfCore(body, render = renderPdfOnServer)` takes the renderer; `native-compile-backend.ts` passes `renderPdfInBrowser`; `app/api/compile/pdf/route.ts` is unchanged and calls `compilePdfCore(body)`, so `renderToBuffer` stays the render call on that path. Font fallback (`isFontError`, `font-fallback` warning) wraps whichever renderer is passed, so it applies to both.
+
+Run-time choice: the caller picks (native backend vs route) rather than feature detection as `download-file.ts` does through `createTransport`; the native backend is already selected that way, so no second detection step was added. Why this approach: the browser build of `@react-pdf/renderer` exports `pdf` with `toBlob` (seen in `react-pdf.browser.js`), and the Task 24 reproduction showed only `renderToBuffer` throws there. Rendering outside the WebView was not tried.
+
+Test that shows it works: `frontend/tests/unit/compile-pdf-browser-build.test.ts`. With `@react-pdf/renderer` mocked to the browser build, `compilePdfCore(fixed, renderPdfInBrowser)` yields a valid PDF whose extracted page text equals `FIXED_DOCUMENT_SERVER_PAGE_TEXTS` (the Task 24 baseline). The Task 24 "rejects" test was replaced by one asserting the default server renderer still rejects with "Node specific API" under the browser build (the history is kept here). The run was in Node, using Node's `Blob`.
+
+Not verified: any device or Android WebView, the static-export bundle (`pnpm build:native` not run), FR-30 fonts on device. It is not claimed to work on a device.

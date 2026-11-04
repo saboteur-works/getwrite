@@ -8,8 +8,10 @@
  * package's `lib/react-pdf.browser.js` file (vitest.config.ts sets no alias or
  * conditions). Everything else is the real `compilePdfCore` path.
  *
- * Task 25 flips this file: delete the "rejects" test and remove `.fails` from
- * the "produces a valid PDF" test once the browser-side render path exists.
+ * Task 25: the browser-side render seam (`renderPdfInBrowser`, passed by the
+ * native backend) makes the first test pass. The second test keeps the
+ * Task 24 reproduction as a guard: the default server renderer, which stays on
+ * `renderToBuffer`, still rejects under the browser build.
  */
 // @vitest-environment node
 import fs from "node:fs/promises";
@@ -28,7 +30,11 @@ import {
   fixedDocumentBody,
   writeFixedDocument,
 } from "../helpers/compile-pdf-fixed-document";
-import { extractPdfPageTexts } from "../helpers/pdf-text";
+import {
+  renderPdfInBrowser,
+  type PdfRenderer,
+} from "../../src/lib/export/pdf-render";
+import { checkPdfValidity, extractPdfPageTexts } from "../helpers/pdf-text";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const tmpDirs: string[] = [];
@@ -39,7 +45,9 @@ afterEach(async () => {
   }
 });
 
-async function compileFixedWithBrowserBuild(): Promise<ArrayBuffer> {
+async function compileFixedWithBrowserBuild(
+  render?: PdfRenderer,
+): Promise<ArrayBuffer> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-pdf-browser-"));
   tmpDirs.push(dir);
   const projectId = generateUUID();
@@ -47,26 +55,25 @@ async function compileFixedWithBrowserBuild(): Promise<ArrayBuffer> {
   const prev = process.env.GETWRITE_PROJECTS_DIR;
   process.env.GETWRITE_PROJECTS_DIR = dir;
   try {
-    return (await compilePdfCore(fixedDocumentBody(projectId))).arrayBuffer;
+    return (await compilePdfCore(fixedDocumentBody(projectId), render))
+      .arrayBuffer;
   } finally {
     process.env.GETWRITE_PROJECTS_DIR = prev;
   }
 }
 
 describe("compilePdfCore with the @react-pdf/renderer browser build", () => {
-  it("rejects with the Node specific API error (the reproduction)", async () => {
+  it("produces a PDF with the server-path text through the browser render seam", async () => {
+    const pdf = await compileFixedWithBrowserBuild(renderPdfInBrowser);
+    expect(await extractPdfPageTexts(pdf)).toEqual(
+      FIXED_DOCUMENT_SERVER_PAGE_TEXTS,
+    );
+    expect((await checkPdfValidity(pdf)).valid).toBe(true);
+  });
+
+  it("the default (server) renderer still rejects under the browser build", async () => {
     await expect(compileFixedWithBrowserBuild()).rejects.toThrow(
       /Node specific API/,
     );
   });
-
-  it.fails(
-    "produces a PDF with the server-path text (fails until Task 25)",
-    async () => {
-      const pdf = await compileFixedWithBrowserBuild();
-      expect(await extractPdfPageTexts(pdf)).toEqual(
-        FIXED_DOCUMENT_SERVER_PAGE_TEXTS,
-      );
-    },
-  );
 });

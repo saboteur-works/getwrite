@@ -38,6 +38,7 @@ import {
   compilePdfCore,
   compileTextCore,
 } from "../../lib/models/compile-core";
+import { renderPdfInBrowser } from "../../lib/export/pdf-render";
 import type { CompileTransport } from "../../lib/api/compile";
 
 /**
@@ -52,7 +53,7 @@ export function createNativeCompileTransport(
 
   return {
     async pdf(body) {
-      return run(() => compilePdfCore(body));
+      return run(() => compilePdfCore(body, renderPdfInBrowser));
     },
     async docx(body) {
       return run(() => compileDocxCore(body));
