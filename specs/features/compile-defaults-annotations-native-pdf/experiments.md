@@ -25,7 +25,24 @@ Not measured: extraction on multi-page output or with bold, italic or non-Latin 
 
 ## Part 1: compile and export defaults
 
-(No measurements yet.)
+### Start Page list entry `config` (Task 2, OQ-5) - a reading, not a run
+
+Read: `frontend/src/lib/models/project-crud-core.ts` `listProjectsCore` (157-236, `listEncryptedProject` 279-321), `frontend/src/lib/api/schemas.ts` (`ProjectListEntrySchema` and its three members, `ProjectSchema`, `ApiProjectConfigSchema`), `frontend/src/lib/api/projects.ts:116-130` (`httpProjectsTransport.list`).
+
+Observed, by entry shape:
+
+| List entry shape | Carries `project.config`? | Where |
+| --- | --- | --- |
+| Normal (unencrypted, usable) | Yes. `listProjectsCore` returns `{ project: manifest, resources, folders }` with the parsed `project.json` verbatim; `config` is whatever the manifest holds | `project-crud-core.ts:232` |
+| Encrypted, unlocked | No. `project` is built as `{ id, name, createdAt, rootPath }` | `project-crud-core.ts:299-319` |
+| Encrypted, locked | No. `project` is `{ id, createdAt }` | `project-crud-core.ts:290-297`; `LockedProjectListEntrySchema` |
+| Unusable | No. `project` is a strict `{ id }` | `UnusableProjectListEntrySchema` |
+
+On the client, `httpProjectsTransport.list` parses with `z.array(ProjectListEntrySchema)` and returns the parsed data, so any `config` key not declared in `ApiProjectConfigSchema` is dropped. Before this task `compileDefaults` and `exportDefaults` were not declared there; the new test "keeps compileDefaults and exportDefaults through the client list parse" failed first (keys absent from the result) and passes now that they are declared.
+
+Reading consequence for Task 8 (OQ-5): a normal Start Page entry carries `config` and so can carry saved defaults. Encrypted entries (unlocked or locked) and unusable entries do not carry `config`, so no saved defaults are available from the list for them. The native list path (`native-projects-backend`) was not read, so whether it returns the same shape was not checked; `listProjectsCore` is the shared core for it per its header comment, but that was not verified here.
+
+Tests added in this task (frontend node project, `pnpm exec vitest run` on the three files, 89 passed): `tests/unit/project-config.test.ts` (schema parse, absence, extra field rejected, bad shape rejected), `tests/unit/projects-api-validation.test.ts` (client list parse keeps both keys, neither key absent, extra field rejects the list), `tests/unit/project-crud-core-listing.test.ts` (a normal entry carries the manifest's `config`).
 
 ## Part 2: annotations
 

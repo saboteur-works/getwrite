@@ -298,6 +298,15 @@ export const SubtypeListSchema = z
   });
 
 /**
+ * Saved compile or export defaults (Feature 101, FR-1): exactly
+ * `{ excludedResourceIds }`. Strict so a stray field (headers, format, name,
+ * which stay per-run) is rejected rather than stored.
+ */
+export const SavedDefaultsSchema = z.strictObject({
+  excludedResourceIds: z.array(z.string()),
+});
+
+/**
  * Project-level configuration schema persisted in `project.json`.
  */
 export const ProjectConfigSchema = z.object({
@@ -350,6 +359,8 @@ export const ProjectConfigSchema = z.object({
    * is floor-only.
    */
   mentionHighlightDurationSeconds: z.number().int().min(1).max(10).optional(),
+  compileDefaults: SavedDefaultsSchema.optional(),
+  exportDefaults: SavedDefaultsSchema.optional(),
   autoPrune: z.boolean().optional(),
   tags: z
     .array(

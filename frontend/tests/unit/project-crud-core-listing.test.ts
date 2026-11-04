@@ -57,6 +57,27 @@ describe("listProjectsCore — workspace-root dotfiles", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it("carries the manifest's config on a normal entry (Feature 101, Task 2 reading)", async () => {
+    await io.writeFile(
+      `${WORKSPACE}/${PROJECT_ID}/project.json`,
+      JSON.stringify({
+        id: PROJECT_ID,
+        name: "A Project",
+        createdAt: "2026-01-01T00:00:00Z",
+        config: { compileDefaults: { excludedResourceIds: ["r-1"] } },
+      }),
+    );
+    const entries = await io.runForTenant(`${WORKSPACE}/${PROJECT_ID}`, () =>
+      listProjectsCore(),
+    );
+    const project = entries[0].project as {
+      config?: { compileDefaults?: unknown };
+    };
+    expect(project.config?.compileDefaults).toEqual({
+      excludedResourceIds: ["r-1"],
+    });
+  });
+
   it("still ignores .DS_Store", async () => {
     await io.writeFile(`${WORKSPACE}/.DS_Store`, "");
     const entries = await io.runForTenant(`${WORKSPACE}/${PROJECT_ID}`, () =>

@@ -84,6 +84,11 @@ export interface OrganizerCardBodyConfig {
   excerptLength?: number;
 }
 
+/** Saved per-project defaults for compile or export (Feature 101, FR-1): exactly this one field. */
+export interface SavedDefaults {
+  excludedResourceIds: string[];
+}
+
 /**
  * Project-level configuration persisted with the project (project.json).
  * Contains user-editable preferences that affect model behavior.
@@ -117,6 +122,14 @@ export interface ProjectConfig {
   spellingProjectWords?: string[];
   /** Per-project spelling ignore list, "Ignore" (spell-checker FR-11). Absent reads as `[]`. */
   spellingIgnoredWords?: string[];
+  /**
+   * Saved compile defaults (Feature 101, FR-1): resources left out of a
+   * compile by default. Headers, format and name stay per-run. Absent means
+   * no saved defaults.
+   */
+  compileDefaults?: SavedDefaults;
+  /** Saved export defaults (Feature 101, FR-1); same shape and meaning as `compileDefaults`. */
+  exportDefaults?: SavedDefaults;
   /**
    * When true, automatically prune oldest non-canonical revisions when limit is exceeded.
    * When false, the UI should prompt the user (interactive) or abort in headless contexts.

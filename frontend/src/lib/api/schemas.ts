@@ -182,6 +182,13 @@ export const ApiTagSchema = z.object({
   color: z.string().optional(),
 });
 
+// Saved compile/export defaults (Feature 101, FR-1). Must be declared in
+// `ApiProjectConfigSchema` or a project load strips them. Strict: exactly this
+// one field.
+const ApiSavedDefaultsSchema = z.strictObject({
+  excludedResourceIds: z.array(z.string()),
+});
+
 const ApiProjectConfigSchema = z.object({
   maxRevisions: z.number().optional(),
   wordCountGoal: z.number().optional(),
@@ -193,6 +200,8 @@ const ApiProjectConfigSchema = z.object({
   // Ordered subtype labels (Feature 72, FR-1). Must be declared or a project
   // load strips it, as happened to `mentionHighlightDurationSeconds` below.
   subtypes: z.array(z.string()).optional(),
+  compileDefaults: ApiSavedDefaultsSchema.optional(),
+  exportDefaults: ApiSavedDefaultsSchema.optional(),
   autoPrune: z.boolean().optional(),
   tags: z.array(ApiTagSchema).optional(),
   tagAssignments: z.record(z.string(), z.array(z.string())).optional(),

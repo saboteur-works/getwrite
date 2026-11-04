@@ -226,6 +226,58 @@ describe("projects.ts transport-boundary validation (FU-10 regression)", () => {
       expect(mockedReport).not.toHaveBeenCalled();
     });
 
+    // Feature 101, FR-1: `ApiProjectConfigSchema` strips undeclared keys, so a
+    // saved-defaults key that is not declared there never reaches the store.
+    it("keeps compileDefaults and exportDefaults through the client list parse (Feature 101, FR-1)", async () => {
+      const withDefaults = {
+        ...validProject,
+        config: {
+          editorConfig: {},
+          compileDefaults: { excludedResourceIds: ["r-1", "r-2"] },
+          exportDefaults: { excludedResourceIds: [] },
+        },
+      };
+      fetchMock.mockResolvedValue(
+        jsonResponse([{ project: withDefaults, folders: [], resources: [] }]),
+      );
+
+      const result = await listProjects();
+      const config = (result[0] as { project: Project }).project.config;
+      expect(config?.compileDefaults).toEqual({
+        excludedResourceIds: ["r-1", "r-2"],
+      });
+      expect(config?.exportDefaults).toEqual({ excludedResourceIds: [] });
+    });
+
+    it("leaves both saved-defaults keys absent when the project has neither (Feature 101, FR-1)", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse([{ project: validProject, folders: [], resources: [] }]),
+      );
+
+      const result = await listProjects();
+      const config = (result[0] as { project: Project }).project.config;
+      expect(config).toBeDefined();
+      expect("compileDefaults" in (config ?? {})).toBe(false);
+      expect("exportDefaults" in (config ?? {})).toBe(false);
+    });
+
+    it("rejects the list when a saved-defaults key carries an extra field (Feature 101, FR-1)", async () => {
+      const bad = {
+        ...validProject,
+        config: {
+          editorConfig: {},
+          compileDefaults: { excludedResourceIds: [], format: "pdf" },
+        },
+      };
+      fetchMock.mockResolvedValue(
+        jsonResponse([{ project: bad, folders: [], resources: [] }]),
+      );
+
+      await expect(listProjects()).rejects.toThrow(
+        "projects.list: response failed validation",
+      );
+    });
+
     // FR20: `listProjectsCore` (`lib/models/project-crud-core.ts`) returns a
     // reduced entry for an encrypted project whose workspace is locked — only
     // `project.id`/`project.createdAt`, no `name`, and empty
