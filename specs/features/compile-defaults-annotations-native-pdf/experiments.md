@@ -150,3 +150,22 @@ Run-time choice: the caller picks (native backend vs route) rather than feature 
 Test that shows it works: `frontend/tests/unit/compile-pdf-browser-build.test.ts`. With `@react-pdf/renderer` mocked to the browser build, `compilePdfCore(fixed, renderPdfInBrowser)` yields a valid PDF whose extracted page text equals `FIXED_DOCUMENT_SERVER_PAGE_TEXTS` (the Task 24 baseline). The Task 24 "rejects" test was replaced by one asserting the default server renderer still rejects with "Node specific API" under the browser build (the history is kept here). The run was in Node, using Node's `Blob`.
 
 Not verified: any device or Android WebView, the static-export bundle (`pnpm build:native` not run), FR-30 fonts on device. It is not claimed to work on a device.
+
+### Native PDF validity and parity with the server path (Task 26, FR-26, font-fallback half of FR-27)
+
+Test: `frontend/tests/unit/native-compile-pdf-parity.test.ts` (node project); `pnpm exec vitest run tests/unit/native-compile-pdf-parity.test.ts` (`frontend/`). Result: 5 passed. The tests were written after the code they exercise (Task 25 was already merged), so there is no failing-first run for them.
+
+Method: the server path is `compilePdfCore(body)` (real `renderToBuffer`) over a temp project dir. The native path is `createNativeCompileTransport({ fs: fake Capacitor filesystem }).pdf(body)`, loaded after `vi.resetModules()` and `vi.doMock("@react-pdf/renderer", ...)` to `react-pdf.browser.js`, so it renders through `renderPdfInBrowser`. Both use the Task 24 fixed document.
+
+Observed:
+- Native PDF begins with `%PDF-`, its trimmed text ends with `%%EOF`, `checkPdfValidity` returns valid, filename `fixed-document.pdf`, no warning.
+- Extracted text contains "Chapter One", its two paragraphs, "Chapter Two" and its paragraph, in that order (header before body for each).
+- Native per-page extracted text equals the server path's per-page text measured in the same run, and the server text equals `FIXED_DOCUMENT_SERVER_PAGE_TEXTS`. Content is compared, not bytes.
+- A resource present in the project but not in `resourceIds` is absent from the native PDF; selected order is kept. The fixed document has no folder structure, so "tree order" here means the order of `resourceIds` supplied by the caller; tree-order selection itself is not exercised in this test.
+
+Font fallback:
+- Server path (demonstrated): with `Font.register` made to throw `Failed to fetch font`, `compilePdfCore` returns `warning: "font-fallback"` and a valid PDF whose text contains the fixed document text.
+- Native path (demonstrated at the level below): with the browser-build module mock and the same injected error, the native transport result carries `warning: "font-fallback"` and a valid PDF with the text. Passing that result to `runCompileAndDownload` (with `compilePdf`, the toast service and `downloadFile` mocked) calls `toastService.info("PDF compiled with fallback fonts — IBM Plex fonts were unreachable")`.
+- Not demonstrated: that a real font load failure occurs on native, or that the toast shows in the real UI on a device. The failure is injected via `Font.register`; the real native fonts are same-origin paths loaded by the WebView and were not exercised. The `lib/api/compile.ts` transport selection (`createTransport`) is bypassed in the toast step.
+
+Not verified: any device or Android WebView, the static-export bundle, FR-30.
