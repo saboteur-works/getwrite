@@ -365,6 +365,21 @@ export interface TipTapDocument {
   content: TipTapNode[];
 }
 
+/**
+ * A writer's note on a passage of a text resource (Feature 101, FR-10).
+ * Stored in the sidecar `annotations` array and written only by the
+ * annotation core through `mutateSidecar`. The passage is found by the
+ * `annotation` mark carrying the same `id` in the document; there is no
+ * `target` field. `quote` is the selected text when the note was added.
+ */
+export interface Annotation {
+  id: UUID;
+  body: string;
+  quote: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Text resource model: stores both plain and TipTap representations. */
 export interface TextResource extends ResourceBase {
   type: "text";
@@ -378,6 +393,8 @@ export interface TextResource extends ResourceBase {
   paragraphCount?: number;
   /** Target word count for this resource (Feature 61). Unset means no goal. */
   wordCountGoal?: number;
+  /** Annotations on passages of this resource (Feature 101); absent means none. */
+  annotations?: Annotation[];
 }
 
 /** Image resource model with common image metadata. */

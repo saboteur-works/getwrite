@@ -392,7 +392,7 @@ export async function deleteResourceCore(
  * `orderIndex` and `folderId` are re-applied from the stored sidecar by
  * {@link mergeSidecarUpdate}.
  */
-const CLIENT_WRITABLE_SIDECAR_KEYS: readonly string[] = [
+export const CLIENT_WRITABLE_SIDECAR_KEYS: readonly string[] = [
   "entityKind",
   "aliases",
   "wordCountGoal",

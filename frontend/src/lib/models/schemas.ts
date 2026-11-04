@@ -513,6 +513,21 @@ export const ResourceBaseSchema = z
   .extend(EntitySidecarFieldsSchema.shape);
 
 /**
+ * One annotation in a text resource's sidecar (Feature 101, FR-10). No
+ * `target` field: the passage is the `annotation` mark with the same id.
+ * Length limits and the per-resource count are enforced by
+ * `annotation-validation.ts` at the write boundary, not here, so a stored
+ * sidecar is never made unreadable by a limit.
+ */
+export const AnnotationSchema = z.object({
+  id: UUID,
+  body: z.string(),
+  quote: z.string(),
+  createdAt: IsoDateString,
+  updatedAt: IsoDateString,
+});
+
+/**
  * Text resource schema extending base fields with editor/text metrics.
  */
 export const TextResourceSchema = ResourceBaseSchema.extend({
@@ -523,6 +538,7 @@ export const TextResourceSchema = ResourceBaseSchema.extend({
   charCount: z.number().int().nonnegative().optional(),
   paragraphCount: z.number().int().nonnegative().optional(),
   wordCountGoal: z.number().int().nonnegative().optional(),
+  annotations: z.array(AnnotationSchema).optional(),
 });
 
 /**
