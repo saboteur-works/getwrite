@@ -3209,6 +3209,18 @@ helped, and the installed desktop app gains nothing from this feature.
 **Notes:** Product spec FR-80 and US-35, added 2026-11-02 (owner decision, reversing OQ-93); Gate 1, 2026-11-02 clarified FR-80 (b) and (c): Blank and other project types that seed no statuses start with none, and editing the status list is allowed on a paired device. Feature record `specs/features/explicit-document-status.md` (FR-1 to FR-13; RQ-1 to RQ-4 resolved, no open questions), not reopened here. No blocking dependency. Related: Feature 86 (its FR-23 and FR-25 are reversed, and the query builder's "Statuses" field, FR-26, is unchanged), Feature 24 (organizer filtering FR-2 is amended), Feature 72 (the subtypes editor is the pattern for the Statuses editor). Resolves open defect D-28. The amendments to Feature 86 and Feature 24 are made in implementation (FR-9 of the record), not by this breakdown. Nothing here was run by the feature breakdown. Status, 2026-11-02 (pipeline lead): PARTIAL, on branch `fix/explicit-document-status`, not merged and not released. Spec commit `519f5dfa`; 11 tasks committed `e6bdcd86` to `69d4b6d5`. Final suites on `69d4b6d5` plus docs: typecheck clean; lint 0 errors, 392 warnings; test:ci 741 files, 9311 passed, 7 expected fail, 1 skipped; test:e2e 247 passed, 1 skipped (on `69d4b6d5`); knip with no new findings against `519f5dfa`. Exercised (MEASURED): built web standalone and unpackaged desktop, each on a throwaway projects folder, and a Pixel 7 Pro debug build in a throwaway project "F99 check" left on the phone for the owner; records in `specs/features/explicit-document-status/logs/`. Not measured: a packaged desktop build; the new Storybook stories rendered; the smart-folder route on Android. Deviation: the query builder's off-list "(unknown)" is in `FilterChip.tsx` (the status chip does not use `ValuePicker`'s `SelectPickerInput`) and applies to every select field. Handbook pages describing the old fallback are left for the next handbook pass.
 ---
 
+### Feature 100: The editor keeps your place when you come back to a document — Shipped
+
+**Value:** A writer who leaves a text document and comes back to it in the same session finds the cursor (or selection) and the scroll position where they left them, instead of at the first character.
+**Vertical slice:** Data: none stored; one in-memory record per document (`anchor`, `head`, `scrollTop`), keyed by project and document, gone on reload or restart. Logic: `settleCreatedEditor` restores a clamped record in an `addToHistory: false` transaction, so no undo step and no save; records follow the document actually loaded. Interface: no new control; the rich editor restores on both load paths (a new editor, and a load into the mounted one). Markdown source mode and older revisions are not recorded.
+**Requirements covered:** None of its own — an owner-requested editor refinement, not in the product spec.
+**User stories:** None
+**Depends on:** None
+**Branch suggestion:** feat/editor-position-memory
+**Notes:** Owner request, 2026-11-03: session only, cursor and scroll both. Feature record `specs/features/editor-position-memory.md` (FR-1 to FR-11; OQ-1 to OQ-3 resolved), tasks in `specs/features/editor-position-memory/tasks.md`, developer doc `docs/features/editor/position-memory.md`. Status, 2026-11-03: SHIPPED to `main` (PR #327, merge `f7dcdddc`, commit `c7b6378f`); not in a release yet (latest tag `getwrite-v2.3.0`). Final suites on `c7b6378f`: test:ci 743 files, 9,339 passed; typecheck and lint 0 errors; test:e2e 247 passed, 1 skipped. Exercised (MEASURED, `specs/features/editor-position-memory/experiments.md` E-1): web build, cursor 3842 and `scrollTop` 900 restored after a document switch and a tab switch; a first-time document and a reload opened at the start; no save request. Not observed in the app: the load into a still-mounted editor (unit test only). Not run: mention jump, source mode, an older revision, the desktop app.
+
+---
+
 ## Coverage check
 
 - Requirements covered:
@@ -3310,7 +3322,7 @@ helped, and the installed desktop app gains nothing from this feature.
 
 ## Summary
 
-- Total features: 99
+- Total features: 100
 - Suggested build order: 72 → 73 for resource subtype (73 needs 72's
   sidecar key; 72 has since shipped and merged to `main` (PR #260,
   2026-10-08), and 73 has since shipped and merged to `main` (PR #261,
