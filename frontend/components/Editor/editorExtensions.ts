@@ -38,6 +38,7 @@ import { TableKit } from "@tiptap/extension-table";
 import GetWriteParagraphLeading from "./Extensions/GetWriteParagraphLeading";
 import WikiLinkDecoration from "./Extensions/WikiLinkDecoration";
 import GetWriteImage from "./Extensions/GetWriteImage";
+import AnnotationMark from "./Extensions/AnnotationMarkExtension";
 
 /**
  * Shared base extension list defining the GetWrite document schema. Consumers
@@ -76,4 +77,5 @@ export const baseSchemaExtensions = [
   GetWriteParagraphLeading,
   WikiLinkDecoration,
   GetWriteImage,
+  AnnotationMark,
 ];

@@ -74,6 +74,10 @@ Evidence: the Task 9 first-run record above (every annotated-vs-plain comparison
 
 Not measured: the annotation mark registered in the editor or the Markdown manager (it does not exist yet; Task 15 adds the mark and re-runs this test then as a check); multi-resource compile; `includeHeaders` false; the font-fallback PDF document; the native PDF path; mark attrs other than `id`.
 
+### Task 15 re-run (annotation mark registered, FR-8)
+
+Change under test: `AnnotationMark` (`components/Editor/Extensions/AnnotationMarkExtension.ts`) added to `baseSchemaExtensions` in `components/Editor/editorExtensions.ts`, the list the editor and the headless Markdown serializer share, so the mark is now registered in both. Command (`frontend/`): `pnpm exec vitest run tests/unit/annotation-mark-extension.test.ts tests/unit/compile-annotation-marks.test.ts`. Observed: 2 files, 76 of 76 tests passed (16 new mark tests, 60 Task 9 tests). In the Task 9 test every annotated-vs-plain comparison (TXT, Markdown, PDF extracted text, DOCX body, warnings) stayed equal for cases (a)-(d) with the mark registered, and the one-changed-letter controls still differed. Also run: `tests/unit/markdown`, `tests/unit/editor`, `tests/unit/export`, `tests/unit/compile` and `tests/editorContextMenu.test.tsx` paths, 22 files, 246 passed and 1 expected fail, none failing. Not measured: multi-resource compile, `includeHeaders` false, the font-fallback PDF document, the native PDF path, the browser build.
+
 ## Part 3: Android PDF
 
 ### Browser-build reproduction and server-path baseline (Task 24, FR-24, baseline for FR-27)
