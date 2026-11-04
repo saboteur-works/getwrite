@@ -46,7 +46,25 @@ Tests added in this task (frontend node project, `pnpm exec vitest run` on the t
 
 ## Part 2: annotations
 
-(No measurements yet.)
+### FR-8 compile-output test with annotation marks (Task 9, FR-7, FR-8)
+
+Test: `frontend/tests/unit/compile-annotation-marks.test.ts` (node project); `pnpm exec vitest run tests/unit/compile-annotation-marks.test.ts` (`frontend/`). Documents are TipTap JSON with `{ type: "annotation", attrs: { id } }` marks; the mark is not registered in the editor or the Markdown manager. `content.txt` for each document is `tiptapToPlainText` of that document. Each case compiles the annotated document, the same document without annotation marks, and a control with one changed letter, through `compileTextCore`, `compileMarkdownCore`, `exportTextCore`, `exportMarkdownCore`, `compilePdfCore` (ordered per-page text via the Task 1 helper), `compileDocxCore` (`<w:body>` of `word/document.xml` via `jszip`), plus `collectMarkdownWarnings` and the `warnings` of both Markdown cores. Compile used `includeHeaders: true`, one resource.
+
+First run (before any edit to the test), per case (a) plain annotation on a word, (b) edge partway inside a bold run, (c) two overlapping annotations, (d) leading/trailing whitespace and paragraph-edge end:
+
+| Comparison, annotated vs plain | (a) | (b) | (c) | (d) |
+| --- | --- | --- | --- | --- |
+| compileTextCore | equal | equal | equal | equal |
+| compileMarkdownCore | equal | equal | equal | equal |
+| exportTextCore | equal | equal | equal | equal |
+| exportMarkdownCore | equal | equal | equal | equal |
+| PDF extracted text per page | equal | equal | equal | equal |
+| DOCX `<w:body>` | equal | equal | equal | equal |
+| collectMarkdownWarnings and both cores' warnings | equal | equal | equal | equal |
+
+Controls, first run: the one-changed-letter control differed from the plain document in TXT, Markdown (compile and export), PDF and DOCX for all four cases. For `collectMarkdownWarnings` the one-letter control did NOT differ (4 of 60 tests failed on first run: warning lists are empty for both documents, so a changed letter cannot change them). The test was changed so that comparison's control adds a text colour (`textStyle` mark, which Markdown drops) instead; that control differs, and 60 of 60 pass.
+
+Observation: no case differed, so no serializer change is indicated by this test (Task 10). Not measured: the annotation mark registered in the editor or Markdown manager (does not exist yet; an unregistered mark was the only form tested); multi-resource compile; includeHeaders false; the font-fallback PDF document; the native PDF path; any annotation mark attrs other than `id`.
 
 ## Part 3: Android PDF
 
