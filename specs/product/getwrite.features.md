@@ -3221,6 +3221,18 @@ helped, and the installed desktop app gains nothing from this feature.
 
 ---
 
+### Feature 101: Compile and export defaults the writer can override, annotations on passages, and PDF compile on Android — Not started
+
+**Value:** A writer can leave resources out of a project's compile and export once, in the dialogs where the action happens, and still override that for a single run; can attach a plain-text note to a passage of a text document and find it again by search; and, on the Android app, can compile a PDF that contains the selected resources and shows the real error when it fails.
+**Vertical slice:** Three parts in one feature. (1) Data: one new optional key per dialog in `project.json` `config` (for example `config.compileDefaults`, `config.exportDefaults`), Zod-validated and written by a locked read-modify-write setter that touches only its own key; resource ids that no longer exist are dropped at read. Logic: dialogs start from the saved defaults, a per-run change does not alter them. Interface: the compile and export dialogs show each default in effect and let the writer override or change it. (2) Data: an id-only `annotation` mark in the editor document, with the plain-text body and saved quote in the resource's sidecar. Logic: the mark follows the passage through typing, cut and paste; paste copies the annotation with a new id and a copied body, cut-and-paste keeps it; an annotation whose passage is lost, or is absent from a restored revision, is detached, never auto-deleted, and a marker with no body is removed on restore; full-text search indexes annotation bodies. Interface: an annotations panel at every screen width with the passage highlighted in the text, edit, delete, a detached list with re-attach, and a search hit on the resource labelled as a note; no add control on image or audio resources. (3) Logic: PDF compile on native Android and surfacing the real error message from the Start Page's PDF path. Interface: no new control; the existing compile action works on the device. An on-device check of embedded fonts is recorded as verification, not a merge gate (F101-1).
+**Requirements covered:** FR-81, FR-82, FR-83, FR-84, FR-85, FR-86, FR-87, FR-88, FR-89, FR-90, FR-91, FR-92
+**User stories:** US-36, US-37, US-38
+**Depends on:** 4, 5, 9, 12, 20 (all shipped). No other feature entry in this list covers the Android app shell as such; the native transport pattern (ADR-021) this part builds on is the one Features 47 and 49 cite.
+**Branch suggestion:** feat/compile-defaults-annotations-native-pdf
+**Notes:** Product spec FR-81 to FR-92 and US-36 to US-38, added 2026-11-04; OQ-132 to OQ-136 are resolved and not reopened here. Three parts, one feature: (1) compile and export dialogs with saved per-project defaults the writer can override (FR-81, FR-82); (2) annotations (FR-83 to FR-90); (3) PDF compile on native Android plus an on-device check of the bundled PDF fonts (FR-91, FR-92; POS `task_0511db99`). Owner decision (Gate 0, 2026-11-04): one feature with three parts, following the multi-part precedent of Features 88 and 89; run A of a batched plan. Feature spec to be written at `specs/features/compile-defaults-annotations-native-pdf.md`. Blocked and gated items: FR-89 is BLOCKED (gates the build, not the merge, F101-1) until the compile test in OQ-133's resolution passes (annotated and unannotated documents compile byte-identically in txt, md, docx and pdf, covering a plain annotation, partial overlap with bold, overlapping annotations and whitespace at the edges, with `collectMarkdownWarnings` adding no warning); FR-92 is verified on a device and the check needs FR-91 working and `pnpm build:native` passing; it is recorded verification, not a merge gate (F101-1). The PDF root cause is measured (note_875f2e5b): on Android PDF compile fails because `renderToBuffer` is a Node-only API and the native static export resolves react-pdf's browser build, where it throws. Nothing here was run by the feature breakdown. Related: Feature 91 (bundled fonts, measured embedded on server and desktop only).
+
+---
+
 ## Coverage check
 
 - Requirements covered:
@@ -3314,6 +3326,18 @@ helped, and the installed desktop app gains nothing from this feature.
   - FR-78: Feature 95 (a built-in spell checker, whose first task is the engine spike folded in from Feature 94; Feature 96 delivers its user-list part, none of its own)
   - FR-79: Feature 98 (choose which documents count toward writing goals)
   - FR-80: Feature 99 (a document has a status only when one is chosen)
+  - FR-81: Feature 101 (compile and export defaults the writer can override)
+  - FR-82: Feature 101
+  - FR-83: Feature 101 (annotations on passages)
+  - FR-84: Feature 101
+  - FR-85: Feature 101
+  - FR-86: Feature 101
+  - FR-87: Feature 101
+  - FR-88: Feature 101
+  - FR-89: Feature 101 (blocked until the OQ-133 compile test passes)
+  - FR-90: Feature 101
+  - FR-91: Feature 101 (PDF compile on native Android)
+  - FR-92: Feature 101 (device-verified as recorded verification, not a merge gate; needs FR-91 and `pnpm build:native`)
   - Features 86, 87 and 88 (defect fixes, added 2026-10-15) carry no
     requirement of their own: each corrects behaviour that an earlier
     feature owns and adds no capability, the same device Features 37, 38
@@ -3322,8 +3346,8 @@ helped, and the installed desktop app gains nothing from this feature.
 
 ## Summary
 
-- Total features: 100
-- Suggested build order: 72 → 73 for resource subtype (73 needs 72's
+- Total features: 101
+- Suggested build order: Feature 101 (added 2026-11-04) depends only on shipped features and can be built at any time; it merges as one PR (F101-1); inside it, parts 1 and 2 are independent of part 3, FR-89 waits on its compile test, and FR-92 is recorded verification that needs FR-91 and `pnpm build:native`. 72 → 73 for resource subtype (73 needs 72's
   sidecar key; 72 has since shipped and merged to `main` (PR #260,
   2026-10-08), and 73 has since shipped and merged to `main` (PR #261,
   2026-10-08)). Features 1 through 23
@@ -3433,7 +3457,7 @@ helped, and the installed desktop app gains nothing from this feature.
   containing 75, because a paired device saves the desktop's address (host
   and port).
   Spell checker (FR-78, added 2026-10-25): 95 (the checker, whose first task is the engine spike folded in from Feature 94, with a halt for the owner's engine choice: underline, replace, Ignore, Add to the project, app-wide switch, entity names; the smallest release-worthy slice) → 96 (user word list across projects; may follow 95).
-- Independently shippable: 95 (spell checker, engine spike as its first task, no dependency), 93 (stale saves and index races, no dependency; follows 92 in intent only), 92 (overlapping saves to project.json, no dependency), 86, 87 and 88 (the defect features, no dependency), 81 (the user handbook's first slice; 82 to 85 each depend on 81 only), 75, 78 and 80 (the home-network features with no dependency), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+- Independently shippable: 101 (compile and export defaults, annotations, and PDF compile on Android; depends only on shipped Features 4, 5, 9, 12 and 20), 95 (spell checker, engine spike as its first task, no dependency), 93 (stale saves and index races, no dependency; follows 92 in intent only), 92 (overlapping saves to project.json, no dependency), 86, 87 and 88 (the defect features, no dependency), 81 (the user handbook's first slice; 82 to 85 each depend on 81 only), 75, 78 and 80 (the home-network features with no dependency), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
   57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73, 74 (Features 72, 73 and 74 having all merged; 30 and 28 are the only pair left with an unmet hard dependency;
@@ -3896,3 +3920,7 @@ Features 94 to 96 (spell checker; FR-78 and US-33; this document's own scoping c
 - **F94-3: Can Feature 95 be released without Feature 96?** FR-78 says two word lists exist and a word in either is correct; Feature 95 alone has only the project list. Carried default: Feature 95 is the smallest release-worthy slice and Feature 96 follows; the owner decides whether the release waits for Feature 96, as the release hold on Features 75 to 80 did. Not decided. Resolved (Owner decision, Gate 2, 2026-10-25; option (c)): Feature 95 may be released without Feature 96. The missing user list is stated as a known gap in the release notes.
 - **F94-4: Is there a way to undo an Add or an Ignore?** FR-78 requires Ignore and Add but no way to view or remove a word from either list, and no settings screen for the lists; this breakdown did not add one. A mistaken Add would stay until project.json is edited by hand. Carried default: no removal UI in Features 94 to 96, recorded as a known gap; the owner may want a minimal management view added to FR-78 and to Feature 95 or a new feature. Resolved (Owner decision, Gate 2, 2026-10-25; option (d)): list management follows the noise-words precedent (`frontend/components/Layout/NoiseWordsSettingsTab.tsx`, per-word remove at line 180; the global list in `AppSettingsDialog.tsx`). A "Spelling" tab in Project Settings to view and remove words in the project word list and the ignore list is built inside Feature 95; the user list's view and remove section in App Settings is built inside Feature 96. The carried default (no removal UI, a recorded known gap) is replaced, and FR-78 now requires view and remove.
 - **F94-5: Where is the licence notice shipped?** Carried default: follow `THIRD_PARTY_FONTS.txt` and Feature 91 (a shipped notice file, an in-app view later); the file name and whether the existing fonts file is renamed or a second file added is a feature-spec point. Not decided by the owner. Resolved from evidence (Gate 2, 2026-10-25): a second notice file, `THIRD_PARTY_SPELLCHECK.txt` (final name left to the Feature 95 spec), shipped like `THIRD_PARTY_FONTS.txt`: repo root, a `frontend/public` copy, and an `extraResources` entry in `electron/electron-builder.yml:24-25`. It also needs to reach the `build:native` output. The fonts file is not repurposed: it has a font-specific test (`frontend/tests/unit/third-party-fonts.test.ts`).
+
+Feature 101 (compile and export defaults, annotations, PDF compile on Android; raised 2026-11-04 for Feature 101; not answered here):
+
+- **F101-1: Can the three parts of Feature 101 merge separately, or only together?** The owner decided one feature with three parts (Gate 0, 2026-11-04), but the parts differ in readiness: FR-89 is blocked on a test and FR-92 on a device check and `pnpm build:native`. Whether one part may merge to `main` while another is still blocked is not stated; the same question is F94-3 for Feature 95. (Raised 2026-11-04 for Feature 101.) Resolved (Owner decision, Gate 2, 2026-11-04; option (a)): Feature 101 merges as one PR for all three parts, following Features 88 and 89, which each merged as one PR (#272 and #274). FR-89's compile test is written and run inside the pipeline, so it gates the build, not the merge. FR-92's on-device font check is recorded verification, not a merge gate: the pipeline lead attempts it before the PR (it needs the owner, because adb and `pnpm build:native` run outside the sandbox from the main checkout); if it cannot be run, it is listed under "Not verified" in the feature's notes, as Feature 88 did for its packaged-build import.

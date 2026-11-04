@@ -286,6 +286,22 @@ with the app without hand-rewriting it (see OQ-90).
   when I choose one, and to set up my project's own statuses, so that
   what I see on a document matches what my filters and counts find. [Next]
   (Added 2026-11-02; FR-80. Owner-chosen scope, 2026-11-02.)
+- US-36: As a writer compiling or exporting, I want to have the compile and
+  export dialogs start from defaults saved for my project, such as what is
+  included and what is left out, and to change them for one run, so
+  that I do not repeat the same choices each time and can still make an
+  exception when I need one. [Next] (Added 2026-11-04; FR-81, FR-82. Owner
+  direction, 2026-11-04: this is the home for what is left out of compile.)
+- US-37: As a writer, I want to attach a note to a passage of my text,
+  a note to myself that sits beside the passage and stays with it as I edit,
+  so that I can record a reminder, a question or a piece of evidence against
+  the exact words it concerns. [Next] (Added 2026-11-04; FR-83 to FR-90.
+  Owner decisions, 2026-11-04. These are notes to self, not comments for
+  collaborators.)
+- US-38: As a writer who works on an Android phone or tablet, I want to
+  compile a PDF in the Android app and get the same fonts as on desktop, so
+  that PDF output is not limited to the web and desktop versions. [Next]
+  (Added 2026-11-04; FR-91, FR-92.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1352,6 +1368,103 @@ with the app without hand-rewriting it (see OQ-90).
   belongs at the feature-spec rung. This requirement rides the existing
   per-project `entities` feature flag and MUST NOT introduce a flag of its
   own, consistent with FR-39/FR-40/FR-51. Resolved 2026-10-01 (OQ-56): "done" for this pass is qualitative owner sign-off against a built implementation, not a predefined checklist — the feature spec and task breakdown for this requirement MUST include an explicit owner review/sign-off step rather than treating completion as self-certifiable against fixed criteria. [US-17]
+
+- FR-81: The compile dialog and the export dialog MUST each start from
+  defaults saved per project, covering at least which resources are included
+  and which are left out. The writer MUST be able to change any default in
+  the dialog for a single run without changing the saved default. [US-36]
+  (Added 2026-11-04. Owner direction: exclusion is set where the action
+  happens, in these dialogs, not on a per-type settings screen. Where the
+  defaults are stored, and whether a project type can seed them: resolved,
+  OQ-132. Saved defaults live in `project.json` `config`, one new optional key
+  per dialog, validated by a Zod schema and written by a locked
+  read-modify-write setter that touches only its own key. Exclusions are
+  stored as resource ids and read at dialog open; ids of resources that no
+  longer exist are dropped silently, not an error. Project types and modules do
+  not seed them in this work.)
+- FR-82: The writer MUST be able to change a project's saved compile and
+  export defaults, and the change MUST apply to later runs of the dialogs in
+  that project. A project with no saved defaults MUST compile and export
+  exactly as it does today. The dialogs MUST show, for each default that is
+  in effect, that it is a default and that it can be overridden, so a
+  resource left out by default is never left out without the writer being able
+  to see it. This requirement is generic: it names no particular kind of
+  resource, and later features may rely on it to be excluded by default but
+  are not part of this work. [US-36]
+- FR-83: The writer MUST be able to attach an annotation to a selected
+  passage of a text resource. An annotation MUST have a plain-text body
+  (rich text is deferred) and MUST record the passage's text at the moment of
+  creation as its saved quote. Overlapping annotations on the same text MUST
+  be allowed. [US-37] (Owner decisions, 2026-11-04: an id-only `annotation`
+  mark in the editor document, with the body held in the resource's sidecar.)
+- FR-84: An annotation MUST stay on its passage as the writer types, deletes,
+  cuts and pastes around it, and the writer MUST be able to see the
+  annotation's body alongside its highlighted passage, in an annotations panel
+  available at every screen width, and to edit or delete the annotation.
+  Adding, editing or removing an annotation MUST NOT change the resource's
+  text, word count or plain-text content. [US-37] (Resolved, OQ-135; Owner
+  decision, Gate 1, 2026-11-04: at every screen width annotations are listed
+  in an annotations panel or sidebar, with the annotated passage highlighted
+  in the text; the detached list of FR-85 lives in the same panel. Margin notes
+  beside the text are a later enhancement, see Out of Scope (Deferred).)
+- FR-85: When an annotation's passage is lost, for example the text was
+  deleted, the stored document was edited outside GetWrite, or an older
+  revision was restored, the annotation MUST become detached and MUST NOT be
+  deleted automatically. A detached annotation MUST be listed with its saved
+  quote, and the writer MUST be able to re-attach it to a passage or delete it.
+  [US-37]
+- FR-86: When the writer restores a revision, every annotation whose passage
+  is missing from the restored text MUST become detached, and any passage
+  marker in the restored text whose annotation has no body MUST be removed
+  without altering the text. [US-37]
+- FR-87: When annotated text is pasted, whether into a different resource or
+  within the same resource, the annotation MUST be copied with it, with a new
+  identity and a copy of its body in the resource pasted into, so the pasted
+  passage keeps its note and the two annotations are independent. A
+  cut-and-paste (a move) MUST instead keep the original annotation, with the
+  same identity and body, and MUST NOT copy it. [US-37] (Resolved, OQ-134;
+  Owner decision, Gate 1, 2026-11-04.)
+- FR-88: Full-text search MUST find text in annotation bodies. A hit in an
+  annotation body MUST appear as a hit on its resource, using the existing
+  result row, with the snippet taken from the annotation body and labelled as
+  a note (for example "Note: ...") so it is not mistaken for prose. Clicking
+  the hit MUST open the resource. [US-37] (Resolved, OQ-136; Owner decision,
+  Gate 1, 2026-11-04. Jumping to the annotated passage from a hit is a later
+  follow-up, see Out of Scope (Deferred).)
+- FR-89: Annotations MUST NOT appear in compile or export output by default.
+  Whether compile's Markdown serialization of a passage carrying an
+  annotation marker leaves the text unchanged MUST be tested before this
+  requirement is treated as met. [US-37] [BLOCKED: OQ-133] (OQ-133 is
+  resolved from evidence by reading, not running: a mark with no
+  `renderMarkdown` handler contributes empty delimiters, and the PDF, DOCX and
+  text compile paths do not reference `marks`. The required test has not yet
+  passed, so the requirement stays BLOCKED until it does. Test: annotated and
+  unannotated documents compile byte-identically in txt, md, docx and pdf,
+  covering a plain annotation, partial overlap with bold, overlapping
+  annotations, and whitespace at the edges, and `collectMarkdownWarnings` adds
+  no warning.)
+- FR-90: Annotations on image and audio resources are out of scope for this
+  requirement group, and the product MUST NOT offer to add one there until
+  that is specified. [US-37]
+- FR-91: Compiling a PDF in the Android app MUST produce a valid PDF
+  containing the selected resources, with the same content as the same
+  compile on desktop. Compiling a PDF on server and desktop MUST be
+  unchanged. When PDF generation fails, the writer MUST be shown the real
+  error message, not a generic one (the Start Page's PDF compile path
+  currently replaces it with "Could not generate PDF"). [US-38] (Measured,
+  note_875f2e5b: on Android PDF compile fails because `renderToBuffer` is a
+  Node-only API and the native static export resolves react-pdf's browser
+  build, where it throws; observed on-device within about 1.1 to 3.4 seconds.
+  The Start Page's catch discarding the error is also measured. Android DOCX
+  compile works on-device, measured. Tracked as POS `task_0511db99`.)
+- FR-92: On the Android app with the network off, an exported PDF MUST embed
+  the bundled IBM Plex fonts (IBM Plex Serif and IBM Plex Sans), checked on a
+  device by inspecting the PDF's embedded fonts. [US-38] (Bundled fonts were
+  measured embedded on server and desktop with no network after Feature 91;
+  on Android this has never been run, note_f25a54b0. Checking it is blocked
+  until FR-91 works and `pnpm build:native` passes. The verification is
+  recorded, not a merge gate; if it cannot be run it is listed as not
+  verified: Gate 2 decision F101-1, 2026-11-04.)
 
 ### Later Requirements
 
@@ -3956,6 +4069,36 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Owner:** Product owner.
 **Evidence:** Not checked: whether the total goal's progress has an unavailable state today. A filter that matches nothing is a real zero and must be told apart from a failed evaluation (`docs/standards/failure-visibility.md`); how each is worded and shown is not decided here.
 
+**OQ-132 (resolved): Where are a project's saved compile and export defaults stored, and can a project type or a module seed them?**
+**Resolution:** Resolved from evidence, owner confirmed (Gate 1, 2026-11-04): (a) Saved defaults live in `project.json` `config`, one new optional key per dialog (for example `config.compileDefaults`, `config.exportDefaults`), validated by a Zod schema and written by a locked read-modify-write setter that touches only its own key, like `setGoalFilterCore` and `setDailyWordGoalCore` (evidence: `frontend/src/lib/models/schemas.ts:313,332`, "Config setters" in `frontend/CLAUDE.md`; dialog state today is local only, `frontend/components/common/CompilePreviewModal.tsx:85-90`). Exclusions are stored as resource ids and read at dialog open; ids of resources that no longer exist are dropped silently, not an error. Not a query AST. (b) No seeding by project types or modules in this work: resource ids do not exist when a type is applied, and FR-82 names no resource kinds. A later feature may add an optional seed key the way `subtypes` was added (`project-creator.ts:233-235`). The exact stored shape is left to the feature spec. Applied in FR-81.
+**Impact:** FR-81, FR-82; US-36. A project-config location (for example a compile preset in `project.json` config) is a candidate, not a decision.
+**Owner:** Product owner.
+(Raised 2026-11-04 for FR-81 to FR-92.)
+
+**OQ-133 (resolved): How does compile's Markdown serializer treat a mark it has no extension for, such as `annotation`?**
+**Resolution:** Resolved from evidence by reading, owner confirmed (Gate 1, 2026-11-04); a test is still required. Reading `@tiptap/markdown` `MarkdownManager.ts:1486-1560` (read, not run), a mark with no `renderMarkdown` handler contributes empty delimiters, so the text is emitted unchanged. The PDF, DOCX and text compile paths (`CompileDocxDocument.ts`, `CompilePDFDocument.tsx`, `CompilePDFFallbackDocument.tsx`, `compile-text.ts`) contain no reference to `marks`. Residual risk: boundary handling when an annotation edge falls inside bold or italic, or at leading or trailing whitespace. Required test: annotated and unannotated documents compile byte-identically in txt, md, docx and pdf, covering a plain annotation, partial overlap with bold, overlapping annotations and whitespace at the edges; `collectMarkdownWarnings` adds no warning. FR-89 stays [BLOCKED] until that test passes.
+**Impact:** FR-89; US-37. Not checked; it must be tested, and the result decides whether "annotations never reach compile output" holds without extra work.
+**Owner:** Engineering lead.
+(Raised 2026-11-04 for FR-81 to FR-92.)
+
+**OQ-134 (resolved): When annotated text is copied and pasted within the same resource, two markers would share one annotation id. Does the paste create a new annotation with a copied body, or does one annotation span both passages?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-11-04; option a): a paste always copies the annotation. Within the same resource, pasted annotated text gets a new annotation id and a copied body, the same rule as a cross-resource paste. A cut-and-paste (a move) keeps the original annotation (same id) rather than copying. Applied in FR-87.
+**Impact:** FR-87; US-37. Not yet raised with the owner.
+**Owner:** Product owner.
+(Raised 2026-11-04 for FR-81 to FR-92.)
+
+**OQ-135 (resolved): How are annotations shown on a narrow screen, where margin notes may not fit?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-11-04; option a): at every screen width, annotations are shown in an annotations panel or sidebar list, with the annotated passage highlighted in the text; the detached list (FR-85) lives in the same panel. Margin notes beside the text are a later enhancement (Out of Scope (Deferred)). Applied in FR-84.
+**Impact:** FR-84; US-37. The phone layout is not responsive yet; a sidebar list is a candidate, not a decision.
+**Owner:** Product owner.
+(Raised 2026-11-04 for FR-81 to FR-92.)
+
+**OQ-136 (resolved): Do annotation-body search hits appear as their own result type, or as hits on the resource?**
+**Resolution:** Resolved (Owner decision, Gate 1, 2026-11-04; option a): an annotation-body search hit appears as a hit on its resource, using the existing result row, with the snippet taken from the annotation body and labelled as a note (for example "Note: ...") so it is not mistaken for prose; clicking opens the resource. Jumping to the annotated passage from a search hit (reusing mention jump) is a later follow-up (Out of Scope (Deferred)). Applied in FR-88.
+**Impact:** FR-88; US-37.
+**Owner:** Product owner.
+(Raised 2026-11-04 for FR-81 to FR-92.)
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -4071,3 +4214,16 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   possible after home-network serving ships; this is a stated priority, not a
   schedule or a commitment to a date. Android runs its data layer in-process,
   so pointing it at a desktop server would be a different mode.
+- Annotations on image and audio resources (FR-90; Owner decision,
+  2026-11-04): later.
+- Rich-text annotation bodies (FR-83; Owner decision, 2026-11-04): the
+  body is plain text at launch.
+- Sources and an Inbox folder, which are expected to be excluded from compile
+  by default through FR-81 and FR-82, are separate features and not part of
+  this work (Owner direction, 2026-11-04).
+- Margin notes beside the text for annotations (FR-84, resolved: OQ-135; Owner
+  decision, Gate 1, 2026-11-04): a later enhancement. At launch annotations are
+  shown in an annotations panel at every screen width.
+- Jumping to the annotated passage from an annotation-body search hit, reusing
+  mention jump (FR-88, resolved: OQ-136; Owner decision, Gate 1, 2026-11-04): a
+  later follow-up. At launch a hit opens the resource.
