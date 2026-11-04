@@ -60,6 +60,13 @@ vi.mock("../../src/lib/api/compile", () => ({
 vi.mock("../../src/lib/compile/download-file", () => ({
   downloadFile: vi.fn(),
 }));
+// The Start Page must apply saved defaults from its list entry and never
+// fetch them per project (Feature 101, Task 8).
+const readCompileDefaultsMock = vi.fn(async () => undefined);
+vi.mock("../../src/lib/api/saved-defaults-read", () => ({
+  readCompileDefaults: () => readCompileDefaultsMock(),
+  readExportDefaults: vi.fn(),
+}));
 
 import SharingLimitsProvider from "../../components/Sharing/SharingLimitsContext";
 import {
@@ -684,12 +691,14 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
    */
   function entryFor(
     rootResourceFolderId: string | undefined,
+    config?: Record<string, unknown>,
   ): StartPageProjectEntry {
     const project = {
       id: "p-pkg",
       name: "Two Resource Novel",
       rootPath: `/tmp/projects/${DIR_ID}`,
       createdAt: STAMP,
+      ...(config === undefined ? {} : { config }),
     };
     const folder = {
       id: "folder-1",
@@ -792,6 +801,41 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
     expect(body.resources.map((r) => r.id)).toEqual(
       expect.arrayContaining(["res-in-folder", "res-other"]),
     );
+  });
+
+  it("applies the entry's saved compileDefaults and drops missing ids silently", async () => {
+    readCompileDefaultsMock.mockClear();
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    const dialog = await openCompileDialog(
+      entryFor(undefined, {
+        compileDefaults: { excludedResourceIds: ["res-other", "gone-id"] },
+      }),
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await within(dialog).findByRole("button", { name: /Compile \(1\)/ }),
+    );
+    const body = compileTextMock.mock.calls[0][0] as { resourceIds: string[] };
+    expect(body.resourceIds).toEqual(["res-in-folder"]);
+    expect(readCompileDefaultsMock).not.toHaveBeenCalled();
+  });
+
+  it("an entry without config compiles every resource and adds no per-project fetch", async () => {
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    readCompileDefaultsMock.mockClear();
+    const dialog = await openCompileDialog(entryFor(undefined));
+    const user = userEvent.setup();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    const body = compileTextMock.mock.calls[0][0] as { resourceIds: string[] };
+    expect([...body.resourceIds].sort()).toEqual([
+      "res-in-folder",
+      "res-other",
+    ]);
+    expect(readCompileDefaultsMock).not.toHaveBeenCalled();
   });
 
   it("a create-result-shaped entry (folders without nested resources, resources with folderId and plainText) is listed under its folder with its body", async () => {

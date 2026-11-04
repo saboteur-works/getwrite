@@ -44,6 +44,16 @@ Reading consequence for Task 8 (OQ-5): a normal Start Page entry carries `config
 
 Tests added in this task (frontend node project, `pnpm exec vitest run` on the three files, 89 passed): `tests/unit/project-config.test.ts` (schema parse, absence, extra field rejected, bad shape rejected), `tests/unit/projects-api-validation.test.ts` (client list parse keeps both keys, neither key absent, extra field rejects the list), `tests/unit/project-crud-core-listing.test.ts` (a normal entry carries the manifest's `config`).
 
+### Start Page compile applies saved defaults from the list entry (Task 8, FR-6, OQ-5)
+
+Test: `frontend/tests/component/StartPage.test.tsx` (jsdom project), `pnpm exec vitest run tests/component/StartPage.test.tsx` (`frontend/`), 67 passed. The saved-defaults reader module is mocked and asserted not called.
+
+Observed before the change: `StartPage.tsx` passed `projectId={compileTargetProjectId}` (the entry's `project.id`, not the directory id) to `CompilePreviewModal`, so opening Compile called the default `readCompileDefaults` (an `openProject` fetch) for every project. The test "an entry without config ... adds no per-project fetch" failed first (reader called once); "applies the entry's saved compileDefaults" failed first (no `Compile (1)` button, all resources selected).
+
+After the change: the Start Page passes the modal a `readSavedDefaults` that returns the entry's `config.compileDefaults.excludedResourceIds` (no fetch), and a `projectId` (the directory id) only when the entry carries `config`. Observed: with `compileDefaults` set to one existing and one missing id, the dialog shows `Compile (1)`, the request `resourceIds` omit the saved id and the missing id is dropped without a message; an entry with no `config` shows `Compile (2)`, sends both ids and the reader is not called.
+
+Gap (for the feature's notes): encrypted (unlocked and locked) and unusable entries carry no `project.config` (Task 2 reading), so the Start Page compile applies no saved defaults for them and shows no saved-defaults panel; their output is unchanged from before. Not measured: the native list path's entry shape (not read in Task 2 either). Also not tested: after a save from the Start Page dialog, the list entry is not refreshed, so reopening the dialog in the same page session applies the list's earlier value until the list reloads.
+
 ## Part 2: annotations
 
 ### FR-8 compile-output test with annotation marks (Task 9, FR-7, FR-8)

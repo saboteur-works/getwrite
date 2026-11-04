@@ -9,7 +9,7 @@
  * The component supports both externally supplied project lists (via props)
  * and local optimistic updates for create/rename/delete interactions.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus, FolderOpen, Import } from "lucide-react";
 import Card from "../common/UI/Card/Card";
 import type {
@@ -366,6 +366,26 @@ export default function StartPage({
   >(null);
 
   /**
+   * Saved compile defaults come from the list entry's own `config`; no
+   * per-project fetch is made (Feature 101, FR-6, OQ-5). An entry without
+   * `config` (encrypted or unusable) gets no saved-defaults id, so the dialog
+   * reads nothing and selects every resource as before.
+   */
+  const compileTargetEntry = localProjects.find(
+    (p) => p.project.id === compileTargetProjectId,
+  );
+  const savedCompileExcludedIds =
+    compileTargetEntry?.project.config?.compileDefaults?.excludedResourceIds;
+  const compileDefaultsProjectId =
+    compileTargetEntry?.project.config && compileTargetEntry.project.rootPath
+      ? getProjectDirectoryId(compileTargetEntry.project.rootPath)
+      : undefined;
+  const readEntryCompileDefaults = useCallback(
+    async () => savedCompileExcludedIds,
+    [savedCompileExcludedIds],
+  );
+
+  /**
    * Resources reconstructed for the compile modal.
    *
    * `buildProjectViewAdapter` converts API resources to `UIResource[]` (title not
@@ -599,7 +619,8 @@ export default function StartPage({
 
       <CompilePreviewModal
         isOpen={compileTargetProjectId !== null}
-        projectId={compileTargetProjectId ?? undefined}
+        projectId={compileDefaultsProjectId}
+        readSavedDefaults={readEntryCompileDefaults}
         isSourceEncrypted={Boolean(
           localProjects.find(
             (entry) => entry.project?.id === compileTargetProjectId,
