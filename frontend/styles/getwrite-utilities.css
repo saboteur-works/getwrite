@@ -1339,11 +1339,15 @@ html.gw-theme-dark {
     padding-right: 0.5rem;
   }
 
+  /* Fixed size so it matches the 28px search field at every pixel density
+     (padding + icon + 0.5px borders came to 27px on a 2x display). */
   .searchbar-filter-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 6px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border: 0.5px solid var(--color-gw-border);
     border-radius: var(--radius-md);
     background-color: var(--color-gw-chrome2);
