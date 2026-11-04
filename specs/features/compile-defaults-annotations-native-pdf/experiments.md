@@ -68,4 +68,28 @@ Observation: no case differed, so no serializer change is indicated by this test
 
 ## Part 3: Android PDF
 
-(No measurements yet.)
+### Browser-build reproduction and server-path baseline (Task 24, FR-24, baseline for FR-27)
+
+Test: `frontend/tests/unit/compile-pdf-browser-build.test.ts` (node project); `pnpm exec vitest run tests/unit/compile-pdf-browser-build.test.ts` (`frontend/`).
+
+How it forces browser resolution: `vi.mock("@react-pdf/renderer", () => import("@react-pdf/renderer/lib/react-pdf.browser.js"))`. No alias or conditions were added; `frontend/vitest.config.ts` is unchanged. The package's `package.json` has `"browser": { "./lib/react-pdf.js": "./lib/react-pdf.browser.js" }` and no `exports` field, so the deep import resolves. The real `compilePdfCore` runs over a real temp project dir; only the renderer module is swapped (it is swapped for `CompilePDFDocument` and `registerIBMPlexFonts` too).
+
+Outcome: reproduced. Before the test was marked, the "produces a PDF" test failed with `Error: renderToBuffer is a Node specific API. You're either using this method in a browser, or your bundler is not loading react-pdf from the appropriate web build.` The message was not caught by `isFontError` (`/font|fetch|404|network/i`), so it propagates out of `compilePdfCore` as thrown. This shows that the browser build's `renderToBuffer` throws this message; it does not show that the on-device failure (note_875f2e5b) has this same path, which was not observed here.
+
+How the suite stays green (form chosen: both): (1) "rejects with the Node specific API error (the reproduction)" asserts `rejects.toThrow(/Node specific API/)` and passes today; (2) "produces a PDF with the server-path text" is `it.fails` (reported by Vitest as an expected fail) asserting the browser-build compile yields `FIXED_DOCUMENT_SERVER_PAGE_TEXTS`. For Task 25: delete test (1) and drop `.fails` from test (2); if test (2) then passes it will be a real before/after pair. Reason it fails before and passes after: before, the compile path calls the browser build's `renderToBuffer`, which throws; after, it must render through a browser-side call.
+
+Not measured: a real browser or WebView, the static-export bundle, Metro/Next bundler resolution (only the Vitest module swap).
+
+Server-path baseline (unchanged `compilePdfCore` -> `renderToBuffer`, no mock): test `frontend/tests/unit/compile-pdf-server-baseline.test.ts`. Fixed document and expected text live in `frontend/tests/helpers/compile-pdf-fixed-document.ts` (`FIXED_DOCUMENT_RESOURCES`, `writeFixedDocument`, `fixedDocumentBody`, `FIXED_DOCUMENT_SERVER_PAGE_TEXTS`); Task 25 and 26 reuse it. Input: two text resources in order, "Chapter One" (paragraphs "The lighthouse keeper counted the ships at dusk." and "Seven passed, none stopped.") and "Chapter Two" ("Morning brought fog and a single bell."), `includeHeaders: true`. Extracted text via the Task 1 helper, one page:
+
+```
+Chapter One
+The lighthouse keeper counted the ships at dusk.
+Seven passed, none stopped.
+Chapter Two
+Morning brought fog and a single bell.
+```
+
+The result is a valid PDF (`checkPdfValidity`) with no `warning`. The run is from this branch, which has not changed the PDF render path since `main`.
+
+Side observation (not part of the task, cause not established): with the paragraph "Seven passed; none stopped" (a semicolon, no final period) the server path threw `RangeError: Offset is outside the bounds of the DataView` from fontkit `TTFSubset._addGlyph` during `renderToBuffer`, deterministically on 3 runs. Replacing the semicolon with a comma and adding a period made it render. Which of the two changes mattered was not discriminated (the semicolon variant also lacked the final period); an experiment would render a paragraph that differs by only one of them. The fixed document avoids the semicolon.
