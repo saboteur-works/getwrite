@@ -66,6 +66,14 @@ Controls, first run: the one-changed-letter control differed from the plain docu
 
 Observation: no case differed, so no serializer change is indicated by this test (Task 10). Not measured: the annotation mark registered in the editor or Markdown manager (does not exist yet; an unregistered mark was the only form tested); multi-resource compile; includeHeaders false; the font-fallback PDF document; the native PDF path; any annotation mark attrs other than `id`.
 
+### FR-8 serializer fix decision (Task 10, FR-8)
+
+Decision: no serializer change needed. No file under `compile-core.ts`, `export-core.ts` or the Markdown serialization was edited; this task has no diff other than this entry.
+
+Evidence: the Task 9 first-run record above (every annotated-vs-plain comparison equal for cases (a)-(d) on TXT, Markdown, PDF text, DOCX body and warnings, annotation mark unregistered). Re-run in this task, not taken on trust: `pnpm exec vitest run tests/unit/compile-annotation-marks.test.ts --reporter=verbose` (`frontend/`): 1 file, 60 of 60 tests passed. The listing showed, for each of the four cases, the annotated-equals-plain test passing for all seven comparisons and the control (one changed letter) differing for the six letter-sensitive outputs, with the warnings control using a lossy construct (text colour) as recorded above. The test file builds its annotated documents with `{ type: "annotation", attrs: { id } }` marks (test line 55).
+
+Not measured: the annotation mark registered in the editor or the Markdown manager (it does not exist yet; Task 15 adds the mark and re-runs this test then as a check); multi-resource compile; `includeHeaders` false; the font-fallback PDF document; the native PDF path; mark attrs other than `id`.
+
 ## Part 3: Android PDF
 
 ### Browser-build reproduction and server-path baseline (Task 24, FR-24, baseline for FR-27)
