@@ -154,7 +154,7 @@ export default function SearchBar({
     <div className="searchbar-root" ref={containerRef}>
       <div className="searchbar-input-row">
         <div className="searchbar-field">
-          <Search size={16} aria-hidden="true" className="searchbar-icon" />
+          <Search size={14} aria-hidden="true" className="searchbar-icon" />
           <Input
             ref={inputRef}
             value={query}
@@ -163,7 +163,9 @@ export default function SearchBar({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             aria-label="resource-search"
-            className="searchbar-input"
+            // The field around it is the bordered box; the input itself has
+            // no border, fill or padding of its own.
+            className="searchbar-input border-0 bg-transparent p-0"
             disabled={!selectedProjectId}
           />
           <span className="searchbar-shortcut" aria-hidden="true">
