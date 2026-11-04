@@ -130,6 +130,7 @@
     "eslint-config-next": "^16.2.6",
     "jsdom": "^28.1.0",
     "next-devtools-mcp": "^0.3.10",
+    "pdfjs-dist": "^6.5.438",
     "playwright": "^1.60.0",
     "postcss": "8.5.14",
     "sass": "^1.99.0",
