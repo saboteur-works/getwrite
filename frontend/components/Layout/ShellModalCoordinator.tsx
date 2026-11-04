@@ -335,10 +335,13 @@ export default function ShellModalCoordinator({
         isSourceEncrypted={isProjectEncrypted}
         resourceTitle={exportModal.resourceTitle}
         resourceNames={exportModal.resourceNames}
+        resourceIds={exportModal.resourceIds}
+        projectId={projectId}
         onClose={() => setExportModal({ open: false })}
-        onConfirmExport={(format) =>
+        onConfirmExport={(format, selectedIds) =>
           onExportConfirmed(
-            exportModal.resourceIds ??
+            selectedIds ??
+              exportModal.resourceIds ??
               (exportModal.resourceId ? [exportModal.resourceId] : []),
             exportModal.resourceId,
             format,

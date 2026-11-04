@@ -12,9 +12,14 @@ const readCompileDefaultsMock = vi.hoisted(() =>
     async () => undefined,
   ),
 );
+const readExportDefaultsMock = vi.hoisted(() =>
+  vi.fn<(projectId: string) => Promise<string[] | undefined>>(
+    async () => undefined,
+  ),
+);
 vi.mock("../src/lib/api/saved-defaults-read", () => ({
   readCompileDefaults: readCompileDefaultsMock,
-  readExportDefaults: vi.fn(async () => undefined),
+  readExportDefaults: readExportDefaultsMock,
 }));
 
 import ShellModalCoordinator from "../components/Layout/ShellModalCoordinator";
@@ -391,5 +396,33 @@ describe("ShellModalCoordinator — compile saved defaults wiring (Feature 101 T
       expect(readCompileDefaultsMock).toHaveBeenCalledWith("dir-uuid-1"),
     );
     expect(readCompileDefaultsMock).not.toHaveBeenCalledWith("internal-id");
+  });
+});
+
+describe("ShellModalCoordinator — export saved defaults wiring (Feature 101 Task 7)", () => {
+  it("reads the export defaults by the directory id and exports only the ticked ids", async () => {
+    readExportDefaultsMock.mockResolvedValueOnce(["r2"]);
+    const onExportConfirmed = vi.fn();
+    render(
+      <Provider store={makeStore()}>
+        <ShellModalCoordinator
+          {...makeDefaultProps({
+            exportModal: {
+              open: true,
+              resourceId: "f1",
+              resourceTitle: "Act",
+              resourceIds: ["r1", "r2"],
+              resourceNames: ["One", "Two"],
+            },
+            projectId: "dir-uuid-1",
+            onExportConfirmed,
+          })}
+        />
+      </Provider>,
+    );
+    await screen.findByText(/1 resource\(s\) left out/i);
+    expect(readExportDefaultsMock).toHaveBeenCalledWith("dir-uuid-1");
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(onExportConfirmed).toHaveBeenCalledWith(["r1"], "f1", "txt");
   });
 });
