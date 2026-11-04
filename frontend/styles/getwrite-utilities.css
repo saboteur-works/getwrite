@@ -625,19 +625,23 @@ html.gw-theme-dark {
 
   /* ── WORKAREA ── */
 
-  /* One row: the view switcher takes the remaining width and scrolls
-     horizontally; search keeps its own width on the right. */
+  /* One row of fixed height: the view switcher takes the remaining width,
+     scrolls horizontally and fills the row's height; search keeps its own
+     width on the right, centred in the row. */
   .workarea-header {
     display: flex;
-    align-items: center;
+    align-items: stretch;
+    height: 36px;
     gap: 16px;
     flex-wrap: nowrap;
   }
 
   /* Wraps the view switcher's scroll row (ViewSwitcher.tsx) so it can shrink
      beside search. `data-more-right` is set while tabs are hidden past the
-     right edge, which fades that edge. */
+     right edge, which fades that edge. A flex container so the scroll row
+     stretches to the header's height. */
   .workarea-view-tabs-frame {
+    display: flex;
     flex: 1 1 auto;
     min-width: 0;
   }
@@ -669,16 +673,17 @@ html.gw-theme-dark {
      width (min/max) so the overflow scrolls internally rather than pushing the
      header wide. Applied via <Tabs className="workarea-view-tabs-scroll">. */
   .workarea-view-tabs-scroll {
+    flex: 1 1 auto;
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     /* A thin scrollbar, invisible at rest and shown in the border colour
-       while the row is hovered or holds focus (below). The bottom padding
-       gives an overlay scrollbar room beneath the tabs instead of over them. */
+       while the row is hovered or holds focus (below). No bottom padding, so
+       the tabs reach the header's bottom edge; an overlay scrollbar shows over
+       the tabs' lower edge while hovered. */
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
-    padding-bottom: 6px;
   }
 
   .workarea-view-tabs-frame:hover .workarea-view-tabs-scroll,
@@ -689,7 +694,7 @@ html.gw-theme-dark {
   /* Tab button — D9: no blue fill */
   .workarea-tab-button {
     display: inline-flex;
-    align-items: flex-end;
+    align-items: center;
     height: 100%;
     gap: 6px;
     padding: 6px 12px;
@@ -1426,12 +1431,19 @@ html.gw-theme-dark {
     color: var(--color-gw-primary);
   }
 
+  /* The one bordered box of the search line: icon, input and shortcut hint sit
+     inside it, at the filter toggle's height so the row reads as one line. */
   .searchbar-field {
     display: flex;
     flex-grow: 1;
+    min-width: 0;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
+    gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    border: 0.5px solid var(--color-gw-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-gw-chrome2);
     transition: border-color 150ms ease;
   }
 
@@ -1447,6 +1459,7 @@ html.gw-theme-dark {
 
   .searchbar-input {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
     outline: none;

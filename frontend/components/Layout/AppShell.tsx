@@ -1423,7 +1423,7 @@ export default function AppShell({
                         />
                         {/* Search keeps its width on the right of the
                             switcher's row; the switcher scrolls. */}
-                        <div className="w-56 shrink-0 pr-4 sm:w-80">
+                        <div className="w-56 shrink-0 self-center pr-4 sm:w-80">
                           <SearchBar
                             onSelect={(id) => onResourceSelect?.(id)}
                           />
