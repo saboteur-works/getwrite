@@ -26,7 +26,8 @@ import {
   setCanonicalRevision as setCanonicalRevisionByVersion,
   writeRevision,
 } from "./revision";
-import { mutateSidecar } from "./sidecar";
+import { mutateSidecar, readSidecar } from "./sidecar";
+import { stripBodylessAnnotationMarks } from "./annotation-mark-strip";
 import type { Revision } from "./types";
 import { persistResourceContent, tiptapToPlainText } from "../tiptap-utils";
 import { countWords } from "../word-count";
@@ -563,8 +564,62 @@ async function updateRevisionInPlaceLocked(
 }
 
 /**
+ * Feature 101, FR-17 / OQ-11: on restore, removes `annotation` marks whose id
+ * has no body in the resource's sidecar from the revision's stored document.
+ * Text and every other mark are unchanged and no body is touched (an
+ * annotation whose mark is missing is simply detached, derived at read time).
+ * Rewrites `content.bin` only when a mark was removed. A resource with no
+ * sidecar, or a revision that is not a TipTap document, is left alone; a read
+ * or write failure propagates so the restore does not report success.
+ */
+async function stripBodylessAnnotationMarksFromRevision(
+  projectRoot: string,
+  resourceId: string,
+  versionNumber: number,
+): Promise<void> {
+  const release = await acquireLock(
+    `revision-content:${path.resolve(projectRoot)}:${resourceId}`,
+  );
+  try {
+    const sidecar = await readSidecar(projectRoot, resourceId);
+    if (sidecar === null) return;
+    const stored = Array.isArray(sidecar.annotations)
+      ? (sidecar.annotations as unknown as { id?: unknown }[])
+      : [];
+    const knownIds = new Set(
+      stored
+        .map((a) => a.id)
+        .filter((id): id is string => typeof id === "string"),
+    );
+    const raw = await readRevisionContent(
+      projectRoot,
+      resourceId,
+      versionNumber,
+    );
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return; // legacy plain-text revision: no marks to strip
+    }
+    if ((parsed as { type?: unknown } | null)?.type !== "doc") return;
+    const { doc, removed } = stripBodylessAnnotationMarks(parsed, knownIds);
+    if (removed === 0) return;
+    await writeRevisionContent(
+      projectRoot,
+      resourceId,
+      versionNumber,
+      JSON.stringify(doc),
+    );
+  } finally {
+    release();
+  }
+}
+
+/**
  * Marks the given revision as canonical (unmarking every other revision for
- * the resource).
+ * the resource). This is the restore path: it also strips body-less
+ * annotation marks from the revision's document first (FR-17).
  *
  * @throws {Error} `Revision ${revisionId} not found.` when no matching
  *   revision exists.
@@ -580,6 +635,12 @@ export async function setCanonicalRevision(
   if (!target) {
     throw new Error(`Revision ${revisionId} not found.`);
   }
+
+  await stripBodylessAnnotationMarksFromRevision(
+    projectRoot,
+    resourceId,
+    target.versionNumber,
+  );
 
   const canonicalRevision = await setCanonicalRevisionByVersion(
     projectRoot,
