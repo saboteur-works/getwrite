@@ -5,6 +5,8 @@ export interface SearchResult {
   resourceId: string;
   title: string;
   snippet: string;
+  /** `"note"` when the snippet is an annotation body; absent or `"prose"` otherwise. */
+  snippetKind?: "prose" | "note";
   status?: string;
   folderId?: string | null;
   tags?: string[];

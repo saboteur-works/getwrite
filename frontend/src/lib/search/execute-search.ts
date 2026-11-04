@@ -36,10 +36,17 @@ const SNIPPET_MAX_LEN = 160;
 // Caps content loading for very broad multi-term queries on large projects.
 const PROXIMITY_CANDIDATE_LIMIT = 200;
 
+export type SnippetKind = "prose" | "note";
+
 export interface SearchResult {
   resourceId: string;
   title: string;
   snippet: string;
+  /**
+   * Where `snippet` came from: `"note"` for an annotation body (the row shows
+   * the text label "Note:"), `"prose"` for resource text.
+   */
+  snippetKind: SnippetKind;
   status: string | null;
   folderId: string | null;
   tags: string[];
@@ -162,6 +169,23 @@ function isMissingFileError(error: unknown): boolean {
   );
 }
 
+/**
+ * A snippet from the first stored annotation body that contains a query term,
+ * read live from the sidecar so an edit or delete shows without a reindex.
+ * Detached bodies count. `""` when no body contains a term.
+ */
+function noteSnippet(sidecar: SidecarData, query: string): string {
+  const stored: unknown = sidecar?.annotations;
+  if (!Array.isArray(stored)) return "";
+  for (const entry of stored) {
+    const body = (entry as { body?: unknown } | null)?.body;
+    if (typeof body !== "string") continue;
+    const snippet = extractSnippet(body, query, SNIPPET_MAX_LEN);
+    if (snippet) return snippet;
+  }
+  return "";
+}
+
 async function loadTagAssignments(
   projectRoot: string,
 ): Promise<Record<string, string[]>> {
@@ -233,6 +257,7 @@ export async function executeSearch(
   const bodyIds = (await searchAnnotationBodies(projectRoot, query)).filter(
     (id) => !proseSet.has(id),
   );
+  const bodyOnly = new Set(bodyIds);
   const rankedIds = [...proseIds, ...bodyIds];
 
   const candidates: ScoredCandidate[] =
@@ -275,15 +300,25 @@ export async function executeSearch(
     )
       continue;
 
-    // Reuse preloaded text for multi-term queries; load on demand for single-term.
-    const text =
-      candidate.text ?? (await loadCanonicalText(projectRoot, candidate.id));
-    const snippet = extractSnippet(text, query, SNIPPET_MAX_LEN);
+    let snippet: string;
+    let snippetKind: SnippetKind;
+    if (bodyOnly.has(candidate.id)) {
+      // Body-only hit: prose has no match, so the snippet is the note's.
+      snippet = noteSnippet(sidecar, query);
+      snippetKind = "note";
+    } else {
+      // Reuse preloaded text for multi-term queries; load on demand for single-term.
+      const text =
+        candidate.text ?? (await loadCanonicalText(projectRoot, candidate.id));
+      snippet = extractSnippet(text, query, SNIPPET_MAX_LEN);
+      snippetKind = "prose";
+    }
 
     results.push({
       resourceId: candidate.id,
       title,
       snippet,
+      snippetKind,
       status,
       folderId,
       tags: resourceTags,
