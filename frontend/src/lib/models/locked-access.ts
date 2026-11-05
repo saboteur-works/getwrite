@@ -15,32 +15,14 @@
  * marker means the project is damaged, not locked, and callers must let it
  * keep propagating uncaught rather than folding it into "locked" handling.
  *
- * Imports from `crypto/adapter-selection.ts` directly rather than via
- * `workspace-adapter.ts` or `io.ts` — `adapter-selection.ts` already imports
- * from `../io`, so importing these errors via `io.ts` would create an import
- * cycle.
+ * Imports from the leaf `crypto/locked-errors.ts` (no imports, no `node:`
+ * built-ins) so a client hook can use the predicate; `adapter-selection.ts`
+ * imports `../io` and is server-only.
  */
 import {
   MissingProjectKeyError,
   ProjectLockedError,
-} from "./crypto/adapter-selection";
+  isLockedAccessError,
+} from "./crypto/locked-errors";
 
-export { ProjectLockedError, MissingProjectKeyError };
-
-/**
- * Type guard identifying a "locked access" failure — a project blocked from
- * being read or written because it is encrypted and inaccessible right now,
- * as opposed to damaged.
- *
- * @param error - The value to test, typically caught from a project I/O call.
- * @returns `true` when `error` is a {@link ProjectLockedError} or
- *   {@link MissingProjectKeyError}.
- */
-export function isLockedAccessError(
-  error: unknown,
-): error is ProjectLockedError | MissingProjectKeyError {
-  return (
-    error instanceof ProjectLockedError ||
-    error instanceof MissingProjectKeyError
-  );
-}
+export { ProjectLockedError, MissingProjectKeyError, isLockedAccessError };
