@@ -39,6 +39,9 @@ import {
 import AnnotationHighlightExtension, {
   setAnnotationHighlight,
 } from "./Editor/Extensions/AnnotationHighlightExtension";
+import AnnotationClipboard from "./Editor/Extensions/annotation-clipboard";
+import AnnotationPaste from "./Editor/Extensions/annotation-paste";
+import { toastService } from "../src/lib/toast-service";
 import { useAnnotations } from "../src/hooks/useAnnotations";
 import { isAnnotationOnlyUpdate } from "./Editor/Annotations/update-kind";
 import EditorContextMenu from "./Editor/EditorContextMenu";
@@ -251,6 +254,11 @@ export default function TipTapEditor({
   const activeProjectDirectoryId = useSelector(selectActiveProjectDirectoryId);
   const projectIdRef = useRef<string | null>(null);
   projectIdRef.current = activeProjectDirectoryId;
+  // Read by the annotation clipboard and paste extensions (Feature 101,
+  // FR-19); the editor is not re-created when the resource changes.
+  const annotationResourceIdRef = useRef<string | null>(null);
+  annotationResourceIdRef.current = annotationResourceId ?? null;
+  const annotationsRetryRef = useRef<() => void>(() => undefined);
 
   // Entity highlighting (specs/features/entity-highlighting.md) only takes
   // effect when both flags are on (FR-1/FR-8). Threaded through refs, same
@@ -456,6 +464,17 @@ export default function TipTapEditor({
         }),
         MentionJumpHighlightExtension,
         AnnotationHighlightExtension,
+        AnnotationClipboard.configure({
+          getResourceId: () => annotationResourceIdRef.current,
+        }),
+        AnnotationPaste.configure({
+          getResourceId: () => annotationResourceIdRef.current,
+          getProjectId: () => projectIdRef.current,
+          onResult: (result) => {
+            if (result.ok) annotationsRetryRef.current();
+            else toastService.error(result.message);
+          },
+        }),
         Math.configure({
           blockOptions: {
             /**
@@ -599,6 +618,7 @@ export default function TipTapEditor({
     annotationResourceId,
     editor ?? null,
   );
+  annotationsRetryRef.current = annotations.retry;
   const annotationsPanel = useAnnotationsPanel(
     annotationResourceId,
     annotationResourceId === undefined ? null : (editor ?? null),
