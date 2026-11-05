@@ -23,6 +23,8 @@ import StartPage, {
 import { buildProjectView } from "../../src/lib/models/project-view";
 import { makeStore } from "../../src/store/store";
 import { setProjects } from "../../src/store/projectsSlice";
+import { toastService } from "../../src/lib/toast-service";
+import * as compileApi from "../../src/lib/api/compile";
 import type { SharingLimitsAnswer } from "../../src/store/sharing-limits-transport-service";
 
 const fetchSharingLimits = vi.fn<() => Promise<SharingLimitsAnswer>>();
@@ -925,6 +927,59 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
     expect(body.resources.filter((r) => r.id === "res-in-folder")).toHaveLength(
       1,
     );
+  });
+
+  it.each([
+    ["pdf", "compilePdf"],
+    ["docx", "compileDocx"],
+    ["md", "compileMarkdown"],
+    ["txt", "compileText"],
+  ] as const)(
+    "a rejected %s compile shows only the thrown message (Feature 101, FR-28)",
+    async (format, fnName) => {
+      const errorSpy = vi.spyOn(toastService, "error").mockReturnValue("");
+      const rejecting = new Error("Known compile failure");
+      rejecting.stack = "STACK-LINE at /secret/path.ts:1";
+      if (fnName === "compileText") {
+        compileTextMock.mockReset();
+        compileTextMock.mockRejectedValue(rejecting);
+      } else {
+        vi.mocked(compileApi[fnName]).mockRejectedValue(rejecting);
+      }
+      const dialog = await openCompileDialog(entryFor(undefined));
+      const user = userEvent.setup();
+      await user.selectOptions(
+        within(dialog).getByLabelText("Compile as"),
+        format,
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+      );
+      await waitFor(() => expect(errorSpy).toHaveBeenCalledTimes(1));
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Compile failed",
+        "Known compile failure",
+      );
+      errorSpy.mockRestore();
+    },
+  );
+
+  it("a non-Error rejection is shown as its string form", async () => {
+    const errorSpy = vi.spyOn(toastService, "error").mockReturnValue("");
+    compileTextMock.mockReset();
+    compileTextMock.mockRejectedValue("plain string failure");
+    const dialog = await openCompileDialog(entryFor(undefined));
+    const user = userEvent.setup();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    await waitFor(() =>
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Compile failed",
+        "plain string failure",
+      ),
+    );
+    errorSpy.mockRestore();
   });
 
   it("the project card shows 2 resources for the same project (no folderId case)", () => {

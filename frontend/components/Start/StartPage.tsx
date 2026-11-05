@@ -298,6 +298,11 @@ export interface StartPageProps {
  *   onOpen={(projectId) => openProject(projectId)}
  * />
  */
+/** The thrown message only; never a stack, path or response body. */
+function compileErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export default function StartPage({
   projects = [],
   projectsStatus = "loaded",
@@ -678,8 +683,8 @@ export default function StartPage({
                   resolveFilename("pdf", result.filename),
                 );
               })
-              .catch(() =>
-                toastService.error("Compile failed", "Could not generate PDF"),
+              .catch((err: unknown) =>
+                toastService.error("Compile failed", compileErrorMessage(err)),
               );
             return;
           }
@@ -693,8 +698,8 @@ export default function StartPage({
                   resolveFilename("docx", result.filename),
                 );
               })
-              .catch(() =>
-                toastService.error("Compile failed", "Could not generate DOCX"),
+              .catch((err: unknown) =>
+                toastService.error("Compile failed", compileErrorMessage(err)),
               );
             return;
           }
@@ -715,11 +720,8 @@ export default function StartPage({
                   );
                 }
               })
-              .catch(() =>
-                toastService.error(
-                  "Compile failed",
-                  "Could not generate Markdown",
-                ),
+              .catch((err: unknown) =>
+                toastService.error("Compile failed", compileErrorMessage(err)),
               );
             return;
           }
@@ -731,11 +733,8 @@ export default function StartPage({
                 resolveFilename("txt", result.filename),
               );
             })
-            .catch(() =>
-              toastService.error(
-                "Compile failed",
-                "Could not generate output file",
-              ),
+            .catch((err: unknown) =>
+              toastService.error("Compile failed", compileErrorMessage(err)),
             );
         }}
       />
