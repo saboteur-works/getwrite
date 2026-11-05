@@ -8,6 +8,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createProject } from "../../src/lib/models/project";
@@ -129,6 +130,9 @@ async function addTestResource(
 }
 
 afterEach(async () => {
+  // Background indexer tasks queued by sidecar writes must finish before the
+  // temp dirs are removed.
+  await flushIndexer();
   for (const dir of tmpDirs.splice(0)) {
     await removeDirRetry(dir);
   }
@@ -295,6 +299,9 @@ describe("executeSearch — annotation body hits (Feature 101, Task 23, FR-20)",
     resourceId: string,
     bodies: string[],
   ): Promise<void> {
+    // Drain queued indexer tasks first: one still pending would re-index the
+    // annotation terms from the sidecar after the explicit index below.
+    await flushIndexer();
     const current = await readSidecar(projectRoot, resourceId);
     await writeSidecar(projectRoot, resourceId, {
       ...(current as Record<string, MetadataValue>),
@@ -306,7 +313,9 @@ describe("executeSearch — annotation body hits (Feature 101, Task 23, FR-20)",
         updatedAt: "2026-01-01T00:00:00.000Z",
       })) as unknown as MetadataValue,
     });
+    await flushIndexer();
     await indexAnnotationBodies(projectRoot, resourceId, bodies);
+    await flushIndexer();
   }
 
   it("surfaces a body-only match with a snippet from the body, kind note", async () => {
