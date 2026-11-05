@@ -215,3 +215,37 @@ Not verified: any device or Android WebView, the static-export bundle, FR-30.
 - Native selection: `NEXT_PUBLIC_GETWRITE_RUNTIME=native` via `vi.stubEnv`, so `createTransport` takes its native branch, `resolveCompileTransport` builds `createNativeCompileTransport()` with no injected `fs`, and `compilePdfCore` runs with `renderPdfInBrowser`. The body text could only have come from the fake device filesystem, so the native backend read it.
 - Mocked: `native-bootstrap` (binds an in-memory fake Capacitor filesystem as the default storage context), `@react-pdf/renderer` (its browser build), `downloadFile` (bytes captured, native file writer not run), the TipTap editor component (AppShell test). The compile API was not mocked, unlike the Task 26 toast step.
 - Not shown: a real Android WebView or device, the real `@capacitor/filesystem`, fonts on a device (FR-30), the native file-save step. The test was written after the fix (the behaviour already existed), so there was no failing first run against unfixed code; an earlier run in this task failed only on test-harness issues (menu label, jsdom Blob read, per-call fake filesystem), not on product code.
+
+## Acceptance suites (Task 30)
+
+Run in the main checkout (`/Users/jedaisaboteur/Repositories/getwrite`, branch `feat/compile-defaults-annotations-native-pdf`) with all other tasks merged. `typecheck`, `lint`, `test:ci` and `knip` ran inside the Bash sandbox; `pnpm test:e2e` and `pnpm build:native` ran outside it (port 6006 was free by `lsof`; no `pnpm storybook` running). No source or test file was changed by this task.
+
+| Suite | Command (directory) | Exit | Observed |
+| --- | --- | --- | --- |
+| Typecheck | `pnpm typecheck` (`frontend/`) | 0 | `tsc --noEmit`, no diagnostics |
+| Lint | `pnpm lint` (`frontend/`) | 0 | 0 errors, 392 warnings |
+| Unit/component, run 1 | `pnpm test:ci` (`frontend/`) | 0 | 770 files passed; 9736 passed, 7 expected fail, 1 skipped (9744) |
+| Unit/component, run 2 | `pnpm test:ci` (`frontend/`) | 0 | identical to run 1 |
+| Unit/component, run 3 | `pnpm test:ci` (`frontend/`) | 1 | 769 files passed, 1 failed; 9735 passed, 1 failed, 7 expected fail, 1 skipped (9744) |
+| Knip | `pnpm knip` (repo root) | 1 | findings reported, see below |
+| Storybook e2e | `pnpm test:e2e` (`frontend/`, unsandboxed) | 0 | 247 passed, 1 skipped (Playwright, Chromium) |
+| Native static export | `pnpm build:native` (`frontend/`, unsandboxed) | 0 | `next build` completed; "Native static export produced at .../frontend/out (18 top-level entries)" |
+
+`pnpm test:ci` run 3 failure: `tests/component/native-compile-entry-paths.test.tsx` ("PDF compile on native, AppShell path (Feature 101, FR-29) > Compile Project with the native transport produces a PDF"), `AssertionError: expected false to be true` at line 123, `expect(filename.endsWith(".pdf")).toBe(true)`. That file is a Feature 101 test (Task 28). In isolation (`pnpm exec vitest run tests/component/native-compile-entry-paths.test.tsx`) it passed 3 of 3 runs (2 tests each). The cause was not established; an experiment that would discriminate: capture the downloaded `filename` on failure and rerun the full suite under load repeatedly. None of the previously known flaky tests (`proseDiagnosticsBenchmark`, `search-route`, `annotation-clipboard`, `entity-graph-kind-encoding-e2e`, `noiseWordsSettingsTab`) failed in any of the three runs.
+
+Knip: 446 lines of output, exit 1 (categories: unused files 50, unused dependencies 1, unused devDependencies 4, unlisted dependencies 6, unlisted binaries 4, unused exports 162, unused exported types 184, duplicate exports 14). Knip was not run at the base commit `3cfd7a3f` (no read-only method used), so which findings predate the feature is not measured per finding; the check below is by file name. Findings that mention files added by this feature:
+- Unused file: `frontend/src/store/transport/native-annotations-backend.web-stub.ts` (listed alongside 22 other `native-*-backend.web-stub.ts` files that are also reported).
+- Unused exports: `annotationIdsInSelection`, `ANNOTATION_CLIPBOARD_KEY` (`annotation-clipboard.ts`); `planAnnotationPaste`, `ANNOTATION_PASTE_KEY` (`annotation-paste.ts`); `SetSavedDefaultsResponseSchema` (`lib/api/saved-defaults-http.ts`).
+- Unused exported types: `LeftOutItem` (`SavedDefaultsPanel.tsx`), `SavedDefaultsReadState` (`useSavedDefaults.ts`), `ClipboardOperationKind`, `AnnotationClipboardOptions` (`annotation-clipboard.ts`), `AnnotationPasteOptions`, `AnnotationPastePlan`, `AnnotationPasteInput` (`annotation-paste.ts`), `UpdateAnnotationResult` (`hooks/useAnnotations.ts`).
+- No finding mentions `compile-defaults`, `export-defaults`, `pdf-render`, `native-*-defaults-backend` or `pdf-text`.
+
+FR-8 test: `frontend/tests/unit/compile-annotation-marks.test.ts` exists. Part 2 above records its first run (no annotated-vs-plain difference in cases (a)-(d), Task 10 closed with no code change) and the Task 15 re-run with the mark registered. Run together with the Task 24 file in this task: 2 files, 62 tests passed.
+
+Task 24 reproduction record: `frontend/tests/unit/compile-pdf-browser-build.test.ts` exists, and Part 3 above has its entry. Currently it passes (in the 62 above): it asserts the default server renderer still rejects with "Node specific API" under the browser build, and that `compilePdfCore(fixed, renderPdfInBrowser)` yields a valid PDF whose extracted text equals the server-path baseline.
+
+Which parts landed: Part 1 (compile and export defaults), Part 2 (annotations) and Part 3 (native PDF) all landed per the commits. Task 10 closed with no code change; every other task produced a diff.
+
+### Not verified
+- FR-30 (device font check on Android: build, install, airplane mode, compile a PDF, copy it off the device, record embedded font names and whether the `font-fallback` notice showed) was not run. Nothing here shows that the IBM Plex fonts embed on Android or that the PDF compile works on an Android device or WebView. `pnpm build:native` succeeding shows the static export builds, not that it runs on a device.
+- The cause of the run-3 `native-compile-entry-paths` failure.
+- Per-finding comparison of knip output against the base commit.
