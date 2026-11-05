@@ -192,3 +192,10 @@ Font fallback:
 - Not demonstrated: that a real font load failure occurs on native, or that the toast shows in the real UI on a device. The failure is injected via `Font.register`; the real native fonts are same-origin paths loaded by the WebView and were not exercised. The `lib/api/compile.ts` transport selection (`createTransport`) is bypassed in the toast step.
 
 Not verified: any device or Android WebView, the static-export bundle, FR-30.
+
+### Both PDF compile entry paths under the native transport (Task 28, FR-29)
+
+- Test: `frontend/tests/component/native-compile-entry-paths.test.tsx` (jsdom project), one test per path. Observed: `pnpm exec vitest run` on that file, 2 passed. Each test selects PDF in the real `CompilePreviewModal`, confirms, and the bytes handed to the download seam begin `%PDF-`, pass `checkPdfValidity`, and extract to text containing both resource bodies (AppShell: project menu "Compile Project"; Start Page: Manage > "Package"). No control was added to either path.
+- Native selection: `NEXT_PUBLIC_GETWRITE_RUNTIME=native` via `vi.stubEnv`, so `createTransport` takes its native branch, `resolveCompileTransport` builds `createNativeCompileTransport()` with no injected `fs`, and `compilePdfCore` runs with `renderPdfInBrowser`. The body text could only have come from the fake device filesystem, so the native backend read it.
+- Mocked: `native-bootstrap` (binds an in-memory fake Capacitor filesystem as the default storage context), `@react-pdf/renderer` (its browser build), `downloadFile` (bytes captured, native file writer not run), the TipTap editor component (AppShell test). The compile API was not mocked, unlike the Task 26 toast step.
+- Not shown: a real Android WebView or device, the real `@capacitor/filesystem`, fonts on a device (FR-30), the native file-save step. The test was written after the fix (the behaviour already existed), so there was no failing first run against unfixed code; an earlier run in this task failed only on test-harness issues (menu label, jsdom Blob read, per-call fake filesystem), not on product code.
