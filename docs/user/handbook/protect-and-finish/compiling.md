@@ -1,7 +1,7 @@
 ---
 title: Compiling Projects
 order: 210
-summary: Compile a project, or only the documents tied to one entity, into a single txt, md, pdf or docx file.
+summary: Compile a project, or only the documents tied to one entity, into a single txt, md, pdf or docx file, export documents, and save which resources a dialog leaves out.
 ---
 
 # Compiling Projects
@@ -37,6 +37,31 @@ You can compile only the documents tied to one [entity](../story/metadata.md), s
 
 The dialog lists that same set of resources in resource-tree order, and you can't add or remove any. Only documents go into the file. An image in the set is listed and marked **excluded — not a text resource**.
 
+## Save a project default
+
+If you usually leave the same resources out of a compile, you can save that choice for the project. Each project has one saved default for the **Compile Project** dialog and one for the **Export** dialog. They are separate: saving one does not change the other.
+
+- **Open the dialog.** The resources you saved as left out start unticked. The dialog says how many resources the project default leaves out and lists them by name.
+- **Override it for one run.** Tick a left-out resource in the list to include it this time. Nothing is saved, and the next time you open the dialog it is left out again.
+- **Save as default.** Untick the resources you want left out, then choose **Save as default**. The dialog confirms with "Saved." and the unticked resources are now the project's default.
+- **Clear default.** Choose **Clear default** and confirm. Every resource is selected the next time you open the dialog. Nothing is deleted from your project.
+
+A saved default only records which resources are left out. A resource you add to the project later is selected as usual. A resource that has since been deleted drops out of the default without a message.
+
+If GetWrite can't read the saved default when the dialog opens, the dialog says so, selects every resource and offers **Retry**. You can still compile or export, and **Save as default** stays off until the read works. If a save fails, the dialog shows the reason and the default stays as it was.
+
+The **Compile Entity Resources** dialog has no saved default.
+
+### From the Start Page
+
+Choosing **Package** on the [Start Page](../organize/start-page.md) applies the project's saved compile default for a normal project. A project that is encrypted, locked or can't be opened (the **Cannot be opened** card) has no saved default there: its Start Page dialog selects every resource and shows no **Save as default** control. Open the project and compile from inside it to use a saved default.
+
+## Export a document or folder
+
+To export, open a document's or folder's menu in the [resource tree](../organize/resource-tree.md) and choose **Export**. The **Export** dialog lists the resources to export, with a tick box for each, and a **Format** choice of plain text (.txt) or Markdown (.md). It has the same **Save as default**, **Clear default** and override controls as the compile dialog, with its own saved default.
+
 ## Good to know
 
 - In the **Compile Project** dialog, a ticked image counts towards "resource(s) selected" and **Compile (n)**, but its content is not in the file. Only documents are compiled.
+- [Annotations](../write/annotations.md) are not part of a compiled or exported file, in any format.
+- On Android, PDF compile uses an in-app render path. This has not been checked on a device yet, so treat a PDF made on Android as unconfirmed.
