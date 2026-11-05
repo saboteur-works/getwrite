@@ -247,6 +247,48 @@ describe("MenuBar", () => {
     );
   });
 
+  it("renders no annotations or add-note control without the annotations prop (image and audio resources, old revisions)", () => {
+    const { editor } = createEditorDouble();
+    render(
+      <Provider store={makeStore()}>
+        <MenuBar editor={editor as never} />
+      </Provider>,
+    );
+    expect(screen.queryByRole("button", { name: "Add note" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Annotations" })).toBeNull();
+  });
+
+  it("renders the add-note control, disabled until there is a selection, when the annotations prop is given", () => {
+    const { editor } = createEditorDouble();
+    const onAdd = vi.fn();
+    const control = {
+      isOpen: false,
+      onToggle: vi.fn(),
+      buttonRef: { current: null },
+      panelId: "p",
+      onAdd,
+    };
+    const { rerender } = render(
+      <Provider store={makeStore()}>
+        <MenuBar
+          editor={editor as never}
+          annotations={{ ...control, canAdd: false }}
+        />
+      </Provider>,
+    );
+    expect(screen.getByRole("button", { name: "Add note" })).toBeDisabled();
+    rerender(
+      <Provider store={makeStore()}>
+        <MenuBar
+          editor={editor as never}
+          annotations={{ ...control, canAdd: true }}
+        />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add note" }));
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps typography inputs wired to the same editor commands", () => {
     const { editor, actions } = createEditorDouble();
 

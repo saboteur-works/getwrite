@@ -39,6 +39,13 @@ export interface AnnotationsTransport {
     annotationId: string,
     body: string,
   ): Promise<Annotation>;
+  /** Replaces the quote only (re-attach); body and createdAt are kept. */
+  reattach(
+    projectId: string,
+    resourceId: string,
+    annotationId: string,
+    quote: string,
+  ): Promise<Annotation>;
   remove(
     projectId: string,
     resourceId: string,
@@ -71,7 +78,7 @@ async function errorMessage(
 }
 
 async function send(
-  method: "POST" | "PUT" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   payload: Record<string, unknown>,
   fallback: string,
 ): Promise<Response> {
@@ -140,6 +147,14 @@ export const httpAnnotationsTransport: AnnotationsTransport = {
     );
     return parseOne(response, "annotations.updateAnnotation");
   },
+  async reattach(projectId, resourceId, annotationId, quote) {
+    const response = await send(
+      "PATCH",
+      { projectId, resourceId, annotationId, quote },
+      "Failed to re-attach the annotation",
+    );
+    return parseOne(response, "annotations.reattachAnnotation");
+  },
   async remove(projectId, resourceId, annotationId) {
     await send(
       "DELETE",
@@ -195,6 +210,21 @@ export async function updateAnnotation(
     resourceId,
     annotationId,
     body,
+  );
+}
+
+/** Replaces an annotation's quote (re-attach); resolves the stored annotation. */
+export async function reattachAnnotation(
+  projectId: string,
+  resourceId: string,
+  annotationId: string,
+  quote: string,
+): Promise<Annotation> {
+  return (await resolveAnnotationsTransport()).reattach(
+    projectId,
+    resourceId,
+    annotationId,
+    quote,
   );
 }
 

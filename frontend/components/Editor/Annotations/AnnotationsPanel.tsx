@@ -30,6 +30,7 @@ import type { AnnotationsHandle } from "../../../src/hooks/useAnnotations";
 import type { Annotation } from "../../../src/lib/models/types";
 import { ANNOTATION_LIMITS } from "../../../src/lib/models/annotation-validation";
 import { setAnnotationHighlight } from "../Extensions/AnnotationHighlightExtension";
+import type { PendingAnnotationAdd } from "./useAnnotationsPanel";
 import {
   annotationIdsAtSelection,
   collectAnnotationRanges,
@@ -43,17 +44,25 @@ export interface AnnotationsPanelProps {
   panelId: string;
   /** Called when the writer closes the panel; the host returns focus. */
   onClose: () => void;
+  /** The selection captured by the toolbar's "Add note"; shows the add form. */
+  pendingAdd?: PendingAnnotationAdd | null;
+  /** Called when the add form ends (saved or cancelled). */
+  onAddDone?: () => void;
 }
 
 interface DocView {
   ranges: ReadonlyMap<string, AnnotationRange>;
   caretIds: readonly string[];
+  /** The current selection; `from === to` when empty. */
+  selection: { from: number; to: number };
 }
 
 function readDocView(editor: Editor): DocView {
+  const { from, to } = editor.state.selection;
   return {
     ranges: collectAnnotationRanges(editor.state.doc),
     caretIds: annotationIdsAtSelection(editor.state),
+    selection: { from, to },
   };
 }
 
@@ -72,7 +81,10 @@ function useDocView(editor: Editor): DocView {
           });
         const isSameCaret =
           prev.caretIds.join("\u0000") === next.caretIds.join("\u0000");
-        return isSameRanges && isSameCaret ? prev : next;
+        const isSameSelection =
+          prev.selection.from === next.selection.from &&
+          prev.selection.to === next.selection.to;
+        return isSameRanges && isSameCaret && isSameSelection ? prev : next;
       });
     };
     update();
@@ -91,6 +103,8 @@ export default function AnnotationsPanel({
   handle,
   panelId,
   onClose,
+  pendingAdd = null,
+  onAddDone,
 }: AnnotationsPanelProps): JSX.Element {
   const headingId = `${panelId}-heading`;
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -106,9 +120,17 @@ export default function AnnotationsPanel({
   const [isBusy, setIsBusy] = React.useState(false);
   const focusEditFor = React.useRef<string | null>(null);
 
+  const [addDraft, setAddDraft] = React.useState("");
+
   React.useEffect(() => {
-    headingRef.current?.focus();
+    // The add form focuses its own textarea when it opened the panel.
+    if (pendingAdd === null) headingRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on open only
   }, []);
+
+  React.useEffect(() => {
+    setAddDraft("");
+  }, [pendingAdd]);
 
   React.useEffect(() => {
     if (editingId === null && focusEditFor.current !== null) {
@@ -184,6 +206,100 @@ export default function AnnotationsPanel({
     }
     setActionError(result.ok ? null : result.message);
     headingRef.current?.focus();
+  };
+
+  const saveAdd = async (): Promise<void> => {
+    if (pendingAdd === null) return;
+    const { from, to, quote } = pendingAdd;
+    if (
+      to > editor.state.doc.content.size ||
+      editor.state.doc.textBetween(from, to, "\n") !== quote
+    ) {
+      setActionError(
+        "The selected text changed. Select it again and choose Add note.",
+      );
+      return;
+    }
+    setIsBusy(true);
+    const result = await handle.add(addDraft, { from, to });
+    setIsBusy(false);
+    if (result.ok) {
+      setActionError(null);
+      onAddDone?.();
+      headingRef.current?.focus();
+    } else if (result.stage === "mark") {
+      // The note is stored and listed as detached; the form has done its job.
+      setActionError(result.message);
+      onAddDone?.();
+    } else {
+      setActionError(result.message);
+    }
+  };
+
+  const reattach = async (annotation: Annotation): Promise<void> => {
+    const { from, to } = docView.selection;
+    setIsBusy(true);
+    const result = await handle.reattach(annotation.id, { from, to });
+    setIsBusy(false);
+    setActionError(result.ok ? null : result.message);
+    if (result.ok) headingRef.current?.focus();
+  };
+
+  const renderAddForm = (add: PendingAnnotationAdd): JSX.Element => {
+    const isQuoteTooLong = add.quote.length > ANNOTATION_LIMITS.quoteMax;
+    const inputId = `${panelId}-add-input`;
+    return (
+      <div
+        data-testid="annotation-add-form"
+        className="mb-4 flex flex-col gap-2 border border-gw-border p-3"
+      >
+        <p className="text-gw-secondary text-gw-small">
+          On: <q>{add.quote}</q>
+        </p>
+        {isQuoteTooLong ? (
+          <p className="text-gw-small text-gw-primary">
+            The selected passage is too long to attach a note to (at most{" "}
+            {ANNOTATION_LIMITS.quoteMax} characters). Select less text.
+          </p>
+        ) : null}
+        <label htmlFor={inputId} className="text-gw-small text-gw-primary">
+          Note text
+        </label>
+        <Textarea
+          id={inputId}
+          value={addDraft}
+          maxLength={ANNOTATION_LIMITS.bodyMax}
+          onChange={(e) => setAddDraft(e.target.value)}
+          autoFocus
+        />
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={
+              isBusy ||
+              isQuoteTooLong ||
+              addDraft.length < ANNOTATION_LIMITS.bodyMin ||
+              addDraft.length > ANNOTATION_LIMITS.bodyMax
+            }
+            onClick={() => void saveAdd()}
+          >
+            Save note
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setActionError(null);
+              onAddDone?.();
+              headingRef.current?.focus();
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const renderItem = (annotation: Annotation, isDetached: boolean) => {
@@ -262,7 +378,20 @@ export default function AnnotationsPanel({
               {annotation.body}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {isDetached ? null : (
+              {isDetached ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  aria-describedby={bodyLabelId}
+                  aria-label="Re-attach note to selected text"
+                  disabled={
+                    isBusy || docView.selection.from === docView.selection.to
+                  }
+                  onClick={() => void reattach(annotation)}
+                >
+                  Re-attach
+                </Button>
+              ) : (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -335,6 +464,8 @@ export default function AnnotationsPanel({
           <X size={16} aria-hidden="true" />
         </Button>
       </div>
+
+      {pendingAdd ? renderAddForm(pendingAdd) : null}
 
       {actionError ? (
         <p role="alert" className="mb-3 text-gw-small text-gw-primary">

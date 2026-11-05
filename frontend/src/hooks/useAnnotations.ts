@@ -6,14 +6,18 @@ import {
   addAnnotation,
   deleteAnnotation,
   listAnnotations,
+  reattachAnnotation,
   updateAnnotation,
 } from "../lib/api/annotations";
 import {
   addAnnotationFlow,
+  reattachAnnotationFlow,
   removeAnnotationFlow,
   type AddAnnotationResult,
   type AnnotationFlowApi,
   type AnnotationRange,
+  type AnnotationReattachApi,
+  type ReattachAnnotationResult,
   type RemoveAnnotationResult,
 } from "../lib/annotation-flows";
 import { isLockedAccessError } from "../lib/models/locked-access";
@@ -30,6 +34,8 @@ import type { Annotation } from "../lib/models/types";
  * - `loading`, then `ok` with the list (`[]` means none), or `failed` with
  *   the error message. A failed read is never `ok` with `[]`; `retry` reads
  *   again. A locked-access error is rethrown during render.
+ * - Re-attach (FR-16) is an add-like write: the new quote is stored first, the
+ *   same-id mark is applied after.
  * - Writes are non-optimistic: the list changes only after the transport
  *   resolved. After a delete whose body write succeeded the annotation leaves
  *   the list even if the mark step failed (the body is gone). After an add
@@ -54,10 +60,16 @@ export interface AnnotationsHandle {
     annotationId: string,
     body: string,
   ) => Promise<UpdateAnnotationResult>;
+  /** Re-attach a detached annotation to `range` (same id, new quote). */
+  reattach: (
+    annotationId: string,
+    range: AnnotationRange,
+  ) => Promise<ReattachAnnotationResult>;
   remove: (annotationId: string) => Promise<RemoveAnnotationResult>;
 }
 
 const API: AnnotationFlowApi = { add: addAnnotation, remove: deleteAnnotation };
+const REATTACH_API: AnnotationReattachApi = { reattach: reattachAnnotation };
 
 type Settled =
   | { key: string; state: AnnotationsState }
@@ -177,6 +189,30 @@ export function useAnnotations(
     [isReading, projectId, resourceId, change],
   );
 
+  const reattach = useCallback(
+    async (annotationId: string, range: AnnotationRange) => {
+      if (!isReading || !editor)
+        return {
+          ok: false,
+          stage: "write",
+          message: "Annotations are not available here.",
+        } satisfies ReattachAnnotationResult;
+      const result = await reattachAnnotationFlow(REATTACH_API, {
+        editor,
+        projectId,
+        resourceId,
+        annotationId,
+        range,
+      });
+      if (result.ok || result.stage === "mark") {
+        const stored = result.annotation;
+        change((list) => list.map((a) => (a.id === stored.id ? stored : a)));
+      }
+      return result;
+    },
+    [isReading, editor, projectId, resourceId, change],
+  );
+
   const remove = useCallback(
     async (annotationId: string) => {
       if (!isReading)
@@ -203,5 +239,5 @@ export function useAnnotations(
     if ("locked" in settled) throw settled.locked;
     state = settled.state;
   }
-  return { state, retry, add, update, remove };
+  return { state, retry, add, update, reattach, remove };
 }

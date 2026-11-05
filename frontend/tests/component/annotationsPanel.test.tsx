@@ -7,6 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import React from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Editor } from "@tiptap/core";
 import { setAnnotationHighlight } from "../../components/Editor/Extensions/AnnotationHighlightExtension";
@@ -367,5 +369,223 @@ describe("annotation-only editor updates (FR-15)", () => {
     const kinds = captureUpdates(e);
     e.commands.insertContentAt(2, "x");
     expect(kinds).toEqual([false]);
+  });
+});
+
+/** Positions in the harness doc: "hello" 1-6, "world" 7-12, "and" 13-16. */
+function select(e: Editor, from: number, to: number): void {
+  act(() => {
+    e.view.dispatch(
+      e.state.tr.setSelection(TextSelection.create(e.state.doc, from, to)),
+    );
+  });
+}
+
+describe("annotation add control (Task 18, FR-12, FR-23 editor half)", () => {
+  it("adds an annotation for a non-empty selection, with the selected text as the quote", async () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [] });
+    vi.mocked(handle.add).mockResolvedValue({
+      ok: true,
+      annotation: annotation("n", "my note", "and"),
+    });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    fireEvent.click(screen.getByRole("button", { name: "Add note" }));
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    expect(panel).toHaveTextContent("and");
+    expect(within(panel).getByText("and").tagName).toBe("Q");
+    fireEvent.change(within(panel).getByLabelText("Note text"), {
+      target: { value: "my note" },
+    });
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("button", { name: "Save note" }));
+    });
+    expect(handle.add).toHaveBeenCalledWith("my note", { from: 13, to: 16 });
+    expect(within(panel).queryByLabelText("Note text")).toBeNull();
+  });
+
+  it("offers no add for an empty selection", () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [] });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 14, 14);
+    const add = screen.getByRole("button", { name: "Add note" });
+    expect(add).toBeDisabled();
+    fireEvent.click(add);
+    expect(screen.queryByRole("region", { name: "Annotations" })).toBeNull();
+    expect(handle.add).not.toHaveBeenCalled();
+    select(e, 13, 16);
+    expect(screen.getByRole("button", { name: "Add note" })).toBeEnabled();
+    select(e, 16, 16);
+    expect(screen.getByRole("button", { name: "Add note" })).toBeDisabled();
+  });
+
+  it("refuses to save, without a write, when the selected text changed after Add was chosen", async () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [] });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    fireEvent.click(screen.getByRole("button", { name: "Add note" }));
+    act(() => {
+      e.view.dispatch(e.state.tr.insertText("XX", 1, 1));
+    });
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    fireEvent.change(within(panel).getByLabelText("Note text"), {
+      target: { value: "late" },
+    });
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("button", { name: "Save note" }));
+    });
+    expect(handle.add).not.toHaveBeenCalled();
+    expect(within(panel).getByRole("alert")).toHaveTextContent("changed");
+    expect(within(panel).getByLabelText("Note text")).toBeInTheDocument();
+  });
+
+  it("keeps the form and shows the message when the write fails", async () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [] });
+    vi.mocked(handle.add).mockResolvedValue({
+      ok: false,
+      stage: "write",
+      message: "Disk is full.",
+    });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    fireEvent.click(screen.getByRole("button", { name: "Add note" }));
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    fireEvent.change(within(panel).getByLabelText("Note text"), {
+      target: { value: "x" },
+    });
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("button", { name: "Save note" }));
+    });
+    expect(within(panel).getByRole("alert")).toHaveTextContent("Disk is full.");
+    expect(within(panel).getByLabelText("Note text")).toBeInTheDocument();
+  });
+
+  it("disables Save for an over-long selection instead of attempting a refused write", () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [] });
+    render(<Harness editor={e} handle={handle} />);
+    act(() => {
+      e.commands.insertContentAt(e.state.doc.content.size - 1, "z".repeat(600));
+    });
+    select(e, 22, 22 + 600);
+    fireEvent.click(screen.getByRole("button", { name: "Add note" }));
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    fireEvent.change(within(panel).getByLabelText("Note text"), {
+      target: { value: "x" },
+    });
+    expect(
+      within(panel).getByRole("button", { name: "Save note" }),
+    ).toBeDisabled();
+    expect(panel).toHaveTextContent("too long");
+  });
+
+  it("is operable by keyboard alone and the controls have accessible names", async () => {
+    const user = userEvent.setup();
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [] });
+    vi.mocked(handle.add).mockResolvedValue({
+      ok: true,
+      annotation: annotation("n", "kb", "and"),
+    });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    const add = screen.getByRole("button", { name: "Add note" });
+    expect(add.tagName).toBe("BUTTON");
+    act(() => add.focus());
+    await user.keyboard("{Enter}");
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    const input = within(panel).getByLabelText("Note text");
+    expect(document.activeElement).toBe(input);
+    await user.keyboard("kb");
+    await user.tab();
+    expect(document.activeElement).toBe(
+      within(panel).getByRole("button", { name: "Save note" }),
+    );
+    await user.keyboard("{Enter}");
+    expect(handle.add).toHaveBeenCalledWith("kb", { from: 13, to: 16 });
+  });
+});
+
+describe("annotation re-attach (Task 18, FR-16)", () => {
+  it("re-attaches a detached note to the current selection through the handle", async () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [D] });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    const panel = openPanel();
+    const button = within(panel).getByRole("button", {
+      name: "Re-attach note to selected text",
+    });
+    expect(button).toBeEnabled();
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(handle.reattach).toHaveBeenCalledWith("d", { from: 13, to: 16 });
+  });
+
+  it("is disabled for an empty selection and absent on an attached note", () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [A, D] });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 14, 14);
+    const panel = openPanel();
+    const buttons = within(panel).getAllByRole("button", {
+      name: "Re-attach note to selected text",
+    });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toBeDisabled();
+    const attachedItem = within(panel)
+      .getAllByTestId("annotation-item")
+      .find(
+        (li: HTMLElement) => li.dataset.detached === "false",
+      ) as HTMLElement;
+    expect(
+      within(attachedItem).queryByRole("button", { name: /Re-attach/ }),
+    ).toBeNull();
+    select(e, 13, 16);
+    expect(buttons[0]).toBeEnabled();
+  });
+
+  it("shows a failed re-attach", async () => {
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [D] });
+    vi.mocked(handle.reattach).mockResolvedValue({
+      ok: false,
+      stage: "write",
+      message: "Refused: quote too long",
+    });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    const panel = openPanel();
+    await act(async () => {
+      fireEvent.click(
+        within(panel).getByRole("button", {
+          name: "Re-attach note to selected text",
+        }),
+      );
+    });
+    expect(within(panel).getByRole("alert")).toHaveTextContent(
+      "Refused: quote too long",
+    );
+  });
+
+  it("is keyboard operable (a native button reached by Tab and run with Enter)", async () => {
+    const user = userEvent.setup();
+    const e = editor();
+    const handle = makeHandle({ status: "ok", annotations: [D] });
+    render(<Harness editor={e} handle={handle} />);
+    select(e, 13, 16);
+    const panel = openPanel();
+    const button = within(panel).getByRole("button", {
+      name: "Re-attach note to selected text",
+    });
+    expect(button.tagName).toBe("BUTTON");
+    act(() => button.focus());
+    await user.keyboard("{Enter}");
+    expect(handle.reattach).toHaveBeenCalledWith("d", { from: 13, to: 16 });
   });
 });

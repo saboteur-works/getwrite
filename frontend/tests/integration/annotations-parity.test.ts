@@ -20,7 +20,7 @@ vi.mock("../../src/lib/models/annotations-core", async (importActual) => {
   return { ...actual, listAnnotationsCore: vi.fn(actual.listAnnotationsCore) };
 });
 
-import { DELETE, GET, POST, PUT } from "../../app/api/annotations/route";
+import { DELETE, GET, PATCH, POST, PUT } from "../../app/api/annotations/route";
 import { httpAnnotationsTransport } from "../../src/lib/api/annotations";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
 import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
@@ -137,6 +137,7 @@ function wireFetch(): void {
       GET,
       POST,
       PUT,
+      PATCH,
       DELETE,
     };
     return handlers[method](
@@ -328,6 +329,15 @@ describe("annotations: HTTP client vs native backend", () => {
         run: (t, s) => t.update(s.projectId, s.textId, "x", "b"),
       },
       {
+        name: "bad reattach id",
+        run: (t, s) => t.reattach(s.projectId, s.textId, "x", "q"),
+      },
+      {
+        name: "over-long reattach quote",
+        run: (t, s) =>
+          t.reattach(s.projectId, s.textId, generateUUID(), "q".repeat(501)),
+      },
+      {
         name: "bad delete id",
         run: (t, s) => t.remove(s.projectId, s.textId, "x"),
       },
@@ -338,6 +348,55 @@ describe("annotations: HTTP client vs native backend", () => {
       expect(viaHttp, input.name).not.toBe("NO ERROR");
       expect(viaNative, input.name).toBe(viaHttp);
     }
+  });
+
+  it("re-attaches (quote only) identically on both and through the PATCH route", async () => {
+    const http = await seedHttp();
+    wireFetch();
+    const native = await seedNative();
+    const backend = createNativeAnnotationsTransport({
+      fs: native.nativeFs,
+      projectsDir: NATIVE_DIR,
+    });
+    const input = { id: generateUUID(), body: "n", quote: "old" };
+    await httpAnnotationsTransport.add(http.projectId, http.textId, input);
+    await backend.add(native.projectId, native.textId, input);
+    const viaHttp = await httpAnnotationsTransport.reattach(
+      http.projectId,
+      http.textId,
+      input.id,
+      "new",
+    );
+    const viaNative = await backend.reattach(
+      native.projectId,
+      native.textId,
+      input.id,
+      "new",
+    );
+    expect(viaHttp).toMatchObject({ id: input.id, body: "n", quote: "new" });
+    expect({ ...viaNative, createdAt: "", updatedAt: "" }).toEqual({
+      ...viaHttp,
+      createdAt: "",
+      updatedAt: "",
+    });
+    const missing = await PATCH(
+      request("PATCH", {
+        projectId: http.projectId,
+        resourceId: http.textId,
+        annotationId: generateUUID(),
+        quote: "q",
+      }),
+    );
+    expect(missing.status).toBe(404);
+    const bad = await PATCH(
+      request("PATCH", {
+        projectId: http.projectId,
+        resourceId: http.textId,
+        annotationId: input.id,
+        quote: 7,
+      }),
+    );
+    expect(bad.status).toBe(400);
   });
 
   it("refuses an invalid project id on both (the route's uniform 400 wording differs from the core's by design)", async () => {

@@ -12,7 +12,11 @@ import {
   setProject,
   setSelectedProjectId,
 } from "../../src/store/projectsSlice";
-import { createTextResource } from "../../src/lib/models/resource";
+import {
+  createAudioResource,
+  createImageResource,
+  createTextResource,
+} from "../../src/lib/models/resource";
 import type { RevisionEntry } from "../../src/store/revisionsSlice";
 import { toRevisionEntry } from "../../src/store/revision-normalization";
 import fs from "node:fs/promises";
@@ -286,6 +290,43 @@ describe("EditView autosave integration", () => {
     });
     expect(onUnsavedChange).toHaveBeenCalledWith(true);
   });
+
+  for (const kind of ["image", "audio"] as const) {
+    it(`passes no annotation resource id for an ${kind} resource, so no annotations or add control is rendered (FR-23 absence)`, async () => {
+      const store = makeStore();
+      const resource =
+        kind === "image"
+          ? createImageResource({ name: "Pic" })
+          : createAudioResource({ name: "Clip" });
+      store.dispatch(
+        setProject({
+          id: "project-media",
+          name: "Media Project",
+          rootPath: "/tmp/project-media",
+          resources: [{ id: resource.id, name: resource.name }],
+        }),
+      );
+      store.dispatch(setSelectedProjectId("project-media"));
+      store.dispatch(setResources([resource]));
+      store.dispatch(setSelectedResourceId(resource.id));
+      seedRevisions(
+        store,
+        resource.id,
+        [createRevisionEntry(resource.id)],
+        "rev-canonical",
+      );
+      render(
+        <Provider store={store}>
+          <EditView initialContent="" />
+        </Provider>,
+      );
+      for (const editor of screen.queryAllByTestId("tiptap-mock")) {
+        expect(editor.getAttribute("data-annotation-resource")).toBe("");
+      }
+      expect(screen.queryByRole("button", { name: "Add note" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Annotations" })).toBeNull();
+    });
+  }
 
   it("sends the project directory basename as projectId, not StoredProject.id, when autosaving", async () => {
     const store = makeStore();

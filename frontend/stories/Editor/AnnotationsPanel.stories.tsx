@@ -57,6 +57,7 @@ function PanelStory({ state }: { state: AnnotationsState }): JSX.Element {
     retry: fn(),
     add: fn(),
     update: fn().mockResolvedValue({ ok: true }),
+    reattach: fn().mockResolvedValue({ ok: true }),
     remove: fn().mockResolvedValue({ ok: true }),
   };
   return (

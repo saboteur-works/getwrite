@@ -9,6 +9,9 @@
  * - add: sidecar first, mark only after that write succeeded. A failed write
  *   applies no mark. If the mark cannot then be applied, the stored body is a
  *   detached annotation (FR-17, FR-18).
+ * - reattach: new quote written first, then the mark with the SAME id is
+ *   applied to the selection. A failed write applies no mark; if only the mark
+ *   step fails the annotation stays detached with its new quote.
  * - remove: body first, then the mark. If the mark step fails, the leftover is
  *   a mark with no body, which is inert.
  *
@@ -38,6 +41,16 @@ export interface AnnotationFlowApi {
   ): Promise<void>;
 }
 
+/** The one transport call the re-attach flow needs. */
+export interface AnnotationReattachApi {
+  reattach(
+    projectId: string,
+    resourceId: string,
+    annotationId: string,
+    quote: string,
+  ): Promise<Annotation>;
+}
+
 export interface AnnotationRange {
   from: number;
   to: number;
@@ -65,6 +78,21 @@ export type AddAnnotationResult =
       /** The stored annotation, now detached. */
       annotation: Annotation;
     };
+
+export interface ReattachAnnotationInput {
+  editor: Editor;
+  projectId: string;
+  resourceId: string;
+  annotationId: string;
+  /** The selection captured when the writer chose Re-attach. */
+  range: AnnotationRange;
+}
+
+export type ReattachAnnotationResult =
+  | { ok: true; annotation: Annotation }
+  | { ok: false; stage: "empty-selection"; message: string }
+  | { ok: false; stage: "write"; message: string }
+  | { ok: false; stage: "mark"; message: string; annotation: Annotation };
 
 export interface RemoveAnnotationInput {
   editor: Editor | null;
@@ -140,6 +168,46 @@ export async function addAnnotationFlow(
       message: messageOf(
         error,
         "The note was saved but could not be attached.",
+      ),
+      annotation,
+    };
+  }
+  return { ok: true, annotation };
+}
+
+/** Re-attaches a detached annotation: new quote first, then the same-id mark. */
+export async function reattachAnnotationFlow(
+  api: AnnotationReattachApi,
+  input: ReattachAnnotationInput,
+): Promise<ReattachAnnotationResult> {
+  const { editor, projectId, resourceId, annotationId, range } = input;
+  const quote = quoteAt(editor, range);
+  if (range.to <= range.from || quote.length === 0) {
+    return {
+      ok: false,
+      stage: "empty-selection",
+      message: "Select some text to re-attach the note.",
+    };
+  }
+  let annotation: Annotation;
+  try {
+    annotation = await api.reattach(projectId, resourceId, annotationId, quote);
+  } catch (error) {
+    return {
+      ok: false,
+      stage: "write",
+      message: messageOf(error, "The note could not be re-attached."),
+    };
+  }
+  try {
+    applyMark(editor, range, annotationId, quote);
+  } catch (error) {
+    return {
+      ok: false,
+      stage: "mark",
+      message: messageOf(
+        error,
+        "The note was updated but could not be attached.",
       ),
       annotation,
     };

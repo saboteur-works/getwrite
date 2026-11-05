@@ -25,6 +25,7 @@ import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import {
   validateAnnotationBody,
+  validateAnnotationQuote,
   validateNewAnnotation,
   type NewAnnotationInput,
 } from "./annotation-validation";
@@ -204,6 +205,36 @@ export async function updateAnnotationCore(
     const index = list.findIndex((a) => a.id === annotationId);
     if (index === -1) throw new AnnotationNotFoundError();
     stored = { ...list[index]!, body: checkedBody.value, updatedAt };
+    return list.map((a, i) => (i === index ? (stored as Annotation) : a));
+  });
+  return stored as Annotation;
+}
+
+/**
+ * Re-attach: replace an annotation's `quote` with the newly selected text and
+ * set `updatedAt`. The body and `createdAt` are kept and the original quote is
+ * not retained (FR-16). The document's mark is applied by the editor flow.
+ *
+ * @throws as {@link updateAnnotationCore}.
+ */
+export async function reattachAnnotationCore(
+  projectId: string,
+  resourceId: string,
+  annotationId: string,
+  quote: unknown,
+): Promise<Annotation> {
+  requireResourceId(resourceId);
+  const checkedQuote = validateAnnotationQuote(quote);
+  if (!checkedQuote.ok) throw new InvalidAnnotationError(checkedQuote.message);
+  if (!UuidSchema.safeParse(annotationId).success) {
+    throw new InvalidAnnotationError("An annotation id must be a valid id.");
+  }
+  const updatedAt = new Date().toISOString();
+  let stored: Annotation | undefined;
+  await mutateAnnotations(projectId, resourceId, (list) => {
+    const index = list.findIndex((a) => a.id === annotationId);
+    if (index === -1) throw new AnnotationNotFoundError();
+    stored = { ...list[index]!, quote: checkedQuote.value, updatedAt };
     return list.map((a, i) => (i === index ? (stored as Annotation) : a));
   });
   return stored as Annotation;

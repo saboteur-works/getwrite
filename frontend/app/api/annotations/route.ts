@@ -1,13 +1,15 @@
 /**
  * @module app/api/annotations/route
  *
- * Annotation route family (Feature 101, FR-22, FR-11, FR-32). All four
+ * Annotation route family (Feature 101, FR-22, FR-11, FR-32). All five
  * methods call `annotations-core.ts`, so the native backend refuses the same
  * input with the same message.
  *
  * - `GET    ?projectId=&resourceId=` list the resource's annotations.
  * - `POST   { projectId, resourceId, annotation: { id, body, quote } }`
  * - `PUT    { projectId, resourceId, annotationId, body }`
+ * - `PATCH  { projectId, resourceId, annotationId, quote }` re-attach: replaces
+ *   the quote only (FR-16).
  * - `DELETE { projectId, resourceId, annotationId }`
  *
  * Invalid project id, resource id or body, and a non-text resource, map to
@@ -28,6 +30,7 @@ import {
   InvalidAnnotationResourceIdError,
   InvalidProjectIdCoreError,
   listAnnotationsCore,
+  reattachAnnotationCore,
   updateAnnotationCore,
 } from "../../../src/lib/models/annotations-core";
 import { withStorageContext } from "../_tenant/with-storage-context";
@@ -129,6 +132,22 @@ async function handlePut(req: NextRequest): Promise<Response> {
   }
 }
 
+async function handlePatch(req: NextRequest): Promise<Response> {
+  const parsed = await readBody(req);
+  if (parsed instanceof Response) return parsed;
+  try {
+    const annotation = await reattachAnnotationCore(
+      parsed.projectId,
+      parsed.resourceId,
+      annotationIdOf(parsed.fields),
+      parsed.fields.quote,
+    );
+    return NextResponse.json({ annotation }, { status: 200 });
+  } catch (error) {
+    return mapCoreError(error);
+  }
+}
+
 async function handleDelete(req: NextRequest): Promise<Response> {
   const parsed = await readBody(req);
   if (parsed instanceof Response) return parsed;
@@ -147,6 +166,7 @@ async function handleDelete(req: NextRequest): Promise<Response> {
 export const GET = withStorageContext(handleGet);
 export const POST = withStorageContext(handlePost);
 export const PUT = withStorageContext(handlePut);
+export const PATCH = withStorageContext(handlePatch);
 export const DELETE = withStorageContext(handleDelete);
 
 export const dynamic = "force-dynamic";

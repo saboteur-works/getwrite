@@ -55,6 +55,7 @@ import {
   addAnnotationCore,
   deleteAnnotationCore,
   listAnnotationsCore,
+  reattachAnnotationCore,
   updateAnnotationCore,
   AnnotationNotFoundError,
   AnnotationResourceNotFoundError,
@@ -204,6 +205,49 @@ describe("annotation core, add / update / delete", () => {
     await expect(
       addAnnotationCore(projectId, resourceId, newInput()),
     ).rejects.toThrow("more than 500");
+  });
+});
+
+describe("annotation core, reattach (Task 18, FR-16)", () => {
+  it("replaces quote and bumps updatedAt; body, createdAt and the original quote are not kept", async () => {
+    const input = newInput({ quote: "quick brown" });
+    const added = await addAnnotationCore(projectId, resourceId, input);
+    await new Promise((r) => setTimeout(r, 5));
+    const moved = await reattachAnnotationCore(
+      projectId,
+      resourceId,
+      input.id,
+      "lazy dog",
+    );
+    expect(moved).toEqual({
+      ...added,
+      quote: "lazy dog",
+      updatedAt: moved.updatedAt,
+    });
+    expect(moved.updatedAt > added.updatedAt).toBe(true);
+    expect((await readStored()).annotations).toEqual([moved]);
+    expect(JSON.stringify(await readStored())).not.toContain("quick brown");
+  });
+
+  it("refuses an unknown id, a bad id, an over-long or non-string quote before any write", async () => {
+    const input = newInput();
+    await addAnnotationCore(projectId, resourceId, input);
+    const before = await sidecarBytes();
+    vi.mocked(mutateSidecar).mockClear();
+    await expect(
+      reattachAnnotationCore(projectId, resourceId, generateUUID(), "q"),
+    ).rejects.toBeInstanceOf(AnnotationNotFoundError);
+    for (const [id, quote] of [
+      ["x", "q"],
+      [input.id, "q".repeat(501)],
+      [input.id, 5],
+    ] as const) {
+      await expect(
+        reattachAnnotationCore(projectId, resourceId, id, quote),
+      ).rejects.toBeInstanceOf(InvalidAnnotationError);
+    }
+    expect(mutateSidecar).toHaveBeenCalledTimes(1);
+    expect(await sidecarBytes()).toBe(before);
   });
 });
 

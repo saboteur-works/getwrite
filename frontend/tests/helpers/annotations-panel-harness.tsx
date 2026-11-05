@@ -65,6 +65,7 @@ export function makeHandle(state: AnnotationsState): AnnotationsHandle {
     retry: vi.fn(),
     add: vi.fn(),
     update: vi.fn().mockResolvedValue({ ok: true }),
+    reattach: vi.fn().mockResolvedValue({ ok: true }),
     remove: vi.fn().mockResolvedValue({ ok: true }),
   };
 }
@@ -76,7 +77,7 @@ export function Harness({
   editor: Editor;
   handle: AnnotationsHandle;
 }): JSX.Element {
-  const panel = useAnnotationsPanel("resource-1");
+  const panel = useAnnotationsPanel("resource-1", editor);
   return (
     <div>
       <AnnotationsToolbarButton {...panel.control} />
@@ -86,6 +87,8 @@ export function Harness({
           handle={handle}
           panelId={ANNOTATIONS_PANEL_ID}
           onClose={panel.close}
+          pendingAdd={panel.pendingAdd}
+          onAddDone={panel.clearAdd}
         />
       ) : null}
     </div>

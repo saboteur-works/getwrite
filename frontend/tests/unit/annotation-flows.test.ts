@@ -12,6 +12,7 @@ import { baseSchemaExtensions } from "../../components/Editor/editorExtensions";
 import {
   ANNOTATION_TRANSACTION_META,
   addAnnotationFlow,
+  reattachAnnotationFlow,
   removeAnnotationFlow,
   type AnnotationFlowApi,
 } from "../../src/lib/annotation-flows";
@@ -330,5 +331,83 @@ describe("removeAnnotationFlow", () => {
     });
     expect(result).toEqual({ ok: true });
     expect(editor.getJSON()).toEqual(before);
+  });
+});
+
+describe("reattachAnnotationFlow", () => {
+  it("writes the new quote first, then applies the mark with the same id to the selection", async () => {
+    const editor = mount(plain("hello brave world"));
+    const before = snapshot(editor);
+    const order: string[] = [];
+    const api = {
+      reattach: vi.fn(async () => {
+        order.push("write");
+        expect(markedText(editor, ID)).toBe("");
+        return stored(ID, "note", "brave");
+      }),
+    };
+    const result = await reattachAnnotationFlow(api, {
+      editor,
+      projectId: "p",
+      resourceId: "r",
+      annotationId: ID,
+      range: { from: 7, to: 12 },
+    });
+    expect(result).toEqual({
+      ok: true,
+      annotation: stored(ID, "note", "brave"),
+    });
+    expect(api.reattach).toHaveBeenCalledWith("p", "r", ID, "brave");
+    expect(order).toEqual(["write"]);
+    expect(markedText(editor, ID)).toBe("brave");
+    expect(snapshot(editor)).toEqual(before);
+  });
+
+  it("refuses an empty range without any write", async () => {
+    const editor = mount(plain("hello"));
+    const api = { reattach: vi.fn() };
+    const result = await reattachAnnotationFlow(api, {
+      editor,
+      projectId: "p",
+      resourceId: "r",
+      annotationId: ID,
+      range: { from: 3, to: 3 },
+    });
+    expect(result.ok === false && result.stage).toBe("empty-selection");
+    expect(api.reattach).not.toHaveBeenCalled();
+  });
+
+  it("a failed write applies no mark and surfaces the message", async () => {
+    const editor = mount(plain("hello brave world"));
+    const before = editor.getJSON();
+    const api = { reattach: vi.fn().mockRejectedValue(new Error("Locked.")) };
+    const result = await reattachAnnotationFlow(api, {
+      editor,
+      projectId: "p",
+      resourceId: "r",
+      annotationId: ID,
+      range: { from: 7, to: 12 },
+    });
+    expect(result).toEqual({ ok: false, stage: "write", message: "Locked." });
+    expect(editor.getJSON()).toEqual(before);
+  });
+
+  it("when the passage changed during the write, no mark is applied and the stage is 'mark'", async () => {
+    const editor = mount(plain("hello brave world"));
+    const api = {
+      reattach: vi.fn(async () => {
+        editor.view.dispatch(editor.state.tr.insertText("XX", 7, 9));
+        return stored(ID, "note", "brave");
+      }),
+    };
+    const result = await reattachAnnotationFlow(api, {
+      editor,
+      projectId: "p",
+      resourceId: "r",
+      annotationId: ID,
+      range: { from: 7, to: 12 },
+    });
+    expect(result.ok === false && result.stage).toBe("mark");
+    expect(markedText(editor, ID)).toBe("");
   });
 });

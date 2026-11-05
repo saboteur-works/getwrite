@@ -599,7 +599,10 @@ export default function TipTapEditor({
     annotationResourceId,
     editor ?? null,
   );
-  const annotationsPanel = useAnnotationsPanel(annotationResourceId);
+  const annotationsPanel = useAnnotationsPanel(
+    annotationResourceId,
+    annotationResourceId === undefined ? null : (editor ?? null),
+  );
   const annotationBodyIds =
     annotations.state.status === "ok"
       ? annotations.state.annotations.map((a) => a.id).join("\u0000")
@@ -913,6 +916,8 @@ export default function TipTapEditor({
                 handle={annotations}
                 panelId={ANNOTATIONS_PANEL_ID}
                 onClose={annotationsPanel.close}
+                pendingAdd={annotationsPanel.pendingAdd}
+                onAddDone={annotationsPanel.clearAdd}
               />
             ) : null}
           </>

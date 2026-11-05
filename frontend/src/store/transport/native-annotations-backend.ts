@@ -12,6 +12,7 @@ import {
   addAnnotationCore,
   deleteAnnotationCore,
   listAnnotationsCore,
+  reattachAnnotationCore,
   updateAnnotationCore,
 } from "../../lib/models/annotations-core";
 import type { AnnotationsTransport } from "../../lib/api/annotations";
@@ -33,6 +34,10 @@ export function createNativeAnnotationsTransport(
     update: (projectId, resourceId, annotationId, body) =>
       run(() =>
         updateAnnotationCore(projectId, resourceId, annotationId, body),
+      ),
+    reattach: (projectId, resourceId, annotationId, quote) =>
+      run(() =>
+        reattachAnnotationCore(projectId, resourceId, annotationId, quote),
       ),
     remove: (projectId, resourceId, annotationId) =>
       run(() => deleteAnnotationCore(projectId, resourceId, annotationId)),

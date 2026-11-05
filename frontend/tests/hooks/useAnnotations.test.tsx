@@ -202,6 +202,50 @@ describe("useAnnotations", () => {
     expect(result.current.state).toEqual({ status: "ok", annotations: [A] });
   });
 
+  it("reattach replaces the stored annotation (new quote) and marks the selection, only after the write", async () => {
+    const old: Annotation = { ...A, id: "d", quote: "gone" };
+    vi.mocked(client.listAnnotations).mockResolvedValue([old]);
+    vi.mocked(client.reattachAnnotation).mockResolvedValue({
+      ...old,
+      quote: "hello",
+      updatedAt: "t2",
+    });
+    const editor = makeEditor();
+    const { result } = renderHook(() => useAnnotations("p", "r", editor));
+    await waitFor(() => expect(result.current.state.status).toBe("ok"));
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.reattach("d", { from: 1, to: 6 });
+    });
+    expect(outcome).toMatchObject({ ok: true });
+    expect(client.reattachAnnotation).toHaveBeenCalledWith(
+      "p",
+      "r",
+      "d",
+      "hello",
+    );
+    expect(result.current.state).toEqual({
+      status: "ok",
+      annotations: [{ ...old, quote: "hello", updatedAt: "t2" }],
+    });
+    expect(JSON.stringify(editor.getJSON())).toContain('"id":"d"');
+  });
+
+  it("a failed reattach leaves the list unchanged", async () => {
+    const old: Annotation = { ...A, id: "d", quote: "gone" };
+    vi.mocked(client.listAnnotations).mockResolvedValue([old]);
+    vi.mocked(client.reattachAnnotation).mockRejectedValue(new Error("nope"));
+    const editor = makeEditor();
+    const { result } = renderHook(() => useAnnotations("p", "r", editor));
+    await waitFor(() => expect(result.current.state.status).toBe("ok"));
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.reattach("d", { from: 1, to: 6 });
+    });
+    expect(outcome).toEqual({ ok: false, stage: "write", message: "nope" });
+    expect(result.current.state).toEqual({ status: "ok", annotations: [old] });
+  });
+
   it("no flow touches the revision transport (no revision is created)", async () => {
     vi.mocked(client.listAnnotations).mockResolvedValue([A]);
     vi.mocked(client.addAnnotation).mockResolvedValue({ ...A, id: "n" });
