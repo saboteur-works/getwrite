@@ -54,7 +54,7 @@ The **Compile Entity Resources** dialog has no saved default.
 
 ### From the Start Page
 
-Choosing **Package** on the [Start Page](../organize/start-page.md) applies the project's saved compile default for a normal project. A project that is encrypted, locked or can't be opened (the **Cannot be opened** card) has no saved default there: its Start Page dialog selects every resource and shows no **Save as default** control. Open the project and compile from inside it to use a saved default.
+Choosing **Package** on the [Start Page](../organize/start-page.md) applies the project's saved compile default for a normal project, and the dialog has the same **Save as default** and **Clear default** controls. A project that is encrypted, locked or can't be opened (the **Cannot be opened** card) has no saved default there: its Start Page dialog selects every resource and shows no **Save as default** control. Open the project and compile from inside it to use a saved default.
 
 ## Export a document or folder
 

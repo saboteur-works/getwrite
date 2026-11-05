@@ -824,6 +824,285 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/project/compile-defaults:
+    put:
+      summary: Save or clear the Compile Project dialog's default selection
+      description: |
+        Sets `config.compileDefaults` in `project.json` to `{ excludedResourceIds }`, the resources the
+        Compile Project dialog leaves unticked, or clears it (deletes the key) when
+        `excludedResourceIds` is `null`. No other config key is touched. Ids must be UUID
+        strings; more than 5000 are refused, never truncated. Duplicates are collapsed.
+        There is no read endpoint: read `config` through `/api/project`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, excludedResourceIds]
+              properties:
+                projectId:
+                  $ref: "#/components/schemas/UUID"
+                excludedResourceIds:
+                  oneOf:
+                    - type: array
+                      items:
+                        $ref: "#/components/schemas/UUID"
+                    - type: "null"
+      responses:
+        "200":
+          description: The stored list (absent after a clear)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  excludedResourceIds:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UUID"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/project/export-defaults:
+    put:
+      summary: Save or clear the Export dialog's default selection
+      description: |
+        Sets `config.exportDefaults` in `project.json` to `{ excludedResourceIds }`, the resources the
+        Export dialog leaves unticked, or clears it (deletes the key) when
+        `excludedResourceIds` is `null`. No other config key is touched. Ids must be UUID
+        strings; more than 5000 are refused, never truncated. Duplicates are collapsed.
+        There is no read endpoint: read `config` through `/api/project`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, excludedResourceIds]
+              properties:
+                projectId:
+                  $ref: "#/components/schemas/UUID"
+                excludedResourceIds:
+                  oneOf:
+                    - type: array
+                      items:
+                        $ref: "#/components/schemas/UUID"
+                    - type: "null"
+      responses:
+        "200":
+          description: The stored list (absent after a clear)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  excludedResourceIds:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UUID"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/annotations:
+    get:
+      summary: List a text resource's annotations
+      description: Annotation bodies live in the resource sidecar (`annotations` array). Text resources only. A failed read is an error status, never an empty list.
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: resourceId
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: "`{ annotations: Annotation[] }`, each `{ id, body, quote, createdAt, updatedAt }`"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource or annotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Add an annotation
+      description: |
+        Body `{ projectId, resourceId, annotation: { id, body, quote } }`. Body 1 to 5000 characters, quote at most 500, at most 500 annotations per resource; an unknown key or a value over a limit is refused, never truncated.
+      responses:
+        "200":
+          description: "`{ annotation }`"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource or annotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Change an annotation's body
+      description: |
+        Body `{ projectId, resourceId, annotationId, body }`. Changes the body only.
+      responses:
+        "200":
+          description: "`{ annotation }`"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource or annotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Re-attach an annotation
+      description: |
+        Body `{ projectId, resourceId, annotationId, quote }`. Replaces the stored quote only.
+      responses:
+        "200":
+          description: "`{ annotation }`"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource or annotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an annotation
+      description: |
+        Body `{ projectId, resourceId, annotationId }`. Removes the stored body; the document's mark is removed by the editor.
+      responses:
+        "200":
+          description: "`{}`"
+        "400":
+          description: Invalid input (the message names the reason)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Workspace/project is locked (encryption), or hosted auth is active with no valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource or annotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Project has no usable key (encryption)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /api/project/goal-filter:
     put:
       summary: Set or clear the writing-goal filter
