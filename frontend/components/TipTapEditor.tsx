@@ -31,6 +31,16 @@ import debounce from "lodash/debounce";
 import { TipTapDocument } from "../src/lib/models";
 import { buildEditorBodyStyleVariables } from "../src/lib/editor-body-settings";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
+import AnnotationsPanel from "./Editor/Annotations/AnnotationsPanel";
+import {
+  ANNOTATIONS_PANEL_ID,
+  useAnnotationsPanel,
+} from "./Editor/Annotations/useAnnotationsPanel";
+import AnnotationHighlightExtension, {
+  setAnnotationHighlight,
+} from "./Editor/Extensions/AnnotationHighlightExtension";
+import { useAnnotations } from "../src/hooks/useAnnotations";
+import { isAnnotationOnlyUpdate } from "./Editor/Annotations/update-kind";
 import EditorContextMenu from "./Editor/EditorContextMenu";
 import MarkdownSourceView from "./Editor/MarkdownSourceView";
 import {
@@ -139,11 +149,15 @@ export interface TipTapEditorProps {
    *   the document should stay in sync regardless — but should not treat it
    *   as autosave-worthy or as "the writer made an edit". Omitted (falsy) for
    *   every real edit, including a markdown-source commit.
+   * @param isAnnotationOnly - True when the change is an annotation mark
+   *   add/remove and no text edit (`isAnnotationOnlyUpdate`). The consumer
+   *   saves it but does not count it as an unsaved text change.
    */
   onChange?: (
     content: string,
     doc: TipTapDocument,
     isStructuralOnly?: boolean,
+    isAnnotationOnly?: boolean,
   ) => void;
   /** Optional DOM id applied to the `EditorContent` element. */
   id?: string;
@@ -172,6 +186,12 @@ export interface TipTapEditorProps {
    * starts at the top, as before.
    */
   positionKey?: string;
+  /**
+   * The text resource whose annotations the toolbar button and panel manage
+   * (Feature 101, FR-14). Omit it for anything that is not the canonical
+   * revision of a text resource: no annotations control is rendered then.
+   */
+  annotationResourceId?: string;
 }
 
 /**
@@ -218,6 +238,7 @@ export default function TipTapEditor({
   onNodeTypesChange,
   onFlushPendingSource,
   positionKey,
+  annotationResourceId,
 }: TipTapEditorProps) {
   const editorProjectConfig = useSelector(selectResolvedEditorConfig);
   // The active project's on-disk directory basename — the `projectId`
@@ -434,6 +455,7 @@ export default function TipTapEditor({
           isEnabled: spellGate.isEnabled,
         }),
         MentionJumpHighlightExtension,
+        AnnotationHighlightExtension,
         Math.configure({
           blockOptions: {
             /**
@@ -525,8 +547,14 @@ export default function TipTapEditor({
         const isStructuralOnly = [transaction, ...appendedTransactions].every(
           (tr) => tr.getMeta("addToHistory") === false,
         );
+        // An annotation add/remove changes a mark and no text. The consumer
+        // still saves it (so the mark persists) but does not count it as an
+        // unsaved text change (FR-15).
+        const isAnnotationOnly =
+          !isStructuralOnly &&
+          isAnnotationOnlyUpdate([transaction, ...appendedTransactions]);
         const html = editor.getHTML();
-        if (onChange) onChange(html, doc, isStructuralOnly);
+        if (onChange) onChange(html, doc, isStructuralOnly, isAnnotationOnly);
         // Content edits can change a node's type (e.g. a heading downgraded to
         // body), even without the selection moving.
         emitNodeTypes(editor);
@@ -562,6 +590,28 @@ export default function TipTapEditor({
     },
     [headingsConfigKey],
   );
+
+  // Annotations (Feature 101, FR-14): the list, the highlight and the panel.
+  const annotations = useAnnotations(
+    annotationResourceId === undefined
+      ? undefined
+      : (activeProjectDirectoryId ?? undefined),
+    annotationResourceId,
+    editor ?? null,
+  );
+  const annotationsPanel = useAnnotationsPanel(annotationResourceId);
+  const annotationBodyIds =
+    annotations.state.status === "ok"
+      ? annotations.state.annotations.map((a) => a.id).join("\u0000")
+      : null;
+
+  // Only ids that have a body are highlighted: a body-less mark stays inert.
+  useEffect(() => {
+    if (!editor) return;
+    setAnnotationHighlight(editor, {
+      ids: annotationBodyIds ? annotationBodyIds.split("\u0000") : [],
+    });
+  }, [editor, annotationBodyIds]);
 
   // Cursor and scroll position per document, this session only.
   positionMemoryRef.current = useEditorPositionMemory(
@@ -841,6 +891,11 @@ export default function TipTapEditor({
             <MenuBar
               editor={editor}
               onToggleSource={readonly ? undefined : requestSwitchToSource}
+              annotations={
+                annotationResourceId === undefined
+                  ? undefined
+                  : annotationsPanel.control
+              }
             />
             <EditorContextMenu
               editor={editor}
@@ -852,6 +907,14 @@ export default function TipTapEditor({
                 className="tiptap tiptap-editor-content"
               />
             </EditorContextMenu>
+            {annotationResourceId !== undefined && annotationsPanel.isOpen ? (
+              <AnnotationsPanel
+                editor={editor}
+                handle={annotations}
+                panelId={ANNOTATIONS_PANEL_ID}
+                onClose={annotationsPanel.close}
+              />
+            ) : null}
           </>
         )}
         <MarkdownSwitchWarningModal

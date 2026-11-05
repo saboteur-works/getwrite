@@ -21,6 +21,9 @@ import EditorMenuInput from "./EditorMenuInput";
 import type { MenuBarState } from "./menuBarState";
 import { useToolbarCommands } from "./useToolbarCommand";
 import ImagePickerSubmenu from "./ImagePickerSubmenu";
+import AnnotationsToolbarButton, {
+  type AnnotationsToolbarControl,
+} from "./AnnotationsToolbarButton";
 
 /** Standard icon size (px) used by all menu controls for visual consistency. */
 const ICON_SIZE = 16;
@@ -42,6 +45,11 @@ export interface MenuBarProps {
    * toolbar; when omitted, the toggle is hidden (existing rich-only usages).
    */
   onToggleSource?: () => void;
+  /**
+   * When provided, a button that opens the annotations panel is rendered
+   * (text resources only; omitted for image and audio resources).
+   */
+  annotations?: AnnotationsToolbarControl;
 }
 
 /**
@@ -63,6 +71,7 @@ export const MenuBar = ({
   editor,
   stateOverride,
   onToggleSource,
+  annotations,
 }: MenuBarProps) => {
   const selectedEditorState = useEditorState({
     editor,
@@ -143,6 +152,14 @@ export const MenuBar = ({
       <EditorMenuIconGroup groupName="Images" groupId="image-controls">
         <ImagePickerSubmenu editor={editor} />
       </EditorMenuIconGroup>
+      {annotations ? (
+        <EditorMenuIconGroup
+          groupName="Annotations"
+          groupId="annotation-controls"
+        >
+          <AnnotationsToolbarButton {...annotations} />
+        </EditorMenuIconGroup>
+      ) : null}
       {onToggleSource ? (
         <EditorMenuIconGroup groupName="Markdown" groupId="markdown-source">
           <EditorMenuIcon
