@@ -5,7 +5,7 @@
  * from a copy of annotated text, with the annotation ids and source resource
  * id. No paste logic is involved.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { baseSchemaExtensions } from "../../components/Editor/editorExtensions";
@@ -67,10 +67,20 @@ function fire(editor: Editor, type: "cut" | "copy"): void {
   );
 }
 
-beforeEach(() => clearLastClipboardOperation());
+// A copy or cut with no `clipboardData` makes prosemirror-view schedule a 50 ms
+// timer that calls `view.focus()`. Fake timers let afterEach run it while the
+// document still exists, so none is left to fire after jsdom teardown.
+beforeEach(() => {
+  vi.useFakeTimers();
+  clearLastClipboardOperation();
+});
 
 afterEach(() => {
+  vi.runAllTimers();
   for (const e of editors.splice(0)) e.destroy();
+  const pending = vi.getTimerCount();
+  vi.useRealTimers();
+  expect(pending).toBe(0);
 });
 
 describe("annotation clipboard recorder", () => {
