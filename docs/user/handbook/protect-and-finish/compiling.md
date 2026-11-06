@@ -64,4 +64,4 @@ To export, open a document's or folder's menu in the [resource tree](../organize
 
 - In the **Compile Project** dialog, a ticked image counts towards "resource(s) selected" and **Compile (n)**, but its content is not in the file. Only documents are compiled.
 - [Annotations](../write/annotations.md) are not part of a compiled or exported file, in any format.
-- On Android, PDF compile uses an in-app render path.
+- On Android, PDF compile works without a network connection and uses the same IBM Plex fonts.
