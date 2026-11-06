@@ -245,7 +245,28 @@ Task 24 reproduction record: `frontend/tests/unit/compile-pdf-browser-build.test
 
 Which parts landed: Part 1 (compile and export defaults), Part 2 (annotations) and Part 3 (native PDF) all landed per the commits. Task 10 closed with no code change; every other task produced a diff.
 
+### FR-30 device check (pipeline lead with the owner, 2026-11-06)
+
+Device: Pixel 7 Pro (`cheetah`), Android 17, Android System WebView 156.0.8078.47. Build: branch head `dae15480`. From the main checkout, unsandboxed: `pnpm build:native` (`frontend/`, exit 0, "Native static export produced at .../frontend/out (18 top-level entries)"), `pnpm exec cap sync android` (`android/`, exit 0), then `./gradlew :app:installDebug` (`android/android/`, JBR 21, "Installed on 1 device").
+
+Offline: `adb shell cmd connectivity airplane-mode enable`, `svc wifi disable`, `svc data disable`. Then `ping -c 2 8.8.8.8` on the device showed 100% packet loss. Network was restored after the check.
+
+Steps: opened the existing project "F99 check" and typed into resource Alpha a Heading 1 "Chapter One" and the paragraph "The cellar door opened at midnight, and the house went quiet." (saved; the footer showed "Saved"). Opened Project menu > Compile Project. The saved-defaults panel read "No project default is saved". Chose `pdf` in "Compile as", unticked Gamma (Alpha and Beta ticked), headers on, no name, and tapped Compile (2).
+
+Observed:
+- logcat: the WebView requested `/_next/static/media/ibm-plex-serif-latin-400-normal…woff2` and `ibm-plex-sans-latin-700-normal…woff2` from the app's local origin. Then `Filesystem.writeFile` wrote `f99-check.pdf` to `DOCUMENTS`, and the URI returned was `file:///storage/emulated/0/Documents/f99-check.pdf`.
+- `adb pull` gave 81,201 bytes, header `%PDF-1.3`.
+- Embedded fonts: tool `pdfjs-dist` (the repo devDependency; legacy build, `getOperatorList` with `fontExtraProperties: true`), plus a raw `grep` of the font dictionaries.
+  - Font dictionaries: `AARHIC+IBMPlexSans-Bold` (Type0/CIDFontType2, `FontFile2` present), `TFTAEA+IBMPlexSerif-Regular` (Type0/CIDFontType2, `FontFile2` present), and `Helvetica` (Type1 standard font, no font file).
+  - Text runs: "Alpha" and "Beta" (section headers, 13 pt) drawn in IBM Plex Sans Bold. "Chapter One" and the paragraph (11 pt) drawn in IBM Plex Serif Regular. Helvetica is selected once with no text drawn after it.
+  - Page count 1. The extracted text matches what was typed.
+- `font-fallback` notice: not observed. The screenshot was taken about 10 s after Compile and showed no toast, so a toast shown and dismissed within that window would not have been seen. The embedded Plex subsets are consistent with the normal document, not the fallback one.
+- Side observation, not reproduced: an earlier attempt in the same session, after choosing `pdf` through the native `<select>` picker, wrote `f99-check.txt` (logcat `writeFile` path `f99-check.txt`) while the select displayed "pdf". The second attempt, with the same picker steps plus unticking Gamma before Compile, wrote the PDF. The cause was not established. One hypothesis is that the dialog's reset effect (`CompilePreviewModal.tsx`, deps `[isOpen, resources]`) set the format back to `txt` between picking and compiling. Another is that the picker's change didn't reach React. An experiment that would discriminate: log `format` at confirm and on each reset-effect run, then repeat the picker-then-compile sequence on the device.
+
+Not checked: the Start Page compile path on the device; DOCX and Markdown on the device; bold, italic or non-Latin text; heading styling in the PDF ("Chapter One" was drawn at body size and face; whether the server path does the same for this document was not compared); whether the `font-fallback` toast appears in a real font failure on the device.
+
 ### Not verified
-- FR-30 (device font check on Android: build, install, airplane mode, compile a PDF, copy it off the device, record embedded font names and whether the `font-fallback` notice showed) was not run. Nothing here shows that the IBM Plex fonts embed on Android or that the PDF compile works on an Android device or WebView. `pnpm build:native` succeeding shows the static export builds, not that it runs on a device.
+- The Start Page compile path, on a device.
+- The cause of the one `.txt` output after `pdf` was chosen (FR-30 side observation).
 - The cause of the run-3 `native-compile-entry-paths` failure.
 - Per-finding comparison of knip output against the base commit.
