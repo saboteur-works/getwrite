@@ -48,9 +48,7 @@ export type AnnotationsState =
   | { status: "ok"; annotations: Annotation[] }
   | { status: "failed"; message: string };
 
-export type UpdateAnnotationResult =
-  | { ok: true }
-  | { ok: false; message: string };
+type UpdateAnnotationResult = { ok: true } | { ok: false; message: string };
 
 export interface AnnotationsHandle {
   state: AnnotationsState;

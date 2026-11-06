@@ -16,7 +16,7 @@ import type { EditorState } from "@tiptap/pm/state";
  * It does not read or write the clipboard and contains no paste logic.
  */
 
-export type ClipboardOperationKind = "cut" | "copy";
+type ClipboardOperationKind = "cut" | "copy";
 
 export interface ClipboardOperation {
   readonly kind: ClipboardOperationKind;
@@ -37,7 +37,7 @@ export function clearLastClipboardOperation(): void {
 }
 
 /** Distinct annotation ids on the selection, or null for an empty selection. */
-export function annotationIdsInSelection(state: EditorState): string[] | null {
+function annotationIdsInSelection(state: EditorState): string[] | null {
   const { from, to } = state.selection;
   if (state.selection.empty) return null;
   const ids: string[] = [];
@@ -56,12 +56,12 @@ export function annotationIdsInSelection(state: EditorState): string[] | null {
   return ids;
 }
 
-export interface AnnotationClipboardOptions {
+interface AnnotationClipboardOptions {
   /** Returns the id of the resource the editor is showing, if known. */
   getResourceId: () => string | null;
 }
 
-export const ANNOTATION_CLIPBOARD_KEY = new PluginKey("annotationClipboard");
+const ANNOTATION_CLIPBOARD_KEY = new PluginKey("annotationClipboard");
 
 const AnnotationClipboard = Extension.create<AnnotationClipboardOptions>({
   name: "annotationClipboard",

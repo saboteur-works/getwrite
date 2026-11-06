@@ -59,7 +59,7 @@ export type AnnotationPasteResult =
   | { ok: true }
   | { ok: false; message: string };
 
-export interface AnnotationPasteOptions {
+interface AnnotationPasteOptions {
   /** The resource the editor is showing, or null when not known. */
   getResourceId: () => string | null;
   getProjectId: () => string | null;
@@ -68,7 +68,7 @@ export interface AnnotationPasteOptions {
   onResult: (result: AnnotationPasteResult) => void;
 }
 
-export type AnnotationPastePlan =
+type AnnotationPastePlan =
   | { kind: "none" }
   | { kind: "drop" }
   | { kind: "keep" }
@@ -79,7 +79,7 @@ export type AnnotationPastePlan =
       idMap: ReadonlyMap<string, string>;
     };
 
-export interface AnnotationPasteInput {
+interface AnnotationPasteInput {
   pastedIds: readonly string[];
   record: ClipboardOperation | null;
   targetResourceId: string | null;
@@ -93,9 +93,7 @@ function sameIds(a: readonly string[], b: readonly string[]): boolean {
 }
 
 /** Pure decision for one paste; see the module comment for the rules. */
-export function planAnnotationPaste(
-  input: AnnotationPasteInput,
-): AnnotationPastePlan {
+function planAnnotationPaste(input: AnnotationPasteInput): AnnotationPastePlan {
   const { pastedIds, record, targetResourceId, idsInDocument } = input;
   if (pastedIds.length === 0) return { kind: "none" };
   if (
@@ -236,7 +234,7 @@ async function writeCopies(
   return message === null ? { ok: true } : { ok: false, message };
 }
 
-export const ANNOTATION_PASTE_KEY = new PluginKey("annotationPaste");
+const ANNOTATION_PASTE_KEY = new PluginKey("annotationPaste");
 
 const AnnotationPaste = Extension.create<AnnotationPasteOptions>({
   name: "annotationPaste",

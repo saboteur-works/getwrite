@@ -20,7 +20,7 @@ import { isLockedAccessError } from "../../src/lib/models/locked-access";
  *   discarded.
  */
 
-export type SavedDefaultsReadState =
+type SavedDefaultsReadState =
   | { status: "loading" }
   | { status: "ok"; excludedResourceIds: string[] }
   | { status: "failed" };

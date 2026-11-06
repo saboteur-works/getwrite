@@ -15,7 +15,7 @@ import type { SaveDefaultsResult } from "./useSaveDefaultsAction";
  * a dialog; closing it returns focus to the Clear control.
  */
 
-export interface LeftOutItem {
+interface LeftOutItem {
   id: string;
   name: string;
   /** True once the writer has ticked it again for this run. */

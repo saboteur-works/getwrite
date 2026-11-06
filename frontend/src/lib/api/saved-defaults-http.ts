@@ -25,7 +25,7 @@ export interface SavedDefaultsTransport {
  * Matches `saved-defaults-core.ts`'s result. The key is optional because
  * `JSON.stringify` drops an `undefined` value (a clear).
  */
-export const SetSavedDefaultsResponseSchema = z.object({
+const SetSavedDefaultsResponseSchema = z.object({
   excludedResourceIds: z.array(z.string()).optional(),
 });
 
