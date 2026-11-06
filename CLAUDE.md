@@ -148,7 +148,7 @@ Key standards (read these before making significant changes):
 Brand name: **GetWrite** (one word, camelCase). Parent brand: **Saboteur LLC**.
 
 - **Color tokens**: `black`, `white`, `red` (#D44040), `mid`, `surface` variants, and `fg-tertiary`/`fg-inv-tertiary` (AA-contrast secondary text — `mid` is structural/decorative only, never text)
-- **Red is reserved** for position/canonical state indicators only — never for actions or alerts. The `destructive` Button variant is styled identically to `secondary` (no red); danger is conveyed by label and confirmation dialog only
+- **Red is reserved** for position/canonical state indicators only — never for actions or alerts. The `destructive` Button variant is styled identically to `secondary` (no red); danger is conveyed by label and confirmation dialog only. The rule covers colors the UI chooses; a color the writer picks (e.g. a highlight color) may be red, and UI defaults stay non-red
 - **Typography**: IBM Plex Sans (UI), IBM Plex Mono (code), IBM Plex Serif (editor body only)
 - **Editor line height**: 1.8+ minimum — this is essential for writers
 - Dark/light mode support via CSS tokens defined in `styles/`

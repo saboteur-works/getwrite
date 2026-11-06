@@ -42,7 +42,9 @@ readable type are the product.
 
 - State conveyed by colour must also be conveyed by text, icon, or shape.
 - Per STYLING.md, **red is reserved for position and canonical-state indicators**
-  — never for actions or alerts. Do not introduce a second meaning for it.
+  — never for actions or alerts. Do not introduce a second meaning for it in
+  colors the UI chooses. A color the writer picks (such as a highlight color)
+  may be red; it still must not be the only signal.
 
 ---
 
