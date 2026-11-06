@@ -247,7 +247,7 @@ Which parts landed: Part 1 (compile and export defaults), Part 2 (annotations) a
 
 ### FR-30 device check (pipeline lead with the owner, 2026-11-06)
 
-Device: Pixel 7 Pro (`cheetah`), Android 17, Android System WebView 156.0.8078.47. Build: branch head `dae15480`. From the main checkout, unsandboxed: `pnpm build:native` (`frontend/`, exit 0, "Native static export produced at .../frontend/out (18 top-level entries)"), `pnpm exec cap sync android` (`android/`, exit 0), then `./gradlew :app:installDebug` (`android/android/`, JBR 21, "Installed on 1 device").
+Device: Pixel 7 Pro (`cheetah`), Android 17, Android System WebView 156.0.8078.47. Build: branch head `ffa1f725` (built as `dae15480`; the branch's commit messages were later reworded with no tree change, which renamed the hash). From the main checkout, unsandboxed: `pnpm build:native` (`frontend/`, exit 0, "Native static export produced at .../frontend/out (18 top-level entries)"), `pnpm exec cap sync android` (`android/`, exit 0), then `./gradlew :app:installDebug` (`android/android/`, JBR 21, "Installed on 1 device").
 
 Offline: `adb shell cmd connectivity airplane-mode enable`, `svc wifi disable`, `svc data disable`. Then `ping -c 2 8.8.8.8` on the device showed 100% packet loss. Network was restored after the check.
 
