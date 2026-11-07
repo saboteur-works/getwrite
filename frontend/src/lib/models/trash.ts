@@ -11,6 +11,8 @@ import path from "node:path";
 import {
   sidecarPathForProject,
   sidecarFilename,
+  folderSidecarFilename,
+  folderSidecarPathForProject,
   SIDECAR_UNCHANGED,
   mutateSidecar,
 } from "./sidecar";
@@ -477,6 +479,50 @@ function mergeWithPriorManifest(
 }
 
 /**
+ * Moves a folder's sidecar (`meta/folder-<id>.meta.json`) between two paths
+ * under the sidecar's file lock (innermost; nothing else is taken inside it),
+ * so a metadata save in progress finishes first. Absent source is a no-op:
+ * a folder with no sidecar gets none created. Retry-safe.
+ */
+async function moveFolderSidecar(
+  lockedPath: string,
+  src: string,
+  dest: string,
+): Promise<void> {
+  await withFileLock(lockedPath, async () => {
+    if (!(await pathExists(src))) return;
+    await mkdir(path.dirname(dest), { recursive: true });
+    await rename(src, dest);
+  });
+}
+
+/** Moves a live folder sidecar into `.trash/meta/folder-<id>.meta.json`. */
+async function trashFolderSidecar(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const src = folderSidecarPathForProject(projectRoot, folderId);
+  const dest = path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    folderSidecarFilename(folderId),
+  );
+  await moveFolderSidecar(src, src, dest);
+}
+
+/** Moves a trashed folder sidecar back to `meta/folder-<id>.meta.json`. */
+async function restoreFolderSidecar(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const dest = folderSidecarPathForProject(projectRoot, folderId);
+  const src = path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    folderSidecarFilename(folderId),
+  );
+  await moveFolderSidecar(dest, src, dest);
+}
+
+/**
  * Moves one folder directory to `.trash/folders/<dirname>`. Descendant
  * directories are moved flat, so two folders at different depths may share a
  * directory name; a taken destination gets the folder id appended (trashed
@@ -637,10 +683,14 @@ export async function softDeleteFolder(
     if (entry.kind !== "folder") continue;
     const fd = folderById.get(entry.id);
     if (!fd) continue;
+    await trashFolderSidecar(projectRoot, fd.folder.id);
     await moveFolderDirToTrash(trashFoldersDir, fd);
   }
 
-  // Finally, move the target folder's own descriptor.
+  // Finally, move the target folder's own descriptor. Each sidecar moves
+  // before its directory, so a retry after a failure between the two finds
+  // the folder still live and the sidecar already moved (absent is a no-op).
+  await trashFolderSidecar(projectRoot, target.folder.id);
   await moveFolderDirToTrash(trashFoldersDir, target);
 
   return trashRoot;
@@ -1133,6 +1183,7 @@ export async function restoreFolder(
     name: resolvedName.name,
   };
   await writeResourceToFile(projectRoot, restoredTopFolder);
+  await restoreFolderSidecar(projectRoot, folderId);
 
   const topTrashedDir = trashedByFolderId.get(folderId)?.dirPath;
   if (topTrashedDir) {
@@ -1150,6 +1201,7 @@ export async function restoreFolder(
       const descriptor = trashedByFolderId.get(entry.id);
       if (!descriptor) continue;
       await writeResourceToFile(projectRoot, descriptor.folder);
+      await restoreFolderSidecar(projectRoot, entry.id);
       await rm(descriptor.dirPath, { recursive: true, force: true });
       restoredDescendantFolderIds.push(entry.id);
     } else {
@@ -1571,7 +1623,10 @@ export async function listTrashedItems(
     (f) => f.startsWith("resource-") && f.endsWith(".meta.json"),
   );
   const folderManifestFiles = metaFiles.filter(
-    (f) => f.startsWith("folder-") && f.endsWith(".json"),
+    (f) =>
+      f.startsWith("folder-") &&
+      f.endsWith(".json") &&
+      !f.endsWith(".meta.json"),
   );
 
   const manifestsByFolderId = new Map<UUID, TrashFolderManifest>();

@@ -17,7 +17,7 @@ import {
   createProjectFromType,
   type ProjectTypeSpec,
 } from "../../src/lib/models/project-creator";
-import { readSidecar } from "../../src/lib/models/sidecar";
+import { readFolderSidecar, readSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
 import {
   makeRefFixture,
@@ -758,5 +758,158 @@ describe("models/trash — undeclared folder.json key round trip (Feature 102 FR
     } finally {
       await removeDirRetry(tmp);
     }
+  });
+});
+
+describe("models/trash — folder sidecar moves with the folder (Feature 102 FR-6)", () => {
+  const FOLDER_SIDECAR = {
+    userMetadata: { notes: "A note", mood: "calm", tags: ["a", "b"] },
+    resourceSubtype: "Act",
+  };
+
+  const sidecarFile = (root: string, id: string): string =>
+    path.join(root, "meta", `folder-${id}.meta.json`);
+  const trashedSidecarFile = (root: string, id: string): string =>
+    path.join(root, ".trash", "meta", `folder-${id}.meta.json`);
+
+  async function withTmp(fn: (root: string) => Promise<void>): Promise<void> {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-trash-folder-sidecar-"),
+    );
+    try {
+      await fn(tmp);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  }
+
+  async function writeFolderSidecar(
+    root: string,
+    id: string,
+    body: object = FOLDER_SIDECAR,
+  ): Promise<string> {
+    await fs.mkdir(path.join(root, "meta"), { recursive: true });
+    const text = JSON.stringify(body, null, 2);
+    await fs.writeFile(sidecarFile(root, id), text, "utf8");
+    return text;
+  }
+
+  it("round-trips the sidecar byte-identical for a folder and its nested subfolders, whose folder.json carries an undeclared key", async () => {
+    await withTmp(async (tmp) => {
+      const top = createFolderResource({ name: "Top" });
+      await writeResourceToFile(tmp, top);
+      const mid = createFolderResource({ name: "Mid", parentFolderId: top.id });
+      await writeResourceToFile(tmp, mid);
+      const leaf = createFolderResource({
+        name: "Leaf",
+        parentFolderId: mid.id,
+      });
+      await writeResourceToFile(tmp, leaf);
+      const file = path.join(tmp, "folders", top.slug, "folder.json");
+      const onDisk = JSON.parse(await fs.readFile(file, "utf8")) as object;
+      await fs.writeFile(
+        file,
+        JSON.stringify({ ...onDisk, futureMetadata: { x: 1 } }),
+        "utf8",
+      );
+      const originals = new Map<string, string>();
+      for (const f of [top, mid, leaf]) {
+        originals.set(
+          f.id,
+          await writeFolderSidecar(tmp, f.id, {
+            userMetadata: { notes: `note ${f.name}`, mood: f.name },
+            resourceSubtype: `sub-${f.name}`,
+          }),
+        );
+      }
+
+      await softDeleteFolder(tmp, top.id);
+      for (const f of [top, mid, leaf]) {
+        expect(await pathExists(sidecarFile(tmp, f.id))).toBe(false);
+        expect(await fs.readFile(trashedSidecarFile(tmp, f.id), "utf8")).toBe(
+          originals.get(f.id),
+        );
+      }
+      const listed = await listTrashedItems(tmp);
+      expect(listed.folders.map((f) => f.id)).toEqual([top.id]);
+
+      await restoreFolder(tmp, top.id);
+      for (const f of [top, mid, leaf]) {
+        expect(await fs.readFile(sidecarFile(tmp, f.id), "utf8")).toBe(
+          originals.get(f.id),
+        );
+        expect(await pathExists(trashedSidecarFile(tmp, f.id))).toBe(false);
+        const value = await readFolderSidecar(tmp, f.id);
+        expect(value.notes).toBe(`note ${f.name}`);
+        expect(value.fieldValues).toEqual({ mood: f.name });
+        expect(value.resourceSubtype).toBe(`sub-${f.name}`);
+      }
+    });
+  });
+
+  it("trashes and restores a folder with no sidecar without creating one", async () => {
+    await withTmp(async (tmp) => {
+      const folder = createFolderResource({ name: "Bare" });
+      await writeResourceToFile(tmp, folder);
+
+      await softDeleteFolder(tmp, folder.id);
+      expect(await pathExists(trashedSidecarFile(tmp, folder.id))).toBe(false);
+      expect(await pathExists(sidecarFile(tmp, folder.id))).toBe(false);
+
+      await restoreFolder(tmp, folder.id);
+      expect(await pathExists(sidecarFile(tmp, folder.id))).toBe(false);
+      expect(await pathExists(trashedSidecarFile(tmp, folder.id))).toBe(false);
+    });
+  });
+
+  it("carries the sidecar with the folder on a restore conflict (parent gone, name clash)", async () => {
+    await withTmp(async (tmp) => {
+      const parent = createFolderResource({ name: "Parent" });
+      await writeResourceToFile(tmp, parent);
+      const child = createFolderResource({
+        name: "Child",
+        parentFolderId: parent.id,
+      });
+      await writeResourceToFile(tmp, child);
+      const original = await writeFolderSidecar(tmp, child.id);
+
+      await softDeleteFolder(tmp, child.id);
+      await softDeleteFolder(tmp, parent.id);
+      expect(await pathExists(sidecarFile(tmp, child.id))).toBe(false);
+      expect(await pathExists(trashedSidecarFile(tmp, child.id))).toBe(true);
+      // A new root folder now holds the name the child will restore under.
+      const clash = createFolderResource({ name: "Child" });
+      await writeResourceToFile(tmp, clash);
+
+      const result = await restoreFolder(tmp, child.id);
+      expect(result.relocated).toBe(true);
+      expect(result.renamed).toBe(true);
+      expect(await fs.readFile(sidecarFile(tmp, child.id), "utf8")).toBe(
+        original,
+      );
+      expect(await pathExists(trashedSidecarFile(tmp, child.id))).toBe(false);
+    });
+  });
+
+  it("leaves the sidecar of a folder still in the tree untouched", async () => {
+    await withTmp(async (tmp) => {
+      const trashed = createFolderResource({ name: "Gone" });
+      const kept = createFolderResource({ name: "Kept" });
+      await writeResourceToFile(tmp, trashed);
+      await writeResourceToFile(tmp, kept);
+      const keptText = await writeFolderSidecar(tmp, kept.id, {
+        userMetadata: { notes: "stay" },
+      });
+      await writeFolderSidecar(tmp, trashed.id);
+
+      await softDeleteFolder(tmp, trashed.id);
+      expect(await fs.readFile(sidecarFile(tmp, kept.id), "utf8")).toBe(
+        keptText,
+      );
+      await restoreFolder(tmp, trashed.id);
+      expect(await fs.readFile(sidecarFile(tmp, kept.id), "utf8")).toBe(
+        keptText,
+      );
+    });
   });
 });
