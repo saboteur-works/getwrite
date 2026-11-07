@@ -63,7 +63,47 @@ An earlier run of R + O and R + W (before the test was changed to separate read 
 
 ## Part 1 FR-2 (b): Trash round trip with an undeclared `folder.json` key
 
-Not run (Task 2).
+Test: `describe("models/trash — undeclared folder.json key round trip (Feature 102 FR-2 (b))")` appended to `frontend/tests/unit/trash-folder-cascade.test.ts`. Command, from `frontend/`: `pnpm exec vitest run tests/unit/trash-folder-cascade.test.ts --disableConsoleIntercept`. Result: 12 tests passed in the file (the new one included); no product source file changed. The assertions pin the first-run observations below. Output also carries `[indexer-queue]` ENOENT lines from other tests in that file (background indexing after temp-dir removal); they were not examined and are not part of this record.
+
+Setup: three folders (`Top Folder` > `Mid Folder` > `Leaf Folder`, nested by `parentId`) each written through `writeResourceToFile`, then each `folder.json` rewritten with an added key `futureMetadata` (an object). `softDeleteFolder(top)`, `listTrashedItems`, `restoreFolder(top)`. No resources and no `meta/folder-<id>.meta.json` sidecar (none exists in the product today) were involved.
+
+Observed:
+
+| Stage | `futureMetadata` present in the folder's `folder.json` (top / mid / leaf) |
+| --- | --- |
+| Before trash (live) | present / present / present |
+| After `softDeleteFolder` (file under `.trash/folders/<slug>/folder.json`) | present / present / present |
+| `.trash/meta/folder-<top id>.json` `folder` object | absent (top folder only; the manifest holds no descendant folder objects) |
+| After `restoreFolder` (live `folders/<slug>/folder.json`) | absent / absent / absent |
+
+So, as observed: the key does not survive a Trash and restore round trip, for the target folder and for both nested subfolders. It was present in the trashed files and absent from every restored file.
+
+Not confirmed: where each key was lost was not traced step by step in the test. Reading from the code (not separated by an experiment): `collectFolderDescriptors` parses every `folder.json` with `FolderSchema.parse`, and `FolderSchema` (`schemas.ts:408`) is a `z.object` without `.passthrough()`, so the parsed `Folder` handed to restore lacks the key; restore then writes that parsed object with `writeResourceToFile` and removes the trashed directory that still held the original bytes. The test did not run a variant with a passthrough schema, so this is a reading.
+
+### Trash descriptor record (every path in `trash.ts` and `trash-core.ts` that handles the folder descriptor)
+
+Readings from the code at this commit; line numbers are as read. All in `frontend/src/lib/models/trash.ts` unless stated.
+
+| Path | Function (line) | What it does with the descriptor |
+| --- | --- | --- |
+| Read live or trashed `folder.json` | `collectFolderDescriptors` (`:412`; parse at `:437`) | Reads each `folder.json` with `FolderSchema.parse`; a missing or invalid one is skipped (not thrown), a locked-access error is rethrown. Used by every path below marked "via collect". |
+| Trash entry: manifest | `softDeleteFolder` (`:522`; manifest built at `:588-589`) | Walks `folders/` via collect (`:530`), writes `.trash/meta/folder-<id>.json` with `folder: target.folder` (the parsed object) through `TrashFolderManifestSchema.parse`. `TrashFolderManifestSchema` at `schemas.ts:660` declares `folder: FolderSchema`. |
+| Trash entry: move | `softDeleteFolder` (`:640`, `:644`) calling `moveFolderDirToTrash` (`:485`; `rename` at `:495`) | Renames each descendant folder directory and then the target's into `.trash/folders/` (name clash gets `-<folderId>`); the original `folder.json` bytes move unchanged. |
+| Trash retry | `readPriorFolderManifestDescendants` (`:455`; parse at `:464`) | Reads an earlier manifest through `TrashFolderManifestSchema`; uses only `descendants`. |
+| Restore: read manifest | `restoreFolder` (`:1081`; parse at `:1094`) | Reads the manifest through the schema; ENOENT becomes "No trash manifest found for folder". |
+| Restore: read trashed descriptors | `restoreFolder` (`:1102`, via collect) | Builds `trashedByFolderId` from parsed descriptors. |
+| Restore: conflict (parent) | `restoreFolder` (`:1114`) calling `folderExists` (`:804`; collect at `:809`) | If the original parent is no longer under `folders/`, the folder is relocated to the project root. |
+| Restore: conflict (name) | `restoreFolder` (`:1124-1128`) calling `resolveRestoreFolderName` (`:1010`; collect at `:1016`) | Sibling names from parsed descriptors; a clash gets `" (restored)"`, `" (restored 2)"`. |
+| Restore: write top folder | `restoreFolder` (`:1131-1135`) | `{ ...manifest.folder, parentId, name }` written by `writeResourceToFile` (`resource-persistence.ts:125-135`, a whole-object `writeFile`, no lock), then `rm` of the trashed directory (`:1139`). |
+| Restore: write descendant folders | `restoreFolder` (`:1148-1154`) | `writeResourceToFile(projectRoot, descriptor.folder)` from the parsed trashed descriptor, then `rm` of its trashed directory (`:1153`). The "restore conflict" rules above are not applied to descendants. |
+| Restore: manifest removal | `restoreFolder` (`:1161`) | `rm` of the manifest. |
+| Purge | `purgeFolder` (`:1407`; manifest parse at `:1418`, collect at `:1423`, `rm` at `:1443`, `:1449`, `:1456`) | Removes descendant folder directories, the manifest and the target directory; failures of the last two raise `PurgeSweepError("folder-manifest-and-descriptor", ...)`. |
+| List | `listTrashedItems` (`:1554`; manifest parse at `:1584`, collect at `:1663`) | Folder names and parent ids come from parsed descriptors. |
+| Kind dispatch | `resolveTrashedItemKind` (`:1722`; collect at `:1735`) | A trashed folder id is found by manifest file existence or by a parsed descriptor. |
+
+`trash-core.ts` (`listTrashCore` `:83`, `restoreOneCore` `:98`, `purgeOneCore` `:142`, `purgeBatchCore` `:174`) reads or writes no descriptor itself; it calls `listTrashedItems`, `resolveTrashedItemKind`, `restoreFolder` and `purgeFolder` above and reports their result or error message. No function in either file reads or moves `meta/folder-<id>.meta.json` (a read of the two files; the test above has no such file).
+
+Task 2 does not decide how Tasks 10 and 11 should keep the key or the sidecar.
 
 ## Part 1 FR-2 (c): `type = folder` query
 

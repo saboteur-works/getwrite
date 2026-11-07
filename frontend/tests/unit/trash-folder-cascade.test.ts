@@ -664,3 +664,99 @@ describe("F87 D-36: softDeleteFolder against a referencing Point of View", () =>
     ]);
   });
 });
+
+describe("models/trash — undeclared folder.json key round trip (Feature 102 FR-2 (b))", () => {
+  const UNDECLARED_KEY = "futureMetadata";
+  const UNDECLARED_VALUE = { notes: "kept?", fields: { mood: "calm" } };
+
+  async function readJson(p: string): Promise<Record<string, unknown>> {
+    return JSON.parse(await fs.readFile(p, "utf8")) as Record<string, unknown>;
+  }
+
+  /** Writes the folder, then adds an undeclared key to its on-disk folder.json. */
+  async function writeFolderWithUndeclaredKey(
+    root: string,
+    name: string,
+    parentFolderId?: string,
+  ): Promise<ReturnType<typeof createFolderResource>> {
+    const folder = createFolderResource({ name, parentFolderId });
+    await writeResourceToFile(root, folder);
+    const file = path.join(root, "folders", folder.slug, "folder.json");
+    const onDisk = await readJson(file);
+    await fs.writeFile(
+      file,
+      JSON.stringify(
+        { ...onDisk, [UNDECLARED_KEY]: UNDECLARED_VALUE },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    return folder;
+  }
+
+  it("records whether an undeclared key survives trash and restore, for a folder and its nested subfolders", async () => {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-trash-undeclared-key-"),
+    );
+    try {
+      const top = await writeFolderWithUndeclaredKey(tmp, "Top Folder");
+      const mid = await writeFolderWithUndeclaredKey(tmp, "Mid Folder", top.id);
+      const leaf = await writeFolderWithUndeclaredKey(
+        tmp,
+        "Leaf Folder",
+        mid.id,
+      );
+      const folders = [top, mid, leaf];
+
+      const liveFile = (f: { slug: string }): string =>
+        path.join(tmp, "folders", f.slug, "folder.json");
+      const trashedFile = (f: { slug: string }): string =>
+        path.join(tmp, ".trash", "folders", f.slug, "folder.json");
+
+      for (const f of folders) {
+        expect((await readJson(liveFile(f)))[UNDECLARED_KEY]).toEqual(
+          UNDECLARED_VALUE,
+        );
+      }
+
+      await softDeleteFolder(tmp, top.id);
+
+      const afterTrash = await Promise.all(
+        folders.map(
+          async (f) => (await readJson(trashedFile(f)))[UNDECLARED_KEY],
+        ),
+      );
+      const manifest = await readJson(
+        path.join(tmp, ".trash", "meta", `folder-${top.id}.json`),
+      );
+      const hasKeyInManifest = UNDECLARED_KEY in (manifest["folder"] as object);
+
+      const listed = await listTrashedItems(tmp);
+      expect(listed.folders.map((f) => f.id)).toEqual([top.id]);
+
+      await restoreFolder(tmp, top.id);
+
+      const afterRestore = await Promise.all(
+        folders.map(async (f) => (await readJson(liveFile(f)))[UNDECLARED_KEY]),
+      );
+
+      console.log(
+        `[FR-2 (b)] after trash (descriptor file, top/mid/leaf): ${JSON.stringify(afterTrash)}; ` +
+          `manifest.folder has key: ${hasKeyInManifest}; ` +
+          `after restore (top/mid/leaf): ${JSON.stringify(afterRestore)}`,
+      );
+
+      // First-run observations, pinned.
+      expect(afterTrash).toEqual([
+        UNDECLARED_VALUE,
+        UNDECLARED_VALUE,
+        UNDECLARED_VALUE,
+      ]);
+      expect(hasKeyInManifest).toBe(false);
+      expect(afterRestore).toEqual([undefined, undefined, undefined]);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+});
