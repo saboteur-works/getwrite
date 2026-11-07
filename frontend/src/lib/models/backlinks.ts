@@ -4,7 +4,8 @@ import { readFile, atomicWriteFile, readdir, mkdir } from "./io";
 import { withMetaLock } from "./meta-locks";
 import { loadResourceContent } from "../tiptap-utils";
 import { readSidecar } from "./sidecar";
-import type { ResourceRef, MetadataValue } from "./types";
+import type { ResourceRef, MetadataValue, Folder } from "./types";
+import { FolderSchema } from "./schemas";
 import { slugify } from "../utils";
 import { isLockedAccessError } from "./locked-access";
 
@@ -96,6 +97,63 @@ export async function listResourceIds(projectRoot: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+/** A folder's `folder.json` exists but could not be read or is not a folder. */
+export class FolderDescriptorUnreadableError extends Error {
+  constructor(options?: { cause?: unknown }) {
+    super("A folder descriptor (folder.json) could not be read.", options);
+    this.name = "FolderDescriptorUnreadableError";
+  }
+}
+
+async function collectFolderDescriptors(dir: string): Promise<Folder[]> {
+  let entries: Dirent[];
+  try {
+    entries = (await readdir(dir, { withFileTypes: true })) as Dirent[];
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw new FolderDescriptorUnreadableError({ cause: err });
+  }
+  const found: Folder[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const subDir = path.join(dir, entry.name);
+    let raw: string | null = null;
+    try {
+      raw = await readFile(path.join(subDir, "folder.json"), "utf8");
+    } catch (err) {
+      if (isLockedAccessError(err)) throw err;
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw new FolderDescriptorUnreadableError({ cause: err });
+      }
+    }
+    if (raw !== null) {
+      try {
+        found.push(FolderSchema.parse(JSON.parse(raw)) as Folder);
+      } catch (err) {
+        throw new FolderDescriptorUnreadableError({ cause: err });
+      }
+    }
+    found.push(...(await collectFolderDescriptors(subDir)));
+  }
+  return found;
+}
+
+/**
+ * The second id source of the query evaluator (Feature 102, FR-13): every
+ * folder under `projectRoot/folders/`, nested ones included. A missing
+ * `folders/` directory or a directory without `folder.json` is an ordinary
+ * absence (no folders / not a folder). Any other read error, unparseable JSON
+ * or a descriptor that is not a folder raises
+ * {@link FolderDescriptorUnreadableError}, so a failed read is never returned
+ * as "no folders". Locked-access errors propagate unchanged.
+ */
+export async function listFolderDescriptors(
+  projectRoot: string,
+): Promise<Folder[]> {
+  return collectFolderDescriptors(path.join(projectRoot, "folders"));
 }
 
 /** Read optional redirects map from meta/redirects.json */

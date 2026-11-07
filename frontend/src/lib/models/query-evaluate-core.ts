@@ -18,12 +18,16 @@
 import path from "node:path";
 import { readFile } from "./io";
 import type { QueryAST } from "./query-ast";
-import { evaluate } from "./query-evaluator";
+import { evaluate, expandRefs } from "./query-evaluator";
 import type { EvaluationInput } from "./query-evaluator";
-import { listResourceIds, loadBacklinks } from "./backlinks";
+import {
+  listFolderDescriptors,
+  listResourceIds,
+  loadBacklinks,
+} from "./backlinks";
 import { loadMentionIndex, invertMentionIndex } from "./mention-index";
 import { readQuery } from "./saved-queries";
-import { readSidecar } from "./sidecar";
+import { readFolderSidecar, readSidecar } from "./sidecar";
 import { countWords } from "../word-count";
 import { PROJECT_FILENAME } from "./project-config";
 import type {
@@ -33,6 +37,7 @@ import type {
   ProjectConfig,
   Project,
   TextResource,
+  Folder,
 } from "./types";
 
 // ─── Private helpers (lifted verbatim from the route) ─────────────────────────
@@ -130,13 +135,75 @@ async function deriveTextCounts(
   }
 }
 
+const FOLDER_TYPE = "folder";
+
+function valueNamesFolder(value: MetadataValue): boolean {
+  return (
+    value === FOLDER_TYPE ||
+    (Array.isArray(value) && (value as unknown[]).includes(FOLDER_TYPE))
+  );
+}
+
+/**
+ * True when a ref-expanded query names the folder type: any leaf on the
+ * `type` field whose value is `folder` (or a list holding it), including one
+ * under `not` or an `ne`. Only then is the folder id source loaded
+ * (Feature 102, FR-13).
+ */
+export function queryNamesFolderType(ast: QueryAST): boolean {
+  switch (ast.op) {
+    case "and":
+    case "or":
+      return ast.children.some(queryNamesFolderType);
+    case "not":
+      return queryNamesFolderType(ast.child);
+    case "eq":
+    case "ne":
+    case "in":
+    case "contains":
+    case "matches":
+    case "lt":
+    case "gt":
+    case "gte":
+    case "lte":
+      return ast.field === "type" && valueNamesFolder(ast.value);
+    default:
+      return false;
+  }
+}
+
+/**
+ * A folder as an evaluator record: `folderId` is its parent, the subtype comes
+ * from its sidecar, and the sidecar's field values (never its notes) are the
+ * record's metadata. A failed sidecar read throws.
+ */
+async function loadFolderRecord(
+  projectRoot: string,
+  folder: Folder,
+): Promise<{ resource: ResourceBase; fields: Record<string, MetadataValue> }> {
+  const sidecar = await readFolderSidecar(projectRoot, folder.id);
+  const resource: ResourceBase = {
+    id: folder.id,
+    slug: folder.slug,
+    name: folder.name,
+    type: "folder",
+    folderId: folder.parentId ?? null,
+    orderIndex: folder.orderIndex,
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
+    resourceSubtype: sidecar.resourceSubtype,
+  };
+  return { resource, fields: sidecar.fieldValues };
+}
+
 /**
  * Load the full EvaluationInput for a project by reading all sidecars,
  * project config, and the persisted backlink index from disk.
  */
 async function loadEvaluationInput(
   projectRoot: string,
-  evaluationTime?: Date,
+  evaluationTime: Date | undefined,
+  includeFolders: boolean,
 ): Promise<EvaluationInput> {
   const [config, backlinks, mentionIndex, resourceIds] = await Promise.all([
     loadProjectConfig(projectRoot),
@@ -171,6 +238,14 @@ async function loadEvaluationInput(
     resources.push(resource);
   }
 
+  if (includeFolders) {
+    for (const folder of await listFolderDescriptors(projectRoot)) {
+      const { resource, fields } = await loadFolderRecord(projectRoot, folder);
+      sidecars[folder.id] = fields;
+      resources.push(resource);
+    }
+  }
+
   const resolveRef = async (id: string): Promise<QueryAST | null> => {
     const saved = await readQuery(projectRoot, id);
     return saved !== null ? (saved.definition as QueryAST) : null;
@@ -198,6 +273,15 @@ export async function executeEvaluate(
   ast: QueryAST,
   evaluationTime?: Date,
 ): Promise<string[]> {
-  const input = await loadEvaluationInput(projectRoot, evaluationTime);
-  return evaluate(ast, input);
+  const resolveRef = async (id: string): Promise<QueryAST | null> => {
+    const saved = await readQuery(projectRoot, id);
+    return saved !== null ? (saved.definition as QueryAST) : null;
+  };
+  const expanded = await expandRefs(ast, resolveRef, []);
+  const input = await loadEvaluationInput(
+    projectRoot,
+    evaluationTime,
+    queryNamesFolderType(expanded),
+  );
+  return evaluate(expanded, input);
 }
