@@ -63,9 +63,16 @@ function useAttachmentsFetch(mode: FetchMode): void {
           : json(stored);
       }
       if (method === "POST") {
-        return mode === "add-refused"
-          ? json({ error: "A Source holds at most 500 attachments." }, 400)
-          : json(entry("d4", "added.pdf"));
+        if (mode === "add-refused") {
+          return json(
+            { error: "A Source holds at most 500 attachments." },
+            400,
+          );
+        }
+        // Keep the added entry so a later reorder or remove sees it.
+        const added = entry("d4", "added.pdf");
+        stored = [...stored, added];
+        return json(added);
       }
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         attachmentId?: string;

@@ -41,23 +41,41 @@ function useFolderMetadataFetch(mode: FetchMode): void {
   const original = React.useRef<typeof fetch | null>(null);
   if (original.current === null) {
     original.current = globalThis.fetch;
+    let stored: {
+      notes: string;
+      fieldValues: Record<string, unknown>;
+      resourceSubtype?: string;
+    } = {
+      notes: "Principal cast.",
+      fieldValues: { mood: "tense" },
+      resourceSubtype: "Cast",
+    };
     globalThis.fetch = async (input, init) => {
       const url = typeof input === "string" ? input : String(input);
       if (!url.includes("/api/project/folder-metadata")) {
         return original.current!(input, init);
       }
       if (init?.method === "PUT") {
-        return mode === "save-fails"
-          ? json({ error: "The disk is full." }, 500)
-          : json({ notes: "Saved notes", fieldValues: {} });
+        if (mode === "save-fails") {
+          return json({ error: "The disk is full." }, 500);
+        }
+        // Merge the write so a later read (and the saved response) reflects it.
+        const sent = JSON.parse(String(init.body ?? "{}")) as {
+          metadata?: Partial<typeof stored>;
+        };
+        stored = {
+          ...stored,
+          ...sent.metadata,
+          fieldValues: {
+            ...stored.fieldValues,
+            ...(sent.metadata?.fieldValues ?? {}),
+          },
+        };
+        return json(stored);
       }
       return mode === "read-fails"
         ? json({ error: "The folder could not be read." }, 500)
-        : json({
-            notes: "Principal cast.",
-            fieldValues: { mood: "tense" },
-            resourceSubtype: "Cast",
-          });
+        : json(stored);
     };
   }
   React.useEffect(
