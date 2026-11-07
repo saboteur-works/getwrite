@@ -51,6 +51,13 @@ const ALLOWED: readonly AllowedFinding[] = [
     scope: "sidecarFilename",
     reason: "The one definition of the sidecar file name; writes nothing.",
   },
+  {
+    file: "src/lib/models/folder-metadata-core.ts",
+    kind: "direct-write",
+    scope: "updateFolderMetadataCore",
+    reason:
+      "The folder sidecar's one writer: read and write inside withMetaLock and the sidecar's withFileLock.",
+  },
   // Creation and import: a new project root.
   {
     file: "src/lib/models/project-creator.ts",
