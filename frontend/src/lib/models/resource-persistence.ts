@@ -277,7 +277,10 @@ export const getLocalResources = async (
 
   return Promise.all(
     resources.map(async (r) => {
-      if (r.type !== "text" || (r as TextResource).wordCount !== undefined) {
+      if (
+        (r.type !== "text" && r.type !== "source") ||
+        (r as TextResource).wordCount !== undefined
+      ) {
         return r;
       }
       const contentPath = path.join(

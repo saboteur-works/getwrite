@@ -85,7 +85,7 @@ export const INTRINSIC_FIELDS: readonly IntrinsicField[] = [
     type: "number",
     source: "resource",
     read: (resource) =>
-      resource.type === "text"
+      resource.type === "text" || resource.type === "source"
         ? ((resource as TextResource).wordCount ?? null)
         : null,
   },
@@ -95,7 +95,7 @@ export const INTRINSIC_FIELDS: readonly IntrinsicField[] = [
     type: "number",
     source: "resource",
     read: (resource) =>
-      resource.type === "text"
+      resource.type === "text" || resource.type === "source"
         ? ((resource as TextResource).charCount ?? null)
         : null,
   },

@@ -6,6 +6,7 @@ import DataView, {
 } from "../components/WorkArea/DataView";
 import type { FilteredGoalTotal } from "../src/hooks/useFilteredGoalTotal";
 import { createTextResource } from "../src/lib/models/resource";
+import { createSourceResource } from "../src/lib/models/resource-factory";
 import type { AnyResource, Project } from "../src/lib/models/types";
 
 vi.mock("../src/lib/api/goal-filtered-total", () => ({
@@ -191,5 +192,24 @@ describe("useDataViewFilteredTotal", () => {
     expect(seen).not.toContain("total:400");
     await act(async () => {});
     expect(result.current.state).toEqual({ status: "total", total: 900 });
+  });
+});
+
+describe("DataView goal bar with no goal filter (Feature 102 FR-28)", () => {
+  it("includes a Source's words in the project total, as observed", () => {
+    render(
+      <DataView
+        project={makeProject(1000)}
+        resources={[
+          ...resourcesOf(10),
+          createSourceResource({
+            name: "Research",
+            plainText: "w ".repeat(7),
+            folderId: null,
+          } as never),
+        ]}
+      />,
+    );
+    expect(screen.getByText(/17 \/ 1,000 words/)).toBeInTheDocument();
   });
 });

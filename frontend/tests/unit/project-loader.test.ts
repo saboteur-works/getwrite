@@ -398,4 +398,45 @@ describe("loadProjectFromDisk", () => {
       await removeDirRetry(tmp);
     }
   });
+
+  it("gives a Source its plain text and a counted wordCount, as for text (Feature 102 FR-28)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "gw-loader-source-"));
+    try {
+      await createAndAssertProject(
+        {
+          id: "test-loader-source",
+          name: "Loader Source Test",
+          folders: [{ name: "Workspace", special: true }],
+        },
+        { projectRoot: tmp, name: "Source Project" },
+      );
+      const id = "5a5a5a5a-5a5a-4a5a-8a5a-5a5a5a5a5a5a";
+      await fs.mkdir(path.join(tmp, "resources", id), { recursive: true });
+      await fs.mkdir(path.join(tmp, "meta"), { recursive: true });
+      await fs.writeFile(
+        path.join(tmp, "resources", id, "content.txt"),
+        "alpha beta gamma delta",
+      );
+      await fs.writeFile(
+        path.join(tmp, "meta", `resource-${id}.meta.json`),
+        JSON.stringify({
+          id,
+          type: "source",
+          name: "Research",
+          slug: "research",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          orderIndex: 0,
+          attachments: [],
+        }),
+      );
+      await flushIndexer();
+
+      const loaded = await loadProjectFromDisk(tmp);
+      const source = loaded.resources.find((r) => r.id === id);
+      expect(source?.plaintext).toBe("alpha beta gamma delta");
+      expect((source as { wordCount?: number }).wordCount).toBe(4);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

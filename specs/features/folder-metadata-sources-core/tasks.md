@@ -299,7 +299,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 29
 **Estimate:** 3
 **Notes:** Satisfies FR-28 (OQ-145), part of FR-38. Edit only each site's own file; a needed fix in a hot file is recorded, not made.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Spell check, prose diagnostics and mention detection for Sources
 **What:** Add the tests (and minimal fixes) showing spell check, prose diagnostics and mention detection treat a Source body as a text document.

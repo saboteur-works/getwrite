@@ -239,7 +239,18 @@ Hot-file need: no row requires an edit to `trash.ts`, `trash-core.ts` or `sideca
 
 ## Part 2 FR-28 observation
 
-Not run.
+Task 30, run 2026-11-07 on branch `feat/folder-metadata-sources-core` from base b2021d7f. Tests added to existing files under `frontend/tests/`: `unit/goal-filter-membership-core.test.ts`, `unit/goal-filtered-total-core.test.ts`, `unit/status-rollup.test.ts`, `unit/writing-log-core.test.ts`, `unit/query-intrinsics.test.ts`, `unit/project-loader.test.ts`, `unit/project-creator.test.ts`, `unit/resource-persistence.test.ts`, `dataViewGoalFilter.test.tsx`.
+
+**First run, before any product change** (narrow `pnpm exec vitest run` over the eight unit files): 10 failed, 185 passed. Observed failures: goal membership returned `{ status: 'members', ids: ['t1'] }` where a Source with the same status was expected (and `no-match` for a filter matching only a Source); `evaluateGoalFilteredTotal` returned 4 where text 4 + Source 6 was expected; `computeStatusRollup` gave a Source no row count; the filtered daily aggregate returned added 10 where text 10 + Source 7 was expected; the `wordCount` and `charCount` intrinsics returned null for a Source; `loadProjectFromDisk` returned `plaintext` `''` and no `wordCount` for a Source with a 4-word `content.txt`; `getLocalResources` returned no `wordCount` for a Source whose sidecar had none. Passed before any change (pinning only): new-project config has no `goalFilter` (stored and returned), the unfiltered daily aggregate adds a Source-document entry, the Data view overview total includes a Source's words.
+
+**Product edits made to turn them green** (survey rows 11, 14, 22, 24, 25, 26; each row's disposition was Task 30): `goal-filter-membership-core.ts` membership filter accepts `type` `text` or `source`; `status-rollup.ts` skips only types other than `text` and `source`; `query-intrinsics.ts` `wordCount`/`charCount` read for `text` or `source`; `query-evaluate-core.ts` `sidecarToResourceBase` and the content-derived count step apply to `source`; `project-loader.ts` reads plain text and counts words for `source`; `resource-persistence.ts` word-count backfill applies to `source`. After these, the same eight files pass.
+
+**Observed, no goal filter set** (the owner's reading is not recorded here):
+- Project total: the Data view overview total (`DataView.tsx`) sums `userMetadata.wordCount ?? wordCount ?? 0` over every resource with no type check; with one text resource of 10 words and one Source of 7 words the rendered figure was "17 / 1,000 words" (`dataViewGoalFilter.test.tsx`). That test passed on the pre-change code and was unaffected by the product edits.
+- Daily total: with no `goalFilter`, `getWritingLogAggregateCore` added a writing-log entry whose `documentId` names a Source (7 added, 1 deleted) into `totals` (added 7, deleted 1, net 6). The test seeds the log entry directly; whether a Source's canonical save writes such an entry in a running app was not measured here (`revision-core.ts` has no type check by grep of `.type` lines, not by a save of a Source).
+- With a goal filter set, a Source is a member under the same rules as text for status and `wordCount` conditions (tests above). A filter that names the `type` intrinsic is the writer's own choice and was not varied.
+
+**Not measured:** a running app; the filtered project total for a Source with no sidecar `wordCount` (that figure reads the sidecar only, `goal-filtered-total-core.ts`, as for text); `charCount` through the goal path; whether a Source save updates the sidecar `wordCount` (not tested here).
 
 ## Part 2 FR-31 (d)
 

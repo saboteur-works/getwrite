@@ -425,6 +425,34 @@ describe("filtered daily figure (Feature 98 Task 20)", () => {
     else process.env.GETWRITE_PROJECTS_DIR = prevEnv;
   });
 
+  it("counts a Source's entry under the filter as a text document's (Feature 102 FR-28)", async () => {
+    const SRC = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await mkdir(`${ROOT}/resources/${SRC}`, { recursive: true });
+    await writeFile(
+      `${ROOT}/meta/resource-${SRC}.meta.json`,
+      JSON.stringify({
+        id: SRC,
+        type: "source",
+        userMetadata: { status: "draft" },
+      }),
+      "utf8",
+    );
+    await seedDay([
+      word(10, 2, { documentId: DOC_A }),
+      word(7, 1, { documentId: SRC }),
+    ]);
+    const agg = await read();
+    expect(agg.totals).toEqual({ added: 17, deleted: 3, net: 14 });
+  });
+
+  it("with no filter, an entry saved from a Source counts in the daily total as observed (Feature 102 FR-28)", async () => {
+    await setConfig({});
+    const SRC = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await seedDay([word(7, 1, { documentId: SRC })]);
+    const agg = await read();
+    expect(agg.totals).toEqual({ added: 7, deleted: 1, net: 6 });
+  });
+
   it("sums only entries of matching live documents; no documentId is left out", async () => {
     await seedDay([
       word(10, 2, { documentId: DOC_A }),

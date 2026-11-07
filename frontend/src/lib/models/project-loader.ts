@@ -133,8 +133,10 @@ export async function loadProjectFromDisk(
           sidecar && typeof sidecar.type === "string" ? sidecar.type : "";
         // Only text resources persist a content.txt. Image/audio resources store
         // a binary original.<ext> with no content.txt, so reading it would throw.
-        const plaintext =
-          type === "text" ? await readListPlainText(resourcesDir, id) : "";
+        const isTextBodied = type === "text" || type === "source";
+        const plaintext = isTextBodied
+          ? await readListPlainText(resourcesDir, id)
+          : "";
         // Same algorithm as everywhere else that counts words (creation,
         // canonical save, query/smart-folder evaluation): `countWords()`
         // filters out whitespace-delimited tokens with no word character
@@ -148,12 +150,11 @@ export async function loadProjectFromDisk(
         // predicate actually evaluated against (`query-evaluate-core.ts`,
         // which already used `countWords()`) — three call sites disagreeing
         // on the same content (POS task_7f1afd5d).
-        const wordCount =
-          type !== "text"
-            ? undefined
-            : plaintext === null
-              ? (sidecar?.wordCount as number | undefined)
-              : countWords(plaintext);
+        const wordCount = !isTextBodied
+          ? undefined
+          : plaintext === null
+            ? (sidecar?.wordCount as number | undefined)
+            : countWords(plaintext);
         return {
           ...sidecar,
           plaintext: plaintext ?? "",

@@ -31,6 +31,19 @@ const text = (
   });
 
 describe("computeStatusRollup", () => {
+  it("counts a Source as text: its status and words roll up (Feature 102 FR-28)", () => {
+    const source = (status: unknown, words: number): AnyResource =>
+      res("source", { userMetadata: { status, wordCount: words } });
+    const rows = computeStatusRollup(
+      [text("Draft", 10), source("Draft", 5), source(undefined, 3)],
+      ["Draft"],
+    );
+    expect(rows).toEqual([
+      { label: "Draft", kind: "configured", resourceCount: 2, words: 15 },
+      { label: "No status", kind: "unset", resourceCount: 1, words: 3 },
+    ]);
+  });
+
   it("orders configured, then unknown, then No status last", () => {
     const rows = computeStatusRollup(
       [text("Done", 5), text("Draft", 10), text("Old", 1), text(undefined, 2)],

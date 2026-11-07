@@ -27,6 +27,7 @@ import {
   writeFile,
 } from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
+import { createSourceResource } from "../../src/lib/models/resource-factory";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const folderId = "11111111-1111-4111-8111-111111111111";
@@ -512,6 +513,37 @@ describe("resource persistence reads route through the active storage adapter", 
     const excerpts = await readResourceExcerpts(projectRoot, [resource.id], 10);
     // Trimmed to "the lighthouse ...", then capped to cap + 1 (11) chars.
     expect(excerpts[resource.id]).toBe("the lightho");
+  });
+});
+
+describe("getLocalResources word count backfill (Feature 102 FR-28)", () => {
+  const original = getStorageAdapter();
+  afterEach(() => setStorageAdapter(original));
+
+  it("derives a Source's wordCount from content.txt when its sidecar has none, as for text", async () => {
+    setStorageAdapter(createMemoryAdapter());
+    const projectRoot = "/mem-source-project";
+    const source = createSourceResource({
+      name: "Research",
+      plainText: "one two three four",
+    });
+    const { wordCount: _omitted, ...withoutCount } = source;
+    void _omitted;
+    await mkdir(path.join(projectRoot, "meta"), { recursive: true });
+    await writeFile(
+      path.join(projectRoot, "meta", `resource-${source.id}.meta.json`),
+      JSON.stringify(withoutCount),
+    );
+    await mkdir(path.join(projectRoot, "resources", source.id), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(projectRoot, "resources", source.id, "content.txt"),
+      "one two three four",
+    );
+
+    const loaded = await getLocalResources(projectRoot);
+    expect((loaded[0] as { wordCount?: number }).wordCount).toBe(4);
   });
 });
 

@@ -216,6 +216,10 @@ describe("wordCount field", () => {
     expect(field.read(imageResource, ctx)).toBeNull();
   });
 
+  it("returns the word count for a Source as for text (Feature 102 FR-28)", () => {
+    expect(field.read({ ...textResource, type: "source" }, ctx)).toBe(420);
+  });
+
   it("returns null when wordCount is not set on a text resource", () => {
     const sparse: ResourceBase = { ...baseResource, type: "text" };
     expect(field.read(sparse, ctx)).toBeNull();
@@ -231,6 +235,10 @@ describe("charCount field", () => {
 
   it("returns null for a non-text resource", () => {
     expect(field.read(imageResource, ctx)).toBeNull();
+  });
+
+  it("returns the char count for a Source as for text (Feature 102 FR-28)", () => {
+    expect(field.read({ ...textResource, type: "source" }, ctx)).toBe(2100);
   });
 
   it("returns null when charCount is not set on a text resource", () => {

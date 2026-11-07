@@ -514,4 +514,27 @@ describe("models/project-creator", () => {
       await removeDirRetry(tmp);
     }
   });
+
+  it("seeds no goalFilter in a new project's config, so none excludes the source type (Feature 102 FR-28)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-no-goal-"));
+    try {
+      const spec = {
+        id: "test-no-goal-filter",
+        name: "No Goal Filter",
+        folders: [{ name: "Workspace" }],
+      };
+      const { project, projectPath } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp, name: "No Goal Filter Project" },
+      );
+      expect(project.config).not.toHaveProperty("goalFilter");
+      const stored = JSON.parse(
+        await fs.readFile(path.join(projectPath, "project.json"), "utf8"),
+      ) as { config?: Record<string, unknown> };
+      expect(stored.config ?? {}).not.toHaveProperty("goalFilter");
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

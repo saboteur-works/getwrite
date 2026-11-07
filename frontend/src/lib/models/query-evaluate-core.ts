@@ -78,7 +78,10 @@ export function sidecarToResourceBase(
     resourceSubtype: str(sidecar.resourceSubtype),
   };
 
-  if (base.type === "text" && num(sidecar.wordCount) !== undefined) {
+  if (
+    (base.type === "text" || base.type === "source") &&
+    num(sidecar.wordCount) !== undefined
+  ) {
     (base as TextResource).wordCount = num(sidecar.wordCount)!;
   }
 
@@ -232,7 +235,7 @@ async function loadEvaluationInput(
     sidecars[id] = flattenUserMetadata(rawSidecar);
 
     const resource = sidecarToResourceBase(id, rawSidecar);
-    if (resource.type === "text") {
+    if (resource.type === "text" || resource.type === "source") {
       await deriveTextCounts(projectRoot, id, resource);
     }
     resources.push(resource);

@@ -93,6 +93,44 @@ describe("evaluateGoalMembership", () => {
     });
   });
 
+  it("includes a Source under a writer-set filter by the same rule as text (Feature 102 FR-28)", async () => {
+    await seedProject({ goalFilter: statusDraft });
+    await seedResource("t1", draftSidecar());
+    await seedResource("s1", draftSidecar({ type: "source" }));
+    await seedResource("s2", {
+      type: "source",
+      userMetadata: { status: "final" },
+    });
+    expect(await evaluateGoalMembership(root, NOW)).toEqual({
+      status: "members",
+      ids: ["s1", "t1"],
+    });
+  });
+
+  it("evaluates a Source's word count under a wordCount filter as it does a text document's (Feature 102 FR-28)", async () => {
+    await seedProject({
+      goalFilter: { op: "gte", field: "wordCount", value: 3 },
+    });
+    await seedResource("t1", { wordCount: 3 });
+    await seedResource("s1", { type: "source", wordCount: 3 });
+    await seedResource("t2", { wordCount: 1 });
+    await seedResource("s2", { type: "source", wordCount: 1 });
+    expect(await evaluateGoalMembership(root, NOW)).toEqual({
+      status: "members",
+      ids: ["s1", "t1"],
+    });
+  });
+
+  it("still leaves image, audio and folder resources out", async () => {
+    await seedProject({ goalFilter: statusDraft });
+    await seedResource("s1", draftSidecar({ type: "source" }));
+    await seedResource("img", draftSidecar({ type: "image" }));
+    expect(await evaluateGoalMembership(root, NOW)).toEqual({
+      status: "members",
+      ids: ["s1"],
+    });
+  });
+
   it("selects text resources by subtype", async () => {
     await seedProject({
       subtypes: ["Scene"],

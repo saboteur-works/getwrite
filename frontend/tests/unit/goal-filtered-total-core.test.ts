@@ -87,6 +87,23 @@ describe("evaluateGoalFilteredTotal", () => {
     });
   });
 
+  it("sums a Source's sidecar count with a text document's under a writer-set filter (Feature 102 FR-28)", async () => {
+    await seedProject({ goalFilter: statusDraft });
+    await seedResource("t", {
+      wordCount: 4,
+      userMetadata: { status: "draft" },
+    });
+    await seedResource("s", {
+      type: "source",
+      wordCount: 6,
+      userMetadata: { status: "draft" },
+    });
+    expect(await evaluateGoalFilteredTotal(root, NOW)).toEqual({
+      status: "total",
+      total: 10,
+    });
+  });
+
   it("sums only members of the filter", async () => {
     await seedProject({ goalFilter: statusDraft });
     await seedResource("a", {
