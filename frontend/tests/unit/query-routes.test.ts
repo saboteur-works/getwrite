@@ -16,6 +16,10 @@ import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { generateUUID } from "../../src/lib/models/uuid";
+import {
+  createFolderResource,
+  writeResourceToFile,
+} from "../../src/lib/models/resource";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 
@@ -45,6 +49,7 @@ import {
 import { POST as savedPOST } from "../../app/api/project/query/saved/route";
 import { dispatchSavedQueryAction } from "../../src/lib/models/saved-query-dispatch-core";
 import type { SavedQuery } from "../../src/lib/models/saved-queries";
+import type { QueryAST } from "../../src/lib/models/query-ast";
 
 // ─── Test project helpers ─────────────────────────────────────────────────────
 
@@ -292,6 +297,70 @@ describe("executeEvaluate — happy path", () => {
     expect(ids).toContain(idText);
     expect(ids).toContain(idImage);
     expect(ids).not.toContain(idAudio);
+  });
+});
+
+describe("executeEvaluate — type = folder today (Feature 102 FR-2 (c))", () => {
+  /** A project with two folders on disk and two text resources (one in a folder). */
+  async function seedFolderProject(): Promise<{
+    root: string;
+    folderIds: string[];
+    textIds: string[];
+  }> {
+    const root = await makeTmpProject();
+    const a = createFolderResource({ name: "Folder A" });
+    const b = createFolderResource({ name: "Folder B", parentFolderId: a.id });
+    await writeResourceToFile(root, a);
+    await writeResourceToFile(root, b);
+    const t1 = await addResource(root, { type: "text", name: "Loose Text" });
+    const t2 = await addResource(root, {
+      type: "text",
+      name: "Filed Text",
+      folderId: a.id,
+    });
+    return { root, folderIds: [a.id, b.id], textIds: [t1, t2] };
+  }
+
+  const typeIs = (value: string): QueryAST => ({
+    op: "eq",
+    field: "type",
+    value,
+  });
+
+  it("records what type = folder, type = folder OR type = text and type = folder AND type = text return before any folder source exists", async () => {
+    const { root, folderIds, textIds } = await seedFolderProject();
+
+    const folderOnly = await executeEvaluate(root, typeIs("folder"));
+    const folderOrText = await executeEvaluate(root, {
+      op: "or",
+      children: [typeIs("folder"), typeIs("text")],
+    });
+    const folderAndText = await executeEvaluate(root, {
+      op: "and",
+      children: [typeIs("folder"), typeIs("text")],
+    });
+    const textOnly = await executeEvaluate(root, typeIs("text"));
+
+    console.log(
+      "[FR-2 (c)]",
+      JSON.stringify({
+        folderIds: folderIds.length,
+        textIds: textIds.length,
+        folderOnly: folderOnly.length,
+        folderOrText: folderOrText.length,
+        folderAndText: folderAndText.length,
+        textOnly: textOnly.length,
+        anyFolderIdReturned: [folderOnly, folderOrText, folderAndText].some(
+          (r) => r.some((id) => folderIds.includes(id)),
+        ),
+      }),
+    );
+
+    // First-run observations, pinned: no folder id is ever returned.
+    expect(folderOnly).toEqual([]);
+    expect(folderAndText).toEqual([]);
+    expect([...folderOrText].sort()).toEqual([...textIds].sort());
+    expect([...textOnly].sort()).toEqual([...textIds].sort());
   });
 });
 

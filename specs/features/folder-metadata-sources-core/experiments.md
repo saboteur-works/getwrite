@@ -107,7 +107,30 @@ Task 2 does not decide how Tasks 10 and 11 should keep the key or the sidecar.
 
 ## Part 1 FR-2 (c): `type = folder` query
 
-Not run (Task 3).
+Test: `describe("executeEvaluate — type = folder today (Feature 102 FR-2 (c))")` added to `frontend/tests/unit/query-routes.test.ts`, calling `executeEvaluate` (`query-evaluate-core.ts`) against a real temporary project. Command, from `frontend/`: `pnpm exec vitest run tests/unit/query-routes.test.ts --disableConsoleIntercept`. Result: 27 tests passed in the file (the new one included); no product source file changed. The assertions pin the first-run observations below. The output also carries an `[indexer-queue]` ENOENT line from other tests (background indexing after temp-dir removal); it was not examined and is not part of this record.
+
+Setup: two folders on disk (`Folder A`, and `Folder B` created with `parentFolderId` = A) written with `writeResourceToFile`, and two text resources (one loose, one with `folderId` = A) written as sidecars.
+
+Observed (ids returned; "folders" = the two folder ids, "text" = the two text ids):
+
+| Query | Returned |
+| --- | --- |
+| `type = folder` | 0 ids (no folder id) |
+| `type = text` | the 2 text ids |
+| `type = folder OR type = text` | the 2 text ids, no folder id |
+| `type = folder AND type = text` | 0 ids |
+
+So, as observed: `type = folder` returns nothing today, for a project that has folders, and no query in the table returned a folder id. The reading ("matches nothing, from `listResourceIds` at `backlinks.ts:89-99`") agrees with the outcome. Not separated by an experiment: that `listResourceIds` (it lists only directories under `resources/`) is the reason. The test did not run a variant with a different id source, so the cause stays a reading. Not measured: a query naming `type = folder` through the HTTP route or native transport; `type != folder` and `not (type = folder)` (not run).
+
+### Defined result of a mixed-type query (proposal for Task 14, not yet implemented)
+
+A proposal consistent with FR-13, which Task 14 pins by test. It is not an observation and no test shows it yet.
+- Folders enter the evaluator through a second id source, used only when the query names `type = folder` (FR-13, OQ-4). A folder is evaluated as a record whose `type` is `folder`, so the boolean combinators apply per record, as they do for resources.
+- `type = folder`: the folders of the project.
+- `type = folder OR type = text`: the folders plus the text resources (a union of the two sets).
+- `type = folder AND type = text`: empty, because no record has two types.
+- A query that does not name the folder type: unchanged by construction, and identical to the "Observed" column above.
+- Not decided here: how `not (type = text)` and `type != text` treat folders when the query does not name `type = folder` (the second id source would then not be loaded, so folders would not appear); whether a query naming `type = folder` only inside a `not` loads the second source. These are open for Task 14 to settle and pin; the owner's decision where the answer changes a saved query's results.
 
 ## Part 2 FR-18 survey
 
