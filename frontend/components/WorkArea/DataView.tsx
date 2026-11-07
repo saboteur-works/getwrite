@@ -4,6 +4,8 @@ import React from "react";
 import type { Project, AnyResource, Folder } from "../../src/lib/models/types";
 import WordCountProgressBar from "./WordCountProgressBar";
 import ResourceListItem from "./ResourceListItem";
+import FolderListItem from "./FolderListItem";
+import type { FolderRow } from "../../src/lib/folder-data-rows";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
 import StatusRollup from "./StatusRollup";
@@ -129,6 +131,22 @@ export interface DataViewProps {
    * is unchanged. Omit, or pass a not-filtered state, for the current behaviour.
    */
   filteredGoalTotal?: FilteredGoalTotal;
+  /**
+   * Folder rows from a smart folder whose query names `type = folder`
+   * (Feature 102, FR-14): name, subtype and the chosen field columns. Omit or
+   * pass an empty list and the view is unchanged.
+   */
+  folderRows?: FolderRow[];
+  /**
+   * Set when reading the folders' metadata failed. Shown as an alert in place
+   * of the folder list, never as a project with no folders.
+   */
+  folderRowsError?: string;
+  /**
+   * Set when the active smart-folder query failed to evaluate. Shown as an
+   * alert in place of every result row, never as stale or empty results.
+   */
+  evaluationError?: string;
   className?: string;
 }
 
@@ -151,6 +169,9 @@ export default function DataView({
   onResourceClick,
   isEvaluating = false,
   filteredGoalTotal,
+  folderRows,
+  folderRowsError,
+  evaluationError,
   className = "",
 }: DataViewProps): JSX.Element {
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("lastEdited");
@@ -320,26 +341,50 @@ export default function DataView({
             Evaluating query…
           </p>
         )}
-        <div className="max-h-80 overflow-y-auto">
-          <StubResourcesSection
-            resources={stubResources}
-            onResourceClick={onResourceClick}
-          />
-          <ul className="workarea-list">
-            {contentResources.map((r: AnyResource) => (
-              <ResourceListItem
-                key={r.id}
-                name={r.name ?? r.id}
-                type={r.type}
-                wordCount={getWordCount(r)}
-                lastEditedAt={r.updatedAt ?? r.createdAt}
-                onClick={
-                  onResourceClick ? () => onResourceClick(r.id) : undefined
-                }
-              />
-            ))}
-          </ul>
-        </div>
+        {evaluationError ? (
+          <p role="alert" className="font-mono text-[10px] text-gw-secondary">
+            {evaluationError}
+          </p>
+        ) : (
+          <div className="max-h-80 overflow-y-auto">
+            {folderRowsError ? (
+              <p
+                role="alert"
+                className="font-mono text-[10px] text-gw-secondary"
+              >
+                Folder details could not be loaded: {folderRowsError}
+              </p>
+            ) : folderRows && folderRows.length > 0 ? (
+              <ul className="workarea-list" aria-label="Folders">
+                {folderRows.map((row) => (
+                  <FolderListItem
+                    key={row.id}
+                    row={row}
+                    onSelect={onSelectFolder}
+                  />
+                ))}
+              </ul>
+            ) : null}
+            <StubResourcesSection
+              resources={stubResources}
+              onResourceClick={onResourceClick}
+            />
+            <ul className="workarea-list">
+              {contentResources.map((r: AnyResource) => (
+                <ResourceListItem
+                  key={r.id}
+                  name={r.name ?? r.id}
+                  type={r.type}
+                  wordCount={getWordCount(r)}
+                  lastEditedAt={r.updatedAt ?? r.createdAt}
+                  onClick={
+                    onResourceClick ? () => onResourceClick(r.id) : undefined
+                  }
+                />
+              ))}
+            </ul>
+          </div>
+        )}
       </CollapsibleSection>
     </div>
   );

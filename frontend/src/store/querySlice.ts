@@ -41,6 +41,8 @@ export interface QueryState {
   deletingQueryId: string | null;
   /** Latest error surfaced to the query UI. Empty string when none. */
   errorMessage: string;
+  /** Failure of the latest query evaluation only; cleared when a new one starts. Empty when none. */
+  evaluationErrorMessage?: string;
 }
 
 // ─── Payload interfaces ───────────────────────────────────────────────────────
@@ -98,6 +100,7 @@ const initialState: QueryState = {
   savingQueryId: null,
   deletingQueryId: null,
   errorMessage: "",
+  evaluationErrorMessage: "",
 };
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -296,6 +299,7 @@ const querySlice = createSlice({
       state.isEvaluating = true;
       state.evaluatingForProjectId = action.meta.arg.projectId;
       state.errorMessage = "";
+      state.evaluationErrorMessage = "";
     });
     builder.addCase(evaluateQuery.fulfilled, (state, action) => {
       if (state.evaluatingForProjectId !== action.payload.projectId) return;
@@ -309,6 +313,8 @@ const querySlice = createSlice({
       state.isEvaluating = false;
       state.evaluatingForProjectId = null;
       state.errorMessage = action.payload ?? "Query evaluation failed.";
+      state.evaluationErrorMessage =
+        action.payload ?? "Query evaluation failed.";
     });
   },
 });
@@ -367,3 +373,6 @@ export const selectDeletingQueryId = (state: RootState): string | null =>
 
 export const selectQueryErrorMessage = (state: RootState): string =>
   state.queries.errorMessage;
+
+export const selectEvaluationErrorMessage = (state: RootState): string =>
+  state.queries.evaluationErrorMessage ?? "";

@@ -12,6 +12,12 @@
  * of editor content.
  */
 import { useAppSettingsOpenRequests } from "../../src/hooks/useAppSettingsOpenRequests";
+import { useFolderRowMetadata } from "../../src/hooks/useFolderRowMetadata";
+import {
+  buildFolderColumns,
+  buildFolderRows,
+  splitSmartFolderResults,
+} from "../../src/lib/folder-data-rows";
 import React, { useState, useEffect } from "react";
 import type {
   AnyResource,
@@ -118,6 +124,7 @@ import {
   deleteQuery,
   selectActiveQueryIds,
   selectIsEvaluating,
+  selectEvaluationErrorMessage,
   selectSavedQueriesList,
   type SavedQuery,
 } from "../../src/store/querySlice";
@@ -300,6 +307,7 @@ export default function AppShell({
   const liveFolders = useAppSelector((s) => selectFolders(s.resources));
   const activeQueryIds = useAppSelector(selectActiveQueryIds);
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
+  const queryEvaluationError = useAppSelector(selectEvaluationErrorMessage);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
   const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
@@ -339,6 +347,36 @@ export default function AppShell({
     goalTotalProjectId,
     Boolean(goalTotalProjectId && project?.config?.goalFilter),
   );
+  // Smart-folder results split into resources and folders (Feature 102,
+  // FR-14). Without an active smart folder, or when the result names no
+  // folder, `resources` is exactly the previous filter and no request is made.
+  const smartFolderResults = React.useMemo(
+    () =>
+      activeSmartFolderId
+        ? splitSmartFolderResults(activeQueryIds, liveResources, liveFolders)
+        : { resources: liveResources, folders: [] },
+    [activeSmartFolderId, activeQueryIds, liveResources, liveFolders],
+  );
+  const smartFolderFolderIds = React.useMemo(
+    () => smartFolderResults.folders.map((f) => f.id),
+    [smartFolderResults.folders],
+  );
+  const folderRowMetadata = useFolderRowMetadata(
+    activeProjectDirectoryId ?? "",
+    smartFolderFolderIds,
+  );
+  const folderRows = React.useMemo(() => {
+    if (folderRowMetadata.status !== "ready") return [];
+    const { byId } = folderRowMetadata;
+    const columns = buildFolderColumns(
+      metadataSchema,
+      smartFolderResults.folders.map((f) => ({
+        id: f.id,
+        resourceSubtype: byId[f.id]?.resourceSubtype,
+      })),
+    );
+    return buildFolderRows(smartFolderResults.folders, byId, columns);
+  }, [folderRowMetadata, metadataSchema, smartFolderResults.folders]);
   // The project's tags (`config.tags`) for the Tags chip's value box. Read
   // through the existing tags transport (no new route) as soon as a project is
   // active, independent of the builder, so a saved Tags chip restored before
@@ -1462,11 +1500,8 @@ export default function AppShell({
                       view === "trash"
                         ? (() => {
                             if (view === "data") {
-                              const queryResources = activeSmartFolderId
-                                ? liveResources.filter((r) =>
-                                    activeQueryIds.includes(r.id),
-                                  )
-                                : liveResources;
+                              const queryResources =
+                                smartFolderResults.resources;
                               return (
                                 <>
                                   {isQueryBuilderOpen && (
@@ -1486,7 +1521,8 @@ export default function AppShell({
                                         }
                                         matchCount={
                                           activeSmartFolderId
-                                            ? queryResources.length
+                                            ? queryResources.length +
+                                              smartFolderResults.folders.length
                                             : undefined
                                         }
                                         onGlobalCombinatorChange={
@@ -1528,6 +1564,18 @@ export default function AppShell({
                                     project={project ?? undefined}
                                     filteredGoalTotal={filteredGoalTotal}
                                     folders={liveFolders}
+                                    folderRows={folderRows}
+                                    folderRowsError={
+                                      folderRowMetadata.status === "failed"
+                                        ? folderRowMetadata.message
+                                        : undefined
+                                    }
+                                    evaluationError={
+                                      activeSmartFolderId &&
+                                      queryEvaluationError
+                                        ? queryEvaluationError
+                                        : undefined
+                                    }
                                     isEvaluating={
                                       activeSmartFolderId
                                         ? isQueryEvaluating
