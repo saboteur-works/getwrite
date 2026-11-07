@@ -153,7 +153,7 @@ function valueNamesFolder(value: MetadataValue): boolean {
  * under `not` or an `ne`. Only then is the folder id source loaded
  * (Feature 102, FR-13).
  */
-export function queryNamesFolderType(ast: QueryAST): boolean {
+function queryNamesFolderType(ast: QueryAST): boolean {
   switch (ast.op) {
     case "and":
     case "or":

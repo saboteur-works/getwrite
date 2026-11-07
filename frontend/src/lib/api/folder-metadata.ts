@@ -73,7 +73,7 @@ async function parseResponse(
 }
 
 /** HTTP transport: the hosted/desktop path. */
-export const httpFolderMetadataTransport: FolderMetadataTransport = {
+const httpFolderMetadataTransport: FolderMetadataTransport = {
   async getFolderMetadata(projectId, folderId) {
     const query = new URLSearchParams({ projectId, folderId });
     const response = await fetch(`${ENDPOINT}?${query.toString()}`);

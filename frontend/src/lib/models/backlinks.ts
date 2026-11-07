@@ -100,7 +100,7 @@ export async function listResourceIds(projectRoot: string): Promise<string[]> {
 }
 
 /** A folder's `folder.json` exists but could not be read or is not a folder. */
-export class FolderDescriptorUnreadableError extends Error {
+class FolderDescriptorUnreadableError extends Error {
   constructor(options?: { cause?: unknown }) {
     super("A folder descriptor (folder.json) could not be read.", options);
     this.name = "FolderDescriptorUnreadableError";

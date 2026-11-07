@@ -211,7 +211,7 @@ export interface AttachmentFileDescriptor extends MediaFileDescriptor {
   bytes: Uint8Array;
 }
 
-export interface AttachmentValidationError {
+interface AttachmentValidationError {
   ok: false;
   reason: AttachmentRejectionReason;
   message: string;

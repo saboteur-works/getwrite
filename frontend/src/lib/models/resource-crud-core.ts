@@ -482,9 +482,12 @@ export class InvalidResourceSubtypeCoreError extends Error {
 
 /**
  * Thrown by {@link updateSidecarCore} when `entityKind` or `aliases` is
- * submitted for a Source (Feature 102, FR-21): a Source is never an entity.
- * Thrown inside the sidecar lock before the write, so nothing is stored.
- * Clearing the two keys through `clearKeys` stays allowed.
+ * submitted for a Source (Feature 102, FR-21, OQ-9): the sidecar route does not
+ * make a Source an entity. A Source sidecar that already carries `entityKind`
+ * is still treated as an entity (owner decision, 2026-11-07); this error only
+ * refuses new writes of the two keys. Thrown inside the sidecar lock before
+ * the write, so nothing is stored. Clearing the two keys through `clearKeys`
+ * stays allowed.
  */
 export class SourceEntityFieldsCoreError extends Error {
   constructor() {

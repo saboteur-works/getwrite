@@ -114,7 +114,7 @@ function formBody(fields: Record<string, string>, file: File): FormData {
 }
 
 /** HTTP transport: the hosted/desktop path. */
-export const httpAttachmentTransport: AttachmentTransport = {
+const httpAttachmentTransport: AttachmentTransport = {
   async listAttachments(projectId, resourceId) {
     const query = new URLSearchParams({ projectId, resourceId });
     const response = await fetch(`${ENDPOINT}?${query.toString()}`);

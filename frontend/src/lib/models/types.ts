@@ -403,7 +403,7 @@ export interface TextResource extends ResourceBase {
  * One attachment in a Source's sidecar `attachments` array (Feature 102,
  * FR-22). Array order is display order.
  */
-export interface AttachmentEntry {
+interface AttachmentEntry {
   id: UUID;
   /** Bare stored file name inside the Source's `resources/<id>/` directory. */
   fileName: string;

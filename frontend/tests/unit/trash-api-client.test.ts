@@ -16,6 +16,11 @@ import {
   type TrashListing,
 } from "../../src/lib/api/trash";
 import {
+  MissingProjectKeyError,
+  ProjectLockedError,
+  isLockedAccessError,
+} from "../../src/lib/models/locked-access";
+import {
   type LimitRefusalError,
   isLimitRefusalError,
 } from "../../src/lib/api/limit-refusal";
@@ -277,19 +282,16 @@ describe("trash purge — limit refusal (Feature 77, Task 16)", () => {
     expect((error as LimitRefusalError).limit).toBe("permanentDeletion");
   });
 
-  it.each([401, 409, 500])(
-    "keeps the status message for %s",
-    async (status) => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status,
-        json: async () => ({ error: "ignored" }),
-      } as Response);
-      await expect(purgeTrashItems("project-1", ["r"])).rejects.toThrow(
-        `Failed to purge trash items (status ${status}).`,
-      );
-    },
-  );
+  it.each([500])("keeps the status message for %s", async (status) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status,
+      json: async () => ({ error: "ignored" }),
+    } as Response);
+    await expect(purgeTrashItems("project-1", ["r"])).rejects.toThrow(
+      `Failed to purge trash items (status ${status}).`,
+    );
+  });
 
   it("keeps the status message when the 403 body is malformed", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -301,6 +303,73 @@ describe("trash purge — limit refusal (Feature 77, Task 16)", () => {
     } as unknown as Response);
     await expect(purgeTrashItems("project-1", ["r"])).rejects.toThrow(
       "Failed to purge trash items (status 403).",
+    );
+  });
+});
+
+describe("trash restore and purge — locked project (FR-26 decision 1)", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+
+  function respond(status: number, headers: Record<string, string> = {}): void {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status,
+      headers: new Headers(headers),
+      json: async () => ({ error: "locked" }),
+    } as Response);
+  }
+
+  it("rejects restore with ProjectLockedError on 401", async () => {
+    respond(401);
+    const error: unknown = await restoreTrashItems("project-1", ["r"]).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(ProjectLockedError);
+  });
+
+  it("rejects restore with MissingProjectKeyError on 409", async () => {
+    respond(409);
+    const error: unknown = await restoreTrashItems("project-1", ["r"]).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(MissingProjectKeyError);
+  });
+
+  it.each([
+    ["ids", ["r"]],
+    ["all", { all: true } as const],
+  ])(
+    "rejects purge (%s) with a locked-access error on 401 and 409",
+    async (_n, selection) => {
+      respond(401);
+      expect(
+        isLockedAccessError(
+          await purgeTrashItems("project-1", selection).catch(
+            (e: unknown) => e,
+          ),
+        ),
+      ).toBe(true);
+      respond(409);
+      expect(
+        isLockedAccessError(
+          await purgeTrashItems("project-1", selection).catch(
+            (e: unknown) => e,
+          ),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it("does not treat the not-paired gate's 401 as a locked project", async () => {
+    respond(401, { "x-getwrite-gate": "not-paired" });
+    const error: unknown = await restoreTrashItems("project-1", ["r"]).catch(
+      (e: unknown) => e,
+    );
+    expect(isLockedAccessError(error)).toBe(false);
+    expect((error as Error).message).toBe(
+      "Failed to restore trash items (status 401).",
     );
   });
 });

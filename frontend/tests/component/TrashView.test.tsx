@@ -89,6 +89,18 @@ import AppShell from "../../components/Layout/AppShell";
 import { setupAppShellFetchStub } from "../helpers/appShellFetchStub";
 import { flushPendingEffects } from "../helpers/flushEffects";
 import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
+import { ProjectLockedError } from "../../src/lib/models/locked-access";
+import {
+  fetchEncryptionStatus,
+  unlockWorkspaceRequest,
+} from "../../src/lib/api/encryption";
+import { UNLOCK_AT_DESKTOP_MESSAGE } from "../../components/Sharing/sharing-copy";
+
+vi.mock("../../src/lib/api/encryption", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/lib/api/encryption")>()),
+  unlockWorkspaceRequest: vi.fn(),
+  fetchEncryptionStatus: vi.fn(),
+}));
 
 const mockedListTrash = vi.mocked(listTrash);
 const mockedRestoreTrashItems = vi.mocked(restoreTrashItems);
@@ -1246,5 +1258,121 @@ describe("TrashView — Feature 77 Task 22 (FR-26): a refused purge is visible",
     expect(await screen.findByText(GENERIC)).toBeInTheDocument();
     expect(screen.getAllByTestId("trash-row")).toHaveLength(3);
     expect(limitsMock.refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("TrashView — locked project (FR-26 decision 1)", () => {
+  const UNLOCK_TITLE = "Unlock your encrypted projects";
+  const GENERIC = /Try again later/i;
+
+  async function openBatch(action: "restore" | "purge"): Promise<void> {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    const locked = new ProjectLockedError(PROJECT_ID);
+    mockedRestoreTrashItems.mockRejectedValue(locked);
+    mockedPurgeTrashItems.mockRejectedValue(locked);
+    limitsMock.refresh.mockResolvedValue(limitsMock.state);
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await screen.findAllByTestId("trash-row");
+    selectTrashRow("res-1");
+    fireEvent.click(
+      screen.getByTestId(
+        action === "restore"
+          ? "trash-restore-selected"
+          : "trash-delete-selected",
+      ),
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: action === "restore" ? "Restore" : "Delete permanently",
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.mocked(fetchEncryptionStatus).mockResolvedValue({
+      isAvailable: true,
+      hasKeyring: true,
+      isUnlocked: false,
+      encryptedProjectIds: [PROJECT_ID],
+    } as never);
+  });
+
+  afterEach(() => {
+    limitsMock.state = { state: "exempt" };
+  });
+
+  it.each(["restore", "purge"] as const)(
+    "shows the unlock prompt, not the generic failure, when %s hits a locked project",
+    async (action) => {
+      await openBatch(action);
+      expect(await screen.findByText(UNLOCK_TITLE)).toBeTruthy();
+      expect(screen.queryByText(GENERIC)).toBeNull();
+    },
+  );
+
+  it("empty Trash hits the same prompt", async () => {
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mockedPurgeTrashItems.mockRejectedValue(new ProjectLockedError(PROJECT_ID));
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await screen.findAllByTestId("trash-row");
+    fireEvent.click(screen.getByTestId("trash-empty-trash"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: /empty trash|delete permanently/i,
+      }),
+    );
+    expect(await screen.findByText(UNLOCK_TITLE)).toBeTruthy();
+  });
+
+  it("sends the passphrase through the shared unlock request and closes the prompt", async () => {
+    vi.mocked(unlockWorkspaceRequest).mockResolvedValue({
+      isAvailable: true,
+      hasKeyring: true,
+      isUnlocked: true,
+      encryptedProjectIds: [PROJECT_ID],
+    } as never);
+    await openBatch("restore");
+    await screen.findByText(UNLOCK_TITLE);
+    fireEvent.change(screen.getByLabelText(/passphrase/i), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    await waitFor(() =>
+      expect(unlockWorkspaceRequest).toHaveBeenCalledWith("correct horse"),
+    );
+    await waitFor(() => expect(screen.queryByText(UNLOCK_TITLE)).toBeNull());
+  });
+
+  it("closes the prompt when the writer continues without unlocking", async () => {
+    await openBatch("restore");
+    await screen.findByText(UNLOCK_TITLE);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue without unlocking" }),
+    );
+    await waitFor(() => expect(screen.queryByText(UNLOCK_TITLE)).toBeNull());
+  });
+
+  it("on a paired device with unlocking limited, says to unlock at the desktop and mounts no prompt", async () => {
+    limitsMock.state = {
+      state: "paired",
+      limits: { unlocking: true },
+    } as never;
+    await openBatch("restore");
+    expect(await screen.findByText(UNLOCK_AT_DESKTOP_MESSAGE)).toBeTruthy();
+    expect(screen.queryByText(UNLOCK_TITLE)).toBeNull();
   });
 });

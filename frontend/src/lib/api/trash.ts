@@ -36,6 +36,7 @@
  */
 import { createTransport } from "../../store/transport/create-transport";
 import { limitRefusalFromResponse } from "./limit-refusal";
+import { lockedAccessErrorFromResponse } from "./locked-response";
 import type {
   RestoredReferenceInfo,
   TrashedAttachmentEntry,
@@ -188,6 +189,10 @@ export const httpTrashTransport: TrashTransport = {
       },
     );
     if (!response.ok) {
+      // A locked project is not a per-item outcome (FR-26): reject with the
+      // same locked-access error the native backend throws.
+      const locked = lockedAccessErrorFromResponse(response, projectId);
+      if (locked) throw locked;
       throw new Error(
         `Failed to restore trash items (status ${response.status}).`,
       );
@@ -219,6 +224,8 @@ export const httpTrashTransport: TrashTransport = {
         await response.json().catch(() => null),
       );
       if (refusal) throw refusal;
+      const locked = lockedAccessErrorFromResponse(response, projectId);
+      if (locked) throw locked;
       throw new Error(
         `Failed to purge trash items (status ${response.status}).`,
       );

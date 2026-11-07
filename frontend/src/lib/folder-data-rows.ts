@@ -26,7 +26,7 @@ export interface FolderColumn {
   label: string;
 }
 
-export interface FolderRowCell extends FolderColumn {
+interface FolderRowCell extends FolderColumn {
   /** Display text; empty when the folder has no value or is not offered the field. */
   value: string;
 }

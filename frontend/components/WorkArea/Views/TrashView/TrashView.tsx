@@ -23,7 +23,21 @@ import type {
 import ConfirmDialog from "../../../common/ConfirmDialog";
 import Button from "../../../common/UI/Button/Button";
 import Checkbox from "../../../common/UI/Checkbox/Checkbox";
-import { useSharingLimits } from "../../../Sharing/SharingLimitsContext";
+import {
+  useDeclareUnlockPromptMounted,
+  useSharingLimits,
+} from "../../../Sharing/SharingLimitsContext";
+import UnlockModal from "../../../common/UnlockModal";
+import {
+  isUnlockingLimited,
+  isUnlockPromptAllowed,
+} from "../../../Sharing/unlock-prompt-gate";
+import { UNLOCK_AT_DESKTOP_MESSAGE } from "../../../Sharing/sharing-copy";
+import {
+  checkWorkspaceLock,
+  unlockWorkspace,
+} from "../../../../src/store/cryptoSlice";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { isLimitOn } from "../../../Sharing/limit-gate";
 import LimitReason from "../../../Sharing/LimitReason";
 import { PERMANENT_DELETION_LIMITED_REASON } from "../../../Sharing/sharing-copy";
@@ -215,7 +229,11 @@ export default function TrashView({
   // already soft-deleted (and therefore already absent from `page.tsx`'s
   // local state, per the FR-21/OQ-11 note above) before it could be purged.
   const { notifyTrashRestored } = useTrashRefresh();
-  const { state: limitsState, refresh: refreshLimits } = useSharingLimits();
+  const {
+    state: limitsState,
+    hasDesktopBridge,
+    refresh: refreshLimits,
+  } = useSharingLimits();
   const isPurgeLimited = isLimitOn(limitsState, "permanentDeletion");
   const purgeReasonId = "trash-purge-limit-reason";
 
@@ -251,6 +269,39 @@ export default function TrashView({
   // plain text (not role="alert").
   const [actionRefusal, setActionRefusal] = useState<string | null>(null);
   const [restoreNotices, setRestoreNotices] = useState<RestoreNotice[]>([]);
+  // A restore or purge hit a locked project (FR-26): the same passphrase
+  // prompt the Start page shows (`UnlockModal`, gated by the Feature 77 FR-21
+  // table), opened here because that page is not mounted while a project is
+  // open. After a successful unlock the writer repeats the action.
+  const [isUnlockPromptOpen, setIsUnlockPromptOpen] = useState(false);
+  const encryptedProjectCount = useAppSelector(
+    (s) => s.crypto?.encryptedProjectIds.length ?? 0,
+  );
+  const isUnlocking = useAppSelector((s) => s.crypto?.isUnlocking ?? false);
+  const unlockErrorMessage = useAppSelector((s) => s.crypto?.errorMessage);
+  const isUnlockPromptShown =
+    isUnlockPromptOpen && isUnlockPromptAllowed(limitsState, hasDesktopBridge);
+  useDeclareUnlockPromptMounted(isUnlockPromptShown);
+
+  // The state may have changed since the prompt opened: re-read at submit and
+  // send the passphrase only if the fresh answer still permits the prompt
+  // (same narrowing as `StartPage`).
+  const submitUnlock = useCallback(
+    async (passphrase: string): Promise<void> => {
+      const fresh = await refreshLimits();
+      if (!isUnlockPromptAllowed(fresh, hasDesktopBridge)) return;
+      try {
+        await dispatch(unlockWorkspace(passphrase)).unwrap();
+      } catch {
+        // The failure text is recorded in the crypto slice and shown by the
+        // prompt, which stays open for another attempt.
+        return;
+      }
+      setIsUnlockPromptOpen(false);
+      setReport("Workspace unlocked. Run the action again.");
+    },
+    [dispatch, hasDesktopBridge, refreshLimits],
+  );
 
   const refetch = useCallback(() => {
     if (!projectId) {
@@ -465,7 +516,17 @@ export default function TrashView({
         }
       })
       .catch((err: unknown) => {
-        if (isLimitRefusalError(err)) {
+        if (isLockedAccessError(err)) {
+          // Not a failure to retry: the project needs unlocking first.
+          void dispatch(checkWorkspaceLock());
+          setActionError(null);
+          if (isUnlockingLimited(limitsState)) {
+            setActionRefusal(UNLOCK_AT_DESKTOP_MESSAGE);
+          } else {
+            setActionRefusal(null);
+            setIsUnlockPromptOpen(true);
+          }
+        } else if (isLimitRefusalError(err)) {
           void refreshLimits();
           // The server's own reason, as plain text: a retry cannot succeed.
           setActionRefusal(err.message);
@@ -483,6 +544,7 @@ export default function TrashView({
       .finally(() => setIsSubmitting(false));
   }, [
     refreshLimits,
+    limitsState,
     pendingAction,
     projectId,
     isSubmitting,
@@ -825,6 +887,17 @@ export default function TrashView({
         onCancel={cancelPendingAction}
         isConfirmDisabled={isSubmitting}
       />
+
+      {isUnlockPromptShown ? (
+        <UnlockModal
+          isOpen
+          encryptedProjectCount={encryptedProjectCount}
+          isBusy={isUnlocking}
+          errorMessage={unlockErrorMessage}
+          onUnlock={(passphrase) => void submitUnlock(passphrase)}
+          onDecline={() => setIsUnlockPromptOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

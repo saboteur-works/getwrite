@@ -763,14 +763,8 @@ export const TrashAttachmentRecordSchema = z.object({
 /** Inferred shape of one attachment list entry. */
 export type AttachmentEntry = z.infer<typeof AttachmentEntrySchema>;
 
-/** Inferred shape of a folder sidecar. */
-export type FolderSidecar = z.infer<typeof FolderSidecarSchema>;
-
 /** Inferred shape of an attachment Trash record. */
 export type TrashAttachmentRecord = z.infer<typeof TrashAttachmentRecordSchema>;
-
-/** Inferred Trash item kind. */
-export type TrashItemKind = z.infer<typeof TrashItemKindSchema>;
 
 /**
  * Convenience object bundling core model schemas.
