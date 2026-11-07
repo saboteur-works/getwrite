@@ -2,6 +2,7 @@
   "name": "getwrite-electron",
   "version": "2.3.0",
   "private": true,
+  "license": "FSL-1.1-ALv2",
   "main": "dist/main.js",
   "description": "A local-first writing application",
   "author": {

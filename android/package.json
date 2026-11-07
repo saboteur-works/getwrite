@@ -2,6 +2,7 @@
   "name": "getwrite-android",
   "version": "1.6.0",
   "private": true,
+  "license": "FSL-1.1-ALv2",
   "description": "Native Android shell for GetWrite (Capacitor)",
   "author": {
     "name": "Saboteur LLC - Saboteur Works",
