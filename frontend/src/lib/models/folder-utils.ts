@@ -1,4 +1,4 @@
-import { readFile, readdir, stat, writeFile } from "./io";
+import { atomicWriteFile, readFile, readdir, stat } from "./io";
 import path from "node:path";
 
 /** Returns immediate child directory paths of `dir`, ignoring `.DS_Store`. Returns `[]` if `dir` is missing or unreadable. */
@@ -60,7 +60,9 @@ export async function renameFolderById(
       const data = JSON.parse(raw) as Record<string, unknown>;
       if (data.id === folderId) {
         const updated = { ...data, name: newName };
-        await writeFile(
+        // Atomic: a reader (folder-metadata save, folder listing) must never
+        // see a truncated folder.json while the rename is mid-write.
+        await atomicWriteFile(
           folderJsonPath,
           JSON.stringify(updated, null, 2),
           "utf-8",
