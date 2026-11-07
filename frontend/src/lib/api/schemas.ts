@@ -141,6 +141,9 @@ const ApiMetadataFieldSchema = z.object({
   // Subtype labels this field is restricted to (Feature 72, FR-13). Absent
   // means unrestricted; declared here because Zod strips unknown keys.
   appliesTo: z.array(z.string()).optional(),
+  // Also offered on folders (Feature 102, FR-9); declared here because Zod
+  // strips unknown keys.
+  appliesToFolders: z.boolean().optional(),
 });
 
 const ApiMetadataGroupSchema = z.object({

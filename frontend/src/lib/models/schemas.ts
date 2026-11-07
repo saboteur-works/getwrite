@@ -203,6 +203,13 @@ export const MetadataFieldSchema = z.object({
    * the shared comparison key. Absent or empty means unrestricted.
    */
   appliesTo: z.array(z.string()).optional(),
+  /**
+   * Feature 102 (FR-9, OQ-138): when true the field is also offered on
+   * folders. It does not restrict the field to folders and is not a reserved
+   * `appliesTo` value. Absent means the field's folder behaviour follows
+   * `appliesTo` alone.
+   */
+  appliesToFolders: z.boolean().optional(),
 });
 
 /**
@@ -528,6 +535,49 @@ export const AnnotationSchema = z.object({
 });
 
 /**
+ * One attachment in a Source's sidecar `attachments` array (Feature 102,
+ * FR-22; shape recorded in `experiments.md`, Part 2 FR-18 survey). Array
+ * order is display order. Strict: an undeclared key is rejected. The
+ * per-Source count (500) and the stored-name checks are enforced by the
+ * attachment core at the write boundary, not here.
+ */
+export const AttachmentEntrySchema = z.strictObject({
+  id: UUID,
+  /** Bare stored file name inside the Source's `resources/<id>/` directory. */
+  fileName: z.string().min(1),
+  /** Display only; never used as a path. */
+  originalName: z.string(),
+  /** Set from the magic-byte check, not from the client. */
+  mime: z.string().min(1),
+  size: z.number().int().nonnegative(),
+  addedAt: IsoDateString,
+});
+
+/** The ordered attachment list held under a Source sidecar's `attachments` key. */
+export const AttachmentListSchema = z.array(AttachmentEntrySchema);
+
+/**
+ * Shape of a folder sidecar, `meta/folder-<id>.meta.json` (Feature 102,
+ * FR-3, FR-4). Notes live only at `userMetadata.notes` (plain text); field
+ * values are the other `userMetadata` keys; the subtype is the top-level
+ * `resourceSubtype`, as in resource sidecars. Strict and body-less: a
+ * `plainText`, `tiptap` or top-level `notes` key is rejected. The
+ * client-writable allowlist belongs to the folder core, not this schema.
+ */
+export const FolderSidecarSchema = z
+  .strictObject({
+    userMetadata: z.record(z.string(), MetadataValue).optional(),
+    resourceSubtype: z.string().trim().min(1).optional(),
+  })
+  .refine(
+    (value) =>
+      value.userMetadata === undefined ||
+      !("notes" in value.userMetadata) ||
+      typeof value.userMetadata.notes === "string",
+    { message: "userMetadata.notes must be a string", path: ["userMetadata"] },
+  );
+
+/**
  * Text resource schema extending base fields with editor/text metrics.
  */
 export const TextResourceSchema = ResourceBaseSchema.extend({
@@ -672,6 +722,37 @@ export type TrashFolderManifestEntry = z.infer<
  * Inferred TypeScript shape of a trash folder manifest.
  */
 export type TrashFolderManifest = z.infer<typeof TrashFolderManifestSchema>;
+
+/**
+ * Kinds of item the project Trash holds. `attachment` (Feature 102, FR-26)
+ * is a removed or replaced Source attachment, listed as "Attachment of
+ * <Source name>".
+ */
+export const TrashItemKindSchema = z.enum(["resource", "folder", "attachment"]);
+
+/**
+ * Trash record of one removed or replaced Source attachment (Feature 102,
+ * FR-26): the owning Source id, the list entry it had, and the stored file
+ * name under `.trash/`.
+ */
+export const TrashAttachmentRecordSchema = z.object({
+  kind: z.literal("attachment"),
+  sourceId: UUID,
+  entry: AttachmentEntrySchema,
+  storedName: z.string().min(1),
+});
+
+/** Inferred shape of one attachment list entry. */
+export type AttachmentEntry = z.infer<typeof AttachmentEntrySchema>;
+
+/** Inferred shape of a folder sidecar. */
+export type FolderSidecar = z.infer<typeof FolderSidecarSchema>;
+
+/** Inferred shape of an attachment Trash record. */
+export type TrashAttachmentRecord = z.infer<typeof TrashAttachmentRecordSchema>;
+
+/** Inferred Trash item kind. */
+export type TrashItemKind = z.infer<typeof TrashItemKindSchema>;
 
 /**
  * Convenience object bundling core model schemas.

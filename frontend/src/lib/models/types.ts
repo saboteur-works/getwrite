@@ -190,6 +190,8 @@ export interface MetadataField {
   maxSelections?: number;
   /** Subtype labels this field is restricted to (Feature 72, FR-13). Absent or empty means unrestricted. */
   appliesTo?: string[];
+  /** When true the field is also offered on folders (Feature 102, FR-9). Does not restrict it to folders. */
+  appliesToFolders?: boolean;
 }
 
 /** A named group of metadata fields, optionally scoped to one folder. */
