@@ -337,13 +337,13 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Notes:** Satisfies FR-24 (e2e), FR-11. Run outside the command sandbox in the main checkout, never a worktree.
 **Done:** [ ]
 
-### Task 35: Largest-attachment native transport test and FR-31 (d) record
-**What:** Add the test that adds and reads an attachment of the largest accepted size through the native backend and record the observed run.
-**Files:** a native transport test under `frontend/tests/`, `specs/features/folder-metadata-sources-core/experiments.md` (Part 2 FR-31 (d) section)
-**Done when:** A test adds and reads back an attachment at the 100 MB cap through the native backend under the native runner and passes; the observed duration, size and build are recorded in `experiments.md` as a measurement of that test, stated as not a device measurement; the section lists the on-device run under "Not verified" if it was not run and states nothing about the Phase 3 baseline holding.
-**Depends on:** 28
-**Estimate:** 3
-**Notes:** Satisfies FR-31 (d) as far as it can run without a device. Device verification is not a merge gate.
+### Task 35: Largest-attachment native transport test, FR-31 (d) record, and owner-decision fixes (folder 404, locked restore and purge, Source goal exclusion)
+**What:** Add the test that adds and reads an attachment of the largest accepted size through the native backend and record the observed run. Also apply four owner decisions of 2026-11-07, each test-first: (1) folder metadata write for a nonexistent folder is 404 on route and native with no sidecar created (FR-3); (2) restore and purge propagate the project-locked error instead of returning `ok: false` (FR-26, FR-31 a2); (3) attachment purge in a locked encrypted project is refused with files and record kept (FR-26); (4) Sources are excluded from the project total and daily word goals unless an explicit goal filter selects them (FR-28). The low-level `purgeFolder` keeps throwing on a second purge (FR-7, no change).
+**Files:** a native transport test under `frontend/tests/`, `specs/features/folder-metadata-sources-core/experiments.md` (Part 2 FR-31 (d) and FR-28 observation sections), the folder metadata core, its route and native backend, `frontend/src/lib/models/trash-core.ts` and `trash.ts` (restore and purge, attachment purge), the Trash routes and native Trash backend that map the locked error, the goal computation and daily-goal aggregate modules, and the existing tests for each (folder metadata core, route and native parity, trash-core, attachment trash, goal-filter, writing-log)
+**Done when:** A test adds and reads back an attachment at the 100 MB cap through the native backend under the native runner and passes; the observed duration, size and build are recorded in `experiments.md` as a measurement of that test, stated as not a device measurement; the section lists the on-device run under "Not verified" if it was not run and states nothing about the Phase 3 baseline holding. Further, tests show: a folder metadata PUT and the native write for an unknown folder id return 404 Not Found with the same message and leave no `meta/folder-<id>.meta.json`; `restoreOneCore` and `purgeOneCore` for an attachment entry and for a Source in a locked project throw or propagate `ProjectLockedError` and the HTTP and native responses match the existing locked convention (no `{ ok: false, error: "...locked..." }`); purging an attachment entry in a locked encrypted project is refused with its files and record intact; with no goal filter the project total and the daily aggregate exclude Source words (the daily aggregate ignores writing-log entries whose `documentId` is a Source), a goal filter that selects Sources includes them, and the per-resource goal is unchanged; the FR-28 observation section records the before and after of the 17 of 1,000 measurement as observed values and the owner decision that produced the change.
+**Depends on:** 8, 9, 11, 25, 27, 28, 30
+**Estimate:** 8
+**Notes:** Satisfies FR-31 (d) as far as it can run without a device; also FR-3, FR-7, FR-26, FR-28, FR-31 (a2) as amended 2026-11-07. Device verification is not a merge gate. These fixes edit `trash.ts` and `trash-core.ts` after Task 26 and are the last task to do so; no other remaining task edits them. FR-7: do not change `purgeFolder`.
 **Done:** [ ]
 
 ### Task 36: Record the Source-specific and folder interface files
@@ -358,7 +358,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 ### Task 37: Feature docs, Code Map, glossary and sidecar and Trash docs
 **What:** Update `docs/features/`, the `frontend/CLAUDE.md` Code Map, the root `CLAUDE.md` glossary and the sidecar and Trash docs for folder metadata and Sources.
 **Files:** new or updated pages under `docs/features/` (folder metadata, Sources), `docs/features/sidecars.md`, `docs/features/revisions.md` (Trash section), `docs/features/resource-subtype.md`, `frontend/CLAUDE.md`, `CLAUDE.md`
-**Done when:** The new cores, routes and native backend pairs are in `docs/features/` and the Code Map; the root glossary gains **Folder sidecar** (folder metadata) and **Source** (including attachment) entries in the existing short style; `sidecars.md` states the folder sidecar and attachment list behaviour and `revisions.md` states the folder sidecar and attachment Trash behaviour; no sentence states an unmeasured result as fact and the Not verified items are named; every referenced file path exists.
+**Done when:** The new cores, routes and native backend pairs are in `docs/features/` and the Code Map; the root glossary gains **Folder sidecar** (folder metadata) and **Source** (including attachment) entries in the existing short style; `sidecars.md` states the folder sidecar and attachment list behaviour and `revisions.md` states the folder sidecar and attachment Trash behaviour; no sentence states an unmeasured result as fact and the Not verified items are named; the docs state the 2026-11-07 owner decisions as built (Sources excluded from the project and daily word goals unless a goal filter selects them; locked restore and purge raise the locked error; folder metadata write for an unknown folder is 404; a Source carrying `entityKind` is an entity); every referenced file path exists.
 **Depends on:** 12, 16, 17, 18, 19, 26, 28, 29, 30, 31, 32, 33, 35
 **Estimate:** 3
 **Notes:** Satisfies FR-35 (developer docs). Can run concurrently with Task 38; the two edit different files.
@@ -367,7 +367,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 ### Task 38: User handbook pages
 **What:** Update the user handbook for folder notes, fields and subtypes and for Sources, attachments, restoring an attachment and the compile and export defaults.
 **Files:** the user handbook pages for folders and metadata, resources and the resource tree, Trash, and the compile and export dialogs
-**Done when:** The handbook covers folder notes, fields and subtypes; Sources as a resource type; adding, removing and reordering attachments; restoring an attachment from Trash; that new projects start with Sources out of compile and in export and how to change it; each page keeps its existing style; no verification evidence or unmeasured result appears in the copy.
+**Done when:** The handbook covers folder notes, fields and subtypes; Sources as a resource type; adding, removing and reordering attachments; restoring an attachment from Trash; that new projects start with Sources out of compile and in export and how to change it; each page keeps its existing style; no verification evidence or unmeasured result appears in the copy; where the handbook describes goals it says Sources do not count toward the project or daily word goal unless the goal filter selects them.
 **Depends on:** 12, 16, 17, 18, 19, 26, 28, 29, 30, 31, 32, 33, 35
 **Estimate:** 5
 **Notes:** Satisfies FR-35 (handbook). Invoke `write-user-guide` for plain-language copy.
@@ -375,18 +375,18 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 
 ### Task 39: Acceptance suites and reporting
 **What:** Run the acceptance suites and record each as run or not run, and state which parts landed or stopped.
-**Files:** `specs/features/folder-metadata-sources-core/experiments.md` (Acceptance section), no source changes except fixes the suites require
-**Done when:** `pnpm typecheck`, `pnpm lint` and `pnpm test:ci` from `frontend/`, the `cli/` and `electron/` typechecks and tests, `pnpm knip` from the repository root, `pnpm test:e2e` (builds Storybook; stop `pnpm storybook` first) pass, and `pnpm build:native` runs where it can, each reported as run or not run with its output; the FR-2 first-run records (Tasks 1-3) and the FR-18 survey (Task 4) are confirmed present; the report names which of Part 1 and Part 2 landed or stopped and lists FR-31 (d) on a device and native lock parity under "Not verified" if they were not run.
+**Files:** `specs/features/folder-metadata-sources-core/experiments.md` (Acceptance section), `cli/src/commands/reindex.ts` and its CLI test, the entity pinning test (existing backlinks and entity-shared-metadata test files), no other source changes except fixes the suites require
+**Done when:** Two owner decisions of 2026-11-07 are met test-first: `cli/src/commands/reindex.ts` no longer hard-codes `type: "text"` and reindexes Sources, shown by a CLI test in which a Source is searchable after reindex (found by reading, not run; the test settles it, and its first run is recorded as observed); a pinning test shows a Source sidecar carrying `entityKind` is treated as an entity (`backlinks.ts` about line 391 and `entity-shared-metadata.ts` about line 81, behaviour kept). Then `pnpm typecheck`, `pnpm lint` and `pnpm test:ci` from `frontend/`, the `cli/` and `electron/` typechecks and tests, `pnpm knip` from the repository root, `pnpm test:e2e` (builds Storybook; stop `pnpm storybook` first) pass, and `pnpm build:native` runs where it can, each reported as run or not run with its output; the FR-2 first-run records (Tasks 1-3) and the FR-18 survey (Task 4) are confirmed present; the report names which of Part 1 and Part 2 landed or stopped and lists FR-31 (d) on a device and native lock parity under "Not verified" if they were not run.
 **Depends on:** 34, 36, 37, 38
-**Estimate:** 3
-**Notes:** Satisfies FR-36, FR-37. Run outside the command sandbox and in the main checkout, never a worktree: `pnpm test:e2e` and `pnpm build:native` start processes and builds that fail in worktrees.
+**Estimate:** 5
+**Notes:** Satisfies FR-36, FR-37, and FR-38 (reindex) and FR-21 (entity pinning) as amended 2026-11-07. Run outside the command sandbox and in the main checkout, never a worktree: `pnpm test:e2e` and `pnpm build:native` start processes and builds that fail in worktrees.
 **Done:** [ ]
 
 ## Summary
 - Total tasks: 39
-- Total estimated effort: 159 story points
+- Total estimated effort: 166 story points
 - Critical path: 1 → 4 → 6 → 7 → 8 → 10 → 11 → 12 → 20 → 21 → 23 → 24 → 25 → 27 → 28 → 33 → 37 → 39
-- Risks: Task 4 (the survey size is unknown, "at least 22" files is a proxy, and its fixes can ripple into files other tasks own); Tasks 1-3 (a reading the tests do not confirm changes the scope of Part 1 and is the owner's decision); Tasks 10, 11, 24, 25 (`trash.ts` and `trash-core.ts` are edited in sequence and carry the new folder and attachment kinds); Task 21 and Task 29 (`resource-crud-core.ts` allowlist and seeding behaviour are readings until tested); Task 22 (the magic-byte check is new and must leave existing uploads unchanged); Task 28 (native lock parity is reasoned, not run); Task 35 (the 100 MB test may be slow or exceed test memory; the device run is not a gate); Tasks 15 and 33 (both edit `MetadataSidebar.tsx`, ordered).
+- Risks: Task 4 (the survey size is unknown, "at least 22" files is a proxy, and its fixes can ripple into files other tasks own); Tasks 1-3 (a reading the tests do not confirm changes the scope of Part 1 and is the owner's decision); Tasks 10, 11, 24, 25 (`trash.ts` and `trash-core.ts` are edited in sequence and carry the new folder and attachment kinds); Task 21 and Task 29 (`resource-crud-core.ts` allowlist and seeding behaviour are readings until tested); Task 22 (the magic-byte check is new and must leave existing uploads unchanged); Task 28 (native lock parity is reasoned, not run); Task 35 (the 100 MB test may be slow or exceed test memory; the device run is not a gate; it also carries four owner-decision fixes across folder, Trash and goal code, the largest remaining task); Tasks 15 and 33 (both edit `MetadataSidebar.tsx`, ordered).
 
 ## Open Questions
 None.
