@@ -653,6 +653,18 @@ export const SetGoalFilterResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// FolderMetadataResponseSchema — Feature 102 Task 9. Matches
+// `folder-metadata-core.ts`'s `FolderSidecarValue`; `resourceSubtype` is
+// optional because `JSON.stringify` drops an `undefined` key.
+// ---------------------------------------------------------------------------
+
+export const FolderMetadataResponseSchema = z.object({
+  notes: z.string(),
+  fieldValues: z.record(z.string(), ApiMetadataValueSchema),
+  resourceSubtype: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
 // GoalFilteredTotalResponseSchema — Feature 98 Task 8. Matches
 // `goal-filtered-total-core.ts`'s `GoalFilteredTotalResult`. Every member is
 // strict so an `unavailable` body carrying a `total` key is malformed: a
