@@ -29,11 +29,12 @@ import {
   restoreFolder,
   restoreResource,
   resolveTrashedItemKind,
+  discardTrashAttachment,
   type RestoredReferenceInfo,
 } from "./trash";
 import { restoreTrashedAttachment } from "./source-attachments-core";
 
-/** The combined resources/folders shape {@link listTrashedItems} returns. */
+/** The combined resources/folders/attachments shape {@link listTrashedItems} returns. */
 type ListTrashedItemsResult = Awaited<ReturnType<typeof listTrashedItems>>;
 
 /**
@@ -172,13 +173,10 @@ export async function purgeOneCore(
     }
 
     if (kind === "attachment") {
-      // Purge of the attachment kind is Task 25. Refuse visibly; never report
-      // "Not found" for an entry that exists, and leave it in place.
-      return {
-        id,
-        ok: false,
-        error: "Purging a removed attachment is not available yet.",
-      };
+      // Feature 102, FR-26: delete the trashed file and its record. Idempotent,
+      // so a retry after a partial failure completes.
+      await discardTrashAttachment(projectPath, id);
+      return { id, ok: true };
     }
 
     return { id, ok: false, error: "Not found in trash" };
@@ -206,6 +204,7 @@ export async function purgeBatchCore(
     ids = [
       ...trashed.resources.map((r) => r.id),
       ...trashed.folders.map((f) => f.id),
+      ...trashed.attachments.map((a) => a.id),
     ];
   } else {
     ids = (selection as { ids: string[] }).ids;

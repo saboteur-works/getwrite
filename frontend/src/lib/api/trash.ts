@@ -38,6 +38,7 @@ import { createTransport } from "../../store/transport/create-transport";
 import { limitRefusalFromResponse } from "./limit-refusal";
 import type {
   RestoredReferenceInfo,
+  TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
 } from "../models/trash";
@@ -51,12 +52,22 @@ import type {
 // specifically (`TrashedFolderEntry.descendants` already carries its shape
 // through `TrashedFolderEntry`'s own re-export below) — dropped for the same
 // reason.
-export type { TrashedFolderEntry, TrashedResourceEntry };
+export type {
+  TrashedAttachmentEntry,
+  TrashedFolderEntry,
+  TrashedResourceEntry,
+};
 
 /** Combined response shape of `GET /api/project/:id/trash`. */
 export interface TrashListing {
   resources: TrashedResourceEntry[];
   folders: TrashedFolderEntry[];
+  /**
+   * Removed Source attachments (Feature 102, FR-26). Always sent by the
+   * server; the client treats an absent key as none so a listing from before
+   * the kind existed still loads.
+   */
+  attachments?: TrashedAttachmentEntry[];
 }
 
 /** One id's outcome from a batch restore (`POST .../trash/restore`). */
@@ -158,6 +169,10 @@ export const httpTrashTransport: TrashTransport = {
       !Array.isArray((data as { resources?: unknown }).resources) ||
       !Array.isArray((data as { folders?: unknown }).folders)
     ) {
+      throw new Error("Malformed trash listing response.");
+    }
+    const attachments = (data as { attachments?: unknown }).attachments;
+    if (attachments !== undefined && !Array.isArray(attachments)) {
       throw new Error("Malformed trash listing response.");
     }
     return data as TrashListing;

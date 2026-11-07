@@ -77,7 +77,8 @@ function mockTrashFetch(options: {
           ? body.ids
           : listing.resources
               .map((r) => r.id)
-              .concat(listing.folders.map((f) => f.id));
+              .concat(listing.folders.map((f) => f.id))
+              .concat((listing.attachments ?? []).map((att) => att.id));
       const results =
         purgeResults ?? ids.map((id) => ({ id, ok: true }) as PurgeItemResult);
       return { ok: true, json: async () => ({ results }) } as Response;
@@ -209,6 +210,29 @@ const THREE_RESOURCE_LISTING: TrashListing = {
     },
   ],
   folders: [],
+};
+
+const ATTACHMENT_LISTING: TrashListing = {
+  resources: [],
+  folders: [],
+  attachments: [
+    {
+      id: "att-1",
+      sourceId: "src-1",
+      sourceName: "Interview",
+      fileName: "photo.png",
+      label: "Attachment of Interview",
+      deletedAt: "2026-09-03T00:00:00.000Z",
+    },
+    {
+      id: "att-2",
+      sourceId: "src-gone",
+      sourceName: null,
+      fileName: "notes.mp3",
+      label: "Attachment of a deleted Source",
+      deletedAt: "2026-09-03T00:00:00.000Z",
+    },
+  ],
 };
 
 /** Ticks the checkbox on every top-level trash row currently rendered. */
@@ -402,5 +426,43 @@ export const PermanentDeletionLimited: Story = {
         throw new Error("Empty trash should be disabled");
       }
     });
+  },
+};
+
+/**
+ * Feature 102 Task 25 (FR-26): removed Source attachments listed as
+ * "Attachment of <Source name>", with a fallback label for a purged Source.
+ */
+export const AttachmentEntries: Story = {
+  beforeEach: () => mockTrashFetch({ listing: ATTACHMENT_LISTING }),
+  render: () => renderView(),
+};
+
+/**
+ * Feature 102 Task 25 (FR-26): restoring an attachment whose Source is in
+ * Trash is refused; the server's message is shown and the entry stays.
+ */
+export const AttachmentRestoreRefused: Story = {
+  beforeEach: () =>
+    mockTrashFetch({
+      listing: ATTACHMENT_LISTING,
+      restoreResults: [
+        {
+          id: "att-1",
+          ok: false,
+          error:
+            "This attachment cannot be restored because its Source is in Trash or has been deleted. Restore the Source first.",
+        },
+      ],
+    }),
+  render: () => renderView(),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const rows = await canvas.findAllByTestId("trash-row");
+    await userEvent.click(within(rows[0]).getByTestId("trash-row-select"));
+    await userEvent.click(canvas.getByTestId("trash-restore-selected"));
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "Restore" }));
+    await waitFor(() => canvas.getByTestId("trash-item-failures"));
   },
 };

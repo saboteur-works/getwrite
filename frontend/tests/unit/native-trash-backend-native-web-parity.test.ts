@@ -245,8 +245,12 @@ describe("native trash transport — native/web parity", () => {
     // Empty listing before anything is trashed.
     const httpEmpty = await httpList(projectsDir, httpProjectId);
     const nativeEmpty = await nativeTransport.list(nativeProjectId);
-    expect(httpEmpty).toEqual({ resources: [], folders: [] });
-    expect(nativeEmpty).toEqual({ resources: [], folders: [] });
+    expect(httpEmpty).toEqual({ resources: [], folders: [], attachments: [] });
+    expect(nativeEmpty).toEqual({
+      resources: [],
+      folders: [],
+      attachments: [],
+    });
 
     // Seed one equivalent trashed resource on each side.
     const httpResourceId = await withProjectsDirEnv(projectsDir, () =>

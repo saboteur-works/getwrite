@@ -11,6 +11,7 @@ import path from "node:path";
 import {
   sidecarPathForProject,
   sidecarFilename,
+  readSidecar,
   folderSidecarFilename,
   folderSidecarPathForProject,
   SIDECAR_UNCHANGED,
@@ -1629,6 +1630,109 @@ export interface TrashedFolderEntry {
 }
 
 /**
+ * One trashed Source attachment (Feature 102, FR-26). `label` is the text the
+ * Trash tab shows. Rule for the Source name, resolved at list time: the live
+ * Source's sidecar name; else its trashed sidecar's name (the Source, or a
+ * folder holding it, is in Trash); else (the Source was purged) none. A blank
+ * name counts as none. `label` is then "Attachment of <name>", or, with no
+ * name, "Attachment of a deleted Source" (Source gone) or "Attachment of a
+ * Source (name unavailable)" (sidecar present but unreadable or blank), so
+ * the label is never blank.
+ */
+export interface TrashedAttachmentEntry {
+  /** The attachment's list entry id, which is also its Trash id. */
+  id: UUID;
+  sourceId: UUID;
+  /** The Source's name at list time, or `null` when it cannot be resolved. */
+  sourceName: string | null;
+  /** The attachment's display name (never used as a path). */
+  fileName: string;
+  /** The text the Trash tab shows. */
+  label: string;
+  /** When the file was moved to Trash (record mtime), or `null`. */
+  deletedAt: string | null;
+}
+
+const DELETED_SOURCE_LABEL = "Attachment of a deleted Source";
+const UNNAMED_SOURCE_LABEL = "Attachment of a Source (name unavailable)";
+
+function nonBlankName(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+async function resolveAttachmentSourceName(
+  projectRoot: string,
+  sourceId: UUID,
+  trashedSidecars: Map<UUID, Record<string, unknown>>,
+): Promise<{ name: string | null; isGone: boolean }> {
+  try {
+    const live = await readSidecar(projectRoot, sourceId);
+    if (live !== null) {
+      return { name: nonBlankName(live["name"]), isGone: false };
+    }
+  } catch (err: unknown) {
+    if (isLockedAccessError(err)) throw err;
+    // Unreadable or unparseable live sidecar: name unavailable, not gone.
+    return { name: null, isGone: false };
+  }
+  const trashed = trashedSidecars.get(sourceId);
+  if (trashed !== undefined) {
+    return { name: nonBlankName(trashed["name"]), isGone: false };
+  }
+  return { name: null, isGone: true };
+}
+
+async function listTrashedAttachments(
+  projectRoot: string,
+  metaFiles: string[],
+  trashedSidecars: Map<UUID, Record<string, unknown>>,
+): Promise<TrashedAttachmentEntry[]> {
+  const out: TrashedAttachmentEntry[] = [];
+  const files = metaFiles.filter(
+    (f) => f.startsWith("attachment-") && f.endsWith(".json"),
+  );
+  for (const file of files) {
+    const entryId = file.replace(/^attachment-/, "").replace(/\.json$/, "");
+    let record: TrashAttachmentRecord | null;
+    try {
+      record = await readTrashAttachmentRecord(projectRoot, entryId);
+    } catch (err: unknown) {
+      if (isLockedAccessError(err)) throw err;
+      // Malformed record: skipped, as a malformed sidecar or manifest is.
+      continue;
+    }
+    if (record === null) continue;
+    const resolved = await resolveAttachmentSourceName(
+      projectRoot,
+      record.sourceId,
+      trashedSidecars,
+    );
+    let deletedAt: string | null = null;
+    try {
+      deletedAt = (
+        await stat(trashAttachmentRecordPath(projectRoot, entryId))
+      ).mtime.toISOString();
+    } catch {
+      deletedAt = null;
+    }
+    out.push({
+      id: record.entry.id,
+      sourceId: record.sourceId,
+      sourceName: resolved.name,
+      fileName: record.entry.originalName,
+      label:
+        resolved.name !== null
+          ? `Attachment of ${resolved.name}`
+          : resolved.isGone
+            ? DELETED_SOURCE_LABEL
+            : UNNAMED_SOURCE_LABEL,
+      deletedAt,
+    });
+  }
+  return out;
+}
+
+/**
  * Lists every currently trashed resource and top-level trashed folder in one
  * combined shape (Task 11, FR-1/FR-2/FR-11, resolved OQ-10 — mirroring how
  * `GET /api/projects` returns a single combined response rather than two
@@ -1653,6 +1757,7 @@ export async function listTrashedItems(
 ): Promise<{
   resources: TrashedResourceEntry[];
   folders: TrashedFolderEntry[];
+  attachments: TrashedAttachmentEntry[];
 }> {
   assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
@@ -1802,7 +1907,13 @@ export async function listTrashedItems(
     });
   }
 
-  return { resources, folders };
+  const attachments = await listTrashedAttachments(
+    projectRoot,
+    metaFiles,
+    resourceSidecarById,
+  );
+
+  return { resources, folders, attachments };
 }
 
 /**

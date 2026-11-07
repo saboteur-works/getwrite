@@ -16,6 +16,7 @@ import {
 } from "../../../../src/lib/api/trash";
 import type {
   RestoreItemResult,
+  TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
 } from "../../../../src/lib/api/trash";
@@ -232,6 +233,10 @@ export default function TrashView({
 
   const [resources, setResources] = useState<TrashedResourceEntry[]>([]);
   const [folders, setFolders] = useState<TrashedFolderEntry[]>([]);
+  const [attachments, setAttachments] = useState<TrashedAttachmentEntry[]>([]);
+  // Per-item refusal messages for attachment restores (Feature 102, FR-26),
+  // shown as visible text so a refusal is never only a failure count.
+  const [itemFailures, setItemFailures] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -251,6 +256,7 @@ export default function TrashView({
     if (!projectId) {
       setResources([]);
       setFolders([]);
+      setAttachments([]);
       return;
     }
     setIsLoading(true);
@@ -259,6 +265,7 @@ export default function TrashView({
       .then((listing) => {
         setResources(listing.resources);
         setFolders(listing.folders);
+        setAttachments(listing.attachments ?? []);
       })
       .catch(() => {
         // FR-1: listTrash rejects rather than degrading (see
@@ -279,11 +286,19 @@ export default function TrashView({
   }, [refetch, resourcesSliceCount]);
 
   const isEmpty =
-    !isLoading && !error && resources.length === 0 && folders.length === 0;
+    !isLoading &&
+    !error &&
+    resources.length === 0 &&
+    folders.length === 0 &&
+    attachments.length === 0;
 
   const allTopLevelIds = useMemo(
-    () => [...resources.map((r) => r.id), ...folders.map((f) => f.id)],
-    [resources, folders],
+    () => [
+      ...resources.map((r) => r.id),
+      ...folders.map((f) => f.id),
+      ...attachments.map((a) => a.id),
+    ],
+    [resources, folders, attachments],
   );
 
   const toggleSelected = useCallback((id: string) => {
@@ -304,6 +319,7 @@ export default function TrashView({
     setActionError(null);
     setActionRefusal(null);
     setRestoreNotices([]);
+    setItemFailures([]);
     setPendingAction({ kind: "restore", ids: Array.from(selectedIds) });
   }, [selectedIds]);
 
@@ -313,6 +329,7 @@ export default function TrashView({
     setActionError(null);
     setActionRefusal(null);
     setRestoreNotices([]);
+    setItemFailures([]);
     setPendingAction({
       kind: "purge",
       ids: Array.from(selectedIds),
@@ -326,6 +343,7 @@ export default function TrashView({
     setActionError(null);
     setActionRefusal(null);
     setRestoreNotices([]);
+    setItemFailures([]);
     setPendingAction({
       kind: "purge",
       ids: allTopLevelIds,
@@ -349,6 +367,7 @@ export default function TrashView({
     const namesById = new Map<string, string>();
     resources.forEach((r) => namesById.set(r.id, r.originalName));
     folders.forEach((f) => namesById.set(f.id, f.originalName));
+    attachments.forEach((a) => namesById.set(a.id, a.label));
 
     const request =
       action.kind === "restore"
@@ -366,6 +385,21 @@ export default function TrashView({
 
         setResources((prev) => prev.filter((r) => !succeededIds.has(r.id)));
         setFolders((prev) => prev.filter((f) => !succeededIds.has(f.id)));
+        setAttachments((prev) => prev.filter((a) => !succeededIds.has(a.id)));
+        const attachmentIds = new Set(attachments.map((a) => a.id));
+        setItemFailures(
+          results
+            .filter(
+              (result) =>
+                !result.ok &&
+                result.error !== undefined &&
+                attachmentIds.has(result.id),
+            )
+            .map(
+              (result) =>
+                `${namesById.get(result.id) ?? result.id}: ${result.error}`,
+            ),
+        );
         setSelectedIds((prev) => {
           const next = new Set(prev);
           succeededIds.forEach((id) => next.delete(id));
@@ -454,6 +488,7 @@ export default function TrashView({
     isSubmitting,
     resources,
     folders,
+    attachments,
     dispatch,
     notifyTrashRestored,
   ]);
@@ -560,6 +595,19 @@ export default function TrashView({
               data-trash-restore-notice-kind={notice.kind}
             >
               <span role="status">{notice.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {itemFailures.length > 0 && (
+        <ul
+          data-testid="trash-item-failures"
+          className="mb-3 flex flex-col gap-1 text-gw-small text-gw-secondary"
+        >
+          {itemFailures.map((text, index) => (
+            <li key={`${index}-${text}`} data-testid="trash-item-failure">
+              <span role="status">{text}</span>
             </li>
           ))}
         </ul>
@@ -725,6 +773,40 @@ export default function TrashView({
                     ))}
                   </ul>
                 )}
+              </li>
+            ))}
+
+            {attachments.map((attachment) => (
+              <li
+                key={attachment.id}
+                data-testid="trash-row"
+                data-trash-kind="attachment"
+                data-trash-id={attachment.id}
+                data-trash-selected={selectedIds.has(attachment.id)}
+                className="workarea-list-item !cursor-default flex-col !items-stretch gap-2 mb-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    className="w-[13px] h-[13px] flex-shrink-0"
+                    data-testid="trash-row-select"
+                    aria-label={`Select ${attachment.label}`}
+                    checked={selectedIds.has(attachment.id)}
+                    onChange={() => toggleSelected(attachment.id)}
+                  />
+                  <div
+                    data-testid="trash-row-label"
+                    className="workarea-list-item-label flex-1 min-w-0 truncate"
+                  >
+                    {attachment.label}
+                  </div>
+                  <div
+                    data-testid="trash-row-meta"
+                    className="workarea-list-item-meta truncate"
+                  >
+                    {attachment.fileName}
+                  </div>
+                  <div data-testid="trash-row-actions" />
+                </div>
               </li>
             ))}
           </ul>

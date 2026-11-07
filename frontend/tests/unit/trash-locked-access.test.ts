@@ -77,6 +77,17 @@ afterEach(() => {
 });
 
 describe("trash.ts — locked-access catch sites (Feature 54, Task 8)", () => {
+  it("rethrows a locked-access error from an attachment record read in listTrashedItems, never an empty list (Feature 102 Task 25)", async () => {
+    await base.writeFile(
+      `${PROJECT_ROOT}/.trash/meta/attachment-${RESOURCE_ID}.json`,
+      "{}",
+    );
+
+    await expect(
+      inLockedWorkspace(() => listTrashedItems(PROJECT_ROOT)),
+    ).rejects.toBeInstanceOf(ProjectLockedError);
+  });
+
   it("rethrows a locked-access error from the folder-manifest read in listTrashedItems, rather than treating it as legacy", async () => {
     await base.writeFile(
       `${PROJECT_ROOT}/.trash/meta/folder-${FOLDER_ID}.json`,

@@ -2,7 +2,7 @@
  * Feature 102, Task 24 (FR-25, FR-26, OQ-8): removing or replacing a Source
  * attachment moves the previous file to Trash as the `attachment` item kind,
  * and restore returns it to the end of the Source's list. Purge, empty Trash
- * and the Trash tab entry belong to Task 25.
+ * and the Trash tab entry are covered by the Task 25 block at the end.
  */
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -28,7 +28,12 @@ import {
   resolveTrashedItemKind,
   softDeleteResource,
 } from "../../src/lib/models/trash";
-import { listTrashCore, restoreOneCore } from "../../src/lib/models/trash-core";
+import {
+  listTrashCore,
+  purgeBatchCore,
+  purgeOneCore,
+  restoreOneCore,
+} from "../../src/lib/models/trash-core";
 import { mutateSidecar } from "../../src/lib/models/sidecar";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
@@ -365,13 +370,18 @@ describe("revisions", () => {
 });
 
 describe("Trash list", () => {
-  it("does not change the existing resources/folders list shape", async () => {
+  it("keeps resources and folders unchanged and adds the attachments list (Task 25)", async () => {
     const id = await createSource();
     const a = await addAttachmentCore(projectId, id, png("a.png"));
     await removeAttachmentCore(projectId, id, a.id);
     const listed = await listTrashCore(projectRoot);
-    expect(Object.keys(listed).sort()).toEqual(["folders", "resources"]);
+    expect(Object.keys(listed).sort()).toEqual([
+      "attachments",
+      "folders",
+      "resources",
+    ]);
     expect(listed.resources).toEqual([]);
+    expect(listed.folders).toEqual([]);
   });
 
   it("keeps the sidecar write path unaffected by a concurrent field save", async () => {
@@ -382,5 +392,96 @@ describe("Trash list", () => {
       updateSidecarCore(projectId, id, { userMetadata: { k: "v" } }),
     ]);
     expect(await listAttachmentsCore(projectId, id)).toEqual([]);
+  });
+});
+
+describe("purge, empty Trash and listing (Task 25, FR-26)", () => {
+  async function trashOne(sourceId: string, name: string) {
+    const a = await addAttachmentCore(projectId, sourceId, png(name));
+    const { trashId } = await removeAttachmentCore(projectId, sourceId, a.id);
+    return trashId;
+  }
+
+  it("purging an attachment entry deletes its file and leaves nothing in .trash/", async () => {
+    const id = await createSource();
+    const trashId = await trashOne(id, "a.png");
+    expect(await listTree(path.join(projectRoot, ".trash"))).not.toEqual([]);
+
+    const result = await purgeOneCore(projectRoot, trashId);
+    expect(result).toEqual({ id: trashId, ok: true });
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+    expect(
+      await filesIn(path.join(projectRoot, ".trash", "attachments")),
+    ).toEqual([]);
+    expect(await resolveTrashedItemKind(projectRoot, trashId)).toBe("unknown");
+  });
+
+  it("empty Trash ({ all: true }) removes every attachment entry and file", async () => {
+    const id = await createSource();
+    const other = await createSource();
+    const t1 = await trashOne(id, "a.png");
+    const t2 = await trashOne(id, "b.png");
+    const t3 = await trashOne(other, "c.png");
+
+    const results = await purgeBatchCore(projectRoot, { all: true });
+    expect(results.map((r) => r.id).sort()).toEqual([t1, t2, t3].sort());
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+    const listing = await listTrashCore(projectRoot);
+    expect(listing.attachments).toEqual([]);
+  });
+
+  it("lists an attachment entry as 'Attachment of <Source name>'", async () => {
+    const id = await createSource();
+    const trashId = await trashOne(id, "a.png");
+    const listing = await listTrashCore(projectRoot);
+    expect(listing.attachments).toHaveLength(1);
+    expect(listing.attachments[0]).toMatchObject({
+      id: trashId,
+      sourceId: id,
+      sourceName: "Interview",
+      fileName: "a.png",
+      label: "Attachment of Interview",
+    });
+  });
+
+  it("names the Source from its trashed sidecar while the Source is in Trash", async () => {
+    const id = await createSource();
+    const trashId = await trashOne(id, "a.png");
+    await softDeleteResource(projectRoot, id);
+    const listing = await listTrashCore(projectRoot);
+    const entry = listing.attachments.find((e) => e.id === trashId);
+    expect(entry?.label).toBe("Attachment of Interview");
+  });
+
+  it("uses a non-blank fallback label when the Source has been purged", async () => {
+    const id = await createSource();
+    const trashId = await trashOne(id, "a.png");
+    await softDeleteResource(projectRoot, id);
+    await purgeResource(projectRoot, id);
+    const listing = await listTrashCore(projectRoot);
+    const entry = listing.attachments.find((e) => e.id === trashId);
+    expect(entry?.sourceName).toBeNull();
+    expect(entry?.label).toBe("Attachment of a deleted Source");
+  });
+
+  it("purges an entry whose Source is already purged", async () => {
+    const id = await createSource();
+    const trashId = await trashOne(id, "a.png");
+    await softDeleteResource(projectRoot, id);
+    await purgeResource(projectRoot, id);
+    expect((await purgeOneCore(projectRoot, trashId)).ok).toBe(true);
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+  });
+
+  it("leaves other kinds untouched when an attachment is purged", async () => {
+    const id = await createSource();
+    const other = await createSource();
+    const trashId = await trashOne(id, "a.png");
+    await softDeleteResource(projectRoot, other);
+    await purgeOneCore(projectRoot, trashId);
+    const listing = await listTrashCore(projectRoot);
+    expect(listing.resources.map((r) => r.id)).toEqual([other]);
+    expect(listing.attachments).toEqual([]);
   });
 });
