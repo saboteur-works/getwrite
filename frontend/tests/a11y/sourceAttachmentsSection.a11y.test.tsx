@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { runAxe } from "./helpers/axe";
 import SourceAttachmentsSection from "../../components/Sidebar/SourceAttachmentsSection";
+import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -38,7 +39,9 @@ function mount(): ReturnType<typeof render> {
   store.dispatch(setSelectedProjectId("p"));
   return render(
     <Provider store={store}>
-      <SourceAttachmentsSection resource={SOURCE} />
+      <TrashRefreshProvider>
+        <SourceAttachmentsSection resource={SOURCE} />
+      </TrashRefreshProvider>
     </Provider>,
   );
 }

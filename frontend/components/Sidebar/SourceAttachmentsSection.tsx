@@ -13,6 +13,7 @@ import {
 } from "../../src/lib/api/source-attachments";
 import type { SourceResource } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
+import { useTrashRefresh } from "../Layout/TrashRefreshContext";
 
 type LoadState =
   | { status: "loading" }
@@ -149,7 +150,8 @@ function AttachmentRow({
  * and leaves the list as it was. A failed read shows an error with Retry,
  * never an empty list. Reorder is the Up and Down buttons, so it needs no
  * pointer. Remove sends the file to Trash; restoring it, and a refused
- * restore, are the Trash tab's (`TrashView`). Mount with `key={resource.id}`.
+ * restore, are the Trash tab's (`TrashView`); a successful restore re-reads
+ * the list through `useTrashRefresh`. Mount with `key={resource.id}`.
  */
 export default function SourceAttachmentsSection({
   resource,
@@ -161,6 +163,9 @@ export default function SourceAttachmentsSection({
   const [notice, setNotice] = React.useState<Notice>(null);
   const [isBusy, setIsBusy] = React.useState(false);
   const [attempt, setAttempt] = React.useState(0);
+  // Bumped by TrashView after a successful restore; a restored attachment (or
+  // Source) is back on disk, so the list is re-read rather than kept.
+  const { refreshToken } = useTrashRefresh();
   const addInput = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
@@ -184,7 +189,7 @@ export default function SourceAttachmentsSection({
     return () => {
       isCurrent = false;
     };
-  }, [projectId, resource.id, attempt]);
+  }, [projectId, resource.id, attempt, refreshToken]);
 
   if (!projectId) {
     return (

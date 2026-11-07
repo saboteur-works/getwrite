@@ -4,6 +4,9 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import SourceAttachmentsSection from "../components/Sidebar/SourceAttachmentsSection";
+import TrashRefreshProvider, {
+  useTrashRefresh,
+} from "../components/Layout/TrashRefreshContext";
 import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { createSourceResource } from "../src/lib/models/resource-factory";
@@ -39,13 +42,26 @@ const A = entry("a1", "alpha.pdf");
 const B = entry("b2", "beta.pdf");
 const C = entry("c3", "gamma.pdf");
 
+/** Stands in for TrashView's post-restore `notifyTrashRestored()` call. */
+function RestoreSignal(): JSX.Element {
+  const { notifyTrashRestored } = useTrashRefresh();
+  return (
+    <button type="button" onClick={notifyTrashRestored}>
+      Simulate Trash restore
+    </button>
+  );
+}
+
 function mount(): ReturnType<typeof render> {
   const store = makeStore();
   store.dispatch(setProject({ id: "p", rootPath: "/test" }));
   store.dispatch(setSelectedProjectId("p"));
   return render(
     <Provider store={store}>
-      <SourceAttachmentsSection resource={SOURCE} />
+      <TrashRefreshProvider>
+        <RestoreSignal />
+        <SourceAttachmentsSection resource={SOURCE} />
+      </TrashRefreshProvider>
     </Provider>,
   );
 }
@@ -88,6 +104,23 @@ describe("SourceAttachmentsSection", () => {
       container.querySelector("img, audio, video, iframe, embed, object"),
     ).toBeNull();
     expect(container.querySelector("a[href]")).toBeNull();
+  });
+
+  it("re-reads the list after a Trash restore without reselecting the Source", async () => {
+    listAttachments.mockResolvedValueOnce([A]);
+    mount();
+    await screen.findByText("alpha.pdf");
+    removeAttachment.mockResolvedValue(undefined);
+    fireEvent.click(screen.getByRole("button", { name: "Remove alpha.pdf" }));
+    expect(await screen.findByText("No attachments.")).toBeInTheDocument();
+
+    // The restore puts the attachment back on disk; the list is re-read.
+    listAttachments.mockResolvedValueOnce([A]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Simulate Trash restore" }),
+    );
+    expect(await screen.findByText("alpha.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("No attachments.")).toBeNull();
   });
 
   it("shows a failed read with Retry, never an empty list", async () => {

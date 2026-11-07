@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
+import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { createTextResource } from "../src/lib/models/resource";
 import { createSourceResource } from "../src/lib/models/resource-factory";
 import { makeStore } from "../src/store/store";
@@ -68,7 +69,9 @@ describe("MetadataSidebar for a selected Source (Task 33)", () => {
     store.dispatch(setSelectedResourceId(res.id));
     render(
       <Provider store={store}>
-        <MetadataSidebar />
+        <TrashRefreshProvider>
+          <MetadataSidebar />
+        </TrashRefreshProvider>
       </Provider>,
     );
   }

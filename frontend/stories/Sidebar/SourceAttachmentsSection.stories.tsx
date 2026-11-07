@@ -2,6 +2,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { Provider } from "react-redux";
+import TrashRefreshProvider from "../../components/Layout/TrashRefreshContext";
 import MetadataSidebar from "../../components/Sidebar/MetadataSidebar";
 import { makeStore } from "../../src/store/store";
 import {
@@ -119,9 +120,11 @@ function Harness({ fetchMode }: StoryArgs): JSX.Element {
   const store = React.useMemo(buildStore, []);
   return (
     <Provider store={store}>
-      <div style={{ width: 320, height: 640 }}>
-        <MetadataSidebar />
-      </div>
+      <TrashRefreshProvider>
+        <div style={{ width: 320, height: 640 }}>
+          <MetadataSidebar />
+        </div>
+      </TrashRefreshProvider>
     </Provider>
   );
 }
