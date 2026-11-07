@@ -45,5 +45,5 @@ Attachment files and the folder sidecar go through the storage adapter (`io.ts`)
 
 - Android: an attachment of the largest accepted size was added and read through the native transport on an in-memory fake filesystem in Node (experiments.md, "Part 2 FR-31 (d)"). That is not a device run and says nothing about the Phase 3 baseline (about 10 MB/s, 100 MB cap); FR-31 (d) on a device is not verified, and nothing here claims the baseline holds for attachments.
 - Native lock parity (native backends against the server's locks): reasoned, not run, on a device or otherwise.
-- Not measured: the Trash tab and the Attachments section in a running app (the generic Trash message shows on a rejected locked request; no unlock prompt was added or tested), a real encrypted project through the HTTP routes end to end, and a restore or purge interrupted midway.
+- Not measured: the Trash tab (including its unlock prompt) and the Attachments section in a running app, a real encrypted project through the HTTP routes end to end, and a restore or purge interrupted midway.
 - `pnpm test:e2e` (until Task 39 reports) and `pnpm build:native`: not run for this page.

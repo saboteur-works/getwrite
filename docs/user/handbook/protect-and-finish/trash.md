@@ -43,6 +43,12 @@ An attachment entry restores like any other item: tick it, choose **Restore sele
 
 Both ask you to confirm. Permanent deletion can't be undone.
 
+## If the project is locked
+
+If the project is encrypted and locked, restoring or permanently deleting an item asks for your passphrase. Enter it, then choose the action again. After you unlock, the **Trash** tab says "Workspace unlocked. Run the action again."
+
+If you are on another device that is not allowed to unlock, the tab says the workspace is locked and has to be unlocked on the computer where GetWrite is installed.
+
 ## How references to a deleted resource work
 
 A **Ref** or **Point of View** field in another document can point at the resource you delete. While the resource is in Trash, that field is no longer linked to it, but it still shows the resource's name. When you restore the resource, the field links to it again.

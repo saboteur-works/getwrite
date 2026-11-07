@@ -11,7 +11,7 @@ The Data View gives you an overview of a project. Open the **Data** tab to see i
 ## Read the totals
 
 - **Resources:** how many resources the project holds. Documents and images are counted, and folders aren't.
-- **Total words:** the number of words in all the project's documents.
+- **Total words:** the number of words in all the project's documents. The words in your Sources are included here, even though they don't count toward your word goals unless your goal filter selects them.
 
 When you select a smart folder in the resource tree, these two figures count only what the smart folder shows.
 
