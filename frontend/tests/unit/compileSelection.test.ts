@@ -256,6 +256,54 @@ describe("initAllChecked", () => {
   });
 });
 
+describe("a Source in the compile outline (Feature 102, FR-38)", () => {
+  const withSource: AnyResource[] = [
+    ...resources,
+    {
+      id: "s1",
+      slug: "interview",
+      name: "Interview",
+      type: "source",
+      plainText: "",
+      createdAt: "",
+      updatedAt: "",
+      userMetadata: {},
+      folderId: "f1",
+      orderIndex: 1,
+    },
+  ] as AnyResource[];
+  // r2 also has orderIndex 1 in f1; move it after the Source for a stable order.
+  const ordered: AnyResource[] = withSource.map((r) =>
+    r.id === "r2" ? ({ ...r, orderIndex: 3 } as AnyResource) : r,
+  );
+
+  it("lists a Source as a leaf of its folder, typed source", () => {
+    const tree = buildCompileTree(ordered);
+    expect(tree["f1"].children).toContain("s1");
+    expect(tree["s1"].isFolder).toBe(false);
+    expect(tree["s1"].resourceType).toBe("source");
+  });
+
+  it("includes a Source among the leaves, in tree order, and in the all-checked state", () => {
+    const tree = buildCompileTree(ordered);
+    expect(getDescendantLeafIds("f1", tree)).toEqual(["r1", "s1", "r3", "r2"]);
+    expect(initAllChecked(tree).has("s1")).toBe(true);
+  });
+
+  it("toggles a Source like a text leaf", () => {
+    const tree = buildCompileTree(ordered);
+    const on = toggleNode("s1", new Set<string>(), tree);
+    expect(on.has("s1")).toBe(true);
+    expect(toggleNode("s1", on, tree).has("s1")).toBe(false);
+  });
+
+  it("orders a Source id with text ids by tree position", () => {
+    expect(orderResourceIdsByTreePosition(ordered, ["r4", "s1", "r1"])).toEqual(
+      ["r1", "s1", "r4"],
+    );
+  });
+});
+
 describe("orderResourceIdsByTreePosition", () => {
   it("orders a shuffled subset into tree order", () => {
     const result = orderResourceIdsByTreePosition(resources, [

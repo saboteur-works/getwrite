@@ -467,7 +467,9 @@ export default function EditView({
               onNodeTypesChange={setNodeTypes}
               positionKey={positionKey}
               annotationResourceId={
-                isEditingCanonicalRevision && selectedResource?.type === "text"
+                isEditingCanonicalRevision &&
+                (selectedResource?.type === "text" ||
+                  selectedResource?.type === "source")
                   ? selectedResource.id
                   : undefined
               }

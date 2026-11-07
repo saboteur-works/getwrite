@@ -33,7 +33,9 @@ vi.mock("../components/TipTapEditor", () => {
       value,
       onChange,
       positionKey,
+      annotationResourceId,
     }: {
+      annotationResourceId?: string;
       value?: string;
       onChange?: (v: string, doc: { type: "doc"; content: unknown[] }) => void;
       positionKey?: string;
@@ -41,6 +43,7 @@ vi.mock("../components/TipTapEditor", () => {
       <textarea
         data-testid="tiptap-mock"
         data-position-key={positionKey ?? ""}
+        data-annotation-resource={annotationResourceId ?? ""}
         value={value}
         onChange={(e) =>
           onChange && onChange(e.target.value, { type: "doc", content: [] })
@@ -92,12 +95,21 @@ function createRevisionEntry(
  * Renders `EditView` for one text resource with the given revisions, the
  * editor mock exposing the `positionKey` it was given.
  */
-function renderWithRevisions(currentIsCanonical: boolean): {
-  store: ReturnType<typeof makeStore>;
-  resourceId: string;
-} {
+function renderWithRevisions(
+  currentIsCanonical: boolean,
+  resourceType: "text" | "source" = "text",
+): { store: ReturnType<typeof makeStore>; resourceId: string } {
   const store = makeStore();
-  const resource = createTextResource({ name: "Draft", plainText: "hello" });
+  const textResource = createTextResource({
+    name: "Draft",
+    plainText: "hello",
+  });
+  // A Source has the same body shape as a text resource (Feature 102).
+  const resource = (
+    resourceType === "source"
+      ? { ...textResource, type: "source" }
+      : textResource
+  ) as typeof textResource;
   const canonical = createRevisionEntry(resource.id, "rev-canonical", true);
   const previous = createRevisionEntry(resource.id, "rev-previous", false);
   vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -148,6 +160,33 @@ describe("EditView position memory key (editor-position-memory FR-1, FR-7)", () 
     renderWithRevisions(false);
     expect(
       screen.getByTestId("tiptap-mock").getAttribute("data-position-key"),
+    ).toBe("");
+  });
+});
+
+describe("EditView annotation gate (Feature 102, FR-38)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each(["text", "source"] as const)(
+    "passes the resource id to the editor for a %s on its current revision",
+    (type) => {
+      const { resourceId } = renderWithRevisions(true, type);
+      expect(
+        screen
+          .getByTestId("tiptap-mock")
+          .getAttribute("data-annotation-resource"),
+      ).toBe(resourceId);
+    },
+  );
+
+  it("passes no annotation resource id while an older revision of a Source is shown", () => {
+    renderWithRevisions(false, "source");
+    expect(
+      screen
+        .getByTestId("tiptap-mock")
+        .getAttribute("data-annotation-resource"),
     ).toBe("");
   });
 });

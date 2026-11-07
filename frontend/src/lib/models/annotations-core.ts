@@ -73,6 +73,11 @@ export class AnnotationNotFoundError extends Error {
   }
 }
 
+/** Text and a Source hold a prose body; a Source takes annotations (Feature 102, FR-38). */
+function isAnnotatableType(type: MetadataValue | undefined): boolean {
+  return type === "text" || type === "source";
+}
+
 function requireProjectRoot(projectId: string): string {
   const root = resolveProjectRoot(projectId);
   if (!root) throw new InvalidProjectIdCoreError(projectId);
@@ -104,7 +109,9 @@ async function mutateAnnotations(
   const projectRoot = requireProjectRoot(projectId);
   await mutateSidecar(projectRoot, validId, (current) => {
     if (current === null) throw new AnnotationResourceNotFoundError();
-    if (current.type !== "text") throw new AnnotationResourceTypeError();
+    if (!isAnnotatableType(current.type)) {
+      throw new AnnotationResourceTypeError();
+    }
     const next = change(storedAnnotations(current));
     if (next === SIDECAR_UNCHANGED) return SIDECAR_UNCHANGED;
     return { ...current, annotations: next as unknown as MetadataValue };
@@ -142,7 +149,7 @@ export async function listAnnotationsCore(
   const projectRoot = requireProjectRoot(projectId);
   const sidecar = await readSidecar(projectRoot, validId);
   if (sidecar === null) throw new AnnotationResourceNotFoundError();
-  if (sidecar.type !== "text") throw new AnnotationResourceTypeError();
+  if (!isAnnotatableType(sidecar.type)) throw new AnnotationResourceTypeError();
   return storedAnnotations(sidecar);
 }
 

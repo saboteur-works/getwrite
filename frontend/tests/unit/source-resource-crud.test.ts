@@ -32,6 +32,9 @@ import {
   validateResource,
 } from "../../src/lib/models/resource-factory";
 import { readSidecar } from "../../src/lib/models/sidecar";
+import { executeSearch } from "../../src/lib/search/execute-search";
+import { loadBacklinks } from "../../src/lib/models/backlinks";
+import { generatePreview, loadPreview } from "../../src/lib/models/previews";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { createAndAssertProject } from "./helpers/project-creator";
@@ -232,6 +235,79 @@ describe("a project holding a Source", () => {
     const revs = await listRevisions(projectRoot, source.id);
     expect(revs).toHaveLength(1);
     expect(revs[0].isCanonical).toBe(true);
+  });
+});
+
+describe("a Source in search, backlinks and previews (Feature 102, FR-38)", () => {
+  it("finds a Source body by full-text search with a snippet, as a text twin is found", async () => {
+    const source = await createResourceCore(projectId, {
+      type: "source",
+      name: "Field Interview",
+      text: { plainText: "the harbourmaster remembered the storm" },
+    });
+    const twin = await createResourceCore(projectId, {
+      type: "text",
+      name: "Field Twin",
+      text: { plainText: "the harbourmaster remembered the storm" },
+    });
+    await flushIndexer();
+
+    const hits = await executeSearch(projectRoot, "harbourmaster", {}, 10);
+
+    const sourceHit = hits.find((h) => h.resourceId === source.id);
+    const twinHit = hits.find((h) => h.resourceId === twin.id);
+    expect(sourceHit).toBeDefined();
+    expect(sourceHit?.snippet).toContain("harbourmaster");
+    expect(sourceHit?.snippet).toBe(twinHit?.snippet);
+    expect(sourceHit?.snippetKind).toBe(twinHit?.snippetKind);
+  });
+
+  it("records a backlink written in a Source body and to a Source, through the save-time index", async () => {
+    const target = await createResourceCore(projectId, {
+      type: "text",
+      name: "Target",
+      text: { plainText: "target body" },
+    });
+    const source = await createResourceCore(projectId, {
+      type: "source",
+      name: "Citing Source",
+      text: { plainText: `cites ${target.id}` },
+    });
+    const reader = await createResourceCore(projectId, {
+      type: "text",
+      name: "Reader",
+      text: { plainText: `reads ${source.id}` },
+    });
+    await flushIndexer();
+
+    const index = await loadBacklinks(projectRoot);
+
+    expect(index[source.id]).toEqual([target.id]);
+    expect(index[reader.id]).toEqual([source.id]);
+  });
+
+  it("generates and loads a preview for a Source: the text excerpt and word count", async () => {
+    const source = await createResourceCore(projectId, {
+      type: "source",
+      name: "Previewed",
+      text: { plainText: "one two three" },
+    });
+    await flushIndexer();
+
+    // `generatePreview` is typed for text, image and audio; a Source takes its
+    // text branch at run time, so the argument is cast here.
+    const out = await generatePreview(projectRoot, {
+      id: source.id,
+      type: "source",
+      plainText: "one two three",
+    } as never);
+
+    expect(out).toEqual({
+      type: "text",
+      excerpt: "one two three",
+      wordCount: 3,
+    });
+    expect(await loadPreview(projectRoot, source.id)).toEqual(out);
   });
 });
 

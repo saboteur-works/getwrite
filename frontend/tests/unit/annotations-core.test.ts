@@ -608,3 +608,67 @@ describe("annotation core, index (Task 22, FR-20 index half)", () => {
     expect(await found("deltarune")).toEqual([]);
   });
 });
+
+describe("annotation core on a Source (Feature 102, Task 32, FR-38)", () => {
+  let sourceId = "";
+
+  beforeEach(async () => {
+    sourceId = await makeResource("source");
+    await fs.mkdir(path.join(projectRoot, "resources", sourceId), {
+      recursive: true,
+    });
+    await fs.writeFile(
+      path.join(projectRoot, "resources", sourceId, "content.txt"),
+      CONTENT,
+      "utf8",
+    );
+    await writeRevision(projectRoot, sourceId, 1, CONTENT, {
+      isCanonical: true,
+    });
+  });
+
+  it("adds, lists, updates and deletes an annotation on a Source body", async () => {
+    const input = newInput();
+    const added = await addAnnotationCore(projectId, sourceId, input);
+    expect((await readStored(sourceId)).annotations).toEqual([added]);
+    expect(await listAnnotationsCore(projectId, sourceId)).toEqual([added]);
+
+    const updated = await updateAnnotationCore(
+      projectId,
+      sourceId,
+      input.id,
+      "new body",
+    );
+    expect(updated.body).toBe("new body");
+    await deleteAnnotationCore(projectId, sourceId, input.id);
+    expect(await listAnnotationsCore(projectId, sourceId)).toEqual([]);
+  });
+
+  it("leaves the Source body, revisions and word count alone, as for text", async () => {
+    const revisionsBefore = (await listRevisions(projectRoot, sourceId)).length;
+    await addAnnotationCore(projectId, sourceId, newInput());
+    expect(
+      await fs.readFile(
+        path.join(projectRoot, "resources", sourceId, "content.txt"),
+        "utf8",
+      ),
+    ).toBe(CONTENT);
+    expect((await listRevisions(projectRoot, sourceId)).length).toBe(
+      revisionsBefore,
+    );
+    expect((await readStored(sourceId)).wordCount).toBe(4);
+  });
+
+  it("finds a Source annotation body in search, as for text", async () => {
+    await addAnnotationCore(
+      projectId,
+      sourceId,
+      newInput({ body: "sourcerune needs a citation", quote: "not in text" }),
+    );
+    await flushIndexer();
+    const hits = (await executeSearch(projectRoot, "sourcerune", {}, 10)).map(
+      (h) => h.resourceId,
+    );
+    expect(hits).toEqual([sourceId]);
+  });
+});

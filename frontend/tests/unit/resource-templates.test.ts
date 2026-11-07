@@ -1087,6 +1087,9 @@ describe("models/resource-templates — createResourceFromTemplate on the app pe
     ["image", "image", true],
     ["audio", "audio", true],
     ["unknown", "video", false],
+    // Feature 102, FR-38: templates stay text-only, so a Source template
+    // creates nothing.
+    ["source", "source", false],
   ])(
     "FR-11/FR-33: a %s template type rejects naming the type, writing nothing",
     async (_label, type, namesTemplate) => {
@@ -1528,6 +1531,22 @@ describe("models/resource-templates — saveResourceTemplateFromResource (Featur
       await expectNoTemplate("tpl-media");
     },
   );
+
+  it("FR-38: a Source is rejected naming the type and the resource id, writing nothing (templates stay text-only)", async () => {
+    const created = await createResourceCore(projectId, {
+      type: "source",
+      name: "Interview",
+      text: { plainText: "a Source body" },
+    });
+    const call = saveResourceTemplateFromResource(
+      projectRoot,
+      created.id,
+      "tpl-source",
+    );
+    await expect(call).rejects.toThrow("source");
+    await expect(call).rejects.toThrow(created.id);
+    await expectNoTemplate("tpl-source");
+  });
 
   it.each([
     ["unknown", "banana"],

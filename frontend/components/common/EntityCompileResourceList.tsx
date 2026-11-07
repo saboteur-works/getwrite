@@ -25,7 +25,10 @@ export interface EntityCompileResourceListProps {
 }
 
 function isCompilableTextResource(resourceType: string): boolean {
-  return resourceType === ("text" satisfies ResourceType);
+  return (
+    resourceType === ("text" satisfies ResourceType) ||
+    resourceType === ("source" satisfies ResourceType)
+  );
 }
 
 function renderEntryIcon(resourceType: string): React.ReactNode {
