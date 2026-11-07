@@ -7,8 +7,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import { setStorageAdapter } from "../../src/lib/models/io";
 import { createTextResource } from "../../src/lib/models/resource";
+import { createSourceResource } from "../../src/lib/models/resource-factory";
 import { writeResourceToFile } from "../../src/lib/models/resource-persistence";
-import { writeSidecar } from "../../src/lib/models/sidecar";
+import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import { loadMentionIndex } from "../../src/lib/models/mention-index";
 import { enqueueIndex, flushIndexer } from "../../src/lib/models/indexer-queue";
 
@@ -111,5 +112,58 @@ describe("entity mention detection — save-through-persistence integration", ()
 
     mentionIndex = await loadMentionIndex(PROJECT_ROOT);
     expect(mentionIndex[prose.id]).toBeUndefined();
+  });
+
+  // Feature 102 FR-29: a Source body is scanned for mentions as text is.
+  it("stores a mention for an entity's name found in a Source body", async () => {
+    const entity = createTextResource({ name: "Aria", plainText: "" });
+    await writeResourceToFile(PROJECT_ROOT, entity);
+    await writeSidecar(PROJECT_ROOT, entity.id, {
+      name: "Aria",
+      entityKind: "character",
+    });
+
+    const body = "Witness said Aria left before dawn.";
+    const src = createSourceResource({ name: "Interview", plainText: body });
+    await writeResourceToFile(PROJECT_ROOT, src);
+    await enqueueIndex(PROJECT_ROOT, src.id);
+    await flushIndexer(2000);
+
+    const mentionIndex = await loadMentionIndex(PROJECT_ROOT);
+    const record = mentionIndex[src.id]?.find((r) => r.entityId === entity.id);
+    expect(record).toBeDefined();
+    expect(record!.offsets).toEqual([body.indexOf("Aria")]);
+  });
+
+  it("ignores a Source's attachment list: a name only in an attachment's file name is no mention", async () => {
+    const entity = createTextResource({ name: "Aria", plainText: "" });
+    await writeResourceToFile(PROJECT_ROOT, entity);
+    await writeSidecar(PROJECT_ROOT, entity.id, {
+      name: "Aria",
+      entityKind: "character",
+    });
+
+    const src = createSourceResource({
+      name: "Interview",
+      plainText: "Nothing named here.",
+    });
+    src.attachments = [
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        fileName: "attachment-22222222-2222-4222-8222-222222222222.pdf",
+        originalName: "Aria notes.pdf",
+        mime: "application/pdf",
+        size: 10,
+        addedAt: new Date().toISOString(),
+      },
+    ];
+    await writeResourceToFile(PROJECT_ROOT, src);
+    const stored = await readSidecar(PROJECT_ROOT, src.id);
+    expect(stored?.["attachments"]).toHaveLength(1);
+    await enqueueIndex(PROJECT_ROOT, src.id);
+    await flushIndexer(2000);
+
+    const mentionIndex = await loadMentionIndex(PROJECT_ROOT);
+    expect(mentionIndex[src.id]).toBeUndefined();
   });
 });
