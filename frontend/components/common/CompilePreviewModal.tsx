@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PackageCheck } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import CompileResourceTree from "./CompileResourceTree";
@@ -141,14 +141,17 @@ function CompileModalBody(
   const [format, setFormat] = useState<CompileFormat>("txt");
   const [compilationName, setCompilationName] = useState("");
 
-  // Reset selection when modal opens or resource list changes.
+  // Reset the choices each time the modal opens. A parent re-render while it
+  // is open passes `resources` as a new array; that must not discard the
+  // writer's format or selection (task_76229e5f).
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (isOpen) {
-      const t = buildCompileTree(resources);
-      setCheckedIds(initAllChecked(t));
+    if (isOpen && !wasOpen.current) {
+      setCheckedIds(initAllChecked(buildCompileTree(resources)));
       setFormat("txt");
       setCompilationName("");
     }
+    wasOpen.current = isOpen;
   }, [isOpen, resources]);
 
   // Saved defaults (FR-4/FR-5). Entity mode reads nothing and applies none
@@ -175,12 +178,16 @@ function CompileModalBody(
   );
 
   // Apply the saved exclusions once the read settles. A failed read leaves
-  // everything selected.
+  // everything selected. Keyed on the ids' contents, not array identity, so
+  // a parent re-render does not undo a per-run change (task_76229e5f).
+  const leafKey = leafIds.join("\n");
+  const readKey = readIds?.join("\n");
   useEffect(() => {
     if (!isOpen || entityMode || resource) return;
     if (savedRead.state.status === "loading") return;
     setCheckedIds(resolveInitialSelection(leafIds, readIds).selectedIds);
-  }, [isOpen, entityMode, resource, savedRead.state.status, leafIds, readIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- leafKey/readKey stand for leafIds/readIds
+  }, [isOpen, entityMode, resource, savedRead.state.status, leafKey, readKey]);
 
   // Legacy: if a single `resource` prop is passed, pre-select only that resource.
   useEffect(() => {

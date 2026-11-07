@@ -265,8 +265,29 @@ Observed:
 
 Not checked: the Start Page compile path on the device; DOCX and Markdown on the device; bold, italic or non-Latin text; heading styling in the PDF ("Chapter One" was drawn at body size and face; whether the server path does the same for this document was not compared); whether the `font-fallback` toast appears in a real font failure on the device.
 
+### Format reset in the compile dialog (task_76229e5f, 2026-11-06, after merge)
+
+Experiment: temporary file logging (one file per worker pid) of each run of `CompilePreviewModal`'s reset effect, each `onChange` of "Compile as", the format at Compile, and the downloaded filename, in `tests/component/native-compile-entry-paths.test.tsx` "AppShell path". The test was run 40 times, 10 processes at a time, to load the machine.
+
+- 11 of 40 failed. In all 11, the reset effect ran after `onchange-pdf`, Compile received `txt`, and the file was `native-novel.txt`. In all 29 passes, no reset ran after `onchange-pdf`. `onChange` fired in all 40 runs.
+- The reset effect runs on every render where `resources` has a new identity. `ShellModalCoordinator` passes `resources={[...(resources ?? []), ...(folders ?? [])]}`, a new array on each render. Its third run lands about 20 ms after the dialog appears, so under load it can fall after the pick.
+- Isolated in `tests/compilePreviewModal.test.tsx` ("parent re-render while open"): re-rendering with a new array of the same contents set the format from `pdf` to `txt`, and (via the saved-defaults effect, keyed on `leafIds` identity) undid an unticked document.
+
+Fix: the reset runs only when the dialog opens (false → true), and the saved-defaults effect is keyed on the ids' contents. After the fix: the same 40-run load test passed 40 of 40, and the six compile-dialog test files pass (49 tests).
+
+Not established: that this is what happened on the device. There the select was seen showing "pdf" when Compile wrote `.txt`, and a reset to `txt` would have changed the controlled select's display; whether the screenshot came before a reset was not determined. Re-running the picker-then-Compile sequence about 10 times on the device with this fix would show whether a `.txt` still appears.
+
+Device follow-up (same day, Pixel 7 Pro, online, project "F99 check", Project menu > Compile Project, native picker > pdf, Compile; written path read from logcat `Filesystem.writeFile`):
+
+| Build | Sequence | Gap pick → Compile | Result |
+| --- | --- | --- | --- |
+| `955e03ed` (fix) | dialog reopened each trial, app kept running | 0.2 to 2 s | 11 of 11 wrote `f99-check.pdf` |
+| `738bf363` (main, no fix) | same | 0.2 to 2 s | 11 of 11 wrote `f99-check.pdf` |
+| `738bf363` (main, no fix) | app force-stopped, relaunched, project opened, compiled within about 3 s | 0.3 s | 5 of 5 wrote `f99-check.pdf` |
+
+The original `.txt` was not reproduced on the build without the fix (0 of 16), so the device runs neither confirm nor rule out the reset effect as its cause. Not tried: offline (the original was offline), the exact original sequence of picks, and screens other than the AppShell dialog.
+
 ### Not verified
 - The Start Page compile path, on a device.
-- The cause of the one `.txt` output after `pdf` was chosen (FR-30 side observation).
-- The cause of the run-3 `native-compile-entry-paths` failure.
+- The cause of the one `.txt` output after `pdf` was chosen on the device (FR-30 side observation). The test failure's cause is measured above; whether the device shares it is not.
 - Per-finding comparison of knip output against the base commit.
