@@ -40,38 +40,9 @@ import { getPlainStorageAdapter } from "../io";
 import { readProjectMarker } from "./project-marker";
 import { readConversionMarker } from "./convert-project";
 import { UnknownProjectError, type Keyring } from "./keyring";
+import { ProjectLockedError, MissingProjectKeyError } from "./locked-errors";
 
-/**
- * Raised when a project is encrypted but no unlocked keyring is available.
- *
- * Distinct from {@link MissingProjectKeyError}: this is the ordinary "the user
- * has not unlocked yet" state, and the correct response is to prompt.
- */
-export class ProjectLockedError extends Error {
-  constructor(projectId: string) {
-    super(
-      `Project "${projectId}" is encrypted and the workspace is locked. Unlock to continue.`,
-    );
-    this.name = "ProjectLockedError";
-  }
-}
-
-/**
- * Raised when a project is encrypted, the keyring is unlocked, and it still has
- * no data key for that project.
- *
- * This is not a "please unlock" state — it means the key is genuinely absent
- * (a project copied in from another workspace, or a keyring restored from an
- * older backup), and no passphrase entry will fix it.
- */
-export class MissingProjectKeyError extends Error {
-  constructor(projectId: string) {
-    super(
-      `Project "${projectId}" is encrypted but the keyring holds no data key for it. Its files cannot be opened with this keyring.`,
-    );
-    this.name = "MissingProjectKeyError";
-  }
-}
+export { ProjectLockedError, MissingProjectKeyError };
 
 /**
  * Resolves the adapter a project's I/O must run through.

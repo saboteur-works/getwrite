@@ -146,4 +146,35 @@ describe("transport collapse — in-process backend reuses the shared search cor
 
     expect(await transport.search("proj-1", "unicorn")).toEqual([]);
   });
+
+  it("returns a body-only hit labelled as a note through the in-process backend", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    await seedProject(fs);
+    const adapter = capacitorFsAdapter(fs);
+    const root = "/projects/proj-1";
+    await adapter.writeFile(
+      `${root}/meta/index/annotations.json`,
+      JSON.stringify({ zeppelin: { "res-2": 1 } }),
+    );
+    await adapter.writeFile(
+      `${root}/meta/resource-res-2.meta.json`,
+      JSON.stringify({
+        name: "Airships",
+        annotations: [{ id: "a1", body: "zeppelin route check", quote: "" }],
+      }),
+    );
+    const transport = createNativeSearchTransport({
+      fs,
+      projectsDir: "/projects",
+    });
+
+    const results = await transport.search("proj-1", "zeppelin");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      resourceId: "res-2",
+      snippet: "zeppelin route check",
+      snippetKind: "note",
+    });
+  });
 });

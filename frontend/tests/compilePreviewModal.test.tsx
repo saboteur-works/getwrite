@@ -1,6 +1,12 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import CompilePreviewModal, {
   type EntityCompileMode,
 } from "../components/common/CompilePreviewModal";
@@ -422,5 +428,192 @@ describe("CompilePreviewModal — entity mode", () => {
       format: "pdf",
       compilationName: "My Compile",
     });
+  });
+});
+
+/**
+ * Feature 101, Task 6 (FR-4, FR-5, FR-6 entity half): saved compile defaults.
+ * The reader and setter are injected, so no transport runs.
+ */
+describe("CompilePreviewModal — saved defaults", () => {
+  const DEFAULT_OPTIONS = {
+    includeHeaders: true,
+    format: "txt",
+    compilationName: "",
+  };
+
+  function setup(
+    overrides: {
+      read?: (id: string) => Promise<readonly string[] | undefined>;
+      save?: (
+        id: string,
+        ids: string[] | null,
+      ) => Promise<{ excludedResourceIds: string[] | undefined }>;
+      entityMode?: EntityCompileMode;
+    } = {},
+  ) {
+    const read = vi.fn(overrides.read ?? (async () => undefined));
+    const save = vi.fn(
+      overrides.save ??
+        (async (_id: string, ids: string[] | null) => ({
+          excludedResourceIds: ids ?? undefined,
+        })),
+    );
+    const onConfirmCompile = vi.fn();
+    render(
+      <CompilePreviewModal
+        isOpen={true}
+        projectId="dir-1"
+        resources={sampleResources}
+        entityMode={overrides.entityMode}
+        readSavedDefaults={read}
+        saveDefaults={save}
+        onConfirmCompile={onConfirmCompile}
+        onClose={vi.fn()}
+      />,
+    );
+    return { read, save, onConfirmCompile };
+  }
+
+  const checked = (name: string): boolean =>
+    (screen.getByRole("checkbox", { name }) as HTMLInputElement).checked;
+
+  it("with the keys absent, opens all selected and sends today's request", async () => {
+    const { onConfirmCompile } = setup();
+    await screen.findByText(/no project default is saved/i);
+    expect(checked("Scene 1") && checked("Scene 2")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /compile \(2\)/i }));
+    expect(onConfirmCompile).toHaveBeenCalledWith(
+      ["r1", "r2"],
+      DEFAULT_OPTIONS,
+    );
+  });
+
+  it("starts without the saved exclusions and says they are left out", async () => {
+    const { onConfirmCompile } = setup({ read: async () => ["r2", "gone"] });
+    await screen.findByText(/1 resource\(s\) left out/i);
+    expect(checked("Scene 1")).toBe(true);
+    expect(checked("Scene 2")).toBe(false);
+    const list = screen.getByRole("list", {
+      name: /left out by the project default/i,
+    });
+    expect(within(list).getByText(/Scene 2/)).toHaveTextContent(
+      /include it for this run/i,
+    );
+    expect(within(list).queryByText(/gone/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /compile \(1\)/i }));
+    expect(onConfirmCompile.mock.calls[0][0]).toEqual(["r1"]);
+  });
+
+  it("a per-run change to selection or options makes no setter call", async () => {
+    const { save } = setup({ read: async () => ["r2"] });
+    await screen.findByText(/1 resource\(s\) left out/i);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Scene 2" }));
+    fireEvent.change(screen.getByLabelText(/compile as/i), {
+      target: { value: "pdf" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /include section headers/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /select none/i }));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("saves the current exclusions and shows the saved result", async () => {
+    const { save } = setup();
+    await screen.findByText(/no project default is saved/i);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Scene 1" }));
+    fireEvent.click(screen.getByRole("button", { name: /save as default/i }));
+    expect(save).toHaveBeenCalledWith("dir-1", ["r1"]);
+    expect(await screen.findByRole("status")).toHaveTextContent(/saved/i);
+    expect(screen.getByTestId("defaults-count")).toHaveTextContent(
+      /1 resource\(s\) left out/i,
+    );
+  });
+
+  it("a failing save shows the message, keeps the shown default and is not reported as saved", async () => {
+    setup({
+      read: async () => ["r2"],
+      save: async () => {
+        throw new Error("Refused: project is locked.");
+      },
+    });
+    await screen.findByText(/1 resource\(s\) left out/i);
+    fireEvent.click(screen.getByRole("button", { name: /save as default/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /not saved\. refused: project is locked\./i,
+    );
+    expect(screen.queryByText(/^saved\./i)).toBeNull();
+    expect(screen.getByTestId("defaults-count")).toHaveTextContent(
+      /1 resource\(s\) left out/i,
+    );
+  });
+
+  it("clearing asks first, returns focus on cancel, and removes the default on confirm", async () => {
+    const { save } = setup({ read: async () => ["r2"] });
+    await screen.findByText(/1 resource\(s\) left out/i);
+    const clear = screen.getByRole("button", { name: /clear default/i });
+    clear.focus();
+    fireEvent.click(clear);
+    const dialog = await screen.findByRole("dialog", {
+      name: /clear the project default/i,
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /cancel/i }));
+    await waitFor(() => expect(clear).toHaveFocus());
+    expect(save).not.toHaveBeenCalled();
+
+    fireEvent.click(clear);
+    const again = await screen.findByRole("dialog", {
+      name: /clear the project default/i,
+    });
+    fireEvent.click(
+      within(again).getByRole("button", { name: /^clear default$/i }),
+    );
+    expect(save).toHaveBeenCalledWith("dir-1", null);
+    await screen.findByText(/no project default is saved/i);
+  });
+
+  it("a failed read shows a notice with Retry, selects all, keeps compile allowed and disables save", async () => {
+    const read = vi
+      .fn<(id: string) => Promise<readonly string[] | undefined>>()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce(["r2"]);
+    const { onConfirmCompile } = setup({ read });
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/saved defaults.*not applied/i);
+    expect(checked("Scene 1") && checked("Scene 2")).toBe(true);
+    expect(
+      screen.getByRole("button", { name: /save as default/i }),
+    ).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /compile \(2\)/i }));
+    expect(onConfirmCompile).toHaveBeenCalledTimes(1);
+  });
+
+  it("Retry reads again and applies the defaults", async () => {
+    const read = vi
+      .fn<(id: string) => Promise<readonly string[] | undefined>>()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce(["r2"]);
+    setup({ read });
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await screen.findByText(/1 resource\(s\) left out/i);
+    expect(checked("Scene 2")).toBe(false);
+  });
+
+  it("entityMode reads nothing, applies no exclusions and shows none of the saved-defaults UI", () => {
+    const entityMode: EntityCompileMode = {
+      entries: [{ resourceId: "r2", name: "Scene 2", resourceType: "text" }],
+      orderedResourceIds: ["r2"],
+    };
+    const { read } = setup({ read: async () => ["r2"], entityMode });
+    expect(read).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("saved-defaults-panel")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /save as default/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /compile \(1\)/i }),
+    ).toBeEnabled();
   });
 });

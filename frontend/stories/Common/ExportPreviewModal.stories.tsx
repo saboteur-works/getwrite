@@ -5,6 +5,14 @@ import ExportPreviewModal from "../../components/common/ExportPreviewModal";
 const meta: Meta<typeof ExportPreviewModal> = {
   title: "Common/ExportPreviewModal",
   component: ExportPreviewModal,
+  // No transport in Storybook: the project has no saved defaults unless a
+  // story says otherwise.
+  args: {
+    readSavedDefaults: async () => undefined,
+    saveDefaults: async (_projectId: string, ids: string[] | null) => ({
+      excludedResourceIds: ids ?? undefined,
+    }),
+  },
 };
 
 export default meta;
@@ -91,5 +99,44 @@ export const Interactive: Story = {
     onClose: () => console.log("close"),
     onConfirmExport: () => console.log("export"),
     onShowCompile: () => console.log("show compile"),
+  },
+};
+
+const selectionArgs = {
+  isOpen: true,
+  projectId: "proj-1",
+  resourceTitle: "Act One",
+  resourceIds: ["r1", "r2", "r3"],
+  resourceNames: ["Chapter 01", "Chapter 02", "Chapter 03"],
+  onClose: () => console.log("close"),
+  onConfirmExport: () => console.log("export"),
+};
+
+/** No saved default: every resource is selected. */
+export const SelectionNoSavedDefault: Story = { args: selectionArgs };
+
+/** A saved default leaves Chapter 02 out; it can be re-ticked for this run. */
+export const SavedDefaultInEffect: Story = {
+  args: { ...selectionArgs, readSavedDefaults: async () => ["r2"] },
+};
+
+/** The saved defaults could not be read: notice, Retry, all selected. */
+export const SavedDefaultsReadFailed: Story = {
+  args: {
+    ...selectionArgs,
+    readSavedDefaults: async () => {
+      throw new Error("The saved defaults could not be read.");
+    },
+  },
+};
+
+/** Saving is refused: the message shows and the shown default is unchanged. */
+export const SaveRefused: Story = {
+  args: {
+    ...selectionArgs,
+    readSavedDefaults: async () => ["r2"],
+    saveDefaults: async () => {
+      throw new Error("Saving is refused for this project.");
+    },
   },
 };

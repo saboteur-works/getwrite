@@ -226,7 +226,6 @@ export default function ShellModalCoordinator({
   projectTypesSavedStatus = "ok",
   resources,
   folders,
-  project,
   isProjectEncrypted = false,
   syncBlockers,
   onDeleteConfirm,
@@ -336,10 +335,13 @@ export default function ShellModalCoordinator({
         isSourceEncrypted={isProjectEncrypted}
         resourceTitle={exportModal.resourceTitle}
         resourceNames={exportModal.resourceNames}
+        resourceIds={exportModal.resourceIds}
+        projectId={projectId}
         onClose={() => setExportModal({ open: false })}
-        onConfirmExport={(format) =>
+        onConfirmExport={(format, selectedIds) =>
           onExportConfirmed(
-            exportModal.resourceIds ??
+            selectedIds ??
+              exportModal.resourceIds ??
               (exportModal.resourceId ? [exportModal.resourceId] : []),
             exportModal.resourceId,
             format,
@@ -364,7 +366,7 @@ export default function ShellModalCoordinator({
             : undefined
         }
         resources={[...(resources ?? []), ...(folders ?? [])]}
-        projectId={project?.id}
+        projectId={projectId}
         preview={compileModal.preview}
         onClose={() => setCompileModal({ open: false })}
         onConfirmCompile={(selectedIds, options) => {

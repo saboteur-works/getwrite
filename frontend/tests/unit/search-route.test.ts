@@ -8,16 +8,20 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeDirRetry } from "./helpers/fs-utils";
+import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
-import { writeSidecar } from "../../src/lib/models/sidecar";
+import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import {
   writeRevision,
   setCanonicalRevision,
 } from "../../src/lib/models/revision";
-import { indexResource } from "../../src/lib/models/inverted-index";
+import {
+  indexAnnotationBodies,
+  indexResource,
+} from "../../src/lib/models/inverted-index";
 import { assignTagToResource, createTag } from "../../src/lib/models/tags";
 import { generateUUID } from "../../src/lib/models/uuid";
 
@@ -37,7 +41,7 @@ import {
   GET,
 } from "../../app/api/project/[project-id]/search/route";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
-import type { Project } from "../../src/lib/models/types";
+import type { MetadataValue, Project } from "../../src/lib/models/types";
 
 // ---- Test project helpers -----------------------------------------------
 
@@ -126,6 +130,9 @@ async function addTestResource(
 }
 
 afterEach(async () => {
+  // Background indexer tasks queued by sidecar writes must finish before the
+  // temp dirs are removed.
+  await flushIndexer();
   for (const dir of tmpDirs.splice(0)) {
     await removeDirRetry(dir);
   }
@@ -283,6 +290,117 @@ describe("executeSearch — snippet extraction", () => {
 
     const results = await executeSearch(projectRoot, "needle", {}, 50);
     expect(results[0]!.snippet.length).toBeLessThanOrEqual(160);
+  });
+});
+
+describe("executeSearch — annotation body hits (Feature 101, Task 23, FR-20)", () => {
+  async function setAnnotations(
+    projectRoot: string,
+    resourceId: string,
+    bodies: string[],
+  ): Promise<void> {
+    // Drain queued indexer tasks first: one still pending would re-index the
+    // annotation terms from the sidecar after the explicit index below.
+    await flushIndexer();
+    const current = await readSidecar(projectRoot, resourceId);
+    await writeSidecar(projectRoot, resourceId, {
+      ...(current as Record<string, MetadataValue>),
+      annotations: bodies.map((body, i) => ({
+        id: generateUUID(),
+        body,
+        quote: i === 0 ? "" : `quote ${i}`,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      })) as unknown as MetadataValue,
+    });
+    await flushIndexer();
+    await indexAnnotationBodies(projectRoot, resourceId, bodies);
+    await flushIndexer();
+  }
+
+  it("surfaces a body-only match with a snippet from the body, kind note", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectRoot } = await createTestProject(projectsDir);
+    const id = await addTestResource(projectRoot, {
+      name: "Chapter",
+      content: "Plain prose about the river.",
+    });
+    await setAnnotations(projectRoot, id, ["Check the zeppelin timeline here"]);
+
+    const results = await executeSearch(projectRoot, "zeppelin", {}, 10);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.resourceId).toBe(id);
+    expect(results[0]!.snippetKind).toBe("note");
+    expect(results[0]!.snippet).toContain("zeppelin timeline");
+    expect(results[0]!.snippet).not.toContain("river");
+  });
+
+  it("returns a resource matching in prose and body once, with the prose snippet", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectRoot } = await createTestProject(projectsDir);
+    const id = await addTestResource(projectRoot, {
+      name: "Chapter",
+      content: "The dragon slept.",
+    });
+    await setAnnotations(projectRoot, id, ["dragon colour is inconsistent"]);
+
+    const results = await executeSearch(projectRoot, "dragon", {}, 10);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.snippetKind).toBe("prose");
+    expect(results[0]!.snippet).toContain("The dragon slept");
+  });
+
+  it("finds a detached annotation body", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectRoot } = await createTestProject(projectsDir);
+    const id = await addTestResource(projectRoot, {
+      name: "Chapter",
+      content: "Nothing relevant.",
+    });
+    await setAnnotations(projectRoot, id, ["orphaned remark about gryphons"]);
+
+    const results = await executeSearch(projectRoot, "gryphons", {}, 10);
+
+    expect(results.map((r) => r.resourceId)).toEqual([id]);
+    expect(results[0]!.snippetKind).toBe("note");
+  });
+
+  it("shows the edited body and drops a deleted one, with no reindex of prose", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectRoot } = await createTestProject(projectsDir);
+    const id = await addTestResource(projectRoot, {
+      name: "Chapter",
+      content: "Nothing relevant.",
+    });
+    await setAnnotations(projectRoot, id, ["first wording kestrel"]);
+    expect((await executeSearch(projectRoot, "kestrel", {}, 10)).length).toBe(
+      1,
+    );
+
+    await setAnnotations(projectRoot, id, ["second wording harrier"]);
+    expect(await executeSearch(projectRoot, "kestrel", {}, 10)).toEqual([]);
+    const edited = await executeSearch(projectRoot, "harrier", {}, 10);
+    expect(edited[0]!.snippet).toContain("second wording harrier");
+
+    await setAnnotations(projectRoot, id, []);
+    expect(await executeSearch(projectRoot, "harrier", {}, 10)).toEqual([]);
+  });
+
+  it("returns an empty snippet and kind prose when no body text matches (index ahead of sidecar)", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectRoot } = await createTestProject(projectsDir);
+    const id = await addTestResource(projectRoot, {
+      name: "Chapter",
+      content: "Nothing relevant.",
+    });
+    await indexAnnotationBodies(projectRoot, id, ["stale falcon"]);
+
+    const results = await executeSearch(projectRoot, "falcon", {}, 10);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.snippet).toBe("");
   });
 });
 

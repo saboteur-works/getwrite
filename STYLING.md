@@ -86,6 +86,8 @@ Red appears at low frequency in GetWrite. Every instance marks position or canon
 - Background fills anywhere in the application
 - Progress indicators or loading states
 
+**Colors the writer picks are exempt.** These rules govern colors the UI chooses. When the writer picks a color, such as an annotation highlight color, red is a valid choice because it means something to them. Defaults the UI ships stay non-red, and a writer-chosen color is still never the only signal.
+
 ### Dark/light mode
 
 GetWrite supports both modes with equal priority — many writers prefer light mode for long sessions. Light mode token overrides:

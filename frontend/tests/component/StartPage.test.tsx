@@ -23,6 +23,8 @@ import StartPage, {
 import { buildProjectView } from "../../src/lib/models/project-view";
 import { makeStore } from "../../src/store/store";
 import { setProjects } from "../../src/store/projectsSlice";
+import { toastService } from "../../src/lib/toast-service";
+import * as compileApi from "../../src/lib/api/compile";
 import type { SharingLimitsAnswer } from "../../src/store/sharing-limits-transport-service";
 
 const fetchSharingLimits = vi.fn<() => Promise<SharingLimitsAnswer>>();
@@ -59,6 +61,13 @@ vi.mock("../../src/lib/api/compile", () => ({
 }));
 vi.mock("../../src/lib/compile/download-file", () => ({
   downloadFile: vi.fn(),
+}));
+// The Start Page must apply saved defaults from its list entry and never
+// fetch them per project (Feature 101, Task 8).
+const readCompileDefaultsMock = vi.fn(async () => undefined);
+vi.mock("../../src/lib/api/saved-defaults-read", () => ({
+  readCompileDefaults: () => readCompileDefaultsMock(),
+  readExportDefaults: vi.fn(),
 }));
 
 import SharingLimitsProvider from "../../components/Sharing/SharingLimitsContext";
@@ -684,12 +693,14 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
    */
   function entryFor(
     rootResourceFolderId: string | undefined,
+    config?: Record<string, unknown>,
   ): StartPageProjectEntry {
     const project = {
       id: "p-pkg",
       name: "Two Resource Novel",
       rootPath: `/tmp/projects/${DIR_ID}`,
       createdAt: STAMP,
+      ...(config === undefined ? {} : { config }),
     };
     const folder = {
       id: "folder-1",
@@ -794,6 +805,41 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
     );
   });
 
+  it("applies the entry's saved compileDefaults and drops missing ids silently", async () => {
+    readCompileDefaultsMock.mockClear();
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    const dialog = await openCompileDialog(
+      entryFor(undefined, {
+        compileDefaults: { excludedResourceIds: ["res-other", "gone-id"] },
+      }),
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await within(dialog).findByRole("button", { name: /Compile \(1\)/ }),
+    );
+    const body = compileTextMock.mock.calls[0][0] as { resourceIds: string[] };
+    expect(body.resourceIds).toEqual(["res-in-folder"]);
+    expect(readCompileDefaultsMock).not.toHaveBeenCalled();
+  });
+
+  it("an entry without config compiles every resource and adds no per-project fetch", async () => {
+    compileTextMock.mockReset();
+    compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
+    readCompileDefaultsMock.mockClear();
+    const dialog = await openCompileDialog(entryFor(undefined));
+    const user = userEvent.setup();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    const body = compileTextMock.mock.calls[0][0] as { resourceIds: string[] };
+    expect([...body.resourceIds].sort()).toEqual([
+      "res-in-folder",
+      "res-other",
+    ]);
+    expect(readCompileDefaultsMock).not.toHaveBeenCalled();
+  });
+
   it("a create-result-shaped entry (folders without nested resources, resources with folderId and plainText) is listed under its folder with its body", async () => {
     compileTextMock.mockReset();
     compileTextMock.mockResolvedValue({ text: "x", filename: "x.txt" });
@@ -881,6 +927,59 @@ describe("StartPage — Package > Compile Project dialog and resource count (Fea
     expect(body.resources.filter((r) => r.id === "res-in-folder")).toHaveLength(
       1,
     );
+  });
+
+  it.each([
+    ["pdf", "compilePdf"],
+    ["docx", "compileDocx"],
+    ["md", "compileMarkdown"],
+    ["txt", "compileText"],
+  ] as const)(
+    "a rejected %s compile shows only the thrown message (Feature 101, FR-28)",
+    async (format, fnName) => {
+      const errorSpy = vi.spyOn(toastService, "error").mockReturnValue("");
+      const rejecting = new Error("Known compile failure");
+      rejecting.stack = "STACK-LINE at /secret/path.ts:1";
+      if (fnName === "compileText") {
+        compileTextMock.mockReset();
+        compileTextMock.mockRejectedValue(rejecting);
+      } else {
+        vi.mocked(compileApi[fnName]).mockRejectedValue(rejecting);
+      }
+      const dialog = await openCompileDialog(entryFor(undefined));
+      const user = userEvent.setup();
+      await user.selectOptions(
+        within(dialog).getByLabelText("Compile as"),
+        format,
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+      );
+      await waitFor(() => expect(errorSpy).toHaveBeenCalledTimes(1));
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Compile failed",
+        "Known compile failure",
+      );
+      errorSpy.mockRestore();
+    },
+  );
+
+  it("a non-Error rejection is shown as its string form", async () => {
+    const errorSpy = vi.spyOn(toastService, "error").mockReturnValue("");
+    compileTextMock.mockReset();
+    compileTextMock.mockRejectedValue("plain string failure");
+    const dialog = await openCompileDialog(entryFor(undefined));
+    const user = userEvent.setup();
+    await user.click(
+      within(dialog).getByRole("button", { name: /Compile \(2\)/ }),
+    );
+    await waitFor(() =>
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Compile failed",
+        "plain string failure",
+      ),
+    );
+    errorSpy.mockRestore();
   });
 
   it("the project card shows 2 resources for the same project (no folderId case)", () => {

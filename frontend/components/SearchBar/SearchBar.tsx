@@ -187,9 +187,14 @@ export default function SearchBar({
           options={results.map((r) => ({
             value: r.resourceId,
             label: r.title,
-            description: r.snippet
-              ? renderSnippet(r.snippet, query)
-              : undefined,
+            description: r.snippet ? (
+              <>
+                {r.snippetKind === "note" ? (
+                  <span className="searchbar-result-note-label">Note: </span>
+                ) : null}
+                {renderSnippet(r.snippet, query)}
+              </>
+            ) : undefined,
           }))}
           highlightedIndex={highlight}
           onSelect={(resourceId) => {

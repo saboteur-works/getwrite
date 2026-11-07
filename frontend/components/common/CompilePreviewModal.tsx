@@ -17,6 +17,15 @@ import Button from "./UI/Button/Button";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Checkbox from "./UI/Checkbox/Checkbox";
 import Select from "./UI/Select/Select";
+import SavedDefaultsPanel from "./SavedDefaultsPanel";
+import { resolveInitialSelection } from "./compile-defaults-selection";
+import { useSavedDefaults, type SavedDefaultsReader } from "./useSavedDefaults";
+import {
+  useSaveDefaultsAction,
+  type SavedDefaultsSetter,
+} from "./useSaveDefaultsAction";
+import { readCompileDefaults } from "../../src/lib/api/saved-defaults-read";
+import { setCompileDefaults } from "../../src/lib/api/compile-defaults";
 
 export type { EntityCompileEntry };
 
@@ -43,7 +52,15 @@ export interface CompileOptions {
 
 export interface CompilePreviewModalProps {
   isOpen: boolean;
+  /**
+   * The project's on-disk directory id (`selectActiveProjectDirectoryId`), as
+   * the saved-defaults reader and setter need; not `project.id`.
+   */
   projectId?: string;
+  /** Reads the saved compile exclusions. Defaults to `readCompileDefaults`. */
+  readSavedDefaults?: SavedDefaultsReader;
+  /** Saves or clears them. Defaults to `setCompileDefaults`. */
+  saveDefaults?: SavedDefaultsSetter;
   resources?: AnyResource[];
   preview?: string;
   onClose?: () => void;
@@ -71,21 +88,56 @@ export default function CompilePreviewModal(
     onConfirm?: () => void;
   },
 ): JSX.Element {
+  const { isOpen, onClose } = props;
+  // Held here so it survives a close and reopen, as it did before the body
+  // was split out. The body itself mounts only while open, so every open
+  // reads the saved defaults afresh.
+  const [shouldIncludeHeaders, setShouldIncludeHeaders] = useState(true);
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose?.();
+      }}
+    >
+      {isOpen ? (
+        <CompileModalBody
+          {...props}
+          shouldIncludeHeaders={shouldIncludeHeaders}
+          setShouldIncludeHeaders={setShouldIncludeHeaders}
+        />
+      ) : null}
+    </Dialog>
+  );
+}
+
+function CompileModalBody(
+  props: CompilePreviewModalProps & {
+    resource?: AnyResource;
+    onConfirm?: () => void;
+    shouldIncludeHeaders: boolean;
+    setShouldIncludeHeaders: (value: boolean) => void;
+  },
+): JSX.Element {
   const {
     isOpen,
+    projectId,
     resources = [],
     onClose,
     onConfirmCompile,
     resource,
     onConfirm,
     entityMode,
+    readSavedDefaults = readCompileDefaults,
+    saveDefaults = setCompileDefaults,
+    shouldIncludeHeaders,
+    setShouldIncludeHeaders,
   } = props;
 
   const tree = useMemo(() => buildCompileTree(resources), [resources]);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() =>
     initAllChecked(tree),
   );
-  const [shouldIncludeHeaders, setShouldIncludeHeaders] = useState(true);
   const [format, setFormat] = useState<CompileFormat>("txt");
   const [compilationName, setCompilationName] = useState("");
 
@@ -99,6 +151,37 @@ export default function CompilePreviewModal(
     }
   }, [isOpen, resources]);
 
+  // Saved defaults (FR-4/FR-5). Entity mode reads nothing and applies none
+  // (FR-6, OQ-4).
+  const savedRead = useSavedDefaults(projectId, readSavedDefaults, {
+    enabled: !entityMode,
+  });
+  const saveAction = useSaveDefaultsAction(projectId, saveDefaults);
+  const leafIds = useMemo(() => [...initAllChecked(tree)], [tree]);
+  const readIds =
+    savedRead.state.status === "ok"
+      ? savedRead.state.excludedResourceIds
+      : undefined;
+  const shownIds = saveAction.override
+    ? saveAction.override.excludedResourceIds
+    : readIds;
+  const leftOutIds = useMemo(
+    () => resolveInitialSelection(leafIds, shownIds).leftOutIds,
+    [leafIds, shownIds],
+  );
+  const names = useMemo(
+    () => new Map(resources.map((r) => [r.id, r.name])),
+    [resources],
+  );
+
+  // Apply the saved exclusions once the read settles. A failed read leaves
+  // everything selected.
+  useEffect(() => {
+    if (!isOpen || entityMode || resource) return;
+    if (savedRead.state.status === "loading") return;
+    setCheckedIds(resolveInitialSelection(leafIds, readIds).selectedIds);
+  }, [isOpen, entityMode, resource, savedRead.state.status, leafIds, readIds]);
+
   // Legacy: if a single `resource` prop is passed, pre-select only that resource.
   useEffect(() => {
     if (isOpen && resource) {
@@ -107,151 +190,161 @@ export default function CompilePreviewModal(
   }, [isOpen, resource]);
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose?.();
-      }}
+    <DialogContent
+      maxWidth="max-w-[560px]"
+      className="p-6"
+      data-testid="compile-preview-modal"
+      aria-describedby={undefined}
     >
-      <DialogContent
-        maxWidth="max-w-[560px]"
-        className="p-6"
-        data-testid="compile-preview-modal"
-        aria-describedby={undefined}
-      >
-        <DialogTitle asChild>
-          <h3 className="compile-modal-title">
-            {entityMode ? "Compile Entity Resources" : "Compile Project"}
-          </h3>
-        </DialogTitle>
-        <p className="compile-modal-description">
-          {entityMode
-            ? // The entity-mode list is read-only (FR-11), so the whole-project
-              // copy inviting a selection describes a control that isn't there.
-              "Every resource associated with this entity, in resource-tree order."
-            : "Select which resources to include in the compiled output."}
+      <DialogTitle asChild>
+        <h3 className="compile-modal-title">
+          {entityMode ? "Compile Entity Resources" : "Compile Project"}
+        </h3>
+      </DialogTitle>
+      <p className="compile-modal-description">
+        {entityMode
+          ? // The entity-mode list is read-only (FR-11), so the whole-project
+            // copy inviting a selection describes a control that isn't there.
+            "Every resource associated with this entity, in resource-tree order."
+          : "Select which resources to include in the compiled output."}
+      </p>
+
+      {props.isSourceEncrypted ? (
+        <p className="mt-2 text-[12px] leading-relaxed text-gw-primary">
+          This project is encrypted. The compiled file will not be — it is
+          readable by anyone who can open it.
         </p>
+      ) : null}
 
-        {props.isSourceEncrypted ? (
-          <p className="mt-2 text-[12px] leading-relaxed text-gw-primary">
-            This project is encrypted. The compiled file will not be — it is
-            readable by anyone who can open it.
-          </p>
-        ) : null}
+      {entityMode ? (
+        <EntityCompileResourceList entries={entityMode.entries} />
+      ) : (
+        <>
+          <div className="flex gap-2 mb-2">
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => setCheckedIds(initAllChecked(tree))}
+            >
+              Select All
+            </Button>
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => setCheckedIds(new Set())}
+            >
+              Select None
+            </Button>
+          </div>
 
-        {entityMode ? (
-          <EntityCompileResourceList entries={entityMode.entries} />
-        ) : (
-          <>
-            <div className="flex gap-2 mb-2">
-              <Button
-                variant="secondary"
-                size="xs"
-                onClick={() => setCheckedIds(initAllChecked(tree))}
-              >
-                Select All
-              </Button>
-              <Button
-                variant="secondary"
-                size="xs"
-                onClick={() => setCheckedIds(new Set())}
-              >
-                Select None
-              </Button>
-            </div>
+          <CompileResourceTree
+            resources={resources}
+            checkedIds={checkedIds}
+            onChange={setCheckedIds}
+          />
 
-            <CompileResourceTree
-              resources={resources}
-              checkedIds={checkedIds}
-              onChange={setCheckedIds}
+          <div className="compile-modal-meta-text mt-2 text-right">
+            {checkedIds.size} resource(s) selected
+          </div>
+
+          {projectId !== undefined ? (
+            <SavedDefaultsPanel
+              noun="compile"
+              readStatus={savedRead.state.status}
+              onRetry={savedRead.retry}
+              savedCount={leftOutIds.length}
+              leftOut={leftOutIds.map((id) => ({
+                id,
+                name: names.get(id) ?? id,
+                isIncludedThisRun: checkedIds.has(id),
+              }))}
+              result={saveAction.result}
+              isBusy={saveAction.isBusy}
+              onSave={() =>
+                saveAction.save(leafIds.filter((id) => !checkedIds.has(id)))
+              }
+              onClear={saveAction.clear}
             />
+          ) : null}
+        </>
+      )}
 
-            <div className="compile-modal-meta-text mt-2 text-right">
-              {checkedIds.size} resource(s) selected
-            </div>
-          </>
-        )}
+      <div className="mt-3 flex items-center gap-2">
+        <Checkbox
+          id="compile-include-headers"
+          checked={shouldIncludeHeaders}
+          onChange={(e) => setShouldIncludeHeaders(e.target.checked)}
+          aria-label="Include section headers"
+        />
+        <label
+          htmlFor="compile-include-headers"
+          className="compile-modal-meta-text cursor-pointer select-none"
+        >
+          Include section headers
+        </label>
+      </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <Checkbox
-            id="compile-include-headers"
-            checked={shouldIncludeHeaders}
-            onChange={(e) => setShouldIncludeHeaders(e.target.checked)}
-            aria-label="Include section headers"
-          />
-          <label
-            htmlFor="compile-include-headers"
-            className="compile-modal-meta-text cursor-pointer select-none"
-          >
-            Include section headers
-          </label>
-        </div>
+      <div className="mt-3 flex items-center gap-2">
+        <label htmlFor="compile-as" className="compile-modal-label mb-0">
+          Compile as
+        </label>
+        <Select
+          id="compile-as"
+          value={format}
+          onChange={(e) => setFormat(e.target.value as CompileFormat)}
+          className="w-auto"
+        >
+          <option value="txt">txt</option>
+          <option value="md">md</option>
+          <option value="pdf">pdf</option>
+          <option value="docx">docx</option>
+        </Select>
+      </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <label htmlFor="compile-as" className="compile-modal-label mb-0">
-            Compile as
-          </label>
-          <Select
-            id="compile-as"
-            value={format}
-            onChange={(e) => setFormat(e.target.value as CompileFormat)}
-            className="w-auto"
-          >
-            <option value="txt">txt</option>
-            <option value="md">md</option>
-            <option value="pdf">pdf</option>
-            <option value="docx">docx</option>
-          </Select>
-        </div>
+      <div className="mt-3">
+        <input
+          spellCheck={false}
+          id="compile-name"
+          type="text"
+          value={compilationName}
+          onChange={(e) => setCompilationName(e.target.value)}
+          placeholder="Enter a name for your compiled output..."
+          className="compile-modal-textarea"
+          style={{ height: "auto", padding: "8px 12px" }}
+        />
+      </div>
 
-        <div className="mt-3">
-          <input
-            spellCheck={false}
-            id="compile-name"
-            type="text"
-            value={compilationName}
-            onChange={(e) => setCompilationName(e.target.value)}
-            placeholder="Enter a name for your compiled output..."
-            className="compile-modal-textarea"
-            style={{ height: "auto", padding: "8px 12px" }}
-          />
-        </div>
-
-        <div className="mt-4 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>
-            Close
-          </Button>
-          <Button
-            variant="default"
-            onClick={() => {
-              const orderedIds = entityMode
-                ? entityMode.orderedResourceIds
-                : getDescendantLeafIds(ROOT_ITEM_ID, tree).filter((id) =>
-                    checkedIds.has(id),
-                  );
-              onConfirmCompile?.(orderedIds, {
-                includeHeaders: shouldIncludeHeaders,
-                format,
-                compilationName,
-              });
-              onConfirm?.();
-              onClose?.();
-            }}
-            disabled={
-              entityMode
-                ? entityMode.orderedResourceIds.length === 0
-                : checkedIds.size === 0
-            }
-          >
-            <PackageCheck size={14} aria-hidden="true" />
-            Compile (
-            {entityMode
-              ? entityMode.orderedResourceIds.length
-              : checkedIds.size}
-            )
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <div className="mt-4 flex justify-end gap-3">
+        <Button variant="secondary" onClick={onClose}>
+          Close
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => {
+            const orderedIds = entityMode
+              ? entityMode.orderedResourceIds
+              : getDescendantLeafIds(ROOT_ITEM_ID, tree).filter((id) =>
+                  checkedIds.has(id),
+                );
+            onConfirmCompile?.(orderedIds, {
+              includeHeaders: shouldIncludeHeaders,
+              format,
+              compilationName,
+            });
+            onConfirm?.();
+            onClose?.();
+          }}
+          disabled={
+            entityMode
+              ? entityMode.orderedResourceIds.length === 0
+              : checkedIds.size === 0 || savedRead.state.status === "loading"
+          }
+        >
+          <PackageCheck size={14} aria-hidden="true" />
+          Compile (
+          {entityMode ? entityMode.orderedResourceIds.length : checkedIds.size})
+        </Button>
+      </div>
+    </DialogContent>
   );
 }

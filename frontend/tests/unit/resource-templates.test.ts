@@ -26,6 +26,8 @@ import {
   createResourceCore,
   updateSidecarCore,
 } from "../../src/lib/models/resource-crud-core";
+import { addAnnotationCore } from "../../src/lib/models/annotations-core";
+import { updateRevisionInPlace } from "../../src/lib/models/revision-core";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import { ResourceTemplateSchema } from "../../src/lib/models/schemas";
@@ -1625,5 +1627,63 @@ describe("models/resource-templates — saveResourceTemplateFromResource (Featur
     );
     expect(body).toBe("Alice walked in.\n\nThen she sat.");
     await expectLoadableTextResource(projectRoot, created.id, body);
+  });
+
+  it("carries no annotations and no annotation marks into a template (Feature 101, FR-21, OQ-14)", async () => {
+    const created = await createResourceCore(projectId, {
+      type: "text",
+      name: "Noted",
+      text: { plainText: "one two three" },
+    });
+    const noteId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const [rev] = await listRevisions(projectRoot, created.id);
+    await updateRevisionInPlace(
+      projectRoot,
+      created.id,
+      rev.id,
+      JSON.stringify({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "one " },
+              {
+                type: "text",
+                text: "two",
+                marks: [{ type: "annotation", attrs: { id: noteId } }],
+              },
+              { type: "text", text: " three" },
+            ],
+          },
+        ],
+      }),
+    );
+    await addAnnotationCore(projectId, created.id, {
+      id: noteId,
+      body: "secret note body",
+      quote: "two",
+    });
+    await flushIndexer();
+
+    await saveResourceTemplateFromResource(projectRoot, created.id, "tpl-n");
+    const raw = await fs.readFile(templatePath("tpl-n"), "utf8");
+    const tpl = JSON.parse(raw) as Record<string, unknown>;
+    expect(tpl).not.toHaveProperty("annotations");
+    expect(tpl.plainText).toBe("one two three");
+    expect(raw).not.toContain("annotation");
+    expect(raw).not.toContain(noteId);
+    expect(raw).not.toContain("secret note body");
+
+    const made = await createResourceFromTemplate(projectRoot, "tpl-n");
+    if (!("id" in made)) throw new Error("expected a created resource");
+    await flushIndexer();
+    const sc = await sidecarRecord(made.id);
+    expect(sc).not.toHaveProperty("annotations");
+    const content = await fs.readFile(
+      path.join(projectRoot, "resources", made.id, "content.tiptap.json"),
+      "utf8",
+    );
+    expect(content).not.toContain("annotation");
   });
 });

@@ -302,6 +302,33 @@
   text-underline-offset: 3px;
 }
 
+/* Annotation highlight (`AnnotationHighlightExtension`, Feature 101 FR-14):
+ * a neutral tint plus a dotted underline, so the passage reads by shape and
+ * not colour alone. The passage chosen in the panel gets a solid, thicker
+ * underline and an outline. Never the reserved red. */
+.tiptap .annotation-highlight {
+  background-color: var(--color-gw-mention-jump-highlight);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.tiptap .annotation-highlight--active {
+  text-decoration: underline solid;
+  text-decoration-thickness: 3px;
+  outline: 1px solid currentColor;
+}
+
+@media (forced-colors: active) {
+  .tiptap .annotation-highlight {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
+
 /* Dialogue highlight (`DialogueHighlightExtension`): quoted speech, switched
  * on from the sidebar's Prose Diagnostics section for the current window.
  * Its own teal `--color-gw-dialogue-highlight` token (`getwrite-utilities.css`),

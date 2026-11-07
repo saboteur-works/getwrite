@@ -22,6 +22,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 - [Daily Writing Log](write/writing-log.md) — How GetWrite records the words you write each day, shows today's figure against an optional goal, and what it counts.
 - [Headings](write/headings.md) — Apply heading levels in the editor and set how each level looks for a project.
 - [Editor Appearance](write/editor-appearance.md) — What sets the look of the writing surface and the body text and heading settings you can change in a project.
+- [Annotations](write/annotations.md) — Attach private notes to passages of a document, edit or delete them, re-attach detached ones, and find them in search.
 - [Search](write/search.md) — Open search with a keyboard shortcut and jump to a document by name.
 
 ## Story
@@ -43,5 +44,5 @@ summary: Contents of the GetWrite handbook, grouped by part.
 - [Revisions](protect-and-finish/revisions.md) — Every text document keeps a history of saved revisions that you can name, protect, switch between and clean up with the prune command.
 - [Trash](protect-and-finish/trash.md) — Deleted resources and folders go to a project Trash tab, where they can be restored or permanently deleted.
 - [Resources and Resource Types](protect-and-finish/resources.md) — What a resource is, the four kinds (document, image, audio, folder) and what each one shows in the Work Area and the sidebar.
-- [Compiling Projects](protect-and-finish/compiling.md) — Compile a project, or only the documents tied to one entity, into a single txt, md, pdf or docx file.
+- [Compiling Projects](protect-and-finish/compiling.md) — Compile a project, or only the documents tied to one entity, into a single txt, md, pdf or docx file, export documents, and save which resources a dialog leaves out.
 - [Project Configuration](protect-and-finish/project-configuration.md) — The project.json file in each project's folder, the keys it holds and the defaults a new project starts with.

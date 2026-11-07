@@ -186,3 +186,7 @@ Contact
   What: evaluate replacing the JSON index with a more scalable store (SQLite FTS, Tantivy, or an external search service) for larger datasets.
 
   Why: a JSON file works for small projects but will become slow and memory-heavy at scale. A proper search engine will provide better performance, advanced queries, and durability guarantees.
+
+Annotation bodies (Feature 101)
+
+- A second term source, persisted as `meta/index/annotations.json` in the same shape as `inverted.json`. `runTask` indexes the sidecar `annotations` bodies with the text; an annotation write enqueues an index task; `reindex` keeps them. `searchAnnotationBodies` (`inverted-index.ts`) reads it. A body-only term is absent from `inverted.json` and from `search()`. See [annotations.md](./annotations.md).

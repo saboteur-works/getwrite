@@ -9,7 +9,7 @@
  * The component supports both externally supplied project lists (via props)
  * and local optimistic updates for create/rename/delete interactions.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus, FolderOpen, Import } from "lucide-react";
 import Card from "../common/UI/Card/Card";
 import type {
@@ -298,6 +298,11 @@ export interface StartPageProps {
  *   onOpen={(projectId) => openProject(projectId)}
  * />
  */
+/** The thrown message only; never a stack, path or response body. */
+function compileErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export default function StartPage({
   projects = [],
   projectsStatus = "loaded",
@@ -364,6 +369,26 @@ export default function StartPage({
   const [compileTargetProjectId, setCompileTargetProjectId] = useState<
     string | null
   >(null);
+
+  /**
+   * Saved compile defaults come from the list entry's own `config`; no
+   * per-project fetch is made (Feature 101, FR-6, OQ-5). An entry without
+   * `config` (encrypted or unusable) gets no saved-defaults id, so the dialog
+   * reads nothing and selects every resource as before.
+   */
+  const compileTargetEntry = localProjects.find(
+    (p) => p.project.id === compileTargetProjectId,
+  );
+  const savedCompileExcludedIds =
+    compileTargetEntry?.project.config?.compileDefaults?.excludedResourceIds;
+  const compileDefaultsProjectId =
+    compileTargetEntry?.project.config && compileTargetEntry.project.rootPath
+      ? getProjectDirectoryId(compileTargetEntry.project.rootPath)
+      : undefined;
+  const readEntryCompileDefaults = useCallback(
+    async () => savedCompileExcludedIds,
+    [savedCompileExcludedIds],
+  );
 
   /**
    * Resources reconstructed for the compile modal.
@@ -599,7 +624,8 @@ export default function StartPage({
 
       <CompilePreviewModal
         isOpen={compileTargetProjectId !== null}
-        projectId={compileTargetProjectId ?? undefined}
+        projectId={compileDefaultsProjectId}
+        readSavedDefaults={readEntryCompileDefaults}
         isSourceEncrypted={Boolean(
           localProjects.find(
             (entry) => entry.project?.id === compileTargetProjectId,
@@ -657,8 +683,8 @@ export default function StartPage({
                   resolveFilename("pdf", result.filename),
                 );
               })
-              .catch(() =>
-                toastService.error("Compile failed", "Could not generate PDF"),
+              .catch((err: unknown) =>
+                toastService.error("Compile failed", compileErrorMessage(err)),
               );
             return;
           }
@@ -672,8 +698,8 @@ export default function StartPage({
                   resolveFilename("docx", result.filename),
                 );
               })
-              .catch(() =>
-                toastService.error("Compile failed", "Could not generate DOCX"),
+              .catch((err: unknown) =>
+                toastService.error("Compile failed", compileErrorMessage(err)),
               );
             return;
           }
@@ -694,11 +720,8 @@ export default function StartPage({
                   );
                 }
               })
-              .catch(() =>
-                toastService.error(
-                  "Compile failed",
-                  "Could not generate Markdown",
-                ),
+              .catch((err: unknown) =>
+                toastService.error("Compile failed", compileErrorMessage(err)),
               );
             return;
           }
@@ -710,11 +733,8 @@ export default function StartPage({
                 resolveFilename("txt", result.filename),
               );
             })
-            .catch(() =>
-              toastService.error(
-                "Compile failed",
-                "Could not generate output file",
-              ),
+            .catch((err: unknown) =>
+              toastService.error("Compile failed", compileErrorMessage(err)),
             );
         }}
       />

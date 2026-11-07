@@ -31,11 +31,12 @@
  * the native backend lets it propagate.
  */
 import React from "react";
-import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
+import type { DocumentProps } from "@react-pdf/renderer";
 import {
   CompilePDFDocument,
   registerIBMPlexFonts,
 } from "../export/CompilePDFDocument";
+import { renderPdfOnServer, type PdfRenderer } from "../export/pdf-render";
 import { CompilePDFFallbackDocument } from "../export/CompilePDFFallbackDocument";
 import { buildDocxDocument, Packer } from "../export/CompileDocxDocument";
 import { compileToText, type CompileSection } from "../export/compile-text";
@@ -111,6 +112,7 @@ function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
  */
 export async function compilePdfCore(
   body: CompileBody,
+  render: PdfRenderer = renderPdfOnServer,
 ): Promise<CompilePdfCoreResult> {
   const {
     projectId,
@@ -131,12 +133,12 @@ export async function compilePdfCore(
 
   const filename = `${slugify(projectName)}.pdf`;
 
-  let buffer: Buffer;
+  let rendered: ArrayBuffer;
   let didFontFallback = false;
 
   try {
     registerIBMPlexFonts();
-    buffer = await renderToBuffer(
+    rendered = await render(
       React.createElement(CompilePDFDocument, {
         sections,
         includeHeaders: shouldIncludeHeaders,
@@ -145,7 +147,7 @@ export async function compilePdfCore(
   } catch (err) {
     if (!isFontError(err)) throw err;
     didFontFallback = true;
-    buffer = await renderToBuffer(
+    rendered = await render(
       React.createElement(CompilePDFFallbackDocument, {
         sections,
         includeHeaders: shouldIncludeHeaders,
@@ -154,7 +156,7 @@ export async function compilePdfCore(
   }
 
   return {
-    arrayBuffer: bufferToArrayBuffer(buffer),
+    arrayBuffer: rendered,
     filename,
     warning: didFontFallback ? "font-fallback" : undefined,
   };

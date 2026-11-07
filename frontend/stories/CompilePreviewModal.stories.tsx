@@ -89,6 +89,14 @@ const meta: Meta<typeof CompilePreviewModal> = {
   title: "Common/CompilePreviewModal",
   component: CompilePreviewModal,
   tags: ["autodocs"],
+  // No transport in Storybook: the project has no saved defaults unless a
+  // story says otherwise.
+  args: {
+    readSavedDefaults: async () => undefined,
+    saveDefaults: async (_projectId: string, ids: string[] | null) => ({
+      excludedResourceIds: ids ?? undefined,
+    }),
+  },
 };
 
 export default meta;
@@ -163,4 +171,56 @@ export const Interactive: Story = {
     );
   },
   args: { isOpen: true, projectId: "proj-1", resources: sampleResources },
+};
+
+/** A saved default leaves Scene 2 and Scene 4 out; they can be re-ticked. */
+export const SavedDefaultInEffect: Story = {
+  args: {
+    isOpen: true,
+    projectId: "proj-1",
+    resources: sampleResources,
+    readSavedDefaults: async () => ["r2", "r4"],
+  },
+};
+
+/** The saved defaults could not be read: notice, Retry, all selected. */
+export const SavedDefaultsReadFailed: Story = {
+  args: {
+    isOpen: true,
+    projectId: "proj-1",
+    resources: sampleResources,
+    readSavedDefaults: async () => {
+      throw new Error("The saved defaults could not be read.");
+    },
+  },
+};
+
+/** Saving is refused: the message shows and the shown default is unchanged. */
+export const SaveRefused: Story = {
+  args: {
+    isOpen: true,
+    projectId: "proj-1",
+    resources: sampleResources,
+    readSavedDefaults: async () => ["r2"],
+    saveDefaults: async () => {
+      throw new Error("Saving is refused for this project.");
+    },
+  },
+};
+
+/** Entity-scoped compile: no saved exclusions, no saved-defaults controls. */
+export const EntityMode: Story = {
+  args: {
+    isOpen: true,
+    projectId: "proj-1",
+    resources: sampleResources,
+    readSavedDefaults: async () => ["r2"],
+    entityMode: {
+      entries: [
+        { resourceId: "r1", name: "Scene 1", resourceType: "text" },
+        { resourceId: "r2", name: "Scene 2", resourceType: "text" },
+      ],
+      orderedResourceIds: ["r1", "r2"],
+    },
+  },
 };

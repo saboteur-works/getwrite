@@ -1,4 +1,4 @@
-import { indexResource } from "./inverted-index";
+import { indexAnnotationBodies, indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
 import { isLockedAccessError } from "./locked-access";
 import path from "node:path";
@@ -239,6 +239,18 @@ function buildMentionRecordForEntity(
   };
 }
 
+function annotationBodies(
+  side: Awaited<ReturnType<typeof readSidecar>>,
+): string[] {
+  const stored: unknown = side?.["annotations"];
+  if (!Array.isArray(stored)) return [];
+  return stored.flatMap((a: unknown) =>
+    typeof (a as { body?: unknown } | null)?.body === "string"
+      ? [(a as { body: string }).body]
+      : [],
+  );
+}
+
 async function runTask(task: Task) {
   try {
     await runForTenant(
@@ -264,6 +276,14 @@ async function runTask(task: Task) {
         } as unknown as TextResource;
 
         await indexResource(task.projectRoot, minimal);
+
+        // Annotation bodies go to a separate term source (FR-20). Every
+        // stored body is indexed, attached or detached.
+        await indexAnnotationBodies(
+          task.projectRoot,
+          task.resourceId,
+          annotationBodies(side),
+        );
 
         try {
           const backlinks = await computeBacklinks(task.projectRoot);

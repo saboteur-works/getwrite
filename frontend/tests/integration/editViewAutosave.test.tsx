@@ -12,7 +12,11 @@ import {
   setProject,
   setSelectedProjectId,
 } from "../../src/store/projectsSlice";
-import { createTextResource } from "../../src/lib/models/resource";
+import {
+  createAudioResource,
+  createImageResource,
+  createTextResource,
+} from "../../src/lib/models/resource";
 import type { RevisionEntry } from "../../src/store/revisionsSlice";
 import { toRevisionEntry } from "../../src/store/revision-normalization";
 import fs from "node:fs/promises";
@@ -71,17 +75,37 @@ vi.mock("../../components/TipTapEditor", () => {
     default: ({
       value,
       onChange,
+      annotationResourceId,
     }: {
       value?: string;
-      onChange?: (v: string, doc: { type: "doc"; content: unknown[] }) => void;
+      onChange?: (
+        v: string,
+        doc: { type: "doc"; content: unknown[] },
+        isStructuralOnly?: boolean,
+        isAnnotationOnly?: boolean,
+      ) => void;
+      annotationResourceId?: string;
     }) => (
-      <textarea
-        data-testid="tiptap-mock"
-        value={typeof value === "string" ? value : JSON.stringify(value ?? "")}
-        onChange={(e) =>
-          onChange?.(e.target.value, { type: "doc", content: [] })
-        }
-      />
+      <div>
+        <textarea
+          data-testid="tiptap-mock"
+          data-annotation-resource={annotationResourceId ?? ""}
+          value={
+            typeof value === "string" ? value : JSON.stringify(value ?? "")
+          }
+          onChange={(e) =>
+            onChange?.(e.target.value, { type: "doc", content: [] })
+          }
+        />
+        <button
+          type="button"
+          onClick={() =>
+            onChange?.("a mark", { type: "doc", content: [] }, false, true)
+          }
+        >
+          annotation change
+        </button>
+      </div>
     ),
   };
 });
@@ -187,6 +211,122 @@ describe("EditView autosave integration", () => {
     });
     expect(patchCalls.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("saves an annotation-only change without counting it as unsaved text work, and counts a text edit (FR-15)", async () => {
+    const store = makeStore();
+    const resource = createTextResource({
+      name: "Draft",
+      plainText: "Initial text",
+    });
+    const patches: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (
+          url.includes(`/api/resource/revision/${resource.id}`) &&
+          init?.method === "PATCH"
+        ) {
+          patches.push(url);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ updatedAt: new Date().toISOString() }),
+          } as Response;
+        }
+        return { ok: false, status: 404, json: async () => ({}) } as Response;
+      },
+    );
+    store.dispatch(
+      setProject({
+        id: "project-annotation",
+        name: "Annotation Project",
+        rootPath: "/tmp/project-annotation",
+        resources: [{ id: resource.id, name: resource.name }],
+      }),
+    );
+    store.dispatch(setSelectedProjectId("project-annotation"));
+    store.dispatch(setResources([resource]));
+    store.dispatch(setSelectedResourceId(resource.id));
+    seedRevisions(
+      store,
+      resource.id,
+      [createRevisionEntry(resource.id)],
+      "rev-canonical",
+    );
+    const onUnsavedChange = vi.fn();
+
+    render(
+      <Provider store={store}>
+        <EditView
+          initialContent="Initial text"
+          onUnsavedChange={onUnsavedChange}
+        />
+      </Provider>,
+    );
+    expect(
+      screen
+        .getByTestId("tiptap-mock")
+        .getAttribute("data-annotation-resource"),
+    ).toBe(resource.id);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "annotation change" }),
+      );
+    });
+    expect(screen.getByText(/Autosave queued/i)).toBeInTheDocument();
+    expect(onUnsavedChange).not.toHaveBeenCalledWith(true);
+    await act(async () => {
+      vi.advanceTimersByTime(2600);
+      await Promise.resolve();
+    });
+    expect(patches).toHaveLength(1);
+    expect(onUnsavedChange).not.toHaveBeenCalledWith(true);
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("tiptap-mock"), {
+        target: { value: "Updated text" },
+      });
+    });
+    expect(onUnsavedChange).toHaveBeenCalledWith(true);
+  });
+
+  for (const kind of ["image", "audio"] as const) {
+    it(`passes no annotation resource id for an ${kind} resource, so no annotations or add control is rendered (FR-23 absence)`, async () => {
+      const store = makeStore();
+      const resource =
+        kind === "image"
+          ? createImageResource({ name: "Pic" })
+          : createAudioResource({ name: "Clip" });
+      store.dispatch(
+        setProject({
+          id: "project-media",
+          name: "Media Project",
+          rootPath: "/tmp/project-media",
+          resources: [{ id: resource.id, name: resource.name }],
+        }),
+      );
+      store.dispatch(setSelectedProjectId("project-media"));
+      store.dispatch(setResources([resource]));
+      store.dispatch(setSelectedResourceId(resource.id));
+      seedRevisions(
+        store,
+        resource.id,
+        [createRevisionEntry(resource.id)],
+        "rev-canonical",
+      );
+      render(
+        <Provider store={store}>
+          <EditView initialContent="" />
+        </Provider>,
+      );
+      for (const editor of screen.queryAllByTestId("tiptap-mock")) {
+        expect(editor.getAttribute("data-annotation-resource")).toBe("");
+      }
+      expect(screen.queryByRole("button", { name: "Add note" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Annotations" })).toBeNull();
+    });
+  }
 
   it("sends the project directory basename as projectId, not StoredProject.id, when autosaving", async () => {
     const store = makeStore();

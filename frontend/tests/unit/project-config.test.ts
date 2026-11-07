@@ -331,3 +331,46 @@ describe("ProjectConfigSchema — spelling lists (spell-checker FR-11, FR-13)", 
     expect("spellingIgnoredWords" in normalized).toBe(false);
   });
 });
+
+describe("ProjectConfigSchema — compileDefaults and exportDefaults (Feature 101, FR-1)", () => {
+  const ID_A = "aaaaaaaa-1111-4111-8111-111111111111";
+
+  it("parses both keys as exactly { excludedResourceIds: string[] }", () => {
+    const result = ProjectConfigSchema.parse({
+      compileDefaults: { excludedResourceIds: [ID_A] },
+      exportDefaults: { excludedResourceIds: [] },
+    });
+    expect(result.compileDefaults).toEqual({ excludedResourceIds: [ID_A] });
+    expect(result.exportDefaults).toEqual({ excludedResourceIds: [] });
+  });
+
+  it("parses with both keys absent and leaves them undefined", () => {
+    const result = ProjectConfigSchema.parse({});
+    expect(result.compileDefaults).toBeUndefined();
+    expect(result.exportDefaults).toBeUndefined();
+  });
+
+  it("rejects any extra field inside either key", () => {
+    expect(
+      ProjectConfigSchema.safeParse({
+        compileDefaults: { excludedResourceIds: [], format: "pdf" },
+      }).success,
+    ).toBe(false);
+    expect(
+      ProjectConfigSchema.safeParse({
+        exportDefaults: { excludedResourceIds: [], headers: true },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a missing or non-string-array excludedResourceIds", () => {
+    expect(ProjectConfigSchema.safeParse({ compileDefaults: {} }).success).toBe(
+      false,
+    );
+    expect(
+      ProjectConfigSchema.safeParse({
+        exportDefaults: { excludedResourceIds: [1] },
+      }).success,
+    ).toBe(false);
+  });
+});

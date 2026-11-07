@@ -71,6 +71,45 @@ describe("SearchBar", () => {
     expect(onSelect).toHaveBeenCalledWith("r1");
   });
 
+  it('labels a body hit\'s snippet with the text "Note:" and opens it on click', async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          resourceId: "r9",
+          title: "Delta",
+          snippet: "check the zeppelin timeline",
+          snippetKind: "note",
+        },
+        { resourceId: "r1", title: "Alpha", snippet: "alpha prose" },
+      ],
+    } as Response);
+    const onSelect = vi.fn();
+    const testStore = makeStore();
+    testStore.dispatch(setSelectedProjectId("project-1"));
+    render(
+      <Provider store={testStore}>
+        <SearchBar onSelect={onSelect} />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText("resource-search"), {
+      target: { value: "zeppelin" },
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await flushThunkAndRender();
+    });
+
+    const noteOption = screen.getByRole("option", { name: /Delta/i });
+    expect(noteOption).toHaveTextContent("Note:");
+    expect(
+      screen.getByRole("option", { name: /Alpha/i }),
+    ).not.toHaveTextContent("Note:");
+
+    fireEvent.click(noteOption);
+    expect(onSelect).toHaveBeenCalledWith("r9");
+  });
+
   it("does not fire an API call for fewer than 2 characters", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

@@ -153,10 +153,17 @@ export default function EditView({
     onSnapshotCreated: handleSnapshotCreated,
   });
 
+  // True while the only thing waiting to be saved is an annotation mark
+  // change: it is saved like any edit, but is not an unsaved text change for
+  // the sync blockers (Feature 101, FR-15). Any text edit clears it.
+  const [isPendingAnnotationOnly, setIsPendingAnnotationOnly] =
+    React.useState<boolean>(false);
+
   const handleChange = (
     next: string,
     doc: TipTapDocument,
     isStructuralOnly?: boolean,
+    isAnnotationOnly?: boolean,
   ) => {
     setContent(next);
     setTipTapDoc(doc);
@@ -167,6 +174,15 @@ export default function EditView({
     // "the writer made an edit" (autosave, the non-canonical warning) any
     // more than loading a resource does (POS task_0417e6f6 / note_ad3047e2).
     if (isStructuralOnly) return;
+    if (isAnnotationOnly) {
+      // Only a save that would otherwise be idle is annotation-only; text work
+      // already waiting keeps counting.
+      if (saveStatus !== "pending" && saveStatus !== "saving") {
+        setIsPendingAnnotationOnly(true);
+      }
+    } else {
+      setIsPendingAnnotationOnly(false);
+    }
     if (isViewingNonCanonical) {
       setHasEditsAfterRevisionSwitch(true);
     }
@@ -183,12 +199,17 @@ export default function EditView({
     if (isViewingNonCanonical) {
       return hasEditsAfterRevisionSwitch;
     }
+    if (saveStatus === "error") return true;
     return (
-      saveStatus === "pending" ||
-      saveStatus === "saving" ||
-      saveStatus === "error"
+      (saveStatus === "pending" || saveStatus === "saving") &&
+      !isPendingAnnotationOnly
     );
-  }, [isViewingNonCanonical, hasEditsAfterRevisionSwitch, saveStatus]);
+  }, [
+    isViewingNonCanonical,
+    hasEditsAfterRevisionSwitch,
+    saveStatus,
+    isPendingAnnotationOnly,
+  ]);
 
   useEffect(() => {
     onUnsavedChange?.(hasUnsavedWork);
@@ -445,6 +466,11 @@ export default function EditView({
               }
               onNodeTypesChange={setNodeTypes}
               positionKey={positionKey}
+              annotationResourceId={
+                isEditingCanonicalRevision && selectedResource?.type === "text"
+                  ? selectedResource.id
+                  : undefined
+              }
               readonly={false}
             />
           </div>

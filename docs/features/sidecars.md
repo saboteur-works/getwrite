@@ -16,6 +16,7 @@
 - `folderId` (string): id of the containing folder.
 - `tags` (array[string], optional): project-scoped tags.
 - `resourceSubtype` (string, optional): the resource's single subtype label (Feature 72); see [resource-subtype.md](resource-subtype.md).
+- `annotations` (array, optional; text resources, Feature 101): the writer's notes on passages, each `{ id, body, quote, createdAt, updatedAt }`. Written only by `annotations-core.ts` through `mutateSidecar`; not one of the client-writable keys of `updateSidecarCore`. See [annotations.md](./annotations.md).
 - `templateId` (string, optional): if resource came from a template, the originating template id.
 - `metadata` (object, optional): system-managed or developer-extended fields (e.g., derived counts). Not directly editable by users through the UI.
 - `userMetadata` (object): user-managed metadata fields edited through the Metadata sidebar. See [docs/features/data/metadata.md](data/metadata.md) for the full field listing.

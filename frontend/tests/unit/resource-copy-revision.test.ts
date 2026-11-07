@@ -43,7 +43,8 @@ import { readSidecar } from "../../src/lib/models/sidecar";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { createAndAssertProject } from "./helpers/project-creator";
 import { removeDirRetry } from "./helpers/fs-utils";
-import type { TipTapDocument } from "../../src/lib/models/types";
+import { addAnnotationCore } from "../../src/lib/models/annotations-core";
+import type { Annotation, TipTapDocument } from "../../src/lib/models/types";
 
 const SPEC_PATH = path.join(
   process.cwd(),
@@ -528,6 +529,162 @@ describe("duplicateResource — resourceSubtype kept (FR-22)", () => {
     const { newId } = await duplicateResource(projectRoot, created.id);
     const dup = await readSidecar(projectRoot, newId);
     expect(dup && "resourceSubtype" in dup).toBe(false);
+    await flushIndexer();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Feature 101, Task 13 (FR-21, OQ-14): annotations on copy and duplicate.
+// ---------------------------------------------------------------------------
+
+const NOTE_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const NOTE_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const NOTE_DETACHED = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const NOTE_BODYLESS = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+
+function annotatedDoc(): TipTapDocument {
+  const mark = (id: string) => ({ type: "annotation", attrs: { id } });
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "one " },
+          { type: "text", text: "two", marks: [mark(NOTE_A), mark(NOTE_B)] },
+          { type: "text", text: " three", marks: [mark(NOTE_BODYLESS)] },
+        ],
+      },
+    ],
+  };
+}
+
+/** A text resource with two marked annotations, one detached body and one body-less mark. */
+async function makeAnnotatedSource(): Promise<string> {
+  const created = await createResourceCore(projectId, {
+    type: "text",
+    name: "Annotated",
+    text: { plainText: "one two three" },
+  });
+  const [rev] = await listRevisions(projectRoot, created.id);
+  await updateRevisionInPlace(
+    projectRoot,
+    created.id,
+    rev.id,
+    JSON.stringify(annotatedDoc()),
+  );
+  await addAnnotationCore(projectId, created.id, {
+    id: NOTE_A,
+    body: "body a",
+    quote: "two",
+  });
+  await addAnnotationCore(projectId, created.id, {
+    id: NOTE_B,
+    body: "body b",
+    quote: "two",
+  });
+  await addAnnotationCore(projectId, created.id, {
+    id: NOTE_DETACHED,
+    body: "body d",
+    quote: "gone",
+  });
+  await flushIndexer();
+  return created.id;
+}
+
+async function readAnnotations(id: string): Promise<Annotation[]> {
+  const sc = await readSidecar(projectRoot, id);
+  return (sc?.annotations ?? []) as unknown as Annotation[];
+}
+
+function markIdsOf(d: TipTapDocument): string[] {
+  const ids: string[] = [];
+  const walk = (n: TipTapDocument["content"][number]): void => {
+    for (const m of n.marks ?? []) {
+      if (m.type === "annotation") ids.push(String(m.attrs?.id));
+    }
+    n.content?.forEach(walk);
+  };
+  d.content.forEach(walk);
+  return ids;
+}
+
+async function readTiptap(id: string): Promise<TipTapDocument> {
+  return readJson<TipTapDocument>(
+    path.join(projectRoot, "resources", id, "content.tiptap.json"),
+  );
+}
+
+describe.each([
+  [
+    "copyResourceCore",
+    async (sourceId: string): Promise<string> =>
+      ((await copyResourceCore(projectId, sourceId, "Copy")) as { id: string })
+        .id,
+  ],
+  [
+    "duplicateResource",
+    async (sourceId: string): Promise<string> =>
+      (await duplicateResource(projectRoot, sourceId)).newId,
+  ],
+])("%s — annotations get new ids (FR-21, OQ-14)", (_name, copy) => {
+  it("gives every annotation a new id, remapped in the sidecar array and the document marks, bodies and quotes copied", async () => {
+    const sourceId = await makeAnnotatedSource();
+    const sourceDocBefore = await readTiptap(sourceId);
+    const sourceNotesBefore = await readAnnotations(sourceId);
+
+    const copyId = await copy(sourceId);
+
+    const copied = await readAnnotations(copyId);
+    expect(copied).toHaveLength(3);
+    const sourceIds = new Set(sourceNotesBefore.map((n) => n.id));
+    for (const n of copied) expect(sourceIds.has(n.id)).toBe(false);
+    expect(copied.map((n) => [n.body, n.quote])).toEqual(
+      sourceNotesBefore.map((n) => [n.body, n.quote]),
+    );
+
+    const copiedDoc = await readTiptap(copyId);
+    const ids = markIdsOf(copiedDoc);
+    expect(ids).toHaveLength(3);
+    const newA = copied[0]!.id;
+    const newB = copied[1]!.id;
+    expect(ids.slice(0, 2)).toEqual([newA, newB]);
+    // the body-less mark is kept under an id that no source or copy body owns
+    expect(ids[2]).not.toBe(NOTE_BODYLESS);
+    expect(copied.map((n) => n.id)).not.toContain(ids[2]);
+
+    // the source is untouched, ids never shared
+    expect(await readTiptap(sourceId)).toEqual(sourceDocBefore);
+    expect(await readAnnotations(sourceId)).toEqual(sourceNotesBefore);
+    expect(markIdsOf(sourceDocBefore)).not.toContain(newA);
+    await flushIndexer();
+  });
+
+  it("keeps the copied text and the copy's revision document in step with the remapped marks", async () => {
+    const sourceId = await makeAnnotatedSource();
+    const copyId = await copy(sourceId);
+    const copiedDoc = await readTiptap(copyId);
+    const plain = await fs.readFile(
+      path.join(projectRoot, "resources", copyId, "content.txt"),
+      "utf8",
+    );
+    expect(plain).toBe("one two three");
+    const bin = await readJson<TipTapDocument>(
+      path.join(projectRoot, "revisions", copyId, "v-1", "content.bin"),
+    );
+    expect(bin).toEqual(copiedDoc);
+    await flushIndexer();
+  });
+
+  it("adds no annotations key to a copy of a resource that has none", async () => {
+    const created = await createResourceCore(projectId, {
+      type: "text",
+      name: "Plain",
+      text: { plainText: "hi" },
+    });
+    const copyId = await copy(created.id);
+    const sc = await readSidecar(projectRoot, copyId);
+    expect(sc && "annotations" in sc).toBe(false);
     await flushIndexer();
   });
 });

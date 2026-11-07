@@ -84,6 +84,11 @@ export interface OrganizerCardBodyConfig {
   excerptLength?: number;
 }
 
+/** Saved per-project defaults for compile or export (Feature 101, FR-1): exactly this one field. */
+export interface SavedDefaults {
+  excludedResourceIds: string[];
+}
+
 /**
  * Project-level configuration persisted with the project (project.json).
  * Contains user-editable preferences that affect model behavior.
@@ -117,6 +122,14 @@ export interface ProjectConfig {
   spellingProjectWords?: string[];
   /** Per-project spelling ignore list, "Ignore" (spell-checker FR-11). Absent reads as `[]`. */
   spellingIgnoredWords?: string[];
+  /**
+   * Saved compile defaults (Feature 101, FR-1): resources left out of a
+   * compile by default. Headers, format and name stay per-run. Absent means
+   * no saved defaults.
+   */
+  compileDefaults?: SavedDefaults;
+  /** Saved export defaults (Feature 101, FR-1); same shape and meaning as `compileDefaults`. */
+  exportDefaults?: SavedDefaults;
   /**
    * When true, automatically prune oldest non-canonical revisions when limit is exceeded.
    * When false, the UI should prompt the user (interactive) or abort in headless contexts.
@@ -352,6 +365,21 @@ export interface TipTapDocument {
   content: TipTapNode[];
 }
 
+/**
+ * A writer's note on a passage of a text resource (Feature 101, FR-10).
+ * Stored in the sidecar `annotations` array and written only by the
+ * annotation core through `mutateSidecar`. The passage is found by the
+ * `annotation` mark carrying the same `id` in the document; there is no
+ * `target` field. `quote` is the selected text when the note was added.
+ */
+export interface Annotation {
+  id: UUID;
+  body: string;
+  quote: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Text resource model: stores both plain and TipTap representations. */
 export interface TextResource extends ResourceBase {
   type: "text";
@@ -365,6 +393,8 @@ export interface TextResource extends ResourceBase {
   paragraphCount?: number;
   /** Target word count for this resource (Feature 61). Unset means no goal. */
   wordCountGoal?: number;
+  /** Annotations on passages of this resource (Feature 101); absent means none. */
+  annotations?: Annotation[];
 }
 
 /** Image resource model with common image metadata. */
