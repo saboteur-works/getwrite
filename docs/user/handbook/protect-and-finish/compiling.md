@@ -69,6 +69,8 @@ When you create a Source, GetWrite adds it to the project's saved default for th
 
 If the saved compile default already holds 5000 resources, GetWrite still creates the Source, but it can't leave it out. A message titled "Source not left out of compile" says so. Untick the Source in the **Compile Project** dialog, or clear or shorten the saved default. A message also appears if GetWrite can't read the saved default when you create the Source.
 
+If GetWrite can't save the Source to the compile default, it doesn't keep the new Source and says "The Source could not be created". Try again. If it can't remove the Source either, the message says the Source was created but is not left out of compile. Find it in the project or its Trash, and untick it in the **Compile Project** dialog.
+
 ## Export a document or folder
 
 To export, open a document's or folder's menu in the [resource tree](../organize/resource-tree.md) and choose **Export**. The **Export** dialog lists the resources to export, with a tick box for each, and a **Format** choice of plain text (.txt) or Markdown (.md). It has the same **Save as default**, **Clear default** and override controls as the compile dialog, with its own saved default.

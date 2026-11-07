@@ -35,6 +35,11 @@ An attachment entry restores like any other item: tick it, choose **Restore sele
 - If the Source already has an attachment with the same name, the restored one gets "(restored)" added to its name.
 - If the Source is itself in Trash or has been permanently deleted, the attachment can't be restored. A message says "This attachment cannot be restored because its Source is in Trash or has been deleted. Restore the Source first." The entry stays in Trash.
 - If the Source already holds 500 attachments, the restore is refused and the entry stays in Trash.
+- If the attachment is already back in the Source's list and its file is there, restoring it just clears the Trash entry. If it is listed but its file is missing, the restore is refused with a message that says its file is missing, and the entry stays in Trash.
+
+## Unreadable items
+
+If GetWrite can't read what it saved about a removed attachment, the **Trash** tab lists it as **Unreadable Trash item**. You can't restore it. Choosing **Restore selected** on it shows "This Trash item is unreadable and cannot be restored. Delete it permanently to remove it." To remove it, tick it and choose **Delete selected permanently**.
 
 ## Delete items permanently
 
