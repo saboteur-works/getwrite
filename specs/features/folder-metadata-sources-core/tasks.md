@@ -38,7 +38,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-2 (a), FR-37. A reading the test does not confirm is recorded as such; keeping or changing the requirement it motivated is the owner's decision, so report it rather than adjusting the spec.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-2 (b) Trash round trip with an undeclared key, and the Trash descriptor record
 **What:** Write the test that adds an undeclared key to a `folder.json`, round-trips it through Trash and restore, and record the result and every folder-descriptor path in `trash.ts` and `trash-core.ts`.
@@ -47,7 +47,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-2 (b) and the naming duty of FR-6. Feeds Tasks 10 and 11.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: FR-2 (c) type = folder query reading and mixed-type definition
 **What:** Write the test that runs a `type = folder` query today and records what it returns, and record the defined result of a mixed-type query.
@@ -56,7 +56,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-2 (c) and the first-task record duty of FR-13.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Add `source` to ResourceTypeSchema, record the FR-18 survey, restore a green frontend typecheck
 **What:** Add `"source"` to `ResourceTypeSchema`, record the full type-branch survey with a disposition for every site and the attachment key name and entry shape, and fix `frontend/` so `pnpm typecheck` passes.
@@ -65,7 +65,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 1
 **Estimate:** 8
 **Notes:** Satisfies FR-18, the survey half of FR-38, FR-22 (record). Treat a Source as text unless the site is one of the two FR-38 exceptions (templates stay text-only; annotations allowed). Sites in `cli/` and `electron/` are recorded here and fixed in Task 5. If a fix would touch `trash.ts`, `trash-core.ts` or `sidecar.ts` beyond a one-line type case, record it and leave it to the owning task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: cli and electron typechecks green for the new type
 **What:** Apply the survey dispositions in `cli/` and `electron/` so both typechecks and tests pass with the `source` type.
@@ -74,7 +74,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Satisfies FR-18, FR-36 (cli and electron typechecks). No frontend files are edited.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Shared model declarations for both parts
 **What:** Declare, in the three shared model files, the folder-sidecar shape, `appliesToFolders`, the attachment list entry and the attachment Trash item kind, with the round-trip tests.
@@ -83,7 +83,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 2, 3, 4
 **Estimate:** 5
 **Notes:** Satisfies FR-9 (declaration half), FR-3, FR-22, FR-26 (declaration). `lib/api/schemas.ts` strips undeclared keys, so omitting a declaration there silently drops it. This is the only task that edits these three files after Task 4.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Folder sidecar path and read semantics in sidecar.ts
 **What:** Teach `sidecar.ts` the folder sidecar path `meta/folder-<id>.meta.json` and a read that returns an empty value for an absent file without creating it and an error for an unreadable or unparseable one.
@@ -92,7 +92,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 6
 **Estimate:** 5
 **Notes:** Satisfies FR-1 (path), FR-15, FR-31 (a2) for the folder sidecar. This is the only task that edits `sidecar.ts`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Folder sidecar write core with allowlist and boundary validation
 **What:** Add the folder metadata core that writes the folder sidecar through `mutateSidecar`-style locking with one declared client-writable allowlist, boundary validation and subtype validation.
@@ -101,7 +101,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 7
 **Estimate:** 5
 **Notes:** Satisfies FR-1, FR-3, FR-4, FR-10 (storage half), FR-15 (first write), FR-33, FR-34. Model on `mutateSidecar` (`sidecar.ts:255`) and `InvalidResourceSubtypeCoreError`. The core is the only writer of the folder sidecar.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Folder metadata route, client and native backend
 **What:** Add the HTTP route, the `lib/api` client on `createTransport`, the native backend, the web stub and the `next.config.mjs` alias for folder metadata read and write.
@@ -110,7 +110,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 8
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-34. Exactly as `goal-filter` and `project-spelling` do (alias near `next.config.mjs:279-288`). Native lock parity is reasoned, not run, and no test name or doc claims it measured. This task owns the first `next.config.mjs` edit; Task 28 follows it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Trash carries the folder sidecar
 **What:** Extend `softDeleteFolder` and its restore, entry and conflict paths so `meta/folder-<id>.meta.json` moves to and from Trash under the file lock.
@@ -119,7 +119,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 2, 8
 **Estimate:** 5
 **Notes:** Satisfies FR-6 (OQ-3). Move under the file lock as `softDeleteResource` does for a resource sidecar. Use the paths recorded in Task 2.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Folder sidecar purge sweep, permanent delete and empty Trash
 **What:** Add the folder sidecar to the idempotent `purgeFolder` sweep and make permanent delete, purge and empty Trash leave no folder sidecar behind.
@@ -128,7 +128,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 10
 **Estimate:** 3
 **Notes:** Satisfies FR-7. Same hot files as Task 10, so it follows it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Folder rename, reorder, move and delete preserve the sidecar
 **What:** Add the per-operation tests and any minimal fix proving rename, reorder, move and delete keep folder metadata, reorder does not deadlock with a metadata save, and documents do not inherit folder data.
@@ -137,7 +137,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 8, 11
 **Estimate:** 3
 **Notes:** Satisfies FR-5, FR-12, FR-1 (rename keeps the sidecar). Mostly tests; edit product code only where a test fails, and record any such finding in `experiments.md`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Fields offered on a folder and folder subtype scoping
 **What:** Add the pure function deciding which fields a folder is offered, reusing `isFieldVisibleForSubtype` unchanged, and pin that no built-in folder subtype exists.
@@ -146,7 +146,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** Satisfies FR-9, FR-10, OQ-4 (`appliesToFolders` semantics). The declarations are in Task 6; do not edit the three shared model files here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Query evaluator folder source
 **What:** Add a second id source used only when a query names `type = folder`, with folder field and subtype filtering and a defined mixed-type result.
@@ -155,7 +155,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 3, 8
 **Estimate:** 5
 **Notes:** Satisfies FR-13 (OQ-4). Folders enter only through the second id source, so existing results are unchanged by construction.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Folder section in the metadata sidebar
 **What:** Replace the folder placeholder in the metadata sidebar with notes, applicable fields and a subtype choice, each editable, with visible save results.
@@ -164,7 +164,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 9, 13
 **Estimate:** 5
 **Notes:** Satisfies FR-11, FR-14 (error visibility in the sidebar). Read `MetadataSidebar.tsx` and its stories before using any prop. Task 33 edits the same file after this task. The e2e run is Task 34.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Data view and smart folders show and filter folders
 **What:** Make the Data view and smart folders able to show folders (name, subtype, chosen field columns) and filter them by fields, with unchanged output for projects without folder metadata.
@@ -173,7 +173,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 9, 14
 **Estimate:** 5
 **Notes:** Satisfies FR-14 (Data view and smart folders). Follows the Redux `transport-service` / `guards` split and the explicit sync model if state is added. Does not edit `MetadataSidebar.tsx`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Organizer folder cards
 **What:** Make the Organizer show folders as cards with name and subtype, filterable by fields, with unchanged output for projects without folder metadata.
@@ -182,7 +182,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 9, 14
 **Estimate:** 3
 **Notes:** Satisfies FR-14 (Organizer). Can run concurrently with Task 16; the two edit different component files.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Folder notes excluded from compile and export
 **What:** Add the test proving folder notes appear in no compile or export output and that the dialogs offer no option to include them.
@@ -191,7 +191,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-16 (OQ-141). PDF extraction uses the helper Feature 101 added.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Scrivener import report states folder metadata was not imported
 **What:** Make the Scrivener import report state that folder metadata (synopsis, notes and metadata) was not imported and ensure the importer creates no folder sidecar.
@@ -200,7 +200,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (OQ-142). Follows Task 5 because both may touch the import workers. The report wording is working copy.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Create, open, rename, move and delete a Source
 **What:** Make the generic resource cores, routes and tree create control handle a Source end to end, with a canonical revision `v-1` and the body stored as a text resource's is.
@@ -209,7 +209,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 5, 6, 12
 **Estimate:** 5
 **Notes:** Satisfies FR-19, FR-22 (body, revision, empty list). No new Source view or panel (FR-30). Edits `resource-crud-core.ts`, so it follows Task 12.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Source sidecar rules: subtype scoping and entity refusal
 **What:** Make a Source's subtype and `appliesTo` scoping work and make the sidecar core refuse `entityKind` and `aliases` for a Source while still allowing their `clearKeys`.
@@ -218,7 +218,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 20
 **Estimate:** 5
 **Notes:** Satisfies FR-20, FR-21 (OQ-9, OQ-151).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Attachment validation with magic-byte check
 **What:** Add an attachment validator that reuses `validateMediaFile` and a new magic-byte content check, applied to attachments only.
@@ -227,7 +227,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** Satisfies FR-23 (OQ-10), FR-34. Pure functions, no `node:fs`. Does not edit any hot file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Attachment core: add, list and reorder
 **What:** Add the attachment core that stores validated files inside the Source's `resources/<id>/` directory under server-generated names and maintains the ordered list through `mutateSidecar`.
@@ -236,7 +236,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 21, 22
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (data half), FR-25, FR-31 (a2), FR-34. Uses the key name and entry shape recorded in Task 4 and declared in Task 6.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Attachment remove and replace to Trash, and restore
 **What:** Make remove and replace move the previous file to Trash as a new `attachment` item kind and make restore return it to the end of the Source's list.
@@ -245,7 +245,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 23, 11
 **Estimate:** 5
 **Notes:** Satisfies FR-26 (OQ-8), FR-25. Follows Task 11 because of `trash.ts` and `trash-core.ts`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Attachment purge, empty Trash and Trash tab entry
 **What:** Make purge and empty Trash handle the attachment kind and show the entry in the Trash tab as "Attachment of <Source name>".
@@ -254,7 +254,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 24
 **Estimate:** 3
 **Notes:** Satisfies FR-26 (purge, empty, label), `specs/features/trash-ui.md`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Encryption, lock and whole-directory tests for Sources and folder sidecars
 **What:** Add the FR-31 (a), (b), (c) and (a2) tests for attachments, Source trash and permanent delete, and the folder sidecar.
@@ -263,7 +263,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 8, 25
 **Estimate:** 5
 **Notes:** Satisfies FR-31 (a), (b), (c), (a2), FR-34 (OQ-6). Expected behaviour, not run, until these tests pass.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Attachment routes and clients
 **What:** Add the HTTP routes and `lib/api` clients for attachment add, remove, replace, reorder and restore.
@@ -272,7 +272,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 25
 **Estimate:** 5
 **Notes:** Satisfies FR-23 (HTTP half), FR-24, FR-32, FR-34. Multipart handling follows the existing media upload route.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Attachment native backends, aliases and parity
 **What:** Add the native (Android) backend, `.web-stub.ts` pair and `next.config.mjs` alias for the attachment operations and Source create, with the same-message parity tests.
@@ -281,7 +281,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 9, 27
 **Estimate:** 5
 **Notes:** Satisfies FR-32, FR-23 (parity). Follows Task 9 for `next.config.mjs`. Native lock parity is reasoned, not run.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Seed Sources into the compile default exclusions
 **What:** Add each new, copied and duplicated Source's id to `config.compileDefaults.excludedResourceIds`, with the visible refusal at the 5000-id cap.
@@ -290,7 +290,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 21, 23
 **Estimate:** 5
 **Notes:** Satisfies FR-27 (OQ-1, OQ-144), FR-33. Edits `resource-crud-core.ts` and the create control, so it follows Tasks 20, 21 and 23.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Goal and counting parity for Sources
 **What:** Add the tests for goal membership, word counts, the status roll-up and the writing log treating a Source as text, and record the observed project and daily totals.
@@ -308,7 +308,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 29
 **Estimate:** 3
 **Notes:** Satisfies FR-29 (OQ-146). Can run concurrently with Tasks 30 and 32.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Search, backlinks, compile outline, previews, annotations and templates for Sources
 **What:** Add a test per remaining text-rule site showing a Source behaves as text, with annotations allowed on a Source body and templates staying text-only.
@@ -317,7 +317,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 29
 **Estimate:** 5
 **Notes:** Satisfies FR-38 (OQ-7). Edit only each site's own file; a needed fix in a hot file is recorded, not made.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Attachments section in the metadata sidebar
 **What:** Add the one Source-specific component, an "Attachments" sidebar section to add, remove, replace and reorder a selected Source's attachments.
@@ -326,7 +326,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 15, 28
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (UI), FR-30. Edits `MetadataSidebar.tsx` after Task 15. Read the component's source and stories before using any prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: End-to-end tests for the folder view and the Attachments section
 **What:** Add Playwright e2e tests against the Storybook stories for the folder sidebar view and the Attachments section.
@@ -335,7 +335,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 15, 33
 **Estimate:** 3
 **Notes:** Satisfies FR-24 (e2e), FR-11. Run outside the command sandbox in the main checkout, never a worktree.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: Largest-attachment native transport test, FR-31 (d) record, and owner-decision fixes (folder 404, locked restore and purge, Source goal exclusion)
 **What:** Add the test that adds and reads an attachment of the largest accepted size through the native backend and record the observed run. Also apply four owner decisions of 2026-11-07, each test-first: (1) folder metadata write for a nonexistent folder is 404 on route and native with no sidecar created (FR-3); (2) restore and purge propagate the project-locked error instead of returning `ok: false` (FR-26, FR-31 a2); (3) attachment purge in a locked encrypted project is refused with files and record kept (FR-26); (4) Sources are excluded from the project total and daily word goals unless an explicit goal filter selects them (FR-28). The low-level `purgeFolder` keeps throwing on a second purge (FR-7, no change).
@@ -353,7 +353,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 15, 16, 17, 20, 33
 **Estimate:** 2
 **Notes:** Satisfies FR-30. Read-only git only; no commits.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 37: Feature docs, Code Map, glossary and sidecar and Trash docs
 **What:** Update `docs/features/`, the `frontend/CLAUDE.md` Code Map, the root `CLAUDE.md` glossary and the sidecar and Trash docs for folder metadata and Sources.
@@ -362,7 +362,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 12, 16, 17, 18, 19, 26, 28, 29, 30, 31, 32, 33, 35
 **Estimate:** 3
 **Notes:** Satisfies FR-35 (developer docs). Can run concurrently with Task 38; the two edit different files.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 38: User handbook pages
 **What:** Update the user handbook for folder notes, fields and subtypes and for Sources, attachments, restoring an attachment and the compile and export defaults.
@@ -371,7 +371,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 12, 16, 17, 18, 19, 26, 28, 29, 30, 31, 32, 33, 35
 **Estimate:** 5
 **Notes:** Satisfies FR-35 (handbook). Invoke `write-user-guide` for plain-language copy.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 39: Acceptance suites and reporting
 **What:** Run the acceptance suites and record each as run or not run, and state which parts landed or stopped.
@@ -380,7 +380,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 34, 36, 37, 38
 **Estimate:** 5
 **Notes:** Satisfies FR-36, FR-37, and FR-38 (reindex) and FR-21 (entity pinning) as amended 2026-11-07. Run outside the command sandbox and in the main checkout, never a worktree: `pnpm test:e2e` and `pnpm build:native` start processes and builds that fail in worktrees.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 39
