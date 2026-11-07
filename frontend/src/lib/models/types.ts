@@ -235,7 +235,7 @@ export interface Project {
   metadata?: Record<string, MetadataValue>;
 }
 
-export type ResourceType = "text" | "image" | "audio" | "folder";
+export type ResourceType = "text" | "image" | "audio" | "source" | "folder";
 
 /**
  * UI view names used by the WorkArea view switcher and related components.

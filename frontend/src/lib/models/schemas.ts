@@ -421,7 +421,7 @@ export const FolderSchema = z.object({
 /**
  * Allowed runtime resource categories.
  */
-export const ResourceTypeSchema = z.enum(["text", "image", "audio"]);
+export const ResourceTypeSchema = z.enum(["text", "image", "audio", "source"]);
 
 /**
  * A mark applied to a TipTap text node (`bold`, `italic`, `link`, ...).
