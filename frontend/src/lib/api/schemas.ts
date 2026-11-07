@@ -659,6 +659,34 @@ export const SetGoalFilterResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Source attachment responses — Feature 102 Task 27. The entry matches
+// `AttachmentEntrySchema` (models/schemas.ts); the id and stored name are not
+// path-bearing (a bare server-generated file name).
+// ---------------------------------------------------------------------------
+
+export const AttachmentEntryResponseSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  originalName: z.string(),
+  mime: z.string(),
+  size: z.number(),
+  addedAt: z.string(),
+});
+
+export const AttachmentListResponseSchema = z.array(
+  AttachmentEntryResponseSchema,
+);
+
+export const TrashedAttachmentResponseSchema = z.object({
+  trashId: z.string(),
+});
+
+export const ReplaceAttachmentResponseSchema = z.object({
+  trashId: z.string(),
+  entry: AttachmentEntryResponseSchema,
+});
+
+// ---------------------------------------------------------------------------
 // FolderMetadataResponseSchema — Feature 102 Task 9. Matches
 // `folder-metadata-core.ts`'s `FolderSidecarValue`; `resourceSubtype` is
 // optional because `JSON.stringify` drops an `undefined` key.
