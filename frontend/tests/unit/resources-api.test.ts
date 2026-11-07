@@ -165,6 +165,21 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     expect(body).not.toHaveProperty("projectRoot");
   });
 
+  it("createResource and copyResource pass the response notice through, and omit it when absent (Feature 102, Task 29)", async () => {
+    expect(
+      await createResource(directoryUuid, { type: "text" }),
+    ).not.toHaveProperty("notice");
+    fetchMock.mockResolvedValue(
+      jsonResponse({ resource: validResource, notice: "not excluded" }),
+    );
+    expect(
+      (await createResource(directoryUuid, { type: "source" })).notice,
+    ).toBe("not excluded");
+    expect((await copyResource(resourceId, "Copy", directoryUuid)).notice).toBe(
+      "not excluded",
+    );
+  });
+
   it("deleteResource sends projectId in the POST body, with no projectRoot field", async () => {
     await deleteResource(resourceId, directoryUuid);
 

@@ -115,7 +115,7 @@ export interface ResourcesTransport {
   create(
     projectId: string,
     resourceData: Record<string, unknown>,
-  ): Promise<{ resource: AnyResource }>;
+  ): Promise<{ resource: AnyResource; notice?: string }>;
   /**
    * Uploads a media (image/audio) resource from already-extracted bytes and
    * fields — never a `File`/`FormData`, since native has no multipart
@@ -137,7 +137,7 @@ export interface ResourcesTransport {
     resourceId: string,
     newName: string,
     projectId: string,
-  ): Promise<{ resource: AnyResource }>;
+  ): Promise<{ resource: AnyResource; notice?: string }>;
   /** Deletes (soft-deletes) a resource. */
   remove(resourceId: string, projectId: string): Promise<void>;
   /** Deletes (soft-deletes) a folder and its entire descendant subtree. */
@@ -238,7 +238,10 @@ export const httpResourcesTransport: ResourcesTransport = {
       reportTransportValidationFailure("resources.create", result.error.issues);
       throw new Error("Invalid response from resource create");
     }
-    return { resource: result.data.resource as AnyResource };
+    return {
+      resource: result.data.resource as AnyResource,
+      ...(result.data.notice !== undefined && { notice: result.data.notice }),
+    };
   },
 
   async uploadMedia(projectId, input) {
@@ -286,7 +289,10 @@ export const httpResourcesTransport: ResourcesTransport = {
       reportTransportValidationFailure("resources.copy", result.error.issues);
       throw new Error("Invalid response from resource copy");
     }
-    return { resource: result.data.resource as AnyResource };
+    return {
+      resource: result.data.resource as AnyResource,
+      ...(result.data.notice !== undefined && { notice: result.data.notice }),
+    };
   },
 
   async remove(resourceId, projectId) {
@@ -487,7 +493,7 @@ export const resolveResourcesTransport: () => Promise<ResourcesTransport> =
 export async function createResource(
   projectId: string,
   resourceData: Record<string, unknown>,
-): Promise<{ resource: AnyResource }> {
+): Promise<{ resource: AnyResource; notice?: string }> {
   const transport = await resolveResourcesTransport();
   return transport.create(projectId, resourceData);
 }
@@ -529,7 +535,7 @@ export async function copyResource(
   resourceId: string,
   newName: string,
   projectId: string,
-): Promise<{ resource: AnyResource }> {
+): Promise<{ resource: AnyResource; notice?: string }> {
   const transport = await resolveResourcesTransport();
   return transport.copy(resourceId, newName, projectId);
 }

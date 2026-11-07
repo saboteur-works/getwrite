@@ -11,6 +11,7 @@ import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
 import { createNativeResourcesTransport } from "../../src/store/transport/native-resource-backend";
 import { sidecarPathForProject } from "../../src/lib/models/sidecar";
 import { ResourceResponseSchema } from "../../src/lib/api/schemas";
+import { SOURCE_NOT_EXCLUDED_MESSAGES } from "../../src/lib/models/saved-defaults-core";
 
 const PROJECTS_DIR = "/projects";
 
@@ -129,6 +130,57 @@ describe("native resources transport — in-process backend reuses the shared re
     ).resolves.toBeDefined();
 
     fetchMock.restore();
+  });
+
+  it("seeds a created and a copied Source, and returns the cap notice with no HTTP (Feature 102, Task 29)", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const adapter = capacitorFsAdapter(fs);
+    const projectJson = path.join(PROJECTS_DIR, projectId, "project.json");
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+
+    const created = await transport.create(projectId, {
+      type: "source",
+      name: "Interview",
+      text: { plainText: "words" },
+    });
+    expect(created.notice).toBeUndefined();
+    const copy = await transport.copy(created.resource.id, "Copy", projectId);
+    expect(copy.notice).toBeUndefined();
+    const seeded = JSON.parse(
+      (await adapter.readFile(projectJson, "utf8")) as string,
+    ) as { config: { compileDefaults: { excludedResourceIds: string[] } } };
+    expect(seeded.config.compileDefaults.excludedResourceIds).toEqual([
+      created.resource.id,
+      copy.resource.id,
+    ]);
+
+    await adapter.writeFile(
+      projectJson,
+      JSON.stringify({
+        id: projectId,
+        name: "Native Project",
+        config: {
+          compileDefaults: {
+            excludedResourceIds: Array.from({ length: 5000 }, () =>
+              generateUUID(),
+            ),
+          },
+        },
+      }),
+    );
+    const over = await transport.create(projectId, {
+      type: "source",
+      name: "Over",
+      text: { plainText: "words" },
+    });
+    expect(over.resource.type).toBe("source");
+    expect(over.notice).toBe(SOURCE_NOT_EXCLUDED_MESSAGES.atCap);
+    const overCopy = await transport.copy(over.resource.id, "Copy", projectId);
+    expect(overCopy.notice).toBe(SOURCE_NOT_EXCLUDED_MESSAGES.atCap);
   });
 
   it("copies and renames a resource with no HTTP", async () => {

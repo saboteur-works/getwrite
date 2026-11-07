@@ -371,7 +371,11 @@ export const EntityAliasTableSchema = z.object({
 // a resource response is expected to be identical to the persisted shape.
 // ---------------------------------------------------------------------------
 
-export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
+export const ResourceResponseSchema = z.object({
+  resource: AnyResourceSchema,
+  /** Copy of a Source only: why it is not left out of compile (Feature 102, FR-27). */
+  notice: z.string().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // CreateResourceResponseSchema — the `POST /api/resource` response. Create is
@@ -382,6 +386,8 @@ export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
 
 export const CreateResourceResponseSchema = z.object({
   resource: z.union([AnyResourceSchema, FolderSchema]),
+  /** Create of a Source only: why it is not left out of compile (Feature 102, FR-27). */
+  notice: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------

@@ -44,12 +44,22 @@ async function handlePost(
         return NextResponse.json({ message: "Resource deleted successfully" });
       }
       case "copy": {
+        let notice: string | undefined;
         const newResource = await copyResourceCore(
           body.projectId,
           resourceId,
           body.newName ?? "Copy",
+          {
+            onCompileDefaultsNotice: (message) => {
+              notice = message;
+            },
+          },
         );
-        return NextResponse.json({ success: true, resource: newResource });
+        return NextResponse.json({
+          success: true,
+          resource: newResource,
+          ...(notice !== undefined && { notice }),
+        });
       }
       default:
         throw new Error(`Unknown action: ${action}`);

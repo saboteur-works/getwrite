@@ -57,6 +57,7 @@ import {
   writeSidecar,
 } from "./sidecar";
 import { ResourceGoneError } from "./resource-gone-error";
+import { seedSourceCompileExclusion } from "./saved-defaults-core";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
@@ -145,6 +146,7 @@ async function assertProjectExists(
 export async function createResourceCore(
   projectId: string,
   resourceData: CreateResourceOpts,
+  options: SourceSeedingOptions = {},
 ): Promise<AnyResource> {
   const projectPath = resolveResourceProjectRootOrThrow(projectId);
   await assertProjectExists(projectPath, projectId);
@@ -156,8 +158,30 @@ export async function createResourceCore(
 
   const resource = createResourceOfType(resourceData.type, resourceData);
   await writeResourceWithInitialRevision(projectPath, resource);
+  if (resource.type === "source") {
+    await seedSource(projectPath, resource.id, options);
+  }
 
   return resource;
+}
+
+/**
+ * Receives the visible notice when a new, copied or duplicated Source could
+ * not be added to the saved compile exclusions (Feature 102, FR-27). The
+ * route and the native backend turn it into the response's `notice`.
+ */
+export interface SourceSeedingOptions {
+  onCompileDefaultsNotice?: (message: string) => void;
+}
+
+/** Seeds one Source id and reports a refusal; a failure propagates. */
+async function seedSource(
+  projectRoot: string,
+  resourceId: string,
+  options: SourceSeedingOptions,
+): Promise<void> {
+  const { notice } = await seedSourceCompileExclusion(projectRoot, resourceId);
+  if (notice !== undefined) options.onCompileDefaultsNotice?.(notice);
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +315,7 @@ export async function copyResourceCore(
   projectId: string,
   sourceId: string,
   newName: string,
+  options: SourceSeedingOptions = {},
 ): Promise<Record<string, MetadataValue>> {
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
@@ -333,6 +358,9 @@ export async function copyResourceCore(
       newId,
       copied.tiptap ?? plainTextToTipTapDocument(copied.plainText ?? ""),
     );
+  }
+  if (newSidecar.type === "source") {
+    await seedSource(projectRoot, newId, options);
   }
   return newSidecar;
 }

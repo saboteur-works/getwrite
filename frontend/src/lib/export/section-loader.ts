@@ -19,9 +19,12 @@ export async function loadTextSections<TSection>(
   const resourceMap = new Map<string, ResourceMeta>(
     resources.map((r) => [r.id, r]),
   );
-  const textIds = resourceIds.filter(
-    (id) => resourceMap.get(id)?.type === "text",
-  );
+  // A Source is text for compile and export: no built-in rule leaves it out
+  // (Feature 102, FR-27); only the writer's saved default does.
+  const textIds = resourceIds.filter((id) => {
+    const type = resourceMap.get(id)?.type;
+    return type === "text" || type === "source";
+  });
   return Promise.all(
     textIds.map(async (id) => {
       const meta = resourceMap.get(id)!;
