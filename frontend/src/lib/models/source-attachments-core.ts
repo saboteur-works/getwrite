@@ -20,10 +20,21 @@
  *   `node:fs`. Locked-access errors are not caught and propagate unchanged.
  * - Nothing here logs a stored value, file name or error text.
  *
- * Remove and replace (to Trash) are Task 24.
+ * Remove and replace move the previous file to Trash as the `attachment` item
+ * kind (FR-26, OQ-8); restore appends it to the end of the list. The file and
+ * record primitives are in `trash.ts`; the list change is made here, inside the
+ * `mutateSidecar` lock. Trash, restore and replace create no revision.
  */
 import path from "node:path";
 import { mkdir, rm, writeFile } from "./io";
+import {
+  discardTrashAttachment,
+  moveAttachmentToTrash,
+  moveTrashedAttachmentFile,
+  readTrashAttachmentRecord,
+  returnAttachmentFileToTrash,
+  sourceFileExists,
+} from "./trash";
 import { mutateSidecar, readSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { AttachmentListSchema, UUID as UuidSchema } from "./schemas";
 import type { AttachmentEntry } from "./schemas";
@@ -33,6 +44,7 @@ import {
   isPlainFileName,
   validateAttachmentFile,
   type AttachmentRejectionReason,
+  type MediaValidationOk,
 } from "./media-validation";
 import { generateUUID } from "./uuid";
 import type { MetadataValue } from "./types";
@@ -97,6 +109,27 @@ export class InvalidAttachmentOrderError extends Error {
   }
 }
 
+/** The attachment is not in the Source's list. Map to HTTP 404. */
+export class AttachmentNotFoundError extends Error {
+  constructor() {
+    super("The attachment was not found.");
+    this.name = "AttachmentNotFoundError";
+  }
+}
+
+/**
+ * Restore refused because the Source is in Trash or no longer exists. The
+ * Trash entry stays. Map to HTTP 409 (visible message).
+ */
+export class AttachmentSourceUnavailableError extends Error {
+  constructor() {
+    super(
+      "This attachment cannot be restored because its Source is in Trash or has been deleted. Restore the Source first.",
+    );
+    this.name = "AttachmentSourceUnavailableError";
+  }
+}
+
 /** Plain-argument input for {@link addAttachmentCore}. */
 export interface AddAttachmentInput {
   /** Client file name: display and extension hint only, never a path. */
@@ -142,6 +175,52 @@ function displayName(fileName: string): string {
   return segments[segments.length - 1] ?? "";
 }
 
+/** Validate a client file before any lock or write; returns the validated descriptor. */
+function validateInput(input: AddAttachmentInput): MediaValidationOk {
+  if (
+    !input ||
+    typeof input.fileName !== "string" ||
+    !(input.fileBytes instanceof Uint8Array)
+  ) {
+    throw new AttachmentValidationError(
+      "An attachment needs a file name and file contents.",
+      "invalid-input",
+    );
+  }
+  const validation = validateAttachmentFile({
+    mime: input.mimeType || undefined,
+    ext: input.fileName,
+    size: input.fileBytes.byteLength,
+    bytes: input.fileBytes,
+  });
+  if (!validation.ok) {
+    throw new AttachmentValidationError(validation.message, validation.reason);
+  }
+  return validation;
+}
+
+/** A new list entry under a server-generated stored name. */
+function buildEntry(
+  input: AddAttachmentInput,
+  validation: MediaValidationOk,
+): AttachmentEntry {
+  const storedName = `attachment-${generateUUID()}.${validation.extension}`;
+  if (!isPlainFileName(storedName)) {
+    throw new AttachmentValidationError(
+      "The file could not be stored.",
+      "invalid-input",
+    );
+  }
+  return {
+    id: generateUUID(),
+    fileName: storedName,
+    originalName: displayName(input.fileName),
+    mime: validation.mime,
+    size: input.fileBytes.byteLength,
+    addedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * List a Source's attachments in stored order. An empty list means none; a
  * read that fails rejects.
@@ -172,43 +251,12 @@ export async function addAttachmentCore(
   input: AddAttachmentInput,
 ): Promise<AttachmentEntry> {
   const id = requireResourceId(resourceId);
-  if (
-    !input ||
-    typeof input.fileName !== "string" ||
-    !(input.fileBytes instanceof Uint8Array)
-  ) {
-    throw new AttachmentValidationError(
-      "An attachment needs a file name and file contents.",
-      "invalid-input",
-    );
-  }
-  const validation = validateAttachmentFile({
-    mime: input.mimeType || undefined,
-    ext: input.fileName,
-    size: input.fileBytes.byteLength,
-    bytes: input.fileBytes,
-  });
-  if (!validation.ok) {
-    throw new AttachmentValidationError(validation.message, validation.reason);
-  }
+  const validation = validateInput(input);
   const projectRoot = requireProjectRoot(projectId);
 
-  const storedName = `attachment-${generateUUID()}.${validation.extension}`;
-  if (!isPlainFileName(storedName)) {
-    throw new AttachmentValidationError(
-      "The file could not be stored.",
-      "invalid-input",
-    );
-  }
+  const entry = buildEntry(input, validation);
+  const storedName = entry.fileName;
   const dir = path.join(projectRoot, "resources", id);
-  const entry: AttachmentEntry = {
-    id: generateUUID(),
-    fileName: storedName,
-    originalName: displayName(input.fileName),
-    mime: validation.mime,
-    size: input.fileBytes.byteLength,
-    addedAt: new Date().toISOString(),
-  };
 
   let isFileWritten = false;
   try {
@@ -273,4 +321,238 @@ export async function reorderAttachmentsCore(
     return { ...sidecar, attachments: result as unknown as MetadataValue };
   });
   return result;
+}
+
+/** Result of {@link removeAttachmentCore}: the Trash id of the removed file. */
+export interface TrashedAttachmentResult {
+  trashId: string;
+}
+
+/** Result of {@link replaceAttachmentCore}. */
+export interface ReplaceAttachmentResult extends TrashedAttachmentResult {
+  /** The new list entry, at the replaced entry's position. */
+  entry: AttachmentEntry;
+}
+
+/** Result of {@link restoreTrashedAttachment}. */
+export interface RestoredAttachmentResult {
+  entry: AttachmentEntry;
+  renamed: boolean;
+  restoredName: string;
+}
+
+type TrashedAttachmentRecordInput = Parameters<typeof moveAttachmentToTrash>[1];
+
+function requireAttachmentIndex(
+  list: AttachmentEntry[],
+  attachmentId: string,
+): number {
+  const index = list.findIndex((e) => e.id === attachmentId);
+  if (index < 0) throw new AttachmentNotFoundError();
+  return index;
+}
+
+function requireAttachmentId(attachmentId: unknown): string {
+  if (!UuidSchema.safeParse(attachmentId).success) {
+    throw new AttachmentNotFoundError();
+  }
+  return attachmentId as string;
+}
+
+/** Put a just-trashed file back after the list write failed; never masks the original error. */
+async function undoTrashMove(
+  projectRoot: string,
+  record: TrashedAttachmentRecordInput,
+): Promise<void> {
+  try {
+    await moveTrashedAttachmentFile(
+      projectRoot,
+      { kind: "attachment", ...record },
+      record.storedName,
+    );
+    await discardTrashAttachment(projectRoot, record.entry.id);
+  } catch {
+    // Best effort: the original failure is the one reported.
+  }
+}
+
+/**
+ * Remove one attachment: its file moves to Trash as an `attachment` entry
+ * (Trash id = the attachment id) and the entry leaves the list. Nothing is
+ * deleted and no revision is created.
+ *
+ * @throws AttachmentNotFoundError, plus the errors of
+ *   {@link listAttachmentsCore}; on any throw the file and list are unchanged.
+ */
+export async function removeAttachmentCore(
+  projectId: string,
+  resourceId: string,
+  attachmentId: string,
+): Promise<TrashedAttachmentResult> {
+  const id = requireResourceId(resourceId);
+  const targetId = requireAttachmentId(attachmentId);
+  const projectRoot = requireProjectRoot(projectId);
+  let moved: TrashedAttachmentRecordInput | null = null;
+  try {
+    await mutateSidecar(projectRoot, id, async (current) => {
+      const sidecar = requireSource(current);
+      const list = storedAttachments(sidecar);
+      const entry = list[requireAttachmentIndex(list, targetId)];
+      const record = { sourceId: id, entry, storedName: entry.fileName };
+      await moveAttachmentToTrash(projectRoot, record);
+      moved = record;
+      return {
+        ...sidecar,
+        attachments: list.filter(
+          (e) => e.id !== targetId,
+        ) as unknown as MetadataValue,
+      };
+    });
+  } catch (err) {
+    if (moved) await undoTrashMove(projectRoot, moved);
+    throw err;
+  }
+  return { trashId: targetId };
+}
+
+/**
+ * Replace one attachment with a new file at the same list position. The new
+ * file is validated first (Task 22 validator, as for add); the previous file
+ * moves to Trash as an `attachment` entry. No revision is created.
+ *
+ * @throws AttachmentValidationError, AttachmentNotFoundError, plus the errors
+ *   of {@link listAttachmentsCore}; nothing changes on any throw.
+ */
+export async function replaceAttachmentCore(
+  projectId: string,
+  resourceId: string,
+  attachmentId: string,
+  input: AddAttachmentInput,
+): Promise<ReplaceAttachmentResult> {
+  const id = requireResourceId(resourceId);
+  const targetId = requireAttachmentId(attachmentId);
+  const validated = validateInput(input);
+  const projectRoot = requireProjectRoot(projectId);
+  const dir = path.join(projectRoot, "resources", id);
+  const entry = buildEntry(input, validated);
+
+  let moved: TrashedAttachmentRecordInput | null = null;
+  let isFileWritten = false;
+  try {
+    await mutateSidecar(projectRoot, id, async (current) => {
+      const sidecar = requireSource(current);
+      const list = storedAttachments(sidecar);
+      const index = requireAttachmentIndex(list, targetId);
+      const previous = list[index];
+      const record = {
+        sourceId: id,
+        entry: previous,
+        storedName: previous.fileName,
+      };
+      await moveAttachmentToTrash(projectRoot, record);
+      moved = record;
+      await mkdir(dir, { recursive: true });
+      await writeFile(
+        path.join(dir, entry.fileName),
+        Buffer.from(input.fileBytes),
+      );
+      isFileWritten = true;
+      const next = [...list];
+      next[index] = entry;
+      return { ...sidecar, attachments: next as unknown as MetadataValue };
+    });
+  } catch (err) {
+    if (isFileWritten) {
+      await rm(path.join(dir, entry.fileName), { force: true }).catch(() => {});
+    }
+    if (moved) await undoTrashMove(projectRoot, moved);
+    throw err;
+  }
+  return { entry, trashId: targetId };
+}
+
+/** First of `name`, `name (restored)`, `name (restored 2)`... not in `taken`. */
+function resolveRestoredName(
+  name: string,
+  taken: Set<string>,
+): { name: string; renamed: boolean } {
+  if (!taken.has(name)) return { name, renamed: false };
+  for (let n = 1; ; n += 1) {
+    const candidate =
+      n === 1 ? `${name} (restored)` : `${name} (restored ${n})`;
+    if (!taken.has(candidate)) return { name: candidate, renamed: true };
+  }
+}
+
+/**
+ * Restore a trashed attachment to the end of its Source's list with its bytes
+ * unchanged. A display-name clash gets the " (restored)" suffix scheme used
+ * for resources. Refused, with the Trash entry left in place, when the Source
+ * is in Trash or purged, is not a Source, or already holds the maximum.
+ *
+ * @throws AttachmentSourceUnavailableError, AttachmentLimitError,
+ *   AttachmentNotFoundError (no such Trash entry); locked-access errors
+ *   unchanged.
+ */
+export async function restoreTrashedAttachment(
+  projectRoot: string,
+  trashId: string,
+): Promise<RestoredAttachmentResult> {
+  if (!projectRoot) {
+    throw new Error("source-attachments-core: projectRoot is required");
+  }
+  const entryId = requireAttachmentId(trashId);
+  const record = await readTrashAttachmentRecord(projectRoot, entryId);
+  if (record === null) throw new AttachmentNotFoundError();
+
+  let result: RestoredAttachmentResult | null = null;
+  let restoredFileName: string | null = null;
+  try {
+    await mutateSidecar(projectRoot, record.sourceId, async (current) => {
+      if (current === null) throw new AttachmentSourceUnavailableError();
+      const sidecar = requireSource(current);
+      const list = storedAttachments(sidecar);
+      if (list.length >= MAX_ATTACHMENTS_PER_SOURCE) {
+        throw new AttachmentLimitError();
+      }
+      const named = resolveRestoredName(
+        record.entry.originalName,
+        new Set(list.map((e) => e.originalName)),
+      );
+      const isNameTaken = await sourceFileExists(
+        projectRoot,
+        record.sourceId,
+        record.storedName,
+      );
+      const fileName = isNameTaken
+        ? `attachment-${generateUUID()}${path.extname(record.storedName)}`
+        : record.storedName;
+      if (!isPlainFileName(fileName)) {
+        throw new AttachmentSourceUnavailableError();
+      }
+      await moveTrashedAttachmentFile(projectRoot, record, fileName);
+      restoredFileName = fileName;
+      const entry: AttachmentEntry = {
+        ...record.entry,
+        fileName,
+        originalName: named.name,
+      };
+      result = { entry, renamed: named.renamed, restoredName: named.name };
+      return {
+        ...sidecar,
+        attachments: [...list, entry] as unknown as MetadataValue,
+      };
+    });
+  } catch (err) {
+    if (restoredFileName !== null) {
+      await returnAttachmentFileToTrash(
+        projectRoot,
+        record,
+        restoredFileName,
+      ).catch(() => {});
+    }
+    throw err;
+  }
+  await discardTrashAttachment(projectRoot, record.entry.id);
+  return result as unknown as RestoredAttachmentResult;
 }

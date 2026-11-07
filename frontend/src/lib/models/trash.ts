@@ -28,8 +28,10 @@ import { isLockedAccessError } from "./locked-access";
 import { withFileLock } from "./file-lock";
 import {
   FolderSchema,
+  TrashAttachmentRecordSchema,
   TrashRefRecordSchema,
   TrashFolderManifestSchema,
+  type TrashAttachmentRecord,
   type TrashFolderManifest,
   type TrashFolderManifestEntry,
   type TrashRefRecord,
@@ -83,6 +85,7 @@ function trashPaths(projectRoot: string) {
     trashMetaDir: path.join(trashRoot, "meta"),
     trashRevisionsDir: path.join(trashRoot, "revisions"),
     trashFoldersDir: path.join(trashRoot, "folders"),
+    trashAttachmentsDir: path.join(trashRoot, "attachments"),
   };
 }
 
@@ -1819,7 +1822,7 @@ export async function listTrashedItems(
 export async function resolveTrashedItemKind(
   projectRoot: string,
   id: UUID,
-): Promise<"resource" | "folder" | "unknown"> {
+): Promise<"resource" | "folder" | "attachment" | "unknown"> {
   assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
 
@@ -1832,5 +1835,143 @@ export async function resolveTrashedItemKind(
   const descriptors = await collectFolderDescriptors(trashFoldersDir);
   if (descriptors.some((d) => d.folder.id === id)) return "folder";
 
+  if (await pathExists(trashAttachmentRecordPath(projectRoot, id))) {
+    return "attachment";
+  }
+
   return "unknown";
+}
+
+// ---------------------------------------------------------------------------
+// Attachment Trash entries (Feature 102, FR-26, OQ-8)
+//
+// A removed or replaced Source attachment is its own Trash item kind. The
+// Trash id is the attachment's list entry id. Layout:
+//   .trash/attachments/<entryId>/<storedName>   the file, bytes unchanged
+//   .trash/meta/attachment-<entryId>.json       the record (source id, entry)
+// The list change itself is made by `source-attachments-core.ts` through
+// `mutateSidecar`; these are the file and record primitives it calls.
+// ---------------------------------------------------------------------------
+
+function trashAttachmentRecordPath(projectRoot: string, entryId: UUID): string {
+  return path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    `attachment-${entryId}.json`,
+  );
+}
+
+function trashAttachmentDir(projectRoot: string, entryId: UUID): string {
+  return path.join(trashPaths(projectRoot).trashAttachmentsDir, entryId);
+}
+
+/**
+ * Move one attachment file from its Source's directory into Trash and write
+ * its record. The record is written first and removed again if the move
+ * fails, so a failure leaves neither a record nor a moved file.
+ */
+export async function moveAttachmentToTrash(
+  projectRoot: string,
+  record: Omit<TrashAttachmentRecord, "kind">,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  const parsed = TrashAttachmentRecordSchema.parse({
+    kind: "attachment",
+    ...record,
+  });
+  const entryId = parsed.entry.id;
+  const recordPath = trashAttachmentRecordPath(projectRoot, entryId);
+  const targetDir = trashAttachmentDir(projectRoot, entryId);
+  await mkdir(path.dirname(recordPath), { recursive: true });
+  await mkdir(targetDir, { recursive: true });
+  await atomicWriteFile(recordPath, JSON.stringify(parsed, null, 2));
+  try {
+    await rename(
+      path.join(projectRoot, "resources", parsed.sourceId, parsed.storedName),
+      path.join(targetDir, parsed.storedName),
+    );
+  } catch (err: unknown) {
+    await rm(recordPath, { force: true }).catch(() => {});
+    await rm(targetDir, { recursive: true, force: true }).catch(() => {});
+    throw err;
+  }
+}
+
+/**
+ * Read an attachment Trash record. `null` when there is none; an unparseable
+ * record and a locked-access error reject.
+ */
+export async function readTrashAttachmentRecord(
+  projectRoot: string,
+  entryId: UUID,
+): Promise<TrashAttachmentRecord | null> {
+  assertProjectRoot(projectRoot);
+  let raw: string;
+  try {
+    raw = await readFile(
+      trashAttachmentRecordPath(projectRoot, entryId),
+      "utf8",
+    );
+  } catch (err: unknown) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+  return TrashAttachmentRecordSchema.parse(JSON.parse(raw));
+}
+
+/**
+ * Move a trashed attachment file back into its Source's directory under
+ * `destinationName`. Does not touch the record; the caller discards it with
+ * {@link discardTrashAttachment} once the list is stored.
+ */
+export async function moveTrashedAttachmentFile(
+  projectRoot: string,
+  record: TrashAttachmentRecord,
+  destinationName: string,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  await rename(
+    path.join(
+      trashAttachmentDir(projectRoot, record.entry.id),
+      record.storedName,
+    ),
+    path.join(projectRoot, "resources", record.sourceId, destinationName),
+  );
+}
+
+/** Move a restored file back to Trash (the inverse of the move above), for a failed list write. */
+export async function returnAttachmentFileToTrash(
+  projectRoot: string,
+  record: TrashAttachmentRecord,
+  currentName: string,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  await rename(
+    path.join(projectRoot, "resources", record.sourceId, currentName),
+    path.join(
+      trashAttachmentDir(projectRoot, record.entry.id),
+      record.storedName,
+    ),
+  );
+}
+
+/** Remove a trashed attachment's record and directory. Idempotent. */
+export async function discardTrashAttachment(
+  projectRoot: string,
+  entryId: UUID,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  await rm(trashAttachmentDir(projectRoot, entryId), {
+    recursive: true,
+    force: true,
+  });
+  await rm(trashAttachmentRecordPath(projectRoot, entryId), { force: true });
+}
+
+/** Whether a file exists in a Source's resource directory, for restore name checks. */
+export async function sourceFileExists(
+  projectRoot: string,
+  sourceId: UUID,
+  fileName: string,
+): Promise<boolean> {
+  return pathExists(path.join(projectRoot, "resources", sourceId, fileName));
 }

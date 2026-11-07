@@ -31,6 +31,7 @@ import {
   resolveTrashedItemKind,
   type RestoredReferenceInfo,
 } from "./trash";
+import { restoreTrashedAttachment } from "./source-attachments-core";
 
 /** The combined resources/folders shape {@link listTrashedItems} returns. */
 type ListTrashedItemsResult = Awaited<ReturnType<typeof listTrashedItems>>;
@@ -127,6 +128,18 @@ export async function restoreOneCore(
       };
     }
 
+    if (kind === "attachment") {
+      // Feature 102, FR-26: a refusal (Source in Trash or purged, list full)
+      // is returned as the visible message and the Trash entry stays.
+      const result = await restoreTrashedAttachment(projectPath, id);
+      return {
+        id,
+        ok: true,
+        renamed: result.renamed,
+        restoredName: result.restoredName,
+      };
+    }
+
     return { id, ok: false, error: "Not found in trash" };
   } catch (err: unknown) {
     return { id, ok: false, error: errorMessage(err) };
@@ -156,6 +169,16 @@ export async function purgeOneCore(
     if (kind === "folder") {
       await purgeFolder(projectPath, id);
       return { id, ok: true };
+    }
+
+    if (kind === "attachment") {
+      // Purge of the attachment kind is Task 25. Refuse visibly; never report
+      // "Not found" for an entry that exists, and leave it in place.
+      return {
+        id,
+        ok: false,
+        error: "Purging a removed attachment is not available yet.",
+      };
     }
 
     return { id, ok: false, error: "Not found in trash" };
