@@ -18,7 +18,7 @@ import { withMetaLock } from "./meta-locks";
 import { updateProjectJson } from "./project-json-write";
 import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { UUID } from "./schemas";
 
 export { InvalidProjectIdCoreError };

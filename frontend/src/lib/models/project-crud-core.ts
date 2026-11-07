@@ -49,6 +49,7 @@ import { createProjectFromType } from "./project-creator";
 import { generateUUID } from "./uuid";
 import { getProjectType } from "../projectTypes";
 import { getStaticProjectType } from "./project-types-static";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { reindexMissingResources } from "./inverted-index";
 import { repairMissingInitialRevisions } from "./revision-repair";
 import type { AnyResource, Folder, Project } from "./types";
@@ -450,20 +451,9 @@ export async function createProjectCoreNative(
   };
 }
 
-/**
- * Thrown by the projectId-keyed core operations when `projectId` is not a
- * well-formed UUID. The text is the constant "Invalid projectId", the same
- * as the routes' 400 body and the native backends' refusal, and never echoes
- * the rejected value. The argument is accepted so call sites stay unchanged
- * and is deliberately not used.
- */
-export class InvalidProjectIdCoreError extends Error {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept so the 19 call sites stay unchanged; the value is never echoed
-  constructor(_projectId?: string | null) {
-    super("Invalid projectId");
-    this.name = "InvalidProjectIdCoreError";
-  }
-}
+// Defined in its own module so models that only need the error don't import
+// this file (see project-id-core-error.ts); re-exported for existing callers.
+export { InvalidProjectIdCoreError };
 
 /**
  * Resolves `projectId` to its on-disk project root, throwing (rather than
