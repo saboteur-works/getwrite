@@ -1,7 +1,7 @@
 ---
 title: Trash
 order: 190
-summary: Deleted resources and folders go to a project Trash tab, where they can be restored or permanently deleted.
+summary: Deleted resources, folders and removed attachments go to a project Trash tab, where they can be restored or permanently deleted.
 ---
 
 # Trash
@@ -14,7 +14,9 @@ Choose **Delete** in the item's options menu, then confirm. Deleting a folder mo
 
 ## Find what's in Trash
 
-Open the **Trash** tab, next to **Edit**, **Organizer**, **Data** and the other views. It lists everything you have deleted from the project. A deleted folder is one entry, with the resources and folders that were inside it listed under it.
+Open the **Trash** tab, next to **Edit**, **Organizer**, **Data** and the other views. It lists everything you have deleted from the project. A deleted folder is one entry, with the resources and folders that were inside it listed under it. A deleted Source is one entry, and its attachments go with it.
+
+An attachment you removed from a Source, or replaced with another file, is its own entry, named **Attachment of** and the Source's name, with the file's name beside it.
 
 ## Restore items
 
@@ -25,6 +27,14 @@ A restored item goes back where it was. A deleted folder comes back with everyth
 
 - If the item's folder no longer exists, it goes back to the top level of the project, and a notice tells you.
 - If something with the same name is already there, the restored item gets "(restored)" added to its name, and a notice tells you.
+
+## Restore an attachment
+
+An attachment entry restores like any other item: tick it, choose **Restore selected**, then confirm. The file goes back to the end of its Source's attachment list, with the same contents it had.
+
+- If the Source already has an attachment with the same name, the restored one gets "(restored)" added to its name.
+- If the Source is itself in Trash or has been permanently deleted, the attachment can't be restored. A message says "This attachment cannot be restored because its Source is in Trash or has been deleted. Restore the Source first." The entry stays in Trash.
+- If the Source already holds 500 attachments, the restore is refused and the entry stays in Trash.
 
 ## Delete items permanently
 

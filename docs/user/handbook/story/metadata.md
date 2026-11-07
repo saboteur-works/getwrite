@@ -49,7 +49,7 @@ Not yet in a release (merged after 2.2.0).
 
 By default, every custom field appears on every resource: a field added to a project showed on text documents, an image and an audio resource alike. **Subtypes** let you narrow that down.
 
-A subtype is a label you give a resource to say what kind of document it is — for example Scene, Profile, or Outline. You choose the labels; a new project has none. A resource has at most one subtype, and text, image, and audio resources can all have one.
+A subtype is a label you give a resource to say what kind of document it is — for example Scene, Profile, or Outline. You choose the labels; a new project has none. A resource has at most one subtype, and text, image, audio and Source resources can all have one. A folder can have one too (see below).
 
 Using them takes three steps:
 
@@ -74,6 +74,20 @@ Things worth knowing:
 - If you haven't defined any subtypes yet, the sidebar's Subtype control is greyed out and says "No subtypes yet. Add them in Project Settings, Metadata tab."
 
 The query builder's field list has no field for the subtype. A resource created from a resource template takes the template's subtype; templates are not in the app (the Create resource dialog and the menus have no template control), only in the command-line tool: `getwrite-cli templates save-from-resource <projectRoot> <resourceId> <templateId>` and `getwrite-cli templates create <projectRoot> <templateId> [name]`. A copy made with **Copy** or **Duplicate** keeps the original's subtype.
+
+## Folder notes, subtype and fields
+
+Select a folder in the Resource Tree and the Metadata sidebar shows the folder's name with its own details. A folder has no text of its own, so it has no word count, status or revisions.
+
+- **Notes** is a text box for notes about the folder. It is always there, whether or not the **Notes** switch in **Project Settings**, **Metadata** tab is on.
+- **Subtype** picks one label from the project's subtype list, as for a document. **No subtype** clears it. If the label was later removed from the list, the box shows it as "(not in the current list)" and keeps it.
+- **Custom fields** appear below. A custom field that is not limited to any subtype appears on every folder. A field limited to certain subtypes appears on a folder only when the field is marked for folders in `project.json` (`"appliesToFolders": true` on the field's definition in `project.json`; the Metadata Fields manager has no control for it), and the folder's subtype is one of the ticked ones. A deprecated field is hidden. Status, Synopsis, Point of View and the story dates are not offered on a folder.
+
+Changes are not saved as you type. The section shows "Unsaved changes." until you choose **Save folder metadata**, then "Saved." If the save fails, it shows "Not saved:" with the reason and keeps what you typed. If the folder's details can't be read, the section shows an error with **Retry**.
+
+A Text, Number, Date, Boolean, Select or Multi field can be edited on a folder. A Ref or Multi Ref field shows a line saying that type can't be edited on a folder yet.
+
+Deleting a folder sends its notes and fields to [Trash](../protect-and-finish/trash.md) with it, and restoring the folder brings them back.
 
 ## Prose diagnostics
 
