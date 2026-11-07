@@ -39,7 +39,7 @@
  *
  * See: `frontend/src/lib/models/schemas.ts`, `resource.ts`, and `sidecar.ts`.
  */
-import { mkdir, writeFile } from "./io";
+import { atomicWriteFile, mkdir, writeFile } from "./io";
 import path from "node:path";
 import { createProject } from "./project";
 import { generateUUID } from "./uuid";
@@ -268,7 +268,7 @@ export async function createProjectFromType(options: {
     folders.push(folderObj);
     folderRelPaths.set(id, slug);
     // write a small folder descriptor file so the structure is discoverable
-    await writeFile(
+    await atomicWriteFile(
       path.join(dir, "folder.json"),
       JSON.stringify(folderObj, null, 2),
       "utf8",
@@ -306,7 +306,7 @@ export async function createProjectFromType(options: {
     };
     folders.push(subFolder);
     folderRelPaths.set(subId, relPath);
-    await writeFile(
+    await atomicWriteFile(
       path.join(subDir, "folder.json"),
       JSON.stringify(subFolder, null, 2),
       "utf8",

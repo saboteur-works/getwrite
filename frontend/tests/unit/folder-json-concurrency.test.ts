@@ -561,3 +561,132 @@ describe("Feature 102 Task 12: sidecar access recorder", () => {
     expect(touched.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Pre-PR fix D (owner-approved, 2026-11-07): every writer of `folder.json`
+ * writes it atomically. A storage adapter that writes a `folder.json` or its
+ * `.tmp` file in two stages (the first half, a pause, then the whole file)
+ * makes a non-atomic write visible: while the pause lasts, a reader of the
+ * final path sees half a JSON document. An atomic writer puts the half into a
+ * temporary file and renames the whole one into place, so the reader never
+ * sees a parse failure.
+ */
+const TORN_PAUSE_MS = 30;
+
+function isFolderJsonPath(p: string): boolean {
+  return /folder\.json(\.[^/\\]*\.tmp)?$/.test(p);
+}
+
+/** Runs `fn` with `folder.json` writes made in two stages; the real adapter otherwise. */
+async function withTornFolderJsonWrites<T>(fn: () => Promise<T>): Promise<T> {
+  const real = getStorageAdapter();
+  const torn: StorageAdapter = {
+    ...real,
+    async writeFile(p, data, opts) {
+      if (isFolderJsonPath(p) && typeof data === "string") {
+        await real.writeFile(p, data.slice(0, Math.floor(data.length / 2)));
+        await sleep(TORN_PAUSE_MS);
+      }
+      await real.writeFile(p, data, opts);
+    },
+  };
+  setStorageAdapter(torn);
+  try {
+    return await fn();
+  } finally {
+    setStorageAdapter(real);
+  }
+}
+
+/** Polls `file` with the real fs until `until` settles; returns how many reads were partial JSON. */
+async function countPartialReads(
+  file: string,
+  until: Promise<unknown>,
+): Promise<{ reads: number; partial: number }> {
+  let isDone = false;
+  const finished = until.then(
+    () => {
+      isDone = true;
+    },
+    () => {
+      isDone = true;
+    },
+  );
+  let reads = 0;
+  let partial = 0;
+  while (!isDone) {
+    try {
+      const raw = await fs.readFile(file, "utf8");
+      reads += 1;
+      try {
+        JSON.parse(raw);
+      } catch {
+        partial += 1;
+      }
+    } catch {
+      // not there yet
+    }
+    await sleep(1);
+  }
+  await finished;
+  return { reads, partial };
+}
+
+describe("folder.json writers write atomically (a concurrent reader never sees partial JSON)", () => {
+  it("control: a non-atomic write is seen as partial JSON by this harness", async () => {
+    const fx = await newFixture();
+    const write = withTornFolderJsonWrites(() =>
+      getStorageAdapter().writeFile(
+        fx.folderJson,
+        JSON.stringify({ ...fx.folder, name: "Direct" }, null, 2),
+      ),
+    );
+    const { partial } = await countPartialReads(fx.folderJson, write);
+    expect(partial).toBeGreaterThan(0);
+  });
+
+  const CASES: [string, (fx: MetaFixture) => Promise<unknown>][] = [
+    ["rename (renameFolderCore)", (fx) => OPS.rename(fx)],
+    ["reorder (reorderResourcesCore)", (fx) => OPS.reorder(fx)],
+    ["move (reorderResourcesCore with a parent)", (fx) => OPS.move(fx)],
+    [
+      "writeResourceToFile for a folder (Trash restore, importers)",
+      (fx) =>
+        writeResourceToFile(fx.projectRoot, {
+          ...fx.folder,
+          name: "Rewritten",
+        }),
+    ],
+  ];
+
+  it.each(CASES)("%s", async (_label, run) => {
+    const fx = await newMetaFixture();
+    const done = withTornFolderJsonWrites(() => run(fx));
+    const { reads, partial } = await countPartialReads(fx.folderJson, done);
+    await done;
+    expect(reads).toBeGreaterThan(0);
+    expect(partial).toBe(0);
+    expect(JSON.parse(await fs.readFile(fx.folderJson, "utf8"))).toMatchObject({
+      id: fx.folder.id,
+    });
+  });
+
+  it("project creation (createProjectFromType) writes folder.json atomically", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-folder-json-create-"),
+    );
+    dirs.push(projectsDir);
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    const projectRoot = path.join(projectsDir, generateUUID());
+    const file = path.join(projectRoot, "folders", "workspace", "folder.json");
+    const created = withTornFolderJsonWrites(() =>
+      createAndAssertProject(SPEC, { projectRoot, name: "Created" }),
+    );
+    const { partial } = await countPartialReads(file, created);
+    await created;
+    expect(partial).toBe(0);
+    expect(JSON.parse(await fs.readFile(file, "utf8"))).toMatchObject({
+      name: "Workspace",
+    });
+  });
+});

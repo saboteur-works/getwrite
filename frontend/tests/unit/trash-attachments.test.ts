@@ -24,7 +24,9 @@ import {
   updateSidecarCore,
 } from "../../src/lib/models/resource-crud-core";
 import {
+  moveTrashedAttachmentFile,
   purgeResource,
+  readTrashAttachmentRecord,
   resolveTrashedItemKind,
   softDeleteResource,
 } from "../../src/lib/models/trash";
@@ -382,6 +384,7 @@ describe("Trash list", () => {
       "attachments",
       "folders",
       "resources",
+      "unreadable",
     ]);
     expect(listed.resources).toEqual([]);
     expect(listed.folders).toEqual([]);
@@ -584,5 +587,186 @@ describe("a whole Source through Trash (Task 26, FR-31 b, c)", () => {
     expect((await listTree(projectRoot)).some((f) => f.includes(id))).toBe(
       false,
     );
+  });
+});
+
+describe("restore of a leftover Trash record (pre-PR fix A)", () => {
+  async function trashedEntry() {
+    const id = await createSource();
+    const a = await addAttachmentCore(projectId, id, png("a.png"));
+    const { trashId } = await removeAttachmentCore(projectId, id, a.id);
+    return { id, trashId };
+  }
+
+  /** The state after a restore wrote the list entry and crashed before discarding the record. */
+  async function seedPostWritePreDiscard(sourceId: string, trashId: string) {
+    const record = await readTrashAttachmentRecord(projectRoot, trashId);
+    if (record === null) throw new Error("fixture has no record");
+    await moveTrashedAttachmentFile(projectRoot, record, record.storedName);
+    await mutateSidecar(projectRoot, sourceId, (current) => {
+      const sidecar = current as Record<string, MetadataValue>;
+      return {
+        ...sidecar,
+        attachments: [
+          ...((sidecar["attachments"] as unknown as unknown[]) ?? []),
+          record.entry,
+        ] as unknown as MetadataValue,
+      };
+    });
+  }
+
+  it("discards the record and reports success without duplicating the entry", async () => {
+    const { id, trashId } = await trashedEntry();
+    await seedPostWritePreDiscard(id, trashId);
+    expect(await resolveTrashedItemKind(projectRoot, trashId)).toBe(
+      "attachment",
+    );
+
+    const result = await restoreOneCore(projectRoot, trashId);
+
+    expect(result.ok).toBe(true);
+    expect(result.error).toBeUndefined();
+    const listed = await listAttachmentsCore(projectId, id);
+    expect(listed.map((e) => e.id)).toEqual([trashId]);
+    expect(result.renamed).toBe(false);
+    expect(result.restoredName).toBe(listed[0].originalName);
+    expect(await resolveTrashedItemKind(projectRoot, trashId)).toBe("unknown");
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+    const bytes = await fs.readFile(
+      path.join(resourceDir(id), listed[0].fileName),
+    );
+    expect(new Uint8Array(bytes)).toEqual(PNG);
+  });
+
+  it("is a no-op for a second restore call", async () => {
+    const { id, trashId } = await trashedEntry();
+    await seedPostWritePreDiscard(id, trashId);
+    await restoreOneCore(projectRoot, trashId);
+    const again = await restoreOneCore(projectRoot, trashId);
+    expect(again).toMatchObject({ ok: false, error: "Not found in trash" });
+    expect(await listAttachmentsCore(projectId, id)).toHaveLength(1);
+  });
+
+  it("refuses, with the record kept, when the entry is listed but its file is missing", async () => {
+    const { id, trashId } = await trashedEntry();
+    await seedPostWritePreDiscard(id, trashId);
+    const [entry] = await listAttachmentsCore(projectId, id);
+    await fs.rm(path.join(resourceDir(id), entry.fileName));
+
+    const result = await restoreOneCore(projectRoot, trashId);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/file is missing/i);
+    expect(await listAttachmentsCore(projectId, id)).toHaveLength(1);
+    expect(await resolveTrashedItemKind(projectRoot, trashId)).toBe(
+      "attachment",
+    );
+  });
+});
+
+describe("a malformed attachment Trash record (pre-PR fix B)", () => {
+  async function trashMalformed(variant: "syntax" | "schema" = "syntax") {
+    const id = await createSource();
+    const a = await addAttachmentCore(projectId, id, png("a.png"));
+    const { trashId } = await removeAttachmentCore(projectId, id, a.id);
+    const recordPath = path.join(
+      projectRoot,
+      ".trash",
+      "meta",
+      `attachment-${trashId}.json`,
+    );
+    await fs.writeFile(
+      recordPath,
+      variant === "syntax"
+        ? "{ not json"
+        : JSON.stringify({ kind: "attachment" }),
+    );
+    return { id, trashId, recordPath };
+  }
+
+  it.each(["syntax", "schema"] as const)(
+    "is listed as an unreadable entry with a stable id (%s)",
+    async (variant) => {
+      const { trashId } = await trashMalformed(variant);
+      const first = await listTrashCore(projectRoot);
+      const second = await listTrashCore(projectRoot);
+      expect(first.attachments).toEqual([]);
+      expect(first.unreadable).toHaveLength(1);
+      expect(first.unreadable[0]).toMatchObject({
+        id: trashId,
+        kind: "unreadable",
+        label: "Unreadable Trash item",
+      });
+      expect(typeof first.unreadable[0].deletedAt).toBe("string");
+      expect(second.unreadable.map((e) => e.id)).toEqual([trashId]);
+    },
+  );
+
+  it("lists nothing unreadable when every record is readable", async () => {
+    const id = await createSource();
+    const a = await addAttachmentCore(projectId, id, png("a.png"));
+    await removeAttachmentCore(projectId, id, a.id);
+    expect((await listTrashCore(projectRoot)).unreadable).toEqual([]);
+  });
+
+  it("refuses restore with a clear message and keeps the record and file", async () => {
+    const { id, trashId, recordPath } = await trashMalformed();
+    const before = await listTree(path.join(projectRoot, ".trash"));
+    const result = await restoreOneCore(projectRoot, trashId);
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/unreadable/i);
+    expect(result.error).toMatch(/delete/i);
+    expect(result.error).not.toBe("Not found in trash");
+    await expect(fs.stat(recordPath)).resolves.toBeDefined();
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual(before);
+    expect(await listAttachmentsCore(projectId, id)).toEqual([]);
+  });
+
+  it("purge deletes the record and its trashed file", async () => {
+    const { trashId } = await trashMalformed();
+    expect(await purgeOneCore(projectRoot, trashId)).toEqual({
+      id: trashId,
+      ok: true,
+    });
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+    expect((await listTrashCore(projectRoot)).unreadable).toEqual([]);
+  });
+
+  it("empty Trash purges it too", async () => {
+    const { trashId } = await trashMalformed();
+    const results = await purgeBatchCore(projectRoot, { all: true });
+    expect(results).toEqual([{ id: trashId, ok: true }]);
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+  });
+
+  it("purge never follows a path named inside the record out of .trash", async () => {
+    const { id, trashId, recordPath } = await trashMalformed();
+    const outside = path.join(resourceDir(id), "keep-me.txt");
+    await fs.writeFile(outside, "keep");
+    const escapeRel = path.relative(
+      path.join(projectRoot, ".trash", "attachments", trashId),
+      outside,
+    );
+    await fs.writeFile(
+      recordPath,
+      JSON.stringify({
+        kind: "attachment",
+        sourceId: id,
+        storedName: escapeRel,
+        entry: "not an entry",
+      }),
+    );
+    expect((await purgeOneCore(projectRoot, trashId)).ok).toBe(true);
+    expect(await fs.readFile(outside, "utf8")).toBe("keep");
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+  });
+
+  it("does not list a record file whose name is not an attachment id", async () => {
+    await trashMalformed();
+    await fs.writeFile(
+      path.join(projectRoot, ".trash", "meta", "attachment-..%2f..json"),
+      "{",
+    );
+    expect((await listTrashCore(projectRoot)).unreadable).toHaveLength(1);
   });
 });

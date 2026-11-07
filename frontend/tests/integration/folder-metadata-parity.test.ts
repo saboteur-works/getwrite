@@ -328,11 +328,14 @@ describe("folder metadata parity: core, route, native (FR-8)", () => {
         "Invalid projectId",
       );
     });
+    // Same text as the route's body, not a variant that echoes the value.
     await expect(
       createNativeFolderMetadataTransport({
         fs: native.nativeFs,
         projectsDir: NATIVE_PROJECTS_DIR,
       }).getFolderMetadata("nope", FOLDER_ID),
-    ).rejects.toThrow(/Invalid projectId/);
+    ).rejects.toThrow(
+      expect.objectContaining({ message: "Invalid projectId" }),
+    );
   });
 });

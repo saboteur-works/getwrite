@@ -36,7 +36,7 @@ import {
 import { restoreTrashedAttachment } from "./source-attachments-core";
 import { isLockedAccessError } from "./locked-access";
 
-/** The combined resources/folders/attachments shape {@link listTrashedItems} returns. */
+/** The combined resources/folders/attachments/unreadable shape {@link listTrashedItems} returns. */
 type ListTrashedItemsResult = Awaited<ReturnType<typeof listTrashedItems>>;
 
 /**
@@ -232,6 +232,7 @@ export async function purgeBatchCore(
       ...trashed.resources.map((r) => r.id),
       ...trashed.folders.map((f) => f.id),
       ...trashed.attachments.map((a) => a.id),
+      ...trashed.unreadable.map((u) => u.id),
     ];
   } else {
     ids = (selection as { ids: string[] }).ids;

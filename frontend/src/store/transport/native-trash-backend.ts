@@ -85,7 +85,7 @@ export function createNativeTrashTransport(
       return run(async () => {
         const projectRoot = resolveProjectRoot(projectId);
         if (!projectRoot) {
-          throw new Error(`Invalid projectId: ${projectId}`);
+          throw new Error("Invalid projectId");
         }
         return listTrashCore(projectRoot);
       });
@@ -96,7 +96,7 @@ export function createNativeTrashTransport(
       // rejects the whole call without attempting any per-id restore.
       const projectRoot = resolveProjectRoot(projectId);
       if (!projectRoot) {
-        throw new Error(`Invalid projectId: ${projectId}`);
+        throw new Error("Invalid projectId");
       }
 
       const results: RestoreItemResult[] = [];
@@ -122,7 +122,7 @@ export function createNativeTrashTransport(
       // rejects the whole call without attempting any per-id purge.
       const projectRoot = resolveProjectRoot(projectId);
       if (!projectRoot) {
-        throw new Error(`Invalid projectId: ${projectId}`);
+        throw new Error("Invalid projectId");
       }
 
       const ids = await run(async () => {
@@ -135,6 +135,8 @@ export function createNativeTrashTransport(
           return [
             ...trashed.resources.map((r) => r.id),
             ...trashed.folders.map((f) => f.id),
+            ...trashed.attachments.map((a) => a.id),
+            ...trashed.unreadable.map((u) => u.id),
           ];
         }
         return selection as string[];

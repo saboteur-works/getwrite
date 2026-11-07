@@ -9,7 +9,14 @@
  */
 import path from "node:path";
 
-import { exists, mkdir, readFile, readdir, writeFile } from "./io";
+import {
+  atomicWriteFile,
+  exists,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+} from "./io";
 import { validateResource } from "./resource-factory";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { countWords } from "../word-count";
@@ -130,7 +137,8 @@ export async function writeResourceToFile(
     if (!(await exists(dir))) {
       await mkdir(dir, { recursive: true });
     }
-    await writeFile(
+    // Atomic: Trash restore and the importers rewrite an existing descriptor.
+    await atomicWriteFile(
       path.join(dir, "folder.json"),
       JSON.stringify(resource, null, 2),
       "utf8",

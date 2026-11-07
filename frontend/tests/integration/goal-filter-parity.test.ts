@@ -418,7 +418,7 @@ describe("goal filter set/clear parity: core, route, native (FR-35)", () => {
       projectsDir: NATIVE_PROJECTS_DIR,
     });
     await expect(transport.setGoalFilter("not-a-uuid", VALID)).rejects.toThrow(
-      /Invalid projectId/,
+      expect.objectContaining({ message: "Invalid projectId" }),
     );
   });
 });

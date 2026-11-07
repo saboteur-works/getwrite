@@ -93,6 +93,20 @@ export class AttachmentResourceTypeError extends Error {
   }
 }
 
+/**
+ * A leftover Trash record names an attachment the Source's list already holds,
+ * but the listed file is missing. Restoring it again would list the same id
+ * twice, so it is refused and the record is kept.
+ */
+class AttachmentFileMissingError extends Error {
+  constructor() {
+    super(
+      "This attachment is already in the Source's list, but its file is missing. It was not restored again.",
+    );
+    this.name = "AttachmentFileMissingError";
+  }
+}
+
 /** The resource has no sidecar. Map to HTTP 404. */
 export class AttachmentResourceNotFoundError extends Error {
   constructor() {
@@ -512,6 +526,25 @@ export async function restoreTrashedAttachment(
       if (current === null) throw new AttachmentSourceUnavailableError();
       const sidecar = requireSource(current);
       const list = storedAttachments(sidecar);
+      // A crash between the list write and the record discard leaves this
+      // record behind with the entry already listed: finish the discard.
+      const listed = list.find((e) => e.id === record.entry.id);
+      if (listed !== undefined) {
+        const isFilePresent =
+          isPlainFileName(listed.fileName) &&
+          (await sourceFileExists(
+            projectRoot,
+            record.sourceId,
+            listed.fileName,
+          ));
+        if (!isFilePresent) throw new AttachmentFileMissingError();
+        result = {
+          entry: listed,
+          renamed: false,
+          restoredName: listed.originalName,
+        };
+        return SIDECAR_UNCHANGED;
+      }
       if (list.length >= MAX_ATTACHMENTS_PER_SOURCE) {
         throw new AttachmentLimitError();
       }

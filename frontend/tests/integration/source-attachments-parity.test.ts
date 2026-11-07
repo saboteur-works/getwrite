@@ -406,7 +406,7 @@ describe("attachment parity: route and native refuse the same input the same way
     });
   });
 
-  it("refuses a bad project id on both; the route's text is constant, the native text echoes the caller's own value", async () => {
+  it("refuses a bad project id on both with identical text", async () => {
     const route = await makeRouteSide();
     const native = await makeNativeSide();
     const op = (s: Side): Op => ({
@@ -414,14 +414,10 @@ describe("attachment parity: route and native refuse the same input the same way
       resourceId: s.sourceId,
       projectId: "nope",
     });
-    expect(await route.call(op(route))).toEqual({
-      ok: false,
-      message: "Invalid projectId",
-    });
-    expect(await native.call(op(native))).toEqual({
-      ok: false,
-      message: 'Invalid projectId: "nope"',
-    });
+    const routeResult = await route.call(op(route));
+    const nativeResult = await native.call(op(native));
+    expect(routeResult).toEqual({ ok: false, message: "Invalid projectId" });
+    expect(nativeResult).toEqual(routeResult);
   });
 
   it("accepts a valid add on both", async () => {

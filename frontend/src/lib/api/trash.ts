@@ -42,6 +42,7 @@ import type {
   TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
+  TrashedUnreadableEntry,
 } from "../models/trash";
 
 // `RestoredReferenceInfo` is used internally by `RestoreResult` below but,
@@ -57,6 +58,7 @@ export type {
   TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
+  TrashedUnreadableEntry,
 };
 
 /** Combined response shape of `GET /api/project/:id/trash`. */
@@ -69,6 +71,12 @@ export interface TrashListing {
    * the kind existed still loads.
    */
   attachments?: TrashedAttachmentEntry[];
+  /**
+   * Trash items whose record could not be read: shown so they can be deleted
+   * permanently, never restored. Always sent by the server; an absent key is
+   * none.
+   */
+  unreadable?: TrashedUnreadableEntry[];
 }
 
 /** One id's outcome from a batch restore (`POST .../trash/restore`). */
@@ -176,9 +184,11 @@ export const httpTrashTransport: TrashTransport = {
     ) {
       throw new Error("Malformed trash listing response.");
     }
-    const attachments = (data as { attachments?: unknown }).attachments;
-    if (attachments !== undefined && !Array.isArray(attachments)) {
-      throw new Error("Malformed trash listing response.");
+    for (const key of ["attachments", "unreadable"] as const) {
+      const extra = (data as Record<string, unknown>)[key];
+      if (extra !== undefined && !Array.isArray(extra)) {
+        throw new Error("Malformed trash listing response.");
+      }
     }
     return data as TrashListing;
   },

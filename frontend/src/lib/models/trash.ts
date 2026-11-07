@@ -32,6 +32,7 @@ import {
   TrashAttachmentRecordSchema,
   TrashRefRecordSchema,
   TrashFolderManifestSchema,
+  UUID as UuidSchema,
   type TrashAttachmentRecord,
   type TrashFolderManifest,
   type TrashFolderManifestEntry,
@@ -1653,6 +1654,38 @@ export interface TrashedAttachmentEntry {
   deletedAt: string | null;
 }
 
+/**
+ * A Trash item whose record could not be read (pre-PR fix B). Listed so the
+ * writer can see it and delete it permanently; it cannot be restored. `id` is
+ * the id in the record's file name, so it is stable across listings. Only
+ * what is known is carried: the record's contents are not.
+ */
+export interface TrashedUnreadableEntry {
+  id: UUID;
+  kind: "unreadable";
+  /** The text the Trash tab shows. */
+  label: string;
+  /** When the record was last written (its mtime), or `null`. */
+  deletedAt: string | null;
+}
+
+const UNREADABLE_LABEL = "Unreadable Trash item";
+
+/**
+ * An attachment Trash record that cannot be parsed (not JSON, or not the
+ * record shape). Its message is what a refused restore shows the writer.
+ * Locked-access and other read errors are not wrapped in it.
+ */
+class TrashAttachmentRecordUnreadableError extends Error {
+  constructor(options?: ErrorOptions) {
+    super(
+      "This Trash item is unreadable and cannot be restored. Delete it permanently to remove it.",
+      options,
+    );
+    this.name = "TrashAttachmentRecordUnreadableError";
+  }
+}
+
 const DELETED_SOURCE_LABEL = "Attachment of a deleted Source";
 const UNNAMED_SOURCE_LABEL = "Attachment of a Source (name unavailable)";
 
@@ -1682,12 +1715,29 @@ async function resolveAttachmentSourceName(
   return { name: null, isGone: true };
 }
 
+async function recordMtime(
+  projectRoot: string,
+  entryId: UUID,
+): Promise<string | null> {
+  try {
+    return (
+      await stat(trashAttachmentRecordPath(projectRoot, entryId))
+    ).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 async function listTrashedAttachments(
   projectRoot: string,
   metaFiles: string[],
   trashedSidecars: Map<UUID, Record<string, unknown>>,
-): Promise<TrashedAttachmentEntry[]> {
+): Promise<{
+  attachments: TrashedAttachmentEntry[];
+  unreadable: TrashedUnreadableEntry[];
+}> {
   const out: TrashedAttachmentEntry[] = [];
+  const unreadable: TrashedUnreadableEntry[] = [];
   const files = metaFiles.filter(
     (f) => f.startsWith("attachment-") && f.endsWith(".json"),
   );
@@ -1698,7 +1748,17 @@ async function listTrashedAttachments(
       record = await readTrashAttachmentRecord(projectRoot, entryId);
     } catch (err: unknown) {
       if (isLockedAccessError(err)) throw err;
-      // Malformed record: skipped, as a malformed sidecar or manifest is.
+      // A record that cannot be read is listed, never skipped: a skipped one
+      // is invisible and cannot be deleted. Only a file name that is not an
+      // attachment id cannot be acted on (the routes accept UUID ids only).
+      if (UuidSchema.safeParse(entryId).success) {
+        unreadable.push({
+          id: entryId,
+          kind: "unreadable",
+          label: UNREADABLE_LABEL,
+          deletedAt: await recordMtime(projectRoot, entryId),
+        });
+      }
       continue;
     }
     if (record === null) continue;
@@ -1707,14 +1767,7 @@ async function listTrashedAttachments(
       record.sourceId,
       trashedSidecars,
     );
-    let deletedAt: string | null = null;
-    try {
-      deletedAt = (
-        await stat(trashAttachmentRecordPath(projectRoot, entryId))
-      ).mtime.toISOString();
-    } catch {
-      deletedAt = null;
-    }
+    const deletedAt = await recordMtime(projectRoot, entryId);
     out.push({
       id: record.entry.id,
       sourceId: record.sourceId,
@@ -1729,7 +1782,7 @@ async function listTrashedAttachments(
       deletedAt,
     });
   }
-  return out;
+  return { attachments: out, unreadable };
 }
 
 /**
@@ -1758,6 +1811,7 @@ export async function listTrashedItems(
   resources: TrashedResourceEntry[];
   folders: TrashedFolderEntry[];
   attachments: TrashedAttachmentEntry[];
+  unreadable: TrashedUnreadableEntry[];
 }> {
   assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
@@ -1907,13 +1961,13 @@ export async function listTrashedItems(
     });
   }
 
-  const attachments = await listTrashedAttachments(
+  const { attachments, unreadable } = await listTrashedAttachments(
     projectRoot,
     metaFiles,
     resourceSidecarById,
   );
 
-  return { resources, folders, attachments };
+  return { resources, folders, attachments, unreadable };
 }
 
 /**
@@ -2009,7 +2063,8 @@ export async function moveAttachmentToTrash(
 
 /**
  * Read an attachment Trash record. `null` when there is none; an unparseable
- * record and a locked-access error reject.
+ * record rejects with {@link TrashAttachmentRecordUnreadableError}, and a
+ * locked-access or other read error rejects as it is.
  */
 export async function readTrashAttachmentRecord(
   projectRoot: string,
@@ -2026,7 +2081,11 @@ export async function readTrashAttachmentRecord(
     if (isEnoent(err)) return null;
     throw err;
   }
-  return TrashAttachmentRecordSchema.parse(JSON.parse(raw));
+  try {
+    return TrashAttachmentRecordSchema.parse(JSON.parse(raw));
+  } catch (err: unknown) {
+    throw new TrashAttachmentRecordUnreadableError({ cause: err });
+  }
 }
 
 /**

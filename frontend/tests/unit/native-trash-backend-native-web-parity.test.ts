@@ -19,6 +19,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as io from "../../src/lib/models/io";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { createTextResource } from "../../src/lib/models/resource-factory";
 import { writeResourceToFile } from "../../src/lib/models/resource-persistence";
@@ -250,12 +251,14 @@ describe("native trash transport — native/web parity", () => {
     // Empty listing before anything is trashed.
     const httpEmpty = await httpList(projectsDir, httpProjectId);
     const nativeEmpty = await nativeTransport.list(nativeProjectId);
-    expect(httpEmpty).toEqual({ resources: [], folders: [], attachments: [] });
-    expect(nativeEmpty).toEqual({
+    const EMPTY_LISTING = {
       resources: [],
       folders: [],
       attachments: [],
-    });
+      unreadable: [],
+    };
+    expect(httpEmpty).toEqual(EMPTY_LISTING);
+    expect(nativeEmpty).toEqual(EMPTY_LISTING);
 
     // Seed one equivalent trashed resource on each side.
     const httpResourceId = await withProjectsDirEnv(projectsDir, () =>
@@ -520,6 +523,130 @@ describe("native trash transport — native/web parity", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("native trash transport — a malformed attachment record (pre-PR fix B)", () => {
+  const ENTRY_ID = "22222222-2222-4222-8222-222222222222";
+  const REFUSAL =
+    "This Trash item is unreadable and cannot be restored. Delete it permanently to remove it.";
+
+  /**
+   * Written through the ambient storage adapter, as `seedHttpTrashedResource`
+   * does: the route reads through the same default context.
+   */
+  async function seedHttp(projectPath: string): Promise<void> {
+    await io.mkdir(path.join(projectPath, ".trash", "meta"), {
+      recursive: true,
+    });
+    await io.mkdir(path.join(projectPath, ".trash", "attachments", ENTRY_ID), {
+      recursive: true,
+    });
+    await io.writeFile(
+      path.join(projectPath, ".trash", "attachments", ENTRY_ID, "a.png"),
+      "x",
+    );
+    await io.writeFile(
+      path.join(projectPath, ".trash", "meta", `attachment-${ENTRY_ID}.json`),
+      "{ not json",
+    );
+  }
+
+  async function seedNative(
+    nativeFs: ReturnType<typeof createFakeCapacitorFilesystem>,
+    projectPath: string,
+  ): Promise<void> {
+    const adapter = capacitorFsAdapter(nativeFs);
+    await adapter.mkdir(path.join(projectPath, ".trash", "meta"), {
+      recursive: true,
+    });
+    await adapter.mkdir(
+      path.join(projectPath, ".trash", "attachments", ENTRY_ID),
+      { recursive: true },
+    );
+    await adapter.writeFile(
+      path.join(projectPath, ".trash", "attachments", ENTRY_ID, "a.png"),
+      "x",
+    );
+    await adapter.writeFile(
+      path.join(projectPath, ".trash", "meta", `attachment-${ENTRY_ID}.json`),
+      "{ not json",
+    );
+  }
+
+  async function setupBoth() {
+    const http = await setupHttpProject();
+    const native = await setupNativeProject();
+    await seedHttp(http.projectPath);
+    await seedNative(native.nativeFs, native.projectPath);
+    const transport = createNativeTrashTransport({
+      fs: native.nativeFs,
+      projectsDir: native.projectsDir,
+    });
+    return { http, native, transport };
+  }
+
+  const withoutTimes = (listing: TrashListing): unknown => ({
+    ...listing,
+    unreadable: (listing.unreadable ?? []).map((u) => ({
+      ...u,
+      deletedAt: typeof u.deletedAt,
+    })),
+  });
+
+  it("lists it identically, refuses restore with the same text, and purges it", async () => {
+    const { http, native, transport } = await setupBoth();
+
+    const httpListing = await httpList(http.projectsDir, http.projectId);
+    const nativeListing = await transport.list(native.projectId);
+    expect(httpListing.unreadable).toHaveLength(1);
+    expect(httpListing.unreadable?.[0]).toMatchObject({
+      id: ENTRY_ID,
+      kind: "unreadable",
+      label: "Unreadable Trash item",
+    });
+    expect(withoutTimes(nativeListing)).toEqual(withoutTimes(httpListing));
+
+    const httpRestore1 = await httpRestore(http.projectsDir, http.projectId, [
+      ENTRY_ID,
+    ]);
+    const nativeRestore1 = await transport.restore(native.projectId, [
+      ENTRY_ID,
+    ]);
+    expect(httpRestore1).toEqual([{ id: ENTRY_ID, ok: false, error: REFUSAL }]);
+    expect(nativeRestore1).toEqual(httpRestore1);
+
+    const httpPurged = await httpPurge(http.projectsDir, http.projectId, [
+      ENTRY_ID,
+    ]);
+    const nativePurged = await transport.purge(native.projectId, [ENTRY_ID]);
+    expect(httpPurged).toEqual([{ id: ENTRY_ID, ok: true }]);
+    expect(nativePurged).toEqual(httpPurged);
+    expect((await transport.list(native.projectId)).unreadable).toEqual([]);
+    expect(
+      (await httpList(http.projectsDir, http.projectId)).unreadable,
+    ).toEqual([]);
+  });
+
+  it("native Empty trash ({ all: true }) purges it, as the route's does", async () => {
+    const { native, transport } = await setupBoth();
+    const results = await transport.purge(native.projectId, { all: true });
+    expect(results).toEqual([{ id: ENTRY_ID, ok: true }]);
+    expect((await transport.list(native.projectId)).unreadable).toEqual([]);
+  });
+});
+
+describe("native trash transport — invalid project id text (pre-PR fix E)", () => {
+  it("rejects list, restore and purge with the route's text, without echoing the value", async () => {
+    const native = await setupNativeProject();
+    const transport = createNativeTrashTransport({
+      fs: native.nativeFs,
+      projectsDir: native.projectsDir,
+    });
+    const expected = expect.objectContaining({ message: "Invalid projectId" });
+    await expect(transport.list("nope")).rejects.toThrow(expected);
+    await expect(transport.restore("nope", [])).rejects.toThrow(expected);
+    await expect(transport.purge("nope", [])).rejects.toThrow(expected);
   });
 });
 

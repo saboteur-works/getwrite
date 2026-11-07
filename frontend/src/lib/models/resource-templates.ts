@@ -44,7 +44,7 @@ import { remapCopiedAnnotations } from "./annotation-copy";
 import { readFolderTree } from "./folder-utils";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
-import { seedSourceCompileExclusion } from "./saved-defaults-core";
+import { seedCreatedSource } from "./source-seeding";
 import {
   inspectTemplate,
   validateTemplate,
@@ -542,7 +542,7 @@ export async function duplicateResource(
   }
 
   if (meta.type === "source") {
-    const { notice } = await seedSourceCompileExclusion(projectRoot, newId);
+    const { notice } = await seedCreatedSource(projectRoot, newId);
     if (notice !== undefined) return { newId, compileDefaultsNotice: notice };
   }
 

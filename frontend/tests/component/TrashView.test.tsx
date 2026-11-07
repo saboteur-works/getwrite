@@ -1473,3 +1473,101 @@ describe("TrashView — locked project, Trash list (FR-26 extension)", () => {
     expect(screen.queryByText(UNLOCK_TITLE)).toBeNull();
   });
 });
+
+describe("TrashView: an unreadable Trash item (pre-PR fix B)", () => {
+  const UNREADABLE_ID = "11111111-1111-4111-8111-111111111111";
+  const LISTING: TrashListing = {
+    resources: [],
+    folders: [],
+    attachments: [],
+    unreadable: [
+      {
+        id: UNREADABLE_ID,
+        kind: "unreadable",
+        label: "Unreadable Trash item",
+        deletedAt: "2026-11-07T00:00:00.000Z",
+      },
+    ],
+  };
+
+  function mount() {
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+  }
+
+  it("shows a selectable 'Unreadable Trash item' row, not the empty state", async () => {
+    mockedListTrash.mockResolvedValue(LISTING);
+    mount();
+    const row = await screen.findByTestId("trash-row");
+    expect(row.getAttribute("data-trash-kind")).toBe("unreadable");
+    expect(within(row).getByTestId("trash-row-label").textContent).toBe(
+      "Unreadable Trash item",
+    );
+    expect(screen.queryByTestId("trash-empty-state")).toBeNull();
+    selectTrashRow(UNREADABLE_ID);
+    expect(row.getAttribute("data-trash-selected")).toBe("true");
+  });
+
+  it("deletes it permanently through purgeTrashItems", async () => {
+    mockedListTrash.mockResolvedValue(LISTING);
+    mockedPurgeTrashItems.mockResolvedValue([{ id: UNREADABLE_ID, ok: true }]);
+    mount();
+    await screen.findByTestId("trash-row");
+    selectTrashRow(UNREADABLE_ID);
+    fireEvent.click(screen.getByTestId("trash-delete-selected"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Delete permanently" }),
+    );
+    await waitFor(() =>
+      expect(mockedPurgeTrashItems).toHaveBeenCalledWith(PROJECT_ID, [
+        UNREADABLE_ID,
+      ]),
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByTestId("trash-row")).toHaveLength(0),
+    );
+    expect(screen.getByTestId("trash-empty-state")).toBeTruthy();
+  });
+
+  it("includes it in Empty trash", async () => {
+    mockedListTrash.mockResolvedValue(LISTING);
+    mockedPurgeTrashItems.mockResolvedValue([{ id: UNREADABLE_ID, ok: true }]);
+    mount();
+    await screen.findByTestId("trash-row");
+    fireEvent.click(screen.getByTestId("trash-empty-trash"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Delete permanently" }),
+    );
+    await waitFor(() =>
+      expect(mockedPurgeTrashItems).toHaveBeenCalledWith(PROJECT_ID, [
+        UNREADABLE_ID,
+      ]),
+    );
+  });
+
+  it("shows the server's refusal text when a restore of it is refused, and keeps the row", async () => {
+    const REFUSAL =
+      "This Trash item is unreadable and cannot be restored. Delete it permanently to remove it.";
+    mockedListTrash.mockResolvedValue(LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      { id: UNREADABLE_ID, ok: false, error: REFUSAL },
+    ]);
+    mount();
+    await screen.findByTestId("trash-row");
+    selectTrashRow(UNREADABLE_ID);
+    fireEvent.click(screen.getByTestId("trash-restore-selected"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Restore" }));
+    const failure = await screen.findByTestId("trash-item-failure");
+    expect(failure.textContent).toContain(REFUSAL);
+    expect(failure.textContent).toContain("Unreadable Trash item");
+    expect(screen.getAllByTestId("trash-row")).toHaveLength(1);
+  });
+});

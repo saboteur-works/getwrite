@@ -19,6 +19,7 @@ import type {
   TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
+  TrashedUnreadableEntry,
 } from "../../../../src/lib/api/trash";
 import ConfirmDialog from "../../../common/ConfirmDialog";
 import Button from "../../../common/UI/Button/Button";
@@ -252,6 +253,9 @@ export default function TrashView({
   const [resources, setResources] = useState<TrashedResourceEntry[]>([]);
   const [folders, setFolders] = useState<TrashedFolderEntry[]>([]);
   const [attachments, setAttachments] = useState<TrashedAttachmentEntry[]>([]);
+  // Items whose Trash record could not be read: shown so they can be deleted
+  // permanently; a restore of one is refused with the server's message.
+  const [unreadable, setUnreadable] = useState<TrashedUnreadableEntry[]>([]);
   // Per-item refusal messages for attachment restores (Feature 102, FR-26),
   // shown as visible text so a refusal is never only a failure count.
   const [itemFailures, setItemFailures] = useState<string[]>([]);
@@ -299,6 +303,7 @@ export default function TrashView({
       setResources([]);
       setFolders([]);
       setAttachments([]);
+      setUnreadable([]);
       return;
     }
     setIsLoading(true);
@@ -309,6 +314,7 @@ export default function TrashView({
         setResources(listing.resources);
         setFolders(listing.folders);
         setAttachments(listing.attachments ?? []);
+        setUnreadable(listing.unreadable ?? []);
       })
       .catch((err: unknown) => {
         if (isLockedAccessError(err)) {
@@ -371,15 +377,17 @@ export default function TrashView({
     !isListLocked &&
     resources.length === 0 &&
     folders.length === 0 &&
-    attachments.length === 0;
+    attachments.length === 0 &&
+    unreadable.length === 0;
 
   const allTopLevelIds = useMemo(
     () => [
       ...resources.map((r) => r.id),
       ...folders.map((f) => f.id),
       ...attachments.map((a) => a.id),
+      ...unreadable.map((u) => u.id),
     ],
-    [resources, folders, attachments],
+    [resources, folders, attachments, unreadable],
   );
 
   const toggleSelected = useCallback((id: string) => {
@@ -449,6 +457,7 @@ export default function TrashView({
     resources.forEach((r) => namesById.set(r.id, r.originalName));
     folders.forEach((f) => namesById.set(f.id, f.originalName));
     attachments.forEach((a) => namesById.set(a.id, a.label));
+    unreadable.forEach((u) => namesById.set(u.id, u.label));
 
     const request =
       action.kind === "restore"
@@ -467,7 +476,11 @@ export default function TrashView({
         setResources((prev) => prev.filter((r) => !succeededIds.has(r.id)));
         setFolders((prev) => prev.filter((f) => !succeededIds.has(f.id)));
         setAttachments((prev) => prev.filter((a) => !succeededIds.has(a.id)));
-        const attachmentIds = new Set(attachments.map((a) => a.id));
+        setUnreadable((prev) => prev.filter((u) => !succeededIds.has(u.id)));
+        const attachmentIds = new Set([
+          ...attachments.map((a) => a.id),
+          ...unreadable.map((u) => u.id),
+        ]);
         setItemFailures(
           results
             .filter(
@@ -582,6 +595,7 @@ export default function TrashView({
     resources,
     folders,
     attachments,
+    unreadable,
     dispatch,
     notifyTrashRestored,
   ]);
@@ -916,6 +930,40 @@ export default function TrashView({
                     className="workarea-list-item-meta truncate"
                   >
                     {attachment.fileName}
+                  </div>
+                  <div data-testid="trash-row-actions" />
+                </div>
+              </li>
+            ))}
+
+            {unreadable.map((item) => (
+              <li
+                key={item.id}
+                data-testid="trash-row"
+                data-trash-kind="unreadable"
+                data-trash-id={item.id}
+                data-trash-selected={selectedIds.has(item.id)}
+                className="workarea-list-item !cursor-default flex-col !items-stretch gap-2 mb-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    className="w-[13px] h-[13px] flex-shrink-0"
+                    data-testid="trash-row-select"
+                    aria-label={`Select ${item.label}`}
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => toggleSelected(item.id)}
+                  />
+                  <div
+                    data-testid="trash-row-label"
+                    className="workarea-list-item-label flex-1 min-w-0 truncate"
+                  >
+                    {item.label}
+                  </div>
+                  <div
+                    data-testid="trash-row-meta"
+                    className="workarea-list-item-meta truncate"
+                  >
+                    Cannot be restored. Delete permanently to remove it.
                   </div>
                   <div data-testid="trash-row-actions" />
                 </div>

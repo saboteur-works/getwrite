@@ -30,7 +30,7 @@ import type { EntityGraphPositionsTransport } from "../../lib/api/entity-graph-p
 function requireProjectRoot(projectId: string): string {
   const projectRoot = resolveProjectRoot(projectId);
   if (!projectRoot) {
-    throw new Error(`Invalid projectId: ${projectId}`);
+    throw new Error("Invalid projectId");
   }
   return projectRoot;
 }

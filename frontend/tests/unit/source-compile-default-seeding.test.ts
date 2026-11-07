@@ -39,6 +39,12 @@ import {
 } from "../../src/lib/models/export-core";
 import { resolveInitialSelection } from "../../components/common/compile-defaults-selection";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import {
+  getStorageAdapter,
+  setStorageAdapter,
+  type StorageAdapter,
+} from "../../src/lib/models/io";
+import { listTrashCore } from "../../src/lib/models/trash-core";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { createAndAssertProject } from "./helpers/project-creator";
 import { removeDirRetry } from "./helpers/fs-utils";
@@ -370,4 +376,134 @@ describe("a Source is never removed from compile or export by a built-in rule (F
     expect((await exportTextCore(exportBody)).text).toContain(MARKER);
     expect((await exportMarkdownCore(exportBody)).markdown).toContain(MARKER);
   }, 60_000);
+});
+
+describe("a failed seeding write rolls the Source back (pre-PR fix C)", () => {
+  const NOT_CREATED = /could not be created/i;
+  const NOT_EXCLUDED = /was created, but .*not .*left out of compile/i;
+
+  /**
+   * Fails the write that adds a Source to the saved compile exclusions: a
+   * write to a project.json temp file whose `compileDefaults` list is longer
+   * than `baseline`. Other project.json writes (a new sidecar updates it too)
+   * are real, so the Source itself is created before seeding is reached.
+   * With `alsoFailTrash`, any write or rename into `.trash` fails as well, so
+   * the rollback fails.
+   */
+  async function withSeedingWriteFailing<T>(
+    baseline: number,
+    fn: () => Promise<T>,
+    options: { alsoFailTrash?: boolean } = {},
+  ): Promise<T> {
+    const real = getStorageAdapter();
+    const isTrash = (p: string): boolean =>
+      p.includes(`${path.sep}.trash${path.sep}`);
+    const isSeedingWrite = (p: string, data: string | Buffer): boolean => {
+      if (!/project\.json(\.[^/\\]*\.tmp)?$/.test(p)) return false;
+      try {
+        const parsed = JSON.parse(String(data)) as {
+          config?: { compileDefaults?: { excludedResourceIds?: string[] } };
+        };
+        return (
+          (parsed.config?.compileDefaults?.excludedResourceIds?.length ?? 0) >
+          baseline
+        );
+      } catch {
+        return false;
+      }
+    };
+    const failing: StorageAdapter = {
+      ...real,
+      async rename(from, to) {
+        if (options.alsoFailTrash && isTrash(to)) {
+          throw new Error("injected rollback failure");
+        }
+        return real.rename(from, to);
+      },
+      async writeFile(p, data, opts) {
+        if (isSeedingWrite(p, data)) {
+          throw new Error("injected project.json write failure");
+        }
+        if (options.alsoFailTrash && isTrash(p)) {
+          throw new Error("injected rollback failure");
+        }
+        return real.writeFile(p, data, opts);
+      },
+    };
+    setStorageAdapter(failing);
+    try {
+      return await fn();
+    } finally {
+      setStorageAdapter(real);
+    }
+  }
+
+  const sidecarIds = async (): Promise<string[]> =>
+    (await fs.readdir(path.join(projectRoot, "meta")))
+      .filter((f) => f.startsWith("resource-") && f.endsWith(".meta.json"))
+      .sort();
+  const contentDirs = async (): Promise<string[]> =>
+    (await fs.readdir(path.join(projectRoot, "resources"))).sort();
+
+  type Case = [string, (sourceId: string) => Promise<unknown>];
+  const CASES: Case[] = [
+    [
+      "create",
+      () =>
+        createResourceCore(projectId, {
+          type: "source",
+          name: "New",
+          text: { plainText: "body" },
+        }),
+    ],
+    ["copy", (id) => copyResourceCore(projectId, id, "Copy")],
+    ["duplicate", (id) => duplicateResource(projectRoot, id)],
+  ];
+
+  describe.each(CASES)("%s", (_label, run) => {
+    it("removes the Source again and reports a creation failure", async () => {
+      const original = await createSource();
+      const excludedBefore = (await compileExcluded()) as string[];
+      const sidecarsBefore = await sidecarIds();
+      const dirsBefore = await contentDirs();
+
+      await expect(
+        withSeedingWriteFailing(excludedBefore.length, () => run(original)),
+      ).rejects.toThrow(NOT_CREATED);
+
+      expect(await sidecarIds()).toEqual(sidecarsBefore);
+      expect(await contentDirs()).toEqual(dirsBefore);
+      expect(await compileExcluded()).toEqual(excludedBefore);
+      const trash = await listTrashCore(projectRoot);
+      expect(trash.resources).toEqual([]);
+    });
+
+    it("says the Source was created but not excluded when the rollback also fails", async () => {
+      const original = await createSource();
+      const sidecarsBefore = await sidecarIds();
+      const baseline = ((await compileExcluded()) as string[]).length;
+
+      await expect(
+        withSeedingWriteFailing(baseline, () => run(original), {
+          alsoFailTrash: true,
+        }),
+      ).rejects.toThrow(NOT_EXCLUDED);
+
+      // The Source is still there, which is exactly what the message says.
+      expect((await sidecarIds()).length).toBe(sidecarsBefore.length + 1);
+    });
+  });
+
+  it("does not roll back a Source for a refused seeding (the cap notice keeps it)", async () => {
+    const ids = Array.from({ length: SAVED_DEFAULTS_MAX_IDS }, () =>
+      generateUUID(),
+    );
+    await setCompileDefaultsCore(projectId, ids);
+    const created = await createResourceCore(projectId, {
+      type: "source",
+      name: "Kept",
+      text: { plainText: "body" },
+    });
+    expect(await sidecarIds()).toContain(`resource-${created.id}.meta.json`);
+  });
 });

@@ -30,7 +30,15 @@
  */
 import path from "node:path";
 import type { Dirent } from "node:fs";
-import { cp, exists, readdir, readFile, stat, writeFile } from "./io";
+import {
+  atomicWriteFile,
+  cp,
+  exists,
+  readdir,
+  readFile,
+  stat,
+  writeFile,
+} from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { withMetaLock } from "./meta-locks";
@@ -57,7 +65,7 @@ import {
   writeSidecar,
 } from "./sidecar";
 import { ResourceGoneError } from "./resource-gone-error";
-import { seedSourceCompileExclusion } from "./saved-defaults-core";
+import { seedCreatedSource } from "./source-seeding";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
@@ -174,13 +182,13 @@ export interface SourceSeedingOptions {
   onCompileDefaultsNotice?: (message: string) => void;
 }
 
-/** Seeds one Source id and reports a refusal; a failure propagates. */
+/** Seeds one Source id and reports a refusal; a failure rolls the Source back and propagates. */
 async function seedSource(
   projectRoot: string,
   resourceId: string,
   options: SourceSeedingOptions,
 ): Promise<void> {
-  const { notice } = await seedSourceCompileExclusion(projectRoot, resourceId);
+  const { notice } = await seedCreatedSource(projectRoot, resourceId);
   if (notice !== undefined) options.onCompileDefaultsNotice?.(notice);
 }
 
@@ -999,8 +1007,9 @@ export async function reorderResourcesCore(
             if (parsed && parsed.id === fo.id) {
               parsed.orderIndex = fo.orderIndex;
               parsed.parentId = fo.folderId ?? null;
-              // write updated folder.json atomically
-              await writeFile(
+              // Atomic: a concurrent reader (folder listing, metadata save)
+              // must never see a half-written folder.json.
+              await atomicWriteFile(
                 folderJson,
                 JSON.stringify(parsed, null, 2),
                 "utf8",
