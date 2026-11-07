@@ -277,6 +277,16 @@ Fix: the reset runs only when the dialog opens (false → true), and the saved-d
 
 Not established: that this is what happened on the device. There the select was seen showing "pdf" when Compile wrote `.txt`, and a reset to `txt` would have changed the controlled select's display; whether the screenshot came before a reset was not determined. Re-running the picker-then-Compile sequence about 10 times on the device with this fix would show whether a `.txt` still appears.
 
+Device follow-up (same day, Pixel 7 Pro, online, project "F99 check", Project menu > Compile Project, native picker > pdf, Compile; written path read from logcat `Filesystem.writeFile`):
+
+| Build | Sequence | Gap pick → Compile | Result |
+| --- | --- | --- | --- |
+| `955e03ed` (fix) | dialog reopened each trial, app kept running | 0.2 to 2 s | 11 of 11 wrote `f99-check.pdf` |
+| `738bf363` (main, no fix) | same | 0.2 to 2 s | 11 of 11 wrote `f99-check.pdf` |
+| `738bf363` (main, no fix) | app force-stopped, relaunched, project opened, compiled within about 3 s | 0.3 s | 5 of 5 wrote `f99-check.pdf` |
+
+The original `.txt` was not reproduced on the build without the fix (0 of 16), so the device runs neither confirm nor rule out the reset effect as its cause. Not tried: offline (the original was offline), the exact original sequence of picks, and screens other than the AppShell dialog.
+
 ### Not verified
 - The Start Page compile path, on a device.
 - The cause of the one `.txt` output after `pdf` was chosen on the device (FR-30 side observation). The test failure's cause is measured above; whether the device shares it is not.
