@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
+import { createAndAssertProject } from "./helpers/project-creator";
+import { removeDirRetry } from "./helpers/fs-utils";
 import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 
@@ -1237,4 +1239,64 @@ describe("the three migration operations write the schema on the project.json fi
       expect(await readMetadataRevision(dir)).toBe(1);
     },
   );
+});
+
+// ---------------------------------------------------------------------------
+// Feature 102, FR-10: no built-in folder subtype is shipped or seeded.
+// ---------------------------------------------------------------------------
+
+describe("built-in project types ship no folder subtype (Feature 102, FR-10)", () => {
+  const TYPES_DIR = path.resolve(
+    __dirname,
+    "../../../getwrite-config/templates/project-types",
+  );
+
+  async function filesUnder(root: string): Promise<string[]> {
+    const entries = await fs.readdir(root, { withFileTypes: true });
+    const out: string[] = [];
+    for (const entry of entries) {
+      const full = path.join(root, entry.name);
+      if (entry.isDirectory()) out.push(...(await filesUnder(full)));
+      else out.push(full);
+    }
+    return out;
+  }
+
+  it("lists the built-in project types it checks", async () => {
+    const specs = (await fs.readdir(TYPES_DIR)).filter(
+      (f) => f.endsWith(".json") && f !== "project-type.schema.json",
+    );
+    expect(specs.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("a new project of every built-in type has no folder sidecar and no subtype on any folder.json", async () => {
+    const specs = (await fs.readdir(TYPES_DIR)).filter(
+      (f) => f.endsWith(".json") && f !== "project-type.schema.json",
+    );
+    for (const spec of specs) {
+      const { projectPath, folders } = await createAndAssertProject(
+        path.join(TYPES_DIR, spec),
+      );
+      try {
+        expect(folders.length, spec).toBeGreaterThan(0);
+        const all = await filesUnder(projectPath);
+        const folderSidecars = all.filter((f) =>
+          /folder-[^/]*\.meta\.json$/.test(f),
+        );
+        expect(folderSidecars, spec).toEqual([]);
+        for (const file of all.filter((f) => f.endsWith("folder.json"))) {
+          const parsed = JSON.parse(await fs.readFile(file, "utf8")) as Record<
+            string,
+            unknown
+          >;
+          expect(parsed, `${spec}: ${file}`).not.toHaveProperty(
+            "resourceSubtype",
+          );
+          expect(parsed, `${spec}: ${file}`).not.toHaveProperty("subtype");
+        }
+      } finally {
+        await removeDirRetry(projectPath);
+      }
+    }
+  });
 });

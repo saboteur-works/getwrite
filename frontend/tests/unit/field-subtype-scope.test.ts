@@ -2,11 +2,13 @@ import { describe, it, expect } from "vitest";
 
 import {
   dedupeSubtypeLabels,
+  getFieldsOfferedOnFolder,
   isFieldVisibleForSubtype,
   isLabelInList,
   normalizeSubtypeLabel,
 } from "../../src/lib/models/field-subtype-scope";
 import { DEFAULT_METADATA_SCHEMA } from "../../src/lib/models/default-metadata-schema";
+import type { MetadataSchema } from "../../src/lib/models/types";
 
 describe("models/field-subtype-scope", () => {
   describe("normalizeSubtypeLabel", () => {
@@ -92,6 +94,103 @@ describe("models/field-subtype-scope", () => {
       expect(dedupeSubtypeLabels([])).toEqual([]);
       dedupeSubtypeLabels(input);
       expect(input).toEqual(["A", "a"]);
+    });
+  });
+
+  describe("getFieldsOfferedOnFolder (Feature 102, FR-9, FR-10)", () => {
+    const schema: MetadataSchema = {
+      groups: [
+        ...DEFAULT_METADATA_SCHEMA.groups,
+        {
+          id: "custom",
+          label: "Custom",
+          fields: [
+            { key: "plain", label: "Plain", type: "text" },
+            {
+              key: "marked",
+              label: "Marked",
+              type: "text",
+              appliesToFolders: true,
+            },
+            {
+              key: "scene-only",
+              label: "Scene only",
+              type: "text",
+              appliesTo: ["Scene"],
+            },
+            {
+              key: "marked-chapter",
+              label: "Marked chapter",
+              type: "text",
+              appliesToFolders: true,
+              appliesTo: ["Chapter"],
+            },
+          ],
+        },
+      ],
+    };
+    const keys = (subtype: string | undefined): string[] =>
+      getFieldsOfferedOnFolder(schema, subtype).map((f) => f.key);
+
+    it("offers unrestricted custom fields, marked fields, and notes among built-ins", () => {
+      expect(keys(undefined)).toEqual(["notes", "plain", "marked"]);
+    });
+
+    it("offers no built-in field other than notes", () => {
+      const builtIns = DEFAULT_METADATA_SCHEMA.groups.flatMap((g) =>
+        g.fields.map((f) => f.key),
+      );
+      const offered = keys(undefined).filter((k) => builtIns.includes(k));
+      expect(offered).toEqual(["notes"]);
+    });
+
+    it("does not offer a field limited to labels the folder does not carry", () => {
+      expect(keys("Chapter")).not.toContain("scene-only");
+      expect(keys(undefined)).not.toContain("scene-only");
+      expect(keys(undefined)).not.toContain("marked-chapter");
+    });
+
+    it("matches a folder subtype to appliesTo through normalizeSubtypeLabel", () => {
+      expect(keys("  sCENE ")).toContain("scene-only");
+      expect(keys("chapter")).toContain("marked-chapter");
+    });
+
+    it("offers a field with appliesToFolders and no appliesTo on documents too", () => {
+      const field = schema.groups[2].fields.find((f) => f.key === "marked")!;
+      expect(field.appliesTo).toBeUndefined();
+      expect(
+        isFieldVisibleForSubtype(field.key, field.appliesTo, undefined),
+      ).toBe(true);
+      expect(
+        isFieldVisibleForSubtype(field.key, field.appliesTo, "Scene"),
+      ).toBe(true);
+    });
+
+    it("agrees with isFieldVisibleForSubtype, which keeps its three-argument contract", () => {
+      expect(isFieldVisibleForSubtype).toHaveLength(3);
+      const builtIns = new Set(
+        DEFAULT_METADATA_SCHEMA.groups.flatMap((g) =>
+          g.fields.map((f) => f.key),
+        ),
+      );
+      for (const subtype of [undefined, "Scene", "chapter", "Other"]) {
+        const expected = schema.groups
+          .flatMap((g) => g.fields)
+          .filter(
+            (f) =>
+              !builtIns.has(f.key) &&
+              isFieldVisibleForSubtype(f.key, f.appliesTo, subtype),
+          )
+          .map((f) => f.key);
+        const customOffered = keys(subtype).filter((k) => !builtIns.has(k));
+        expect(customOffered).toEqual(expected);
+      }
+    });
+
+    it("does not mutate the schema", () => {
+      const before = structuredClone(schema);
+      getFieldsOfferedOnFolder(schema, "Scene");
+      expect(schema).toEqual(before);
     });
   });
 });
