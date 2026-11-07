@@ -9,7 +9,7 @@ A Source is a resource of type `source` (`ResourceTypeSchema`, `ResourceType`): 
 - Body: `content.txt` and `content.tiptap.json`, with a canonical revision `v-1` created with the Source (`resource-initial-revision.ts`) and the rules of [revisions.md](revisions.md). Revisions cover the body only: adding, replacing, removing or reordering an attachment creates no revision and copies no bytes into `revisions/`.
 - Sidecar: `meta/resource-<id>.meta.json` like any resource, through `sidecar.ts`. The attachment list is the top-level `attachments` array of that sidecar (see [sidecars.md](sidecars.md)). A Source can carry a `resourceSubtype`, and a custom field can be scoped to it with `appliesTo` (see [resource-subtype.md](resource-subtype.md)).
 - Create, open, rename, move, delete and Trash go through the generic resource routes and cores (`resource-crud-core.ts`, `resource-factory.ts`, `trash.ts`).
-- Text rule (FR-38): a Source is handled as a text resource by full-text search and snippets, backlinks, word counts, the status roll-up, the writing log, the compile outline, previews, spell check, prose diagnostics and mention detection. Annotations are allowed on a Source body. Templates stay text-only: creating a template from a Source, or a Source from a template, is refused. The per-site dispositions are in experiments.md, "Part 2 FR-18 survey" and "Task 32 dispositions". `cli/src/commands/reindex.ts` still hard-codes `type: "text"`; Source reindex through the CLI is not covered yet and is tracked by Task 39.
+- Text rule (FR-38): a Source is handled as a text resource by full-text search and snippets, backlinks, word counts, the status roll-up, the writing log, the compile outline, previews, spell check, prose diagnostics and mention detection. Annotations are allowed on a Source body. Templates stay text-only: creating a template from a Source, or a Source from a template, is refused. The per-site dispositions are in experiments.md, "Part 2 FR-18 survey" and "Task 32 dispositions". `cli/src/commands/reindex.ts` passes a Source's own type; a CLI test shows a Source body is in the inverted index after `reindex` (it was also there before the change, because the indexer does not read the type).
 
 ## Attachments
 
@@ -33,9 +33,9 @@ An attachment gets its own Trash entry, shown in the Trash tab as "Attachment of
 
 ## Entities
 
-- Owner decision, 2026-11-07: a Source whose sidecar carries `entityKind` is an entity, keeping the existing behaviour of `backlinks.ts` and `entity-shared-metadata.ts`. This is the rule. The pinning test is Task 39 and is not written yet, so this page does not claim it as tested.
+- Owner decision, 2026-11-07: a Source whose sidecar carries `entityKind` is an entity, keeping the existing behaviour of `backlinks.ts` and `entity-shared-metadata.ts`. This is the rule. Two pinning tests (`backlinks-entity-edges.test.ts`, `entity-shared-metadata.test.ts`) show a Source with `entityKind` yields an entity edge in each.
 - `updateSidecarCore` refuses `entityKind` or `aliases` submitted for a Source (`SourceEntityFieldsCoreError`, HTTP 400; its docstring and the `entity-alias-table.ts` comment still say a Source is never an entity, which predates the owner decision above); `clearKeys` for them is still allowed so a stored value can be removed. A Source therefore cannot be made an entity through the sidecar route.
-- Observed in the code at this commit, not run by this page: `entity-alias-table.ts` skips a sidecar of type `source` even when it carries `entityKind` (a Task 21 line, `3d9af94c`), while the entity id sets in `backlinks.ts` and `entity-shared-metadata.ts` read `entityKind` with no type check. Whether that difference matches the owner decision is for Task 39 to settle with its test.
+- Observed in the code at this commit, not run by this page: `entity-alias-table.ts` skips a sidecar of type `source` even when it carries `entityKind` (a Task 21 line, `3d9af94c`), while the entity id sets in `backlinks.ts` and `entity-shared-metadata.ts` read `entityKind` with no type check. Whether that difference matches the owner decision is open for the owner (experiments.md, "Task 39").
 
 ## Encryption and locked projects
 
@@ -47,4 +47,3 @@ Attachment files and the folder sidecar go through the storage adapter (`io.ts`)
 - Native lock parity (native backends against the server's locks): reasoned, not run, on a device or otherwise.
 - Not measured: the Trash tab and the Attachments section in a running app (the generic Trash message shows on a rejected locked request; no unlock prompt was added or tested), a real encrypted project through the HTTP routes end to end, and a restore or purge interrupted midway.
 - `pnpm test:e2e` (until Task 39 reports) and `pnpm build:native`: not run for this page.
-- Source reindex through the CLI and the Source-as-entity pinning test: Task 39.

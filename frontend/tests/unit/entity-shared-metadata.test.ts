@@ -79,6 +79,30 @@ describe("getEntitySharedMetadataEdges (FR-5)", () => {
     expect(edge?.sharedFieldKeys).toEqual([]);
   });
 
+  it("treats a Source sidecar carrying entityKind as an entity (Feature 102, Task 39 pin)", async () => {
+    const projectRoot = await makeTmpProjectRoot();
+    await declareEntity(projectRoot, "entity-a", "Aria");
+    const sourceDir = path.join(projectRoot, "resources", "source-b");
+    await fs.mkdir(sourceDir, { recursive: true });
+    await writeSidecar(projectRoot, "source-b", {
+      id: "source-b",
+      name: "Archive letter",
+      type: "source",
+      entityKind: "document",
+    });
+
+    const tag = await createTag(projectRoot, "Protagonist");
+    await assignTagToResource(projectRoot, "entity-a", tag.id);
+    await assignTagToResource(projectRoot, "source-b", tag.id);
+
+    const edges = await getEntitySharedMetadataEdges(projectRoot);
+
+    expect(edges).toHaveLength(1);
+    expect(findEdge(edges, "entity-a", "source-b")?.sharedTagIds).toEqual([
+      tag.id,
+    ]);
+  });
+
   it("draws an edge between two entities sharing a single custom-field value", async () => {
     const projectRoot = await makeTmpProjectRoot();
     await addGroup(projectRoot, {
