@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 
+import { createSourceResource } from "../../src/lib/models/resource-factory";
+import { createTextResource } from "../../src/lib/models/resource";
+
 import {
   dedupeSubtypeLabels,
   getFieldsOfferedOnFolder,
@@ -207,5 +210,21 @@ describe("models/field-subtype-scope", () => {
       getFieldsOfferedOnFolder(schema, "Scene");
       expect(schema).toEqual(before);
     });
+  });
+});
+
+describe("models/field-subtype-scope (Feature 102 FR-20, Sources)", () => {
+  it("offers a field scoped to a label on a Source holding the label and not on a text document without it", () => {
+    const source = {
+      ...createSourceResource({ name: "S" }),
+      resourceSubtype: "Interview",
+    };
+    const text = createTextResource({ name: "T" });
+    expect(
+      isFieldVisibleForSubtype("mood", ["Interview"], source.resourceSubtype),
+    ).toBe(true);
+    expect(
+      isFieldVisibleForSubtype("mood", ["Interview"], text.resourceSubtype),
+    ).toBe(false);
   });
 });

@@ -66,6 +66,9 @@ export async function buildEntityAliasTable(
       continue;
     }
     if (!sidecar) continue;
+    // Feature 102 FR-21: a Source is never an entity, even if a stored
+    // sidecar carries `entityKind`.
+    if (sidecar["type"] === "source") continue;
 
     const entityKind = sidecar["entityKind"];
     if (typeof entityKind !== "string" || entityKind.length === 0) continue;

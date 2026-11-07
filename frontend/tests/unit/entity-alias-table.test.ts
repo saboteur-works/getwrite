@@ -158,3 +158,41 @@ describe("buildEntityAliasTable (Task 3)", () => {
     expect(Object.keys(table.claimedBy)).toHaveLength(0);
   });
 });
+
+describe("buildEntityAliasTable (Feature 102 FR-21, Sources)", () => {
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+  });
+
+  it("leaves a Source out of the table even when its sidecar holds entityKind, so its name is never matched and it is not in the roster or graph", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "src-1");
+    await addResource(projectRoot, "entity-aria");
+    await writeEntitySidecar(projectRoot, "src-1", {
+      name: "Aria",
+      type: "source",
+      entityKind: "character",
+      aliases: ["Ari"],
+    });
+    await writeEntitySidecar(projectRoot, "entity-aria", {
+      name: "Aria",
+      type: "text",
+      entityKind: "character",
+    });
+
+    const table = await buildEntityAliasTable(projectRoot);
+
+    expect(Object.keys(table.entities)).toEqual(["entity-aria"]);
+    expect(table.claimedBy).toEqual({});
+  });
+
+  it("does not put a Source with no entityKind in the table", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "src-2");
+    await writeEntitySidecar(projectRoot, "src-2", {
+      name: "Interview",
+      type: "source",
+    });
+    expect((await buildEntityAliasTable(projectRoot)).entities).toEqual({});
+  });
+});

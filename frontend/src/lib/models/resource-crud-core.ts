@@ -453,6 +453,38 @@ export class InvalidResourceSubtypeCoreError extends Error {
 }
 
 /**
+ * Thrown by {@link updateSidecarCore} when `entityKind` or `aliases` is
+ * submitted for a Source (Feature 102, FR-21): a Source is never an entity.
+ * Thrown inside the sidecar lock before the write, so nothing is stored.
+ * Clearing the two keys through `clearKeys` stays allowed.
+ */
+export class SourceEntityFieldsCoreError extends Error {
+  constructor() {
+    super("A Source cannot have entityKind or aliases");
+    this.name = "SourceEntityFieldsCoreError";
+  }
+}
+
+const SOURCE_REFUSED_ENTITY_KEYS: readonly string[] = ["entityKind", "aliases"];
+
+/**
+ * Throws {@link SourceEntityFieldsCoreError} when the record being updated is
+ * a Source (stored type, or the client's type on the replace path) and the
+ * allowlisted update carries an entity key.
+ */
+function assertNoEntityFieldsForSource(
+  update: Record<string, unknown>,
+  type: unknown,
+): void {
+  if (type !== "source") return;
+  for (const key of SOURCE_REFUSED_ENTITY_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(update, key)) {
+      throw new SourceEntityFieldsCoreError();
+    }
+  }
+}
+
+/**
  * Returns `updatedResource` with `resourceSubtype` trimmed, or the same
  * object when the key is absent. A present key whose value is not a string,
  * or is blank after trimming, throws {@link InvalidResourceSubtypeCoreError};
@@ -631,14 +663,19 @@ export async function updateSidecarCore(
   await mergeSidecarUpdate(
     projectRoot,
     resourceId,
-    (existing) =>
-      existing === null
+    (existing) => {
+      assertNoEntityFieldsForSource(
+        update,
+        existing === null ? normalized.type : existing.type,
+      );
+      return existing === null
         ? {
             ...pickKeys(normalized, REPLACEMENT_IDENTITY_KEYS),
             ...pickKeys(normalized, REPLACEMENT_PLACEMENT_KEYS),
             ...update,
           }
-        : update,
+        : update;
+    },
     clearKeys,
     true,
   );

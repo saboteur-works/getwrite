@@ -54,7 +54,8 @@ export default function SubtypeSection(): JSX.Element | null {
   if (
     resource.type !== "text" &&
     resource.type !== "image" &&
-    resource.type !== "audio"
+    resource.type !== "audio" &&
+    resource.type !== "source"
   ) {
     return null;
   }

@@ -17,6 +17,7 @@ import {
   createImageResource,
   createAudioResource,
 } from "../../src/lib/models/resource";
+import { createSourceResource } from "../../src/lib/models/resource-factory";
 import type { AnyResource } from "../../src/lib/models/types";
 
 vi.mock("../../src/lib/api/resources", () => ({ updateSidecar: vi.fn() }));
@@ -75,6 +76,7 @@ describe("SubtypeSection", () => {
     ["text", () => createTextResource({ name: "T" })],
     ["image", () => createImageResource({ name: "I" })],
     ["audio", () => createAudioResource({ name: "A" })],
+    ["source", () => createSourceResource({ name: "S" })],
   ])("shows the control for a %s resource", (_kind, make) => {
     renderSection(make(), ["Scene"]);
     expect(getSelect()).toBeTruthy();
