@@ -114,6 +114,16 @@ describe("buildImportReport", () => {
     expect(report).toContain('- "Untitled 2" (Draft/Untitled 2)');
   });
 
+  it("always states that folder metadata was not imported (Feature 102 FR-17)", () => {
+    for (const input of [fullInput, emptyInput]) {
+      const report = buildImportReport(input);
+      expect(report).toContain("## Folder Metadata");
+      expect(report).toContain(
+        "Folder metadata (synopsis, notes and metadata) was not imported",
+      );
+    }
+  });
+
   it("still renders a valid, non-crashing report when no category has content", () => {
     const report = buildImportReport(emptyInput);
 
