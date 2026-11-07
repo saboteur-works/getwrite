@@ -106,6 +106,22 @@ const audioKindResource = createAudioResource({
 });
 const folderKindResource = createFolderResource({ name: "Act One" });
 
+/**
+ * A folder card shows name and subtype only. The body passed here is ignored:
+ * no notes preview and no child count (Feature 102, FR-14).
+ */
+export const FolderWithSubtype: Story = {
+  args: {
+    resource: folderKindResource,
+    showBody: true,
+    body: "Folder notes are never previewed on the card.",
+    folderSubtype: "Act",
+    onOpen: action("onOpen"),
+    onSelect: action("onSelect"),
+  },
+  parameters: { a11y: { test: "error" } },
+};
+
 export const AllResourceKinds: Story = {
   render: () => (
     <div className="grid grid-cols-2 gap-4">
