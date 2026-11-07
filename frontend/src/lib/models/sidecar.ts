@@ -5,6 +5,8 @@ import { withMetaLock } from "./meta-locks";
 import { updateProjectJson } from "./project-json-write";
 import { withFileLock } from "./file-lock";
 import { isLockedAccessError } from "./locked-access";
+import { FolderSidecarSchema } from "./schemas";
+import { isResourceId } from "./resource-id";
 
 /**
  * Compute the canonical sidecar filename for a resource id.
@@ -23,6 +25,88 @@ export function sidecarPathForProject(
   resourceId: UUID,
 ): string {
   return path.join(projectRoot, "meta", sidecarFilename(resourceId));
+}
+
+/**
+ * Compute the folder sidecar filename: `folder-<id>.meta.json` (Feature 102,
+ * FR-1). Throws on an id that is not a UUID, so a path is never built from
+ * client input such as `../../x`.
+ */
+export function folderSidecarFilename(folderId: string): string {
+  if (!isResourceId(folderId)) {
+    throw new Error("Invalid folder id");
+  }
+  return `folder-${folderId}.meta.json`;
+}
+
+/** The folder sidecar path, `<projectRoot>/meta/folder-<id>.meta.json`. */
+export function folderSidecarPathForProject(
+  projectRoot: string,
+  folderId: string,
+): string {
+  return path.join(projectRoot, "meta", folderSidecarFilename(folderId));
+}
+
+/** A folder sidecar read as the notes, field values and subtype it holds. */
+export interface FolderSidecarValue {
+  notes: string;
+  fieldValues: Record<string, MetadataValue>;
+  resourceSubtype: string | undefined;
+}
+
+/**
+ * Raised when a folder sidecar exists but cannot be read, parsed or does not
+ * match the folder sidecar shape. Never folded into "empty". Carries no file
+ * content or path.
+ */
+export class FolderSidecarUnreadableError extends Error {
+  constructor(options?: { cause?: unknown }) {
+    super("The folder's metadata file could not be read.", options);
+    this.name = "FolderSidecarUnreadableError";
+  }
+}
+
+/**
+ * Read a folder's sidecar (Feature 102, FR-15, FR-31 a2). An absent file
+ * (ENOENT) reads as empty notes, no field values and no subtype and creates
+ * nothing. A locked-access error is rethrown unchanged; any other read error,
+ * unparseable JSON or shape mismatch raises {@link FolderSidecarUnreadableError}.
+ * Takes no lock: writes are atomic renames.
+ */
+export async function readFolderSidecar(
+  projectRoot: string,
+  folderId: string,
+): Promise<FolderSidecarValue> {
+  const filePath = folderSidecarPathForProject(projectRoot, folderId);
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch (err: unknown) {
+    if (isLockedAccessError(err)) throw err;
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return { notes: "", fieldValues: {}, resourceSubtype: undefined };
+    }
+    throw new FolderSidecarUnreadableError({ cause: err });
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err: unknown) {
+    throw new FolderSidecarUnreadableError({ cause: err });
+  }
+  const result = FolderSidecarSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new FolderSidecarUnreadableError({ cause: result.error });
+  }
+  const { notes, ...fieldValues } = (result.data.userMetadata ?? {}) as Record<
+    string,
+    MetadataValue
+  >;
+  return {
+    notes: typeof notes === "string" ? notes : "",
+    fieldValues,
+    resourceSubtype: result.data.resourceSubtype,
+  };
 }
 
 /**
@@ -303,6 +387,9 @@ export async function writeSidecar(
 export default {
   sidecarFilename,
   sidecarPathForProject,
+  folderSidecarFilename,
+  folderSidecarPathForProject,
+  readFolderSidecar,
   readSidecar,
   writeSidecar,
   mutateSidecar,

@@ -9,6 +9,10 @@ import {
   writeSidecar,
   mutateSidecar,
   SIDECAR_UNCHANGED,
+  folderSidecarFilename,
+  folderSidecarPathForProject,
+  readFolderSidecar,
+  FolderSidecarUnreadableError,
 } from "../../src/lib/models/sidecar";
 import type { MetadataValue } from "../../src/lib/models/types";
 import * as io from "../../src/lib/models/io";
@@ -627,5 +631,120 @@ describe("models/sidecar — sink under locked access (Feature 92, Task 16)", ()
     ).rejects.toSatisfy((err: unknown) => isLockedAccessError(err));
     expect(mutate).not.toHaveBeenCalled();
     expect(io.atomicWriteFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("models/sidecar — folder sidecar path and read (Feature 102, Task 7)", () => {
+  let tmp = "";
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-folder-sidecar-"));
+  });
+  afterEach(async () => {
+    await removeDirRetry(tmp);
+  });
+
+  it("builds meta/folder-<id>.meta.json from a validated folder id", () => {
+    const id = generateUUID();
+    expect(folderSidecarFilename(id)).toBe(`folder-${id}.meta.json`);
+    expect(folderSidecarPathForProject(tmp, id)).toBe(
+      path.join(tmp, "meta", `folder-${id}.meta.json`),
+    );
+  });
+
+  it.each(["../../x", "a/b", "", "not-a-uuid", "..", `${generateUUID()}/..`])(
+    "refuses the folder id %j before building a path",
+    async (bad) => {
+      expect(() => folderSidecarFilename(bad)).toThrow();
+      expect(() => folderSidecarPathForProject(tmp, bad)).toThrow();
+      await expect(readFolderSidecar(tmp, bad)).rejects.toThrow();
+    },
+  );
+
+  it("reads a folder with no sidecar as empty and creates no file", async () => {
+    const id = generateUUID();
+    const value = await readFolderSidecar(tmp, id);
+    expect(value).toEqual({
+      notes: "",
+      fieldValues: {},
+      resourceSubtype: undefined,
+    });
+    await expect(fs.stat(path.join(tmp, "meta"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("reads notes, field values and subtype from a stored sidecar", async () => {
+    const id = generateUUID();
+    await fs.mkdir(path.join(tmp, "meta"));
+    await fs.writeFile(
+      folderSidecarPathForProject(tmp, id),
+      JSON.stringify({
+        userMetadata: { notes: "hello", mood: "calm" },
+        resourceSubtype: "Act",
+      }),
+    );
+    expect(await readFolderSidecar(tmp, id)).toEqual({
+      notes: "hello",
+      fieldValues: { mood: "calm" },
+      resourceSubtype: "Act",
+    });
+  });
+
+  it("raises on an unparseable sidecar and never reads it as empty", async () => {
+    const id = generateUUID();
+    await fs.mkdir(path.join(tmp, "meta"));
+    await fs.writeFile(folderSidecarPathForProject(tmp, id), "{not json");
+    await expect(readFolderSidecar(tmp, id)).rejects.toBeInstanceOf(
+      FolderSidecarUnreadableError,
+    );
+  });
+
+  it("raises on a sidecar that parses but breaks the folder shape", async () => {
+    const id = generateUUID();
+    await fs.mkdir(path.join(tmp, "meta"));
+    await fs.writeFile(
+      folderSidecarPathForProject(tmp, id),
+      JSON.stringify({ plainText: "body" }),
+    );
+    await expect(readFolderSidecar(tmp, id)).rejects.toBeInstanceOf(
+      FolderSidecarUnreadableError,
+    );
+  });
+
+  it("raises on a read error other than a missing file", async () => {
+    const id = generateUUID();
+    // A directory at the sidecar path: readFile fails with EISDIR, not ENOENT.
+    await fs.mkdir(folderSidecarPathForProject(tmp, id), { recursive: true });
+    await expect(readFolderSidecar(tmp, id)).rejects.toBeInstanceOf(
+      FolderSidecarUnreadableError,
+    );
+  });
+
+  it("rethrows a locked-access error unchanged", async () => {
+    const WORKSPACE = "/ws";
+    const previousAdapter = io.getStorageAdapter();
+    try {
+      const base = createMemoryAdapter();
+      const projectId = generateUUID();
+      const projectRoot = `${WORKSPACE}/${projectId}`;
+      await base.mkdir(projectRoot, { recursive: true });
+      const keyring = await createKeyring(
+        "pass phrase here",
+        TEST_ARGON2_PARAMS,
+      );
+      await keyring.addProject(projectId);
+      await writeProjectMarker(projectRoot, base);
+      keyring.lock();
+      io.setStorageAdapter(
+        workspaceEncryptionAdapter(base, WORKSPACE, keyring),
+      );
+      const err = await readFolderSidecar(projectRoot, generateUUID()).catch(
+        (e: unknown) => e,
+      );
+      expect(isLockedAccessError(err)).toBe(true);
+      expect(err).not.toBeInstanceOf(FolderSidecarUnreadableError);
+    } finally {
+      io.setStorageAdapter(previousAdapter);
+    }
   });
 });
