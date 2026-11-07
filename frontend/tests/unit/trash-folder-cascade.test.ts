@@ -10,9 +10,11 @@ import {
 } from "../../src/lib/models/resource";
 import {
   listTrashedItems,
+  purgeFolder,
   restoreFolder,
   softDeleteFolder,
 } from "../../src/lib/models/trash";
+import { purgeBatchCore, purgeOneCore } from "../../src/lib/models/trash-core";
 import {
   createProjectFromType,
   type ProjectTypeSpec,
@@ -910,6 +912,179 @@ describe("models/trash — folder sidecar moves with the folder (Feature 102 FR-
       expect(await fs.readFile(sidecarFile(tmp, kept.id), "utf8")).toBe(
         keptText,
       );
+    });
+  });
+});
+
+describe("models/trash — folder sidecar purge sweep (Feature 102 FR-7)", () => {
+  const sidecarFile = (root: string, id: string): string =>
+    path.join(root, "meta", `folder-${id}.meta.json`);
+  const trashedSidecarFile = (root: string, id: string): string =>
+    path.join(root, ".trash", "meta", `folder-${id}.meta.json`);
+  const body = (n: string): string =>
+    JSON.stringify({ userMetadata: { notes: n } }, null, 2);
+
+  async function withTmp(fn: (root: string) => Promise<void>): Promise<void> {
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-trash-folder-purge-"),
+    );
+    try {
+      await fn(tmp);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  }
+
+  async function metaListing(root: string): Promise<string[]> {
+    const names: string[] = [];
+    for (const dir of [
+      path.join(root, "meta"),
+      path.join(root, ".trash", "meta"),
+    ]) {
+      try {
+        for (const n of await fs.readdir(dir)) {
+          if (n.startsWith("folder-") && n.endsWith(".meta.json")) {
+            names.push(path.relative(root, path.join(dir, n)));
+          }
+        }
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      }
+    }
+    return names.sort();
+  }
+
+  async function nested(root: string) {
+    const top = createFolderResource({ name: "Top" });
+    await writeResourceToFile(root, top);
+    const leaf = createFolderResource({ name: "Leaf", parentFolderId: top.id });
+    await writeResourceToFile(root, leaf);
+    const kept = createFolderResource({ name: "Kept" });
+    await writeResourceToFile(root, kept);
+    await fs.mkdir(path.join(root, "meta"), { recursive: true });
+    for (const f of [top, leaf, kept]) {
+      await fs.writeFile(sidecarFile(root, f.id), body(f.name), "utf8");
+    }
+    return { top, leaf, kept };
+  }
+
+  it("purgeFolder removes the sidecar of the folder and every nested folder, leaving the tree folder's untouched", async () => {
+    await withTmp(async (tmp) => {
+      const { top, leaf, kept } = await nested(tmp);
+      await softDeleteFolder(tmp, top.id);
+      expect(await metaListing(tmp)).toEqual(
+        [
+          `.trash/meta/folder-${top.id}.meta.json`,
+          `.trash/meta/folder-${leaf.id}.meta.json`,
+          `meta/folder-${kept.id}.meta.json`,
+        ].sort(),
+      );
+
+      await purgeFolder(tmp, top.id);
+      expect(await metaListing(tmp)).toEqual([
+        `meta/folder-${kept.id}.meta.json`,
+      ]);
+      expect(await fs.readFile(sidecarFile(tmp, kept.id), "utf8")).toBe(
+        body("Kept"),
+      );
+    });
+  });
+
+  it("purge from Trash through purgeOneCore leaves no folder sidecar and a second purge does not throw", async () => {
+    await withTmp(async (tmp) => {
+      const { top, leaf, kept } = await nested(tmp);
+      await softDeleteFolder(tmp, top.id);
+
+      expect(await purgeOneCore(tmp, top.id)).toEqual({ id: top.id, ok: true });
+      expect(await pathExists(trashedSidecarFile(tmp, leaf.id))).toBe(false);
+      expect(await pathExists(trashedSidecarFile(tmp, top.id))).toBe(false);
+      expect(await pathExists(sidecarFile(tmp, kept.id))).toBe(true);
+
+      const again = await purgeOneCore(tmp, top.id);
+      expect(again.id).toBe(top.id);
+      expect(again.ok).toBe(false);
+      expect(await metaListing(tmp)).toEqual([
+        `meta/folder-${kept.id}.meta.json`,
+      ]);
+    });
+  });
+
+  it("purgeFolder re-run after an interrupted sweep (manifest and stray sidecar back) completes and removes the sidecar", async () => {
+    await withTmp(async (tmp) => {
+      const { top, leaf } = await nested(tmp);
+      await softDeleteFolder(tmp, top.id);
+      const manifestPath = path.join(
+        tmp,
+        ".trash",
+        "meta",
+        `folder-${top.id}.json`,
+      );
+      const manifest = await fs.readFile(manifestPath, "utf8");
+      const strayTop = await fs.readFile(trashedSidecarFile(tmp, top.id));
+      const strayLeaf = await fs.readFile(trashedSidecarFile(tmp, leaf.id));
+      await purgeFolder(tmp, top.id);
+
+      await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+      await fs.writeFile(manifestPath, manifest, "utf8");
+      await fs.writeFile(trashedSidecarFile(tmp, top.id), strayTop);
+      await fs.writeFile(trashedSidecarFile(tmp, leaf.id), strayLeaf);
+      await purgeFolder(tmp, top.id);
+      expect(await pathExists(trashedSidecarFile(tmp, top.id))).toBe(false);
+      expect(await pathExists(trashedSidecarFile(tmp, leaf.id))).toBe(false);
+      expect(await pathExists(manifestPath)).toBe(false);
+    });
+  });
+
+  it("purges a folder that has no sidecar without error or creating one", async () => {
+    await withTmp(async (tmp) => {
+      const folder = createFolderResource({ name: "Bare" });
+      await writeResourceToFile(tmp, folder);
+      await softDeleteFolder(tmp, folder.id);
+
+      await purgeFolder(tmp, folder.id);
+      expect(await metaListing(tmp)).toEqual([]);
+    });
+  });
+
+  it("purges a trashed folder whose sidecar stayed in Trash when its descriptor was missing at restore", async () => {
+    await withTmp(async (tmp) => {
+      const { top, leaf, kept } = await nested(tmp);
+      await softDeleteFolder(tmp, top.id);
+      // Lose the leaf's trashed descriptor, as the Task 10 gap describes.
+      const dirs = await fs.readdir(path.join(tmp, ".trash", "folders"), {
+        recursive: true,
+      });
+      for (const d of dirs) {
+        const full = path.join(tmp, ".trash", "folders", d);
+        if (!full.endsWith("folder.json")) continue;
+        const parsed = JSON.parse(await fs.readFile(full, "utf8")) as {
+          id: string;
+        };
+        if (parsed.id === leaf.id)
+          await fs.rm(path.dirname(full), { recursive: true });
+      }
+
+      await purgeFolder(tmp, top.id);
+      expect(await metaListing(tmp)).toEqual([
+        `meta/folder-${kept.id}.meta.json`,
+      ]);
+    });
+  });
+
+  it("empty Trash (purgeBatchCore all) removes every trashed folder sidecar and none of the tree's", async () => {
+    await withTmp(async (tmp) => {
+      const { top, kept } = await nested(tmp);
+      const other = createFolderResource({ name: "Other" });
+      await writeResourceToFile(tmp, other);
+      await fs.writeFile(sidecarFile(tmp, other.id), body("Other"), "utf8");
+      await softDeleteFolder(tmp, top.id);
+      await softDeleteFolder(tmp, other.id);
+
+      const results = await purgeBatchCore(tmp, { all: true });
+      expect(results.every((r) => r.ok)).toBe(true);
+      expect(await metaListing(tmp)).toEqual([
+        `meta/folder-${kept.id}.meta.json`,
+      ]);
     });
   });
 });

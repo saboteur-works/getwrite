@@ -523,6 +523,27 @@ async function restoreFolderSidecar(
 }
 
 /**
+ * Deletes a purged folder's sidecar: the trashed copy under
+ * `.trash/meta/` and any copy left in the live `meta/`, each under the
+ * sidecar's file lock (innermost). `rm` with `force` makes an absent file
+ * (a folder that never had a sidecar, or a repeated purge) a no-op; any other
+ * error propagates.
+ */
+async function purgeFolderSidecar(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const live = folderSidecarPathForProject(projectRoot, folderId);
+  const trashed = path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    folderSidecarFilename(folderId),
+  );
+  for (const target of [trashed, live]) {
+    await withFileLock(target, () => rm(target, { force: true }));
+  }
+}
+
+/**
  * Moves one folder directory to `.trash/folders/<dirname>`. Descendant
  * directories are moved flat, so two folders at different depths may share a
  * directory name; a taken destination gets the folder id appended (trashed
@@ -1273,6 +1294,9 @@ async function pathExists(p: string): Promise<boolean> {
  *    descriptor removal is a separate, later step of {@link purgeFolder}
  *    itself, not this per-resource enum).
  * 5. `"content-files"` — trashed resource content files, last.
+ *
+ * `"folder-sidecar"` is a {@link purgeFolder}-only step that runs after the
+ * descendant resources are purged and before the manifest is removed.
  */
 export type PurgeStepName =
   | "index-backlinks-mentions"
@@ -1280,6 +1304,7 @@ export type PurgeStepName =
   | "revisions"
   | "sidecar-and-ref-record"
   | "content-files"
+  | "folder-sidecar"
   | "folder-manifest-and-descriptor";
 
 /**
@@ -1445,6 +1470,9 @@ export async function purgeResource(
  * Only once every descendant resource has been fully purged does it remove
  * every descendant folder's own trashed descriptor, then the manifest
  * itself, then the target folder's own trashed descriptor, last.
+ * Before the manifest is removed (so a retry still has the folder ids), the
+ * sidecar (`meta/folder-<id>.meta.json`, trashed or live) of the target and
+ * every manifest descendant folder is deleted; an absent one is a no-op.
  *
  * Resumable the same way {@link purgeResource} is: re-running `purgeFolder`
  * re-walks the manifest from the top. Every already-purged resource's sweep
@@ -1494,6 +1522,20 @@ export async function purgeFolder(
       if (dirPath) {
         await rm(dirPath, { recursive: true, force: true });
       }
+    }
+  }
+
+  const sidecarFolderIds: UUID[] = [
+    ...(manifest?.descendants ?? [])
+      .filter((entry) => entry.kind === "folder")
+      .map((entry) => entry.id),
+    folderId,
+  ];
+  for (const id of sidecarFolderIds) {
+    try {
+      await purgeFolderSidecar(projectRoot, id);
+    } catch (err: unknown) {
+      throw new PurgeSweepError("folder-sidecar", id, err);
     }
   }
 
