@@ -26,10 +26,13 @@ export function areResourceIds(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isResourceId);
 }
 
+/** The constant refusal text, shared so a native backend reports the same words. */
+export const INVALID_RESOURCE_ID_MESSAGE = "Invalid resource id";
+
 /**
  * The uniform 400 for a refused resource id. The body is constant, so it
  * says nothing about what exists on disk.
  */
 export function respondInvalidResourceId(): Response {
-  return Response.json({ error: "Invalid resource id" }, { status: 400 });
+  return Response.json({ error: INVALID_RESOURCE_ID_MESSAGE }, { status: 400 });
 }
