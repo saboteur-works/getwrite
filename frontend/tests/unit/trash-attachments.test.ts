@@ -485,3 +485,101 @@ describe("purge, empty Trash and listing (Task 25, FR-26)", () => {
     expect(listing.attachments).toEqual([]);
   });
 });
+
+describe("a whole Source through Trash (Task 26, FR-31 b, c)", () => {
+  const sidecarPath = (id: string): string =>
+    path.join(projectRoot, "meta", `resource-${id}.meta.json`);
+
+  async function readBytes(
+    dir: string,
+    names: string[],
+  ): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    for (const n of names) {
+      out[n] = (await fs.readFile(path.join(dir, n))).toString("hex");
+    }
+    return out;
+  }
+
+  async function sourceWithAttachments(): Promise<{
+    id: string;
+    names: string[];
+  }> {
+    const id = await createSource();
+    const added = [
+      await addAttachmentCore(projectId, id, png("a.png", PNG)),
+      await addAttachmentCore(projectId, id, png("b.png", PNG2)),
+      await addAttachmentCore(projectId, id, {
+        fileName: "c.mp3",
+        mimeType: "audio/mpeg",
+        fileBytes: MP3,
+      }),
+    ];
+    return { id, names: added.map((e) => e.fileName) };
+  }
+
+  it("trash moves the whole directory and restore returns it with every attachment byte-identical", async () => {
+    const { id, names } = await sourceWithAttachments();
+    const dirBefore = await filesIn(resourceDir(id));
+    const bytesBefore = await readBytes(resourceDir(id), dirBefore);
+    const listBefore = await listAttachmentsCore(projectId, id);
+
+    await softDeleteResource(projectRoot, id);
+    expect(await filesIn(resourceDir(id))).toEqual([]);
+    await expect(fs.stat(sidecarPath(id))).rejects.toThrow();
+    const trashed = await listTree(path.join(projectRoot, ".trash"));
+    for (const n of names) {
+      expect(trashed.some((f) => f.endsWith(n))).toBe(true);
+    }
+
+    const result = await restoreOneCore(projectRoot, id);
+    expect(result.ok).toBe(true);
+    expect(await filesIn(resourceDir(id))).toEqual(dirBefore);
+    expect(await readBytes(resourceDir(id), dirBefore)).toEqual(bytesBefore);
+    expect(await listAttachmentsCore(projectId, id)).toEqual(listBefore);
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+  });
+
+  it("permanent delete (trash then purge) leaves no attachment file, directory or sidecar", async () => {
+    const { id, names } = await sourceWithAttachments();
+    await softDeleteResource(projectRoot, id);
+    expect((await purgeOneCore(projectRoot, id)).ok).toBe(true);
+
+    expect(await filesIn(resourceDir(id))).toEqual([]);
+    await expect(fs.stat(sidecarPath(id))).rejects.toThrow();
+    const everything = [
+      ...(await listTree(projectRoot)),
+      ...(await listTree(path.join(projectRoot, ".trash"))),
+    ];
+    for (const n of names) {
+      expect(everything.some((f) => f.endsWith(n))).toBe(false);
+    }
+    expect(everything.some((f) => f.includes(id))).toBe(false);
+  });
+
+  it("empty Trash purges a trashed Source with its attachments", async () => {
+    const { id, names } = await sourceWithAttachments();
+    await softDeleteResource(projectRoot, id);
+    const results = await purgeBatchCore(projectRoot, { all: true });
+    expect(results.every((r) => r.ok)).toBe(true);
+    const everything = await listTree(projectRoot);
+    for (const n of names) {
+      expect(everything.some((f) => f.endsWith(n))).toBe(false);
+    }
+    await expect(fs.stat(sidecarPath(id))).rejects.toThrow();
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+  });
+
+  it("a trashed single attachment beside a trashed Source is also removed by empty Trash", async () => {
+    const { id } = await sourceWithAttachments();
+    const first = (await listAttachmentsCore(projectId, id))[0];
+    if (!first) throw new Error("fixture has no attachment");
+    await removeAttachmentCore(projectId, id, first.id);
+    await softDeleteResource(projectRoot, id);
+    await purgeBatchCore(projectRoot, { all: true });
+    expect(await listTree(path.join(projectRoot, ".trash"))).toEqual([]);
+    expect((await listTree(projectRoot)).some((f) => f.includes(id))).toBe(
+      false,
+    );
+  });
+});

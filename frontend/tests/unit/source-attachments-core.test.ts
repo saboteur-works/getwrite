@@ -12,6 +12,9 @@ import {
   addAttachmentCore,
   listAttachmentsCore,
   reorderAttachmentsCore,
+  removeAttachmentCore,
+  replaceAttachmentCore,
+  restoreTrashedAttachment,
   AttachmentLimitError,
   AttachmentResourceTypeError,
   AttachmentValidationError,
@@ -55,6 +58,16 @@ import {
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
+import { isEnvelope } from "../../src/lib/models/crypto/envelope";
+import {
+  restoreResource,
+  softDeleteResource,
+} from "../../src/lib/models/trash";
+import {
+  listTrashCore,
+  purgeOneCore,
+  restoreOneCore,
+} from "../../src/lib/models/trash-core";
 import {
   __resetIndexerForTests,
   flushIndexer,
@@ -592,5 +605,192 @@ describe("attachments in an encrypted project (FR-31 a, a2)", () => {
         reorderAttachmentsCore(encProjectId, sourceId, [entry.id]),
       ),
     ).rejects.toSatisfy(locked);
+  });
+});
+
+describe("encrypted Source: attachments, Trash and locked access (Task 26, FR-31 a, a2, b, c)", () => {
+  const WORKSPACE = "/ws-task26";
+  let base: StorageAdapter;
+  let keyring: Keyring;
+  let pid: string;
+  let root: string;
+  let ctx: StorageContext;
+  let sid: string;
+  const previousAdapter = io.getStorageAdapter();
+  let savedEnv: string | undefined;
+  const locked = (err: unknown): boolean => isLockedAccessError(err);
+  const inCtx = <T>(fn: () => Promise<T>): Promise<T> =>
+    Promise.resolve(runInStorageContext(ctx, fn));
+
+  async function allFiles(dir: string): Promise<string[]> {
+    const out: string[] = [];
+    let names: string[];
+    try {
+      names = (await base.readdir(dir)) as string[];
+    } catch {
+      return out;
+    }
+    for (const n of names) {
+      const full = `${dir}/${n}`;
+      if ((await base.stat(full)).isDirectory()) {
+        out.push(...(await allFiles(full)));
+      } else out.push(full);
+    }
+    return out;
+  }
+
+  beforeEach(async () => {
+    __resetIndexerForTests();
+    savedEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = WORKSPACE;
+    base = createMemoryAdapter();
+    pid = generateUUID();
+    root = `${WORKSPACE}/${pid}`;
+    await base.mkdir(root, { recursive: true });
+    keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(pid);
+    await writeProjectMarker(root, base);
+    ctx = {
+      tenantRoot: WORKSPACE,
+      adapter: workspaceEncryptionAdapter(base, WORKSPACE, keyring),
+      projectRoot: root,
+    };
+    sid = generateUUID();
+    await inCtx(() =>
+      writeSidecar(root, sid, {
+        id: sid,
+        slug: "s",
+        type: "source",
+        name: "S",
+        orderIndex: 0,
+        folderId: null,
+        createdAt: T0,
+        updatedAt: T0,
+      } as Record<string, MetadataValue>),
+    );
+  });
+
+  afterEach(() => {
+    io.setStorageAdapter(previousAdapter);
+    if (savedEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = savedEnv;
+    __resetIndexerForTests();
+  });
+
+  it("is sealed as an image resource's file is, readable when unlocked, refused when locked", async () => {
+    const entry = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    const imageId = generateUUID();
+    const imagePath = `${root}/resources/${imageId}/pic.png`;
+    await inCtx(async () => {
+      await io.mkdir(`${root}/resources/${imageId}`, { recursive: true });
+      await io.writeFile(imagePath, Buffer.from(PNG));
+    });
+    const attachmentPath = `${root}/resources/${sid}/${entry.fileName}`;
+
+    expect(isEnvelope(await base.readFileBuffer(attachmentPath))).toBe(true);
+    expect(isEnvelope(await base.readFileBuffer(imagePath))).toBe(true);
+
+    const opened = await inCtx(() => io.readFileBuffer(attachmentPath));
+    expect(Buffer.from(opened).equals(Buffer.from(PNG))).toBe(true);
+
+    keyring.lock();
+    await expect(
+      inCtx(() => io.readFileBuffer(attachmentPath)),
+    ).rejects.toSatisfy(locked);
+    await expect(inCtx(() => io.readFileBuffer(imagePath))).rejects.toSatisfy(
+      locked,
+    );
+    // The stored bytes are unchanged by locking.
+    expect(isEnvelope(await base.readFileBuffer(attachmentPath))).toBe(true);
+  });
+
+  it("remove, replace and restore of an attachment rethrow locked-access errors when locked", async () => {
+    const a = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    const b = await inCtx(() => addAttachmentCore(pid, sid, pngInput("b.png")));
+    const { trashId } = await inCtx(() => removeAttachmentCore(pid, sid, a.id));
+    keyring.lock();
+    await expect(
+      inCtx(() => removeAttachmentCore(pid, sid, b.id)),
+    ).rejects.toSatisfy(locked);
+    await expect(
+      inCtx(() => replaceAttachmentCore(pid, sid, b.id, pngInput("c.png"))),
+    ).rejects.toSatisfy(locked);
+    await expect(
+      inCtx(() => restoreTrashedAttachment(root, trashId)),
+    ).rejects.toSatisfy(locked);
+  });
+
+  it("trash and restore of an encrypted Source carry every attachment, bytes identical and still sealed", async () => {
+    const a = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    const m = await inCtx(() =>
+      addAttachmentCore(pid, sid, {
+        fileName: "t.mp3",
+        mimeType: "audio/mpeg",
+        fileBytes: MP3,
+      }),
+    );
+    await inCtx(() => softDeleteResource(root, sid));
+    const trashedFiles = await allFiles(`${root}/.trash`);
+    for (const e of [a, m]) {
+      const hit = trashedFiles.find((f) => f.endsWith(e.fileName));
+      expect(hit).toBeDefined();
+      expect(isEnvelope(await base.readFileBuffer(hit as string))).toBe(true);
+    }
+    await inCtx(() => restoreResource(root, sid));
+    for (const [e, bytes] of [
+      [a, PNG],
+      [m, MP3],
+    ] as const) {
+      const p = `${root}/resources/${sid}/${e.fileName}`;
+      expect(isEnvelope(await base.readFileBuffer(p))).toBe(true);
+      const back = await inCtx(() => io.readFileBuffer(p));
+      expect(Buffer.from(back).equals(Buffer.from(bytes))).toBe(true);
+    }
+    expect((await inCtx(() => listAttachmentsCore(pid, sid))).length).toBe(2);
+  });
+
+  it("purging a trashed encrypted Source leaves no attachment file and no sidecar", async () => {
+    const a = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    await inCtx(() => softDeleteResource(root, sid));
+    expect((await inCtx(() => purgeOneCore(root, sid))).ok).toBe(true);
+    const left = await allFiles(root);
+    expect(left.some((f) => f.endsWith(a.fileName))).toBe(false);
+    expect(left.some((f) => f.includes(sid))).toBe(false);
+  });
+
+  it("observed: a locked restore of an attachment entry returns ok:false with the locked message and a locked purge returns ok:true", async () => {
+    const a = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    const { trashId } = await inCtx(() => removeAttachmentCore(pid, sid, a.id));
+    keyring.lock();
+    const restored = await inCtx(() => restoreOneCore(root, trashId));
+    expect(restored.ok).toBe(false);
+    expect(restored.ok === false && restored.error).toMatch(/locked/i);
+    // The listing rejects; it never degrades to empty.
+    await expect(inCtx(() => listTrashCore(root))).rejects.toSatisfy(locked);
+    const purged = await inCtx(() => purgeOneCore(root, trashId));
+    // Observed, a gap against the resource kind below: the attachment purge
+    // needs no key (plain rm of a path), so it succeeds on a locked project.
+    expect(purged.ok).toBe(true);
+    expect(await allFiles(`${root}/.trash`)).toEqual([]);
+  });
+
+  it("observed: a locked restore and purge of a trashed Source (resource kind)", async () => {
+    await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    await inCtx(() => softDeleteResource(root, sid));
+    keyring.lock();
+    const restored = await inCtx(() => restoreOneCore(root, sid));
+    const purged = await inCtx(() => purgeOneCore(root, sid));
+    expect(restored.ok).toBe(false);
+    expect(restored.ok === false && restored.error).toMatch(/locked/i);
+    // The resource-kind purge is refused by its first sweep step and keeps the
+    // trashed attachment bytes.
+    expect(purged.ok).toBe(false);
+    expect(purged.ok === false && purged.error).toMatch(/locked/i);
+    expect(
+      (await allFiles(`${root}/.trash`)).some((f) => f.includes("attachment-")),
+    ).toBe(true);
   });
 });

@@ -281,3 +281,20 @@ Not run.
 ## Acceptance
 
 Not run (Task 39).
+
+### Task 26: FR-31 (a), (a2), (b), (c) and FR-34 (OQ-6), observed
+
+Command: `pnpm exec vitest run tests/unit/source-attachments-core.test.ts tests/unit/trash-attachments.test.ts tests/unit/folder-metadata-core.test.ts` (from `frontend/`, base commit bab24724). Memory adapter under `workspaceEncryptionAdapter` for the encrypted cases; real directory for the Trash round trips. Every new test passed on the first run against unchanged product code (they pin behaviour; none was red first).
+
+**Held (observed):**
+- (a) An attachment file is an envelope at rest (the plaintext bytes are absent from the stored file), as an image resource's file written through the same adapter is; reading it back through the adapter when unlocked returns the identical bytes; after `keyring.lock()` the read, `addAttachmentCore`, `listAttachmentsCore`, `reorderAttachmentsCore`, `removeAttachmentCore`, `replaceAttachmentCore` and `restoreTrashedAttachment` each reject with a locked-access error, and the stored file stays an envelope.
+- (a2) `getFolderMetadataCore` and `updateFolderMetadataCore` reject with a locked-access error on a locked project (a read is not an empty value); the folder sidecar `meta/folder-<id>.meta.json` is an envelope at rest, with the note text absent from the stored bytes, and reads back when unlocked. `source-attachments-core.ts` and `folder-metadata-core.ts` contain no `node:fs` import and import `./io` (source text match, a test, not a lint rule).
+- (b) Trash then restore of a Source with two images and one audio attachment (real directory): the directory file names, every file's bytes and the sidecar `attachments` list are identical after restore, and `.trash/` is empty. The same on an encrypted project: trashed attachment files are envelopes, restored files are envelopes and read back to the original bytes.
+- (c) Trash then `purgeOneCore`, and Trash then `purgeBatchCore({ all: true })`: no attachment file, no `resources/<id>` content and no `meta/resource-<id>.meta.json` remain, and `.trash/` is empty; the same holds with a single trashed attachment entry beside a trashed Source. On an encrypted project, purge leaves no file containing the Source id or an attachment file name.
+
+**Where behaviour does not hold or differs (observed, not changed):**
+- Gap 1 (known from Task 24): `restoreOneCore` catches every error, including a locked-access error, and returns `{ ok: false, error }` with the locked message (observed for an attachment entry and for a Source). It does not rethrow, so a caller that only reads `ok` sees a failed restore with the message; the route layer was not exercised here, so whether HTTP shows 401 or 200 with `ok:false` was not measured by this task. `purgeOneCore` behaves the same for a trashed Source.
+- Gap 2: `purgeOneCore` on an attachment entry of a locked, encrypted project returned `{ ok: true }` and the trashed file and record were removed (`.trash/` empty), whereas the same call for a trashed Source returned `{ ok: false }` ("Purge sweep failed at step index-backlinks-mentions ...locked") and kept the files. Observed difference only; a deletion without the key is not a disclosure, and whether it is wanted is the owner's decision. `listTrashCore` on the locked project rejects with a locked-access error (it does not return empty).
+- A trash-time purge/restore ordering crash window (Task 24's note) was not measured: no test interrupts a restore or purge midway.
+
+**Not measured:** route-level responses (Task 27), native backend lock behaviour (reasoned, Task 28), the folder sidecar through Trash (Task 11's tests), a running app.

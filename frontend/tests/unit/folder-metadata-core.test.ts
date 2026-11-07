@@ -19,6 +19,9 @@ import { folderSidecarPathForProject } from "../../src/lib/models/sidecar";
 import { createKeyring } from "../../src/lib/models/crypto/keyring";
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
+import { isEnvelope } from "../../src/lib/models/crypto/envelope";
+import nodeFs from "node:fs/promises";
+import nodePath from "node:path";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
 import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 
@@ -327,5 +330,67 @@ describe("folder-metadata-core (Feature 102 Task 8)", () => {
       updateFolderMetadataCore(PID, FID, { notes: "x" }),
     ).rejects.toThrow();
     expect(await readFile(SIDECAR, "utf8")).toBe("{not json");
+  });
+});
+
+describe("folder sidecar under encryption (Feature 102 Task 26, FR-31 a2, OQ-6)", () => {
+  const prevEnv = process.env.GETWRITE_PROJECTS_DIR;
+  afterEach(() => {
+    if (prevEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = prevEnv;
+  });
+
+  it("is sealed at rest, readable when unlocked and refused when locked", async () => {
+    process.env.GETWRITE_PROJECTS_DIR = TENANT;
+    const base = createMemoryAdapter();
+    await base.mkdir(ROOT, { recursive: true });
+    const keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(PID);
+    await writeProjectMarker(ROOT, base);
+    setStorageAdapter(workspaceEncryptionAdapter(base, TENANT, keyring));
+
+    await updateFolderMetadataCore(PID, FID, {
+      notes: "the informant is the sister",
+      fieldValues: { mood: "grim" },
+    });
+
+    const raw = await base.readFileBuffer(SIDECAR);
+    expect(isEnvelope(raw)).toBe(true);
+    expect(Buffer.from(raw).includes(Buffer.from("informant"))).toBe(false);
+    expect(await getFolderMetadataCore(PID, FID)).toEqual({
+      notes: "the informant is the sister",
+      fieldValues: { mood: "grim" },
+      resourceSubtype: undefined,
+    });
+
+    keyring.lock();
+    const readErr = await failureOf(getFolderMetadataCore(PID, FID));
+    expect(isLockedAccessError(readErr)).toBe(true);
+    // A locked read is never an empty value, and a locked write stores nothing.
+    expect(
+      isLockedAccessError(
+        await failureOf(updateFolderMetadataCore(PID, FID, { notes: "x" })),
+      ),
+    ).toBe(true);
+    expect(isEnvelope(await base.readFileBuffer(SIDECAR))).toBe(true);
+  });
+
+  it("the folder core imports io.ts and no direct node:fs", async () => {
+    const source = await nodeFs.readFile(
+      nodePath.join(
+        process.cwd(),
+        "src",
+        "lib",
+        "models",
+        "folder-metadata-core.ts",
+      ),
+      "utf8",
+    );
+    expect(source).not.toMatch(/from\s+["'](node:)?fs(\/promises)?["']/);
+    expect(source).not.toMatch(/require\(\s*["'](node:)?fs/);
+    expect(source).toMatch(/from\s+["']\.\/io["']/);
   });
 });
