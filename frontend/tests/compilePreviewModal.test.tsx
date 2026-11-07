@@ -617,3 +617,27 @@ describe("CompilePreviewModal — saved defaults", () => {
     ).toBeEnabled();
   });
 });
+
+describe("CompilePreviewModal — parent re-render while open", () => {
+  it("keeps the chosen format and selection when resources arrive as a new array with the same contents", () => {
+    const onConfirmCompile = vi.fn();
+    const props = { isOpen: true, onConfirmCompile, onClose: vi.fn() };
+    const { rerender } = render(
+      <CompilePreviewModal {...props} resources={[...sampleResources]} />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/compile as/i), {
+      target: { value: "pdf" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /scene 2/i }));
+
+    rerender(
+      <CompilePreviewModal {...props} resources={[...sampleResources]} />,
+    );
+
+    expect(screen.getByLabelText(/compile as/i)).toHaveValue("pdf");
+    fireEvent.click(screen.getByRole("button", { name: /compile \(1\)/i }));
+    expect(onConfirmCompile.mock.calls[0][1].format).toBe("pdf");
+    expect(onConfirmCompile.mock.calls[0][0]).toEqual(["r1"]);
+  });
+});
