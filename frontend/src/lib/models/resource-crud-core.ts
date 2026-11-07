@@ -300,7 +300,8 @@ export async function copyResourceCore(
 
   // All reads complete before the first write (FR-33).
   const sourceSidecar = await readSidecar(projectRoot, sourceId);
-  const isText = sourceSidecar?.type === "text";
+  const isText =
+    sourceSidecar?.type === "text" || sourceSidecar?.type === "source";
   if (isText) {
     const content = await loadResourceContent(projectRoot, sourceId);
     if (content.tiptap === undefined && content.plainText === undefined) {

@@ -20,7 +20,7 @@ export interface ResourceItemData {
   special?: boolean;
   resourceId: string;
   orderIndex: number;
-  resourceType: "text" | "image" | "audio" | "folder";
+  resourceType: "text" | "image" | "audio" | "source" | "folder";
 }
 
 function addToTree(

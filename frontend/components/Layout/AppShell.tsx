@@ -475,7 +475,10 @@ export default function AppShell({
       dispatch(setSuppressNextViewAutoSwitch(false));
       return;
     }
-    if (selectedResource?.type === "text") {
+    if (
+      selectedResource?.type === "text" ||
+      selectedResource?.type === "source"
+    ) {
       setView((current) => (current === "organizer" ? "edit" : current));
       setActiveSmartFolderId(null);
       setIsQueryBuilderOpen(false);
@@ -1420,7 +1423,11 @@ export default function AppShell({
                             const isMedia =
                               type === "image" || type === "audio";
                             // Edit/Media tab serves text and media resources.
-                            if (type !== "text" && !isMedia) {
+                            if (
+                              type !== "text" &&
+                              type !== "source" &&
+                              !isMedia
+                            ) {
                               disabled.push("edit");
                             }
                             // Diff is text-only.
@@ -1475,6 +1482,7 @@ export default function AppShell({
                         view === "edit" &&
                         Boolean(selectedResource) &&
                         (selectedResource?.type === "text" ||
+                          selectedResource?.type === "source" ||
                           selectedResource?.type === "image" ||
                           selectedResource?.type === "audio")
                           ? ""
@@ -1586,7 +1594,10 @@ export default function AppShell({
                                       const clicked = queryResources.find(
                                         (r) => r.id === id,
                                       );
-                                      if (clicked?.type === "text") {
+                                      if (
+                                        clicked?.type === "text" ||
+                                        clicked?.type === "source"
+                                      ) {
                                         setView("edit");
                                       }
                                       if (activeSmartFolderId) {
@@ -1691,7 +1702,10 @@ export default function AppShell({
                                     <MediaView resource={selectedResource} />
                                   );
                                 }
-                                if (selectedResource.type !== "text") {
+                                if (
+                                  selectedResource.type !== "text" &&
+                                  selectedResource.type !== "source"
+                                ) {
                                   return (
                                     <div>
                                       <h2 className="text-2xl font-semibold">

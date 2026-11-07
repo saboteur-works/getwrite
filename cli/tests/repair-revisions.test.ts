@@ -16,9 +16,9 @@ async function writeRevisionless(root: string, name: string): Promise<string> {
   return resource.id;
 }
 
-// A Source is a text-like resource whose sidecar carries `type: "source"`. No
-// product path creates one yet, so the fixture rewrites the sidecar of a
-// revision-less text resource.
+// A Source is a text-like resource whose sidecar carries `type: "source"`. The
+// fixture rewrites the sidecar of a revision-less text resource, which leaves
+// the Source body files and no `v-1`, the state the command repairs.
 async function writeRevisionlessSource(
   root: string,
   name: string,
@@ -100,12 +100,7 @@ describe("repair-revisions command", () => {
     expect(await revisionDirs(root, id)).toEqual(["v-1"]);
   });
 
-  // Skipped: first run failed with exit 2 because `AnyResourceSchema`
-  // (`frontend/src/lib/models/schemas.ts:568`, a union of the text, image and
-  // audio schemas) rejects a sidecar with `type: "source"`, so
-  // `getLocalResources` throws. Enable once a Source variant is in that union
-  // (Tasks 6/20) and `revision-repair.ts:77` accepts a Source (Task 20/21).
-  it.skip("writes the missing v-1 for a Source as for a text resource", async () => {
+  it("writes the missing v-1 for a Source as for a text resource", async () => {
     const textId = await writeRevisionless(root, "Plain Note");
     const sourceId = await writeRevisionlessSource(root, "Interview");
 

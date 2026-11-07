@@ -68,4 +68,34 @@ describe("CreateResourceModal", () => {
       expect.any(Object),
     );
   });
+
+  it("offers Source and creates it through onCreate, not onUpload", () => {
+    const onCreate = vi.fn();
+    const onUpload = vi.fn();
+
+    render(
+      <CreateResourceModal
+        isOpen={true}
+        initialTitle={"Interview"}
+        initialType={"text"}
+        onCreate={onCreate}
+        onUpload={onUpload}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Source" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("resource-type"), {
+      target: { value: "source" },
+    });
+    expect(screen.queryByLabelText("resource-file")).toBeNull();
+    fireEvent.click(screen.getByText("Create"));
+
+    expect(onUpload).not.toHaveBeenCalled();
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Interview", type: "source" }),
+      undefined,
+      expect.any(Object),
+    );
+  });
 });

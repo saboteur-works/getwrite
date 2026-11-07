@@ -119,6 +119,7 @@ export interface OrganizerCardProps {
 function getResourceTypeIcon(type: AnyResource["type"]): typeof FileTextIcon {
   switch (type) {
     case "text":
+    case "source":
       return FileTextIcon;
     case "image":
       return ImageIcon;

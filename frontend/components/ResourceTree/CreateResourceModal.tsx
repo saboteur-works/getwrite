@@ -192,6 +192,7 @@ export default function CreateResourceModal({
               <option value="text">Document</option>
               <option value="image">Image</option>
               <option value="audio">Audio</option>
+              <option value="source">Source</option>
               <option value="folder">Folder</option>
             </Select>
           </div>

@@ -20,6 +20,7 @@ import type {
   Folder,
   ImageResource,
   MetadataValue,
+  SourceResource,
   TextResource,
 } from "./types";
 
@@ -88,10 +89,12 @@ async function resolveFolderDir(
 }
 
 /**
- * Type guard for text resources.
+ * Type guard for resources whose body is stored as text (text and Source).
  */
-function isTextResource(resource: AnyResource): resource is TextResource {
-  return resource.type === "text";
+function isTextResource(
+  resource: AnyResource,
+): resource is TextResource | SourceResource {
+  return resource.type === "text" || resource.type === "source";
 }
 
 /**
@@ -224,6 +227,11 @@ export function buildResourceSidecarData(
     // that rather than requiring every call site to remember.
     sidecarData.wordCount =
       resource.wordCount ?? countWords(resource.plainText ?? "");
+  }
+
+  if (resource.type === "source") {
+    sidecarData.attachments = (resource.attachments ??
+      []) as unknown as MetadataValue;
   }
 
   if (isMediaResource(resource)) {

@@ -399,6 +399,38 @@ export interface TextResource extends ResourceBase {
   annotations?: Annotation[];
 }
 
+/**
+ * One attachment in a Source's sidecar `attachments` array (Feature 102,
+ * FR-22). Array order is display order.
+ */
+export interface AttachmentEntry {
+  id: UUID;
+  /** Bare stored file name inside the Source's `resources/<id>/` directory. */
+  fileName: string;
+  /** Display only; never used as a path. */
+  originalName: string;
+  mime: string;
+  size: number;
+  addedAt: string;
+}
+
+/**
+ * Source resource model (Feature 102): a text-like resource with a rich-text
+ * body and an ordered attachment list.
+ */
+export interface SourceResource extends ResourceBase {
+  type: "source";
+  plainText?: string;
+  tiptap?: TipTapDocument;
+  wordCount?: number;
+  charCount?: number;
+  paragraphCount?: number;
+  wordCountGoal?: number;
+  annotations?: Annotation[];
+  /** Ordered attachments; absent means none. */
+  attachments?: AttachmentEntry[];
+}
+
 /** Image resource model with common image metadata. */
 export interface ImageResource extends ResourceBase {
   type: "image";
@@ -488,4 +520,9 @@ export interface WritingLogDayFile {
 }
 
 /** Discriminated union of all concrete resource types, keyed by `type`. */
-export type AnyResource = TextResource | ImageResource | AudioResource | Folder;
+export type AnyResource =
+  | TextResource
+  | ImageResource
+  | AudioResource
+  | SourceResource
+  | Folder;

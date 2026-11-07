@@ -15,6 +15,7 @@ import type {
   TextResource,
   ImageResource,
   AudioResource,
+  SourceResource,
   MetadataValue,
   TipTapDocument,
   AnyResource,
@@ -25,6 +26,7 @@ import {
   TextResourceSchema,
   ImageResourceSchema,
   AudioResourceSchema,
+  SourceResourceSchema,
   AnyResourceSchema,
   FolderSchema,
 } from "./schemas";
@@ -88,6 +90,40 @@ export function createTextResource(params: {
   };
 
   TextResourceSchema.parse(res);
+  return res;
+}
+
+/**
+ * Creates a validated `SourceResource` with derived text metrics and an empty
+ * attachment list.
+ */
+export function createSourceResource(params: {
+  name: string;
+  folderId?: UUID | null;
+  plainText?: string;
+  tiptap?: TipTapDocument;
+  slug?: string;
+  userMetadata?: Record<string, MetadataValue>;
+  orderIndex?: number;
+}): SourceResource {
+  const { id, createdAt } = newIdAndTimestamp();
+  const plain = params.plainText ?? "";
+  const res: SourceResource = {
+    id,
+    name: params.name,
+    slug: params.slug ?? slugify(params.name),
+    type: "source",
+    folderId: params.folderId,
+    createdAt,
+    plainText: plain,
+    tiptap: params.tiptap,
+    ...deriveTextMetrics(plain),
+    userMetadata: params.userMetadata,
+    orderIndex: params.orderIndex ?? 0,
+    attachments: [],
+  };
+
+  SourceResourceSchema.parse(res);
   return res;
 }
 
@@ -240,6 +276,12 @@ export const createResourceOfType = (
       });
     case "text":
       return createTextResource({
+        ...baseParams,
+        plainText: opts.text?.plainText,
+        tiptap: opts.text?.tiptap,
+      });
+    case "source":
+      return createSourceResource({
         ...baseParams,
         plainText: opts.text?.plainText,
         tiptap: opts.text?.tiptap,

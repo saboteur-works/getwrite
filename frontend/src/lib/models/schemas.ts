@@ -613,12 +613,30 @@ export const AudioResourceSchema = ResourceBaseSchema.extend({
 });
 
 /**
+ * Source resource schema (Feature 102, FR-22): a text-like resource whose body
+ * is stored as a text resource's is, plus an ordered `attachments` list in its
+ * sidecar. Absent `attachments` means none.
+ */
+export const SourceResourceSchema = ResourceBaseSchema.extend({
+  type: z.literal("source"),
+  plainText: z.string().optional(),
+  tiptap: TipTapDocumentSchema.optional(),
+  wordCount: z.number().int().nonnegative().optional(),
+  charCount: z.number().int().nonnegative().optional(),
+  paragraphCount: z.number().int().nonnegative().optional(),
+  wordCountGoal: z.number().int().nonnegative().optional(),
+  annotations: z.array(AnnotationSchema).optional(),
+  attachments: AttachmentListSchema.optional(),
+});
+
+/**
  * Union schema for any supported resource subtype.
  */
 export const AnyResourceSchema = z.union([
   TextResourceSchema,
   ImageResourceSchema,
   AudioResourceSchema,
+  SourceResourceSchema,
 ]);
 
 /**
