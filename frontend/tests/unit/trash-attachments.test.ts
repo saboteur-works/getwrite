@@ -107,6 +107,9 @@ async function filesIn(dir: string): Promise<string[]> {
 }
 
 async function listTree(dir: string): Promise<string[]> {
+  // Background index writes land as atomic temp-file renames; settle them so
+  // the walk never stats a temp name that is renamed away mid-walk.
+  await flushIndexer();
   const out: string[] = [];
   async function walk(d: string): Promise<void> {
     for (const name of await filesIn(d)) {
