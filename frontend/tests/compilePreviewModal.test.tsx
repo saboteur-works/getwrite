@@ -126,6 +126,33 @@ describe("CompilePreviewModal — AppShell parity (T028)", () => {
   });
 });
 
+describe("CompilePreviewModal — folder notes (Feature 102 FR-16)", () => {
+  it("offers no control to include folder notes", () => {
+    render(
+      <CompilePreviewModal
+        isOpen={true}
+        resources={sampleResources}
+        onConfirmCompile={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole("dialog");
+    const controls = [
+      ...within(dialog).queryAllByRole("checkbox"),
+      ...within(dialog).queryAllByRole("radio"),
+      ...within(dialog).queryAllByRole("button"),
+      ...within(dialog).queryAllByRole("combobox"),
+    ];
+    expect(controls.length).toBeGreaterThan(0);
+    for (const control of controls) {
+      const label =
+        control.getAttribute("aria-label") ?? control.textContent ?? "";
+      expect(label).not.toMatch(/\bnotes?\b/i);
+    }
+    expect(within(dialog).queryByLabelText(/notes?/i)).toBeNull();
+  });
+});
+
 describe("CompilePreviewModal — tree selection", () => {
   it("renders the resource tree", () => {
     render(
