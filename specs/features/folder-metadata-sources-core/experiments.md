@@ -299,6 +299,46 @@ Red-first: this test adds no product behaviour (no product code changed for it).
 
 Not run (Task 39).
 
+### Task 36: files added or changed under `frontend/components/` (FR-30), observed
+
+Range: `git diff --name-status main...HEAD -- frontend/components` at HEAD `4dd263e4`. `main` is `7351f24c`, which is also the merge base, so the range is the feature's own 40 commits (`git log --oneline main..HEAD`) and the three-dot and two-dot forms give the same 15 paths (11 modified, 4 added; 1,156 insertions, 44 deletions). Each reason below was written from the diff of that file, not from its name. Read-only git only.
+
+Added files (4):
+
+| File | What the diff does | Why it is not a Sources view or panel |
+| --- | --- | --- |
+| `Sidebar/FolderMetadataSection.tsx` | New. Edits a selected **folder's** notes, field values and subtype through `api/folder-metadata`. | It acts on folders, not Sources; it is Part 1 (FR-3, FR-10). It lists no Sources. |
+| `Sidebar/SourceAttachmentsSection.tsx` | New. Lists, adds, replaces, removes and reorders the attachments of the one selected Source through `api/source-attachments`. | It is the "Attachments" sidebar section that FR-24 and OQ-2 allow, rendered inside `CollapsibleSection` in `MetadataSidebar` for the selected Source only. It shows one Source's attachment list; it does not list Sources and has no preview or playback. |
+| `WorkArea/FolderListItem.tsx` | New. A Data view row for a **folder**: name, subtype, field columns. | Folder row (FR-13, FR-14), not a Source row; it takes a `FolderRow`. |
+| `WorkArea/Views/OrganizerView/organizerFolderChildren.ts` | New. Replaces a folder child's `userMetadata` with its sidecar field values so the existing Organizer filters apply. Returns folder children only; other children are unchanged. | Folder-only helper (FR-14); no Source reference. |
+
+Modified files (11):
+
+| File | What the diff does | Why it is not a Sources view or panel |
+| --- | --- | --- |
+| `ResourceTree/CreateResourceModal.tsx` | Adds one `<option value="source">Source</option>` to the type select. | This is the create control entry that FR-30 allows. No other change. |
+| `ResourceTree/buildResourceTree.ts` | Adds `"source"` to the `resourceType` union of `ResourceItemData`. | Type widening so a Source is a generic tree item; no behaviour added. |
+| `Sidebar/MetadataSidebar.tsx` | Admits `source` to the editable-resource check (custom metadata as for text); renders the Attachments section for a Source; renders `FolderMetadataSection` for a folder. | The Source branch mounts the one allowed Attachments section inside the existing sidebar; the folder branch is Part 1. No Source list or panel. |
+| `Sidebar/SubtypeSection.tsx` | Adds `source` to the resource types for which the existing Subtype section shows. | Admission to an existing generic section (FR-18); no new UI. |
+| `Layout/AppShell.tsx` | Treats `source` like `text` for opening the editor, the Edit tab enablement and the edit-view guard (5 places); splits smart-folder results into resources and folders and passes `folderRows`, `folderRowsError` and `evaluationError` to `DataView` (Part 1, FR-14). | The Source edits send a Source to the existing editor; the rest is folder rows and a query error message. No Sources view is added to the view switcher. |
+| `WorkArea/EditView.tsx` | Passes `annotationResourceId` for `source` as for `text`. | The existing editor serves a Source (FR-29, FR-38); no new component. |
+| `WorkArea/DataView.tsx` | Adds optional `folderRows`, `folderRowsError` and `evaluationError` props and renders a folder list and error alerts; computes `goalWords`, which leaves out `type === "source"` from the project goal bar. | Folder rows are Part 1. The `goalWords` branch is the 2026-11-07 owner decision on FR-28 (Sources out of the project goal unless a goal filter selects them); it changes a number in the existing goal bar and adds no Sources view. |
+| `WorkArea/Views/OrganizerView/OrganizerCard.tsx` | Maps `source` to the text icon; adds an optional `folderSubtype` shown on a folder card; hides the body on a folder card. | Icon choice for a generic card and folder card detail (FR-14); no Source panel. |
+| `WorkArea/Views/OrganizerView/OrganizerView.tsx` | Reads child folders' sidecar metadata with `useFolderRowMetadata`, applies `withFolderFieldValues` before the filters, shows a failure alert, passes `folderSubtype` to cards. | Folder-only (FR-14). |
+| `WorkArea/Views/TrashView/TrashView.tsx` | Adds the `attachments` list and per-item failure messages; renders an attachment row (label, file name, select) in the existing Trash tab. | The existing Trash tab shows the new "Attachment of <Source name>" item kind (FR-26). It is not a Sources view: it lists trashed attachments, mixed with other Trash entries. |
+| `common/EntityCompileResourceList.tsx` | `isCompilableTextResource` also returns true for `source`. | A Source's body is compilable like text (FR-27, FR-38) in an existing list; no new UI. |
+
+Stories (outside the `components/` requirement, listed for completeness): `git diff --name-status main...HEAD -- frontend/stories` gives 6 paths. Added: `stories/Sidebar/FolderMetadataSection.stories.tsx`, `stories/Sidebar/SourceAttachmentsSection.stories.tsx`. Modified: `stories/Tree/CreateResourceModal.stories.tsx`, `stories/WorkArea/DataView.stories.tsx`, `stories/WorkArea/OrganizerCard.stories.tsx`, `stories/WorkArea/TrashView.stories.tsx`. Each documents one of the components above.
+
+Searches run (results as observed):
+
+- `grep -rE '"source"' frontend/components` found `"source"` as a resource type only in the 9 changed files above that contain Source branches (`MetadataSidebar`, `SubtypeSection`, `AppShell`, `DataView`, `EditView`, `OrganizerCard`, `CreateResourceModal`, `EntityCompileResourceList`, `buildResourceTree`) and nowhere else; the other `"source"` hits are the pre-existing Markdown source mode in `TipTapEditor.tsx` and `MarkdownSourceView.tsx`, and `data-edge-role` in `EntityRelationshipsSection.tsx`, none from this feature.
+- Searching `frontend/components`, `frontend/src` and `frontend/app` for `citation`, `bibliograph` and `claim` (as a word) found no match tied to Sources; the matches are in files this feature did not touch (for example `sharing-copy.ts`, entity highlighting, `export-plaintext.ts`).
+- Searching for `excerpt` found the existing Organizer card body setting (`text-excerpt`, `excerptLength`, `resource-excerpts-core.ts` and its route and native backend). None of those files is in the feature's diff apart from `types.ts` and `schemas.ts`, where the `excerpt` lines are existing and not in the added lines. Searching the feature's added lines in `frontend/src` and `frontend/app` for `citation`, `bibliograph`, `claim`, `excerpt`, `seam` and `contribution` found two hits, both the phrase "Test/injection seam; omit in production" in a doc comment of a function's `deps` parameter; neither is a module seam. The added lines in `frontend/components` matched only `@module organizerFolderChildren`, a JSDoc tag.
+- Searching for a Sources view or panel (`sources? view|panel|browser|manager|library`, case-insensitive) in `frontend/components`, `frontend/src` and `frontend/app` found only `MarkdownSourceView` (the existing Markdown source mode of the editor).
+
+Result: the only Source-specific interface this feature adds under `frontend/components/` is the create control entry (`CreateResourceModal.tsx`), the existing editor (reached by admitting `source` in `AppShell.tsx`, `EditView.tsx` and the sidebar and compile lists), and the one Attachments sidebar section (`SourceAttachmentsSection.tsx`). No Sources view, panel, excerpt, citation, bibliography, claim handling or module contribution seam was found by the searches above. This states what the searches found; it is not a proof that no such code exists under another name.
+
 ### Task 26: FR-31 (a), (a2), (b), (c) and FR-34 (OQ-6), observed
 
 Command: `pnpm exec vitest run tests/unit/source-attachments-core.test.ts tests/unit/trash-attachments.test.ts tests/unit/folder-metadata-core.test.ts` (from `frontend/`, base commit bab24724). Memory adapter under `workspaceEncryptionAdapter` for the encrypted cases; real directory for the Trash round trips. Every new test passed on the first run against unchanged product code (they pin behaviour; none was red first).
