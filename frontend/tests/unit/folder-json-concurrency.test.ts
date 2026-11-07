@@ -32,8 +32,25 @@ import {
   installLockGuard,
   type LockGuardHooks,
 } from "../../src/lib/models/lock-guard";
-import { renameFolderCore } from "../../src/lib/models/resource-crud-core";
-import { reorderResourcesCore } from "../../src/lib/models/resource-crud-core";
+import {
+  createResourceCore,
+  renameFolderCore,
+  reorderResourcesCore,
+} from "../../src/lib/models/resource-crud-core";
+import {
+  getStorageAdapter,
+  setStorageAdapter,
+  type StorageAdapter,
+} from "../../src/lib/models/io";
+import {
+  getFolderMetadataCore,
+  updateFolderMetadataCore,
+} from "../../src/lib/models/folder-metadata-core";
+import {
+  folderSidecarPathForProject,
+  sidecarPathForProject,
+} from "../../src/lib/models/sidecar";
+import { search } from "../../src/lib/models/inverted-index";
 import { writeResourceToFile } from "../../src/lib/models/resource-persistence";
 import type { Folder } from "../../src/lib/models/types";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
@@ -287,3 +304,260 @@ describe.each(PAIRS)(
     }, 180000);
   },
 );
+
+/**
+ * Feature 102 Task 12 (FR-1, FR-5, FR-12): rename, reorder and move leave the
+ * folder's metadata sidecar alone, overlap safely with a metadata save, and a
+ * folder's metadata never reaches the documents inside it.
+ */
+type FolderOp = "rename" | "reorder" | "move";
+
+interface MetaFixture {
+  projectId: string;
+  projectRoot: string;
+  folder: Folder;
+  other: Folder;
+  docIds: string[];
+  folderJson: string;
+}
+
+const META = {
+  notes: "Quokka notes for the folder",
+  fieldValues: { mood: "dark" },
+  resourceSubtype: "Act",
+} as const;
+const DOC_TOKEN = "zebra";
+
+async function newMetaFixture(): Promise<MetaFixture> {
+  const projectsDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "gw-folder-t12-"),
+  );
+  dirs.push(projectsDir);
+  process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  const projectId = generateUUID();
+  const projectRoot = path.join(projectsDir, projectId);
+  const created = await createAndAssertProject(
+    {
+      id: "folder-t12",
+      name: "Folder T12",
+      folders: [{ name: "Workspace" }, { name: "Other" }],
+    },
+    { projectRoot, name: "Folder T12" },
+  );
+  const [folder, other] = created.folders as Folder[];
+  const pj = path.join(projectRoot, "project.json");
+  const project = JSON.parse(await fs.readFile(pj, "utf8")) as {
+    config?: Record<string, unknown>;
+  };
+  project.config = { ...(project.config ?? {}), subtypes: ["Act", "Scene"] };
+  await fs.writeFile(pj, JSON.stringify(project, null, 2), "utf8");
+  const docIds: string[] = [];
+  for (const name of ["Doc One", "Doc Two"]) {
+    const doc = await createResourceCore(projectId, {
+      name,
+      type: "text",
+      folderId: folder.id,
+      text: { plainText: `${DOC_TOKEN} body of ${name}` },
+    });
+    docIds.push(doc.id);
+  }
+  await flushIndexer();
+  return {
+    projectId,
+    projectRoot,
+    folder,
+    other,
+    docIds,
+    folderJson: path.join(projectRoot, "folders", folder.slug, "folder.json"),
+  };
+}
+
+const saveMeta = (fx: MetaFixture): Promise<unknown> =>
+  updateFolderMetadataCore(fx.projectId, fx.folder.id, META);
+
+const OPS: Record<FolderOp, (fx: MetaFixture) => Promise<unknown>> = {
+  rename: (fx) => renameFolderCore(fx.projectId, fx.folder.id, NEW_NAME),
+  reorder: (fx) =>
+    reorderResourcesCore(fx.projectId, {
+      folderOrder: [{ id: fx.folder.id, orderIndex: NEW_ORDER }],
+      resourceOrder: [],
+    }),
+  move: (fx) =>
+    reorderResourcesCore(fx.projectId, {
+      folderOrder: [
+        { id: fx.folder.id, orderIndex: NEW_ORDER, folderId: fx.other.id },
+      ],
+      resourceOrder: [],
+    }),
+};
+
+const OP_EFFECT: Record<FolderOp, (f: Record<string, unknown>) => boolean> = {
+  rename: (f) => f.name === NEW_NAME,
+  reorder: (f) => f.orderIndex === NEW_ORDER,
+  move: (f) => f.orderIndex === NEW_ORDER,
+};
+
+/** Runs `fn` with a storage adapter that lists each call on a folder sidecar path. */
+async function withSidecarRecording(
+  touched: string[],
+  fn: () => Promise<unknown>,
+): Promise<void> {
+  const real = getStorageAdapter();
+  const recording = new Proxy(real, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver) as unknown;
+      if (typeof value !== "function") return value;
+      return (...args: unknown[]): unknown => {
+        const first = args[0];
+        if (
+          typeof first === "string" &&
+          first.includes("folder-") &&
+          first.endsWith(".meta.json")
+        ) {
+          touched.push(String(prop));
+        }
+        return (value as (...a: unknown[]) => unknown).apply(target, args);
+      };
+    },
+  }) as StorageAdapter;
+  setStorageAdapter(recording);
+  try {
+    await fn();
+  } finally {
+    setStorageAdapter(real);
+  }
+}
+
+const FOLDER_OPS: FolderOp[] = ["rename", "reorder", "move"];
+const readJson = async (file: string): Promise<Record<string, unknown>> =>
+  JSON.parse(await fs.readFile(file, "utf8")) as Record<string, unknown>;
+
+describe.each(FOLDER_OPS)("Feature 102 Task 12: folder %s", (op) => {
+  it("keeps notes, field values and subtype and writes none into folder.json", async () => {
+    const fx = await newMetaFixture();
+    await saveMeta(fx);
+    const before = await getFolderMetadataCore(fx.projectId, fx.folder.id);
+    await OPS[op](fx);
+    const stored = await readJson(fx.folderJson);
+    expect(OP_EFFECT[op](stored)).toBe(true);
+    if (op === "move") expect(stored.parentId).toBe(fx.other.id);
+    expect(await getFolderMetadataCore(fx.projectId, fx.folder.id)).toEqual(
+      before,
+    );
+    expect(before).toEqual({
+      notes: META.notes,
+      fieldValues: META.fieldValues,
+      resourceSubtype: "Act",
+    });
+    for (const key of [
+      "notes",
+      "fieldValues",
+      "resourceSubtype",
+      "userMetadata",
+    ]) {
+      expect(stored).not.toHaveProperty(key);
+    }
+  });
+
+  it("neither reads, writes nor locks the sidecar", async () => {
+    const fx = await newMetaFixture();
+    const sidecar = folderSidecarPathForProject(fx.projectRoot, fx.folder.id);
+    await saveMeta(fx);
+    const bytes = await fs.readFile(sidecar, "utf8");
+    const touched: string[] = [];
+    requested = [];
+    installLockGuard(recordingGuard(fx.projectRoot));
+    await withSidecarRecording(touched, () => OPS[op](fx));
+    expect(touched).toEqual([]);
+    expect(requested.filter((k) => k.includes(".meta.json"))).toEqual([]);
+    expect(await fs.readFile(sidecar, "utf8")).toBe(bytes);
+  });
+
+  it("creates no sidecar for a folder that has none", async () => {
+    const fx = await newMetaFixture();
+    await OPS[op](fx);
+    await expect(
+      fs.stat(folderSidecarPathForProject(fx.projectRoot, fx.folder.id)),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("overlapped with a metadata save loses neither change", async () => {
+    for (let rep = 0; rep < 10; rep += 1) {
+      const fx = await newMetaFixture();
+      const settled = await Promise.allSettled([OPS[op](fx), saveMeta(fx)]);
+      expect(settled.map((s) => s.status)).toEqual(["fulfilled", "fulfilled"]);
+      expect(OP_EFFECT[op](await readJson(fx.folderJson))).toBe(true);
+      expect(await getFolderMetadataCore(fx.projectId, fx.folder.id)).toEqual({
+        notes: META.notes,
+        fieldValues: META.fieldValues,
+        resourceSubtype: "Act",
+      });
+    }
+  }, 60000);
+});
+
+describe("Feature 102 Task 12: reorder and a metadata save", () => {
+  it("completes without deadlock and does not take the folder sidecar lock itself", async () => {
+    const fx = await newMetaFixture();
+    requested = [];
+    installLockGuard(recordingGuard(fx.projectRoot));
+    await OPS.reorder(fx);
+    expect(requested.filter((k) => k.startsWith("withMetaLock"))).toHaveLength(
+      1,
+    );
+    expect(requested.filter((k) => k.includes("folder-"))).toEqual([]);
+    installLockGuard(createLockOrderGuard());
+    const timeout = new Promise<string>((resolve) =>
+      setTimeout(() => resolve("timeout"), 5000),
+    );
+    const both = Promise.all([
+      OPS.reorder(fx),
+      saveMeta(fx),
+      OPS.reorder(fx),
+      saveMeta(fx),
+    ]).then(() => "done");
+    expect(await Promise.race([both, timeout])).toBe("done");
+  }, 15000);
+});
+
+describe("Feature 102 Task 12: documents inside a folder do not inherit its data", () => {
+  it("leaves document sidecars byte-equal and search results unchanged", async () => {
+    const fx = await newMetaFixture();
+    const sidecarBytes = (): Promise<string[]> =>
+      Promise.all(
+        fx.docIds.map((id) =>
+          fs.readFile(sidecarPathForProject(fx.projectRoot, id), "utf8"),
+        ),
+      );
+    const bytesBefore = await sidecarBytes();
+    const hitsBefore = await search(fx.projectRoot, DOC_TOKEN);
+    const notesBefore = await search(fx.projectRoot, "quokka");
+    expect(hitsBefore.slice().sort()).toEqual(fx.docIds.slice().sort());
+    expect(notesBefore).toEqual([]);
+    await saveMeta(fx);
+    await updateFolderMetadataCore(fx.projectId, fx.folder.id, {
+      notes: "Quokka revised",
+      fieldValues: { mood: "light" },
+      resourceSubtype: "Scene",
+    });
+    await flushIndexer();
+    expect(await sidecarBytes()).toEqual(bytesBefore);
+    const hitsAfter = await search(fx.projectRoot, DOC_TOKEN);
+    expect(hitsAfter).toEqual(hitsBefore);
+    expect(hitsAfter).toHaveLength(hitsBefore.length);
+    expect(await search(fx.projectRoot, "quokka")).toEqual([]);
+    expect(await search(fx.projectRoot, "revised")).toEqual([]);
+  });
+});
+
+describe("Feature 102 Task 12: sidecar access recorder", () => {
+  it("sees a read and a write of the sidecar (control for the no-access checks)", async () => {
+    const fx = await newMetaFixture();
+    const touched: string[] = [];
+    await withSidecarRecording(touched, async () => {
+      await saveMeta(fx);
+      await getFolderMetadataCore(fx.projectId, fx.folder.id);
+    });
+    expect(touched.length).toBeGreaterThan(0);
+  });
+});
