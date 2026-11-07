@@ -132,7 +132,32 @@ describe("models/field-subtype-scope", () => {
     const keys = (subtype: string | undefined): string[] =>
       getFieldsOfferedOnFolder(schema, subtype).map((f) => f.key);
 
-    it("offers unrestricted custom fields, marked fields, and notes among built-ins", () => {
+    it("case 1: no appliesTo, flag off, is offered on a folder", () => {
+      expect(keys(undefined)).toContain("plain");
+      expect(keys("Scene")).toContain("plain");
+    });
+
+    it("case 2: no appliesTo, flag on, is offered on a folder", () => {
+      expect(keys(undefined)).toContain("marked");
+      expect(keys("Scene")).toContain("marked");
+    });
+
+    it("case 3: appliesTo matches the folder subtype, flag off, is NOT offered", () => {
+      expect(keys("Scene")).not.toContain("scene-only");
+      expect(keys("  sCENE ")).not.toContain("scene-only");
+    });
+
+    it("case 4: appliesTo matches the folder subtype, flag on, is offered (normalised)", () => {
+      expect(keys("Chapter")).toContain("marked-chapter");
+      expect(keys("  cHAPTER ")).toContain("marked-chapter");
+    });
+
+    it("case 5: appliesTo does not match the folder subtype, flag on, is NOT offered", () => {
+      expect(keys("Scene")).not.toContain("marked-chapter");
+      expect(keys(undefined)).not.toContain("marked-chapter");
+    });
+
+    it("offers exactly notes, plain and marked on a folder with no subtype", () => {
       expect(keys(undefined)).toEqual(["notes", "plain", "marked"]);
     });
 
@@ -140,19 +165,8 @@ describe("models/field-subtype-scope", () => {
       const builtIns = DEFAULT_METADATA_SCHEMA.groups.flatMap((g) =>
         g.fields.map((f) => f.key),
       );
-      const offered = keys(undefined).filter((k) => builtIns.includes(k));
+      const offered = keys("Chapter").filter((k) => builtIns.includes(k));
       expect(offered).toEqual(["notes"]);
-    });
-
-    it("does not offer a field limited to labels the folder does not carry", () => {
-      expect(keys("Chapter")).not.toContain("scene-only");
-      expect(keys(undefined)).not.toContain("scene-only");
-      expect(keys(undefined)).not.toContain("marked-chapter");
-    });
-
-    it("matches a folder subtype to appliesTo through normalizeSubtypeLabel", () => {
-      expect(keys("  sCENE ")).toContain("scene-only");
-      expect(keys("chapter")).toContain("marked-chapter");
     });
 
     it("offers a field with appliesToFolders and no appliesTo on documents too", () => {
@@ -179,7 +193,8 @@ describe("models/field-subtype-scope", () => {
           .filter(
             (f) =>
               !builtIns.has(f.key) &&
-              isFieldVisibleForSubtype(f.key, f.appliesTo, subtype),
+              isFieldVisibleForSubtype(f.key, f.appliesTo, subtype) &&
+              (!f.appliesTo?.length || f.appliesToFolders === true),
           )
           .map((f) => f.key);
         const customOffered = keys(subtype).filter((k) => !builtIns.has(k));
