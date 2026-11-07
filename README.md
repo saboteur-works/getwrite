@@ -19,6 +19,16 @@ latest build from the [Releases page](https://github.com/saboteur-works/getwrite
 The current builds are **not yet signed by Apple/Microsoft**, so the OS will warn
 before the first launch. See [where GetWrite keeps your work](docs/user/handbook/getting-started/installing.md#where-your-work-is-stored).
 
+## License
+
+GetWrite is source-available under the [Functional Source License, Version 1.1, ALv2 Future License](LICENSE.md) (FSL-1.1-ALv2), copyright 2026 Saboteur LLC.
+
+- You may use, copy, modify and self-host GetWrite for any purpose other than a competing commercial product or service, including all of your own writing.
+- Each version becomes available under the Apache License 2.0 two years after it is released.
+- The GetWrite and Saboteur names are not licensed for your use.
+
+Bundled fonts and third-party dependencies keep their own licenses.
+
 The rest of this README is for developing GetWrite from source.
 
 ## Quick links

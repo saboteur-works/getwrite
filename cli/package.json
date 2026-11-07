@@ -2,6 +2,7 @@
   "name": "getwrite-cli",
   "version": "0.2.44",
   "private": true,
+  "license": "FSL-1.1-ALv2",
   "description": "Standalone command-line tools for GetWrite projects (prune, reindex, templates, project scaffolding, doctor, screenshots).",
   "bin": {
     "getwrite-cli": "dist/bin/getwrite-cli.cjs"
