@@ -17,9 +17,16 @@
 - `tags` (array[string], optional): project-scoped tags.
 - `resourceSubtype` (string, optional): the resource's single subtype label (Feature 72); see [resource-subtype.md](resource-subtype.md).
 - `annotations` (array, optional; text resources, Feature 101): the writer's notes on passages, each `{ id, body, quote, createdAt, updatedAt }`. Written only by `annotations-core.ts` through `mutateSidecar`; not one of the client-writable keys of `updateSidecarCore`. See [annotations.md](./annotations.md).
+- `attachments` (array, optional; Sources, Feature 102): the Source's ordered attachment list, each `{ id, fileName, originalName, mime, size, addedAt }`; array order is display order and a new Source starts with `[]`. Written only by `source-attachments-core.ts` through `mutateSidecar`; not one of the client-writable keys of `updateSidecarCore`, so a whole-sidecar client write carrying a different or missing list leaves the stored list unchanged. At most 500 entries. The files are in the Source's `resources/<id>/` directory. See [sources.md](sources.md).
 - `templateId` (string, optional): if resource came from a template, the originating template id.
 - `metadata` (object, optional): system-managed or developer-extended fields (e.g., derived counts). Not directly editable by users through the UI.
 - `userMetadata` (object): user-managed metadata fields edited through the Metadata sidebar. See [docs/features/data/metadata.md](data/metadata.md) for the full field listing.
+
+**Folder sidecar (Feature 102)**
+
+- A folder's metadata is its own sidecar, `meta/folder-<id>.meta.json` (`folderSidecarFilename` and `folderSidecarPathForProject` in `sidecar.ts`, which throw on a non-UUID id). It holds `userMetadata` (plain-text `notes` and the custom field values) and the top-level `resourceSubtype`, and no document body. `folder.json` stays structural and holds none of them.
+- It is written only by `folder-metadata-core.ts`, under `withMetaLock` and then the sidecar's file lock with the read inside it, and only for the three keys of `FOLDER_METADATA_WRITABLE_KEYS` (`notes`, `fieldValues`, `resourceSubtype`); any other key is refused before any lock. A write for a folder id with no folder is refused with `FolderNotFoundError` (HTTP 404) and creates no sidecar (Owner decision, 2026-11-07).
+- `readFolderSidecar` reads an absent file as empty and creates nothing; a file that cannot be read or parsed raises `FolderSidecarUnreadableError` and is never read as empty; a locked-access error propagates. Rename, reorder and move write only `folder.json` and do not touch it. The Trash move of this sidecar is in [revisions.md](revisions.md). See [folder-metadata.md](folder-metadata.md).
 
 **`metadata` vs `userMetadata`**
 
