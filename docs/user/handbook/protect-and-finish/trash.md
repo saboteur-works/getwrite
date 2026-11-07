@@ -45,7 +45,9 @@ Both ask you to confirm. Permanent deletion can't be undone.
 
 ## If the project is locked
 
-If the project is encrypted and locked, restoring or permanently deleting an item asks for your passphrase. Enter it, then choose the action again. After you unlock, the **Trash** tab says "Workspace unlocked. Run the action again."
+If the project is encrypted and locked, opening the **Trash** tab asks for your passphrase. Enter it and the list loads. If you close the prompt instead, the tab says "This project is locked, so Trash cannot be listed." Choose **Unlock** to be asked again.
+
+Restoring or permanently deleting an item in a locked project asks for your passphrase too. Enter it, then choose the action again. The tab says "Workspace unlocked. Run the action again."
 
 If you are on another device that is not allowed to unlock, the tab says the workspace is locked and has to be unlocked on the computer where GetWrite is installed.
 
