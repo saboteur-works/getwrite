@@ -34,13 +34,17 @@ vi.mock("../src/lib/api/prose-diagnostics", () => ({
 
 // Feature 102, Task 33 (FR-24, FR-30): the sidebar for a selected Source.
 describe("MetadataSidebar for a selected Source (Task 33)", () => {
-  function mountSelected(res: AnyResource): void {
+  function mountSelected(
+    res: AnyResource,
+    features?: Record<string, boolean>,
+  ): void {
     const store = makeStore();
     store.dispatch(
       setProject({
         id: "p",
         rootPath: "/test",
         subtypes: ["Interview"],
+        ...(features ? { features } : {}),
         metadataSchema: {
           groups: [
             {
@@ -106,5 +110,35 @@ describe("MetadataSidebar for a selected Source (Task 33)", () => {
     expect(
       screen.queryByRole("button", { name: /attachments/i }),
     ).not.toBeInTheDocument();
+  });
+
+  // Owner decision 2026-11-07 (supersedes FR-21 OQ-9): a Source is declared
+  // and removed as an entity like a text resource.
+  it("shows the Entity section for a Source when the entities feature is on", async () => {
+    mountSelected(createSourceResource({ name: "Call notes" }), {
+      entities: true,
+    });
+    await flushPendingEffects();
+    expect(
+      screen.getByRole("button", { name: /^entity$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("entity-kind-input")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove Entity" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Remove Entity for a Source that has an entityKind", async () => {
+    mountSelected(
+      {
+        ...createSourceResource({ name: "Call notes" }),
+        entityKind: "interview",
+      } as AnyResource,
+      { entities: true },
+    );
+    await flushPendingEffects();
+    expect(
+      screen.getByRole("button", { name: "Remove Entity" }),
+    ).toBeInTheDocument();
   });
 });

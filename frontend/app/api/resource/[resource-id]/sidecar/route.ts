@@ -3,7 +3,6 @@ import {
   InvalidClearKeysCoreError,
   InvalidProjectIdCoreError,
   InvalidResourceSubtypeCoreError,
-  SourceEntityFieldsCoreError,
   updateSidecarCore,
 } from "../../../../../src/lib/models/resource-crud-core";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
@@ -68,12 +67,6 @@ async function handlePost(
     if (error instanceof InvalidResourceSubtypeCoreError) {
       return NextResponse.json(
         { error: "Invalid resourceSubtype", details: error.message },
-        { status: 400 },
-      );
-    }
-    if (error instanceof SourceEntityFieldsCoreError) {
-      return NextResponse.json(
-        { error: "Invalid entity fields for a Source", details: error.message },
         { status: 400 },
       );
     }

@@ -1376,3 +1376,100 @@ describe("TrashView — locked project (FR-26 decision 1)", () => {
     expect(screen.queryByText(UNLOCK_TITLE)).toBeNull();
   });
 });
+
+describe("TrashView — locked project, Trash list (FR-26 extension)", () => {
+  const UNLOCK_TITLE = "Unlock your encrypted projects";
+  const GENERIC = /Could not load Trash/i;
+
+  function mount(): void {
+    mockedListTrash.mockRejectedValueOnce(new ProjectLockedError(PROJECT_ID));
+    limitsMock.refresh.mockResolvedValue(limitsMock.state);
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+  }
+
+  beforeEach(() => {
+    vi.mocked(fetchEncryptionStatus).mockResolvedValue({
+      isAvailable: true,
+      hasKeyring: true,
+      isUnlocked: false,
+      encryptedProjectIds: [PROJECT_ID],
+    } as never);
+  });
+
+  afterEach(() => {
+    limitsMock.state = { state: "exempt" };
+  });
+
+  it("shows the unlock prompt, not the load failure, and not the empty state", async () => {
+    mount();
+    expect(await screen.findByText(UNLOCK_TITLE)).toBeTruthy();
+    expect(screen.queryByText(GENERIC)).toBeNull();
+    expect(screen.queryByTestId("trash-error")).toBeNull();
+    expect(screen.queryByTestId("trash-empty-state")).toBeNull();
+  });
+
+  it("reloads the list after a successful unlock and does not say to run the action again", async () => {
+    vi.mocked(unlockWorkspaceRequest).mockResolvedValue({
+      isAvailable: true,
+      hasKeyring: true,
+      isUnlocked: true,
+      encryptedProjectIds: [PROJECT_ID],
+    } as never);
+    mockedListTrash.mockResolvedValue(THREE_RESOURCE_LISTING);
+    mount();
+    await screen.findByText(UNLOCK_TITLE);
+    fireEvent.change(screen.getByLabelText(/passphrase/i), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    await waitFor(() =>
+      expect(unlockWorkspaceRequest).toHaveBeenCalledWith("correct horse"),
+    );
+    expect((await screen.findAllByTestId("trash-row")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByText(UNLOCK_TITLE)).toBeNull();
+    expect(screen.queryByText(/Run the action again/i)).toBeNull();
+  });
+
+  it("keeps a visible locked message after the writer declines, never the empty state", async () => {
+    mount();
+    await screen.findByText(UNLOCK_TITLE);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue without unlocking" }),
+    );
+    await waitFor(() => expect(screen.queryByText(UNLOCK_TITLE)).toBeNull());
+    expect(screen.getByTestId("trash-locked")).toBeTruthy();
+    expect(screen.queryByTestId("trash-empty-state")).toBeNull();
+  });
+
+  it("on a paired device with unlocking limited, says to unlock at the desktop and mounts no prompt", async () => {
+    limitsMock.state = {
+      state: "paired",
+      limits: { unlocking: true },
+    } as never;
+    mount();
+    expect(await screen.findByText(UNLOCK_AT_DESKTOP_MESSAGE)).toBeTruthy();
+    expect(screen.queryByText(UNLOCK_TITLE)).toBeNull();
+    expect(screen.queryByText(GENERIC)).toBeNull();
+  });
+
+  it("a non-locked list failure still shows the load failure", async () => {
+    mockedListTrash.mockRejectedValueOnce(new Error("boom"));
+    render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    expect(await screen.findByText(GENERIC)).toBeTruthy();
+    expect(screen.queryByText(UNLOCK_TITLE)).toBeNull();
+  });
+});

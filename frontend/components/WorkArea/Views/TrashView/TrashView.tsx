@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../../../src/store/projectsSlice";
 import {
@@ -257,6 +257,9 @@ export default function TrashView({
   const [itemFailures, setItemFailures] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The listing itself hit a locked project (FR-26 extension): not a load
+  // failure to retry, and not an empty Trash.
+  const [isListLocked, setIsListLocked] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<PendingBatchAction | null>(
@@ -283,6 +286,53 @@ export default function TrashView({
     isUnlockPromptOpen && isUnlockPromptAllowed(limitsState, hasDesktopBridge);
   useDeclareUnlockPromptMounted(isUnlockPromptShown);
 
+  // `refetch` reads the limits through a ref so its identity, and so the
+  // effect below, does not change when the limits refresh.
+  const limitsStateRef = useRef(limitsState);
+  limitsStateRef.current = limitsState;
+  // What the open unlock prompt is for: a locked listing reloads the list
+  // after unlocking; a locked restore or purge asks the writer to repeat it.
+  const unlockForRef = useRef<"list" | "action">("action");
+
+  const refetch = useCallback(() => {
+    if (!projectId) {
+      setResources([]);
+      setFolders([]);
+      setAttachments([]);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setIsListLocked(false);
+    void listTrash(projectId)
+      .then((listing) => {
+        setResources(listing.resources);
+        setFolders(listing.folders);
+        setAttachments(listing.attachments ?? []);
+      })
+      .catch((err: unknown) => {
+        if (isLockedAccessError(err)) {
+          // The project needs unlocking before Trash can be listed.
+          void dispatch(checkWorkspaceLock());
+          setIsListLocked(true);
+          unlockForRef.current = "list";
+          if (isUnlockingLimited(limitsStateRef.current)) {
+            setActionRefusal(UNLOCK_AT_DESKTOP_MESSAGE);
+          } else {
+            setActionRefusal(null);
+            setIsUnlockPromptOpen(true);
+          }
+          return;
+        }
+        // FR-1: listTrash rejects rather than degrading (see
+        // lib/api/trash.ts's doc comment) — surface that as a distinct
+        // error state rather than falling through to the empty state,
+        // which would misleadingly read as "Trash is empty."
+        setError("Could not load Trash. Try again later.");
+      })
+      .finally(() => setIsLoading(false));
+  }, [projectId, dispatch]);
+
   // The state may have changed since the prompt opened: re-read at submit and
   // send the passphrase only if the fresh answer still permits the prompt
   // (same narrowing as `StartPage`).
@@ -298,35 +348,14 @@ export default function TrashView({
         return;
       }
       setIsUnlockPromptOpen(false);
-      setReport("Workspace unlocked. Run the action again.");
+      if (unlockForRef.current === "list") {
+        refetch();
+      } else {
+        setReport("Workspace unlocked. Run the action again.");
+      }
     },
-    [dispatch, hasDesktopBridge, refreshLimits],
+    [dispatch, hasDesktopBridge, refreshLimits, refetch],
   );
-
-  const refetch = useCallback(() => {
-    if (!projectId) {
-      setResources([]);
-      setFolders([]);
-      setAttachments([]);
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    void listTrash(projectId)
-      .then((listing) => {
-        setResources(listing.resources);
-        setFolders(listing.folders);
-        setAttachments(listing.attachments ?? []);
-      })
-      .catch(() => {
-        // FR-1: listTrash rejects rather than degrading (see
-        // lib/api/trash.ts's doc comment) — surface that as a distinct
-        // error state rather than falling through to the empty state,
-        // which would misleadingly read as "Trash is empty."
-        setError("Could not load Trash. Try again later.");
-      })
-      .finally(() => setIsLoading(false));
-  }, [projectId]);
 
   useEffect(() => {
     refetch();
@@ -339,6 +368,7 @@ export default function TrashView({
   const isEmpty =
     !isLoading &&
     !error &&
+    !isListLocked &&
     resources.length === 0 &&
     folders.length === 0 &&
     attachments.length === 0;
@@ -524,6 +554,7 @@ export default function TrashView({
             setActionRefusal(UNLOCK_AT_DESKTOP_MESSAGE);
           } else {
             setActionRefusal(null);
+            unlockForRef.current = "action";
             setIsUnlockPromptOpen(true);
           }
         } else if (isLimitRefusalError(err)) {
@@ -585,6 +616,25 @@ export default function TrashView({
         <p className="mb-3 text-gw-small text-gw-secondary" role="status">
           Loading Trash&hellip;
         </p>
+      )}
+
+      {isListLocked && !isLoading && (
+        <div data-testid="trash-locked" className="mb-3" role="status">
+          <p className="text-gw-small font-medium text-gw-primary">
+            This project is locked, so Trash cannot be listed.
+          </p>
+          {!isUnlockingLimited(limitsState) && !isUnlockPromptShown ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                unlockForRef.current = "list";
+                setIsUnlockPromptOpen(true);
+              }}
+            >
+              Unlock
+            </Button>
+          ) : null}
+        </div>
       )}
 
       {error && (

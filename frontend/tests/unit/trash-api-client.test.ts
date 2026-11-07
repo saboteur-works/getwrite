@@ -374,6 +374,53 @@ describe("trash restore and purge — locked project (FR-26 decision 1)", () => 
   });
 });
 
+describe("trash list — locked project (FR-26 extension)", () => {
+  beforeEach(() => {
+    delete process.env[RUNTIME_ENV];
+  });
+
+  function respond(status: number, headers: Record<string, string> = {}): void {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status,
+      headers: new Headers(headers),
+      json: async () => ({ error: "locked" }),
+    } as Response);
+  }
+
+  it("rejects with ProjectLockedError on 401", async () => {
+    respond(401);
+    const error: unknown = await listTrash("project-1").catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(ProjectLockedError);
+  });
+
+  it("rejects with MissingProjectKeyError on 409", async () => {
+    respond(409);
+    const error: unknown = await listTrash("project-1").catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(MissingProjectKeyError);
+  });
+
+  it("does not treat the not-paired gate's 401 as a locked project", async () => {
+    respond(401, { "x-getwrite-gate": "not-paired" });
+    const error: unknown = await listTrash("project-1").catch(
+      (e: unknown) => e,
+    );
+    expect(isLockedAccessError(error)).toBe(false);
+    expect((error as Error).message).toBe("Failed to load trash (status 401).");
+  });
+
+  it("keeps the status message for a 500", async () => {
+    respond(500);
+    await expect(listTrash("project-1")).rejects.toThrow(
+      "Failed to load trash (status 500).",
+    );
+  });
+});
+
 describe("httpTrashTransport", () => {
   it("is the transport object used directly by the resolver in web runtime", () => {
     expect(typeof httpTrashTransport.list).toBe("function");

@@ -671,16 +671,6 @@ describe("POST /api/resource/[resource-id]/sidecar (Source rules, Feature 102 FR
     return resourceId;
   }
 
-  async function sidecarBytes(
-    projectPath: string,
-    resourceId: string,
-  ): Promise<string> {
-    return fs.readFile(
-      path.join(projectPath, "meta", `resource-${resourceId}.meta.json`),
-      "utf8",
-    );
-  }
-
   it("stores a subtype set on a Source", async () => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
@@ -699,36 +689,35 @@ describe("POST /api/resource/[resource-id]/sidecar (Source rules, Feature 102 FR
     ["entityKind", { entityKind: "character" }],
     ["aliases", { aliases: ["Al"] }],
     ["both keys", { entityKind: "character", aliases: ["Al"] }],
-  ])(
-    "refuses %s for a Source with 400 and stores nothing",
-    async (_label, fields) => {
-      const { projectsDir, projectId, projectPath } =
-        await makeTmpProjectsDir();
-      await withProjectsDirEnv(projectsDir, async () => {
-        const id = await seed(projectPath, "source");
-        const before = await sidecarBytes(projectPath, id);
-        const res = await post(projectId, id, {
-          updatedResource: { resourceSubtype: "Interview", ...fields },
-        });
-        expect(res.status).toBe(400);
-        const body = (await res.json()) as { error: string };
-        expect(body.error).toBe("Invalid entity fields for a Source");
-        expect(await sidecarBytes(projectPath, id)).toBe(before);
-      });
-    },
-  );
-
-  it("refuses entity keys for a Source even when sent with clearKeys", async () => {
+  ])("stores %s on a Source", async (_label, fields) => {
     const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
       const id = await seed(projectPath, "source");
-      const before = await sidecarBytes(projectPath, id);
+      const res = await post(projectId, id, {
+        updatedResource: { resourceSubtype: "Interview", ...fields },
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, id);
+      for (const [key, value] of Object.entries(fields)) {
+        expect(sidecar?.[key]).toEqual(value);
+      }
+    });
+  });
+
+  it("stores entityKind on a Source when sent with an unrelated clearKeys", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const id = await seed(projectPath, "source", {
+        resourceSubtype: "Interview",
+      });
       const res = await post(projectId, id, {
         updatedResource: { entityKind: "character" },
         clearKeys: ["resourceSubtype"],
       });
-      expect(res.status).toBe(400);
-      expect(await sidecarBytes(projectPath, id)).toBe(before);
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, id);
+      expect(sidecar?.entityKind).toBe("character");
+      expect(sidecar).not.toHaveProperty("resourceSubtype");
     });
   });
 
@@ -763,6 +752,56 @@ describe("POST /api/resource/[resource-id]/sidecar (Source rules, Feature 102 FR
       const sidecar = await readSidecar(projectPath, id);
       expect(sidecar?.entityKind).toBe("character");
       expect(sidecar?.aliases).toEqual(["Al"]);
+    });
+  });
+});
+
+describe("POST /api/resource/[resource-id]/sidecar (Source as entity, Feature 102 FR-21)", () => {
+  async function post(
+    projectId: string,
+    resourceId: string,
+    body: Record<string, unknown>,
+    clearKeys?: string[],
+  ): Promise<Response> {
+    const { POST } =
+      await import("../../app/api/resource/[resource-id]/sidecar/route");
+    return POST(
+      sidecarRequest(resourceId, {
+        projectId,
+        updatedResource: body,
+        ...(clearKeys ? { clearKeys } : {}),
+      }) as never,
+      { params: Promise.resolve({ "resource-id": resourceId }) },
+    );
+  }
+
+  it("sets entityKind and aliases on a Source, then clears both", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Call notes",
+        type: "source",
+      });
+
+      const set = await post(projectId, resourceId, {
+        entityKind: "interview",
+        aliases: ["The call"],
+      });
+      expect(set.status).toBe(200);
+      const stored = await readSidecar(projectPath, resourceId);
+      expect(stored?.entityKind).toBe("interview");
+      expect(stored?.aliases).toEqual(["The call"]);
+
+      const cleared = await post(projectId, resourceId, {}, [
+        "entityKind",
+        "aliases",
+      ]);
+      expect(cleared.status).toBe(200);
+      const after = await readSidecar(projectPath, resourceId);
+      expect(after).not.toHaveProperty("entityKind");
+      expect(after).not.toHaveProperty("aliases");
     });
   });
 });

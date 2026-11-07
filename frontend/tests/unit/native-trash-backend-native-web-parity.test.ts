@@ -549,4 +549,25 @@ describe("native Trash backend: locked project (Task 35, FR-26 decision 1)", () 
     );
     purgeSpy.mockRestore();
   });
+
+  it("rejects list with the locked error instead of degrading to an empty listing", async () => {
+    const nativeFs = createFakeCapacitorFilesystem();
+    const adapter = capacitorFsAdapter(nativeFs);
+    const projectId = generateUUID();
+    await adapter.mkdir(`/projects/${projectId}`, { recursive: true });
+    const transport = createNativeTrashTransport({
+      fs: nativeFs,
+      projectsDir: "/projects",
+    });
+    const spy = vi
+      .spyOn(trashCore, "listTrashCore")
+      .mockRejectedValue(new ProjectLockedError(projectId));
+    try {
+      await expect(transport.list(projectId)).rejects.toBeInstanceOf(
+        ProjectLockedError,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

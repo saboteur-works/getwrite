@@ -343,6 +343,46 @@ describe("native resources transport — in-process backend reuses the shared re
     expect(sidecar.name).toBe("Entity Target");
   });
 
+  it("updateSidecar sets entityKind and aliases on a Source, and clearKeys removes both (Feature 102 FR-21)", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const projectId = await makeProject(fs);
+    const transport = createNativeResourcesTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    const created = await transport.create(projectId, {
+      type: "source",
+      name: "Interview",
+      text: { plainText: "words" },
+    });
+    const adapter = capacitorFsAdapter(fs);
+    const sidecarPath = sidecarPathForProject(
+      path.join(PROJECTS_DIR, projectId),
+      created.resource.id,
+    );
+    const readStored = async (): Promise<Record<string, unknown>> =>
+      JSON.parse((await adapter.readFile(sidecarPath, "utf-8")) as string);
+
+    await transport.updateSidecar(created.resource.id, projectId, {
+      ...created.resource,
+      entityKind: "interview",
+      aliases: ["The call"],
+    } as never);
+    const set = await readStored();
+    expect(set.entityKind).toBe("interview");
+    expect(set.aliases).toEqual(["The call"]);
+
+    await transport.updateSidecar(
+      created.resource.id,
+      projectId,
+      { ...created.resource } as never,
+      ["entityKind", "aliases"],
+    );
+    const cleared = await readStored();
+    expect(cleared).not.toHaveProperty("entityKind");
+    expect(cleared).not.toHaveProperty("aliases");
+  });
+
   it("updateSidecar sets, then clears, resourceSubtype through clearKeys on the native path, leaving entity fields alone (FR-7/FR-8)", async () => {
     const fs = createFakeCapacitorFilesystem();
     const projectId = await makeProject(fs);

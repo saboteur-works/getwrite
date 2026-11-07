@@ -161,6 +161,10 @@ export const httpTrashTransport: TrashTransport = {
       `/api/project/${encodeURIComponent(projectId)}/trash`,
     );
     if (!response.ok) {
+      // A locked project is not a load failure to retry (FR-26): reject with
+      // the same locked-access error the native backend throws.
+      const locked = lockedAccessErrorFromResponse(response, projectId);
+      if (locked) throw locked;
       throw new Error(`Failed to load trash (status ${response.status}).`);
     }
     const data = (await response.json()) as unknown;
