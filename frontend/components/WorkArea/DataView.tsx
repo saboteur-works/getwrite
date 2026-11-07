@@ -262,6 +262,15 @@ export default function DataView({
     0,
   );
 
+  // Owner decision, 2026-11-07 (Feature 102, FR-28): with no goal filter the
+  // project goal total leaves out Sources. A goal filter that selects Sources
+  // counts them through `filteredGoalTotal`; "Total words" above is unchanged.
+  const goalWords = flatResources.reduce(
+    (acc: number, r: AnyResource) =>
+      r.type === "source" ? acc : acc + getWordCount(r),
+    0,
+  );
+
   return (
     <div className={`mt-4 space-y-6 px-4 ${className}`}>
       <CollapsibleSection
@@ -299,7 +308,7 @@ export default function DataView({
               goal={wordCountGoal}
             />
           ) : (
-            <WordCountProgressBar current={totalWords} goal={wordCountGoal} />
+            <WordCountProgressBar current={goalWords} goal={wordCountGoal} />
           )}
         </CollapsibleSection>
       ) : null}

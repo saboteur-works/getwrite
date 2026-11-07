@@ -196,7 +196,7 @@ describe("useDataViewFilteredTotal", () => {
 });
 
 describe("DataView goal bar with no goal filter (Feature 102 FR-28)", () => {
-  it("includes a Source's words in the project total, as observed", () => {
+  it("leaves a Source's words out of the project goal total (Task 35, owner decision 2026-11-07)", () => {
     render(
       <DataView
         project={makeProject(1000)}
@@ -210,6 +210,25 @@ describe("DataView goal bar with no goal filter (Feature 102 FR-28)", () => {
         ]}
       />,
     );
-    expect(screen.getByText(/17 \/ 1,000 words/)).toBeInTheDocument();
+    expect(screen.getByText(/^10 \/ 1,000 words/)).toBeInTheDocument();
+    expect(screen.queryByText(/17 \/ 1,000 words/)).toBeNull();
+  });
+
+  it("shows the supplied filtered total, which a goal filter that selects Sources has counted", () => {
+    render(
+      <DataView
+        project={makeProject(1000)}
+        resources={[
+          ...resourcesOf(10),
+          createSourceResource({
+            name: "Research",
+            plainText: "w ".repeat(7),
+            folderId: null,
+          } as never),
+        ]}
+        filteredGoalTotal={filtered({ status: "total", total: 17 })}
+      />,
+    );
+    expect(screen.getByText(/^17 \/ 1,000 words/)).toBeInTheDocument();
   });
 });

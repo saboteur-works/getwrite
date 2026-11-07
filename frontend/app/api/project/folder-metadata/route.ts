@@ -12,14 +12,15 @@
  *   and its refusal message is the 400 error body.
  *
  * `projectId` and `folderId` are UUID-validated and the project root is
- * derived by the core; no client-supplied path is accepted. The route does
- * not check that the folder exists: the core checks only the id's shape, so
- * a write for an unknown folder id creates a sidecar for it. Locked-access
+ * derived by the core; no client-supplied path is accepted. A PUT for a
+ * folder id with no folder behind it is 404 `{ error: "Folder not found" }`
+ * and creates no sidecar (Owner decision, 2026-11-07, FR-3). Locked-access
  * errors are rethrown for `withStorageContext` to map to 401/409.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { respondInvalidProjectId } from "../../../../src/lib/models/project-path";
 import {
+  FolderNotFoundError,
   getFolderMetadataCore,
   InvalidFolderMetadataError,
   InvalidProjectIdCoreError,
@@ -38,6 +39,9 @@ function mapCoreError(error: unknown): Response {
   }
   if (error instanceof InvalidFolderMetadataError) {
     return badRequest(error.message);
+  }
+  if (error instanceof FolderNotFoundError) {
+    return NextResponse.json({ error: error.message }, { status: 404 });
   }
   throw error;
 }

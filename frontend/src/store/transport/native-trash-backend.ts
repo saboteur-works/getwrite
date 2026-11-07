@@ -40,7 +40,8 @@
  * 2. `list` never catches internally: a `listTrashCore` throw (e.g. a
  *    Capacitor filesystem-bridge error) always propagates as a rejected
  *    promise rather than degrading to an empty/partial listing.
- * 3. Inside `restore`/`purge`'s per-id loop (once the project root is
+ * 3. (A locked-access error from a per-id call rejects the whole call; see
+ *    the catch sites below.) Inside `restore`/`purge`'s per-id loop (once the project root is
  *    already known valid), any error thrown for a single id — a bridge
  *    error, or a `PurgeSweepError` mid-sweep — is caught at the per-item
  *    boundary and turned into that id's `{ id, ok: false, error }` result,
@@ -50,6 +51,7 @@
  *    those calls (e.g. a bridge error surfacing through `run()` itself).
  */
 import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
+import { isLockedAccessError } from "../../lib/models/locked-access";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
 import {
   listTrashCore,
@@ -103,6 +105,9 @@ export function createNativeTrashTransport(
           const result = await run(() => restoreOneCore(projectRoot, id));
           results.push(result);
         } catch (err: unknown) {
+          // A locked project is not a per-item outcome (FR-26): it rejects
+          // the call so the caller shows the unlock prompt.
+          if (isLockedAccessError(err)) throw err;
           // Case 2/3: a per-item failure is caught here and reported for
           // this id only; the batch continues to the next id.
           results.push({ id, ok: false, error: errorMessage(err) });
@@ -141,6 +146,9 @@ export function createNativeTrashTransport(
           const result = await run(() => purgeOneCore(projectRoot, id));
           results.push(result);
         } catch (err: unknown) {
+          // A locked project is not a per-item outcome (FR-26): it rejects
+          // the call so the caller shows the unlock prompt.
+          if (isLockedAccessError(err)) throw err;
           // Case 2/3: a per-item failure (including a `PurgeSweepError`
           // that somehow escaped `purgeOneCore`'s own internal catch) is
           // caught here and reported for this id only; the batch continues.

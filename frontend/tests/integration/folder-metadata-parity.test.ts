@@ -42,6 +42,15 @@ afterEach(async () => {
   }
 });
 
+const FOLDER_JSON = JSON.stringify({
+  id: FOLDER_ID,
+  slug: "act-one",
+  name: "Act One",
+  type: "folder",
+  orderIndex: 0,
+  createdAt: "2026-01-01T00:00:00.000Z",
+});
+
 interface Side {
   dir: string;
   projectId: string;
@@ -56,6 +65,13 @@ async function seedReal(): Promise<Side> {
     path.join(dir, projectId, "project.json"),
     JSON.stringify({ id: projectId, name: "p", config: CONFIG }),
   );
+  await fs.mkdir(path.join(dir, projectId, "folders", "act-one"), {
+    recursive: true,
+  });
+  await fs.writeFile(
+    path.join(dir, projectId, "folders", "act-one", "folder.json"),
+    FOLDER_JSON,
+  );
   return { dir, projectId };
 }
 
@@ -68,6 +84,13 @@ async function seedNative() {
   await adapter.writeFile(
     path.join(root, "project.json"),
     JSON.stringify({ id: projectId, name: "p", config: CONFIG }),
+  );
+  await adapter.mkdir(path.join(root, "folders", "act-one"), {
+    recursive: true,
+  });
+  await adapter.writeFile(
+    path.join(root, "folders", "act-one", "folder.json"),
+    FOLDER_JSON,
   );
   return { nativeFs, projectId };
 }
@@ -225,6 +248,44 @@ describe("folder metadata parity: core, route, native (FR-8)", () => {
     expect(core).toEqual(expected);
     expect(route).toEqual(expected);
     expect(native).toEqual(expected);
+  });
+
+  it("refuses a write for an unknown folder id with 404 and the same message on all three, creating no sidecar (Task 35, FR-3)", async () => {
+    const core = await seedReal();
+    const route = await seedReal();
+    const native = await seedNative();
+    const unknown = generateUUID();
+    const message = "Folder not found";
+    await withProjectsDir(core.dir, async () => {
+      await expect(
+        updateFolderMetadataCore(core.projectId, unknown, { notes: "x" }),
+      ).rejects.toThrow(message);
+    });
+    expect(await viaRoute(route, { notes: "x" }, unknown)).toEqual({
+      ok: false,
+      message,
+      status: 404,
+    });
+    await expect(
+      createNativeFolderMetadataTransport({
+        fs: native.nativeFs,
+        projectsDir: NATIVE_PROJECTS_DIR,
+      }).updateFolderMetadata(native.projectId, unknown, { notes: "x" }),
+    ).rejects.toThrow(message);
+    const sidecar = `folder-${unknown}.meta.json`;
+    for (const dir of [core.dir, route.dir]) {
+      const projectId = dir === core.dir ? core.projectId : route.projectId;
+      const names = await fs
+        .readdir(path.join(dir, projectId, "meta"))
+        .catch(() => [] as string[]);
+      expect(names).not.toContain(sidecar);
+    }
+    const nativeAdapter = capacitorFsAdapter(native.nativeFs);
+    await expect(
+      nativeAdapter.stat(
+        path.join(NATIVE_PROJECTS_DIR, native.projectId, "meta", sidecar),
+      ),
+    ).rejects.toThrow();
   });
 
   it("refuses an invalid folder id with the same message on all three", async () => {

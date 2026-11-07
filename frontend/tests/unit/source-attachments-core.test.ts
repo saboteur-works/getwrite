@@ -65,6 +65,7 @@ import {
 } from "../../src/lib/models/trash";
 import {
   listTrashCore,
+  purgeBatchCore,
   purgeOneCore,
   restoreOneCore,
 } from "../../src/lib/models/trash-core";
@@ -761,34 +762,42 @@ describe("encrypted Source: attachments, Trash and locked access (Task 26, FR-31
     expect(left.some((f) => f.includes(sid))).toBe(false);
   });
 
-  it("observed: a locked restore of an attachment entry returns ok:false with the locked message and a locked purge returns ok:true", async () => {
+  it("a locked restore of an attachment entry propagates the locked error, not ok:false (Task 35, FR-26 decision 1)", async () => {
     const a = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
     const { trashId } = await inCtx(() => removeAttachmentCore(pid, sid, a.id));
     keyring.lock();
-    const restored = await inCtx(() => restoreOneCore(root, trashId));
-    expect(restored.ok).toBe(false);
-    expect(restored.ok === false && restored.error).toMatch(/locked/i);
-    // The listing rejects; it never degrades to empty.
+    await expect(inCtx(() => restoreOneCore(root, trashId))).rejects.toSatisfy(
+      locked,
+    );
+    // The listing rejects too; it never degrades to empty.
     await expect(inCtx(() => listTrashCore(root))).rejects.toSatisfy(locked);
-    const purged = await inCtx(() => purgeOneCore(root, trashId));
-    // Observed, a gap against the resource kind below: the attachment purge
-    // needs no key (plain rm of a path), so it succeeds on a locked project.
-    expect(purged.ok).toBe(true);
-    expect(await allFiles(`${root}/.trash`)).toEqual([]);
   });
 
-  it("observed: a locked restore and purge of a trashed Source (resource kind)", async () => {
+  it("a locked purge of an attachment entry is refused with the locked error, its file and record kept (Task 35, FR-26 decision 2)", async () => {
+    const a = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    const { trashId } = await inCtx(() => removeAttachmentCore(pid, sid, a.id));
+    const before = await allFiles(`${root}/.trash`);
+    expect(before.length).toBeGreaterThan(0);
+    keyring.lock();
+    await expect(inCtx(() => purgeOneCore(root, trashId))).rejects.toSatisfy(
+      locked,
+    );
+    await expect(
+      inCtx(() => purgeBatchCore(root, { ids: [trashId] })),
+    ).rejects.toSatisfy(locked);
+    expect(await allFiles(`${root}/.trash`)).toEqual(before);
+  });
+
+  it("a locked restore and purge of a trashed Source propagate the locked error and keep the trashed bytes (Task 35, FR-26 decision 1)", async () => {
     await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
     await inCtx(() => softDeleteResource(root, sid));
     keyring.lock();
-    const restored = await inCtx(() => restoreOneCore(root, sid));
-    const purged = await inCtx(() => purgeOneCore(root, sid));
-    expect(restored.ok).toBe(false);
-    expect(restored.ok === false && restored.error).toMatch(/locked/i);
-    // The resource-kind purge is refused by its first sweep step and keeps the
-    // trashed attachment bytes.
-    expect(purged.ok).toBe(false);
-    expect(purged.ok === false && purged.error).toMatch(/locked/i);
+    await expect(inCtx(() => restoreOneCore(root, sid))).rejects.toSatisfy(
+      locked,
+    );
+    await expect(inCtx(() => purgeOneCore(root, sid))).rejects.toSatisfy(
+      locked,
+    );
     expect(
       (await allFiles(`${root}/.trash`)).some((f) => f.includes("attachment-")),
     ).toBe(true);

@@ -2,9 +2,8 @@
  * Feature 102 Task 9: GET/PUT /api/project/folder-metadata. The route maps
  * the core's refusal to 400, an invalid project or folder id to 400, and a
  * locked project to the existing locked response (401/409) through
- * withStorageContext. The route does not check that the folder exists (the
- * core checks only that the id is a UUID); the observed behaviour is pinned
- * below so a later change is visible.
+ * withStorageContext. Owner decision 2026-11-07 (Task 35, FR-3): a write for
+ * a folder id with no folder behind it is 404 and creates no sidecar.
  */
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -61,6 +60,24 @@ async function setup(
     "utf8",
   );
   return { dir, id, root };
+}
+
+/** Writes a `folders/<slug>/folder.json` descriptor so `folderId` names a folder. */
+async function addFolder(root: string, folderId: string): Promise<void> {
+  const dir = path.join(root, "folders", "act-one");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(
+    path.join(dir, "folder.json"),
+    JSON.stringify({
+      id: folderId,
+      slug: "act-one",
+      name: "Act One",
+      type: "folder",
+      orderIndex: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }),
+    "utf8",
+  );
 }
 
 async function withDir<T>(dir: string, fn: () => Promise<T>): Promise<T> {
@@ -132,8 +149,9 @@ describe("GET /api/project/folder-metadata", () => {
 
 describe("PUT /api/project/folder-metadata", () => {
   it("writes and returns the merged metadata", async () => {
-    const { dir, id } = await setup();
+    const { dir, id, root } = await setup();
     const folderId = generateUUID();
+    await addFolder(root, folderId);
     const res = await withDir(dir, () =>
       PUT(put({ projectId: id, folderId, metadata: { notes: "hello" } })),
     );
@@ -186,14 +204,16 @@ describe("PUT /api/project/folder-metadata", () => {
   });
 
   it("ignores a client-supplied path", async () => {
-    const { dir, id } = await setup();
+    const { dir, id, root } = await setup();
     const other = path.join(dir, "elsewhere");
     await fs.mkdir(other);
+    const folderId = generateUUID();
+    await addFolder(root, folderId);
     const res = await withDir(dir, () =>
       PUT(
         put({
           projectId: id,
-          folderId: generateUUID(),
+          folderId,
           projectRoot: other,
           metadata: { notes: "ok" },
         }),
@@ -203,16 +223,21 @@ describe("PUT /api/project/folder-metadata", () => {
     expect(await fs.readdir(other)).toEqual([]);
   });
 
-  it("does not check that the folder exists: an unknown folder id is written (observed)", async () => {
+  it("answers 404 for an unknown folder id and creates no sidecar", async () => {
     const { dir, id, root } = await setup();
     const folderId = generateUUID();
     const res = await withDir(dir, () =>
       PUT(put({ projectId: id, folderId, metadata: { notes: "orphan" } })),
     );
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("Folder not found");
     await expect(
       fs.stat(folderSidecarPathForProject(root, folderId)),
-    ).resolves.toBeDefined();
+    ).rejects.toThrow();
+    const metaEntries = await fs
+      .readdir(path.join(root, "meta"))
+      .catch(() => []);
+    expect(metaEntries.filter((n) => n.startsWith("folder-"))).toEqual([]);
   });
 });
 

@@ -344,7 +344,7 @@ Measurements go in `specs/features/folder-metadata-sources-core/experiments.md`,
 **Depends on:** 8, 9, 11, 25, 27, 28, 30
 **Estimate:** 8
 **Notes:** Satisfies FR-31 (d) as far as it can run without a device; also FR-3, FR-7, FR-26, FR-28, FR-31 (a2) as amended 2026-11-07. Device verification is not a merge gate. These fixes edit `trash.ts` and `trash-core.ts` after Task 26 and are the last task to do so; no other remaining task edits them. FR-7: do not change `purgeFolder`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 36: Record the Source-specific and folder interface files
 **What:** Record the list of files added or changed under `frontend/components/` with, for each, why it is not a Sources view or panel.

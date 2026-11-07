@@ -13,6 +13,7 @@ import * as nativeBackend from "../../src/store/transport/native-folder-metadata
 import * as webStub from "../../src/store/transport/native-folder-metadata-backend.web-stub";
 import * as core from "../../src/lib/models/folder-metadata-core";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
+import { capacitorFsAdapter } from "../../src/lib/models/capacitorFsAdapter";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
@@ -129,6 +130,30 @@ describe("native backend", () => {
     await expect(
       transport().updateFolderMetadata("p", "f", { notes: 1 }),
     ).rejects.toThrow("notes must be a string");
+  });
+});
+
+describe("native backend, unknown folder (Task 35, FR-3)", () => {
+  it("rejects with the same not-found message as the route and creates no sidecar", async () => {
+    const fake = createFakeCapacitorFilesystem();
+    const projectId = "66666666-6666-4666-8666-666666666666";
+    const folderId = "77777777-7777-4777-8777-777777777777";
+    const adapter = capacitorFsAdapter(fake);
+    await adapter.mkdir(`/projects/${projectId}`, { recursive: true });
+    await adapter.writeFile(
+      `/projects/${projectId}/project.json`,
+      JSON.stringify({ id: projectId, name: "p" }),
+    );
+    const t = nativeBackend.createNativeFolderMetadataTransport({
+      fs: fake,
+      projectsDir: "/projects",
+    });
+    await expect(
+      t.updateFolderMetadata(projectId, folderId, { notes: "orphan" }),
+    ).rejects.toThrow("Folder not found");
+    await expect(
+      adapter.stat(`/projects/${projectId}/meta/folder-${folderId}.meta.json`),
+    ).rejects.toThrow();
   });
 });
 

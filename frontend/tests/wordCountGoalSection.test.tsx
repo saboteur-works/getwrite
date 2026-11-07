@@ -16,6 +16,7 @@ import {
   createImageResource,
   createAudioResource,
 } from "../src/lib/models/resource";
+import { createSourceResource } from "../src/lib/models/resource-factory";
 import type { AnyResource } from "../src/lib/models/types";
 
 vi.mock("../src/lib/api/resources", () => ({
@@ -57,6 +58,17 @@ describe("WordCountGoalSection", () => {
     );
 
     expect(screen.getByLabelText("word-count-goal-input")).toBeInTheDocument();
+  });
+
+  it("does not render for a Source: the per-resource goal is unchanged by the Source goal decision (Task 35, FR-28)", () => {
+    const res = createSourceResource({ name: "Interview", plainText: "x" });
+    const store = setupStore(res as AnyResource);
+    render(
+      <Provider store={store}>
+        <WordCountGoalSection />
+      </Provider>,
+    );
+    expect(screen.queryByLabelText(/word count goal/i)).toBeNull();
   });
 
   it("does not render for an image resource", () => {

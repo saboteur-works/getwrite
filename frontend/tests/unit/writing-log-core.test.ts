@@ -445,12 +445,56 @@ describe("filtered daily figure (Feature 98 Task 20)", () => {
     expect(agg.totals).toEqual({ added: 17, deleted: 3, net: 14 });
   });
 
-  it("with no filter, an entry saved from a Source counts in the daily total as observed (Feature 102 FR-28)", async () => {
+  async function seedSourceDoc(id: string): Promise<void> {
+    await mkdir(`${ROOT}/resources/${id}`, { recursive: true });
+    await writeFile(
+      `${ROOT}/meta/resource-${id}.meta.json`,
+      JSON.stringify({ id, type: "source", userMetadata: {} }),
+      "utf8",
+    );
+  }
+
+  it("with no filter, the daily total leaves out entries whose documentId is a Source (Task 35, FR-28 owner decision 2026-11-07)", async () => {
     await setConfig({});
     const SRC = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
-    await seedDay([word(7, 1, { documentId: SRC })]);
+    await seedSourceDoc(SRC);
+    await seedDay([
+      word(10, 2, { documentId: DOC_A }),
+      word(7, 1, { documentId: SRC }),
+    ]);
     const agg = await read();
-    expect(agg.totals).toEqual({ added: 7, deleted: 1, net: 6 });
+    expect(agg.totals).toEqual({ added: 10, deleted: 2, net: 8 });
+    expect(agg.isFiltered).toBe(false);
+  });
+
+  it("with no filter, a skipped-save marker of a Source does not mark the figure incomplete", async () => {
+    await setConfig({});
+    const SRC = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await seedSourceDoc(SRC);
+    await seedDay([
+      { skipped: true, timestamp: "2026-09-26T01:00:00.000Z", documentId: SRC },
+    ]);
+    expect((await read()).incomplete).toBe(false);
+  });
+
+  it("with no filter, an entry whose document has no sidecar still counts, as before", async () => {
+    await setConfig({});
+    const GONE = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    await seedDay([word(7, 1, { documentId: GONE })]);
+    expect((await read()).totals).toEqual({ added: 7, deleted: 1, net: 6 });
+  });
+
+  it("a goal filter that selects Sources by their type counts a Source's entry (Task 35)", async () => {
+    const SRC = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await seedSourceDoc(SRC);
+    await setConfig({
+      goalFilter: { op: "eq", field: "type", value: "source" },
+    });
+    await seedDay([
+      word(10, 2, { documentId: DOC_A }),
+      word(7, 1, { documentId: SRC }),
+    ]);
+    expect((await read()).totals).toEqual({ added: 7, deleted: 1, net: 6 });
   });
 
   it("sums only entries of matching live documents; no documentId is left out", async () => {

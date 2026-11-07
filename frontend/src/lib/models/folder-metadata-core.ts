@@ -28,6 +28,7 @@ import { withFileLock } from "./file-lock";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { isResourceId } from "./resource-id";
+import { listFolderDescriptors } from "./backlinks";
 import { isLabelInList, normalizeSubtypeLabel } from "./field-subtype-scope";
 import {
   folderSidecarPathForProject,
@@ -62,6 +63,17 @@ export class InvalidFolderMetadataError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "InvalidFolderMetadataError";
+  }
+}
+
+/**
+ * A folder write named an id with no folder in the tree (Owner decision,
+ * 2026-11-07, FR-3). Map to HTTP 404; the same message is thrown on native.
+ */
+export class FolderNotFoundError extends Error {
+  constructor() {
+    super("Folder not found");
+    this.name = "FolderNotFoundError";
   }
 }
 
@@ -103,6 +115,32 @@ function validateFieldValues(value: unknown): Record<string, MetadataValue> {
     out[key] = parsed.data as MetadataValue;
   }
   return out;
+}
+
+/**
+ * Refuses a write for an id that names no folder under `folders/`, or in a
+ * project with no `project.json`. `project.json` is read first because an
+ * absent `folders/` directory reads as no folders even when the project is
+ * locked; the read makes a locked project raise its locked-access error
+ * instead of "not found". A failed descriptor read raises its own error and a
+ * locked-access error propagates; neither is reported as "not found".
+ */
+async function requireFolderExists(
+  projectRoot: string,
+  folderId: string,
+): Promise<void> {
+  try {
+    await readFile(path.join(projectRoot, "project.json"), "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new FolderNotFoundError();
+    }
+    throw err;
+  }
+  const folders = await listFolderDescriptors(projectRoot);
+  if (!folders.some((folder) => folder.id === folderId)) {
+    throw new FolderNotFoundError();
+  }
 }
 
 /** Boundary validation of the shape and keys, before any read, lock or write. */
@@ -204,6 +242,7 @@ export async function getFolderMetadataCore(
  * first write creates the sidecar. An empty payload writes nothing.
  *
  * @throws InvalidProjectIdCoreError, InvalidFolderMetadataError,
+ *   FolderNotFoundError (no folder has this id; no sidecar is created),
  *   FolderSidecarUnreadableError (the stored file is left as it is);
  *   locked-access errors are rethrown unchanged.
  */
@@ -220,11 +259,13 @@ export async function updateFolderMetadataCore(
       ? await resolveSubtype(projectRoot, write.resourceSubtype)
       : write.resourceSubtype;
   if (Object.keys(write).length === 0) {
+    await requireFolderExists(projectRoot, folderId);
     return readFolderSidecar(projectRoot, folderId);
   }
   const filePath = folderSidecarPathForProject(projectRoot, folderId);
   return withMetaLock(projectRoot, () =>
     withFileLock(filePath, async () => {
+      await requireFolderExists(projectRoot, folderId);
       const current = await readFolderSidecar(projectRoot, folderId);
       const { stored, value } = buildStored(current, write, subtype);
       await mkdir(path.join(projectRoot, "meta"), { recursive: true });

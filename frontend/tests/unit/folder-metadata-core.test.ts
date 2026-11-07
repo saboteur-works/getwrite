@@ -10,6 +10,7 @@ import {
 } from "../../src/lib/models/io";
 import {
   FOLDER_METADATA_WRITABLE_KEYS,
+  FolderNotFoundError,
   InvalidFolderMetadataError,
   InvalidProjectIdCoreError,
   getFolderMetadataCore,
@@ -323,6 +324,23 @@ describe("folder-metadata-core (Feature 102 Task 8)", () => {
     }
   });
 
+  it("refuses a write for a folder id with no folder, creates no sidecar, and still reads it as empty (Task 35, FR-3)", async () => {
+    const UNKNOWN = "88888888-8888-4888-8888-888888888888";
+    const unknownSidecar = folderSidecarPathForProject(ROOT, UNKNOWN);
+    for (const payload of [{ notes: "orphan" }, {}]) {
+      const err = await failureOf(
+        updateFolderMetadataCore(PID, UNKNOWN, payload),
+      );
+      expect(err).toBeInstanceOf(FolderNotFoundError);
+      expect((err as Error).message).toBe("Folder not found");
+    }
+    await expect(stat(unknownSidecar)).rejects.toThrow();
+    expect(await getFolderMetadataCore(PID, UNKNOWN)).toEqual({
+      notes: "",
+      fieldValues: {},
+    });
+  });
+
   it("does not overwrite an unreadable sidecar", async () => {
     await mkdir(`${ROOT}/meta`, { recursive: true });
     await writeFile(SIDECAR, "{not json", "utf8");
@@ -351,6 +369,9 @@ describe("folder sidecar under encryption (Feature 102 Task 26, FR-31 a2, OQ-6)"
     await keyring.addProject(PID);
     await writeProjectMarker(ROOT, base);
     setStorageAdapter(workspaceEncryptionAdapter(base, TENANT, keyring));
+    await writeFile(`${ROOT}/project.json`, projectJson(), "utf8");
+    await mkdir(`${ROOT}/folders/act-one`, { recursive: true });
+    await writeFile(FOLDER_JSON, FOLDER_JSON_BODY, "utf8");
 
     await updateFolderMetadataCore(PID, FID, {
       notes: "the informant is the sister",

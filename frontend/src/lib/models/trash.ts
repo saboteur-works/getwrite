@@ -2065,12 +2065,25 @@ export async function returnAttachmentFileToTrash(
   );
 }
 
-/** Remove a trashed attachment's record and directory. Idempotent. */
+/**
+ * Remove a trashed attachment's record and directory. Idempotent.
+ *
+ * The record is read first, unparsed, so that a locked encrypted project
+ * refuses the purge with its locked-access error (Owner decision, 2026-11-07,
+ * FR-26) and nothing is deleted: removing a path needs no key. An absent
+ * record is the idempotent case and the purge proceeds; an unparseable one
+ * still purges, since only its readability is checked.
+ */
 export async function discardTrashAttachment(
   projectRoot: string,
   entryId: UUID,
 ): Promise<void> {
   assertProjectRoot(projectRoot);
+  try {
+    await readFile(trashAttachmentRecordPath(projectRoot, entryId), "utf8");
+  } catch (err: unknown) {
+    if (!isEnoent(err)) throw err;
+  }
   await rm(trashAttachmentDir(projectRoot, entryId), {
     recursive: true,
     force: true,

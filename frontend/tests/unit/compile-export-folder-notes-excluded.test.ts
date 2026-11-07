@@ -92,12 +92,24 @@ async function runAll(opts: {
   process.env.GETWRITE_PROJECTS_DIR = projectsDir;
   const projectId = generateUUID();
   const texts = ["First scene in the first folder.", opts.secondText];
+  await fs.mkdir(path.join(projectsDir, projectId), { recursive: true });
+  await fs.writeFile(
+    path.join(projectsDir, projectId, "project.json"),
+    JSON.stringify({ id: projectId, name: "p" }),
+  );
   for (const [i, resourceId] of RESOURCE_IDS.entries()) {
     const folderDir = path.join(projectsDir, projectId, "folders", `f${i + 1}`);
     await fs.mkdir(folderDir, { recursive: true });
     await fs.writeFile(
       path.join(folderDir, "folder.json"),
-      JSON.stringify({ id: FOLDER_IDS[i], name: `Folder ${i + 1}` }),
+      JSON.stringify({
+        id: FOLDER_IDS[i],
+        slug: `f${i + 1}`,
+        name: `Folder ${i + 1}`,
+        type: "folder",
+        orderIndex: i,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      }),
     );
     const dir = path.join(projectsDir, projectId, "resources", resourceId);
     await fs.mkdir(dir, { recursive: true });

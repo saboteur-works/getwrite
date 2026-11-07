@@ -34,6 +34,11 @@ import {
   setDefaultStorageContext,
   __resetDefaultStorageContextForTests,
 } from "../../src/lib/models/storage-context";
+import * as trashCore from "../../src/lib/models/trash-core";
+import {
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "../../src/lib/models/locked-access";
 import { createNativeTrashTransport } from "../../src/store/transport/native-trash-backend";
 import { removeDirRetry } from "./helpers/fs-utils";
 import type {
@@ -515,5 +520,33 @@ describe("native trash transport — native/web parity", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("native Trash backend: locked project (Task 35, FR-26 decision 1)", () => {
+  it("rejects restore and purge with the locked error instead of an ok:false entry", async () => {
+    const nativeFs = createFakeCapacitorFilesystem();
+    const adapter = capacitorFsAdapter(nativeFs);
+    const projectId = generateUUID();
+    await adapter.mkdir(`/projects/${projectId}`, { recursive: true });
+    const transport = createNativeTrashTransport({
+      fs: nativeFs,
+      projectsDir: "/projects",
+    });
+    const id = generateUUID();
+    const restoreSpy = vi
+      .spyOn(trashCore, "restoreOneCore")
+      .mockRejectedValue(new ProjectLockedError(projectId));
+    await expect(transport.restore(projectId, [id])).rejects.toBeInstanceOf(
+      ProjectLockedError,
+    );
+    restoreSpy.mockRestore();
+    const purgeSpy = vi
+      .spyOn(trashCore, "purgeOneCore")
+      .mockRejectedValue(new MissingProjectKeyError(projectId));
+    await expect(transport.purge(projectId, [id])).rejects.toBeInstanceOf(
+      MissingProjectKeyError,
+    );
+    purgeSpy.mockRestore();
   });
 });
