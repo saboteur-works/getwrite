@@ -102,6 +102,12 @@ export interface OrganizerCardProps {
    * via `aria-describedby`.
    */
   dragDisabledReason?: string;
+  /**
+   * A folder's subtype label (Feature 102, FR-14), read from its sidecar by
+   * the caller. Shown only on a folder card. A folder card never shows a
+   * notes preview or a child count, whatever `showBody` and `body` say.
+   */
+  folderSubtype?: string;
 }
 
 /**
@@ -113,6 +119,7 @@ export interface OrganizerCardProps {
 function getResourceTypeIcon(type: AnyResource["type"]): typeof FileTextIcon {
   switch (type) {
     case "text":
+    case "source":
       return FileTextIcon;
     case "image":
       return ImageIcon;
@@ -151,6 +158,7 @@ export default function OrganizerCard({
   dragStyle,
   isDragDisabled = false,
   dragDisabledReason,
+  folderSubtype,
 }: OrganizerCardProps): JSX.Element {
   /** Best-effort display title fallback chain. */
   const title = (resource as any).title ?? resource.name ?? "Untitled";
@@ -230,13 +238,18 @@ export default function OrganizerCard({
           <div className="text-xs mt-1 text-gw-secondary">
             {resource.type} file
           </div>
+          {resource.type === "folder" && folderSubtype && (
+            <div className="text-xs mt-0.5 text-gw-secondary">
+              {folderSubtype}
+            </div>
+          )}
         </div>
         <div className="text-xs whitespace-nowrap text-gw-secondary">
           {updated ? new Date(updated).toLocaleDateString() : ""}
         </div>
       </header>
 
-      {showBody && body && (
+      {showBody && body && resource.type !== "folder" && (
         <div className="text-sm mb-3 overflow-y-auto h-16 text-gw-primary">
           {body}
         </div>

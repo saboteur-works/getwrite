@@ -11,6 +11,9 @@ import path from "node:path";
 import {
   sidecarPathForProject,
   sidecarFilename,
+  readSidecar,
+  folderSidecarFilename,
+  folderSidecarPathForProject,
   SIDECAR_UNCHANGED,
   mutateSidecar,
 } from "./sidecar";
@@ -26,8 +29,11 @@ import { isLockedAccessError } from "./locked-access";
 import { withFileLock } from "./file-lock";
 import {
   FolderSchema,
+  TrashAttachmentRecordSchema,
   TrashRefRecordSchema,
   TrashFolderManifestSchema,
+  UUID as UuidSchema,
+  type TrashAttachmentRecord,
   type TrashFolderManifest,
   type TrashFolderManifestEntry,
   type TrashRefRecord,
@@ -81,6 +87,7 @@ function trashPaths(projectRoot: string) {
     trashMetaDir: path.join(trashRoot, "meta"),
     trashRevisionsDir: path.join(trashRoot, "revisions"),
     trashFoldersDir: path.join(trashRoot, "folders"),
+    trashAttachmentsDir: path.join(trashRoot, "attachments"),
   };
 }
 
@@ -477,6 +484,71 @@ function mergeWithPriorManifest(
 }
 
 /**
+ * Moves a folder's sidecar (`meta/folder-<id>.meta.json`) between two paths
+ * under the sidecar's file lock (innermost; nothing else is taken inside it),
+ * so a metadata save in progress finishes first. Absent source is a no-op:
+ * a folder with no sidecar gets none created. Retry-safe.
+ */
+async function moveFolderSidecar(
+  lockedPath: string,
+  src: string,
+  dest: string,
+): Promise<void> {
+  await withFileLock(lockedPath, async () => {
+    if (!(await pathExists(src))) return;
+    await mkdir(path.dirname(dest), { recursive: true });
+    await rename(src, dest);
+  });
+}
+
+/** Moves a live folder sidecar into `.trash/meta/folder-<id>.meta.json`. */
+async function trashFolderSidecar(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const src = folderSidecarPathForProject(projectRoot, folderId);
+  const dest = path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    folderSidecarFilename(folderId),
+  );
+  await moveFolderSidecar(src, src, dest);
+}
+
+/** Moves a trashed folder sidecar back to `meta/folder-<id>.meta.json`. */
+async function restoreFolderSidecar(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const dest = folderSidecarPathForProject(projectRoot, folderId);
+  const src = path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    folderSidecarFilename(folderId),
+  );
+  await moveFolderSidecar(dest, src, dest);
+}
+
+/**
+ * Deletes a purged folder's sidecar: the trashed copy under
+ * `.trash/meta/` and any copy left in the live `meta/`, each under the
+ * sidecar's file lock (innermost). `rm` with `force` makes an absent file
+ * (a folder that never had a sidecar, or a repeated purge) a no-op; any other
+ * error propagates.
+ */
+async function purgeFolderSidecar(
+  projectRoot: string,
+  folderId: UUID,
+): Promise<void> {
+  const live = folderSidecarPathForProject(projectRoot, folderId);
+  const trashed = path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    folderSidecarFilename(folderId),
+  );
+  for (const target of [trashed, live]) {
+    await withFileLock(target, () => rm(target, { force: true }));
+  }
+}
+
+/**
  * Moves one folder directory to `.trash/folders/<dirname>`. Descendant
  * directories are moved flat, so two folders at different depths may share a
  * directory name; a taken destination gets the folder id appended (trashed
@@ -637,10 +709,14 @@ export async function softDeleteFolder(
     if (entry.kind !== "folder") continue;
     const fd = folderById.get(entry.id);
     if (!fd) continue;
+    await trashFolderSidecar(projectRoot, fd.folder.id);
     await moveFolderDirToTrash(trashFoldersDir, fd);
   }
 
-  // Finally, move the target folder's own descriptor.
+  // Finally, move the target folder's own descriptor. Each sidecar moves
+  // before its directory, so a retry after a failure between the two finds
+  // the folder still live and the sidecar already moved (absent is a no-op).
+  await trashFolderSidecar(projectRoot, target.folder.id);
   await moveFolderDirToTrash(trashFoldersDir, target);
 
   return trashRoot;
@@ -1133,6 +1209,7 @@ export async function restoreFolder(
     name: resolvedName.name,
   };
   await writeResourceToFile(projectRoot, restoredTopFolder);
+  await restoreFolderSidecar(projectRoot, folderId);
 
   const topTrashedDir = trashedByFolderId.get(folderId)?.dirPath;
   if (topTrashedDir) {
@@ -1150,6 +1227,7 @@ export async function restoreFolder(
       const descriptor = trashedByFolderId.get(entry.id);
       if (!descriptor) continue;
       await writeResourceToFile(projectRoot, descriptor.folder);
+      await restoreFolderSidecar(projectRoot, entry.id);
       await rm(descriptor.dirPath, { recursive: true, force: true });
       restoredDescendantFolderIds.push(entry.id);
     } else {
@@ -1221,6 +1299,9 @@ async function pathExists(p: string): Promise<boolean> {
  *    descriptor removal is a separate, later step of {@link purgeFolder}
  *    itself, not this per-resource enum).
  * 5. `"content-files"` — trashed resource content files, last.
+ *
+ * `"folder-sidecar"` is a {@link purgeFolder}-only step that runs after the
+ * descendant resources are purged and before the manifest is removed.
  */
 export type PurgeStepName =
   | "index-backlinks-mentions"
@@ -1228,6 +1309,7 @@ export type PurgeStepName =
   | "revisions"
   | "sidecar-and-ref-record"
   | "content-files"
+  | "folder-sidecar"
   | "folder-manifest-and-descriptor";
 
 /**
@@ -1393,6 +1475,9 @@ export async function purgeResource(
  * Only once every descendant resource has been fully purged does it remove
  * every descendant folder's own trashed descriptor, then the manifest
  * itself, then the target folder's own trashed descriptor, last.
+ * Before the manifest is removed (so a retry still has the folder ids), the
+ * sidecar (`meta/folder-<id>.meta.json`, trashed or live) of the target and
+ * every manifest descendant folder is deleted; an absent one is a no-op.
  *
  * Resumable the same way {@link purgeResource} is: re-running `purgeFolder`
  * re-walks the manifest from the top. Every already-purged resource's sweep
@@ -1442,6 +1527,20 @@ export async function purgeFolder(
       if (dirPath) {
         await rm(dirPath, { recursive: true, force: true });
       }
+    }
+  }
+
+  const sidecarFolderIds: UUID[] = [
+    ...(manifest?.descendants ?? [])
+      .filter((entry) => entry.kind === "folder")
+      .map((entry) => entry.id),
+    folderId,
+  ];
+  for (const id of sidecarFolderIds) {
+    try {
+      await purgeFolderSidecar(projectRoot, id);
+    } catch (err: unknown) {
+      throw new PurgeSweepError("folder-sidecar", id, err);
     }
   }
 
@@ -1532,6 +1631,161 @@ export interface TrashedFolderEntry {
 }
 
 /**
+ * One trashed Source attachment (Feature 102, FR-26). `label` is the text the
+ * Trash tab shows. Rule for the Source name, resolved at list time: the live
+ * Source's sidecar name; else its trashed sidecar's name (the Source, or a
+ * folder holding it, is in Trash); else (the Source was purged) none. A blank
+ * name counts as none. `label` is then "Attachment of <name>", or, with no
+ * name, "Attachment of a deleted Source" (Source gone) or "Attachment of a
+ * Source (name unavailable)" (sidecar present but unreadable or blank), so
+ * the label is never blank.
+ */
+export interface TrashedAttachmentEntry {
+  /** The attachment's list entry id, which is also its Trash id. */
+  id: UUID;
+  sourceId: UUID;
+  /** The Source's name at list time, or `null` when it cannot be resolved. */
+  sourceName: string | null;
+  /** The attachment's display name (never used as a path). */
+  fileName: string;
+  /** The text the Trash tab shows. */
+  label: string;
+  /** When the file was moved to Trash (record mtime), or `null`. */
+  deletedAt: string | null;
+}
+
+/**
+ * A Trash item whose record could not be read (pre-PR fix B). Listed so the
+ * writer can see it and delete it permanently; it cannot be restored. `id` is
+ * the id in the record's file name, so it is stable across listings. Only
+ * what is known is carried: the record's contents are not.
+ */
+export interface TrashedUnreadableEntry {
+  id: UUID;
+  kind: "unreadable";
+  /** The text the Trash tab shows. */
+  label: string;
+  /** When the record was last written (its mtime), or `null`. */
+  deletedAt: string | null;
+}
+
+const UNREADABLE_LABEL = "Unreadable Trash item";
+
+/**
+ * An attachment Trash record that cannot be parsed (not JSON, or not the
+ * record shape). Its message is what a refused restore shows the writer.
+ * Locked-access and other read errors are not wrapped in it.
+ */
+class TrashAttachmentRecordUnreadableError extends Error {
+  constructor(options?: ErrorOptions) {
+    super(
+      "This Trash item is unreadable and cannot be restored. Delete it permanently to remove it.",
+      options,
+    );
+    this.name = "TrashAttachmentRecordUnreadableError";
+  }
+}
+
+const DELETED_SOURCE_LABEL = "Attachment of a deleted Source";
+const UNNAMED_SOURCE_LABEL = "Attachment of a Source (name unavailable)";
+
+function nonBlankName(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+async function resolveAttachmentSourceName(
+  projectRoot: string,
+  sourceId: UUID,
+  trashedSidecars: Map<UUID, Record<string, unknown>>,
+): Promise<{ name: string | null; isGone: boolean }> {
+  try {
+    const live = await readSidecar(projectRoot, sourceId);
+    if (live !== null) {
+      return { name: nonBlankName(live["name"]), isGone: false };
+    }
+  } catch (err: unknown) {
+    if (isLockedAccessError(err)) throw err;
+    // Unreadable or unparseable live sidecar: name unavailable, not gone.
+    return { name: null, isGone: false };
+  }
+  const trashed = trashedSidecars.get(sourceId);
+  if (trashed !== undefined) {
+    return { name: nonBlankName(trashed["name"]), isGone: false };
+  }
+  return { name: null, isGone: true };
+}
+
+async function recordMtime(
+  projectRoot: string,
+  entryId: UUID,
+): Promise<string | null> {
+  try {
+    return (
+      await stat(trashAttachmentRecordPath(projectRoot, entryId))
+    ).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+async function listTrashedAttachments(
+  projectRoot: string,
+  metaFiles: string[],
+  trashedSidecars: Map<UUID, Record<string, unknown>>,
+): Promise<{
+  attachments: TrashedAttachmentEntry[];
+  unreadable: TrashedUnreadableEntry[];
+}> {
+  const out: TrashedAttachmentEntry[] = [];
+  const unreadable: TrashedUnreadableEntry[] = [];
+  const files = metaFiles.filter(
+    (f) => f.startsWith("attachment-") && f.endsWith(".json"),
+  );
+  for (const file of files) {
+    const entryId = file.replace(/^attachment-/, "").replace(/\.json$/, "");
+    let record: TrashAttachmentRecord | null;
+    try {
+      record = await readTrashAttachmentRecord(projectRoot, entryId);
+    } catch (err: unknown) {
+      if (isLockedAccessError(err)) throw err;
+      // A record that cannot be read is listed, never skipped: a skipped one
+      // is invisible and cannot be deleted. Only a file name that is not an
+      // attachment id cannot be acted on (the routes accept UUID ids only).
+      if (UuidSchema.safeParse(entryId).success) {
+        unreadable.push({
+          id: entryId,
+          kind: "unreadable",
+          label: UNREADABLE_LABEL,
+          deletedAt: await recordMtime(projectRoot, entryId),
+        });
+      }
+      continue;
+    }
+    if (record === null) continue;
+    const resolved = await resolveAttachmentSourceName(
+      projectRoot,
+      record.sourceId,
+      trashedSidecars,
+    );
+    const deletedAt = await recordMtime(projectRoot, entryId);
+    out.push({
+      id: record.entry.id,
+      sourceId: record.sourceId,
+      sourceName: resolved.name,
+      fileName: record.entry.originalName,
+      label:
+        resolved.name !== null
+          ? `Attachment of ${resolved.name}`
+          : resolved.isGone
+            ? DELETED_SOURCE_LABEL
+            : UNNAMED_SOURCE_LABEL,
+      deletedAt,
+    });
+  }
+  return { attachments: out, unreadable };
+}
+
+/**
  * Lists every currently trashed resource and top-level trashed folder in one
  * combined shape (Task 11, FR-1/FR-2/FR-11, resolved OQ-10 — mirroring how
  * `GET /api/projects` returns a single combined response rather than two
@@ -1556,6 +1810,8 @@ export async function listTrashedItems(
 ): Promise<{
   resources: TrashedResourceEntry[];
   folders: TrashedFolderEntry[];
+  attachments: TrashedAttachmentEntry[];
+  unreadable: TrashedUnreadableEntry[];
 }> {
   assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
@@ -1571,7 +1827,10 @@ export async function listTrashedItems(
     (f) => f.startsWith("resource-") && f.endsWith(".meta.json"),
   );
   const folderManifestFiles = metaFiles.filter(
-    (f) => f.startsWith("folder-") && f.endsWith(".json"),
+    (f) =>
+      f.startsWith("folder-") &&
+      f.endsWith(".json") &&
+      !f.endsWith(".meta.json"),
   );
 
   const manifestsByFolderId = new Map<UUID, TrashFolderManifest>();
@@ -1702,7 +1961,13 @@ export async function listTrashedItems(
     });
   }
 
-  return { resources, folders };
+  const { attachments, unreadable } = await listTrashedAttachments(
+    projectRoot,
+    metaFiles,
+    resourceSidecarById,
+  );
+
+  return { resources, folders, attachments, unreadable };
 }
 
 /**
@@ -1722,7 +1987,7 @@ export async function listTrashedItems(
 export async function resolveTrashedItemKind(
   projectRoot: string,
   id: UUID,
-): Promise<"resource" | "folder" | "unknown"> {
+): Promise<"resource" | "folder" | "attachment" | "unknown"> {
   assertProjectRoot(projectRoot);
   const { trashMetaDir, trashFoldersDir } = trashPaths(projectRoot);
 
@@ -1735,5 +2000,161 @@ export async function resolveTrashedItemKind(
   const descriptors = await collectFolderDescriptors(trashFoldersDir);
   if (descriptors.some((d) => d.folder.id === id)) return "folder";
 
+  if (await pathExists(trashAttachmentRecordPath(projectRoot, id))) {
+    return "attachment";
+  }
+
   return "unknown";
+}
+
+// ---------------------------------------------------------------------------
+// Attachment Trash entries (Feature 102, FR-26, OQ-8)
+//
+// A removed or replaced Source attachment is its own Trash item kind. The
+// Trash id is the attachment's list entry id. Layout:
+//   .trash/attachments/<entryId>/<storedName>   the file, bytes unchanged
+//   .trash/meta/attachment-<entryId>.json       the record (source id, entry)
+// The list change itself is made by `source-attachments-core.ts` through
+// `mutateSidecar`; these are the file and record primitives it calls.
+// ---------------------------------------------------------------------------
+
+function trashAttachmentRecordPath(projectRoot: string, entryId: UUID): string {
+  return path.join(
+    trashPaths(projectRoot).trashMetaDir,
+    `attachment-${entryId}.json`,
+  );
+}
+
+function trashAttachmentDir(projectRoot: string, entryId: UUID): string {
+  return path.join(trashPaths(projectRoot).trashAttachmentsDir, entryId);
+}
+
+/**
+ * Move one attachment file from its Source's directory into Trash and write
+ * its record. The record is written first and removed again if the move
+ * fails, so a failure leaves neither a record nor a moved file.
+ */
+export async function moveAttachmentToTrash(
+  projectRoot: string,
+  record: Omit<TrashAttachmentRecord, "kind">,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  const parsed = TrashAttachmentRecordSchema.parse({
+    kind: "attachment",
+    ...record,
+  });
+  const entryId = parsed.entry.id;
+  const recordPath = trashAttachmentRecordPath(projectRoot, entryId);
+  const targetDir = trashAttachmentDir(projectRoot, entryId);
+  await mkdir(path.dirname(recordPath), { recursive: true });
+  await mkdir(targetDir, { recursive: true });
+  await atomicWriteFile(recordPath, JSON.stringify(parsed, null, 2));
+  try {
+    await rename(
+      path.join(projectRoot, "resources", parsed.sourceId, parsed.storedName),
+      path.join(targetDir, parsed.storedName),
+    );
+  } catch (err: unknown) {
+    await rm(recordPath, { force: true }).catch(() => {});
+    await rm(targetDir, { recursive: true, force: true }).catch(() => {});
+    throw err;
+  }
+}
+
+/**
+ * Read an attachment Trash record. `null` when there is none; an unparseable
+ * record rejects with {@link TrashAttachmentRecordUnreadableError}, and a
+ * locked-access or other read error rejects as it is.
+ */
+export async function readTrashAttachmentRecord(
+  projectRoot: string,
+  entryId: UUID,
+): Promise<TrashAttachmentRecord | null> {
+  assertProjectRoot(projectRoot);
+  let raw: string;
+  try {
+    raw = await readFile(
+      trashAttachmentRecordPath(projectRoot, entryId),
+      "utf8",
+    );
+  } catch (err: unknown) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+  try {
+    return TrashAttachmentRecordSchema.parse(JSON.parse(raw));
+  } catch (err: unknown) {
+    throw new TrashAttachmentRecordUnreadableError({ cause: err });
+  }
+}
+
+/**
+ * Move a trashed attachment file back into its Source's directory under
+ * `destinationName`. Does not touch the record; the caller discards it with
+ * {@link discardTrashAttachment} once the list is stored.
+ */
+export async function moveTrashedAttachmentFile(
+  projectRoot: string,
+  record: TrashAttachmentRecord,
+  destinationName: string,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  await rename(
+    path.join(
+      trashAttachmentDir(projectRoot, record.entry.id),
+      record.storedName,
+    ),
+    path.join(projectRoot, "resources", record.sourceId, destinationName),
+  );
+}
+
+/** Move a restored file back to Trash (the inverse of the move above), for a failed list write. */
+export async function returnAttachmentFileToTrash(
+  projectRoot: string,
+  record: TrashAttachmentRecord,
+  currentName: string,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  await rename(
+    path.join(projectRoot, "resources", record.sourceId, currentName),
+    path.join(
+      trashAttachmentDir(projectRoot, record.entry.id),
+      record.storedName,
+    ),
+  );
+}
+
+/**
+ * Remove a trashed attachment's record and directory. Idempotent.
+ *
+ * The record is read first, unparsed, so that a locked encrypted project
+ * refuses the purge with its locked-access error (Owner decision, 2026-11-07,
+ * FR-26) and nothing is deleted: removing a path needs no key. An absent
+ * record is the idempotent case and the purge proceeds; an unparseable one
+ * still purges, since only its readability is checked.
+ */
+export async function discardTrashAttachment(
+  projectRoot: string,
+  entryId: UUID,
+): Promise<void> {
+  assertProjectRoot(projectRoot);
+  try {
+    await readFile(trashAttachmentRecordPath(projectRoot, entryId), "utf8");
+  } catch (err: unknown) {
+    if (!isEnoent(err)) throw err;
+  }
+  await rm(trashAttachmentDir(projectRoot, entryId), {
+    recursive: true,
+    force: true,
+  });
+  await rm(trashAttachmentRecordPath(projectRoot, entryId), { force: true });
+}
+
+/** Whether a file exists in a Source's resource directory, for restore name checks. */
+export async function sourceFileExists(
+  projectRoot: string,
+  sourceId: UUID,
+  fileName: string,
+): Promise<boolean> {
+  return pathExists(path.join(projectRoot, "resources", sourceId, fileName));
 }

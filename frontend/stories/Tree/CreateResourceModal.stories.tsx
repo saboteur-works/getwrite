@@ -84,6 +84,18 @@ export const AudioType: Story = {
   },
 };
 
+export const SourceType: Story = {
+  args: {
+    isOpen: true,
+    initialTitle: "Interview",
+    initialType: "source",
+    parents: parentFolders,
+    onClose: () => console.log("close create resource"),
+    onCreate: (payload: CreateResourcePayload) =>
+      console.log("create resource", payload),
+  },
+};
+
 export const Interactive: Story = {
   render: (args: React.ComponentProps<typeof CreateResourceModal>) => {
     const [isOpen, setOpen] = React.useState(true);

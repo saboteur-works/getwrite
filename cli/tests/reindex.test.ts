@@ -167,6 +167,40 @@ describe("reindex command — functional", () => {
     expect(JSON.parse(after.toString("utf8")).resourceSubtype).toBe("Memoir");
   });
 
+  it("makes a Source searchable after reindex (Task 39, FR-38)", async () => {
+    const sourceId = "66666666-7777-4888-8999-aaaaaaaaaaaa";
+    const sourceDir = path.join(tmpDir, "resources", sourceId);
+    await fs.mkdir(sourceDir, { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "content.txt"),
+      "the quixotic ledger of the archive",
+    );
+    const metaDir = path.join(tmpDir, "meta");
+    await fs.mkdir(metaDir, { recursive: true });
+    await fs.writeFile(
+      path.join(metaDir, `resource-${sourceId}.meta.json`),
+      JSON.stringify({ id: sourceId, name: "Archive note", type: "source" }),
+    );
+
+    const program = new Command();
+    registerReindex(program);
+    process.env.GETWRITE_CLI_TESTING = "1";
+    try {
+      await program.parseAsync(["node", "test", "reindex", tmpDir]);
+    } finally {
+      delete process.env.GETWRITE_CLI_TESTING;
+    }
+
+    const raw = await fs.readFile(
+      path.join(tmpDir, "meta", "index", "inverted.json"),
+      "utf8",
+    );
+    const index = JSON.parse(raw) as Record<string, Record<string, number>>;
+    expect(index["quixotic"]).toBeDefined();
+    expect(Object.keys(index["quixotic"]!)).toContain(sourceId);
+    expect(Object.keys(index["archive"]!)).toContain(sourceId);
+  });
+
   it("rebuilds meta/index/mentions.json from a declared entity and a mentioning resource", async () => {
     const entityId = "22222222-3333-4444-8555-666666666666";
     const entityDir = path.join(tmpDir, "resources", entityId);

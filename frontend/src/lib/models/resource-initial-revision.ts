@@ -12,7 +12,12 @@ import { writeResourceToFile } from "./resource-persistence";
 import { resolveInitialRevisionName } from "./resource-revision";
 import { writeRevision } from "./revision";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
-import type { AnyResource, TextResource, TipTapDocument } from "./types";
+import type {
+  AnyResource,
+  SourceResource,
+  TextResource,
+  TipTapDocument,
+} from "./types";
 
 /**
  * Writes `v-1` as the canonical revision of `resourceId`, serialized as a
@@ -58,8 +63,8 @@ export async function writeResourceWithInitialRevision(
   resource: AnyResource,
 ): Promise<AnyResource> {
   await writeResourceToFile(projectRoot, resource);
-  if (resource.type === "text") {
-    const text = resource as TextResource;
+  if (resource.type === "text" || resource.type === "source") {
+    const text = resource as TextResource | SourceResource;
     await writeInitialCanonicalRevision(
       projectRoot,
       resource.id,

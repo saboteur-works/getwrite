@@ -834,6 +834,11 @@ export default function Home(): JSX.Element {
         "Resource created",
         `${opts?.title ?? "New Resource"} created`,
       );
+      if (resBody.notice !== undefined) {
+        toastService.error("Source not left out of compile", resBody.notice, {
+          id: "source-not-excluded-from-compile",
+        });
+      }
       return;
     }
 
@@ -843,7 +848,7 @@ export default function Home(): JSX.Element {
       if (!src) return;
       const newName = opts?.title ?? `${src.name} (Copy)`;
 
-      const { resource: newResource } = await copyResource(
+      const { resource: newResource, notice } = await copyResource(
         resourceId,
         newName,
         projectId,
@@ -869,6 +874,11 @@ export default function Home(): JSX.Element {
           : prev,
       );
       toastService.success("Resource copied", newResource.name as string);
+      if (notice !== undefined) {
+        toastService.error("Source not left out of compile", notice, {
+          id: "source-not-excluded-from-compile",
+        });
+      }
       return;
     }
 

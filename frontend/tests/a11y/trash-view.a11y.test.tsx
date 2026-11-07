@@ -576,3 +576,119 @@ describe("a11y: TrashView axe-core checks (FR-8)", () => {
     await runAxe(container);
   });
 });
+
+describe("a11y: TrashView attachment entries (Feature 102 Task 25, FR-26)", () => {
+  const ATTACHMENT_LISTING: TrashListing = {
+    resources: [],
+    folders: [],
+    attachments: [
+      {
+        id: "att-1",
+        sourceId: "src-1",
+        sourceName: "Interview",
+        fileName: "photo.png",
+        label: "Attachment of Interview",
+        deletedAt: "2026-09-03T00:00:00.000Z",
+      },
+    ],
+  };
+
+  function renderView() {
+    return render(
+      <Provider store={setupStore()}>
+        <TrashRefreshProvider>
+          <TrashView />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+  }
+
+  async function selectEntry(user: ReturnType<typeof userEvent.setup>) {
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Select Attachment of Interview",
+    });
+    checkbox.focus();
+    await user.keyboard(" ");
+    expect(checkbox).toBeChecked();
+  }
+
+  it("lists the entry as 'Attachment of <Source name>' with a named checkbox", async () => {
+    mockedListTrash.mockResolvedValue(ATTACHMENT_LISTING);
+    renderView();
+    expect(
+      await screen.findByText("Attachment of Interview"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Select Attachment of Interview" }),
+    ).toBeInTheDocument();
+  });
+
+  it("restores the entry by keyboard alone, with named controls", async () => {
+    mockedListTrash.mockResolvedValue(ATTACHMENT_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([{ id: "att-1", ok: true }]);
+    const user = userEvent.setup();
+    renderView();
+    await selectEntry(user);
+
+    screen.getByRole("button", { name: "Restore selected" }).focus();
+    await user.keyboard("{Enter}");
+    const confirm = await screen.findByRole("button", { name: "Restore" });
+    confirm.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(mockedRestoreTrashItems).toHaveBeenCalledWith(PROJECT_ID, [
+        "att-1",
+      ]),
+    );
+  });
+
+  it("purges the entry by keyboard alone, with named controls", async () => {
+    mockedListTrash.mockResolvedValue(ATTACHMENT_LISTING);
+    mockedPurgeTrashItems.mockResolvedValue([{ id: "att-1", ok: true }]);
+    const user = userEvent.setup();
+    renderView();
+    await selectEntry(user);
+
+    screen.getByRole("button", { name: "Delete selected permanently" }).focus();
+    await user.keyboard("{Enter}");
+    const confirm = await screen.findByRole("button", {
+      name: "Delete permanently",
+    });
+    confirm.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(mockedPurgeTrashItems).toHaveBeenCalledWith(PROJECT_ID, ["att-1"]),
+    );
+  });
+
+  it("shows the refusal message when a restore is refused, and keeps the entry", async () => {
+    mockedListTrash.mockResolvedValue(ATTACHMENT_LISTING);
+    mockedRestoreTrashItems.mockResolvedValue([
+      {
+        id: "att-1",
+        ok: false,
+        error:
+          "This attachment cannot be restored because its Source is in Trash or has been deleted. Restore the Source first.",
+      },
+    ]);
+    const user = userEvent.setup();
+    renderView();
+    await selectEntry(user);
+    await user.click(screen.getByRole("button", { name: "Restore selected" }));
+    await user.click(await screen.findByRole("button", { name: "Restore" }));
+    expect(
+      await screen.findByText(/Restore the Source first\./),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Attachment of Interview")).toBeInTheDocument();
+  });
+
+  it("has no axe violations with an attachment entry listed and selected", async () => {
+    mockedListTrash.mockResolvedValue(ATTACHMENT_LISTING);
+    const { container } = renderView();
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Select Attachment of Interview",
+    });
+    fireEvent.click(checkbox);
+    await runAxe(container);
+  });
+});

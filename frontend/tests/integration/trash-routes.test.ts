@@ -28,6 +28,10 @@ import {
 } from "../../src/lib/models/trash";
 import { removeDirRetry } from "../unit/helpers/fs-utils";
 import * as trashCore from "../../src/lib/models/trash-core";
+import {
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "../../src/lib/models/locked-access";
 import { LIMITS_FILE_NAME } from "../../src/lib/sharing/limits-store";
 import { LIMIT_REFUSAL_MESSAGES } from "../../src/lib/sharing/limits-copy";
 
@@ -599,6 +603,49 @@ describe("POST /api/project/[project-id]/trash/purge", () => {
       expect(listBody.resources).toHaveLength(0);
       expect(listBody.folders).toHaveLength(0);
     });
+  });
+});
+
+describe("locked project on the Trash routes (Task 35, FR-26 decision 1)", () => {
+  async function post(
+    which: "restore" | "purge",
+    body: unknown,
+  ): Promise<Response> {
+    const { projectsDir, projectId } = await makeTmpProjectsDir();
+    return withProjectsDirEnv(projectsDir, async () => {
+      const route =
+        which === "restore"
+          ? await import("../../app/api/project/[project-id]/trash/restore/route")
+          : await import("../../app/api/project/[project-id]/trash/purge/route");
+      return route.POST(
+        jsonRequest(
+          `http://localhost/api/project/${projectId}/trash/${which}`,
+          body,
+          "off",
+        ) as never,
+        { params: Promise.resolve({ "project-id": projectId }) },
+      );
+    });
+  }
+
+  it("maps a locked restore to the existing 401 / 409 responses, never a 200 with ok:false", async () => {
+    const id = generateUUID();
+    const spy = vi.spyOn(trashCore, "restoreOneCore");
+    spy.mockRejectedValueOnce(new ProjectLockedError("p"));
+    expect((await post("restore", { ids: [id] })).status).toBe(401);
+    spy.mockRejectedValueOnce(new MissingProjectKeyError("p"));
+    expect((await post("restore", { ids: [id] })).status).toBe(409);
+    spy.mockRestore();
+  });
+
+  it("maps a locked purge, by ids and as Empty Trash, to 401 / 409", async () => {
+    const id = generateUUID();
+    const spy = vi.spyOn(trashCore, "purgeBatchCore");
+    spy.mockRejectedValueOnce(new ProjectLockedError("p"));
+    expect((await post("purge", { ids: [id] })).status).toBe(401);
+    spy.mockRejectedValueOnce(new MissingProjectKeyError("p"));
+    expect((await post("purge", { all: true })).status).toBe(409);
+    spy.mockRestore();
   });
 });
 

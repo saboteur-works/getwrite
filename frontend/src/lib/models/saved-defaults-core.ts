@@ -18,7 +18,7 @@ import { withMetaLock } from "./meta-locks";
 import { updateProjectJson } from "./project-json-write";
 import type { ProjectConfig } from "./types";
 import { resolveProjectRoot } from "./project-root-resolver";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { UUID } from "./schemas";
 
 export { InvalidProjectIdCoreError };
@@ -117,4 +117,69 @@ export function setExportDefaultsCore(
   excludedResourceIds: unknown,
 ): Promise<{ excludedResourceIds: string[] | undefined }> {
   return setSavedDefaults("exportDefaults", projectId, excludedResourceIds);
+}
+
+/**
+ * The visible messages when a Source cannot be added to the saved compile
+ * exclusions (Feature 102, FR-27). The Source itself is still created.
+ */
+export const SOURCE_NOT_EXCLUDED_MESSAGES = {
+  atCap: `The Source was created, but it is not left out of compile by default: the saved compile default is full (${SAVED_DEFAULTS_MAX_IDS} resources). Clear or shorten the saved default, or leave the Source out in the Compile dialog.`,
+  unreadable:
+    "The Source was created, but it is not left out of compile by default: the saved compile default could not be read, so it was left unchanged. Leave the Source out in the Compile dialog.",
+} as const;
+
+/**
+ * Add a new Source's id to `config.compileDefaults.excludedResourceIds`
+ * (Feature 102, FR-27), keeping the `{ excludedResourceIds }` shape. Never
+ * touches `exportDefaults`. Returns a notice, not an error, when the list is
+ * at the cap or its stored shape is unusable (the stored value is left
+ * unchanged); a read or write failure is thrown, and locked-access errors
+ * propagate unchanged. `projectRoot` is a resolved root, never client input.
+ */
+export async function seedSourceCompileExclusion(
+  projectRoot: string,
+  resourceId: string,
+): Promise<{ notice?: string }> {
+  return withMetaLock(projectRoot, async () =>
+    updateProjectJson<{ notice?: string }>(
+      projectRoot,
+      (project) => {
+        const config: Record<string, unknown> = { ...(project.config ?? {}) };
+        const stored = config.compileDefaults;
+        let current: string[] = [];
+        if (stored !== undefined) {
+          const ids = (stored as { excludedResourceIds?: unknown } | null)
+            ?.excludedResourceIds;
+          if (
+            typeof stored !== "object" ||
+            stored === null ||
+            !Array.isArray(ids) ||
+            !ids.every((id) => typeof id === "string")
+          ) {
+            return {
+              result: { notice: SOURCE_NOT_EXCLUDED_MESSAGES.unreadable },
+              shouldWrite: false,
+            };
+          }
+          current = ids as string[];
+        }
+        if (current.includes(resourceId)) {
+          return { result: {}, shouldWrite: false };
+        }
+        if (current.length >= SAVED_DEFAULTS_MAX_IDS) {
+          return {
+            result: { notice: SOURCE_NOT_EXCLUDED_MESSAGES.atCap },
+            shouldWrite: false,
+          };
+        }
+        config.compileDefaults = {
+          excludedResourceIds: [...current, resourceId],
+        };
+        project.config = config as unknown as ProjectConfig;
+        return { result: {} };
+      },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
+    ),
+  );
 }

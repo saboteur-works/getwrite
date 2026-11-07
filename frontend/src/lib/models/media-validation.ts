@@ -174,3 +174,151 @@ export function isPlainFileName(name: string): boolean {
     name.length > 0 && name !== "." && name !== ".." && !/[/\\\0]/.test(name)
   );
 }
+
+/** Video extensions refused as attachments, with the reason named. */
+const VIDEO_EXTENSIONS: ReadonlySet<string> = new Set([
+  "mp4",
+  "m4v",
+  "mov",
+  "webm",
+  "mkv",
+  "avi",
+  "wmv",
+  "flv",
+  "mpg",
+  "mpeg",
+  "3gp",
+  "ogv",
+]);
+
+/** Attachment rejection reasons: the media reasons plus the two below. */
+export type AttachmentRejectionReason =
+  | MediaRejectionReason
+  | "video-not-supported"
+  | "content-mismatch";
+
+/** Messages for attachment-only refusals, exported so every transport and test shares one text. */
+export const ATTACHMENT_MESSAGES = {
+  videoNotSupported:
+    "Video is not supported as an attachment. Attach an image or an audio file.",
+  contentMismatch:
+    "The file's contents do not match its file type, so it was not attached.",
+} as const;
+
+/** A file under attachment validation: the media descriptor plus its leading bytes. */
+export interface AttachmentFileDescriptor extends MediaFileDescriptor {
+  /** The file's bytes, or at least its first 512. Only the head is read. */
+  bytes: Uint8Array;
+}
+
+interface AttachmentValidationError {
+  ok: false;
+  reason: AttachmentRejectionReason;
+  message: string;
+}
+
+export type AttachmentValidationResult =
+  | MediaValidationOk
+  | AttachmentValidationError;
+
+const HEAD_BYTES = 512;
+
+function startsWith(
+  bytes: Uint8Array,
+  signature: readonly number[],
+  offset = 0,
+): boolean {
+  if (bytes.length < offset + signature.length) return false;
+  return signature.every((value, i) => bytes[offset + i] === value);
+}
+
+function asciiAt(bytes: Uint8Array, offset: number, text: string): boolean {
+  return startsWith(
+    bytes,
+    [...text].map((c) => c.charCodeAt(0)),
+    offset,
+  );
+}
+
+/** ISO base media `ftyp` box with a major brand starting with one of `brands`. */
+function hasFtyp(bytes: Uint8Array, brands?: readonly string[]): boolean {
+  if (!asciiAt(bytes, 4, "ftyp")) return false;
+  if (!brands) return true;
+  return brands.some((brand) => asciiAt(bytes, 8, brand));
+}
+
+function looksLikeSvg(bytes: Uint8Array): boolean {
+  const head = new TextDecoder("utf-8").decode(bytes.subarray(0, HEAD_BYTES));
+  return /<svg[\s>/]/i.test(head);
+}
+
+function isMp3OrId3(bytes: Uint8Array): boolean {
+  if (asciiAt(bytes, 0, "ID3")) return true;
+  return bytes.length >= 2 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0;
+}
+
+/** Hand-written signature checks, keyed by allowlisted stored extension. */
+const SIGNATURE_CHECKS: Readonly<Record<string, (b: Uint8Array) => boolean>> = {
+  png: (b) => startsWith(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  jpg: (b) => startsWith(b, [0xff, 0xd8, 0xff]),
+  jpeg: (b) => startsWith(b, [0xff, 0xd8, 0xff]),
+  gif: (b) => asciiAt(b, 0, "GIF87a") || asciiAt(b, 0, "GIF89a"),
+  webp: (b) => asciiAt(b, 0, "RIFF") && asciiAt(b, 8, "WEBP"),
+  svg: looksLikeSvg,
+  avif: (b) => hasFtyp(b, ["avif", "avis"]),
+  heic: (b) =>
+    hasFtyp(b, [
+      "heic",
+      "heix",
+      "heim",
+      "heis",
+      "hevc",
+      "hevx",
+      "mif1",
+      "msf1",
+    ]),
+  mp3: isMp3OrId3,
+  wav: (b) => asciiAt(b, 0, "RIFF") && asciiAt(b, 8, "WAVE"),
+  m4a: (b) => hasFtyp(b),
+  ogg: (b) => asciiAt(b, 0, "OggS"),
+  flac: (b) => asciiAt(b, 0, "fLaC"),
+  aac: (b) => asciiAt(b, 0, "ADIF") || hasFtyp(b) || isMp3OrId3(b),
+};
+
+function isVideoClaim(extension: string, mime: string | undefined): boolean {
+  if (VIDEO_EXTENSIONS.has(extension)) return true;
+  return (mime?.trim().toLowerCase() ?? "").startsWith("video/");
+}
+
+/**
+ * Validates a file offered as a Source attachment. Reuses `validateMediaFile`
+ * (same extension and MIME maps, size cap and allowlisted stored extension),
+ * refuses video by name, and checks the file's leading bytes against the
+ * signature for its resolved extension. Applied to attachments only;
+ * `validateMediaFile` itself reads no content. Pure: no I/O.
+ */
+export function validateAttachmentFile(
+  file: AttachmentFileDescriptor,
+): AttachmentValidationResult {
+  const extension = normalizeExtension(file.ext);
+  if (isVideoClaim(extension, file.mime)) {
+    return {
+      ok: false,
+      reason: "video-not-supported",
+      message: ATTACHMENT_MESSAGES.videoNotSupported,
+    };
+  }
+
+  const media = validateMediaFile(file);
+  if (!media.ok) return media;
+
+  const check = SIGNATURE_CHECKS[media.extension];
+  if (!check || !check(file.bytes.subarray(0, HEAD_BYTES))) {
+    return {
+      ok: false,
+      reason: "content-mismatch",
+      message: ATTACHMENT_MESSAGES.contentMismatch,
+    };
+  }
+  return media;
+}

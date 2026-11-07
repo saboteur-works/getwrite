@@ -1046,3 +1046,91 @@ describe("importScrivenerProject — writes no resourceSubtype (FR-27)", () => {
     }
   });
 });
+
+describe("importScrivenerProject — folder metadata not imported (Feature 102 FR-17)", () => {
+  const folderUuid = "11111111-1111-4111-8111-111111111111";
+  const textUuid = "EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE";
+  let scrivDir: string;
+  let projectRoot: string;
+  let report: string;
+
+  beforeAll(async () => {
+    scrivDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-foldermeta-src-"),
+    );
+    const folderData = path.join(scrivDir, "Files", "Data", folderUuid);
+    const textData = path.join(scrivDir, "Files", "Data", textUuid);
+    await fs.mkdir(folderData, { recursive: true });
+    await fs.mkdir(textData, { recursive: true });
+    await fs.writeFile(
+      path.join(folderData, "synopsis.txt"),
+      "Folder synopsis text",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(folderData, "notes.rtf"),
+      String.raw`{\rtf1\ansi\f0 Folder notes text\par}`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(textData, "content.rtf"),
+      String.raw`{\rtf1\ansi\f0 Body text.\par}`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(scrivDir, "sample.scrivx"),
+      `<?xml version="1.0" encoding="UTF-8"?>
+<ScrivenerProject Identifier="X" Version="2.0" Creator="SCRMAC-3.5.2" Device="Test">
+  <Binder>
+    <BinderItem UUID="DDDDDDDD-DDDD-4DDD-8DDD-DDDDDDDDDDDD" Type="DraftFolder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+      <Title>Draft</Title>
+      <Children>
+        <BinderItem UUID="${folderUuid}" Type="Folder" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+          <Title>Part One</Title>
+          <MetaData>
+            <LabelID>-1</LabelID>
+            <StatusID>-1</StatusID>
+            <IncludeInCompile>Yes</IncludeInCompile>
+          </MetaData>
+          <Children>
+            <BinderItem UUID="${textUuid}" Type="Text" Created="2026-01-01 00:00:00 +0000" Modified="2026-01-01 00:00:00 +0000">
+              <Title>Scene</Title>
+            </BinderItem>
+          </Children>
+        </BinderItem>
+      </Children>
+    </BinderItem>
+  </Binder>
+</ScrivenerProject>`,
+      "utf8",
+    );
+    projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "getwrite-scrivener-foldermeta-dest-"),
+    );
+    await importScrivenerProject({ scrivPath: scrivDir, projectRoot });
+    await flushIndexer();
+    report = await fs.readFile(
+      path.join(projectRoot, "scrivener-import-report.txt"),
+      "utf8",
+    );
+  });
+
+  afterAll(async () => {
+    await fs.rm(scrivDir, { recursive: true, force: true });
+    await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it("states in the report that folder metadata was not imported", () => {
+    expect(report).toContain("## Folder Metadata");
+    expect(report).toContain(
+      "Folder metadata (synopsis, notes and metadata) was not imported",
+    );
+  });
+
+  it("creates a folder but no folder-<id>.meta.json sidecar", async () => {
+    const folders = await readAllFolders(projectRoot);
+    expect(folders.some((f) => f.name === "Part One")).toBe(true);
+    const metaFiles = await fs.readdir(path.join(projectRoot, "meta"));
+    expect(metaFiles.filter((f) => f.startsWith("folder-"))).toEqual([]);
+  });
+});

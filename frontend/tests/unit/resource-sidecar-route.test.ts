@@ -642,3 +642,166 @@ describe("POST /api/resource/[resource-id]/sidecar (allowlist, Feature 93 Task 9
     });
   });
 });
+
+describe("POST /api/resource/[resource-id]/sidecar (Source rules, Feature 102 FR-20/FR-21)", () => {
+  async function post(
+    projectId: string,
+    resourceId: string,
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    const { POST } =
+      await import("../../app/api/resource/[resource-id]/sidecar/route");
+    return POST(sidecarRequest(resourceId, { projectId, ...body }) as never, {
+      params: Promise.resolve({ "resource-id": resourceId }),
+    });
+  }
+
+  async function seed(
+    projectPath: string,
+    type: "source" | "text",
+    extra: Record<string, unknown> = {},
+  ): Promise<string> {
+    const resourceId = generateUUID();
+    await writeSidecar(projectPath, resourceId, {
+      id: resourceId,
+      name: "Interview",
+      type,
+      ...extra,
+    });
+    return resourceId;
+  }
+
+  it("stores a subtype set on a Source", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const id = await seed(projectPath, "source");
+      const res = await post(projectId, id, {
+        updatedResource: { resourceSubtype: " Interview " },
+      });
+      expect(res.status).toBe(200);
+      expect((await readSidecar(projectPath, id))?.resourceSubtype).toBe(
+        "Interview",
+      );
+    });
+  });
+
+  it.each([
+    ["entityKind", { entityKind: "character" }],
+    ["aliases", { aliases: ["Al"] }],
+    ["both keys", { entityKind: "character", aliases: ["Al"] }],
+  ])("stores %s on a Source", async (_label, fields) => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const id = await seed(projectPath, "source");
+      const res = await post(projectId, id, {
+        updatedResource: { resourceSubtype: "Interview", ...fields },
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, id);
+      for (const [key, value] of Object.entries(fields)) {
+        expect(sidecar?.[key]).toEqual(value);
+      }
+    });
+  });
+
+  it("stores entityKind on a Source when sent with an unrelated clearKeys", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const id = await seed(projectPath, "source", {
+        resourceSubtype: "Interview",
+      });
+      const res = await post(projectId, id, {
+        updatedResource: { entityKind: "character" },
+        clearKeys: ["resourceSubtype"],
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, id);
+      expect(sidecar?.entityKind).toBe("character");
+      expect(sidecar).not.toHaveProperty("resourceSubtype");
+    });
+  });
+
+  it("still allows clearKeys entityKind and aliases to remove stored values from a Source", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const id = await seed(projectPath, "source", {
+        entityKind: "character",
+        aliases: ["Al"],
+        resourceSubtype: "Interview",
+      });
+      const res = await post(projectId, id, {
+        updatedResource: {},
+        clearKeys: ["entityKind", "aliases"],
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, id);
+      expect(sidecar).not.toHaveProperty("entityKind");
+      expect(sidecar).not.toHaveProperty("aliases");
+      expect(sidecar?.resourceSubtype).toBe("Interview");
+    });
+  });
+
+  it("leaves entity behaviour for a text resource unchanged", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const id = await seed(projectPath, "text");
+      const res = await post(projectId, id, {
+        updatedResource: { entityKind: "character", aliases: ["Al"] },
+      });
+      expect(res.status).toBe(200);
+      const sidecar = await readSidecar(projectPath, id);
+      expect(sidecar?.entityKind).toBe("character");
+      expect(sidecar?.aliases).toEqual(["Al"]);
+    });
+  });
+});
+
+describe("POST /api/resource/[resource-id]/sidecar (Source as entity, Feature 102 FR-21)", () => {
+  async function post(
+    projectId: string,
+    resourceId: string,
+    body: Record<string, unknown>,
+    clearKeys?: string[],
+  ): Promise<Response> {
+    const { POST } =
+      await import("../../app/api/resource/[resource-id]/sidecar/route");
+    return POST(
+      sidecarRequest(resourceId, {
+        projectId,
+        updatedResource: body,
+        ...(clearKeys ? { clearKeys } : {}),
+      }) as never,
+      { params: Promise.resolve({ "resource-id": resourceId }) },
+    );
+  }
+
+  it("sets entityKind and aliases on a Source, then clears both", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const resourceId = generateUUID();
+      await writeSidecar(projectPath, resourceId, {
+        id: resourceId,
+        name: "Call notes",
+        type: "source",
+      });
+
+      const set = await post(projectId, resourceId, {
+        entityKind: "interview",
+        aliases: ["The call"],
+      });
+      expect(set.status).toBe(200);
+      const stored = await readSidecar(projectPath, resourceId);
+      expect(stored?.entityKind).toBe("interview");
+      expect(stored?.aliases).toEqual(["The call"]);
+
+      const cleared = await post(projectId, resourceId, {}, [
+        "entityKind",
+        "aliases",
+      ]);
+      expect(cleared.status).toBe(200);
+      const after = await readSidecar(projectPath, resourceId);
+      expect(after).not.toHaveProperty("entityKind");
+      expect(after).not.toHaveProperty("aliases");
+    });
+  });
+});

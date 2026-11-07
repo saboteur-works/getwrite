@@ -44,6 +44,7 @@ import { remapCopiedAnnotations } from "./annotation-copy";
 import { readFolderTree } from "./folder-utils";
 import { writeSidecar, readSidecar } from "./sidecar";
 import { withMetaLock } from "./meta-locks";
+import { seedCreatedSource } from "./source-seeding";
 import {
   inspectTemplate,
   validateTemplate,
@@ -474,7 +475,7 @@ function planTextCreationWrites(
 export async function duplicateResource(
   projectRoot: string,
   resourceId: UUID,
-): Promise<{ newId: UUID }> {
+): Promise<{ newId: UUID; compileDefaultsNotice?: string }> {
   // read sidecar to get metadata
   const meta = await readSidecar(projectRoot, resourceId);
   if (!meta) {
@@ -482,7 +483,7 @@ export async function duplicateResource(
   }
 
   // All reads and checks complete before the first write (FR-33).
-  const isText = meta.type === "text";
+  const isText = meta.type === "text" || meta.type === "source";
   if (isText) {
     const content = await loadResourceContent(projectRoot, resourceId);
     if (content.tiptap === undefined && content.plainText === undefined) {
@@ -538,6 +539,11 @@ export async function duplicateResource(
       newId,
       copied.tiptap ?? plainTextToTipTapDocument(copied.plainText ?? ""),
     );
+  }
+
+  if (meta.type === "source") {
+    const { notice } = await seedCreatedSource(projectRoot, newId);
+    if (notice !== undefined) return { newId, compileDefaultsNotice: notice };
   }
 
   return { newId };

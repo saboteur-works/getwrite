@@ -560,9 +560,11 @@ function annotatedDoc(): TipTapDocument {
 }
 
 /** A text resource with two marked annotations, one detached body and one body-less mark. */
-async function makeAnnotatedSource(): Promise<string> {
+async function makeAnnotatedSource(
+  type: "text" | "source" = "text",
+): Promise<string> {
   const created = await createResourceCore(projectId, {
-    type: "text",
+    type,
     name: "Annotated",
     text: { plainText: "one two three" },
   });
@@ -685,6 +687,45 @@ describe.each([
     const copyId = await copy(created.id);
     const sc = await readSidecar(projectRoot, copyId);
     expect(sc && "annotations" in sc).toBe(false);
+    await flushIndexer();
+  });
+});
+
+// Feature 102, Task 32 (FR-38): a Source takes annotations, so a copy of one
+// remaps them as for text (annotation-copy.ts).
+describe.each([
+  [
+    "copyResourceCore",
+    async (sourceId: string): Promise<string> =>
+      ((await copyResourceCore(projectId, sourceId, "Copy")) as { id: string })
+        .id,
+  ],
+  [
+    "duplicateResource",
+    async (sourceId: string): Promise<string> =>
+      (await duplicateResource(projectRoot, sourceId)).newId,
+  ],
+])("%s of a Source — annotations get new ids (FR-38)", (_name, copy) => {
+  it("remaps the sidecar array and the document marks and leaves the original alone", async () => {
+    const sourceId = await makeAnnotatedSource("source");
+    const notesBefore = await readAnnotations(sourceId);
+    const docBefore = await readTiptap(sourceId);
+
+    const copyId = await copy(sourceId);
+
+    const copied = await readAnnotations(copyId);
+    expect(copied).toHaveLength(3);
+    const originalIds = new Set(notesBefore.map((n) => n.id));
+    for (const n of copied) expect(originalIds.has(n.id)).toBe(false);
+    expect(copied.map((n) => [n.body, n.quote])).toEqual(
+      notesBefore.map((n) => [n.body, n.quote]),
+    );
+    expect(markIdsOf(await readTiptap(copyId)).slice(0, 2)).toEqual([
+      copied[0]!.id,
+      copied[1]!.id,
+    ]);
+    expect(await readAnnotations(sourceId)).toEqual(notesBefore);
+    expect(await readTiptap(sourceId)).toEqual(docBefore);
     await flushIndexer();
   });
 });

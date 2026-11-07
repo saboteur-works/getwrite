@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useAppSelector, { useAppDispatch } from "../../../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../../../src/store/projectsSlice";
 import {
@@ -16,13 +16,29 @@ import {
 } from "../../../../src/lib/api/trash";
 import type {
   RestoreItemResult,
+  TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
+  TrashedUnreadableEntry,
 } from "../../../../src/lib/api/trash";
 import ConfirmDialog from "../../../common/ConfirmDialog";
 import Button from "../../../common/UI/Button/Button";
 import Checkbox from "../../../common/UI/Checkbox/Checkbox";
-import { useSharingLimits } from "../../../Sharing/SharingLimitsContext";
+import {
+  useDeclareUnlockPromptMounted,
+  useSharingLimits,
+} from "../../../Sharing/SharingLimitsContext";
+import UnlockModal from "../../../common/UnlockModal";
+import {
+  isUnlockingLimited,
+  isUnlockPromptAllowed,
+} from "../../../Sharing/unlock-prompt-gate";
+import { UNLOCK_AT_DESKTOP_MESSAGE } from "../../../Sharing/sharing-copy";
+import {
+  checkWorkspaceLock,
+  unlockWorkspace,
+} from "../../../../src/store/cryptoSlice";
+import { isLockedAccessError } from "../../../../src/lib/models/locked-access";
 import { isLimitOn } from "../../../Sharing/limit-gate";
 import LimitReason from "../../../Sharing/LimitReason";
 import { PERMANENT_DELETION_LIMITED_REASON } from "../../../Sharing/sharing-copy";
@@ -214,7 +230,11 @@ export default function TrashView({
   // already soft-deleted (and therefore already absent from `page.tsx`'s
   // local state, per the FR-21/OQ-11 note above) before it could be purged.
   const { notifyTrashRestored } = useTrashRefresh();
-  const { state: limitsState, refresh: refreshLimits } = useSharingLimits();
+  const {
+    state: limitsState,
+    hasDesktopBridge,
+    refresh: refreshLimits,
+  } = useSharingLimits();
   const isPurgeLimited = isLimitOn(limitsState, "permanentDeletion");
   const purgeReasonId = "trash-purge-limit-reason";
 
@@ -232,8 +252,18 @@ export default function TrashView({
 
   const [resources, setResources] = useState<TrashedResourceEntry[]>([]);
   const [folders, setFolders] = useState<TrashedFolderEntry[]>([]);
+  const [attachments, setAttachments] = useState<TrashedAttachmentEntry[]>([]);
+  // Items whose Trash record could not be read: shown so they can be deleted
+  // permanently; a restore of one is refused with the server's message.
+  const [unreadable, setUnreadable] = useState<TrashedUnreadableEntry[]>([]);
+  // Per-item refusal messages for attachment restores (Feature 102, FR-26),
+  // shown as visible text so a refusal is never only a failure count.
+  const [itemFailures, setItemFailures] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The listing itself hit a locked project (FR-26 extension): not a load
+  // failure to retry, and not an empty Trash.
+  const [isListLocked, setIsListLocked] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<PendingBatchAction | null>(
@@ -246,21 +276,60 @@ export default function TrashView({
   // plain text (not role="alert").
   const [actionRefusal, setActionRefusal] = useState<string | null>(null);
   const [restoreNotices, setRestoreNotices] = useState<RestoreNotice[]>([]);
+  // A restore or purge hit a locked project (FR-26): the same passphrase
+  // prompt the Start page shows (`UnlockModal`, gated by the Feature 77 FR-21
+  // table), opened here because that page is not mounted while a project is
+  // open. After a successful unlock the writer repeats the action.
+  const [isUnlockPromptOpen, setIsUnlockPromptOpen] = useState(false);
+  const encryptedProjectCount = useAppSelector(
+    (s) => s.crypto?.encryptedProjectIds.length ?? 0,
+  );
+  const isUnlocking = useAppSelector((s) => s.crypto?.isUnlocking ?? false);
+  const unlockErrorMessage = useAppSelector((s) => s.crypto?.errorMessage);
+  const isUnlockPromptShown =
+    isUnlockPromptOpen && isUnlockPromptAllowed(limitsState, hasDesktopBridge);
+  useDeclareUnlockPromptMounted(isUnlockPromptShown);
+
+  // `refetch` reads the limits through a ref so its identity, and so the
+  // effect below, does not change when the limits refresh.
+  const limitsStateRef = useRef(limitsState);
+  limitsStateRef.current = limitsState;
+  // What the open unlock prompt is for: a locked listing reloads the list
+  // after unlocking; a locked restore or purge asks the writer to repeat it.
+  const unlockForRef = useRef<"list" | "action">("action");
 
   const refetch = useCallback(() => {
     if (!projectId) {
       setResources([]);
       setFolders([]);
+      setAttachments([]);
+      setUnreadable([]);
       return;
     }
     setIsLoading(true);
     setError(null);
+    setIsListLocked(false);
     void listTrash(projectId)
       .then((listing) => {
         setResources(listing.resources);
         setFolders(listing.folders);
+        setAttachments(listing.attachments ?? []);
+        setUnreadable(listing.unreadable ?? []);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (isLockedAccessError(err)) {
+          // The project needs unlocking before Trash can be listed.
+          void dispatch(checkWorkspaceLock());
+          setIsListLocked(true);
+          unlockForRef.current = "list";
+          if (isUnlockingLimited(limitsStateRef.current)) {
+            setActionRefusal(UNLOCK_AT_DESKTOP_MESSAGE);
+          } else {
+            setActionRefusal(null);
+            setIsUnlockPromptOpen(true);
+          }
+          return;
+        }
         // FR-1: listTrash rejects rather than degrading (see
         // lib/api/trash.ts's doc comment) — surface that as a distinct
         // error state rather than falling through to the empty state,
@@ -268,7 +337,31 @@ export default function TrashView({
         setError("Could not load Trash. Try again later.");
       })
       .finally(() => setIsLoading(false));
-  }, [projectId]);
+  }, [projectId, dispatch]);
+
+  // The state may have changed since the prompt opened: re-read at submit and
+  // send the passphrase only if the fresh answer still permits the prompt
+  // (same narrowing as `StartPage`).
+  const submitUnlock = useCallback(
+    async (passphrase: string): Promise<void> => {
+      const fresh = await refreshLimits();
+      if (!isUnlockPromptAllowed(fresh, hasDesktopBridge)) return;
+      try {
+        await dispatch(unlockWorkspace(passphrase)).unwrap();
+      } catch {
+        // The failure text is recorded in the crypto slice and shown by the
+        // prompt, which stays open for another attempt.
+        return;
+      }
+      setIsUnlockPromptOpen(false);
+      if (unlockForRef.current === "list") {
+        refetch();
+      } else {
+        setReport("Workspace unlocked. Run the action again.");
+      }
+    },
+    [dispatch, hasDesktopBridge, refreshLimits, refetch],
+  );
 
   useEffect(() => {
     refetch();
@@ -279,11 +372,22 @@ export default function TrashView({
   }, [refetch, resourcesSliceCount]);
 
   const isEmpty =
-    !isLoading && !error && resources.length === 0 && folders.length === 0;
+    !isLoading &&
+    !error &&
+    !isListLocked &&
+    resources.length === 0 &&
+    folders.length === 0 &&
+    attachments.length === 0 &&
+    unreadable.length === 0;
 
   const allTopLevelIds = useMemo(
-    () => [...resources.map((r) => r.id), ...folders.map((f) => f.id)],
-    [resources, folders],
+    () => [
+      ...resources.map((r) => r.id),
+      ...folders.map((f) => f.id),
+      ...attachments.map((a) => a.id),
+      ...unreadable.map((u) => u.id),
+    ],
+    [resources, folders, attachments, unreadable],
   );
 
   const toggleSelected = useCallback((id: string) => {
@@ -304,6 +408,7 @@ export default function TrashView({
     setActionError(null);
     setActionRefusal(null);
     setRestoreNotices([]);
+    setItemFailures([]);
     setPendingAction({ kind: "restore", ids: Array.from(selectedIds) });
   }, [selectedIds]);
 
@@ -313,6 +418,7 @@ export default function TrashView({
     setActionError(null);
     setActionRefusal(null);
     setRestoreNotices([]);
+    setItemFailures([]);
     setPendingAction({
       kind: "purge",
       ids: Array.from(selectedIds),
@@ -326,6 +432,7 @@ export default function TrashView({
     setActionError(null);
     setActionRefusal(null);
     setRestoreNotices([]);
+    setItemFailures([]);
     setPendingAction({
       kind: "purge",
       ids: allTopLevelIds,
@@ -349,6 +456,8 @@ export default function TrashView({
     const namesById = new Map<string, string>();
     resources.forEach((r) => namesById.set(r.id, r.originalName));
     folders.forEach((f) => namesById.set(f.id, f.originalName));
+    attachments.forEach((a) => namesById.set(a.id, a.label));
+    unreadable.forEach((u) => namesById.set(u.id, u.label));
 
     const request =
       action.kind === "restore"
@@ -366,6 +475,25 @@ export default function TrashView({
 
         setResources((prev) => prev.filter((r) => !succeededIds.has(r.id)));
         setFolders((prev) => prev.filter((f) => !succeededIds.has(f.id)));
+        setAttachments((prev) => prev.filter((a) => !succeededIds.has(a.id)));
+        setUnreadable((prev) => prev.filter((u) => !succeededIds.has(u.id)));
+        const attachmentIds = new Set([
+          ...attachments.map((a) => a.id),
+          ...unreadable.map((u) => u.id),
+        ]);
+        setItemFailures(
+          results
+            .filter(
+              (result) =>
+                !result.ok &&
+                result.error !== undefined &&
+                attachmentIds.has(result.id),
+            )
+            .map(
+              (result) =>
+                `${namesById.get(result.id) ?? result.id}: ${result.error}`,
+            ),
+        );
         setSelectedIds((prev) => {
           const next = new Set(prev);
           succeededIds.forEach((id) => next.delete(id));
@@ -431,7 +559,18 @@ export default function TrashView({
         }
       })
       .catch((err: unknown) => {
-        if (isLimitRefusalError(err)) {
+        if (isLockedAccessError(err)) {
+          // Not a failure to retry: the project needs unlocking first.
+          void dispatch(checkWorkspaceLock());
+          setActionError(null);
+          if (isUnlockingLimited(limitsState)) {
+            setActionRefusal(UNLOCK_AT_DESKTOP_MESSAGE);
+          } else {
+            setActionRefusal(null);
+            unlockForRef.current = "action";
+            setIsUnlockPromptOpen(true);
+          }
+        } else if (isLimitRefusalError(err)) {
           void refreshLimits();
           // The server's own reason, as plain text: a retry cannot succeed.
           setActionRefusal(err.message);
@@ -449,11 +588,14 @@ export default function TrashView({
       .finally(() => setIsSubmitting(false));
   }, [
     refreshLimits,
+    limitsState,
     pendingAction,
     projectId,
     isSubmitting,
     resources,
     folders,
+    attachments,
+    unreadable,
     dispatch,
     notifyTrashRestored,
   ]);
@@ -488,6 +630,25 @@ export default function TrashView({
         <p className="mb-3 text-gw-small text-gw-secondary" role="status">
           Loading Trash&hellip;
         </p>
+      )}
+
+      {isListLocked && !isLoading && (
+        <div data-testid="trash-locked" className="mb-3" role="status">
+          <p className="text-gw-small font-medium text-gw-primary">
+            This project is locked, so Trash cannot be listed.
+          </p>
+          {!isUnlockingLimited(limitsState) && !isUnlockPromptShown ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                unlockForRef.current = "list";
+                setIsUnlockPromptOpen(true);
+              }}
+            >
+              Unlock
+            </Button>
+          ) : null}
+        </div>
       )}
 
       {error && (
@@ -560,6 +721,19 @@ export default function TrashView({
               data-trash-restore-notice-kind={notice.kind}
             >
               <span role="status">{notice.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {itemFailures.length > 0 && (
+        <ul
+          data-testid="trash-item-failures"
+          className="mb-3 flex flex-col gap-1 text-gw-small text-gw-secondary"
+        >
+          {itemFailures.map((text, index) => (
+            <li key={`${index}-${text}`} data-testid="trash-item-failure">
+              <span role="status">{text}</span>
             </li>
           ))}
         </ul>
@@ -727,6 +901,74 @@ export default function TrashView({
                 )}
               </li>
             ))}
+
+            {attachments.map((attachment) => (
+              <li
+                key={attachment.id}
+                data-testid="trash-row"
+                data-trash-kind="attachment"
+                data-trash-id={attachment.id}
+                data-trash-selected={selectedIds.has(attachment.id)}
+                className="workarea-list-item !cursor-default flex-col !items-stretch gap-2 mb-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    className="w-[13px] h-[13px] flex-shrink-0"
+                    data-testid="trash-row-select"
+                    aria-label={`Select ${attachment.label}`}
+                    checked={selectedIds.has(attachment.id)}
+                    onChange={() => toggleSelected(attachment.id)}
+                  />
+                  <div
+                    data-testid="trash-row-label"
+                    className="workarea-list-item-label flex-1 min-w-0 truncate"
+                  >
+                    {attachment.label}
+                  </div>
+                  <div
+                    data-testid="trash-row-meta"
+                    className="workarea-list-item-meta truncate"
+                  >
+                    {attachment.fileName}
+                  </div>
+                  <div data-testid="trash-row-actions" />
+                </div>
+              </li>
+            ))}
+
+            {unreadable.map((item) => (
+              <li
+                key={item.id}
+                data-testid="trash-row"
+                data-trash-kind="unreadable"
+                data-trash-id={item.id}
+                data-trash-selected={selectedIds.has(item.id)}
+                className="workarea-list-item !cursor-default flex-col !items-stretch gap-2 mb-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    className="w-[13px] h-[13px] flex-shrink-0"
+                    data-testid="trash-row-select"
+                    aria-label={`Select ${item.label}`}
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => toggleSelected(item.id)}
+                  />
+                  <div
+                    data-testid="trash-row-label"
+                    className="workarea-list-item-label flex-1 min-w-0 truncate"
+                  >
+                    {item.label}
+                  </div>
+                  <div
+                    data-testid="trash-row-meta"
+                    className="workarea-list-item-meta truncate"
+                  >
+                    Cannot be restored. Delete permanently to remove it.
+                  </div>
+                  <div data-testid="trash-row-actions" />
+                </div>
+              </li>
+            ))}
           </ul>
         </>
       )}
@@ -743,6 +985,17 @@ export default function TrashView({
         onCancel={cancelPendingAction}
         isConfirmDisabled={isSubmitting}
       />
+
+      {isUnlockPromptShown ? (
+        <UnlockModal
+          isOpen
+          encryptedProjectCount={encryptedProjectCount}
+          isBusy={isUnlocking}
+          errorMessage={unlockErrorMessage}
+          onUnlock={(passphrase) => void submitUnlock(passphrase)}
+          onDecline={() => setIsUnlockPromptOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

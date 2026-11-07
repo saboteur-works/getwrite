@@ -36,7 +36,7 @@ export async function remapCopiedAnnotations(
   copyId: string,
   sidecar: Record<string, MetadataValue>,
 ): Promise<Record<string, MetadataValue>> {
-  if (sidecar.type !== "text") return sidecar;
+  if (sidecar.type !== "text" && sidecar.type !== "source") return sidecar;
   const hasArray = Array.isArray(sidecar.annotations);
   const notes = hasArray
     ? (sidecar.annotations as unknown as Annotation[])

@@ -3233,6 +3233,19 @@ helped, and the installed desktop app gains nothing from this feature.
 
 ---
 
+### Feature 102: Folder metadata and folder subtypes, and Sources as a resource type — Not started
+
+**Value:** A writer who organises research or a long work into folders can give a folder its own notes, its own fields and a kind, and find and filter folders by them; and a writer gathering evidence for nonfiction, true crime or folklore can keep a source (an interview, an archive item, a newspaper piece) as its own kind of item that holds a write-up and its images and audio, and recover an attachment removed by mistake.
+**Vertical slice:** Two parts in one feature, both on the sidecar layer and Trash. (1) Folder metadata. Data: a folder sidecar `meta/folder-<id>.meta.json` read and written through `sidecar.ts` (per-file lock, merge-on-write, client-writable key allowlist) holding plain-text notes in `userMetadata.notes`, custom field values and an optional subtype, with no body; `folder.json` stays structural; a new optional boolean on a custom field definition (for example `appliesToFolders`) marks it for folders; no sidecar means empty notes and no values, with no migration. Logic: Trash moves and restores the folder sidecar and a permanent delete leaves none behind; `appliesTo` subtype scoping applies to folders; the query evaluator gains a folder source so queries, smart folders, the Organizer and the Data view can show and filter folders, with unchanged results for a project with no folder metadata; a document never inherits its folder's fields or notes. Interface: the metadata sidebar shows a selected folder's notes and applicable fields for editing in place of today's placeholder, and a subtype choice from the project's own list. (2) Sources core. Data: `source` added to `ResourceTypeSchema`, a Source sidecar `meta/resource-<id>.meta.json`, one rich-text body plus an ordered list of image and audio attachments stored inside the Source's own `resources/<id>/` directory and listed in its sidecar, not as tree items. Logic: create, open, rename, move and delete a Source through the generic resource tree and sidecar; every place that handles resources by type handles `source`; other media kinds, including video, are refused with an error naming the reason; revisions cover the body only and never copy attachment bytes; a removed or replaced attachment goes to the project Trash and can be restored to the Source; a Source is not an entity; new projects start with Sources excluded from compile only. Interface: no Sources view or panel; the Source is usable through the generic tree, sidecar and the compile and export dialogs of Feature 101.
+**Requirements covered:** FR-93, FR-94, FR-95, FR-96, FR-97, FR-98, FR-99, FR-100, FR-101, FR-102, FR-103, FR-104, FR-105, FR-106, FR-107, FR-108, FR-109, FR-110, FR-111
+**User stories:** US-39, US-40
+**Depends on:** 101 (saved compile and export defaults, shipped), 72 and 73 (resource subtype and its custom-field scoping, shipped), 26 (Trash UI, shipped). No unshipped dependency. The folder part and the Source part share `sidecar.ts` and `trash.ts` and are built together on one branch.
+**Branch suggestion:** feat/folder-metadata-sources-core
+**Notes:** Product spec US-39 and US-40, FR-93 to FR-111, added 2026-11-06; owner decisions of 2026-11-04 in note_13fb5223 (folders) and note_31c82491 (Sources); OQ-137 to OQ-148 and OQ-151 are resolved by the owner on 2026-11-07 and not reopened here. OQ-149 and OQ-150 stay open as engineering verification items covered inside the feature, not scoping calls: OQ-149 by the tests FR-111 requires (encryption, whole-directory Trash and restore for attachments, and the Android media baseline of about 10 MB/s with a 100 MB cap accepted); OQ-150 by the type-branch survey FR-102 requires (add `source` to `ResourceTypeSchema`, fix the typecheck errors, grep for `type === "text"` branches, and cover `cli/` and `electron/`, which the note did not). Owner decision (Gate 0, 2026-11-06): Run B is one feature with two parts, following the multi-part precedent of Features 88, 89 and 101; Sources UI and module, excerpts, citations, claim handling and the module seam are Run C and out of scope (FR-110). Decisions carried: no built-in folder subtypes ship, folder subtypes are writer-defined per project (FR-98); folder notes live in the sidecar's `userMetadata.notes`, not `ResourceBase.notes` (FR-95); built-in fields beyond notes on folders are deferred (FR-97); no Source-to-entity linking (FR-104); a Source's body is one rich-text body plus attachments (FR-105); Sources are treated like text documents by spell check, prose diagnostics and mention detection, and no default goal filter excludes them (FR-109). Implementation question carried to the feature spec, not a product question (FR-109): saved defaults store `excludedResourceIds`, so whether "Sources excluded from compile by default" is a type-based rule or ids seeded when a Source is created is not decided, nor is what existing projects get (including whether a Source created there starts excluded). The rule must stay writer-overridable, and a rule built into the product that the writer cannot change is not allowed. Code readings the spec records but did not run, each settled by a required test: no `folder.json` writer takes the per-file lock (FR-93); an undeclared `folder.json` key is lost on restore (FR-94); a `type = folder` query matches nothing today (FR-100). Risk: part 2 touches at least 22 type-branching files, so its size is not yet known (OQ-150). The feature spec is not yet written.
+
+---
+
+
 ## Coverage check
 
 - Requirements covered:
@@ -3338,6 +3351,25 @@ helped, and the installed desktop app gains nothing from this feature.
   - FR-90: Feature 101
   - FR-91: Feature 101 (PDF compile on native Android)
   - FR-92: Feature 101 (device-verified as recorded verification, not a merge gate; needs FR-91 and `pnpm build:native`)
+  - FR-93: Feature 102 (folder sidecar; test of the unlocked `folder.json` writers)
+  - FR-94: Feature 102 (Trash moves and restores the folder sidecar; round-trip test required)
+  - FR-95: Feature 102
+  - FR-96: Feature 102
+  - FR-97: Feature 102
+  - FR-98: Feature 102 (folder subtypes; none built in)
+  - FR-99: Feature 102
+  - FR-100: Feature 102 (query evaluator folder source; test required)
+  - FR-101: Feature 102
+  - FR-102: Feature 102 (Sources as a resource type; type-branch survey is OQ-150)
+  - FR-103: Feature 102
+  - FR-104: Feature 102
+  - FR-105: Feature 102
+  - FR-106: Feature 102
+  - FR-107: Feature 102
+  - FR-108: Feature 102
+  - FR-109: Feature 102 (the type-rule or seeded-ids question goes to the feature spec)
+  - FR-110: Feature 102 (a boundary: no Sources UI, excerpts, citations or module seam)
+  - FR-111: Feature 102 (verification by tests, OQ-149)
   - Features 86, 87 and 88 (defect fixes, added 2026-10-15) carry no
     requirement of their own: each corrects behaviour that an earlier
     feature owns and adds no capability, the same device Features 37, 38
@@ -3346,8 +3378,8 @@ helped, and the installed desktop app gains nothing from this feature.
 
 ## Summary
 
-- Total features: 101
-- Suggested build order: Feature 101 (added 2026-11-04) depends only on shipped features and can be built at any time; it merges as one PR (F101-1); inside it, parts 1 and 2 are independent of part 3, FR-89 waits on its compile test, and FR-92 is recorded verification that needs FR-91 and `pnpm build:native`. 72 → 73 for resource subtype (73 needs 72's
+- Total features: 102
+- Suggested build order: Feature 102 (added 2026-11-07) depends only on shipped features (101, 72, 73, 26) and can be built at any time; it is one feature with two parts that share `sidecar.ts` and `trash.ts`, so it merges as one PR on one branch, following Features 88, 89 and 101; inside it, the folder part and the Source part are independent of each other, FR-109's Source default builds on the shipped Feature 101 saved defaults, and FR-111 is verified by tests; the Sources interface and module seam are a later run and not in it. Feature 101 (added 2026-11-04) depends only on shipped features and can be built at any time; it merges as one PR (F101-1); inside it, parts 1 and 2 are independent of part 3, FR-89 waits on its compile test, and FR-92 is recorded verification that needs FR-91 and `pnpm build:native`. 72 → 73 for resource subtype (73 needs 72's
   sidecar key; 72 has since shipped and merged to `main` (PR #260,
   2026-10-08), and 73 has since shipped and merged to `main` (PR #261,
   2026-10-08)). Features 1 through 23
@@ -3457,7 +3489,7 @@ helped, and the installed desktop app gains nothing from this feature.
   containing 75, because a paired device saves the desktop's address (host
   and port).
   Spell checker (FR-78, added 2026-10-25): 95 (the checker, whose first task is the engine spike folded in from Feature 94, with a halt for the owner's engine choice: underline, replace, Ignore, Add to the project, app-wide switch, entity names; the smallest release-worthy slice) → 96 (user word list across projects; may follow 95).
-- Independently shippable: 101 (compile and export defaults, annotations, and PDF compile on Android; depends only on shipped Features 4, 5, 9, 12 and 20), 95 (spell checker, engine spike as its first task, no dependency), 93 (stale saves and index races, no dependency; follows 92 in intent only), 92 (overlapping saves to project.json, no dependency), 86, 87 and 88 (the defect features, no dependency), 81 (the user handbook's first slice; 82 to 85 each depend on 81 only), 75, 78 and 80 (the home-network features with no dependency), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+- Independently shippable: 102 (folder metadata and folder subtypes, and Sources core; depends only on shipped Features 101, 72, 73 and 26), 101 (compile and export defaults, annotations, and PDF compile on Android; depends only on shipped Features 4, 5, 9, 12 and 20), 95 (spell checker, engine spike as its first task, no dependency), 93 (stale saves and index races, no dependency; follows 92 in intent only), 92 (overlapping saves to project.json, no dependency), 86, 87 and 88 (the defect features, no dependency), 81 (the user handbook's first slice; 82 to 85 each depend on 81 only), 75, 78 and 80 (the home-network features with no dependency), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56,
   57, 58, 59, 60, 61, 62, 64, 65, 66, 70, 72, 73, 74 (Features 72, 73 and 74 having all merged; 30 and 28 are the only pair left with an unmet hard dependency;

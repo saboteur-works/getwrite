@@ -44,6 +44,11 @@ import {
   writeSpellcheckEnabled,
   SPELLCHECK_ENABLED_STORAGE_KEY,
 } from "../src/lib/spellcheck-preference";
+import { setStorageAdapter } from "../src/lib/models/io";
+import { createMemoryAdapter } from "../src/lib/models/memoryAdapter";
+import { writeResourceToFile } from "../src/lib/models/resource-persistence";
+import { createSourceResource } from "../src/lib/models/resource-factory";
+import { loadResourceContent } from "../src/lib/tiptap-utils";
 import type { WorkerRequest } from "../src/lib/spelling/worker-protocol";
 
 const loadedSpelling = {
@@ -585,5 +590,35 @@ describe("app start-up wiring (Task 36 open item 1)", () => {
     view.unmount();
     ua.mockRestore();
     vi.doUnmock("../src/lib/toast-service");
+  });
+});
+
+describe("a Source body (Feature 102, FR-29)", () => {
+  it("underlines a misspelling in a saved Source body and checks only the body, not its attachment list", async () => {
+    vi.useRealTimers();
+    setStorageAdapter(createMemoryAdapter());
+    const src = createSourceResource({
+      name: "Interview",
+      plainText: "the cat zzq",
+    });
+    src.attachments = [
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        fileName: "attachment-22222222-2222-4222-8222-222222222222.pdf",
+        originalName: "blorpfile.pdf",
+        mime: "application/pdf",
+        size: 10,
+        addedAt: new Date().toISOString(),
+      },
+    ];
+    await writeResourceToFile("/projects/spell-source", src);
+    const loaded = await loadResourceContent("/projects/spell-source", src.id);
+    vi.useFakeTimers();
+
+    const h = setup(`<p>${loaded.plainText ?? ""}</p>`);
+    await h.tick(0);
+    expect(h.checks()[0].blocks.map((b) => b.text)).toEqual(["the cat zzq"]);
+    await h.flush();
+    expect(h.underlined()).toEqual(["zzq"]);
   });
 });

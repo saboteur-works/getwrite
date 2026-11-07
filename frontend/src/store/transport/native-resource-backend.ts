@@ -72,7 +72,7 @@ import type {
 function resolveProjectRootOrThrow(projectId: string): string {
   const projectRoot = resolveRevisionProjectRoot(projectId);
   if (!projectRoot) {
-    throw new Error(`Invalid projectId: ${projectId}`);
+    throw new Error("Invalid projectId");
   }
   return projectRoot;
 }
@@ -90,11 +90,17 @@ export function createNativeResourcesTransport(
   return {
     async create(projectId, resourceData) {
       return run(async () => {
+        let notice: string | undefined;
         const resource = await createResourceCore(
           projectId,
           resourceData as unknown as CreateResourceOpts,
+          {
+            onCompileDefaultsNotice: (message) => {
+              notice = message;
+            },
+          },
         );
-        return { resource };
+        return { resource, ...(notice !== undefined && { notice }) };
       });
     },
 
@@ -107,8 +113,21 @@ export function createNativeResourcesTransport(
 
     async copy(resourceId, newName, projectId) {
       return run(async () => {
-        const resource = await copyResourceCore(projectId, resourceId, newName);
-        return { resource: resource as unknown as AnyResource };
+        let notice: string | undefined;
+        const resource = await copyResourceCore(
+          projectId,
+          resourceId,
+          newName,
+          {
+            onCompileDefaultsNotice: (message) => {
+              notice = message;
+            },
+          },
+        );
+        return {
+          resource: resource as unknown as AnyResource,
+          ...(notice !== undefined && { notice }),
+        };
       });
     },
 

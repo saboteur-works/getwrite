@@ -13,6 +13,7 @@ import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 import * as resourceCrudCore from "../../src/lib/models/resource-crud-core";
+import { SOURCE_NOT_EXCLUDED_MESSAGES } from "../../src/lib/models/saved-defaults-core";
 
 const tmpDirs: string[] = [];
 
@@ -216,6 +217,75 @@ describe("POST /api/resource (projectId-based)", () => {
       );
 
       expect(res.status).toBe(401);
+    });
+  });
+});
+
+describe("POST /api/resource Source seeding notice (Feature 102, Task 29, FR-27)", () => {
+  const post = async (projectId: string): Promise<Response> => {
+    const { POST } = await import("../../app/api/resource/route");
+    return POST(
+      new Request("http://localhost/api/resource", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          resourceData: {
+            name: "Interview",
+            type: "source",
+            text: { plainText: "words" },
+          },
+        }),
+      }) as never,
+    );
+  };
+
+  it("seeds the Source and carries no notice when there is room", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await post(projectId);
+      const body = (await res.json()) as {
+        resource: { id: string };
+        notice?: string;
+      };
+      expect(res.status).toBe(200);
+      expect(body.notice).toBeUndefined();
+      const project = JSON.parse(
+        await fs.readFile(path.join(projectPath, "project.json"), "utf8"),
+      ) as { config: { compileDefaults: { excludedResourceIds: string[] } } };
+      expect(project.config.compileDefaults.excludedResourceIds).toEqual([
+        body.resource.id,
+      ]);
+    });
+  });
+
+  it("at the 5000-id cap returns 200 with the resource and a visible notice", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await fs.writeFile(
+      path.join(projectPath, "project.json"),
+      JSON.stringify({
+        id: projectId,
+        name: "Test",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        config: {
+          compileDefaults: {
+            excludedResourceIds: Array.from({ length: 5000 }, () =>
+              generateUUID(),
+            ),
+          },
+        },
+      }),
+    );
+    await withProjectsDirEnv(projectsDir, async () => {
+      const res = await post(projectId);
+      const body = (await res.json()) as {
+        success: boolean;
+        resource: { id: string; type: string };
+        notice?: string;
+      };
+      expect(res.status).toBe(200);
+      expect(body.resource.type).toBe("source");
+      expect(body.notice).toBe(SOURCE_NOT_EXCLUDED_MESSAGES.atCap);
     });
   });
 });

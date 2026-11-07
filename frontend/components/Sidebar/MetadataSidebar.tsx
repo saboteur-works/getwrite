@@ -32,6 +32,8 @@ import EntityMentionsProvider from "./EntityMentionsContext";
 import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshContext";
 import ProseDiagnosticsSection from "./ProseDiagnosticsSection";
 import SubtypeSection from "./SubtypeSection";
+import FolderMetadataSection from "./FolderMetadataSection";
+import SourceAttachmentsSection from "./SourceAttachmentsSection";
 import { isFieldVisibleForSubtype } from "../../src/lib/models/field-subtype-scope";
 import { isFieldDeprecated } from "../../src/lib/models/field-deprecation";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
@@ -480,11 +482,13 @@ export default function MetadataSidebar({
     }
   };
 
-  // Text, image, and audio resources all support custom (schema-driven)
-  // metadata. Folders and the empty selection show a placeholder instead.
+  // Text, source, image, and audio resources all support custom
+  // (schema-driven) metadata. Folders and the empty selection show a
+  // placeholder instead.
   const editableResource =
     selectedResource &&
     (selectedResource.type === "text" ||
+      selectedResource.type === "source" ||
       selectedResource.type === "image" ||
       selectedResource.type === "audio")
       ? selectedResource
@@ -512,6 +516,14 @@ export default function MetadataSidebar({
             )}
             {editableResource.type === "text" && (
               <ProseDiagnosticsSection resource={editableResource} />
+            )}
+            {editableResource.type === "source" && (
+              <CollapsibleSection title="Attachments" variant="sidebar">
+                <SourceAttachmentsSection
+                  key={editableResource.id}
+                  resource={editableResource}
+                />
+              </CollapsibleSection>
             )}
             <CollapsibleSection title="Subtype" variant="sidebar">
               <SubtypeSection />
@@ -616,6 +628,16 @@ export default function MetadataSidebar({
             )}
           </div>
         </>
+      ) : selectedResource?.type === "folder" ? (
+        <div className="flex-1 min-h-0 overflow-y-auto px-4">
+          <h3 className="text-gw-secondary-light text-gw-label tracking-label uppercase mb-4">
+            {selectedResource.name}
+          </h3>
+          <FolderMetadataSection
+            key={selectedResource.id}
+            folder={selectedResource}
+          />
+        </div>
       ) : (
         <div className="px-4">
           {/* A sentence, not a heading. It was an <h4> for its styling, which

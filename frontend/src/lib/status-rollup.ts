@@ -55,7 +55,7 @@ export function computeStatusRollup(
   const unset: Tally = { resourceCount: 0, words: 0 };
 
   for (const r of resources) {
-    if (r.type !== "text") continue;
+    if (r.type !== "text" && r.type !== "source") continue;
     const status = getStatus(r);
     let tally: Tally;
     if (status === undefined) {

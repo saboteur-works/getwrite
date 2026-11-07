@@ -76,10 +76,17 @@ export function registerReindex(program: Command) {
 
           for (const id of resourceIds) {
             let name = id;
+            // A Source keeps its own type (FR-38); every other resource is
+            // indexed as text, as before. The indexer reads body and title,
+            // not the type, so this does not change what is indexed.
+            let resourceType: "text" | "source" = "text";
             try {
               const side = await readSidecar(root, id);
               if (side && (side as Record<string, unknown>).name) {
                 name = String((side as Record<string, unknown>).name);
+              }
+              if (side && (side as Record<string, unknown>).type === "source") {
+                resourceType = "source";
               }
             } catch (_) {
               // no sidecar — use id as name
@@ -97,7 +104,7 @@ export function registerReindex(program: Command) {
             const minimal: TextResource = {
               id,
               name,
-              type: "text",
+              type: resourceType,
               folderId: undefined,
               createdAt: now,
               plainText,

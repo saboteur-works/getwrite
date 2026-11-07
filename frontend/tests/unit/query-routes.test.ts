@@ -16,6 +16,10 @@ import { createProject } from "../../src/lib/models/project";
 import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
 import { writeSidecar } from "../../src/lib/models/sidecar";
 import { generateUUID } from "../../src/lib/models/uuid";
+import {
+  createFolderResource,
+  writeResourceToFile,
+} from "../../src/lib/models/resource";
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { ProjectLockedError } from "../../src/lib/models/crypto/adapter-selection";
 
@@ -45,6 +49,8 @@ import {
 import { POST as savedPOST } from "../../app/api/project/query/saved/route";
 import { dispatchSavedQueryAction } from "../../src/lib/models/saved-query-dispatch-core";
 import type { SavedQuery } from "../../src/lib/models/saved-queries";
+import { writeQuery } from "../../src/lib/models/saved-queries";
+import type { QueryAST } from "../../src/lib/models/query-ast";
 
 // ─── Test project helpers ─────────────────────────────────────────────────────
 
@@ -292,6 +298,242 @@ describe("executeEvaluate — happy path", () => {
     expect(ids).toContain(idText);
     expect(ids).toContain(idImage);
     expect(ids).not.toContain(idAudio);
+  });
+});
+
+describe("executeEvaluate — folder source (Feature 102 FR-13)", () => {
+  /** A project with two folders on disk and two text resources (one in a folder). */
+  async function seedFolderProject(): Promise<{
+    root: string;
+    folderA: string;
+    folderB: string;
+    folderIds: string[];
+    textIds: string[];
+  }> {
+    const root = await makeTmpProject();
+    const a = createFolderResource({ name: "Folder A" });
+    const b = createFolderResource({ name: "Folder B", parentFolderId: a.id });
+    await writeResourceToFile(root, a);
+    await writeResourceToFile(root, b);
+    const t1 = await addResource(root, { type: "text", name: "Loose Text" });
+    const t2 = await addResource(root, {
+      type: "text",
+      name: "Filed Text",
+      folderId: a.id,
+    });
+    return {
+      root,
+      folderA: a.id,
+      folderB: b.id,
+      folderIds: [a.id, b.id],
+      textIds: [t1, t2],
+    };
+  }
+
+  async function writeFolderSidecar(
+    root: string,
+    folderId: string,
+    body: string,
+  ): Promise<void> {
+    await fs.mkdir(path.join(root, "meta"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "meta", `folder-${folderId}.meta.json`),
+      body,
+      "utf8",
+    );
+  }
+
+  const typeIs = (value: string): QueryAST => ({
+    op: "eq",
+    field: "type",
+    value,
+  });
+  const sorted = (ids: string[]): string[] => [...ids].sort();
+
+  it("type = folder matches the project's folders", async () => {
+    const { root, folderIds } = await seedFolderProject();
+    expect(sorted(await executeEvaluate(root, typeIs("folder")))).toEqual(
+      sorted(folderIds),
+    );
+  });
+
+  it("type in [folder] and type != folder name the folder type too", async () => {
+    const { root, folderIds, textIds } = await seedFolderProject();
+    expect(
+      sorted(
+        await executeEvaluate(root, {
+          op: "in",
+          field: "type",
+          value: ["folder"],
+        }),
+      ),
+    ).toEqual(sorted(folderIds));
+    expect(
+      sorted(
+        await executeEvaluate(root, {
+          op: "ne",
+          field: "type",
+          value: "folder",
+        }),
+      ),
+    ).toEqual(sorted(textIds));
+  });
+
+  it("filters folders by field value and subtype through the existing language", async () => {
+    const { root, folderA, folderB } = await seedFolderProject();
+    await writeFolderSidecar(
+      root,
+      folderA,
+      JSON.stringify({
+        userMetadata: { notes: "n", mood: "tense" },
+        resourceSubtype: "Act",
+      }),
+    );
+    await writeFolderSidecar(
+      root,
+      folderB,
+      JSON.stringify({ userMetadata: { mood: "calm" } }),
+    );
+    const folderAnd = (child: QueryAST): QueryAST => ({
+      op: "and",
+      children: [typeIs("folder"), child],
+    });
+
+    expect(
+      await executeEvaluate(
+        root,
+        folderAnd({ op: "eq", field: "mood", value: "tense" }),
+      ),
+    ).toEqual([folderA]);
+    expect(
+      await executeEvaluate(
+        root,
+        folderAnd({ op: "eq", field: "mood", value: "calm" }),
+      ),
+    ).toEqual([folderB]);
+    expect(
+      await executeEvaluate(
+        root,
+        folderAnd({ op: "eq", field: "resourceSubtype", value: "Act" }),
+      ),
+    ).toEqual([folderA]);
+    expect(
+      await executeEvaluate(root, folderAnd({ op: "exists", field: "mood" })),
+    ).toHaveLength(2);
+  });
+
+  it("a folder with no sidecar is a folder with no field values and no subtype", async () => {
+    const { root, folderIds } = await seedFolderProject();
+    expect(
+      await executeEvaluate(root, {
+        op: "and",
+        children: [typeIs("folder"), { op: "exists", field: "mood" }],
+      }),
+    ).toEqual([]);
+    expect(sorted(await executeEvaluate(root, typeIs("folder")))).toEqual(
+      sorted(folderIds),
+    );
+  });
+
+  it("pins the mixed-type results: OR is the union, AND is empty (Task 3 record)", async () => {
+    const { root, folderIds, textIds } = await seedFolderProject();
+    const folderOrText = await executeEvaluate(root, {
+      op: "or",
+      children: [typeIs("folder"), typeIs("text")],
+    });
+    const folderAndText = await executeEvaluate(root, {
+      op: "and",
+      children: [typeIs("folder"), typeIs("text")],
+    });
+    expect(sorted(folderOrText)).toEqual(sorted([...folderIds, ...textIds]));
+    expect(folderAndText).toEqual([]);
+  });
+
+  it("type = text and not(type = text), which do not name folder, never return folders", async () => {
+    const { root, textIds } = await seedFolderProject();
+    expect(sorted(await executeEvaluate(root, typeIs("text")))).toEqual(
+      sorted(textIds),
+    );
+    expect(
+      await executeEvaluate(root, { op: "not", child: typeIs("text") }),
+    ).toEqual([]);
+  });
+
+  it("not(type = folder) names the folder type and returns the non-folders", async () => {
+    const { root, textIds } = await seedFolderProject();
+    expect(
+      sorted(
+        await executeEvaluate(root, { op: "not", child: typeIs("folder") }),
+      ),
+    ).toEqual(sorted(textIds));
+  });
+
+  it("a ref to a saved query that names type = folder loads the folder source", async () => {
+    const { root, folderIds } = await seedFolderProject();
+    const queryId = generateUUID();
+    await writeQuery(root, {
+      id: queryId,
+      name: "Folders",
+      definition: typeIs("folder"),
+    });
+    expect(
+      sorted(await executeEvaluate(root, { op: "ref", id: queryId })),
+    ).toEqual(sorted(folderIds));
+  });
+
+  it("a query that does not name the folder type is unchanged by folders and never reads folder sidecars", async () => {
+    const { root, folderA, textIds } = await seedFolderProject();
+    // A corrupt folder sidecar must not affect a query that does not name it.
+    await writeFolderSidecar(root, folderA, "{ not json");
+    const corpus: QueryAST[] = [
+      typeIs("text"),
+      { op: "not", child: typeIs("text") },
+      { op: "exists", field: "status" },
+      { op: "contains", field: "name", value: "Text" },
+      { op: "eq", field: "folderId", value: folderA },
+      {
+        op: "or",
+        children: [
+          typeIs("text"),
+          { op: "eq", field: "resourceSubtype", value: "Act" },
+        ],
+      },
+      { op: "gte", field: "wordCount", value: 0 },
+    ];
+    const results: string[][] = [];
+    for (const ast of corpus) results.push(await executeEvaluate(root, ast));
+
+    expect(sorted(results[0])).toEqual(sorted(textIds));
+    expect(results[1]).toEqual([]);
+    expect(results[2]).toEqual([]);
+    expect(sorted(results[3])).toEqual(sorted(textIds));
+    expect(results[4]).toEqual([textIds[1]]);
+    expect(sorted(results[5])).toEqual(sorted(textIds));
+    expect(results[6].every((id) => textIds.includes(id))).toBe(true);
+  });
+
+  it("a failed folder sidecar read raises and is not returned as no folders", async () => {
+    const { root, folderA } = await seedFolderProject();
+    await writeFolderSidecar(root, folderA, "{ not json");
+    await expect(executeEvaluate(root, typeIs("folder"))).rejects.toThrow(
+      /folder/i,
+    );
+  });
+
+  it("an unparseable folder.json raises when the query names the folder type", async () => {
+    const { root, folderA } = await seedFolderProject();
+    for (const d of await fs.readdir(path.join(root, "folders"))) {
+      const p = path.join(root, "folders", d, "folder.json");
+      const raw = JSON.parse(await fs.readFile(p, "utf8")) as { id: string };
+      if (raw.id === folderA) await fs.writeFile(p, "{ broken", "utf8");
+    }
+    await expect(executeEvaluate(root, typeIs("folder"))).rejects.toThrow();
+  });
+
+  it("a project with no folders directory returns no folders without error", async () => {
+    const root = await makeTmpProject();
+    await addResource(root, { name: "Only" });
+    expect(await executeEvaluate(root, typeIs("folder"))).toEqual([]);
   });
 });
 

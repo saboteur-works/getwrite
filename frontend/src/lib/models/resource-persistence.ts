@@ -9,7 +9,14 @@
  */
 import path from "node:path";
 
-import { exists, mkdir, readFile, readdir, writeFile } from "./io";
+import {
+  atomicWriteFile,
+  exists,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+} from "./io";
 import { validateResource } from "./resource-factory";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { countWords } from "../word-count";
@@ -20,6 +27,7 @@ import type {
   Folder,
   ImageResource,
   MetadataValue,
+  SourceResource,
   TextResource,
 } from "./types";
 
@@ -88,10 +96,12 @@ async function resolveFolderDir(
 }
 
 /**
- * Type guard for text resources.
+ * Type guard for resources whose body is stored as text (text and Source).
  */
-function isTextResource(resource: AnyResource): resource is TextResource {
-  return resource.type === "text";
+function isTextResource(
+  resource: AnyResource,
+): resource is TextResource | SourceResource {
+  return resource.type === "text" || resource.type === "source";
 }
 
 /**
@@ -127,7 +137,8 @@ export async function writeResourceToFile(
     if (!(await exists(dir))) {
       await mkdir(dir, { recursive: true });
     }
-    await writeFile(
+    // Atomic: Trash restore and the importers rewrite an existing descriptor.
+    await atomicWriteFile(
       path.join(dir, "folder.json"),
       JSON.stringify(resource, null, 2),
       "utf8",
@@ -226,6 +237,11 @@ export function buildResourceSidecarData(
       resource.wordCount ?? countWords(resource.plainText ?? "");
   }
 
+  if (resource.type === "source") {
+    sidecarData.attachments = (resource.attachments ??
+      []) as unknown as MetadataValue;
+  }
+
   if (isMediaResource(resource)) {
     if (resource.file !== undefined) sidecarData.file = resource.file;
     if (resource.type === "image") {
@@ -269,7 +285,10 @@ export const getLocalResources = async (
 
   return Promise.all(
     resources.map(async (r) => {
-      if (r.type !== "text" || (r as TextResource).wordCount !== undefined) {
+      if (
+        (r.type !== "text" && r.type !== "source") ||
+        (r as TextResource).wordCount !== undefined
+      ) {
         return r;
       }
       const contentPath = path.join(

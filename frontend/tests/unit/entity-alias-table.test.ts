@@ -158,3 +158,70 @@ describe("buildEntityAliasTable (Task 3)", () => {
     expect(Object.keys(table.claimedBy)).toHaveLength(0);
   });
 });
+
+describe("buildEntityAliasTable (Feature 102 FR-21, Sources)", () => {
+  beforeEach(() => {
+    setStorageAdapter(createMemoryAdapter());
+  });
+
+  it("includes a Source whose sidecar holds entityKind like any entity (owner decision, 2026-11-07)", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "src-1");
+    await addResource(projectRoot, "src-plain");
+    await writeEntitySidecar(projectRoot, "src-1", {
+      name: "Aria",
+      type: "source",
+      entityKind: "character",
+      aliases: ["Ari"],
+    });
+    await writeEntitySidecar(projectRoot, "src-plain", {
+      name: "Interview",
+      type: "source",
+    });
+
+    const table = await buildEntityAliasTable(projectRoot);
+
+    expect(Object.keys(table.entities)).toEqual(["src-1"]);
+    expect(table.entities["src-1"]).toEqual({
+      entityId: "src-1",
+      entityKind: "character",
+      name: "Aria",
+      aliases: ["Ari"],
+      terms: ["Aria", "Ari"],
+      dismissedNoiseTerms: [],
+    });
+  });
+
+  it("treats a Source with entityKind as a claimant of a shared name, like a text entity", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "src-1");
+    await addResource(projectRoot, "entity-aria");
+    await writeEntitySidecar(projectRoot, "src-1", {
+      name: "Aria",
+      type: "source",
+      entityKind: "character",
+    });
+    await writeEntitySidecar(projectRoot, "entity-aria", {
+      name: "Aria",
+      type: "text",
+      entityKind: "character",
+    });
+
+    const table = await buildEntityAliasTable(projectRoot);
+
+    expect(table.claimedBy["aria"]?.slice().sort()).toEqual([
+      "entity-aria",
+      "src-1",
+    ]);
+  });
+
+  it("does not put a Source with no entityKind in the table", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "src-2");
+    await writeEntitySidecar(projectRoot, "src-2", {
+      name: "Interview",
+      type: "source",
+    });
+    expect((await buildEntityAliasTable(projectRoot)).entities).toEqual({});
+  });
+});

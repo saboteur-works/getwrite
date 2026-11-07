@@ -94,6 +94,63 @@ describe("backlinks wiki-links and redirects", () => {
   });
 });
 
+describe("backlinks from and to a Source (Feature 102, FR-38)", () => {
+  beforeEach(() => {
+    const mem = createMemoryAdapter();
+    setStorageAdapter(mem);
+  });
+
+  afterEach(async () => {
+    await waitForDrain(2000);
+  });
+
+  const docWith = (text: string): TipTapDocument => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  });
+
+  it("finds a UUID link and a wiki link written in a Source body, and a link to a Source by name or id", async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-bk-src-"));
+    const source = generateUUID();
+    const note = generateUUID();
+    const reader = generateUUID();
+
+    await writeSidecar(projectRoot, source, {
+      name: "Interview",
+      slug: "interview",
+      type: "source",
+    });
+    await writeSidecar(projectRoot, note, {
+      name: "Plot Note",
+      slug: "plot-note",
+      type: "text",
+    });
+    await writeSidecar(projectRoot, reader, {
+      name: "Reader",
+      slug: "reader",
+      type: "text",
+    });
+
+    // From a Source: one UUID link and one wiki link, as a text body would.
+    await persistResourceContent(
+      projectRoot,
+      source,
+      docWith(`cites ${reader} and [[Plot Note]]`) as never,
+    );
+    await persistResourceContent(projectRoot, note, docWith("n") as never);
+    // To a Source: a wiki link by name, and a UUID link.
+    await persistResourceContent(
+      projectRoot,
+      reader,
+      docWith(`see [[Interview]] and ${source}`) as never,
+    );
+
+    const idx = await computeBacklinks(projectRoot);
+    expect([...idx[source]].sort()).toEqual([note, reader].sort());
+    expect(idx[reader]).toEqual([source]);
+  });
+});
+
 describe("backlinks — sidecar resource-ref extraction", () => {
   beforeEach(() => {
     const mem = createMemoryAdapter();

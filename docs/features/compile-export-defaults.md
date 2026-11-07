@@ -4,7 +4,7 @@ Feature 101, Part 1. Spec: [specs/features/compile-defaults-annotations-native-p
 
 ## Storage
 
-Two optional keys in `project.json` `config`: `compileDefaults` and `exportDefaults`, each exactly `{ excludedResourceIds: string[] }` (a strict shape; an extra field is rejected). Declared in `ProjectConfig` (`types.ts`), the Zod schema (`schemas.ts`) and the client schema (`lib/api/schemas.ts`, `ApiProjectConfigSchema`; that schema strips undeclared keys, so a key missing there is silently dropped). Resource ids, not paths. No project type seeds or captures them.
+Two optional keys in `project.json` `config`: `compileDefaults` and `exportDefaults`, each exactly `{ excludedResourceIds: string[] }` (a strict shape; an extra field is rejected). Declared in `ProjectConfig` (`types.ts`), the Zod schema (`schemas.ts`) and the client schema (`lib/api/schemas.ts`, `ApiProjectConfigSchema`; that schema strips undeclared keys, so a key missing there is silently dropped). Resource ids, not paths. No project type seeds or captures them. One writer other than the dialogs' save: creating, copying or duplicating a Source adds its id to `compileDefaults.excludedResourceIds` (`seedSourceCompileExclusion`); `exportDefaults` is never seeded. See [sources.md](sources.md#compile-export-goals).
 
 ## Setters
 

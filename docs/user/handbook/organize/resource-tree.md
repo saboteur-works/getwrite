@@ -1,20 +1,22 @@
 ---
 title: Resource Tree
 order: 40
-summary: The panel that lists a project's documents, images, audio and folders, and how to create, rename, move and reorder them.
+summary: The panel that lists a project's documents, images, audio, sources and folders, and how to create, rename, move and reorder them.
 ---
 
 # Resource Tree
 
-The Resource Tree is the panel that shows everything inside a project: your documents, images, audio and folders, laid out like folders on your computer.
+The Resource Tree is the panel that shows everything inside a project: your documents, images, audio, sources and folders, laid out like folders on your computer.
 
 ## Open, create, rename and move items
 
 Click any item to open it in the Work Area.
 
-- **Create:** select **Create Resource**, or **Create** in a folder's options menu. In the **New resource** dialog, give the item a title, and choose a type (**Document**, **Image**, **Audio** or **Folder**) and a parent folder.
+- **Create:** select **Create Resource**, or **Create** in a folder's options menu. In the **New resource** dialog, give the item a title, and choose a type (**Document**, **Image**, **Audio**, **Source** or **Folder**) and a parent folder.
 - **Rename:** open an item's options menu, choose **Rename**, then **Save**.
 - **Move:** open an item's options menu, choose **Move to…**, choose where it goes, then **Move**.
+
+A Source is a document with files attached. See [Resources and Resource Types](../protect-and-finish/resources.md#sources-and-attachments).
 
 ## Reorder by drag and drop
 
@@ -22,7 +24,7 @@ Drag documents and folders to change their order in the tree. GetWrite keeps the
 
 ## What lives in the tree
 
-The tree holds [resources](../protect-and-finish/resources.md) of several kinds: text documents, images, audio, and folders that group them. Selecting a folder switches the Work Area to the Organizer view, which shows the folder's items as cards.
+The tree holds [resources](../protect-and-finish/resources.md) of several kinds: text documents, images, audio, sources, and folders that group them. Selecting a folder switches the Work Area to the Organizer view, which shows the folder's items as cards, and the sidebar shows the folder's own notes, subtype and fields.
 
 ## Good to know
 

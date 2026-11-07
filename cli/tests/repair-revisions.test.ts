@@ -16,6 +16,23 @@ async function writeRevisionless(root: string, name: string): Promise<string> {
   return resource.id;
 }
 
+// A Source is a text-like resource whose sidecar carries `type: "source"`. The
+// fixture rewrites the sidecar of a revision-less text resource, which leaves
+// the Source body files and no `v-1`, the state the command repairs.
+async function writeRevisionlessSource(
+  root: string,
+  name: string,
+): Promise<string> {
+  const id = await writeRevisionless(root, name);
+  const sidecarPath = path.join(root, "meta", `resource-${id}.meta.json`);
+  const sidecar = JSON.parse(await fs.readFile(sidecarPath, "utf-8"));
+  await fs.writeFile(
+    sidecarPath,
+    JSON.stringify({ ...sidecar, type: "source" }),
+  );
+  return id;
+}
+
 async function revisionDirs(root: string, id: string): Promise<string[]> {
   return fs.readdir(path.join(root, "revisions", id)).catch(() => []);
 }
@@ -81,6 +98,18 @@ describe("repair-revisions command", () => {
     expect(stdout.join("\n")).toContain("Repaired 1 text resource");
     expect(stdout.join("\n")).toContain(`"Old Note" (${id})`);
     expect(await revisionDirs(root, id)).toEqual(["v-1"]);
+  });
+
+  it("writes the missing v-1 for a Source as for a text resource", async () => {
+    const textId = await writeRevisionless(root, "Plain Note");
+    const sourceId = await writeRevisionlessSource(root, "Interview");
+
+    await run(root);
+
+    expect(exitCodes).toEqual([0]);
+    expect(stdout.join("\n")).toContain(`"Interview" (${sourceId})`);
+    expect(await revisionDirs(root, sourceId)).toEqual(["v-1"]);
+    expect(await revisionDirs(root, textId)).toEqual(["v-1"]);
   });
 
   it("reports a clean project and exits 0", async () => {

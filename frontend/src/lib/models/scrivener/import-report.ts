@@ -198,6 +198,7 @@ export function buildImportReport(input: ImportReportInput): ImportReportText {
     renderTrashContentSection(input.trashContent),
     renderSnapshotsSection(input.snapshots),
     renderUntitledFallbacksSection(input.untitledFallbacks),
+    renderFolderMetadataSection(),
   ];
 
   return ["# Scrivener Import Report", "", ...sections].join("\n");
@@ -296,6 +297,20 @@ function renderUntitledFallbacksSection(
     "Untitled Fallback Names",
     lines,
     'No binder items required a generated "Untitled" fallback name.',
+  );
+}
+
+/**
+ * Feature 102 FR-17: the importer reads no folder synopsis, notes or
+ * metadata and creates no folder sidecar, so the report always says so.
+ */
+function renderFolderMetadataSection(): string {
+  return renderSection(
+    "Folder Metadata",
+    [
+      "Folder metadata (synopsis, notes and metadata) was not imported. Only each folder's name and place in the binder were carried over.",
+    ],
+    "",
   );
 }
 

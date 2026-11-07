@@ -40,6 +40,19 @@ describe("EntityCompileResourceList", () => {
     );
   });
 
+  it("does not mark a Source entry as excluded: a Source compiles as text (Feature 102, FR-38)", () => {
+    render(
+      <EntityCompileResourceList
+        entries={[
+          { resourceId: "s1", name: "Interview Notes", resourceType: "source" },
+        ]}
+      />,
+    );
+    const item = screen.getByTestId("entity-compile-resource-list-item");
+    expect(item).toHaveAttribute("data-excluded", "false");
+    expect(item.textContent).not.toContain("excluded");
+  });
+
   it("renders a count of 0 with no error for an empty list", () => {
     render(<EntityCompileResourceList entries={[]} />);
     expect(screen.getByText("0 resources to compile")).toBeInTheDocument();

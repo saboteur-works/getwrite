@@ -14,7 +14,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 
 - [Start Page](organize/start-page.md) — The first page of GetWrite, where you create, open, rename, delete, compile and import projects.
 - [Project Types](organize/project-types.md) — The six built-in project types, the folders and starter documents each creates, and saving your own in the Project Type Manager.
-- [Resource Tree](organize/resource-tree.md) — The panel that lists a project's documents, images, audio and folders, and how to create, rename, move and reorder them.
+- [Resource Tree](organize/resource-tree.md) — The panel that lists a project's documents, images, audio, sources and folders, and how to create, rename, move and reorder them.
 
 ## Write
 
@@ -42,7 +42,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 ## Protect and finish
 
 - [Revisions](protect-and-finish/revisions.md) — Every text document keeps a history of saved revisions that you can name, protect, switch between and clean up with the prune command.
-- [Trash](protect-and-finish/trash.md) — Deleted resources and folders go to a project Trash tab, where they can be restored or permanently deleted.
-- [Resources and Resource Types](protect-and-finish/resources.md) — What a resource is, the four kinds (document, image, audio, folder) and what each one shows in the Work Area and the sidebar.
+- [Trash](protect-and-finish/trash.md) — Deleted resources, folders and removed attachments go to a project Trash tab, where they can be restored or permanently deleted.
+- [Resources and Resource Types](protect-and-finish/resources.md) — What a resource is, the five kinds (document, image, audio, source, folder) and what each one shows in the Work Area and the sidebar.
 - [Compiling Projects](protect-and-finish/compiling.md) — Compile a project, or only the documents tied to one entity, into a single txt, md, pdf or docx file, export documents, and save which resources a dialog leaves out.
 - [Project Configuration](protect-and-finish/project-configuration.md) — The project.json file in each project's folder, the keys it holds and the defaults a new project starts with.

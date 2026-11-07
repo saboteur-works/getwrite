@@ -287,3 +287,34 @@ describe("ExportPreviewModal — saved defaults", () => {
     expect(onConfirmExport).toHaveBeenCalledWith("txt", undefined);
   });
 });
+
+describe("ExportPreviewModal — folder notes (Feature 102 FR-16)", () => {
+  it("offers no control to include folder notes", () => {
+    render(
+      <ExportPreviewModal
+        isOpen={true}
+        projectId="dir-1"
+        resourceTitle="Act One"
+        resourceIds={["r1", "r2"]}
+        resourceNames={["Scene 1", "Scene 2"]}
+        readSavedDefaults={async () => undefined}
+        onConfirmExport={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole("dialog");
+    const controls = [
+      ...within(dialog).queryAllByRole("checkbox"),
+      ...within(dialog).queryAllByRole("radio"),
+      ...within(dialog).queryAllByRole("button"),
+      ...within(dialog).queryAllByRole("combobox"),
+    ];
+    expect(controls.length).toBeGreaterThan(0);
+    for (const control of controls) {
+      const label =
+        control.getAttribute("aria-label") ?? control.textContent ?? "";
+      expect(label).not.toMatch(/\bnotes?\b/i);
+    }
+    expect(within(dialog).queryByLabelText(/notes?/i)).toBeNull();
+  });
+});

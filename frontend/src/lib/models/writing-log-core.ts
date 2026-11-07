@@ -11,7 +11,8 @@
  */
 import { withMetaLock } from "./meta-locks";
 import { updateProjectJson } from "./project-json-write";
-import type { ProjectConfig } from "./types";
+import type { ProjectConfig, WritingLogEntry } from "./types";
+import { readSidecar } from "./sidecar";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { loadProjectConfig } from "./project-config";
@@ -179,6 +180,34 @@ async function resolveFilterMembers(
   }
 }
 
+/** An import entry carries a `source`; markers and ordinary word entries do not. */
+function isImportEntry(e: WritingLogEntry): boolean {
+  return "source" in e && e.source !== undefined;
+}
+
+/**
+ * With no goal filter: the ids among the window's entries whose document is a
+ * Source (Owner decision, 2026-11-07, FR-28). Only ids the window names are
+ * read. A document with no sidecar (deleted) is not a Source here, so its
+ * entries count as they did before; a failed read rejects, never counts as
+ * "not a Source".
+ */
+async function findSourceDocumentIds(
+  projectRoot: string,
+  entries: readonly WritingLogEntry[],
+): Promise<Set<string>> {
+  const ids = new Set<string>();
+  for (const e of entries) {
+    if (!isImportEntry(e) && e.documentId !== undefined) ids.add(e.documentId);
+  }
+  const sources = new Set<string>();
+  for (const id of ids) {
+    const sidecar = await readSidecar(projectRoot, id);
+    if (sidecar !== null && sidecar.type === "source") sources.add(id);
+  }
+  return sources;
+}
+
 /** Root-keyed aggregation (re-validates the window). Exported for tests. */
 async function aggregateForRoot(
   projectRoot: string,
@@ -191,8 +220,20 @@ async function aggregateForRoot(
   const imported: WritingLogTotals = { added: 0, deleted: 0, net: 0 };
   const config = await loadProjectConfig(projectRoot);
   const memberIds = await resolveFilterMembers(projectRoot, config);
+  const sourceIds =
+    memberIds === null
+      ? await findSourceDocumentIds(projectRoot, entries)
+      : new Set<string>();
   let isIncomplete = false;
   for (const e of entries) {
+    if (
+      !isImportEntry(e) &&
+      e.documentId !== undefined &&
+      sourceIds.has(e.documentId)
+    ) {
+      // No filter: a Source's words and markers are outside the daily figure.
+      continue;
+    }
     if ("skipped" in e) {
       // Filtered: a marker counts only for a matching document or with no id.
       if (

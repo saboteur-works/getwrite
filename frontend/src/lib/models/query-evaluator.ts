@@ -80,7 +80,7 @@ export class QueryCycleError extends Error {
  * `resolveRef`. Tracks the current expansion path in `seenPath` to detect
  * cycles. Leaf and combinator nodes are traversed but not replaced.
  */
-async function expandRefs(
+export async function expandRefs(
   ast: QueryAST,
   resolveRef: (id: string) => Promise<QueryAST | null>,
   seenPath: readonly string[],

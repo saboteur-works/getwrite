@@ -57,6 +57,7 @@ function makeInitialQueryState(overrides?: Partial<QueryState>): QueryState {
     savingQueryId: null,
     deletingQueryId: null,
     errorMessage: "",
+    evaluationErrorMessage: "",
     ...overrides,
   };
 }
@@ -466,6 +467,31 @@ describe("querySlice — evaluateQuery reducer", () => {
     expect(state.isEvaluating).toBe(false);
     expect(state.evaluatingForProjectId).toBeNull();
     expect(state.errorMessage).toBe("Query evaluation failed.");
+    expect(state.evaluationErrorMessage).toBe("Query evaluation failed.");
+  });
+
+  it("a new evaluation clears evaluationErrorMessage; a save failure does not set it", () => {
+    const failed = makeInitialQueryState({
+      evaluationErrorMessage: "Query evaluation failed.",
+    });
+    const pending = queryReducer(
+      failed,
+      evaluateQuery.pending("req-2", {
+        projectId: "project-1",
+        definition: DEF_A,
+      }),
+    );
+    expect(pending.evaluationErrorMessage).toBe("");
+    const saveFailed = queryReducer(
+      makeInitialQueryState({ savingQueryId: QUERY_A.id }),
+      saveQuery.rejected(
+        new Error("x"),
+        "req-3",
+        { projectId: "project-1", query: QUERY_A },
+        "Failed to save query.",
+      ),
+    );
+    expect(saveFailed.evaluationErrorMessage).toBe("");
   });
 
   it("rejected is discarded when project changed during evaluation (stale)", () => {

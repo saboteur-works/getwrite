@@ -23,6 +23,12 @@ Select **Today's writing** to see the words **Added**, **Deleted** and **Net** (
 
 Open **Project Settings**, select the **Writing Goals** tab, and find **Daily word goal**. Enter a whole number of words, 0 or more, and select **Save daily goal**. Leave the field empty to clear the goal.
 
+## Choose which documents count
+
+Open **Project Settings**, select the **Writing Goals** tab, and find **Goal filter**. Build a filter with the same chips as in [Metadata Queries & Smart Folders](../story/metadata-queries.md), then choose **Save goal filter**. The filter chooses which documents count toward both the daily goal and the whole-project goal. **Clear goal filter** removes it.
+
+[Sources](../protect-and-finish/resources.md#sources-and-attachments) do not count toward the daily goal or the whole-project goal, unless your goal filter selects them.
+
 ## Set other word-count goals
 
 You can also set two other goals. Neither appears in the footer.
@@ -46,6 +52,7 @@ Words are compared regardless of their order:
 These don't count:
 
 - **Saving a named revision.** Only autosaves of the document's current revision count. While you view an earlier revision, the footer says "Autosave unavailable for non-canonical revisions".
+- **Words in a Source.** Unless your goal filter selects Sources, the words you add to a Source stay out of today's goal figure.
 - **Imports.** A Word, Scrivener or plain-text import is recorded once, on the day of the import. It shows only on the **Imported** line, and it doesn't count toward your daily goal.
 - **Text written before the log began.** A project with no log shows zero for today, even if its documents hold text.
 

@@ -99,7 +99,7 @@ export function createNativeProseDiagnosticsTransport(
       return run(async () => {
         const projectRoot = resolveProjectRoot(projectId);
         if (!projectRoot) {
-          throw new Error(`Invalid projectId: ${projectId}`);
+          throw new Error("Invalid projectId");
         }
         const plainText =
           (await loadPersistedPlainText(projectRoot, resourceId)) ?? "";

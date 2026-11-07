@@ -113,6 +113,33 @@ describe("getEntityBacklinkEdges (Feature 68, Task 2)", () => {
     expect(edges).toEqual([]);
   });
 
+  it("treats a Source sidecar carrying entityKind as an entity (Feature 102, Task 39 pin)", async () => {
+    const projectRoot = await makeProject();
+    await addResource(projectRoot, "entity-a");
+    await writeSidecarFields(projectRoot, "entity-a", {
+      name: "Aria",
+      entityKind: "character",
+    });
+    await addResource(projectRoot, "source-b");
+    await writeSidecarFields(projectRoot, "source-b", {
+      name: "Archive letter",
+      type: "source",
+      entityKind: "document",
+    });
+
+    await persistBacklinks(projectRoot, {
+      "entity-a": ["source-b"],
+      "source-b": ["entity-a"],
+    });
+
+    const edges = await getEntityBacklinkEdges(projectRoot);
+
+    expect(edges).toHaveLength(1);
+    expect(new Set(edges[0]?.entityIds)).toEqual(
+      new Set(["entity-a", "source-b"]),
+    );
+  });
+
   it("ignores a backlink where only one side is a declared entity", async () => {
     const projectRoot = await makeProject();
     await addResource(projectRoot, "entity-a");

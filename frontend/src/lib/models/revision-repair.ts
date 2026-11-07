@@ -74,7 +74,7 @@ export async function repairMissingInitialRevisions(
   const report: RevisionRepairReport = { repaired: [], skipped: [] };
 
   for (const resource of await getLocalResources(projectRoot)) {
-    if (resource.type !== "text") continue;
+    if (resource.type !== "text" && resource.type !== "source") continue;
     if (await hasAnyRevisionDirectory(projectRoot, resource.id)) continue;
 
     const entry = { id: resource.id, name: resource.name };

@@ -8,7 +8,7 @@ A writer defines a per-project list of subtype labels (for example "Scene", "Cha
 
 A subtype is none of the following, and shares no code path with any of them:
 
-- Resource `type` (`text` / `image` / `audio`). `resourceSubtype` is a separate sidecar key, and it can be set on all three resource types.
+- Resource `type` (`text` / `image` / `audio` / `source`). `resourceSubtype` is a separate sidecar key, and it can be set on all four resource types.
 - `entityKind`. Both are free-form strings on the sidecar, but `entityKind` declares an entity and `resourceSubtype` does not; setting one does not touch the other.
 - Project type (the JSON spec under `getwrite-config/templates/project-types/`). A project type may seed the project's subtype list at creation, and that is the only relationship.
 
@@ -80,6 +80,12 @@ Feature 73. Spec: [specs/features/subtype-templates-duplicates.md](../../specs/f
 - `copyResourceCore` (the app's Copy/Duplicate actions) and `duplicateResource` (CLI `templates duplicate`) keep the source's sidecar, so the copy has the source's `resourceSubtype`; a source with none yields a copy with none.
 - A resource created blank has no subtype, including when the create request carries a stray `resourceSubtype`, which is ignored.
 - The label is not looked up in `config.subtypes` when a template or copy applies it; as elsewhere, a label not in the list shows as "<value> (not in the current list)".
+
+## Folders and Sources (Feature 102)
+
+- A folder can carry a subtype from `config.subtypes`, stored in its folder sidecar under the same top-level key `resourceSubtype` and matched with `normalizeSubtypeLabel`; no built-in folder subtype ships, and a label removed from the list is shown marked, not rewritten. See [folder-metadata.md](folder-metadata.md).
+- A custom field with `appliesTo` is offered on a folder only when its optional `appliesToFolders` boolean is true and the folder's subtype matches (`getFieldsOfferedOnFolder`, `isFieldVisibleForSubtype` unchanged). A field with no `appliesTo` is offered on every document and folder, whatever `appliesToFolders` says. `appliesToFolders` is declared in `types.ts`, `schemas.ts` and `lib/api/schemas.ts`.
+- A Source (type `source`) takes a subtype through the existing sidecar path, and a field scoped to that label is offered on it and not on a text document without the label. `SubtypeSection.tsx` shows the control for a Source.
 
 ## Out of scope
 

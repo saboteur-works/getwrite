@@ -4,7 +4,7 @@
  * @module goal-filter-membership-core
  *
  * Goal membership (Feature 98, FR-6, FR-8, FR-10, FR-12, FR-17, FR-18): which
- * live text resources the stored `config.goalFilter` selects.
+ * live text and Source resources the stored `config.goalFilter` selects.
  *
  * The result is a discriminated union so that a failure can never be read as
  * "no match" or "not filtered" (`docs/standards/failure-visibility.md`):
@@ -18,7 +18,7 @@
  * input from `loadGoalEvaluationInput`, with the `evaluationTime` the caller
  * fixes. Only resources listed under `resources/` are considered, so a trashed
  * resource (moved to `.trash/`) is absent and a restored one is present again
- * under the same id. Only `type === "text"` resources are members.
+ * under the same id. Only text and Source resources are members.
  *
  * This core never writes `project.json` and never touches `querySlice`. An
  * unrecognised error is rethrown, not converted into a failure result.
@@ -38,6 +38,11 @@ import { evaluate } from "./query-evaluator";
 import { getIntrinsicField } from "./query-intrinsics";
 import { MetadataSchemaSchema } from "./schemas";
 import type { MetadataSchema } from "./types";
+
+/** Text and Source bodies are text for goals (Feature 102 FR-28). */
+function isTextBodied(type: string): boolean {
+  return type === "text" || type === "source";
+}
 
 /** What kind of read problem made the membership unknown. */
 export type GoalMembershipReadCause = GoalReadCause;
@@ -157,7 +162,7 @@ export async function evaluateGoalMembership(
     const input = await loadGoalEvaluationInput(projectRoot, evaluationTime);
     const matched = new Set(await evaluate(ast, input));
     const ids = input.resources
-      .filter((r) => r.type === "text" && matched.has(r.id))
+      .filter((r) => isTextBodied(r.type) && matched.has(r.id))
       .map((r) => r.id);
     return ids.length > 0 ? { status: "members", ids } : { status: "no-match" };
   } catch (err) {

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   AUDIO_EXTENSION_MIME,
   IMAGE_EXTENSION_MIME,
+  ATTACHMENT_MESSAGES,
   MAX_MEDIA_FILE_BYTES,
+  validateAttachmentFile,
   validateMediaFile,
 } from "../src/lib/models/media-validation";
 
@@ -112,5 +114,142 @@ describe("validateMediaFile", () => {
       size: MAX_MEDIA_FILE_BYTES,
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+const ascii = (text: string): number[] => [...text].map((c) => c.charCodeAt(0));
+const PNG_BYTES = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
+]);
+const MP3_BYTES = Uint8Array.from([...ascii("ID3"), 4, 0, 0, 0, 0, 0, 0, 0]);
+const MP4_BYTES = Uint8Array.from([
+  0,
+  0,
+  0,
+  0x18,
+  ...ascii("ftypisom"),
+  0,
+  0,
+  2,
+  0,
+]);
+
+describe("validateAttachmentFile", () => {
+  it("accepts an image whose bytes match", () => {
+    const result = validateAttachmentFile({
+      ext: "photo.png",
+      size: PNG_BYTES.length,
+      bytes: PNG_BYTES,
+    });
+    expect(result).toEqual({
+      ok: true,
+      type: "image",
+      extension: "png",
+      mime: "image/png",
+    });
+  });
+
+  it("accepts an audio file whose bytes match", () => {
+    const result = validateAttachmentFile({
+      ext: "song.mp3",
+      size: MP3_BYTES.length,
+      bytes: MP3_BYTES,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.type).toBe("audio");
+  });
+
+  it("accepts an svg and a webp by their content", () => {
+    const svg = Uint8Array.from(
+      ascii('<?xml version="1.0"?>\n<svg xmlns="x"/>'),
+    );
+    expect(
+      validateAttachmentFile({ ext: "svg", size: svg.length, bytes: svg }).ok,
+    ).toBe(true);
+    const webp = Uint8Array.from([
+      ...ascii("RIFF"),
+      0,
+      0,
+      0,
+      0,
+      ...ascii("WEBP"),
+    ]);
+    expect(
+      validateAttachmentFile({ ext: "webp", size: webp.length, bytes: webp })
+        .ok,
+    ).toBe(true);
+  });
+
+  it("refuses a video file naming the reason", () => {
+    for (const ext of ["mp4", "mov", "webm"]) {
+      const result = validateAttachmentFile({
+        ext,
+        size: MP4_BYTES.length,
+        bytes: MP4_BYTES,
+      });
+      expect(result).toEqual({
+        ok: false,
+        reason: "video-not-supported",
+        message: ATTACHMENT_MESSAGES.videoNotSupported,
+      });
+    }
+    const byMime = validateAttachmentFile({
+      mime: "video/mp4",
+      ext: "",
+      size: 10,
+      bytes: MP4_BYTES,
+    });
+    expect(byMime.ok).toBe(false);
+    if (!byMime.ok) expect(byMime.reason).toBe("video-not-supported");
+  });
+
+  it("refuses an unknown type with the media validation message", () => {
+    const result = validateAttachmentFile({
+      ext: "exe",
+      size: 4,
+      bytes: Uint8Array.from([1, 2, 3, 4]),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe("unsupported-type");
+      expect(result.message).toBe(
+        (validateMediaFile({ ext: "exe", size: 4 }) as { message: string })
+          .message,
+      );
+    }
+  });
+
+  it("refuses a file whose name claims a kind its bytes do not", () => {
+    const cases: Array<[string, Uint8Array]> = [
+      ["fake.png", MP3_BYTES],
+      ["fake.mp3", PNG_BYTES],
+      ["fake.jpg", MP4_BYTES],
+      ["fake.svg", PNG_BYTES],
+      ["fake.wav", Uint8Array.from([])],
+    ];
+    for (const [ext, bytes] of cases) {
+      const result = validateAttachmentFile({ ext, size: bytes.length, bytes });
+      expect(result).toEqual({
+        ok: false,
+        reason: "content-mismatch",
+        message: ATTACHMENT_MESSAGES.contentMismatch,
+      });
+    }
+  });
+
+  it("refuses a file over the size cap before reading content", () => {
+    const result = validateAttachmentFile({
+      ext: "png",
+      size: MAX_MEDIA_FILE_BYTES + 1,
+      bytes: PNG_BYTES,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("file-too-large");
+  });
+
+  it("leaves validateMediaFile unchanged: no content check", () => {
+    const result = validateMediaFile({ ext: "png", size: 10 });
+    expect(result.ok).toBe(true);
+    expect(validateMediaFile({ ext: "mp4", size: 10 }).ok).toBe(false);
   });
 });

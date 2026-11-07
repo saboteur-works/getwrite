@@ -30,7 +30,15 @@
  */
 import path from "node:path";
 import type { Dirent } from "node:fs";
-import { cp, exists, readdir, readFile, stat, writeFile } from "./io";
+import {
+  atomicWriteFile,
+  cp,
+  exists,
+  readdir,
+  readFile,
+  stat,
+  writeFile,
+} from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { withMetaLock } from "./meta-locks";
@@ -57,6 +65,7 @@ import {
   writeSidecar,
 } from "./sidecar";
 import { ResourceGoneError } from "./resource-gone-error";
+import { seedCreatedSource } from "./source-seeding";
 import { isLockedAccessError } from "./locked-access";
 import { removeEntityGraphPositionForEntity } from "./entity-graph-positions";
 import { renameFolderById } from "./folder-utils";
@@ -145,6 +154,7 @@ async function assertProjectExists(
 export async function createResourceCore(
   projectId: string,
   resourceData: CreateResourceOpts,
+  options: SourceSeedingOptions = {},
 ): Promise<AnyResource> {
   const projectPath = resolveResourceProjectRootOrThrow(projectId);
   await assertProjectExists(projectPath, projectId);
@@ -156,8 +166,30 @@ export async function createResourceCore(
 
   const resource = createResourceOfType(resourceData.type, resourceData);
   await writeResourceWithInitialRevision(projectPath, resource);
+  if (resource.type === "source") {
+    await seedSource(projectPath, resource.id, options);
+  }
 
   return resource;
+}
+
+/**
+ * Receives the visible notice when a new, copied or duplicated Source could
+ * not be added to the saved compile exclusions (Feature 102, FR-27). The
+ * route and the native backend turn it into the response's `notice`.
+ */
+export interface SourceSeedingOptions {
+  onCompileDefaultsNotice?: (message: string) => void;
+}
+
+/** Seeds one Source id and reports a refusal; a failure rolls the Source back and propagates. */
+async function seedSource(
+  projectRoot: string,
+  resourceId: string,
+  options: SourceSeedingOptions,
+): Promise<void> {
+  const { notice } = await seedCreatedSource(projectRoot, resourceId);
+  if (notice !== undefined) options.onCompileDefaultsNotice?.(notice);
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +323,7 @@ export async function copyResourceCore(
   projectId: string,
   sourceId: string,
   newName: string,
+  options: SourceSeedingOptions = {},
 ): Promise<Record<string, MetadataValue>> {
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
 
@@ -300,7 +333,8 @@ export async function copyResourceCore(
 
   // All reads complete before the first write (FR-33).
   const sourceSidecar = await readSidecar(projectRoot, sourceId);
-  const isText = sourceSidecar?.type === "text";
+  const isText =
+    sourceSidecar?.type === "text" || sourceSidecar?.type === "source";
   if (isText) {
     const content = await loadResourceContent(projectRoot, sourceId);
     if (content.tiptap === undefined && content.plainText === undefined) {
@@ -332,6 +366,9 @@ export async function copyResourceCore(
       newId,
       copied.tiptap ?? plainTextToTipTapDocument(copied.plainText ?? ""),
     );
+  }
+  if (newSidecar.type === "source") {
+    await seedSource(projectRoot, newId, options);
   }
   return newSidecar;
 }
@@ -970,8 +1007,9 @@ export async function reorderResourcesCore(
             if (parsed && parsed.id === fo.id) {
               parsed.orderIndex = fo.orderIndex;
               parsed.parentId = fo.folderId ?? null;
-              // write updated folder.json atomically
-              await writeFile(
+              // Atomic: a concurrent reader (folder listing, metadata save)
+              // must never see a half-written folder.json.
+              await atomicWriteFile(
                 folderJson,
                 JSON.stringify(parsed, null, 2),
                 "utf8",

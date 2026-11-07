@@ -23,16 +23,20 @@
  * working directory instead of failing closed.
  */
 import {
+  PurgeSweepError,
   listTrashedItems,
   purgeFolder,
   purgeResource,
   restoreFolder,
   restoreResource,
   resolveTrashedItemKind,
+  discardTrashAttachment,
   type RestoredReferenceInfo,
 } from "./trash";
+import { restoreTrashedAttachment } from "./source-attachments-core";
+import { isLockedAccessError } from "./locked-access";
 
-/** The combined resources/folders shape {@link listTrashedItems} returns. */
+/** The combined resources/folders/attachments/unreadable shape {@link listTrashedItems} returns. */
 type ListTrashedItemsResult = Awaited<ReturnType<typeof listTrashedItems>>;
 
 /**
@@ -60,6 +64,21 @@ export interface PurgeItemResult {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Rethrows a project-locked failure (Owner decision, 2026-11-07, FR-26): a
+ * locked project is not a per-item outcome. A purge sweep wraps its step's
+ * error in {@link PurgeSweepError}; the locked error inside is rethrown
+ * itself so the caller maps it as every other locked access (HTTP 401 / 409
+ * through `withStorageContext`, the unlock prompt natively). Any other error
+ * returns to the caller to be reported as that item's `ok: false`.
+ */
+function rethrowIfLocked(err: unknown): void {
+  if (isLockedAccessError(err)) throw err;
+  if (err instanceof PurgeSweepError && isLockedAccessError(err.cause)) {
+    throw err.cause;
+  }
 }
 
 /**
@@ -94,6 +113,10 @@ export async function listTrashCore(
  * `restoreResource`/`restoreFolder` via `resolveTrashedItemKind`. Lifted
  * verbatim (aside from the added `projectPath` guard) from
  * `trash/restore/route.ts`'s previous local `restoreOne` function.
+ *
+ * @throws A locked-access error (`ProjectLockedError` /
+ *   `MissingProjectKeyError`) when the project is locked; it is never
+ *   returned as `{ ok: false }`.
  */
 export async function restoreOneCore(
   projectPath: string,
@@ -127,8 +150,21 @@ export async function restoreOneCore(
       };
     }
 
+    if (kind === "attachment") {
+      // Feature 102, FR-26: a refusal (Source in Trash or purged, list full)
+      // is returned as the visible message and the Trash entry stays.
+      const result = await restoreTrashedAttachment(projectPath, id);
+      return {
+        id,
+        ok: true,
+        renamed: result.renamed,
+        restoredName: result.restoredName,
+      };
+    }
+
     return { id, ok: false, error: "Not found in trash" };
   } catch (err: unknown) {
+    rethrowIfLocked(err);
     return { id, ok: false, error: errorMessage(err) };
   }
 }
@@ -138,6 +174,10 @@ export async function restoreOneCore(
  * `purgeResource`/`purgeFolder` via `resolveTrashedItemKind`. Lifted
  * verbatim (aside from the added `projectPath` guard) from
  * `trash/purge/route.ts`'s previous local `purgeOne` function.
+ *
+ * @throws A locked-access error when the project is locked, for every kind
+ *   including an attachment entry (its files and record are kept); it is never
+ *   returned as `{ ok: false }`.
  */
 export async function purgeOneCore(
   projectPath: string,
@@ -158,8 +198,16 @@ export async function purgeOneCore(
       return { id, ok: true };
     }
 
+    if (kind === "attachment") {
+      // Feature 102, FR-26: delete the trashed file and its record. Idempotent,
+      // so a retry after a partial failure completes.
+      await discardTrashAttachment(projectPath, id);
+      return { id, ok: true };
+    }
+
     return { id, ok: false, error: "Not found in trash" };
   } catch (err: unknown) {
+    rethrowIfLocked(err);
     return { id, ok: false, error: errorMessage(err) };
   }
 }
@@ -183,6 +231,8 @@ export async function purgeBatchCore(
     ids = [
       ...trashed.resources.map((r) => r.id),
       ...trashed.folders.map((f) => f.id),
+      ...trashed.attachments.map((a) => a.id),
+      ...trashed.unreadable.map((u) => u.id),
     ];
   } else {
     ids = (selection as { ids: string[] }).ids;

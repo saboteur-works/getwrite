@@ -49,6 +49,7 @@ import { createProjectFromType } from "./project-creator";
 import { generateUUID } from "./uuid";
 import { getProjectType } from "../projectTypes";
 import { getStaticProjectType } from "./project-types-static";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { reindexMissingResources } from "./inverted-index";
 import { repairMissingInitialRevisions } from "./revision-repair";
 import type { AnyResource, Folder, Project } from "./types";
@@ -450,13 +451,9 @@ export async function createProjectCoreNative(
   };
 }
 
-/** Thrown by the projectId-keyed core operations when `projectId` is not a well-formed UUID. */
-export class InvalidProjectIdCoreError extends Error {
-  constructor(projectId: string | null | undefined) {
-    super(`Invalid projectId: ${JSON.stringify(projectId ?? null)}`);
-    this.name = "InvalidProjectIdCoreError";
-  }
-}
+// Defined in its own module so models that only need the error don't import
+// this file (see project-id-core-error.ts); re-exported for existing callers.
+export { InvalidProjectIdCoreError };
 
 /**
  * Resolves `projectId` to its on-disk project root, throwing (rather than

@@ -36,10 +36,13 @@
  */
 import { createTransport } from "../../store/transport/create-transport";
 import { limitRefusalFromResponse } from "./limit-refusal";
+import { lockedAccessErrorFromResponse } from "./locked-response";
 import type {
   RestoredReferenceInfo,
+  TrashedAttachmentEntry,
   TrashedFolderEntry,
   TrashedResourceEntry,
+  TrashedUnreadableEntry,
 } from "../models/trash";
 
 // `RestoredReferenceInfo` is used internally by `RestoreResult` below but,
@@ -51,12 +54,29 @@ import type {
 // specifically (`TrashedFolderEntry.descendants` already carries its shape
 // through `TrashedFolderEntry`'s own re-export below) — dropped for the same
 // reason.
-export type { TrashedFolderEntry, TrashedResourceEntry };
+export type {
+  TrashedAttachmentEntry,
+  TrashedFolderEntry,
+  TrashedResourceEntry,
+  TrashedUnreadableEntry,
+};
 
 /** Combined response shape of `GET /api/project/:id/trash`. */
 export interface TrashListing {
   resources: TrashedResourceEntry[];
   folders: TrashedFolderEntry[];
+  /**
+   * Removed Source attachments (Feature 102, FR-26). Always sent by the
+   * server; the client treats an absent key as none so a listing from before
+   * the kind existed still loads.
+   */
+  attachments?: TrashedAttachmentEntry[];
+  /**
+   * Trash items whose record could not be read: shown so they can be deleted
+   * permanently, never restored. Always sent by the server; an absent key is
+   * none.
+   */
+  unreadable?: TrashedUnreadableEntry[];
 }
 
 /** One id's outcome from a batch restore (`POST .../trash/restore`). */
@@ -149,6 +169,10 @@ export const httpTrashTransport: TrashTransport = {
       `/api/project/${encodeURIComponent(projectId)}/trash`,
     );
     if (!response.ok) {
+      // A locked project is not a load failure to retry (FR-26): reject with
+      // the same locked-access error the native backend throws.
+      const locked = lockedAccessErrorFromResponse(response, projectId);
+      if (locked) throw locked;
       throw new Error(`Failed to load trash (status ${response.status}).`);
     }
     const data = (await response.json()) as unknown;
@@ -159,6 +183,12 @@ export const httpTrashTransport: TrashTransport = {
       !Array.isArray((data as { folders?: unknown }).folders)
     ) {
       throw new Error("Malformed trash listing response.");
+    }
+    for (const key of ["attachments", "unreadable"] as const) {
+      const extra = (data as Record<string, unknown>)[key];
+      if (extra !== undefined && !Array.isArray(extra)) {
+        throw new Error("Malformed trash listing response.");
+      }
     }
     return data as TrashListing;
   },
@@ -173,6 +203,10 @@ export const httpTrashTransport: TrashTransport = {
       },
     );
     if (!response.ok) {
+      // A locked project is not a per-item outcome (FR-26): reject with the
+      // same locked-access error the native backend throws.
+      const locked = lockedAccessErrorFromResponse(response, projectId);
+      if (locked) throw locked;
       throw new Error(
         `Failed to restore trash items (status ${response.status}).`,
       );
@@ -204,6 +238,8 @@ export const httpTrashTransport: TrashTransport = {
         await response.json().catch(() => null),
       );
       if (refusal) throw refusal;
+      const locked = lockedAccessErrorFromResponse(response, projectId);
+      if (locked) throw locked;
       throw new Error(
         `Failed to purge trash items (status ${response.status}).`,
       );

@@ -27,11 +27,21 @@ async function handlePost(req: Request): Promise<Response> {
   }
 
   try {
+    let notice: string | undefined;
     const resource = await createResourceCore(
       body.projectId,
       body.resourceData,
+      {
+        onCompileDefaultsNotice: (message) => {
+          notice = message;
+        },
+      },
     );
-    return NextResponse.json({ success: true, resource });
+    return NextResponse.json({
+      success: true,
+      resource,
+      ...(notice !== undefined && { notice }),
+    });
   } catch (error) {
     if (isLockedAccessError(error)) {
       throw error;

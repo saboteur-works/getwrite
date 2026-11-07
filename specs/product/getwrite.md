@@ -302,6 +302,21 @@ with the app without hand-rewriting it (see OQ-90).
   compile a PDF in the Android app and get the same fonts as on desktop, so
   that PDF output is not limited to the web and desktop versions. [Next]
   (Added 2026-11-04; FR-91, FR-92.)
+- US-39: As a writer who organises research or a long work into folders (a
+  case, an episode, a chapter, a collection of variants), I want to give a folder
+  its own notes and my own fields, and to give a folder a
+  kind, so that what I know about a whole group sits on the group and I can
+  find and filter folders by it. [Next] (Added 2026-11-06; FR-93 to FR-101.
+  Owner decisions, 2026-11-04, note_13fb5223; carried with US-40 as one
+  feature of two parts, Owner, Gate 0, 2026-11-06.)
+- US-40: As a writer gathering evidence for nonfiction, true crime or folklore,
+  I want to keep a source (an interview, an archive item, a newspaper piece) as its
+  own kind of item that holds my write-up and the images and audio that belong
+  to it, without losing an attachment I remove by mistake, so that one
+  source stays together and its evidence is recoverable. [Next] (Added
+  2026-11-06; FR-102 to FR-111. Owner decisions, 2026-11-04, note_31c82491.
+  This is the core part only; the Sources interface, excerpts, citations and
+  the module seam are a later run, see FR-110.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1465,6 +1480,146 @@ with the app without hand-rewriting it (see OQ-90).
   until FR-91 works and `pnpm build:native` passes. The verification is
   recorded, not a merge gate; if it cannot be run it is listed as not
   verified: Gate 2 decision F101-1, 2026-11-04.)
+- FR-93: A folder's metadata MUST be stored in a folder sidecar,
+  `meta/folder-<id>.meta.json`, read and written through the same sidecar
+  layer as resource sidecars, including its per-file lock and merge-on-write.
+  The folder's structural descriptor (`folder.json`) MUST stay structural
+  (identity, parent, order) and MUST NOT hold the metadata. By reading the code
+  (not run), no existing `folder.json` writer takes the per-file lock
+  (`folder-utils.ts` rename, `resource-persistence.ts:125-135`,
+  `project-creator.ts`; reorder in `resource-crud-core.ts:953-992` holds only
+  `withMetaLock`); keeping metadata in the sidecar avoids that. A test settles
+  it. [US-39] (Added 2026-11-06. Owner decision 1, 2026-11-04, note_13fb5223.
+  Resolved, OQ-140 (a); Owner confirmation, 2026-11-07.)
+- FR-94: Trashing a folder and restoring it MUST carry its sidecar: after a
+  trash and restore round trip, the folder's notes and field values MUST be
+  identical to before. Deleting or purging a folder permanently MUST NOT leave
+  its sidecar behind. Trash MUST be extended to move and restore folder sidecars. By reading the code
+  (not run), an undeclared `folder.json` key is lost on restore: `FolderSchema`
+  strips it and restore (`trash.ts:1150-1153`) rewrites from the stripped copy
+  (`trash.ts:437`, `:588`); the sidecar avoids that. [US-39] (Added 2026-11-06.
+  Owner decision 1, 2026-11-04. Resolved, OQ-140 (b); Owner confirmation,
+  2026-11-07. The round trip is a required test.)
+- FR-95: A folder sidecar MUST hold `notes` (plain text, no formatting, as
+  annotations do) and the folder's custom field values, and MUST have no
+  document body. Only the keys on a client-writable allowlist MUST be writable
+  by a client, as for resource sidecars. Folder notes MUST live in the folder
+  sidecar's `userMetadata.notes`, the same place the Notes field uses for
+  resources everywhere; the top-level `notes` of `ResourceBase` MUST NOT be used
+  for folders. [US-39] (Added 2026-11-06. Owner decision 4, 2026-11-04.
+  Resolved, OQ-139; Owner confirmation, 2026-11-07.)
+- FR-96: Selecting a folder in the metadata sidebar MUST show its notes and the
+  fields that apply to it, and the writer MUST be able to edit them, in place
+  of the placeholder shown today. [US-39] (Added 2026-11-06. Owner decision
+  and proposal, note_13fb5223; the placeholder is a reading of the code, not
+  run.)
+- FR-97: The fields offered on a folder MUST be: custom fields marked for
+  folders; custom fields with no subtype restriction; and, among built-in
+  fields, notes only. No other built-in field MUST be offered on a folder by
+  this work. A custom field MUST be marked for folders by a new optional
+  boolean on the field definition, next to `appliesTo` (for example
+  `appliesToFolders`), and MUST NOT be marked by a reserved `appliesTo` value,
+  because `appliesTo` holds writer subtype labels compared through
+  `normalizeSubtypeLabel`. Built-in fields beyond notes on folders are deferred
+  with no commitment (Out of Scope (Deferred)). [US-39] (Added 2026-11-06. Owner
+  decision 2, 2026-11-04. Resolved, OQ-138 and OQ-143; Owner decisions,
+  2026-11-07.)
+- FR-98: A folder MUST be able to carry a subtype from the project's subtype
+  list, and a custom field's subtype scoping (`appliesTo`) MUST apply to
+  folders as it does to resources, so a field can be limited to a kind of
+  folder. No built-in folder subtype MUST be shipped until the owner has
+  reviewed it. No built-in folder subtype ships in this feature: folder subtypes
+  are writer-defined per project. A reviewed built-in set MAY be added later,
+  seeded and fully editable, only after the owner has reviewed the names.
+  [US-39] (Added 2026-11-06. Owner decision 3, 2026-11-04: folders can have
+  subtypes (for example Case, Episode, Chapter, Variant collection, given as
+  examples, not as a list). Resolved, OQ-137; Owner decision, 2026-11-07.)
+- FR-99: A document MUST NOT inherit its folder's fields or notes: a folder's
+  metadata describes the folder only, and changing a folder's metadata MUST NOT
+  change any document's metadata, search hits or counts. [US-39] (Added
+  2026-11-06. Owner decision 5, 2026-11-04.)
+- FR-100: Queries, smart folders, the Organizer and the Data view MUST be able
+  to show folders and to filter them by their fields. A project with no folder
+  metadata MUST show the same results in each as before. The query evaluator
+  MUST gain a folder source, because by reading the code (not run) a
+  `type = folder` query matches nothing today: the evaluator's id set comes from
+  `listResourceIds` (`backlinks.ts:89-99`), which reads only `resources/`. A test
+  settles it. [US-39] (Added 2026-11-06. Owner decision 6, 2026-11-04. Resolved,
+  OQ-140 (c); Owner confirmation, 2026-11-07.)
+- FR-101: A folder with no sidecar MUST behave as a folder with empty notes and
+  no field values, in every existing project, with no migration step and no
+  change to its `folder.json`. [US-39] (Added 2026-11-06.)
+- FR-102: The product MUST have a `source` resource type alongside text, image
+  and audio. The writer MUST be able to create a Source, open it, rename it,
+  move it, and delete it, and every place that handles resources by type MUST
+  handle a Source without error. The full list of places is to be established
+  in the feature by adding `source` to `ResourceTypeSchema`
+  (`z.enum(["text","image","audio"])`, `schemas.ts:424`), fixing the typecheck
+  errors, and grepping for `type === "text"` branches; by reading the code, at
+  least 22 files (models and UI) branch on type. [US-40] (Added 2026-11-06. Owner
+  decision, 2026-11-04, reaffirmed, note_31c82491: Source is a new resource type;
+  built-in subtypes were declined as its vehicle. Partly resolved, OQ-150, from
+  code reading; the survey is a feature task.)
+- FR-103: A Source MUST carry its own sidecar, `meta/resource-<id>.meta.json`,
+  read and written through the sidecar layer like other resources. A Source's
+  subtype slot MUST stay available to the writer, so a writer can subtype their
+  Sources and scope custom fields to those subtypes. [US-40] (Added
+  2026-11-06. Owner decision, 2026-11-04. The subtype slot is a stated
+  consequence in the note, not an owner-marked decision; the sidecar is.)
+- FR-104: A Source MUST NOT be treated as an entity: it MUST NOT be found by
+  matching names in prose and MUST NOT appear in the entity roster or the entity
+  graph through entity machinery. This feature MUST NOT link a Source to an entity;
+  that is deferred to the Sources module (Run C). [US-40] (Added 2026-11-06.
+  Owner decision, 2026-11-04. Resolved, OQ-151; Owner decision, 2026-11-07.)
+- FR-105: A Source's content MUST be freeform, as for other resources, and the
+  structured part of a Source MUST be the metadata its sidecar carries. A
+  Source's body MUST be one rich-text body plus an ordered list of attachments
+  (image and audio only, FR-106). [US-40] (Added 2026-11-06. Owner decision,
+  2026-11-04. Resolved, OQ-147; Owner decision, 2026-11-07.)
+- FR-106: A Source MUST accept image and audio attachments, and MUST refuse any
+  other media kind, including video, with an error that names the reason.
+  [US-40] (Added 2026-11-06. Owner decision, 2026-11-04: launch with image and
+  audio attachments only; video later. A Source holding several attachments is
+  within scope. Attachments MUST be stored inside the Source's own
+  `resources/<id>/` directory, listed in its sidecar, and MUST NOT be separate
+  tree items. Resolved, OQ-148; Owner decision, 2026-11-07.)
+- FR-107: Revisions of a Source MUST cover its body only. Adding, replacing or
+  removing an attachment MUST NOT create a revision, and an attachment's bytes
+  MUST NOT be copied into any revision directory. [US-40] (Added 2026-11-06.
+  Owner decision, 2026-11-04.)
+- FR-108: When the writer removes or replaces an attachment, the previous file
+  MUST be moved to the project Trash and the writer MUST be able to restore it
+  to the Source from there. [US-40] (Added 2026-11-06. Owner decision,
+  2026-11-04.)
+- FR-109: What a Source is left out of MUST be the writer's choice and MUST NOT
+  be hard-coded: no compile, export, goal or analysis path MUST exclude a
+  Source by a rule built into the product that the writer cannot change. Where
+  the product offers a default, it MUST be overridable by the writer, and the
+  compile and export dialogs MUST use the saved defaults of FR-81 and FR-82.
+  New projects MUST start with Sources excluded from compile by default only;
+  export includes them; both MUST be overridable in the dialogs. No default goal
+  filter MUST exclude Sources; the goal filter remains writer-set. In this
+  feature Sources MUST be treated like text documents by spell check, prose
+  diagnostics and mention detection, as applicable to their body; a per-Source or
+  project switch is deferred. Implementation question for the feature spec (not a
+  product question): saved defaults store `excludedResourceIds`, so whether
+  "Sources excluded by default" is a type-based rule or ids seeded when a Source
+  is created is not decided here; nor is what applies to existing projects.
+  [US-40] (Added 2026-11-06. Owner decision, 2026-11-04: writer's choice, not
+  hard-coded. Resolved, OQ-144, OQ-145, OQ-146; Owner decisions, 2026-11-07.)
+- FR-110: This feature MUST NOT include the Sources interface (a Sources view
+  or panel), excerpts, citations or bibliography, claim handling, or the
+  contribution seam for modules. A Source created by this feature MUST be
+  usable through the generic resource tree and sidecar, which is the boundary
+  a later run builds on. [US-40] (Added 2026-11-06. Owner batching, 2026-11-04,
+  note_31c82491: the Sources module and the seam are run C.)
+- FR-111: A Source's attachments SHOULD behave as image and audio resources do
+  under encryption, and trashing or restoring a Source SHOULD carry the
+  whole directory including its attachments. Each MUST be covered by a test
+  before the requirement is treated as met, including the Android media baseline
+  (about 10 MB/s, 100 MB cap accepted). [US-40] (Added 2026-11-06. Expected to
+  behave as for image and audio; not checked, note_31c82491. OQ-149 stays open
+  as an engineering verification item, verified by tests in the feature.)
 
 ### Later Requirements
 
@@ -4099,6 +4254,110 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Owner:** Product owner.
 (Raised 2026-11-04 for FR-81 to FR-92.)
 
+**OQ-137 (resolved): Which built-in folder subtypes, if any, does GetWrite ship, and may a writer rename, hide or delete one?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no built-in folder subtypes ship in this feature; folder subtypes are writer-defined per project. A reviewed built-in set may be added later, seeded and fully editable, only after owner review of names. Applied in FR-98.
+**Impact:** FR-98; US-39. The owner reviews any built-in folder subtype before it is locked (Owner decision 3, 2026-11-04). No names are proposed here. Examples the owner gave (Case, Episode, Chapter, Variant collection) are examples, not a list.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-138 (resolved): How is a custom field "marked for folders" stored on its definition?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): a field is marked for folders by a new optional boolean on the field definition, next to `appliesTo` (for example `appliesToFolders`), not a reserved `appliesTo` value, which would collide with writer subtype labels compared via `normalizeSubtypeLabel`. Applied in FR-97.
+**Impact:** FR-97; US-39. Two candidates in note_13fb5223, neither decided: a new flag next to `appliesTo`, or a reserved `appliesTo` value.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-139 (resolved): Folder notes versus `ResourceBase.notes`: does anything read or write `notes` on a folder today, and which is the single home for folder notes?**
+**Resolution:** Resolved from code reading, confirmed by the owner (2026-11-07): nothing reads or writes top-level `ResourceBase.notes` for folders (`types.ts:289-290`); the Notes field everywhere is `userMetadata.notes`. Folder notes live in the folder sidecar's `userMetadata.notes`; `Folder.notes` is not used. Applied in FR-95.
+**Impact:** FR-95, FR-96; US-39. The `ResourceBase` type, which `Folder` extends, declares `notes?: string`. Whether anything uses it for folders was not checked (note_13fb5223). The requirement is that there are not two homes for folder notes.
+**Owner:** Engineering lead.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-140 (resolved): What do the checks the note lists before building show: do the several `folder.json` writers lock against each other, does a key added to `folder.json` survive trash and restore, and what does the query layer do with the `"folder"` type option?**
+**Resolution:** Resolved from code reading, not run, confirmed by the owner (2026-11-07); tests settle each. (a) No `folder.json` writer takes the per-file lock (`folder-utils.ts` rename, `resource-persistence.ts:125-135`, `project-creator.ts`); reorder in `resource-crud-core.ts:953-992` holds only `withMetaLock`. (b) An undeclared `folder.json` key is lost on Trash restore: `FolderSchema` strips it, and `trash.ts:437`, `:588` and restore `:1150-1153` rewrite from the stripped copy. (c) A `type = folder` query matches nothing today, because the evaluator's id set comes from `listResourceIds` (`backlinks.ts:89-99`), which reads only `resources/`. Consequences: the folder sidecar avoids (a) and (b), but Trash must be extended to move and restore folder sidecars (FR-94); the query evaluator needs a folder source while results stay unchanged for projects without folder metadata (FR-100). Applied in FR-93, FR-94, FR-100.
+**Impact:** FR-93, FR-94, FR-100; US-39. All three are readings of the code, not runs (note_13fb5223: `FolderSchema` strips undeclared keys, `trash.ts` descriptor walk, `query-intrinsics.ts`). A test would settle each. They are not stated here as facts.
+**Owner:** Engineering lead.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-141 (resolved): Are folder notes excluded from compile by default, and does the compile dialog offer an option to include a folder's notes as a section introduction?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): folder notes are excluded from compile and export, with no dialog option in this feature. An opt-in "include folder notes as a section introduction" is deferred (Out of Scope (Deferred)).
+**Impact:** FR-96, FR-81, FR-82; US-39. Logged as "revisit" by the owner, not decided (note_13fb5223). Would use the saved defaults of FR-81 and FR-82.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-142 (resolved): Does the Scrivener importer keep a folder's synopsis, notes and metadata today, and should it map them to folder sidecars?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option). Facts from code reading: the Scrivener importer keeps only folder name, parent and order (`import-scrivener-project.ts:345-360`); folder synopsis, notes and metadata are dropped. Decision: no Scrivener folder-metadata mapping in this feature; the import report states that folder metadata was not imported. Mapping folder notes later is deferred.
+**Impact:** US-39; the importer. Scrivener folders carry synopsis, notes and metadata; what the importer keeps was not checked. Logged as "revisit", not decided.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-143 (resolved): Should built-in fields other than notes (status, synopsis) apply to folders later?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): built-in fields beyond notes on folders are later, with no commitment (deferred). Applied in FR-97.
+**Impact:** FR-97. At launch notes only (Owner decision 2, 2026-11-04); later is logged, not decided.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-144 (resolved): Which of compile and export does a Source start excluded from by default, using the saved defaults of FR-81 and FR-82, and who sets that default: the product for new projects, or the writer?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): new projects start with Sources excluded from compile by default only; export includes them; both are overridable in the dialogs (saved defaults, FR-81 and FR-82). Saved defaults store `excludedResourceIds`, so the mechanism (a type-based rule, or seeding ids when a Source is created) is not decided here; it and the treatment of existing projects are implementation questions for the feature spec, not product questions. Applied in FR-109.
+**Impact:** FR-109; US-40. That a Source's exclusions are the writer's choice and not hard-coded is decided (Owner, 2026-11-04); the defaults are not. Note_31c82491 gives "Sources excluded from compile by default, re-included in the dialog" as an example of the direction, not a decision.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-145 (resolved): Does a new project's default goal filter (`config.goalFilter`) exclude Sources?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no default goal filter excludes Sources; the goal filter remains writer-set. Applied in FR-109.
+**Impact:** FR-109; US-40. Open in note_31c82491. The goal filter already decides what counts toward the project and daily goals.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-146 (resolved): Are Sources included in prose diagnostics, entity mention detection and spell check, which have no dialog to carry a default? Where does the writer's choice live?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): in this feature Sources are treated like text documents by spell check, prose diagnostics and mention detection, as applicable to their body; a per-Source or project switch is deferred. Applied in FR-109.
+**Impact:** FR-109; US-40. Open in note_31c82491 ("still needs a home").
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-147 (resolved): What is a Source's body: a rich text body plus an ordered list of attachments, or something else (for example a folder of ordinary resources)?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): a Source's body is one rich-text body plus an ordered list of attachments (image and audio only). Applied in FR-105.
+**Impact:** FR-105, FR-106, FR-107; US-40. The owner largely agreed on a body plus attached media; "one rich-text body plus an ordered list of attachments of any media kind" is a recommendation, not agreed (note_31c82491). The alternative of a Source as a folder of resources was considered there.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-148 (resolved): Where are a Source's attachments stored, and does each appear as its own item in the resource tree?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): attachments are stored inside the Source's own `resources/<id>/` directory, listed in its sidecar, and are not separate tree items. Applied in FR-106.
+**Impact:** FR-106, FR-108; US-40. Recommended in note_31c82491 (not agreed): inside the Source's resource directory, listed in its sidecar, not shown as separate tree items.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-149: Do encryption and whole-directory Trash behave for large attachments as they do for image and audio, and does Android's measured media baseline (about 10 MB/s, 100 MB cap accepted) hold for a Source's attachments?**
+**Impact:** FR-111, FR-106; US-40. Expected, not checked (note_31c82491). The Android figures are from the Phase 3 gate as recorded in that note.
+**Owner:** Engineering lead.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-150 (partly resolved): Which places branch on resource type, and which need a `source` case?**
+**Resolution:** Partly resolved from code reading (2026-11-07): `ResourceTypeSchema` is `z.enum(["text","image","audio"])` (`schemas.ts:424`), and at least 22 files (models and UI) branch on type. The full list is to be established in the feature by adding `source` to the enum and fixing typecheck errors, plus a grep for `type === "text"` branches. Applied in FR-102.
+**Impact:** FR-102; US-40. Note_31c82491 reports 22 non-test files under `frontend/src/lib`, `components/` and `app/` mentioning `"audio"` as a rough proxy (read, not surveyed in full), and `cli/` and `electron/` are not covered. `ResourceTypeSchema` and `ResourceType` are the starting points. A full survey is needed to size the work.
+**Owner:** Engineering lead.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-151 (resolved): Can a Source link to an entity (an informant, a place), and if so as a typed authored edge or a reference field?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no Source-to-entity linking in this feature; deferred to the Sources module (Run C). Applied in FR-104.
+**Impact:** FR-104; US-40. Open in note_31c82491; FR-104 only says a Source is not an entity.
+**Owner:** Product owner.
+
+(Raised 2026-11-06 for FR-93 to FR-111.)
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -4227,3 +4486,22 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 - Jumping to the annotated passage from an annotation-body search hit, reusing
   mention jump (FR-88, resolved: OQ-136; Owner decision, Gate 1, 2026-11-04): a
   later follow-up. At launch a hit opens the resource.
+- Sources interface, excerpts, citations and bibliography, and the module
+  contribution seam (FR-110; Owner batching, 2026-11-04, note_31c82491): a
+  later run. Video attachments on a Source (FR-106; Owner decision,
+  2026-11-04): later. Inheritance of folder fields by documents (FR-99; Owner
+  decision 5, 2026-11-04): not at launch.
+- Opt-in "include folder notes as a section introduction" in compile (FR-96,
+  resolved: OQ-141; Owner decision, 2026-11-07): later. At launch folder notes
+  are excluded from compile and export.
+- Scrivener folder-metadata mapping (resolved: OQ-142; Owner decision,
+  2026-11-07): later. At launch the import report states folder metadata was not
+  imported.
+- Built-in fields beyond notes on folders (FR-97, resolved: OQ-143; Owner
+  decision, 2026-11-07): later, no commitment. A reviewed built-in set of folder
+  subtypes (FR-98, resolved: OQ-137): later, after owner review of names.
+- A per-Source or project switch for spell check, prose diagnostics and mention
+  detection of Sources (FR-109, resolved: OQ-146; Owner decision, 2026-11-07):
+  later.
+- Linking a Source to an entity (FR-104, resolved: OQ-151; Owner decision,
+  2026-11-07): the Sources module (Run C).

@@ -119,6 +119,61 @@ describe("dispatch core rejects the key resourceSubtype (Feature 72, FR-6)", () 
 });
 
 // ---------------------------------------------------------------------------
+// Feature 102, FR-9: appliesToFolders survives the dispatch core.
+// ---------------------------------------------------------------------------
+
+describe("dispatch core keeps appliesToFolders (Feature 102, FR-9)", () => {
+  it("add-field stores and returns appliesToFolders", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    const schema = await dispatchMetadataSchemaAction(dir, {
+      action: "add-field",
+      groupId: GROUP_ID,
+      field: {
+        key: "folder-mood",
+        label: "Folder mood",
+        type: "text",
+        appliesToFolders: true,
+      },
+    });
+    const returned = schema.groups[0].fields.find(
+      (f) => f.key === "folder-mood",
+    );
+    expect(returned?.appliesToFolders).toBe(true);
+    const stored = JSON.parse(
+      await fs.readFile(path.join(dir, PROJECT_FILENAME), "utf8"),
+    ) as { config: { metadataSchema: MetadataSchema } };
+    expect(
+      stored.config.metadataSchema.groups[0].fields.find(
+        (f) => f.key === "folder-mood",
+      )?.appliesToFolders,
+    ).toBe(true);
+  });
+
+  it("a later update-field-applies-to leaves appliesToFolders in place", async () => {
+    const { dir } = await makeTmpProject(baseSchema());
+    await dispatchMetadataSchemaAction(dir, {
+      action: "add-field",
+      groupId: GROUP_ID,
+      field: {
+        key: "folder-mood",
+        label: "Folder mood",
+        type: "text",
+        appliesToFolders: true,
+      },
+    });
+    const schema = await dispatchMetadataSchemaAction(dir, {
+      action: "update-field-applies-to",
+      groupId: GROUP_ID,
+      fieldKey: "folder-mood",
+      appliesTo: ["Chapter"],
+    });
+    const field = schema.groups[0].fields.find((f) => f.key === "folder-mood");
+    expect(field?.appliesToFolders).toBe(true);
+    expect(field?.appliesTo).toEqual(["Chapter"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Slug validation (route-level guard for user-created fields)
 // ---------------------------------------------------------------------------
 

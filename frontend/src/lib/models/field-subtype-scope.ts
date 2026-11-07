@@ -7,6 +7,7 @@
  */
 
 import { DEFAULT_METADATA_SCHEMA } from "./default-metadata-schema";
+import type { MetadataField, MetadataSchema } from "./types";
 
 /** Keys of every built-in field; a subtype restriction on these is ignored. */
 const BUILT_IN_FIELD_KEYS: ReadonlySet<string> = new Set(
@@ -57,4 +58,38 @@ export function isFieldVisibleForSubtype(
   if (!appliesTo || appliesTo.length === 0) return true;
   if (resourceSubtype === undefined) return false;
   return isLabelInList(resourceSubtype, appliesTo);
+}
+
+/** The only built-in field offered on a folder (Feature 102, FR-9). */
+const FOLDER_BUILT_IN_FIELD_KEY = "notes";
+
+function isCustomFieldOfferedOnFolder(
+  field: MetadataField,
+  folderSubtype: string | undefined,
+): boolean {
+  if (!field.appliesTo || field.appliesTo.length === 0) return true;
+  if (field.appliesToFolders !== true) return false;
+  return isFieldVisibleForSubtype(field.key, field.appliesTo, folderSubtype);
+}
+
+/**
+ * The fields a folder is offered, in schema order (Feature 102, FR-9, FR-10).
+ *
+ * Built-in fields: `notes` only. Custom fields: one with no `appliesTo` is
+ * always offered (`appliesToFolders` has no effect on it); one with
+ * `appliesTo` is offered only when `appliesToFolders` is true and the folder's
+ * subtype passes {@link isFieldVisibleForSubtype} (called unchanged). Pure;
+ * does not mutate `schema`.
+ */
+export function getFieldsOfferedOnFolder(
+  schema: MetadataSchema,
+  folderSubtype: string | undefined,
+): MetadataField[] {
+  return schema.groups.flatMap((group) =>
+    group.fields.filter((field) =>
+      BUILT_IN_FIELD_KEYS.has(field.key)
+        ? field.key === FOLDER_BUILT_IN_FIELD_KEY
+        : isCustomFieldOfferedOnFolder(field, folderSubtype),
+    ),
+  );
 }

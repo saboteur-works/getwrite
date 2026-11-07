@@ -141,6 +141,9 @@ const ApiMetadataFieldSchema = z.object({
   // Subtype labels this field is restricted to (Feature 72, FR-13). Absent
   // means unrestricted; declared here because Zod strips unknown keys.
   appliesTo: z.array(z.string()).optional(),
+  // Also offered on folders (Feature 102, FR-9); declared here because Zod
+  // strips unknown keys.
+  appliesToFolders: z.boolean().optional(),
 });
 
 const ApiMetadataGroupSchema = z.object({
@@ -368,7 +371,11 @@ export const EntityAliasTableSchema = z.object({
 // a resource response is expected to be identical to the persisted shape.
 // ---------------------------------------------------------------------------
 
-export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
+export const ResourceResponseSchema = z.object({
+  resource: AnyResourceSchema,
+  /** Copy of a Source only: why it is not left out of compile (Feature 102, FR-27). */
+  notice: z.string().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // CreateResourceResponseSchema — the `POST /api/resource` response. Create is
@@ -379,6 +386,8 @@ export const ResourceResponseSchema = z.object({ resource: AnyResourceSchema });
 
 export const CreateResourceResponseSchema = z.object({
   resource: z.union([AnyResourceSchema, FolderSchema]),
+  /** Create of a Source only: why it is not left out of compile (Feature 102, FR-27). */
+  notice: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -647,6 +656,46 @@ export const SetWordCountGoalResponseSchema = z.object({
 
 export const SetGoalFilterResponseSchema = z.object({
   goalFilter: QueryASTSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Source attachment responses — Feature 102 Task 27. The entry matches
+// `AttachmentEntrySchema` (models/schemas.ts); the id and stored name are not
+// path-bearing (a bare server-generated file name).
+// ---------------------------------------------------------------------------
+
+export const AttachmentEntryResponseSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  originalName: z.string(),
+  mime: z.string(),
+  size: z.number(),
+  addedAt: z.string(),
+});
+
+export const AttachmentListResponseSchema = z.array(
+  AttachmentEntryResponseSchema,
+);
+
+export const TrashedAttachmentResponseSchema = z.object({
+  trashId: z.string(),
+});
+
+export const ReplaceAttachmentResponseSchema = z.object({
+  trashId: z.string(),
+  entry: AttachmentEntryResponseSchema,
+});
+
+// ---------------------------------------------------------------------------
+// FolderMetadataResponseSchema — Feature 102 Task 9. Matches
+// `folder-metadata-core.ts`'s `FolderSidecarValue`; `resourceSubtype` is
+// optional because `JSON.stringify` drops an `undefined` key.
+// ---------------------------------------------------------------------------
+
+export const FolderMetadataResponseSchema = z.object({
+  notes: z.string(),
+  fieldValues: z.record(z.string(), ApiMetadataValueSchema),
+  resourceSubtype: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------

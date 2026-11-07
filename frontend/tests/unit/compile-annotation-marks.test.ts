@@ -151,7 +151,10 @@ async function docxBodyOf(arrayBuffer: ArrayBuffer): Promise<string> {
 }
 
 /** Writes `doc` as a one-resource project and runs every path over it. */
-async function runAll(doc: JSONContent): Promise<Outputs> {
+async function runAll(
+  doc: JSONContent,
+  resourceType: "text" | "source" = "text",
+): Promise<Outputs> {
   const projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-annot-"));
   tmpDirs.push(projectsDir);
   const projectId = generateUUID();
@@ -167,9 +170,7 @@ async function runAll(doc: JSONContent): Promise<Outputs> {
   );
   process.env.GETWRITE_PROJECTS_DIR = projectsDir;
 
-  const resources = [
-    { id: RESOURCE_ID, name: "Chapter", type: "text" as const },
-  ];
+  const resources = [{ id: RESOURCE_ID, name: "Chapter", type: resourceType }];
   const compileBody = {
     projectId,
     resourceIds: [RESOURCE_ID],
@@ -227,6 +228,33 @@ const COMPARISONS: {
     equal: (a, b) => JSON.stringify(a.warnings) === JSON.stringify(b.warnings),
   },
 ];
+
+describe("compile and export of a Source with annotation marks (Feature 102, FR-38)", () => {
+  const { annotated, plain } = CASES[0];
+  let annotatedOut: Outputs;
+  let plainOut: Outputs;
+  let textTwin: Outputs;
+
+  beforeAll(async () => {
+    annotatedOut = await runAll(annotated, "source");
+    plainOut = await runAll(plain, "source");
+    textTwin = await runAll(annotated, "text");
+  });
+
+  it.each(COMPARISONS)(
+    "annotated Source equals the plain Source: $name",
+    ({ equal }) => {
+      expect(equal(annotatedOut, plainOut)).toBe(true);
+    },
+  );
+
+  it("compiles the Source body, as it compiles the same text document", () => {
+    expect(annotatedOut.compileText).toContain("The quick brown fox");
+    expect(annotatedOut.exportText).toContain("The quick brown fox");
+    expect(annotatedOut.compileText).toBe(textTwin.compileText);
+    expect(annotatedOut.exportMarkdown).toBe(textTwin.exportMarkdown);
+  });
+});
 
 describe("compile and export output with annotation marks (FR-8)", () => {
   describe.each(CASES)("$label", ({ annotated, plain, control }) => {

@@ -2,12 +2,18 @@ import { describe, it, expect } from "vitest";
 import { ZodError } from "zod";
 import {
   AnyResourceSchema,
+  AttachmentEntrySchema,
+  AttachmentListSchema,
   EntitySidecarFieldsSchema,
+  FolderSidecarSchema,
   MetadataFieldSchema,
   ProjectConfigSchema,
   ResourceBaseSchema,
   SubtypeListSchema,
+  TrashAttachmentRecordSchema,
+  TrashItemKindSchema,
 } from "../../src/lib/models/schemas";
+import { ProjectApiEntrySchema } from "../../src/lib/api/schemas";
 
 const baseResourceFields = {
   id: "550e8400-e29b-41d4-a716-446655440000",
@@ -255,5 +261,187 @@ describe("MetadataFieldSchema appliesTo (Feature 72, FR-13)", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) expect("appliesTo" in result.data).toBe(false);
+  });
+});
+
+describe("MetadataFieldSchema appliesToFolders (Feature 102, FR-9)", () => {
+  const field = { key: "case", label: "Case", type: "text" as const };
+
+  it("keeps appliesToFolders when set", () => {
+    const result = MetadataFieldSchema.safeParse({
+      ...field,
+      appliesToFolders: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.appliesToFolders).toBe(true);
+  });
+
+  it("parses without it and does not add the key", () => {
+    const result = MetadataFieldSchema.safeParse(field);
+    expect(result.success).toBe(true);
+    if (result.success) expect("appliesToFolders" in result.data).toBe(false);
+  });
+
+  it("keeps appliesToFolders next to appliesTo, not as an appliesTo value", () => {
+    const result = MetadataFieldSchema.safeParse({
+      ...field,
+      appliesTo: ["Episode"],
+      appliesToFolders: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.appliesTo).toEqual(["Episode"]);
+      expect(result.data.appliesToFolders).toBe(true);
+    }
+  });
+
+  it("survives the client parse of a project's field definitions", () => {
+    const parsed = ProjectApiEntrySchema.parse({
+      project: {
+        id: "aaaaaaaa-1111-4111-8111-111111111111",
+        name: "P",
+        createdAt: "2026-11-07T00:00:00.000Z",
+        config: {
+          editorConfig: {},
+          metadataSchema: {
+            groups: [
+              {
+                id: "g",
+                label: "G",
+                fields: [
+                  { ...field, appliesToFolders: true },
+                  { key: "plain", label: "Plain", type: "text" },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      folders: [],
+      resources: [],
+    });
+    const fields =
+      parsed.project.config?.metadataSchema?.groups[0].fields ?? [];
+    expect(fields[0].appliesToFolders).toBe(true);
+    expect("appliesToFolders" in fields[1]).toBe(false);
+  });
+});
+
+describe("FolderSidecarSchema (Feature 102, FR-3, FR-4)", () => {
+  it("holds userMetadata.notes, field values and resourceSubtype", () => {
+    const result = FolderSidecarSchema.safeParse({
+      userMetadata: { notes: "About this case", caseNo: 12, closed: false },
+      resourceSubtype: "Case",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.userMetadata?.notes).toBe("About this case");
+      expect(result.data.resourceSubtype).toBe("Case");
+    }
+  });
+
+  it("parses an empty sidecar", () => {
+    expect(FolderSidecarSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("has no body: plainText, tiptap and top-level notes are rejected", () => {
+    expect(FolderSidecarSchema.safeParse({ plainText: "x" }).success).toBe(
+      false,
+    );
+    expect(
+      FolderSidecarSchema.safeParse({ tiptap: { type: "doc", content: [] } })
+        .success,
+    ).toBe(false);
+    expect(FolderSidecarSchema.safeParse({ notes: "x" }).success).toBe(false);
+  });
+
+  it("rejects non-string notes", () => {
+    expect(
+      FolderSidecarSchema.safeParse({ userMetadata: { notes: 3 } }).success,
+    ).toBe(false);
+  });
+});
+
+describe("AttachmentEntrySchema (Feature 102, FR-22)", () => {
+  const entry = {
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    fileName: "a1b2c3.png",
+    originalName: "scan one.png",
+    mime: "image/png",
+    size: 1024,
+    addedAt: "2026-11-07T00:00:00.000Z",
+  };
+
+  it("accepts the recorded entry shape and a list of them", () => {
+    expect(AttachmentEntrySchema.safeParse(entry).success).toBe(true);
+    expect(AttachmentListSchema.safeParse([entry, entry]).success).toBe(true);
+    expect(AttachmentListSchema.safeParse([]).success).toBe(true);
+  });
+
+  it("rejects an extra key", () => {
+    expect(
+      AttachmentEntrySchema.safeParse({ ...entry, path: "/etc/passwd" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects a missing field and a bad size", () => {
+    const rest: Partial<typeof entry> = { ...entry };
+    delete rest.fileName;
+    expect(AttachmentEntrySchema.safeParse(rest).success).toBe(false);
+    expect(
+      AttachmentEntrySchema.safeParse({ ...entry, size: -1 }).success,
+    ).toBe(false);
+  });
+});
+
+describe("attachment Trash item kind (Feature 102, FR-26)", () => {
+  it("adds attachment next to resource and folder", () => {
+    expect(TrashItemKindSchema.options).toEqual([
+      "resource",
+      "folder",
+      "attachment",
+    ]);
+  });
+
+  it("accepts an attachment record carrying Source id, entry and stored name", () => {
+    const result = TrashAttachmentRecordSchema.safeParse({
+      kind: "attachment",
+      sourceId: "660e8400-e29b-41d4-a716-446655440001",
+      entry: {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        fileName: "a1b2c3.png",
+        originalName: "scan.png",
+        mime: "image/png",
+        size: 10,
+        addedAt: "2026-11-07T00:00:00.000Z",
+      },
+      storedName: "a1b2c3.png",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a record with no stored name or another kind", () => {
+    expect(
+      TrashAttachmentRecordSchema.safeParse({
+        kind: "attachment",
+        sourceId: "660e8400-e29b-41d4-a716-446655440001",
+      }).success,
+    ).toBe(false);
+    expect(TrashItemKindSchema.safeParse("video").success).toBe(false);
+  });
+});
+
+describe("a project with none of the Feature 102 declarations", () => {
+  it("parses exactly as before", () => {
+    const parsed = MetadataFieldSchema.parse({
+      key: "mood",
+      label: "Mood",
+      type: "text",
+    });
+    expect(parsed).toEqual({ key: "mood", label: "Mood", type: "text" });
+    expect(AnyResourceSchema.safeParse({ ...baseResourceFields }).success).toBe(
+      true,
+    );
   });
 });

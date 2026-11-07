@@ -379,3 +379,52 @@ export const Interactive: Story = {
   },
   args: { project, resources: resources },
 };
+
+const folderRows: NonNullable<DataViewProps["folderRows"]> = [
+  {
+    id: "folder-1",
+    name: "Part One",
+    subtype: "Act",
+    cells: [
+      { key: "mood", label: "Mood", value: "tense" },
+      { key: "arc", label: "Arc", value: "" },
+    ],
+  },
+  {
+    id: "folder-2",
+    name: "Part Two",
+    subtype: undefined,
+    cells: [
+      { key: "mood", label: "Mood", value: "calm" },
+      { key: "arc", label: "Arc", value: "rising" },
+    ],
+  },
+];
+
+/** A smart folder with `type = folder`: name, subtype and field columns; no notes or child count. */
+export const WithFolderRows: Story = {
+  args: { project, resources, folderRows },
+  parameters: { a11y: { test: "error" } },
+};
+
+/** The folders' metadata could not be read: a failure, not an empty list. */
+export const FolderReadFailed: Story = {
+  args: {
+    project,
+    resources,
+    folderRows: [],
+    folderRowsError: "The folder's metadata could not be read.",
+  },
+  parameters: { a11y: { test: "error" } },
+};
+
+/** The smart-folder query failed to evaluate: a failure in place of every row. */
+export const QueryEvaluationFailed: Story = {
+  args: {
+    project,
+    resources,
+    folderRows,
+    evaluationError: "Query evaluation failed.",
+  },
+  parameters: { a11y: { test: "error" } },
+};

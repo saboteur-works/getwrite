@@ -35,6 +35,8 @@ import {
   filterChildren,
 } from "./organizerFilters";
 import { useOrganizerCardReorder } from "./useOrganizerCardReorder";
+import { useFolderRowMetadata } from "../../../../src/hooks/useFolderRowMetadata";
+import { withFolderFieldValues } from "./organizerFolderChildren";
 import {
   closestCenter,
   DndContext,
@@ -250,6 +252,27 @@ export default function OrganizerView({
 
   const allChildren: AnyResource[] = [...childFolders, ...childResources];
 
+  // Child folders' sidecar metadata (Feature 102, FR-14): subtype for the
+  // card, field values for the filters. No request without a project
+  // directory or child folders. A failed read is shown, never dropped.
+  const childFolderIdsKey = projectId
+    ? childFolders.map((f) => f.id).join(",")
+    : "";
+  const childFolderIds = React.useMemo(
+    () => (childFolderIdsKey === "" ? [] : childFolderIdsKey.split(",")),
+    [childFolderIdsKey],
+  );
+  const folderMetadata = useFolderRowMetadata(projectId ?? "", childFolderIds);
+  const folderMetadataById =
+    folderMetadata.status === "ready" ? folderMetadata.byId : undefined;
+  const isFolderReadFailed = folderMetadata.status === "failed";
+  // Same ids and order as `allChildren`; folders carry their field values so
+  // the existing filters apply to them.
+  const filterableChildren = withFolderFieldValues(
+    allChildren,
+    folderMetadataById,
+  );
+
   const [filterState, dispatchFilter] = React.useReducer(
     organizerFilterReducer,
     initialOrganizerFilterState,
@@ -284,7 +307,7 @@ export default function OrganizerView({
     const result: Record<string, string[]> = {};
     for (const field of refFields) {
       const distinct = new Set<string>();
-      for (const child of allChildren) {
+      for (const child of filterableChildren) {
         const rawValue = child.userMetadata?.[field.key];
         const refs: unknown[] = Array.isArray(rawValue) ? rawValue : [rawValue];
         for (const entry of refs) {
@@ -299,9 +322,13 @@ export default function OrganizerView({
       );
     }
     return result;
-  }, [refFields, allChildren]);
+  }, [refFields, filterableChildren]);
 
-  const visibleChildren = filterChildren(allChildren, filterState, refFields);
+  const visibleChildren = filterChildren(
+    filterableChildren,
+    filterState,
+    refFields,
+  ).filter((child) => !(isFolderReadFailed && child.type === "folder"));
 
   // FR-9: whether any filter is currently active, used to distinguish a
   // genuinely empty folder from one filtered down to zero visible cards.
@@ -488,6 +515,13 @@ export default function OrganizerView({
         />
       )}
 
+      {selectedFolder && folderMetadata.status === "failed" && (
+        <p role="alert" className="text-sm text-gw-secondary mb-3">
+          Folder details could not be loaded: {folderMetadata.message} Folders
+          in this folder are not shown.
+        </p>
+      )}
+
       {!selectedFolder ? (
         <p className="text-sm text-gw-secondary">
           Select a folder to view its contents.
@@ -519,6 +553,9 @@ export default function OrganizerView({
                     notesEnabled: isNotesEnabled,
                     textExcerpt: excerpts[child.id],
                   })}
+                  folderSubtype={
+                    folderMetadataById?.[child.id]?.resourceSubtype
+                  }
                   isSelected={child.id === selectedResourceId}
                   onOpen={() => handleOpen(child.id)}
                   onSelect={() => handleSelect(child.id)}
@@ -551,6 +588,9 @@ export default function OrganizerView({
                       textExcerpt: excerpts[activeDragChild.id],
                     },
                   )}
+                  folderSubtype={
+                    folderMetadataById?.[activeDragChild.id]?.resourceSubtype
+                  }
                   isSelected={activeDragChild.id === selectedResourceId}
                 />
               </div>

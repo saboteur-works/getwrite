@@ -42,6 +42,10 @@ function normalizeTerm(term: string): string {
 
 /**
  * Build a per-project alias table from every resource with `entityKind` set.
+ * A Source with `entityKind` is an entity like any other (Feature 102 FR-21,
+ * owner decision 2026-11-07, matching `backlinks.ts` and
+ * `entity-shared-metadata.ts`); a Source without it is not in the table, so a
+ * plain Source's name is not matched in prose.
  *
  * Reuses `listResourceIds` (`./backlinks.ts`) to enumerate resources and
  * `readSidecar` (`./sidecar.ts`) to read each one's metadata, mirroring
@@ -66,7 +70,6 @@ export async function buildEntityAliasTable(
       continue;
     }
     if (!sidecar) continue;
-
     const entityKind = sidecar["entityKind"];
     if (typeof entityKind !== "string" || entityKind.length === 0) continue;
 

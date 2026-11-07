@@ -411,7 +411,7 @@ getwrite-cli reindex [projectRoot]
 **What it does:**
 
 1. Reads all resource UUIDs from `<projectRoot>/resources/`.
-2. For each resource, loads its content and re-indexes it into `meta/index/inverted.json`.
+2. For each resource, loads its content and re-indexes it into `meta/index/inverted.json`. A resource whose sidecar `type` is `source` is passed to the indexer as a Source (Feature 102); every other resource is passed as text. The indexer reads body and title, not the type, so a Source body is indexed either way.
 3. Recomputes backlinks across all resources and persists `meta/backlinks.json`.
 4. Rebuilds the entity mention index from scratch (declared entities detected by name/alias in every resource's prose) and persists `meta/index/mentions.json`.
 
@@ -475,7 +475,7 @@ To repair, recreate the missing folder reusing its id (so the existing `folderId
 
 ### `repair-revisions`
 
-Gives every text resource that has content but no revision its initial canonical revision.
+Gives every text resource (and, since Feature 102, every Source) that has content but no revision its initial canonical revision.
 
 ```sh
 getwrite-cli repair-revisions [projectRoot] [--dry-run]
@@ -495,7 +495,7 @@ By reading the code, nothing creates a revision-less text resource today, so thi
 
 **What it does:**
 
-1. Lists the project's text resources. Image and audio resources are ignored; they have no revisions.
+1. Lists the project's text and Source resources (Feature 102; a Source has a canonical `v-1` like a text resource). Image and audio resources are ignored; they have no revisions.
 2. Skips any resource that has a `revisions/<id>/v-*` directory, including one whose metadata is unreadable. It never writes over an existing revision.
 3. For each remaining resource, writes `v-1` as the canonical revision, holding the resource's own document (`content.tiptap.json`, or `content.txt` converted when that file is missing) and named by the project's default revision name.
 4. A resource with neither content file is reported and left alone.
