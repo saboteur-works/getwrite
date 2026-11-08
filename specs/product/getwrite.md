@@ -336,6 +336,13 @@ with the app without hand-rewriting it (see OQ-90).
 - US-45: As a writer, I want to choose Source in the Type filter of a query, so
   that I can find my Sources and build a smart folder of them. [Next] (Added
   2026-11-07; FR-133. Owner decision, 2026-11-07: this fix ships in Run C.)
+- US-46: As a writer using GetWrite on Android, I want to add, replace and
+  restore a large attachment or audio or image file without the app crashing,
+  and to be told plainly when a file cannot be added, so that I never lose my
+  place or my project to a file that is too big for the device. [Next] (Added
+  2026-11-08; FR-141 to FR-145. Owner request, POS task_46ea6fe1. Measured, Pixel
+  7 Pro, `specs/features/sources-module-seam/experiments.md`: 50 MiB and 100 MiB
+  adds crash the app, 25 MiB works.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -1656,7 +1663,9 @@ with the app without hand-rewriting it (see OQ-90).
   before the requirement is treated as met, including the Android media baseline
   (about 10 MB/s, 100 MB cap accepted). [US-40] (Added 2026-11-06. Expected to
   behave as for image and audio; not checked, note_31c82491. OQ-149 stays open
-  as an engineering verification item, verified by tests in the feature.)
+  as an engineering verification item, verified by tests in the feature.
+  Note, 2026-11-08: the Pixel 7 Pro run did not reproduce this baseline at 50 MiB
+  and 100 MiB (both crash the app); see FR-141 to FR-145 and OQ-171 to OQ-174.)
 - FR-112: The product SHOULD provide a Sources interface, a project-scope Work
   Area view, that lists every Source in the open project with its name, its
   subtype and its number of attachments, so the writer can find and open a Source
@@ -1688,7 +1697,9 @@ with the app without hand-rewriting it (see OQ-90).
   attachment from the Sources interface. Android's measured media baseline (about
   10 MB/s, 100 MB cap accepted) applies and MUST be checked for Source
   attachments by a test before this requirement is treated as met (FR-111,
-  OQ-149). [US-41] (Added 2026-11-07. Resolved, OQ-166; Owner decision,
+  OQ-149). [US-41] (Note, 2026-11-08: the Pixel 7 Pro run did not reproduce the
+  baseline at 50 MiB and 100 MiB; see FR-141 to FR-145 and OQ-171 to OQ-174.)
+  (Added 2026-11-07. Resolved, OQ-166; Owner decision,
   2026-11-07: both image preview and audio playback are in Run C, since excerpts
   of image and audio attachments by locator, FR-118, stay in Run C.)
 - FR-116: Every control this run adds MUST work on every platform on which
@@ -1933,6 +1944,66 @@ with the app without hand-rewriting it (see OQ-90).
   `indexAnnotationBodies`, which `indexer-queue.ts:282` calls on save, and
   computes no diagnostics. Resolved, OQ-163; Owner decision, 2026-11-07,
   recommended option (a): in this run.)
+- FR-141: On Android, adding an attachment to a Source, replacing an attachment,
+  creating an audio or image resource, and restoring an attachment or a media
+  resource from Trash MUST NOT crash the app for any file size up to the cap the
+  product states for Android (FR-143). The fix MUST be at the single shared write
+  funnel, `capacitorFsAdapter.writeFile`, so every one of these paths takes it.
+  This MUST be verified on a physical device,
+  or an equivalent recorded run through the real Capacitor bridge, at the largest
+  size the Android cap accepts and at one size above it, with the build, device
+  and size recorded in the feature's experiments file as a measurement, once per
+  path. Importers are out of scope. [US-46]
+  (Added 2026-11-08. Measured, Pixel 7 Pro, Android 17, WebView 156, build
+  `01c9c879`: a 104,857,600-byte (100 MiB, `MAX_MEDIA_FILE_BYTES`) attachment, a
+  100 MiB audio resource and a 50 MiB attachment each crash the app with
+  `java.lang.OutOfMemoryError` on the main thread in `MessageHandler.postMessage`
+  (failed allocations 139,810,152 and 72,877,440 bytes, about 4/3 of the file
+  size); a 25 MiB attachment is added in 2,911 ms. Cause not established; one
+  hypothesis is a single base64 string in one bridge message, settled by logging
+  the `Filesystem.writeFile` payload length at 25 MiB and trying a chunked write at
+  100 MiB. Scope of write paths: all media writes, OQ-172 (Resolved, Owner
+  decision, 2026-11-08, option (b)). Replace and Trash restore on a device were not
+  measured. Trash restore was not traced to a call site and may be a move or
+  rename that passes no bytes (triage, medium confidence, unverified); no Android
+  import path was found. The write funnel today base64-encodes the whole file into
+  one `Filesystem.writeFile` call. The chunked-write experiment (`writeFile` then
+  `appendFile` in pieces, via the existing wrapper) is run at 100 MiB on the Pixel
+  first, OQ-171.)
+- FR-142: On Android, a write of an attachment or media file that cannot complete
+  MUST fail visibly, with a message the writer can read, and MUST leave no
+  partial state: no attachment file, no sidecar entry and no resource directory
+  from the failed write. [US-46] (Added 2026-11-08. The no-partial-state
+  behaviour is observed today after a crash: after relaunch there was no
+  attachment file and the sidecar had `attachments: []`; keep it. A refusal
+  before the write starts, for a size the device cannot take, is allowed if the
+  message says so.)
+- FR-143: The cap the product states for Android MUST be one a device run
+  verified. The product, its documentation and its user-facing messages MUST NOT
+  state a cap or a throughput for Android that no device run measured. The cap is
+  set to the largest size a device run verifies, which may be 100 MB, after a
+  chunked-write experiment (`writeFile` then `appendFile` in pieces, via the
+  existing wrapper) at 100 MiB on the Pixel (OQ-171, Resolved, Owner decision,
+  2026-11-08, option (c)). The throughput figure is scoped to measured sizes
+  (OQ-174). [US-46] (Added 2026-11-08. The largest working size between 25 MiB and
+  50 MiB was not measured. The earlier figure, about 10 MB/s with a 100 MB cap
+  accepted, is recorded in FR-111, FR-115 and OQ-149. Resolved, OQ-174; Owner
+  decision, 2026-11-08, option (b): the figure holds only for the measured sizes,
+  about 9 to 11 MB/s write up to 8 MiB and 25 MiB at about 8.6 MiB/s from the
+  2026-11-08 run; the 100 MB cap claim is withdrawn, since 100 MB was a decision,
+  not a measurement. FR-143 is unblocked.)
+- FR-144: Reading a large attachment or media file back on Android (preview,
+  playback, compile, export) MUST NOT crash the app: preview and playback are checked on a device up to the
+  Android cap; compile and export at large sizes are not verified and MUST be
+  listed as such (OQ-173, Resolved, Owner decision, 2026-11-08, option (c)). [US-46]
+  (Added 2026-11-08. Reading was measured
+  only at 25 MiB: audio preview ready about 3.0 s after the click, duration and
+  playback correct. Reading above 25 MiB was not measured. FR-144 is unblocked.)
+- FR-145: The Android change MUST NOT alter behaviour on desktop, hosted web or a
+  paired device: the 100 MB cap (`MAX_MEDIA_FILE_BYTES`), the upload and
+  attachment routes, and their success and refusal results MUST stay as they are
+  today on those platforms, which a test MUST pin. [US-46] (Added 2026-11-08.
+  Owner request, POS task_46ea6fe1.)
 
 ### Later Requirements
 
@@ -4653,6 +4724,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 **OQ-149: Do encryption and whole-directory Trash behave for large attachments as they do for image and audio, and does Android's measured media baseline (about 10 MB/s, 100 MB cap accepted) hold for a Source's attachments?**
 **Impact:** FR-111, FR-106; US-40. Expected, not checked (note_31c82491). The Android figures are from the Phase 3 gate as recorded in that note.
+**Note, 2026-11-08:** the Pixel 7 Pro run (`specs/features/sources-module-seam/experiments.md`, "Wave 2 Android 100 MB baseline") did not reproduce the baseline at 50 MiB and 100 MiB: both crash the app; 25 MiB works. See FR-141 to FR-145 and OQ-171 to OQ-174.
 **Owner:** Engineering lead.
 
 (Raised 2026-11-06 for FR-93 to FR-111.)
@@ -4771,7 +4843,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 **OQ-166 (resolved): Does the Sources interface show an image attachment and play an audio attachment?**
 **Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (c). Image preview and audio playback are both in Run C, since excerpts of image and audio attachments by locator (FR-118) stay in Run C; the Android media baseline (about 10 MB/s, 100 MB cap, OQ-149) applies. Applied in FR-115.
-**Impact:** FR-115; US-41. Feature 102's Attachments section has no preview or playback (`docs/features/sources.md`). Whether Run C adds it is not stated in the inputs. Android's measured media baseline (about 10 MB/s, 100 MB cap accepted) applies and was not checked for Source attachments (OQ-149).
+**Impact:** FR-115; US-41. Feature 102's Attachments section has no preview or playback (`docs/features/sources.md`). Whether Run C adds it is not stated in the inputs. Android's measured media baseline (about 10 MB/s, 100 MB cap accepted) applies and was not checked for Source attachments (OQ-149). Note, 2026-11-08: that baseline did not hold at 50 MiB and 100 MiB on a Pixel 7 Pro; see OQ-149 and FR-141 to FR-145.
 **Owner:** Product owner.
 
 (Raised 2026-11-07 for FR-112 to FR-140.)
@@ -4802,6 +4874,39 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 **Owner:** Product owner.
 
 (Raised 2026-11-07 for FR-129, from OQ-169.)
+
+**OQ-171 (resolved): Is 100 MB still the Android target, or is a lower Android cap acceptable?**
+**Resolution:** Resolved (Owner decision, 2026-11-08; recommended option): option (c). Run a chunked-write experiment first: `writeFile` of the first piece then `appendFile` in pieces, through the existing wrapper (Capacitor Filesystem 8.1.2 has `appendFile`), at 100 MiB on the Pixel. Then set the Android cap to the largest size a device run verifies, which may be 100 MB. Applied in FR-141 and FR-143; FR-143 is unblocked.
+**Options:** (a) Keep 100 MB and fix the write path, so that a 100 MiB file is added on the device; consequence: the largest engineering change, the cause is not established (see FR-141), and no result is promised until a device run at 100 MiB passes. (b) Lower the Android cap to a size the device run verifies (between 25 MiB and 50 MiB is the only range with a measured working lower bound; the working maximum is unmeasured); consequence: a small change, but a writer on Android cannot attach a larger file that desktop accepts, and the limit must be shown in the interface and the documentation. (c) Both: fix the write path, then set the Android cap to the largest size the device run verifies, which may be 100 MB; consequence: the cap is whatever the evidence supports, at the cost of the fix.
+**Impact:** FR-141, FR-143; US-46. `MAX_MEDIA_FILE_BYTES` (`frontend/src/lib/models/media-validation.ts`) is one value for every platform today; a lower Android cap means a platform-specific value, which FR-145 requires not to change the other platforms.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-141 to FR-145.)
+
+**OQ-172 (resolved): Which write paths on Android are in scope for the crash fix?**
+**Resolution:** Resolved (Owner decision, 2026-11-08; recommended option): option (b). All media writes are in scope: attachment add, attachment replace, media resource create and Trash restore. The fix goes at the single shared write funnel, `capacitorFsAdapter.writeFile`, which today base64-encodes the whole file into one `Filesystem.writeFile` call (evidence: `frontend/src/lib/models/capacitorFsAdapter.ts`, `capacitor-filesystem-real.ts`, `source-attachments-core.ts:284,469`, `resource-crud-core.ts:228,281`). Each path needs its own device check. From triage (medium confidence, unverified): Trash restore was not traced to a call site and may be a move or rename that passes no bytes; no Android import path was found. Importers are out of scope. Applied in FR-141.
+**Options:** (a) Attachment add only, the path measured; consequence: smallest, leaves the audio and image resource create path, which crashes identically at 100 MiB, unfixed. (b) Add and every media write: attachment add, attachment Replace, audio and image resource create, media Replace if it exists, and Trash restore of a large item; consequence: matches FR-141, and every path needs its own device run, since Replace and restore were not measured. (c) Case (b) plus the import paths (Scrivener, DOCX) on Android if they carry media; consequence: widest; whether those importers run on Android or carry media was not checked for this spec.
+**Impact:** FR-141, FR-142; US-46. The audio resource path (pre-existing) failed identically to the attachment path at 100 MiB.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-141 to FR-145.)
+
+**OQ-173 (resolved): Is reading a large attachment or media file on Android (preview, playback, compile, export) in scope?**
+**Resolution:** Resolved (Owner decision, 2026-11-08; recommended option): option (c). Preview and playback on Android are checked on a device up to the Android cap; compile and export at large sizes are listed as not verified. Applied in FR-144; FR-144 is unblocked.
+**Options:** (a) No: only the write is fixed, and reading is unverified above 25 MiB; consequence: a file that can now be added may not open, and the product must not claim it does. (b) Yes, up to the Android cap, each of preview, playback, compile and export checked on a device; consequence: an unmeasured amount of work, since reading was measured at 25 MiB only and the reading path builds a Blob object URL in the WebView (FR-18 of `specs/features/sources-module-seam.md`). (c) Preview and playback only; compile and export deferred; consequence: the common reading path is covered and the rare one is listed as not verified.
+**Impact:** FR-144; US-46.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-141 to FR-145.)
+
+**OQ-174 (resolved): Where did "about 10 MB/s, 100 MB cap accepted" come from, and is it withdrawn?**
+**Resolution:** Resolved (Owner decision, 2026-11-08; recommended option): option (b). The throughput figure is kept, scoped to the sizes measured: about 9 to 11 MB/s write up to 8 MiB (the `native-device-harness.ts` payloads) and 25 MiB at about 8.6 MiB/s (the 2026-11-08 run). The 100 MB cap claim is withdrawn: the 100 MB figure was a decision, not a measurement. The notes already at FR-111, FR-115, OQ-149 and OQ-166 stand. Applied in FR-143.
+**Options:** (a) Withdraw it: remove the figure from FR-111, FR-115 and OQ-149 as a current claim (the dated notes stay) and state only what a device run measured; consequence: no Android throughput figure until one is measured again. (b) Keep it as a throughput figure for small files only, scoped to the sizes measured, and withdraw the cap half; consequence: the figure stays but with a stated range. (c) Keep it unchanged; consequence: contradicted by the 2026-11-08 run at 50 MiB and 100 MiB.
+**Impact:** FR-111, FR-115, FR-143, OQ-149; the same figures are repeated in `specs/features/folder-metadata-sources-core.md` FR-31 (d), `specs/features/sources-module-seam.md` FR-18, `docs/features/sources.md`, `docs/features/feature-specifications/end-to-end-encryption/kdf-spike.md` and its `tasks.md`.
+**Origin, measured sizes found by reading, 2026-11-08:** the harness `frontend/src/lib/models/native-device-harness.ts` (FR9, Phase 2) measures image payloads of 200 KiB, 2 MiB and 8 MiB (`IMAGE_THROUGHPUT_PAYLOADS`) and audio payloads of 512 KiB and 4 MiB (`AUDIO_THROUGHPUT_PAYLOADS`); its comment states the 8 MiB image is the upper end "without approaching `MAX_MEDIA_FILE_BYTES` (100 MiB)". The result (about 9 to 11 MB/s write, 8 to 12 MB/s read, Pixel 7 Pro, 2026-07-27, three runs) and the decision "accept the current 100MB cap, no chunking" are recorded in the owner's project memory note `project_native_android_capacitor.md` (outside the repository), where the 100 MB worst case is estimated as about 10 s, not measured. The repository cites the figure second-hand (`kdf-spike.md` line 34, end-to-end-encryption `tasks.md` line 850) and `specs/features/native-android-phase2-full-app.md` records only the Phase 0 figure (about 0.8 MB/s, a 4 MiB buffer) and the intent to accept a limit or remediate. No repository record of a measurement above 8 MiB was found. So the largest size measured was 8 MiB; the 100 MB cap was a decision on that measurement, not a measured size.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-141 to FR-145.)
 
 ## Out of Scope (Deferred)
 
@@ -4979,3 +5084,6 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   an excerpt of an attachment is recorded by locator alone.
 - Video attachments, a web clipper and PDF excerpt import (note_31c82491,
   runway 13): later.
+- Image resources show "Unable to load image." on Android (POS task_fed2906c;
+  `specs/features/sources-module-seam/experiments.md`, "Wave 2 Android image
+  display"): a separate, pre-existing failure, not part of FR-141 to FR-145.
