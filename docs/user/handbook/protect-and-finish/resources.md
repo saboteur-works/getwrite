@@ -27,9 +27,15 @@ A Source opens in the **Edit** tab like a document, and its sidebar takes the sa
 - **Replace:** choose **Replace** beside a file and pick another file. The new file takes the old one's place, and the old file goes to [Trash](trash.md).
 - **Remove:** choose **Remove** beside a file. It goes to [Trash](trash.md), and the section tells you to restore it from the **Trash** tab if you change your mind.
 
+### See all your Sources
+
+The **Sources** tab in the Work Area lists every Source in the project with its subtype and how many attachments it has. Choose a Source to open it in the editor. You can create a Source and rename one from this tab, and open a Source's attachments and excerpts from its row. The tab is separate from the Resource Tree, so you can use it without selecting anything first.
+
+To hide the **Sources** tab, **Cite selection** and **Mark as excerpt**, clear **Enable Sources** in **Project Settings**, **Modules** tab. Your Sources, their attachments, and the citations and excerpts you already made stay as they are, and you can still create a Source and use its **Attachments** section.
+
 If **Entities** is switched on in **Project Settings**, a Source can be an entity like a document: fill in **Entity Kind** (and any aliases) in the **Entity** section of its sidebar. GetWrite then finds the Source's name in your writing. A Source with no Entity Kind is not found by name. See [Metadata](../story/metadata.md).
 
-An attachment can be an image or an audio file, up to 100 MB each. A Source holds up to 500 attachments. A file of any other kind, such as a video, is refused, and a message in the section says why. The list shows each file's name and size. It does not show a preview or play audio.
+An attachment can be an image or an audio file, up to 100 MB each. A Source holds up to 500 attachments. A file of any other kind, such as a video, is refused, and a message in the section says why. The list shows each file's name and size. Choose **Preview** beside an image or audio file to see the image or play the audio, and **Hide** to close it.
 
 When you create a Source, GetWrite leaves it out of [compile](compiling.md) by default. It stays in export. You can change both, as [Compiling Projects](compiling.md#sources-in-compile-and-export) explains. A Source's words do not count toward the project or daily word goal unless your goal filter selects them. See [Daily writing log](../write/writing-log.md).
 
