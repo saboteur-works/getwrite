@@ -320,7 +320,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (e2e requirement). The orchestrator writes it; it cannot run it.
 **POS:** task_868a6de3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: OWNER-RUN, manual: Android 100 MB attachment baseline on the Pixel
 **What:** On the Pixel, add, read and play or preview a 100 MB attachment through the native transport and record the observed throughput and build.
