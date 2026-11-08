@@ -221,3 +221,19 @@ Not yet recorded.
 Observed behaviour change: a locked-access error (`ProjectLockedError`, `MissingProjectKeyError`) raised by the sidecar read or the resource content read in `indexAllResources` now fails `rebuildDerivedIndexes`, and so the importers' `rebuildIndexes` and the CLI's `reindex`, instead of indexing the resource under its id or with no text.
 
 Observed before the change, with the failure injected on the first sidecar read, or the first content read, of a one-resource project: `rebuildDerivedIndexes` resolved. With the failure injected on the second sidecar read (the annotation-body step), it already rejected with the locked error. A non-locked unreadable sidecar is still skipped; both steps write a stderr line.
+
+## Task 20: attachments section placement
+
+Choice: the sidebar section stays. It is not moved into the slot. The section's body becomes one component, `components/Sources/SourceAttachmentsPanel.tsx`, with one list-reading hook, `components/Sources/useSourceAttachments.ts`. The sidebar mounts the panel directly. The Sources view mounts the same panel through a new UI slot kind, `attachmentsSection`, declared in `components/Modules/uiRegistry.ts`. The model-side registry (`lib/models/modules/registry.ts`) is not changed.
+
+Observed in the code read before the change:
+
+- `MetadataSidebar.tsx` mounts `SourceAttachmentsSection` for every resource of type `source` inside a `CollapsibleSection` titled "Attachments", with `key={editableResource.id}`. `AppShell.tsx` mounts `MetadataSidebar` at the right pane (line 1149) and does not read `config.modules` for it.
+- Spec OQ-13 (owner, Gate 3) says the sidebar attachments section ignores the module switch. `tests/moduleSwitchSection.test.tsx` has a case, "SourceAttachmentsSection still lists attachments with the module off", that mounts it with `sources: false`. A view slot is shown only while the module is on (`useEnabledModuleViews`), so moving the sidebar section into a slot would make it follow the switch.
+- `SourceAttachmentsSection.tsx` held its own `useState` load state, so two mounted copies each kept a private list. Nothing shared the list between mounts.
+- `SourcesView.tsx` renders a table row per Source and holds no per-Source detail area. `useSourceList.ts` reads `listAttachments` per Source for the count only.
+- `uiRegistry.ts` imports `SourcesView`. A `SourcesView` that imported `uiRegistry` would be an import cycle.
+- `tests/unit/module-ui-registry.test.tsx` pins `UI_SLOT_KINDS` to `["view"]` and the entry keys to `["id", "view"]`. `tests/unit/module-registry.test.ts` pins the model slot kinds to `["view"]` and forbids the word "attachment" among the model registry's keys.
+- `tests/sourceAttachmentsSection.test.tsx`, `tests/a11y/sourceAttachmentsSection.a11y.test.tsx` and `stories/Sidebar/SourceAttachmentsSection.stories.tsx` import `components/Sidebar/SourceAttachmentsSection`.
+
+Consequences taken: `components/Sidebar/SourceAttachmentsSection.tsx` stays as a one-line re-export of the panel so those imports keep working. The view receives the slot as a render prop from the registry entry, which avoids the cycle. Sharing between the view and the sidebar is a module-level broadcast channel keyed by project and Source, held only while a component is subscribed, so a change in one mount is shown in the other without reselecting.

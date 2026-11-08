@@ -152,14 +152,28 @@ describe("useModuleEnabled under StaticModulesProvider", () => {
 });
 
 describe("UI registry shape (OQ-12, FR-11)", () => {
-  it("declares the view slot kind only", () => {
-    expect(uiRegistryModule.UI_SLOT_KINDS).toEqual(["view"]);
+  it("declares the view and attachments-section slot kinds only (Task 20)", () => {
+    expect(uiRegistryModule.UI_SLOT_KINDS).toEqual([
+      "view",
+      "attachmentsSection",
+    ]);
   });
 
-  it("an entry has only an id and a view slot", () => {
+  it("an entry has an id, a view slot and at most an attachments-section slot", () => {
     for (const entry of uiRegistryModule.UI_MODULE_VIEWS) {
-      expect(Object.keys(entry).sort()).toEqual(["id", "view"]);
+      const keys = Object.keys(entry).sort();
+      expect(["id", "view"].every((k) => keys.includes(k))).toBe(true);
+      expect(
+        keys.filter((k) => !["id", "view", "attachmentsSection"].includes(k)),
+      ).toEqual([]);
     }
+  });
+
+  it("only the Sources module has an attachments-section slot, the slot kind's real consumer", () => {
+    const withSlot = uiRegistryModule.UI_MODULE_VIEWS.filter(
+      (entry) => entry.attachmentsSection !== undefined,
+    ).map((entry) => entry.id);
+    expect(withSlot).toEqual(["sources"]);
   });
 
   it("looks a view up by module id and returns undefined when none", () => {

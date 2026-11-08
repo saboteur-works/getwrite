@@ -300,7 +300,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** ORDERING DEPENDENCY NOT EXPRESSIBLE IN THE FIELD: this task MUST NOT start until Tasks 38 and 39 are done (the `sab.tasks/1` check requires a task to depend only on lower-numbered tasks, and 38 and 39 were numbered after the checkpoint so POS ids stay valid). In the file, 38 and 39 sit before this task. Runs after Task 39 because Tasks 38, 39 and this task all edit `ViewSwitcher.tsx` and `uiRegistry.ts` (and 38, 39 `AppShell.tsx`): order is Trash conversion (38), selection-aware fallback (39), then this task. Satisfies FR-3 (attachments slot), FR-17, FR-19, FR-31. The module-off state must leave the Feature 102 sidebar section working (OQ-13; Task 10 test).
 **POS:** task_90290142
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Image preview and audio playback
 **What:** Show an image attachment and play an audio attachment from the Sources interface, with platform handling and revoked object URLs.
