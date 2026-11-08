@@ -86,6 +86,88 @@ describe("ViewSwitcher", () => {
     expect(onChange).toHaveBeenCalledWith("trash");
   });
 
+  describe("characterization of the view set (Feature 103 Task 11)", () => {
+    const EXPECTED: ReadonlyArray<readonly [string, string]> = [
+      ["Edit", "edit"],
+      ["Organizer", "organizer"],
+      ["Data", "data"],
+      ["Diff", "diff"],
+      ["Timeline", "timeline"],
+      ["Entities", "entityRoster"],
+      ["Graph", "entityGraph"],
+      ["Trash", "trash"],
+    ];
+
+    it("renders exactly the eight existing views in order", () => {
+      render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+      const labels = screen
+        .getAllByRole("tab")
+        .map((t: HTMLElement) => t.textContent?.trim());
+      expect(labels).toEqual(EXPECTED.map(([label]) => label));
+    });
+
+    it.each(EXPECTED)("%s tab reports the %s view name", (label, key) => {
+      const onChange = vi.fn();
+      const current = key === "edit" ? "data" : "edit";
+      render(<ViewSwitcher view={current} onChange={onChange} />);
+      fireEvent.click(screen.getByRole("tab", { name: label }));
+      expect(onChange).toHaveBeenCalledWith(key);
+    });
+
+    it("disables every view named in disabledViews and no other, from a list or a function", () => {
+      const names = ["edit", "diff", "timeline"] as const;
+      const { unmount } = render(
+        <ViewSwitcher
+          view="data"
+          onChange={vi.fn()}
+          disabledViews={[...names]}
+        />,
+      );
+      const off = () =>
+        screen
+          .getAllByRole("tab")
+          .filter((t: HTMLElement) => t.hasAttribute("disabled"))
+          .map((t: HTMLElement) => t.textContent?.trim());
+      expect(off()).toEqual(["Edit", "Diff", "Timeline"]);
+      unmount();
+      render(
+        <ViewSwitcher
+          view="data"
+          onChange={vi.fn()}
+          disabledViews={() => [...names]}
+        />,
+      );
+      expect(off()).toEqual(["Edit", "Diff", "Timeline"]);
+    });
+
+    it("shows a reason only on a disabled view that has one", () => {
+      render(
+        <ViewSwitcher
+          view="data"
+          onChange={vi.fn()}
+          disabledViews={["diff", "entityRoster"]}
+          disabledReasons={{ entityRoster: "Entities are off." }}
+        />,
+      );
+      expect(
+        screen
+          .getByRole("tab", { name: /Entities/i })
+          .closest("[data-tooltip-content]"),
+      ).toHaveAttribute("data-tooltip-content", "Entities are off.");
+      expect(
+        screen
+          .getByRole("tab", { name: /Diff/i })
+          .closest("[data-tooltip-content]"),
+      ).toBeNull();
+    });
+
+    it("relabels the edit tab only through editLabel", () => {
+      render(<ViewSwitcher view="edit" onChange={vi.fn()} editLabel="Media" />);
+      expect(screen.getByRole("tab", { name: "Media" })).toBeTruthy();
+      expect(screen.queryByRole("tab", { name: "Edit" })).toBeNull();
+    });
+  });
+
   describe("right-edge fade", () => {
     function stubWidths(scrollWidth: number, clientWidth: number) {
       const sw = vi
