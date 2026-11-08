@@ -276,6 +276,10 @@ const nextConfig = {
           // as above.
           "../../store/transport/native-goal-filter-backend":
             "./src/store/transport/native-goal-filter-backend.web-stub",
+          // sources-module-seam Task 8: lib/api/modules.ts also lives in
+          // src/lib/api/ — same rule as above.
+          "../../store/transport/native-modules-backend":
+            "./src/store/transport/native-modules-backend.web-stub",
           // folder-metadata-sources-core Task 9: lib/api/folder-metadata.ts
           // also lives in src/lib/api/ — same rule as above.
           "../../store/transport/native-folder-metadata-backend":

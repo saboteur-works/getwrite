@@ -40,7 +40,24 @@ Not yet recorded.
 
 ## Module-switch cases
 
-Not yet recorded.
+### Module-switch write path choice (Task 8)
+
+Choice: a new operation (`module-config-core.ts`, `PUT /api/project/modules`, `lib/api/modules.ts`, `native-modules-backend.ts` and its web-stub, one `next.config.mjs` alias), following `goal-filter`. The existing `updateFeatureConfig` path (`POST /api/project/features`) was not reused or extended. This is a reading from the code, not a measurement.
+
+Reasons read from the code:
+
+- `updateFeatureConfig` takes whole blocks: `features`, `organizerCardBody`, `relationshipTypes`, `subtypes`, `statuses` each replace the stored block. A module flag written through it would need a new `modules` block replaced whole, which is last-write-wins over the entire map (the route's own header says so for its blocks). Two devices switching different modules would drop one flag, and a flag written by a newer build for an id this build does not know would be dropped when an older build writes back its copy of the map. FR-5 asks that unknown module ids survive. The new core reads the stored map inside the lock and sets one entry.
+- `updateFeatureConfig` also sets `project.updatedAt` and, for `features`, enforces the Timeline invariant. The switch needs neither, and FR-6 (a) wants only the one `config.modules` entry to change.
+- `POST /api/project/features` has a pinned role: `sharing-limits-routes.test.ts` lists it as unlimited, and its response type is `FeatureConfigResult`. Extending it would widen a route and a transport used by the seven existing flags, which FR-5 asks to stay unchanged.
+- The new route validates a request of exactly `projectId`, `moduleId`, `enabled`, refuses any other key with one message shared by the route and the native backend, and never echoes client input.
+
+Paired-device limit for this write (FR-12, FR-13): no `checkLimit` call, none expected. The write overwrites one config entry and deletes no writer data (module data is kept when a module is off). `sharing-limits-routes.test.ts` was run and still passes (see the Task 8 report). Recorded as a reading; no paired-device run was made.
+
+Case (a), data on disk byte-identical before and after switching off and on: tested in `frontend/tests/unit/module-config-route.test.ts` ("leaves every file but the config.modules entry byte-identical across off then on") over a real temporary directory with a project, a Source resource, its sidecar, a revision and an index file. After each switch every file other than `project.json` has the same bytes and the same file set, and `project.json` equals the original once its `config.modules` key is removed.
+
+Native lock parity with the server is reasoned from both calling the same core, not run on a device; no Android run was made.
+
+Cases (b), (c) and (d): not yet recorded here (Tasks 7 and 13).
 
 ## FR-13 inventory
 
