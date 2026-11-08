@@ -40,7 +40,7 @@ Reasons, each from reading code:
 - The existing list operation already follows the FR-30 pair (core, route, client, native backend, web stub, alias) and rethrows locked access, so a new operation would duplicate it and `next.config.mjs` stays untouched.
 - Cost, as a consequence of the choice and not a measurement: one list request per Source on opening the view. A project with many Sources makes that many requests. If that proves too slow, a single list-read operation returning counts is the alternative; it is not built.
 - Failure rule: if any one list read rejects, the view shows a failure state and no list, never a count of 0 or an empty project.
-- Observed limit of the existing client: over HTTP it throws a plain `Error` carrying the server message for a 401/409 (it does not call `lockedAccessErrorFromResponse`), so the view recognises a locked project by `isLockedAccessError` only on the native path; over HTTP a locked project is shown as the generic failure with the server message. That client is not changed by this task.
+- Limit observed at Task 12, since changed: the existing client then threw a plain `Error` carrying the server message for a 401/409 over HTTP (it did not call `lockedAccessErrorFromResponse`), so the view recognised a locked project by `isLockedAccessError` only on the native path. Task 19 (`f9a70a03`) changed `frontend/src/lib/api/source-attachments.ts` to map 401 and 409 to the locked-access errors through `lockedAccessErrorFromResponse`, as the module-switch client does (owner decision, Wave 1 checkpoint, 2026-11-07). Task 12 did not change that client.
 
 ## FR-9 reindex runs
 
