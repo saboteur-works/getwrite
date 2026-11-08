@@ -373,7 +373,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-26, OQ-3.
 **POS:** task_a1fda9ba
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: `target` survives copy, duplicate, paste and Trash restore
 **What:** Add the tests that a `target` survives each operation that moves an annotation, fixing the owning function only where a test fails.
@@ -433,7 +433,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-27, OQ-2, OQ-168.
 **POS:** task_3886ff48
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Annotations panel shows excerpts and citations
 **What:** Show citations and excerpts in the annotations panel with the Source name, the "no mark by design" state and the missing-target state.
@@ -463,7 +463,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-28.
 **POS:** task_ce597ef7
-**Done:** [ ]
+**Done:** [x]
 
 ## Wave 4: Type filter
 
