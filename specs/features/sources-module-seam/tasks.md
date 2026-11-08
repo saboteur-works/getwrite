@@ -310,7 +310,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** Satisfies FR-18 (UI), FR-19, FR-31. Whether a 100 MB Blob is a memory risk is a hypothesis for Task 23 to measure, not a finding.
 **POS:** task_ccf9ab83
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: E2E spec for attachments and media in the Sources view
 **What:** Write the Playwright e2e test for adding, previewing and removing an attachment in the Sources view; execution is lead-run.

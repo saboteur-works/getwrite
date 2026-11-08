@@ -10,6 +10,7 @@ import {
 } from "../../src/lib/api/source-attachments";
 import type { SourceResource } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
+import AttachmentMedia from "./AttachmentMedia";
 import { useSourceAttachments } from "./useSourceAttachments";
 
 type Notice = { kind: "error" | "info"; text: string } | null;
@@ -36,7 +37,14 @@ function movedIds(
   return ids;
 }
 
+/** Only an image or audio entry is offered a preview. */
+function isPreviewable(entry: AttachmentEntryView): boolean {
+  return entry.mime.startsWith("image/") || entry.mime.startsWith("audio/");
+}
+
 interface RowProps {
+  projectId: string;
+  resourceId: string;
   entry: AttachmentEntryView;
   index: number;
   count: number;
@@ -47,6 +55,8 @@ interface RowProps {
 }
 
 function AttachmentRow({
+  projectId,
+  resourceId,
   entry,
   index,
   count,
@@ -57,6 +67,7 @@ function AttachmentRow({
 }: RowProps): JSX.Element {
   const name = entry.originalName;
   const fileInput = React.useRef<HTMLInputElement | null>(null);
+  const [isPreviewing, setIsPreviewing] = React.useState(false);
   const isFirst = index === 0;
   const isLast = index === count - 1;
   // aria-disabled, not disabled: a disabled button drops keyboard focus, and
@@ -126,7 +137,26 @@ function AttachmentRow({
         >
           Remove
         </Button>
+        {isPreviewable(entry) && (
+          <Button
+            variant="secondary"
+            size="xs"
+            aria-label={`${isPreviewing ? "Hide" : "Preview"} ${name}`}
+            aria-expanded={isPreviewing}
+            onClick={() => setIsPreviewing((open) => !open)}
+          >
+            {isPreviewing ? "Hide" : "Preview"}
+          </Button>
+        )}
       </div>
+      {isPreviewing && (
+        <AttachmentMedia
+          projectId={projectId}
+          resourceId={resourceId}
+          attachmentId={entry.id}
+          name={name}
+        />
+      )}
     </li>
   );
 }
@@ -136,8 +166,13 @@ function AttachmentRow({
  * add, replace, remove and reorder, as a list of names and sizes. Mounted by
  * the metadata sidebar and, through the registry's attachments slot, by the
  * Sources view; both read the one list through `useSourceAttachments`, so a
- * change in either shows in the other. It renders no preview or playback
- * itself.
+ * change in either shows in the other. Preview and playback are
+ * `AttachmentMedia`.
+ *
+ * An image or audio row has a Preview button; the bytes are read only when it
+ * is pressed (`AttachmentMedia`), so opening a Source reads none of them.
+ * The byte read is read-only and not paired-device limited, so no limited
+ * control is added.
  *
  * Every change goes through the Task 28 client and the list is updated only
  * from a resolved call, so a refusal (unsupported kind, the 501st attachment,
@@ -298,6 +333,8 @@ export default function SourceAttachmentsPanel({
           {entries.map((entry, index) => (
             <AttachmentRow
               key={entry.id}
+              projectId={projectId}
+              resourceId={resource.id}
               entry={entry}
               index={index}
               count={entries.length}
