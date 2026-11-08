@@ -7,21 +7,26 @@
  * importers (`rebuildIndexes` in the Scrivener, DOCX and plaintext importers)
  * and the CLI's `reindex`, which each carried a hand-written copy.
  *
- * It does not rebuild prose diagnostics (`meta/index/diagnostics.json`, OQ-11)
- * and does not index annotation bodies.
+ * It also rebuilds the annotation-body index (`meta/index/annotations.json`,
+ * FR-9) from the sidecars, as a save does: the file is dropped and rewritten
+ * from every stored body, so a stale entry goes and a missing one returns.
+ * Annotation indexing is core, not module-owned. It does not rebuild prose
+ * diagnostics (`meta/index/diagnostics.json`, OQ-11).
  *
  * Reachable from `core.ts`, the CLI and the Electron import workers (FR-4), so
  * it imports no React, JSX or JSON.
  */
 import path from "node:path";
-import { readFile } from "./io";
+import { readFile, rm } from "./io";
+import { withMetaLock } from "./meta-locks";
 import {
   listResourceIds,
   computeBacklinks,
   persistBacklinks,
 } from "./backlinks";
-import { indexResource } from "./inverted-index";
+import { indexAnnotationBodies, indexResource } from "./inverted-index";
 import { readSidecar } from "./sidecar";
+import { isLockedAccessError } from "./locked-access";
 import { buildEntityAliasTable } from "./entity-alias-table";
 import { findMentionOffsets } from "./entity-detection";
 import {
@@ -129,6 +134,53 @@ async function indexAllResources(
   return plainTextById;
 }
 
+const ANNOTATION_INDEX_PATH = path.join("meta", "index", "annotations.json");
+
+/** Every stored annotation body in a sidecar, attached or detached. */
+function storedAnnotationBodies(
+  side: Awaited<ReturnType<typeof readSidecar>>,
+): string[] {
+  const stored: unknown = side?.["annotations"];
+  if (!Array.isArray(stored)) return [];
+  return stored.flatMap((a: unknown) =>
+    typeof (a as { body?: unknown } | null)?.body === "string"
+      ? [(a as { body: string }).body]
+      : [],
+  );
+}
+
+/**
+ * Rebuild the annotation-body index from scratch: drop the file under the
+ * meta lock, then index each resource that has stored bodies, as a save does
+ * (`indexer-queue.ts`). Bodies are read before the file is dropped. A locked
+ * project is rethrown, so it never looks like "no annotations". A sidecar that
+ * is unreadable for another reason (corrupt JSON) is reported on stderr and
+ * its bodies are left out, as the rest of this rebuild already tolerates it.
+ */
+async function rebuildAnnotationIndex(
+  projectRoot: string,
+  resourceIds: readonly string[],
+): Promise<void> {
+  const bodiesById = new Map<string, string[]>();
+  for (const id of resourceIds) {
+    try {
+      const bodies = storedAnnotationBodies(await readSidecar(projectRoot, id));
+      if (bodies.length > 0) bodiesById.set(id, bodies);
+    } catch (err) {
+      if (isLockedAccessError(err)) throw err;
+      console.error(
+        `[reindex] annotation bodies of ${id} not indexed: sidecar unreadable`,
+      );
+    }
+  }
+  await withMetaLock(projectRoot, () =>
+    rm(path.join(projectRoot, ANNOTATION_INDEX_PATH), { force: true }),
+  );
+  for (const [id, bodies] of bodiesById) {
+    await indexAnnotationBodies(projectRoot, id, bodies);
+  }
+}
+
 /**
  * Rebuild the mention index from scratch, mirroring `indexer-queue.ts`'s
  * per-resource aggregation (one record per entity per resource, offsets
@@ -175,7 +227,7 @@ async function rebuildMentionIndex(
 }
 
 /**
- * Rebuild the inverted index, backlinks and mention index of `projectRoot`
+ * Rebuild the inverted index, annotation-body index, backlinks and mention index of `projectRoot`
  * from the resources on disk, then run the index steps of enabled modules.
  * `config.modules` is read only when a registered module owns a step.
  */
@@ -186,6 +238,8 @@ export async function rebuildDerivedIndexes(
   const registry = options.registry ?? DEFAULT_REGISTRY;
   const resourceIds = await listResourceIds(projectRoot);
   const plainTextById = await indexAllResources(projectRoot, resourceIds);
+
+  await rebuildAnnotationIndex(projectRoot, resourceIds);
 
   const backlinks = await computeBacklinks(projectRoot);
   await persistBacklinks(projectRoot, backlinks);

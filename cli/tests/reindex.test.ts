@@ -415,3 +415,137 @@ describe("reindex command — derived-file characterization (Feature 103, Task 5
     ).toBe(DIAGNOSTICS_SENTINEL);
   });
 });
+
+describe("reindex command — annotation search index (FR-9)", () => {
+  const A = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const B = "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const BODIES: Record<string, string> = {
+    [A]: "zebraquartz note",
+    [B]: "mangoplum note",
+  };
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+
+  async function seed(root: string): Promise<void> {
+    for (const id of [A, B]) {
+      await fs.mkdir(path.join(root, "resources", id), { recursive: true });
+      await fs.writeFile(
+        path.join(root, "resources", id, "content.txt"),
+        id === A ? "alpha prose" : "beta prose",
+      );
+      await fs.mkdir(path.join(root, "meta"), { recursive: true });
+      await fs.writeFile(
+        path.join(root, "meta", `resource-${id}.meta.json`),
+        JSON.stringify({
+          id,
+          name: id === A ? "Alpha" : "Beta",
+          type: "text",
+          annotations: [{ id: "n1", body: BODIES[id], quote: "x" }],
+        }),
+      );
+    }
+  }
+
+  const annotationFile = (root: string): string =>
+    path.join(root, "meta", "index", "annotations.json");
+
+  async function runReindex(root: string): Promise<void> {
+    const program = new Command();
+    registerReindex(program);
+    process.env.GETWRITE_CLI_TESTING = "1";
+    try {
+      await program.parseAsync(["node", "test", "reindex", root]);
+    } finally {
+      delete process.env.GETWRITE_CLI_TESTING;
+    }
+  }
+
+  /** The annotation index a save leaves: one `indexAnnotationBodies` per resource. */
+  async function savedIndex(): Promise<unknown> {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "gw-reindex-ref-"));
+    try {
+      await seed(root);
+      const { indexAnnotationBodies } =
+        await import("../../frontend/src/lib/models/inverted-index");
+      for (const id of [A, B]) {
+        await indexAnnotationBodies(root, id, [BODIES[id]!]);
+      }
+      return JSON.parse(await fs.readFile(annotationFile(root), "utf8"));
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  }
+
+  async function readIndex(root: string): Promise<unknown> {
+    return JSON.parse(await fs.readFile(annotationFile(root), "utf8"));
+  }
+
+  async function findable(term: string): Promise<string[]> {
+    const { executeSearch } =
+      await import("../../frontend/src/lib/search/execute-search");
+    return (await executeSearch(tmpDir, term, {}, 20)).map(
+      (r) => `${r.resourceId}:${r.snippetKind}`,
+    );
+  }
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-reindex-ann-"));
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+    await seed(tmpDir);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("(a) keeps a current annotations.json equal to a saved one", async () => {
+    const { indexAnnotationBodies } =
+      await import("../../frontend/src/lib/models/inverted-index");
+    for (const id of [A, B]) {
+      await indexAnnotationBodies(tmpDir, id, [BODIES[id]!]);
+    }
+    await runReindex(tmpDir);
+    expect(await readIndex(tmpDir)).toEqual(await savedIndex());
+    expect(await findable("zebraquartz")).toEqual([`${A}:note`]);
+    expect(await findable("mangoplum")).toEqual([`${B}:note`]);
+  });
+
+  it("(b) drops a stale body and restores a missing one", async () => {
+    await fs.mkdir(path.dirname(annotationFile(tmpDir)), { recursive: true });
+    await fs.writeFile(
+      annotationFile(tmpDir),
+      JSON.stringify({
+        ghostterm: { [A]: 1 },
+        zebraquartz: { [A]: 1 },
+        note: { [A]: 1 },
+      }),
+    );
+    await runReindex(tmpDir);
+    expect(await readIndex(tmpDir)).toEqual(await savedIndex());
+    expect(await findable("ghostterm")).toEqual([]);
+    expect(await findable("mangoplum")).toEqual([`${B}:note`]);
+  });
+
+  it("(c) rebuilds a deleted annotations.json so bodies are findable", async () => {
+    await runReindex(tmpDir);
+    expect(await readIndex(tmpDir)).toEqual(await savedIndex());
+    expect(await findable("zebraquartz")).toEqual([`${A}:note`]);
+    expect(await findable("mangoplum")).toEqual([`${B}:note`]);
+  });
+
+  it("writes no annotation index for a project with no annotations", async () => {
+    await fs.rm(path.join(tmpDir, "meta"), { recursive: true, force: true });
+    await runReindex(tmpDir);
+    await expect(fs.access(annotationFile(tmpDir))).rejects.toThrow();
+  });
+
+  it("does not write diagnostics.json (OQ-11)", async () => {
+    await runReindex(tmpDir);
+    await expect(
+      fs.access(path.join(tmpDir, "meta", "index", "diagnostics.json")),
+    ).rejects.toThrow();
+  });
+});

@@ -35,6 +35,7 @@ Observed: across these runs the per-save median is about 10.7 to 11.2 ms in both
 Decision (reading; no timing or staleness was measured): no new list-read operation. The Source set, name and subtype come from the Redux resources slice (resources of `type: "source"`, `name`, `resourceSubtype`). The attachment count comes from the existing `listAttachments(projectId, resourceId)` in `lib/api/source-attachments.ts`, called once per Source and counted by array length.
 
 Reasons, each from reading code:
+
 - `getLocalResources` loads every sidecar through `validateResource`, and `SourceResourceSchema` carries `attachments`, so a loaded store Source can hold the array. The store value is not used for the count because `SourceAttachmentsSection` adds, replaces, removes and reorders through `lib/api/source-attachments` and dispatches nothing to the resources slice, so a count read from the store would not follow those changes. The list route is the source of record the sidebar section already reads.
 - The existing list operation already follows the FR-30 pair (core, route, client, native backend, web stub, alias) and rethrows locked access, so a new operation would duplicate it and `next.config.mjs` stays untouched.
 - Cost, as a consequence of the choice and not a measurement: one list request per Source on opening the view. A project with many Sources makes that many requests. If that proves too slow, a single list-read operation returning counts is the alternative; it is not built.
@@ -43,7 +44,23 @@ Reasons, each from reading code:
 
 ## FR-9 reindex runs
 
-Not yet recorded.
+### Before any code change (Task 6)
+
+Produced by a throwaway vitest harness (`cli/tests/zz-measure.test.ts`, not kept) that builds a temp project, runs the real `reindex` command (`registerReindex`, the same path as `cli/src/commands/reindex.ts`, via `program.parseAsync(["node","t","reindex",root])`) and searches with `executeSearch(root, term, {}, 20)` (the function the search route calls). Commit `56e37554` plus the uncommitted Task 6 work tree (no product change at this point), Node v24.15.0, `pnpm --filter getwrite-cli exec vitest run tests/zz-measure.test.ts`. Raw output kept at `scratchpad/wt/lane/measure-before.json` of the session (not in the repo).
+
+Fixture: two text resources, A (id `aaaaaaaa-...`, name "Alpha", content "alpha prose") with one sidecar annotation body "zebraquartz note", B (`bbbbbbbb-...`, "Beta", "beta prose") with body "mangoplum note". `zebraquartz`, `mangoplum`, `ghostterm` appear in no prose. Search result entries are `<resource>:<snippetKind>`.
+
+| Case                                                                                                                                                                 | `meta/index/annotations.json` before                                           | before: zebraquartz / mangoplum / ghostterm | after `reindex`, file          | after: zebraquartz / mangoplum / ghostterm |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------- | ------------------------------ | ------------------------------------------ |
+| (a) present and current (written by `indexAnnotationBodies` for A and B)                                                                                             | sha256[:12] `84a503e470db`: zebraquartz {A:1}, note {A:1,B:1}, mangoplum {B:1} | A:note / B:note / none                      | `84a503e470db`, byte-identical | A:note / B:note / none                     |
+| (b) present and stale: file holds ghostterm {A:1}, zebraquartz {A:1}, note {A:1}; sidecar of A has no ghostterm; B's stored body "mangoplum note" is not in the file | `0ac6faa35a86`                                                                 | A:note / none / A:note                      | `0ac6faa35a86`, byte-identical | A:note / none / A:note                     |
+| (c) file deleted                                                                                                                                                     | absent                                                                         | none / none / none                          | absent (no file written)       | none / none / none                         |
+
+Observed: in all three cases `reindex` left `meta/index/annotations.json` as it found it (byte-identical or still absent). In (b) and (c) a stored body (B's "mangoplum note"; both bodies in (c)) was not findable by search after `reindex`, and in (b) the removed term `ghostterm` was still found after `reindex`. No cause is stated: the `reindex` call path (`rebuildDerivedIndexes`) contains no call that writes the annotation index, which is a reading of the source, and this run did not separate other candidates.
+
+### After the change (Task 6)
+
+`rebuildDerivedIndexes` now drops `meta/index/annotations.json` and rewrites it from every stored sidecar annotation body with `indexAnnotationBodies`, as a save does. Observed by the three tests in `cli/tests/reindex.test.ts` ("annotation search index (FR-9)"), same fixture, `pnpm --filter getwrite-cli exec vitest run tests/reindex.test.ts` (15 passed): in (a), (b) and (c) the file after `reindex` equals the file built by one `indexAnnotationBodies` call per resource (the state a save leaves); `zebraquartz` finds A as a note hit and `mangoplum` finds B as a note hit in all three; in (b) `ghostterm` finds nothing after `reindex`. Without the product change, (b) and (c) failed and (a) passed. A project with no annotations gets no `annotations.json` from `reindex`, and `reindex` still writes no `diagnostics.json`.
 
 ## FR-10 spike
 
