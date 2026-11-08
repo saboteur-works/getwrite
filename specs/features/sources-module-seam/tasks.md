@@ -260,7 +260,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Owner decision at the Wave 1 checkpoint, 2026-11-07, item 2 (the fallback is selection-aware, using the shell's existing view-reset logic, not always `"edit"`). Updates the Task 13 behaviour and FR-15 / OQ-7 wording. Serialized after Task 38 and before Task 20 (shared hot files). Do not decide a landing view the existing reset logic does not already produce; if it produces none for a case, record the case and report it.
 **POS:** task_b12fc704
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 40: Shared rebuild rethrows locked-access errors, and each importer rebuilds `annotations.json`
 **What:** Make `indexAllResources` and the annotation-body read in `derived-index-rebuild.ts` rethrow locked-access errors instead of swallowing them, and add a test that each of the three importers rebuilds `meta/index/annotations.json` through the shared rebuild.

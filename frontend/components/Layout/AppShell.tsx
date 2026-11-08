@@ -235,6 +235,31 @@ export interface AppShellProps {
 const EMPTY_TAGS: Tag[] = [];
 
 /**
+ * The Work Area view the shell shows after a selection of the given type,
+ * given the view that is open: text and Source leave Organizer for Edit, a
+ * folder leaves Edit and Diff for Organizer, and media leaves Organizer, Diff
+ * and Timeline for Edit (the media view). Any other view is kept.
+ *
+ * @param current - The open view.
+ * @param type - The selected resource's type.
+ * @returns The view to show.
+ */
+function viewForSelection(
+  current: ViewName,
+  type: "text" | "source" | "folder" | "image" | "audio",
+): ViewName {
+  if (type === "text" || type === "source") {
+    return current === "organizer" ? "edit" : current;
+  }
+  if (type === "folder") {
+    return current === "edit" || current === "diff" ? "organizer" : current;
+  }
+  return current === "organizer" || current === "diff" || current === "timeline"
+    ? "edit"
+    : current;
+}
+
+/**
  * Three-column app shell used in the main app and Storybook.
  *
  * Layout:
@@ -476,30 +501,15 @@ export default function AppShell({
       dispatch(setSuppressNextViewAutoSwitch(false));
       return;
     }
+    const selectedType = selectedResource?.type;
     if (
-      selectedResource?.type === "text" ||
-      selectedResource?.type === "source"
+      selectedType === "text" ||
+      selectedType === "source" ||
+      selectedType === "folder" ||
+      selectedType === "image" ||
+      selectedType === "audio"
     ) {
-      setView((current) => (current === "organizer" ? "edit" : current));
-      setActiveSmartFolderId(null);
-      setIsQueryBuilderOpen(false);
-    } else if (selectedResource?.type === "folder") {
-      setView((current) =>
-        current === "edit" || current === "diff" ? "organizer" : current,
-      );
-      setActiveSmartFolderId(null);
-      setIsQueryBuilderOpen(false);
-    } else if (
-      selectedResource?.type === "image" ||
-      selectedResource?.type === "audio"
-    ) {
-      // Surface media in the (reused) edit view when the current view can't
-      // display it. Leave "edit" and the project-wide "data" view untouched.
-      setView((current) =>
-        current === "organizer" || current === "diff" || current === "timeline"
-          ? "edit"
-          : current,
-      );
+      setView((current) => viewForSelection(current, selectedType));
       setActiveSmartFolderId(null);
       setIsQueryBuilderOpen(false);
     }
@@ -517,13 +527,27 @@ export default function AppShell({
   }, [isTimelineViewEnabled, selectedResource?.type]);
 
   // When a module is switched off, never strand the user on its (now absent)
-  // view: fall back to "edit" (Feature 103, FR-15).
+  // view: apply the selection reset above from Edit, so the landing view is
+  // the one enabled for the selection (Feature 103, FR-15). With no selection
+  // the reset has no landing view, so the view is left as it is.
   useEffect(() => {
+    const selectedType = selectedResource?.type;
+    if (
+      selectedType !== "text" &&
+      selectedType !== "source" &&
+      selectedType !== "folder" &&
+      selectedType !== "image" &&
+      selectedType !== "audio"
+    ) {
+      return;
+    }
     const isOff = (current: ViewName): boolean =>
       moduleViews.registered.some((slot) => slot.id === current) &&
       !moduleViews.enabled.some((slot) => slot.id === current);
-    setView((current) => (isOff(current) ? "edit" : current));
-  }, [moduleViews]);
+    setView((current) =>
+      isOff(current) ? viewForSelection("edit", selectedType) : current,
+    );
+  }, [moduleViews, selectedResource?.type]);
 
   const isSavingRevision = useAppSelector(selectIsSavingRevision);
   const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
