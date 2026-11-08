@@ -54,6 +54,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Satisfies FR-6 (measurement duty) and FR-35. If the measurement cannot be run, say so in "Not verified". The result informs Task 7 but does not gate it.
+**POS:** task_b666711b
 **Done:** [ ]
 
 ### Task 2: `config.modules` declarations and schema tests
@@ -63,6 +64,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-5 and FR-14 (pin). The schema must not import React or JSON (FR-4). Owner of `schemas.ts`, `types.ts` and `lib/api/schemas.ts` for module keys.
+**POS:** task_3ab2e9e4
 **Done:** [ ]
 
 ### Task 3: Model-side module registry and the Sources module manifest
@@ -72,6 +74,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-2, FR-3 (model side), FR-11. This file may not import React, JSX or JSON. The Sources module owns no index (OQ-9); the manifest records that in a comment-free field such as an empty `indexSteps` list.
+**POS:** task_73016cc1
 **Done:** [ ]
 
 ### Task 4: Electron worker graph pin test
@@ -81,6 +84,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Satisfies FR-4 (the SHOULD test). Task 5 adds a file under `lib/models/`; Task 5 re-runs this test and the four commands.
+**POS:** task_d0963489
 **Done:** [ ]
 
 ### Task 5: Shared derived-index rebuild for the three importers and `reindex`
@@ -90,6 +94,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-8 and FR-4. Does not edit `indexer-queue.ts` (Task 7 owns it). The rebuild reads `config.modules` as a plain unlocked read of `project.json`; the survey counts four sites by grep for `persistMentionIndex`, so the task records the count it finds.
+**POS:** task_2f0afe9b
 **Done:** [ ]
 
 ### Task 6: `reindex` rebuilds annotation search, with the three recorded runs
@@ -99,6 +104,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** Satisfies FR-9. The documentation corrections (`indexing.md:192`, `annotations.md` Search) are the scribe stage's after these runs and are not part of this task. Does not edit `indexer-queue.ts`.
+**POS:** task_ee889ecf
 **Done:** [ ]
 
 ### Task 7: Module gating inside `runTask`, and the module-switch cases
@@ -108,6 +114,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 1, 3, 5
 **Estimate:** 5
 **Notes:** Satisfies FR-6 (b), (c) and the FR-35 four-case record (with Task 8's (a) and Task 13's (d)). The spec and docs must say plainly the Sources module owns no index; that sentence is the scribe's.
+**POS:** task_319800ed
 **Done:** [ ]
 
 ### Task 8: Module-switch write path (core, route, client, native backend, stub)
@@ -117,6 +124,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-5 (write path), FR-6 (a), FR-7 (transport), FR-12, FR-30. Native lock parity with the server is reasoned, not run, and must not be claimed as measured. Owner of `next.config.mjs` in Wave 1.
+**POS:** task_9c43b777
 **Done:** [ ]
 
 ### Task 9: UI registry, modules selector and Storybook decorator
@@ -126,6 +134,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 2, 3
 **Estimate:** 3
 **Notes:** Satisfies FR-3 (UI side), FR-31 (decorator). Read the existing `StaticSharingLimitsProvider` and its stories before writing the decorator.
+**POS:** task_82923d90
 **Done:** [ ]
 
 ### Task 10: Module switch control in Project Settings
@@ -135,6 +144,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 8, 9
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-31. A control disabled on a paired device (if Task 14's inventory says it is limited) shows a visible reason; otherwise the record says it is not limited.
+**POS:** task_f7757782
 **Done:** [ ]
 
 ### Task 11: Characterization tests for every existing Work Area view
@@ -144,6 +154,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-10 (first sentence). Task 13 and Task 15 must keep these green. Reads `AppShell.tsx`; does not edit it.
+**POS:** task_7c951eff
 **Done:** [ ]
 
 ### Task 12: Sources view component and the Source list read
@@ -153,6 +164,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-15 (view body), FR-30, FR-31. Depends on Task 8 only because `next.config.mjs` is serialized if a new operation is needed; if no operation is needed the task does not touch it. Not registered or reachable yet; Task 13 wires it.
+**POS:** task_f0063f1f
 **Done:** [ ]
 
 ### Task 13: Register the Sources view through the shell
@@ -162,6 +174,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 2, 9, 11, 12
 **Estimate:** 5
 **Notes:** Satisfies FR-3 (view slot), FR-6 (d), FR-10, FR-15. Sole branch editor of `AppShell.tsx`. The post-guard placement caused the recorded roster and Timeline reachability bugs; do not place the view after the guard.
+**POS:** task_d0bd20d5
 **Done:** [ ]
 
 ### Task 14: Annotation DELETE refuses a limited paired device, and the FR-13 inventory
@@ -171,6 +184,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Satisfies FR-13, OQ-10. This changes existing paired-device behaviour for plain notes; that is the owner's recorded decision. The doc edit is limited to the table a test reads.
+**POS:** task_55f899ef
 **Done:** [ ]
 
 ### Task 15: FR-10 spike: TrashView behind a registry slot (worktree, not for the branch)
@@ -180,6 +194,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 13
 **Estimate:** 3
 **Notes:** Satisfies FR-10 (spike) and FR-35. Runs in its own worktree. What "small" means is the owner's call at the checkpoint (OQ-4); the pipeline MUST NOT decide it. Never run the e2e from a worktree if it cannot build there; record "not run".
+**POS:** task_dc5202a4
 **Done:** [ ]
 
 ### Task 16: OWNER CHECKPOINT: Wave 1 report (not implementation; the orchestrator halts here)
@@ -189,6 +204,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 **Estimate:** 2
 **Notes:** Satisfies FR-1, FR-36. Owner checkpoint. The orchestrator MUST NOT start any later task until the owner has reviewed this report. The wave boundary is not movable without the owner. This report may lead the owner to change the order of later waves or to decide Trash conversion (OQ-4); the task list is amended by the lead, not by this task.
+**POS:** task_e696c3d2
 **Done:** [ ]
 
 ## Wave 2: attachments, media, create and rename
@@ -200,6 +216,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16
 **Estimate:** 1
 **Notes:** OWNER-RUN / MANUAL: the orchestrator skips this task; the lead runs it with the owner. It needs the Pixel and adb outside the sandbox from the main checkout. No other task depends on it, so skipping it does not block the orchestrator; Tasks 19 and 21 are fully testable without a device. Satisfies FR-18 (first Wave 2 measurement duty). The spec says the first Wave 2 task measures this; it is placed as a skip-able parallel task so implementation is not blocked.
+**POS:** task_945a1e7d
 **Done:** [ ]
 
 ### Task 18: Create and rename a Source from the Sources view
@@ -209,6 +226,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-19, FR-31. Sole editor of `SourcesView.tsx` at this point (after Task 12). Reuses the existing create path; adds no storage operation.
+**POS:** task_1604ebaf
 **Done:** [ ]
 
 ### Task 19: Attachment byte-read storage operation
@@ -218,6 +236,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16
 **Estimate:** 5
 **Notes:** Satisfies FR-18 (storage half), FR-12, FR-30. Owner of `next.config.mjs` in Wave 2. The 100 MB device check is Task 23, owner-run; this task must be fully testable without a device and does not claim the Android baseline. Native lock parity is reasoned, not run.
+**POS:** task_f6d0e452
 **Done:** [ ]
 
 ### Task 20: Attachments section in the Sources view and the attachments-section slot
@@ -227,6 +246,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 18
 **Estimate:** 5
 **Notes:** Satisfies FR-3 (attachments slot), FR-17, FR-19, FR-31. The module-off state must leave the Feature 102 sidebar section working (OQ-13; Task 10 test).
+**POS:** task_90290142
 **Done:** [ ]
 
 ### Task 21: Image preview and audio playback
@@ -236,6 +256,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 19, 20
 **Estimate:** 5
 **Notes:** Satisfies FR-18 (UI), FR-19, FR-31. Whether a 100 MB Blob is a memory risk is a hypothesis for Task 23 to measure, not a finding.
+**POS:** task_ccf9ab83
 **Done:** [ ]
 
 ### Task 22: E2E spec for attachments and media in the Sources view
@@ -245,6 +266,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 21
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (e2e requirement). The orchestrator writes it; it cannot run it.
+**POS:** task_868a6de3
 **Done:** [ ]
 
 ### Task 23: OWNER-RUN, manual: Android 100 MB attachment baseline on the Pixel
@@ -254,6 +276,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 21
 **Estimate:** 1
 **Notes:** OWNER-RUN / MANUAL: the orchestrator skips this task; the lead runs it with the owner. Needs the Pixel, adb outside the sandbox and the main checkout. Nothing depends on it, so skipping it does not block Task 37; the Feature 102 in-memory fake filesystem check was not a device run and must not stand in for it. Satisfies FR-18 (MUST per OQ-5).
+**POS:** task_72b2512a
 **Done:** [ ]
 
 ### Task 24: Unchanged-behaviour tests for Feature 102 (entity, goals, templates)
@@ -263,6 +286,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 18
 **Estimate:** 3
 **Notes:** Satisfies FR-20.
+**POS:** task_6b45d86d
 **Done:** [ ]
 
 ## Wave 3: excerpts and citations
@@ -274,6 +298,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (record), FR-21 (locator rules), FR-30. Owner of the annotation schema and validation files until Task 26 completes.
+**POS:** task_881464fc
 **Done:** [ ]
 
 ### Task 26: Empty-body rule for annotations with a `target`
@@ -283,6 +308,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 25
 **Estimate:** 3
 **Notes:** Satisfies FR-26, OQ-3.
+**POS:** task_a1fda9ba
 **Done:** [ ]
 
 ### Task 27: `target` survives copy, duplicate, paste and Trash restore
@@ -292,6 +318,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 26
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (survival), FR-25 (copy with new identity, kept on move). Sole editor of `trash.ts` on this branch.
+**POS:** task_b42da1b5
 **Done:** [ ]
 
 ### Task 28: Excerpt operations and "no mark by design" logic
@@ -301,6 +328,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 26
 **Estimate:** 5
 **Notes:** Satisfies FR-21, FR-22, FR-25 (failed write). Sole editor of `annotation-flows.ts`.
+**POS:** task_77cdb616
 **Done:** [ ]
 
 ### Task 29: Excerpts interface in the Sources view
@@ -310,6 +338,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 20, 28
 **Estimate:** 5
 **Notes:** Satisfies FR-21, FR-22, FR-19, FR-31. Does not touch the registry.
+**POS:** task_59e4ebd7
 **Done:** [ ]
 
 ### Task 30: Excerpt not-found tests (edit, delete, revision restore)
@@ -319,6 +348,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 28
 **Estimate:** 3
 **Notes:** Satisfies FR-23.
+**POS:** task_8c75dc9c
 **Done:** [ ]
 
 ### Task 31: Citation controls and the citation-control slot
@@ -328,6 +358,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 20, 28
 **Estimate:** 5
 **Notes:** Satisfies FR-3 (citation slot), FR-24, FR-25, FR-11. Does not edit `AnnotationsPanel.tsx` (Task 33).
+**POS:** task_13bac3bc
 **Done:** [ ]
 
 ### Task 32: Citation target state and the missing-target tests
@@ -337,6 +368,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 25
 **Estimate:** 3
 **Notes:** Satisfies FR-27, OQ-2, OQ-168.
+**POS:** task_3886ff48
 **Done:** [ ]
 
 ### Task 33: Annotations panel shows excerpts and citations
@@ -346,6 +378,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 28, 32
 **Estimate:** 5
 **Notes:** Satisfies FR-22 (panel), FR-25, FR-27. Sole editor of the panel files.
+**POS:** task_aa32043a
 **Done:** [ ]
 
 ### Task 34: FR-13 permanent-deletion check, completed, and paired-device control states
@@ -355,6 +388,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 19, 21, 29, 31, 33
 **Estimate:** 3
 **Notes:** Satisfies FR-13, FR-19.
+**POS:** task_8f84b520
 **Done:** [ ]
 
 ### Task 35: Citations do not change compile or export output
@@ -364,6 +398,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 25
 **Estimate:** 3
 **Notes:** Satisfies FR-28.
+**POS:** task_ce597ef7
 **Done:** [ ]
 
 ## Wave 4: Type filter
@@ -375,6 +410,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16
 **Estimate:** 2
 **Notes:** Satisfies FR-29.
+**POS:** task_07c18aa3
 **Done:** [ ]
 
 ## All waves
@@ -386,6 +422,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 22, 24, 30, 31, 33, 34, 35, 36
 **Estimate:** 3
 **Notes:** LEAD-RUN: not for the orchestrator. `pnpm test:e2e`, `next build` and `pnpm build:native` run outside the sandbox from the main checkout, never a worktree, after the orchestrator lands the waves. Satisfies FR-34, FR-35, FR-36, FR-30 to FR-32 (final verification). Tasks 17 and 23 are not dependencies (they are owner-run); their results, if run, are in `experiments.md`, otherwise under "Not verified". Task 25 to Task 29 and Task 32 are covered transitively through Tasks 31, 33, 34 and 35.
+**POS:** task_2b5a7f61
 **Done:** [ ]
 
 ## Summary
