@@ -380,6 +380,12 @@ export const ProjectConfigSchema = z.object({
   metadataSchema: MetadataSchemaSchema.optional(),
   metadataRevision: z.number().int().nonnegative().optional(),
   features: ProjectFeatureFlagsSchema.optional(),
+  /**
+   * Per-project module on/off flags keyed by module id (sources-module-seam,
+   * FR-5). A record, not a fixed object, so an id this build does not know is
+   * kept on write. Absent entry and absent record both parse.
+   */
+  modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: OrganizerCardBodyConfigSchema.optional(),
 });
 

@@ -213,6 +213,9 @@ const ApiProjectConfigSchema = z.object({
   metadataSchema: ApiMetadataSchemaSchema.optional(),
   metadataRevision: z.number().optional(),
   features: ApiProjectFeatureFlagsSchema.optional(),
+  // Module flags by id (sources-module-seam, FR-5). Must be declared or a
+  // project load strips it; unknown ids are kept.
+  modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: ApiOrganizerCardBodyConfigSchema.optional(),
   // Missing here meant a normal project load (GET /api/projects) silently
   // stripped this field before it ever reached Redux — Zod drops unknown

@@ -152,6 +152,8 @@ export interface ProjectConfig {
   metadataRevision?: number;
   /** Per-project opt-in flags gating the previously-locked built-in metadata features. Absent flag = disabled. */
   features?: ProjectFeatureFlags;
+  /** Per-project module enabled flags keyed by module id. Unknown ids are kept; an absent entry is resolved by the module registry, not here. */
+  modules?: Record<string, boolean>;
   /** Configures what Organizer cards render as their body text. */
   organizerCardBody?: OrganizerCardBodyConfig;
 }

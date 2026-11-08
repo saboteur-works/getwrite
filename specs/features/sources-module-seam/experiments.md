@@ -58,6 +58,7 @@ Not yet recorded.
 
 - Task 1: the measurement covers the extra read as issued from a wrapper adapter at the start of the task, not a read added inside `runTask` (that would be a product source change, which Task 1 does not make; Task 7 applies it). Only one machine, one project size and one storage adapter (real filesystem, no encryption, no hosted tenant adapter) were measured. A locked or encrypted project was not measured.
 - `pnpm --filter getwrite-electron typecheck` and `pnpm --filter getwrite-cli typecheck` were not run for Task 1 (the only file changed under the code tree is a frontend test; no models, `core.ts`, `cli/` or `electron/` file changed).
+- A write of project.json by an older build dropping or keeping a newer module flag: not run.
 
 ## Acceptance
 

@@ -93,6 +93,18 @@ describe("project-type validation (T016)", () => {
     expect(JSON.stringify(res.errors)).toContain("extra");
   });
 
+  it("rejects a module key in a project-type spec like any unknown field", () => {
+    const spec = {
+      id: "with-modules",
+      name: "With Modules",
+      folders: [{ name: "Workspace" }],
+      modules: { sources: true },
+    };
+    const res = validateProjectType(spec);
+    expect(res.success).toBe(false);
+    expect(JSON.stringify(res.errors)).toContain("modules");
+  });
+
   it("accepts an optional relationshipTypes string array", () => {
     const spec = {
       id: "with-relationship-types",
