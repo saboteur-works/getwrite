@@ -155,7 +155,13 @@ describe("buildFieldPickerFields — intrinsic options", () => {
     const typeField = FIELDS.find((f) => f.key === "type");
     expect(typeField?.source).toBe("system");
     expect(typeField?.type).toBe("select");
-    expect(typeField?.options).toEqual(["text", "image", "audio", "folder"]);
+    expect(typeField?.options).toEqual([
+      "text",
+      "image",
+      "audio",
+      "folder",
+      "source",
+    ]);
   });
 
   it("injects project statuses into the Statuses intrinsic options", () => {

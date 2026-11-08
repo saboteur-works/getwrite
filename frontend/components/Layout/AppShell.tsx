@@ -71,7 +71,7 @@ import DataView, { useDataViewFilteredTotal } from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
-import TrashView from "../WorkArea/Views/TrashView/TrashView";
+import { useModuleViews } from "../Modules/useEnabledModuleViews";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -216,6 +216,11 @@ export interface AppShellProps {
     resourceId?: string,
     opts?: AppShellResourceActionOptions,
   ) => Promise<void>;
+  /**
+   * Called after a module view (the Sources view) created a resource, so the
+   * owner of the project state can add it as its own create path does.
+   */
+  onResourceCreated?: (resource: AnyResource) => void;
   /** Closes the active project and returns to the start page. */
   onCloseProject?: () => void;
   /**
@@ -233,6 +238,31 @@ export interface AppShellProps {
 
 /** Stable empty tag list, so the field list is not rebuilt per render. */
 const EMPTY_TAGS: Tag[] = [];
+
+/**
+ * The Work Area view the shell shows after a selection of the given type,
+ * given the view that is open: text and Source leave Organizer for Edit, a
+ * folder leaves Edit and Diff for Organizer, and media leaves Organizer, Diff
+ * and Timeline for Edit (the media view). Any other view is kept.
+ *
+ * @param current - The open view.
+ * @param type - The selected resource's type.
+ * @returns The view to show.
+ */
+function viewForSelection(
+  current: ViewName,
+  type: "text" | "source" | "folder" | "image" | "audio",
+): ViewName {
+  if (type === "text" || type === "source") {
+    return current === "organizer" ? "edit" : current;
+  }
+  if (type === "folder") {
+    return current === "edit" || current === "diff" ? "organizer" : current;
+  }
+  return current === "organizer" || current === "diff" || current === "timeline"
+    ? "edit"
+    : current;
+}
 
 /**
  * Three-column app shell used in the main app and Storybook.
@@ -261,6 +291,7 @@ export default function AppShell({
   onChangeStoryDuration,
   onChangeStoryEndDate,
   onResourceAction,
+  onResourceCreated,
   onCloseProject,
   onProjectGoalSaved,
   onMediaCreateConfirmed,
@@ -310,6 +341,7 @@ export default function AppShell({
   const queryEvaluationError = useAppSelector(selectEvaluationErrorMessage);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
+  const moduleViews = useModuleViews();
   const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
 
   // Compile and export write plaintext wherever they land, so the preview
@@ -475,30 +507,15 @@ export default function AppShell({
       dispatch(setSuppressNextViewAutoSwitch(false));
       return;
     }
+    const selectedType = selectedResource?.type;
     if (
-      selectedResource?.type === "text" ||
-      selectedResource?.type === "source"
+      selectedType === "text" ||
+      selectedType === "source" ||
+      selectedType === "folder" ||
+      selectedType === "image" ||
+      selectedType === "audio"
     ) {
-      setView((current) => (current === "organizer" ? "edit" : current));
-      setActiveSmartFolderId(null);
-      setIsQueryBuilderOpen(false);
-    } else if (selectedResource?.type === "folder") {
-      setView((current) =>
-        current === "edit" || current === "diff" ? "organizer" : current,
-      );
-      setActiveSmartFolderId(null);
-      setIsQueryBuilderOpen(false);
-    } else if (
-      selectedResource?.type === "image" ||
-      selectedResource?.type === "audio"
-    ) {
-      // Surface media in the (reused) edit view when the current view can't
-      // display it. Leave "edit" and the project-wide "data" view untouched.
-      setView((current) =>
-        current === "organizer" || current === "diff" || current === "timeline"
-          ? "edit"
-          : current,
-      );
+      setView((current) => viewForSelection(current, selectedType));
       setActiveSmartFolderId(null);
       setIsQueryBuilderOpen(false);
     }
@@ -514,6 +531,30 @@ export default function AppShell({
       return selectedResource?.type === "folder" ? "organizer" : "edit";
     });
   }, [isTimelineViewEnabled, selectedResource?.type]);
+
+  // When a module is switched off, never strand the user on its (now absent)
+  // view: apply the selection reset above from Edit, so the landing view is
+  // the one enabled for the selection (Feature 103, FR-15). With no selection
+  // Edit is type-disabled, so the landing view is Data.
+  useEffect(() => {
+    const selectedType = selectedResource?.type;
+    const isOff = (current: ViewName): boolean =>
+      moduleViews.registered.some((slot) => slot.id === current) &&
+      !moduleViews.enabled.some((slot) => slot.id === current);
+    if (
+      selectedType !== "text" &&
+      selectedType !== "source" &&
+      selectedType !== "folder" &&
+      selectedType !== "image" &&
+      selectedType !== "audio"
+    ) {
+      setView((current) => (isOff(current) ? "data" : current));
+      return;
+    }
+    setView((current) =>
+      isOff(current) ? viewForSelection("edit", selectedType) : current,
+    );
+  }, [moduleViews, selectedResource?.type]);
 
   const isSavingRevision = useAppSelector(selectIsSavingRevision);
   const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
@@ -1417,6 +1458,11 @@ export default function AppShell({
                               ? "Media"
                               : "Edit"
                           }
+                          moduleViews={moduleViews.enabled.map((slot) => ({
+                            key: slot.id as ViewName,
+                            label: slot.label,
+                            icon: slot.icon,
+                          }))}
                           disabledViews={(() => {
                             const disabled: ViewName[] = [];
                             const type = selectedResource?.type;
@@ -1505,7 +1551,8 @@ export default function AppShell({
                       view === "entityRoster" ||
                       view === "entityGraph" ||
                       view === "timeline" ||
-                      view === "trash"
+                      view === "trash" ||
+                      view === "sources"
                         ? (() => {
                             if (view === "data") {
                               const queryResources =
@@ -1655,19 +1702,6 @@ export default function AppShell({
                               ) : null;
                             }
 
-                            // Same reachability concern as the roster/graph
-                            // above: Trash is project-wide (it reads across
-                            // every soft-deleted resource, not the current
-                            // selection) and, per FR-1, is never gated
-                            // behind a feature flag or a selection, so it is
-                            // handled here, before the `!selectedResource`
-                            // guard below. `TrashView` (Feature 26 Task 15)
-                            // owns its own `listTrash` fetch and replaces
-                            // the earlier routing-only placeholder.
-                            if (view === "trash") {
-                              return <TrashView />;
-                            }
-
                             // Timeline is project-wide too (it reads every
                             // dated resource from the store). It used to sit in
                             // the post-guard `switch`, so a freshly opened
@@ -1678,6 +1712,22 @@ export default function AppShell({
                               return isTimelineViewEnabled ? (
                                 <TimelineView />
                               ) : null;
+                            }
+
+                            // Trash and Sources are project-wide and registered
+                            // through the module registry; like the views above
+                            // they render before the `!selectedResource` guard.
+                            // Trash is always enabled (FR-1), never gated.
+                            if (view === "trash" || view === "sources") {
+                              const slot = moduleViews.enabled.find(
+                                (s) => s.id === view,
+                              );
+                              return slot
+                                ? slot.render({
+                                    openInEditor: () => setView("edit"),
+                                    onResourceCreated,
+                                  })
+                                : null;
                             }
 
                             if (!selectedResource)

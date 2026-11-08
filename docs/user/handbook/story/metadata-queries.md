@@ -47,18 +47,18 @@ The field list holds your metadata fields and some built-in attributes.
 
 **Built-in document attributes** — properties every resource has:
 
-| Field               | What it filters on                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| **Type**            | Whether the resource is text, image, audio, or a folder (the value list holds those four). |
-| **Folder**          | Which folder the resource lives in (the value box suggests folders).                       |
-| **Word Count**      | Length of a text document, in words.                                                       |
-| **Character Count** | Length of a text document, in characters.                                                  |
-| **Created At**      | When the resource was created.                                                             |
-| **Updated At**      | When the resource was last changed; a resource that was never edited has no date here.     |
-| **Statuses**        | A field separate from the sidebar's Status; see Warnings and limits.                       |
-| **Tags**            | A field for tags; see Warnings and limits.                                                 |
-| **Linked From**     | Other resources that link _to_ this one.                                                   |
-| **Links To**        | Resources this one links _to_.                                                             |
+| Field               | What it filters on                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Type**            | Whether the resource is text, image, audio, a source, or a folder (the value list holds those five). |
+| **Folder**          | Which folder the resource lives in (the value box suggests folders).                                 |
+| **Word Count**      | Length of a text document, in words.                                                                 |
+| **Character Count** | Length of a text document, in characters.                                                            |
+| **Created At**      | When the resource was created.                                                                       |
+| **Updated At**      | When the resource was last changed; a resource that was never edited has no date here.               |
+| **Statuses**        | A field separate from the sidebar's Status; see Warnings and limits.                                 |
+| **Tags**            | A field for tags; see Warnings and limits.                                                           |
+| **Linked From**     | Other resources that link _to_ this one.                                                             |
+| **Links To**        | Resources this one links _to_.                                                                       |
 
 `Linked From` and `Links To` let you follow the links in your project. A link here is a `[[Title]]` link in a document's text or a reference to another resource in a field: with `Scene D` containing `[[Scene A]]`, **Linked From includes Scene D** returned Scene A and **Links To includes Scene A** returned Scene D; **Links To includes Mara** returned a scene whose only link to Mara was its POV field.
 

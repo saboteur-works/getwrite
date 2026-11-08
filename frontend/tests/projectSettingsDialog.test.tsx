@@ -100,7 +100,7 @@ afterEach(() => {
 });
 
 describe("ProjectSettingsDialog", () => {
-  it("renders the 'Project Settings' title and 10 tabs, defaulting to Editor", async () => {
+  it("renders the 'Project Settings' title and 12 tabs, defaulting to Editor", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ tags: [] }),
@@ -113,7 +113,7 @@ describe("ProjectSettingsDialog", () => {
     ).toBeInTheDocument();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(11);
+    expect(tabs).toHaveLength(12);
     expect(screen.getByRole("tab", { name: /Editor/ })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -134,6 +134,20 @@ describe("ProjectSettingsDialog", () => {
     expect(
       screen.getByRole("heading", { name: "Statuses", hidden: true }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the Sources module switch on under the Modules tab when the project has no entry (Feature 103)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ tags: [] }),
+    } as Response);
+
+    await renderDialog({ projectId: "story-proj-dir" });
+
+    expect(screen.getByRole("tab", { name: /Modules/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /Sources/, hidden: true }),
+    ).toBeChecked();
   });
 
   it("renders Heading Styles and Body Text Styles together under the Editor tab", async () => {

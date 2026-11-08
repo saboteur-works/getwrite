@@ -457,7 +457,13 @@ describe("type field options", () => {
 
   it("declares the resource-type values as select options", () => {
     expect(field.type).toBe("select");
-    expect(field.options).toEqual(["text", "image", "audio", "folder"]);
+    expect(field.options).toEqual([
+      "text",
+      "image",
+      "audio",
+      "folder",
+      "source",
+    ]);
   });
 });
 

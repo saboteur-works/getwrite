@@ -8,8 +8,16 @@
  */
 import React from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { Provider } from "react-redux";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Editor } from "@tiptap/core";
+import { makeStore } from "../../src/store/store";
+import {
+  setProject,
+  setSelectedProjectId,
+} from "../../src/store/projectsSlice";
+import { setResources } from "../../src/store/resourcesSlice";
+import type { Annotation, AnyResource } from "../../src/lib/models/types";
 import type { AnnotationsState } from "../../src/hooks/useAnnotations";
 import {
   annotation,
@@ -17,7 +25,15 @@ import {
   makeEditor,
   makeHandle,
 } from "../helpers/annotations-panel-harness";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
 import { runAxe } from "./helpers/axe";
+
+vi.mock("../../src/lib/api/trash", () => ({
+  listTrash: vi.fn().mockResolvedValue({ resources: [], folders: [] }),
+}));
+vi.mock("../../src/lib/api/source-attachments", () => ({
+  listAttachments: vi.fn().mockResolvedValue([]),
+}));
 
 const editors: Editor[] = [];
 afterEach(() => {
@@ -116,5 +132,113 @@ describe("a11y: AnnotationsPanel", () => {
     );
     fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
     expect(document.activeElement).toBe(opener);
+  });
+});
+
+/**
+ * Feature 103, Task 44 (FR-13): Delete disabled with a visible reason on a
+ * paired device whose permanent-deletion limit is on.
+ */
+describe("a11y: AnnotationsPanel Delete limited on a paired device", () => {
+  it("has no axe violations; the disabled Delete is named and described by the visible reason", async () => {
+    const editor = makeEditor();
+    editors.push(editor);
+    const { container } = render(
+      <Harness
+        editor={editor}
+        handle={makeHandle({
+          status: "ok",
+          annotations: [annotation("a", "First note", "hello")],
+        })}
+        limits={{
+          state: {
+            state: "paired",
+            limits: {
+              projectDeletion: false,
+              unlocking: false,
+              locking: false,
+              encryptionChanges: false,
+              permanentDeletion: true,
+            },
+          },
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Annotations" }));
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    const button = within(panel).getByRole("button", { name: "Delete note" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(
+      expect.stringContaining(PERMANENT_DELETION_LIMITED_REASON),
+    );
+    await runAxe(container, ["region"]);
+  });
+});
+
+/**
+ * Feature 103, Task 33: citation rows, a locator-only excerpt (no mark by
+ * design) and a citation whose Source is gone (purged: not in the project and
+ * not in Trash).
+ */
+describe("a11y: AnnotationsPanel citations and excerpts", () => {
+  const SOURCE_ID = "11111111-1111-4111-8111-111111111111";
+  const present: Annotation = {
+    ...annotation("a", "Cited", "hello"),
+    target: {
+      sourceId: SOURCE_ID,
+      sourceName: "Interview",
+      locator: { value: "p. 4" },
+    },
+  };
+  const excerpt: Annotation = {
+    ...annotation("x", "", ""),
+    target: {
+      sourceId: SOURCE_ID,
+      attachmentId: "22222222-2222-4222-8222-222222222222",
+      locator: { value: "0:42" },
+    },
+  };
+  const missing: Annotation = {
+    ...annotation("d", "Orphan", "gone"),
+    target: {
+      sourceId: "99999999-9999-4999-8999-999999999999",
+      sourceName: "Old name",
+    },
+  };
+
+  it("has no axe violations and names the Source and the removed state in text", async () => {
+    const store = makeStore();
+    store.dispatch(
+      setProject({ id: "p1", name: "P", rootPath: "/tmp/projects/dir-1" }),
+    );
+    store.dispatch(setSelectedProjectId("p1"));
+    store.dispatch(
+      setResources([
+        {
+          id: SOURCE_ID,
+          slug: "s",
+          name: "Interview",
+          type: "source",
+          orderIndex: 0,
+        } as AnyResource,
+      ]),
+    );
+    const editor = makeEditor();
+    editors.push(editor);
+    const { container } = render(
+      <Provider store={store}>
+        <Harness
+          editor={editor}
+          handle={makeHandle({
+            status: "ok",
+            annotations: [present, excerpt, missing],
+          })}
+        />
+      </Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Annotations" }));
+    await screen.findByText(/permanently deleted/i);
+    expect(screen.getByText(/Old name \(removed\)/)).toBeInTheDocument();
+    await runAxe(container, ["region"]);
   });
 });

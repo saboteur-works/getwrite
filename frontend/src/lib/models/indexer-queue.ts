@@ -33,6 +33,9 @@ import {
   persistDiagnosticsIndex,
   type DiagnosticsRecord,
 } from "./diagnostics-index";
+import { readModulesConfig } from "./derived-index-rebuild";
+import { MODULE_MANIFEST } from "./modules/manifest";
+import { createModuleRegistry, type ModuleRegistry } from "./modules/registry";
 import type { TextResource } from "./types";
 
 type Task = {
@@ -40,6 +43,12 @@ type Task = {
   resourceId: string;
   adapter: StorageAdapter;
 };
+
+// Module-owned index steps run per save for modules enabled for the project
+// (Feature 103, FR-6). Defaults to the static manifest; tests swap it.
+const DEFAULT_MODULE_REGISTRY: ModuleRegistry =
+  createModuleRegistry(MODULE_MANIFEST);
+let moduleRegistry: ModuleRegistry = DEFAULT_MODULE_REGISTRY;
 
 const queue: Task[] = [];
 let isRunning = false;
@@ -251,6 +260,34 @@ function annotationBodies(
   );
 }
 
+/**
+ * Run the index steps of modules enabled for the project. `config.modules` is
+ * read, as a plain unlocked `project.json` read inside the caller's
+ * `runForTenant` scope, only when a registered module owns a step (the Sources
+ * module owns none, so a save pays no extra read). A locked project is
+ * rethrown; any other read failure skips the module steps with a logged error,
+ * never treated as "every module on".
+ */
+async function runModuleIndexSteps(projectRoot: string): Promise<void> {
+  if (!moduleRegistry.modules.some((m) => m.indexSteps.length > 0)) return;
+  let steps: ReturnType<ModuleRegistry["indexSteps"]>;
+  try {
+    steps = moduleRegistry.indexSteps(await readModulesConfig(projectRoot));
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    console.error("[indexer-queue] config.modules read failed:", err);
+    return;
+  }
+  for (const step of steps) {
+    try {
+      await step.run(projectRoot);
+    } catch (err) {
+      if (isLockedAccessError(err)) throw err;
+      console.error(`[indexer-queue] module step ${step.id} failed:`, err);
+    }
+  }
+}
+
 async function runTask(task: Task) {
   try {
     await runForTenant(
@@ -334,6 +371,8 @@ async function runTask(task: Task) {
         } catch (err) {
           console.error("[indexer-queue] diagnostics computation failed:", err);
         }
+
+        await runModuleIndexSteps(task.projectRoot);
       },
       task.adapter,
     );
@@ -595,6 +634,16 @@ export function __resetIndexerForTests(): void {
     }
   }
   activeBacklinkWatchers.clear();
+}
+
+/**
+ * Test-only: replace the registry whose module index steps run on a save;
+ * `undefined` restores the static manifest.
+ */
+export function __setIndexerModuleRegistryForTests(
+  registry: ModuleRegistry | undefined,
+): void {
+  moduleRegistry = registry ?? DEFAULT_MODULE_REGISTRY;
 }
 
 const indexerQueue = {

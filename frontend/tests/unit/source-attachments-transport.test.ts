@@ -11,7 +11,16 @@ import {
   reorderAttachments,
   replaceAttachment,
 } from "../../src/lib/api/source-attachments";
+import {
+  readAttachmentBytes,
+  type AttachmentBytesView,
+} from "../../src/lib/api/source-attachment-bytes";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
+import {
+  isLockedAccessError,
+  MissingProjectKeyError,
+  ProjectLockedError,
+} from "../../src/lib/models/locked-access";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
   reportTransportValidationFailure: vi.fn(),
@@ -111,5 +120,142 @@ describe("HTTP client", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(ok({ nope: 1 }));
     await expect(addAttachment(P, R, FILE)).rejects.toThrow(/malformed/);
     expect(reportTransportValidationFailure).toHaveBeenCalledTimes(1);
+  });
+
+  // Feature 103 Task 19 (owner decision 2026-11-07): a locked project over
+  // HTTP is the locked-access error, as the module-switch client does.
+  const OPERATIONS: Array<[string, () => Promise<unknown>]> = [
+    ["listAttachments", () => listAttachments(P, R)],
+    ["addAttachment", () => addAttachment(P, R, FILE)],
+    ["replaceAttachment", () => replaceAttachment(P, R, ENTRY.id, FILE)],
+    ["removeAttachment", () => removeAttachment(P, R, ENTRY.id)],
+    ["reorderAttachments", () => reorderAttachments(P, R, [ENTRY.id])],
+  ];
+
+  function refusal(status: number, headers: Record<string, string> = {}) {
+    return new Response(JSON.stringify({ error: "server text" }), {
+      status,
+      headers,
+    });
+  }
+
+  it.each(OPERATIONS)(
+    "%s: HTTP 401 becomes ProjectLockedError",
+    async (_n, call) => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(refusal(401));
+      const err = await call().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(ProjectLockedError);
+      expect(isLockedAccessError(err)).toBe(true);
+    },
+  );
+
+  it.each(OPERATIONS)(
+    "%s: HTTP 409 becomes MissingProjectKeyError",
+    async (_n, call) => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(refusal(409));
+      const err = await call().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(MissingProjectKeyError);
+      expect(isLockedAccessError(err)).toBe(true);
+    },
+  );
+
+  it("leaves a not-paired 401 as an ordinary failure with the server's message", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      refusal(401, { "x-getwrite-gate": "not-paired" }),
+    );
+    const err = await listAttachments(P, R).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(isLockedAccessError(err)).toBe(false);
+    expect((err as Error).message).toBe("server text");
+  });
+});
+
+describe("HTTP client: attachment bytes (Feature 103 Task 19)", () => {
+  function bytesResponse(
+    status: number,
+    body: BodyInit | null,
+    headers: Record<string, string> = {},
+  ): Response {
+    return new Response(body, { status, headers });
+  }
+  const GOOD_HEADERS = {
+    "content-type": "image/png",
+    "x-attachment-kind": "image",
+  };
+
+  it("reads with the three ids in the query only and returns bytes, kind and mime", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        bytesResponse(200, new Uint8Array([1, 2, 3]), GOOD_HEADERS),
+      );
+    const view: AttachmentBytesView = await readAttachmentBytes(P, R, ENTRY.id);
+    expect(view.kind).toBe("image");
+    expect(view.mime).toBe("image/png");
+    expect([...view.bytes]).toEqual([1, 2, 3]);
+    expect(String(spy.mock.calls[0][0])).toBe(
+      `/api/project/source-attachments/bytes?projectId=${P}&resourceId=${R}&attachmentId=${ENTRY.id}`,
+    );
+  });
+
+  it("rejects with the server's message on a refusal", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Refused text." }), { status: 400 }),
+    );
+    await expect(readAttachmentBytes(P, R, ENTRY.id)).rejects.toThrow(
+      "Refused text.",
+    );
+  });
+
+  it("turns HTTP 401 into ProjectLockedError and HTTP 409 into MissingProjectKeyError", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(bytesResponse(401, "{}"));
+    await expect(readAttachmentBytes(P, R, ENTRY.id)).rejects.toBeInstanceOf(
+      ProjectLockedError,
+    );
+    spy.mockResolvedValue(bytesResponse(409, "{}"));
+    await expect(readAttachmentBytes(P, R, ENTRY.id)).rejects.toBeInstanceOf(
+      MissingProjectKeyError,
+    );
+  });
+
+  it("leaves a not-paired 401 as an ordinary failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      bytesResponse(401, "{}", { "x-getwrite-gate": "not-paired" }),
+    );
+    const err = await readAttachmentBytes(P, R, ENTRY.id).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(isLockedAccessError(err)).toBe(false);
+    expect(err).toBeInstanceOf(Error);
+  });
+
+  it("rejects, not returns, a 200 with no usable kind header", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      bytesResponse(200, new Uint8Array([1]), {
+        "content-type": "image/png",
+        "x-attachment-kind": "video",
+      }),
+    );
+    await expect(readAttachmentBytes(P, R, ENTRY.id)).rejects.toThrow(
+      /malformed/,
+    );
+  });
+
+  it("rejects on a network failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    await expect(readAttachmentBytes(P, R, ENTRY.id)).rejects.toThrow(
+      "offline",
+    );
   });
 });

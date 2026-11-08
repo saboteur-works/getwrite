@@ -61,34 +61,17 @@ export {
 // Revisions (pruning)
 export { runCli as runPruneCli } from "./models/pruneExecutor";
 
-// Index & backlinks
-export { indexResource } from "./models/inverted-index";
-export {
-  listResourceIds,
-  computeBacklinks,
-  persistBacklinks,
-} from "./models/backlinks";
-
-// Content loading (lib sibling; moves into core alongside the models on
-// extraction).
-export { loadResourceContent } from "./tiptap-utils";
-
 // Revision repair (one-time fix for text resources with no revision)
 export { repairMissingInitialRevisions } from "./models/revision-repair";
 
 // Storage context (imperative helper for non-route entry points, e.g. the CLI)
 export { runForTenant } from "./models/io";
 
-// Entity mentions (alias table, offset detection, mention index persistence —
-// needed by the CLI's `reindex` command to rebuild meta/index/mentions.json)
-export { buildEntityAliasTable } from "./models/entity-alias-table";
-export { findMentionOffsets } from "./models/entity-detection";
-export {
-  loadMentionIndex,
-  persistMentionIndex,
-  type MentionRecord,
-  type MentionIndex,
-} from "./models/mention-index";
+// Shared derived-index rebuild (importers and the CLI's `reindex`, FR-8)
+export { rebuildDerivedIndexes } from "./models/derived-index-rebuild";
+
+// Entity mentions (mention index read)
+export { loadMentionIndex } from "./models/mention-index";
 
 // Scrivener import (CLI's `project import-scrivener` command)
 export {

@@ -276,6 +276,10 @@ const nextConfig = {
           // as above.
           "../../store/transport/native-goal-filter-backend":
             "./src/store/transport/native-goal-filter-backend.web-stub",
+          // sources-module-seam Task 8: lib/api/modules.ts also lives in
+          // src/lib/api/ — same rule as above.
+          "../../store/transport/native-modules-backend":
+            "./src/store/transport/native-modules-backend.web-stub",
           // folder-metadata-sources-core Task 9: lib/api/folder-metadata.ts
           // also lives in src/lib/api/ — same rule as above.
           "../../store/transport/native-folder-metadata-backend":
@@ -284,6 +288,10 @@ const nextConfig = {
           // also lives in src/lib/api/ — same rule as above.
           "../../store/transport/native-source-attachments-backend":
             "./src/store/transport/native-source-attachments-backend.web-stub",
+          // sources-module-seam Task 19: lib/api/source-attachment-bytes.ts
+          // also lives in src/lib/api/ — same rule as above.
+          "../../store/transport/native-source-attachment-bytes-backend":
+            "./src/store/transport/native-source-attachment-bytes-backend.web-stub",
           // compile-defaults-annotations-native-pdf Task 4:
           // lib/api/compile-defaults.ts and export-defaults.ts also live in
           // src/lib/api/, so their dynamic import specifiers are

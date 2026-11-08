@@ -32,6 +32,7 @@ import { TipTapDocument } from "../src/lib/models";
 import { buildEditorBodyStyleVariables } from "../src/lib/editor-body-settings";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import AnnotationsPanel from "./Editor/Annotations/AnnotationsPanel";
+import CitationControlSlot from "./Editor/Citations/CitationControlSlot";
 import {
   ANNOTATIONS_PANEL_ID,
   useAnnotationsPanel,
@@ -930,6 +931,13 @@ export default function TipTapEditor({
                 className="tiptap tiptap-editor-content"
               />
             </EditorContextMenu>
+            {annotationResourceId !== undefined && !readonly ? (
+              <CitationControlSlot
+                editor={editor}
+                resourceId={annotationResourceId}
+                onStored={annotations.retry}
+              />
+            ) : null}
             {annotationResourceId !== undefined && annotationsPanel.isOpen ? (
               <AnnotationsPanel
                 editor={editor}

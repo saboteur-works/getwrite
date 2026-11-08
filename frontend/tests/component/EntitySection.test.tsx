@@ -13,6 +13,7 @@ import {
   setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
 import { createTextResource } from "../../src/lib/models/resource";
+import { createSourceResource } from "../../src/lib/models/resource-factory";
 import type { AnyResource } from "../../src/lib/models/types";
 import { flushPendingEffects } from "../helpers/flushEffects";
 import { EMPTY_ALIAS_TABLE } from "../../src/lib/api/entity-alias-table";
@@ -156,6 +157,30 @@ describe("EntitySection", () => {
       const body = getLastSidecarBody(fetchStub);
       expect(body).not.toBeNull();
       expect(body!.updatedResource.entityKind).toBe("faction");
+    });
+  });
+
+  it("declares a Source as an entity from the section, persisting entityKind (Feature 103 Task 24, FR-20)", async () => {
+    const fetchStub = makeFetchStub();
+    const store = setupStore("src-1");
+    const source = createSourceResource({ name: "Archive letter" });
+    (source as unknown as { id: string }).id = "src-1";
+    store.dispatch(setResources([source]));
+
+    render(
+      <Provider store={store}>
+        <EntitySection />
+      </Provider>,
+    );
+    fireEvent.change(screen.getByLabelText("entity-kind-input"), {
+      target: { value: "document" },
+    });
+
+    await waitFor(() => {
+      const body = getLastSidecarBody(fetchStub);
+      expect(body).not.toBeNull();
+      expect(body!.updatedResource.type).toBe("source");
+      expect(body!.updatedResource.entityKind).toBe("document");
     });
   });
 

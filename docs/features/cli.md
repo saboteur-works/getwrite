@@ -106,7 +106,7 @@ getwrite-cli project import-scrivener <scrivPath> [projectRoot] [--name <name>]
 1. The Draft binder's folder/document hierarchy and text (at the destination project's root), plus the Research folder's text content and every other top-level user folder, each as its own top-level GetWrite folder. A binder item with no `<Title>` is imported under a generated fallback name ("Untitled", "Untitled 2", ...), reported.
 2. Each document's `content.rtf`, converted to `content.txt` + `content.tiptap.json` (bold/italic preserved as TipTap marks; `\line` as a hard break; backslash-newline treated as a paragraph break alongside `\par`; `\'XX` hex escapes decoded via the document's declared `\ansicpg` code page; a `\field`/`HYPERLINK` run converts to plain text).
 3. Each document's synopsis/notes (into sidecar `userMetadata.synopsis`/`userMetadata.notes`, enabling the corresponding feature toggles), Status (seeding `config.statuses` and `userMetadata.status`), Label (a new "Label" select metadata field), Keywords (as GetWrite tags, merging keywords that share a leaf name), and CustomMetaData fields (as new per-project metadata-schema fields). A field whose derived key collides with a built-in or already-added field is created under a suffixed key instead (e.g. `pov-scrivener`), keeping its Scrivener title as the label; the rename is reported.
-4. Rebuilds the destination project's inverted index, backlinks, and entity mention index from scratch (mirroring `reindex`); background indexing and the backlinks watcher are suspended for the whole write phase so this rebuild is the only indexing work the run performs.
+4. Rebuilds the destination project's inverted index, backlinks, entity mention index and annotation-body index from scratch through the shared `rebuildDerivedIndexes`, the same function `reindex` calls; background indexing and the backlinks watcher are suspended for the whole write phase so this rebuild is the only indexing work the run performs.
 
 **What it skips or defers, and reports:** an RTF feature with no GetWrite equivalent, an unreadable/malformed `content.rtf` fragment, a malformed `.scrivx` fragment (recovered as a skip rather than aborting the import), or a custom-metadata field type with no GetWrite mapping (each skipped individually, without aborting the run); the project's Trash content; non-text Research content (media, PDFs, web archives); and any `Type="Other"` binder item, wherever it occurs. On completion the command writes `<projectRoot>/scrivener-import-report.txt`, a fixed eight-section report (Skipped Items, Field Key Renames, Keyword Merges, Unconverted Research Content, Excluded "Other" Items, Trash Content, Snapshot History, Untitled Fallback Names) — every section always appears, even when empty.
 
@@ -166,7 +166,7 @@ getwrite-cli project import-docx <source> [projectRoot] [--name <name>] [-s, --s
 2. For a folder source: one resource per `.docx` file (each independently converted, never split), with subfolders mirrored as GetWrite folders — walked recursively to any depth, non-`.docx` files, Word lock files (`~$*.docx`), and hidden/dot files or folders skipped and tallied, and ordered by case-insensitive natural filename order. Either way, the destination's resource/folder tree always mirrors the source; the chosen project type contributes only its `statuses`/`relationshipTypes` config, never default folders.
 3. Each document's footnotes/endnotes, converted to an inline `"[n]"` reference plus a trailing "Notes" paragraph list (TipTap has no list nodes here, so a numbered list is rendered as plain paragraphs).
 4. Each document's core title/author (`docProps/core.xml`), the author seeding a new `docx-import`/"Imported Fields" metadata group's "Author" field — created only when at least one processed document actually has one.
-5. Rebuilds the destination project's inverted index, backlinks, and entity mention index from scratch (mirroring `reindex`); background indexing is suspended for the whole write phase so this rebuild is the only indexing work the run performs.
+5. Rebuilds the destination project's inverted index, backlinks, entity mention index and annotation-body index from scratch through the shared `rebuildDerivedIndexes`, the same function `reindex` calls; background indexing is suspended for the whole write phase so this rebuild is the only indexing work the run performs.
 
 **What it never imports:** comments (a package's comment count is still reported) and images/embedded media (their count is still reported). Tracked changes (`w:ins`/`w:del`) are imported accepted-as-shown — insertions kept, deletions dropped — with their count reported, since they are neither skipped nor need a report entry to explain a content difference.
 
@@ -204,7 +204,7 @@ getwrite-cli project import-plaintext <source> [projectRoot] [--name <name>]
 1. UTF-8 text only, with a leading byte-order mark stripped before parsing. A blank line (or a run of consecutive blank lines) separates paragraphs; a lone `\n` within a paragraph block is a soft wrap, preserved as a TipTap hard break rather than starting a new paragraph or becoming a literal space.
 2. For a single-file source: one resource, named from the file's basename with `.txt` stripped (or `--name`, if given).
 3. For a folder source: one resource per `.txt` file, with subfolders mirrored as GetWrite folders — walked recursively to any depth, non-`.txt` files and hidden/dot files or folders skipped and tallied, and ordered by case-insensitive natural filename order.
-4. Rebuilds the destination project's inverted index, backlinks, and entity mention index from scratch (mirroring `reindex`); background indexing is suspended for the whole write phase so this rebuild is the only indexing work the run performs.
+4. Rebuilds the destination project's inverted index, backlinks, entity mention index and annotation-body index from scratch through the shared `rebuildDerivedIndexes`, the same function `reindex` calls; background indexing is suspended for the whole write phase so this rebuild is the only indexing work the run performs.
 5. Logs exactly one writing-log entry tagged `source: "plaintext"` (even a zero-word import), excluded from the daily-goal comparison like a docx/Scrivener import.
 
 **Scope:** like `import-docx`/`import-scrivener`, this importer only ever creates a brand-new destination project — a pre-existing, non-empty `projectRoot` is refused before any write; there is no path for importing plain-text content into an already-existing project.
@@ -398,7 +398,7 @@ node cli/dist/bin/getwrite-cli.cjs prune /path/to/my-project --max 10
 
 ### `reindex`
 
-Rebuilds the inverted index, backlinks, and entity mention index for a project from scratch by re-scanning all resources. Use after bulk filesystem changes that bypassed the normal save path, or to recover from a corrupted/stale index.
+Rebuilds the inverted index, backlinks, entity mention index and annotation-body index for a project from scratch by re-scanning all resources. Use after bulk filesystem changes that bypassed the normal save path, or to recover from a corrupted/stale index.
 
 ```sh
 getwrite-cli reindex [projectRoot]
@@ -414,6 +414,7 @@ getwrite-cli reindex [projectRoot]
 2. For each resource, loads its content and re-indexes it into `meta/index/inverted.json`. A resource whose sidecar `type` is `source` is passed to the indexer as a Source (Feature 102); every other resource is passed as text. The indexer reads body and title, not the type, so a Source body is indexed either way.
 3. Recomputes backlinks across all resources and persists `meta/backlinks.json`.
 4. Rebuilds the entity mention index from scratch (declared entities detected by name/alias in every resource's prose) and persists `meta/index/mentions.json`.
+5. Drops and rewrites the annotation-body index `meta/index/annotations.json` from every stored annotation body, then runs the index steps of every enabled module (the Sources module has none). Steps 2 to 5 are the shared `rebuildDerivedIndexes` (`frontend/src/lib/models/derived-index-rebuild.ts`), which the three importers also call. Prose diagnostics (`meta/index/diagnostics.json`) are not rebuilt. On a locked project the run fails with the locked-access error instead of indexing nothing.
 
 **Does not touch the writing log:** `reindex` does not clear or rebuild `meta/writing-log/`. The log records when words were written and cannot be rebuilt from resources, so it is left as is. See [writing-log.md](./writing-log.md).
 

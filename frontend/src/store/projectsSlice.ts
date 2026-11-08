@@ -104,6 +104,11 @@ export interface StoredProject {
   metadataSchema?: MetadataSchema;
   /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
   features?: ProjectFeatureFlags;
+  /**
+   * Per-module on/off flags (`config.modules`, Feature 103). Absent, or an
+   * absent id, means the module is on; read through `useModuleEnabled`.
+   */
+  modules?: Record<string, boolean>;
   /** Organizer card-body source configuration; absent means none configured. */
   organizerCardBody?: OrganizerCardBodyConfig;
   /**
@@ -163,6 +168,7 @@ export function buildStoredProject(
     subtypes: project.config?.subtypes,
     metadataSchema: project.config?.metadataSchema,
     features: project.config?.features,
+    modules: project.config?.modules,
     organizerCardBody: project.config?.organizerCardBody,
     mentionHighlightDurationSeconds:
       project.config?.mentionHighlightDurationSeconds,
@@ -743,6 +749,30 @@ const projectsSlice = createSlice({
       };
       return state;
     },
+    /**
+     * Replaces the *currently selected* stored project's `modules` map with
+     * the one the server returned after a module-switch save (Feature 103,
+     * FR-7), so `useModuleEnabled` reflects it without a project reload.
+     * Keyed off `state.selectedProjectId` for the same reason as
+     * {@link setProjectMentionHighlightDurationSeconds}: the Project Settings
+     * `projectId` prop is the directory id, not this slice's dictionary key.
+     *
+     * @param state - Current slice state draft.
+     * @param action - The project's stored module flags after the write.
+     */
+    setProjectModules(
+      state,
+      action: PayloadAction<{ modules: Record<string, boolean> }>,
+    ) {
+      const id = state.selectedProjectId;
+      const project = id ? state.projects[id] : undefined;
+      if (!project) return state;
+      state.projects[id as string] = {
+        ...project,
+        modules: action.payload.modules,
+      };
+      return state;
+    },
   },
   extraReducers: (builder) => {
     // `loadProject` mirrors `setProject`'s upsert behavior; it exists
@@ -827,6 +857,7 @@ export const {
   removeResource,
   updateProjectMetadataSchema,
   setProjectMentionHighlightDurationSeconds,
+  setProjectModules,
 } = projectsSlice.actions;
 export default projectsSlice.reducer;
 
@@ -1067,6 +1098,20 @@ export const selectActiveProjectFeatures = (
 ): ProjectFeatureFlags => {
   const id = state?.projects?.selectedProjectId;
   return state?.projects?.projects?.[id]?.features ?? EMPTY_FEATURES;
+};
+
+/**
+ * Selects the raw `config.modules` map of the active project, or `undefined`
+ * when no project is selected or it has no `modules` entry (every module on,
+ * OQ-13). Read the flag with `isModuleEnabled`, not directly.
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ */
+export const selectActiveProjectModules = (
+  state: any,
+): Record<string, boolean> | undefined => {
+  const id = state?.projects?.selectedProjectId;
+  return state?.projects?.projects?.[id]?.modules;
 };
 
 /**

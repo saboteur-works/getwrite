@@ -18,6 +18,19 @@ vi.mock(
     return { ...actual, addAttachmentCore: vi.fn(actual.addAttachmentCore) };
   },
 );
+vi.mock(
+  "../../src/lib/models/source-attachment-bytes-core",
+  async (importActual) => {
+    const actual =
+      await importActual<
+        typeof import("../../src/lib/models/source-attachment-bytes-core")
+      >();
+    return {
+      ...actual,
+      readAttachmentBytesCore: vi.fn(actual.readAttachmentBytesCore),
+    };
+  },
+);
 
 import {
   DELETE,
@@ -26,6 +39,10 @@ import {
   POST,
   PUT,
 } from "../../app/api/project/source-attachments/route";
+import { GET as GET_BYTES } from "../../app/api/project/source-attachments/bytes/route";
+import { readAttachmentBytesCore } from "../../src/lib/models/source-attachment-bytes-core";
+import { createNativeAttachmentBytesTransport } from "../../src/store/transport/native-source-attachment-bytes-backend";
+import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
 import { POST as RESTORE } from "../../app/api/project/[project-id]/trash/restore/route";
 import {
   addAttachmentCore,
@@ -386,5 +403,166 @@ describe("Trash restore route and the attachment kind", () => {
     };
     expect(body.results[0]).toMatchObject({ id: a.id, ok: true });
     expect(await ids(id)).toEqual([b.id, a.id]);
+  });
+});
+
+describe("attachment byte-read route (Feature 103 Task 19, FR-18 storage half, FR-12, FR-30)", () => {
+  const BYTES_URL = "http://localhost/api/project/source-attachments/bytes";
+  const MP3 = Uint8Array.from([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 0, 9, 9]);
+
+  function getBytes(
+    projectIdValue: string,
+    resourceId: string,
+    attachmentId: string,
+  ): never {
+    const q = new URLSearchParams({
+      projectId: projectIdValue,
+      resourceId,
+      attachmentId,
+    });
+    return new Request(`${BYTES_URL}?${q.toString()}`) as never;
+  }
+
+  it("returns the stored bytes with the stored kind and mime, nosniff and no-store", async () => {
+    const id = await createSource();
+    const entry = await add(id);
+    const res = await GET_BYTES(getBytes(projectId, id, entry.id));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(res.headers.get("x-attachment-kind")).toBe("image");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(Buffer.from(await res.arrayBuffer()).equals(Buffer.from(PNG))).toBe(
+      true,
+    );
+  });
+
+  it("reports the kind from the stored entry and the bytes for a misnamed file", async () => {
+    const id = await createSource();
+    const res0 = await POST(
+      multipart(
+        "POST",
+        form(
+          { projectId, resourceId: id },
+          new File([MP3 as BlobPart], "song.mp3", { type: "audio/mpeg" }),
+        ),
+      ),
+    );
+    const entry = (await res0.json()) as { id: string };
+    await mutateSidecar(projectRoot, id, (current) => {
+      const sidecar = current as Record<string, MetadataValue>;
+      const list = (
+        sidecar.attachments as unknown as Array<Record<string, unknown>>
+      ).map((e) => ({ ...e, originalName: "photo.png" }));
+      return { ...sidecar, attachments: list as unknown as MetadataValue };
+    });
+    const res = await GET_BYTES(getBytes(projectId, id, entry.id));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-attachment-kind")).toBe("audio");
+    expect(res.headers.get("content-type")).toBe("audio/mpeg");
+  });
+
+  it("refuses a path-like attachment id with 400 and the message the native backend throws", async () => {
+    const id = await createSource();
+    const res = await GET_BYTES(getBytes(projectId, id, "../../project.json"));
+    expect(res.status).toBe(400);
+    const routeMessage = ((await res.json()) as { error: string }).error;
+    const native = createNativeAttachmentBytesTransport({
+      fs: createFakeCapacitorFilesystem(),
+      projectsDir: "/projects",
+    });
+    await expect(
+      native.readAttachmentBytes(projectId, id, "../../project.json"),
+    ).rejects.toThrow(routeMessage);
+  });
+
+  it("refuses a malformed resource id and project id with the native backend's messages", async () => {
+    const native = createNativeAttachmentBytesTransport({
+      fs: createFakeCapacitorFilesystem(),
+      projectsDir: "/projects",
+    });
+    const aid = generateUUID();
+    const badResource = await GET_BYTES(getBytes(projectId, "../x", aid));
+    expect(badResource.status).toBe(400);
+    await expect(
+      native.readAttachmentBytes(projectId, "../x", aid),
+    ).rejects.toThrow(((await badResource.json()) as { error: string }).error);
+    const badProject = await GET_BYTES(getBytes("../x", generateUUID(), aid));
+    expect(badProject.status).toBe(400);
+    await expect(
+      native.readAttachmentBytes("../x", generateUUID(), aid),
+    ).rejects.toThrow(((await badProject.json()) as { error: string }).error);
+  });
+
+  it("answers 404 for an unknown attachment and for a missing file", async () => {
+    const id = await createSource();
+    expect(
+      (await GET_BYTES(getBytes(projectId, id, generateUUID()))).status,
+    ).toBe(404);
+    const entry = await add(id);
+    await fs.rm(path.join(projectRoot, "resources", id, entry.fileName));
+    expect((await GET_BYTES(getBytes(projectId, id, entry.id))).status).toBe(
+      404,
+    );
+  });
+
+  it("answers 422, not a kind, when the stored bytes do not match the entry", async () => {
+    const id = await createSource();
+    const entry = await add(id);
+    await fs.writeFile(
+      path.join(projectRoot, "resources", id, entry.fileName),
+      Buffer.from(MP3),
+    );
+    const res = await GET_BYTES(getBytes(projectId, id, entry.id));
+    expect(res.status).toBe(422);
+    expect(res.headers.get("x-attachment-kind")).toBeNull();
+  });
+
+  it("maps locked-access errors to the existing 401/409 responses (withStorageContext)", async () => {
+    const id = await createSource();
+    const entry = await add(id);
+    vi.mocked(readAttachmentBytesCore).mockRejectedValueOnce(
+      new ProjectLockedError(projectId),
+    );
+    expect((await GET_BYTES(getBytes(projectId, id, entry.id))).status).toBe(
+      401,
+    );
+    vi.mocked(readAttachmentBytesCore).mockRejectedValueOnce(
+      new MissingProjectKeyError(projectId),
+    );
+    expect((await GET_BYTES(getBytes(projectId, id, entry.id))).status).toBe(
+      409,
+    );
+  });
+
+  it("is read-only and not paired-device limited (Task 14 inventory: read-only, not limited)", async () => {
+    const source = await fs.readFile(
+      path.join(
+        process.cwd(),
+        "app",
+        "api",
+        "project",
+        "source-attachments",
+        "bytes",
+        "route.ts",
+      ),
+      "utf8",
+    );
+    expect(source).not.toMatch(/checkLimit|sharing-limits/);
+    expect(source).toMatch(/export const GET = withStorageContext\(/);
+    expect(source).not.toMatch(/export const (POST|PUT|PATCH|DELETE)\b/);
+  });
+
+  it("logs no stored value or file name", async () => {
+    const id = await createSource();
+    const entry = await add(id, "secret-name.png");
+    const spies = (["log", "info", "warn", "error", "debug"] as const).map(
+      (m) => vi.spyOn(console, m).mockImplementation(() => undefined),
+    );
+    await GET_BYTES(getBytes(projectId, id, entry.id));
+    await GET_BYTES(getBytes(projectId, id, "../x"));
+    const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
+    expect(logged).not.toContain("secret-name");
+    expect(logged).not.toContain(entry.fileName);
   });
 });

@@ -722,6 +722,34 @@ export default function Home(): JSX.Element {
   };
 
   /**
+   * Adds a created non-folder resource to the projects list and to the local
+   * `selectedProject` state. Shared by the tree's create action and by views
+   * that create a resource themselves (the Sources view, Feature 103 FR-16),
+   * so both leave the page's state the same. Selection and the resources
+   * slice stay with each caller.
+   */
+  const recordCreatedResource = (res: AnyResource): void => {
+    if (!selectedProject) return;
+    dispatch(
+      // This addResource is deprecated
+      addResource({
+        projectId: selectedProject.id,
+        resource: {
+          id: res.id,
+          userMetadata: res.userMetadata,
+          name: res.name,
+          folderId: res.folderId ?? null,
+        } as any,
+      }),
+    );
+    setSelectedProject((prev) =>
+      prev
+        ? { ...prev, resources: [...prev.resources, res] as AnyResource[] }
+        : prev,
+    );
+  };
+
+  /**
    * Dispatches a CRUD or utility action on a resource.
    *
    * Supported actions:
@@ -809,24 +837,7 @@ export default function Home(): JSX.Element {
           prev ? { ...prev, folders: [...prev.folders, res as Folder] } : prev,
         );
       } else {
-        // update redux store
-        dispatch(
-          // This addResource is deprecated
-          addResource({
-            projectId: selectedProject.id,
-            resource: {
-              id: res.id,
-              userMetadata: res.userMetadata,
-              name: res.name,
-              folderId: res.folderId ?? null,
-            } as any,
-          }),
-        );
-        setSelectedProject((prev) =>
-          prev
-            ? { ...prev, resources: [...prev.resources, res] as AnyResource[] }
-            : prev,
-        );
+        recordCreatedResource(res);
         dispatch(setResourceId(res.id));
       }
 
@@ -1104,6 +1115,7 @@ export default function Home(): JSX.Element {
       project={selectedProject as any}
       onResourceSelect={handleResourceSelect}
       onResourceAction={handleResourceAction}
+      onResourceCreated={recordCreatedResource}
       onCloseProject={handleCloseProject}
       onProjectGoalSaved={handleProjectGoalSaved}
       onMediaCreateConfirmed={handleMediaCreate}

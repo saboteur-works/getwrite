@@ -17,8 +17,15 @@
  * - "Show in text" selects the passage, scrolls it into view and marks it
  *   active in the highlight decoration; the annotation(s) at the caret are
  *   flagged "At cursor" in the list.
+ * - A citation or excerpt (an annotation with a `target`, Feature 103) shows
+ *   the name of its Source; a locator-only excerpt has no mark by design and
+ *   is listed as normal, with no Re-attach. A target that is in Trash, purged
+ *   or removed is shown as such with the saved name, never hidden; a check
+ *   that could not be made is shown as that (FR-22, FR-25, FR-27).
  * - Edit and Delete go through the explicit, non-optimistic writes of
- *   `useAnnotations`; a refusal or failure is shown in the panel.
+ *   `useAnnotations`; a refusal or failure is shown in the panel. Delete is
+ *   disabled with a visible reason on a paired device whose permanent-deletion
+ *   limit is on (Feature 103, FR-13), as the excerpts list does.
  */
 import React from "react";
 import type { Editor } from "@tiptap/core";
@@ -26,11 +33,29 @@ import { X } from "lucide-react";
 import Button from "../../common/UI/Button/Button";
 import Textarea from "../../common/UI/Textarea/Textarea";
 import ConfirmDialog from "../../common/ConfirmDialog";
+import { useSharingLimits } from "../../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../../Sharing/limit-gate";
+import LimitReason from "../../Sharing/LimitReason";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../Sharing/sharing-copy";
 import type { AnnotationsHandle } from "../../../src/hooks/useAnnotations";
 import type { Annotation } from "../../../src/lib/models/types";
+import {
+  canReattachAnnotation,
+  isDetachedAnnotation,
+  isMarkLessByDesign,
+} from "../../../src/lib/models/excerpts";
+import {
+  deriveCitationTargetState,
+  type CitationTargetState,
+} from "../../../src/lib/models/citation-target-state";
 import { ANNOTATION_LIMITS } from "../../../src/lib/models/annotation-validation";
 import { setAnnotationHighlight } from "../Extensions/AnnotationHighlightExtension";
-import type { PendingAnnotationAdd } from "./useAnnotationsPanel";
+import {
+  useCitationFacts,
+  type CitationFactsDeps,
+  type CitationFactsResult,
+  type PendingAnnotationAdd,
+} from "./useAnnotationsPanel";
 import {
   annotationIdsAtSelection,
   collectAnnotationRanges,
@@ -48,6 +73,11 @@ export interface AnnotationsPanelProps {
   pendingAdd?: PendingAnnotationAdd | null;
   /** Called when the add form ends (saved or cancelled). */
   onAddDone?: () => void;
+  /**
+   * The reads behind citation-target facts; defaults to the live Trash,
+   * attachment and annotation reads. Pass a stable object (Storybook, tests).
+   */
+  citationFactsDeps?: CitationFactsDeps;
 }
 
 interface DocView {
@@ -98,6 +128,66 @@ function useDocView(editor: Editor): DocView {
 
 const OK_LIST_CLASS = "flex flex-col gap-3";
 
+const TARGET_STATE_TEXT: Record<CitationTargetState, string | null> = {
+  present: null,
+  "source-in-trash": "This Source is in Trash.",
+  "source-purged": "This Source was permanently deleted.",
+  "attachment-removed": "The attachment this points at was removed.",
+  "excerpt-removed": "The excerpt this points at was removed.",
+};
+
+/** The Source line of a citation or excerpt row; never hides the row's target. */
+function renderTargetLine(
+  annotation: Annotation,
+  result: CitationFactsResult | undefined,
+): JSX.Element | null {
+  const target = annotation.target;
+  if (!target) return null;
+  const hasSavedName =
+    target.sourceName !== undefined && target.sourceName !== "";
+  const locator = target.locator?.value ? (
+    <>
+      {" "}
+      Location: <span className="font-mono">{target.locator.value}</span>
+    </>
+  ) : null;
+  if (!result || result.status === "checking") {
+    return (
+      <p
+        data-testid="annotation-target"
+        className="text-gw-secondary text-gw-small"
+      >
+        Source: {hasSavedName ? target.sourceName : "\u2026"}
+        {locator}
+      </p>
+    );
+  }
+  if (result.status === "unknown") {
+    return (
+      <p
+        data-testid="annotation-target"
+        className="text-gw-secondary text-gw-small"
+      >
+        Source: {hasSavedName ? target.sourceName : "name not saved"}
+        {locator} The Source could not be checked.
+      </p>
+    );
+  }
+  const view = deriveCitationTargetState(target, result.facts);
+  const note = TARGET_STATE_TEXT[view.state];
+  return (
+    <p
+      data-testid="annotation-target"
+      className="text-gw-secondary text-gw-small"
+    >
+      Source: {view.displayName ?? "name not saved"}
+      {view.sourceRemoved ? " (removed)" : ""}
+      {locator}
+      {note ? ` ${note}` : ""}
+    </p>
+  );
+}
+
 export default function AnnotationsPanel({
   editor,
   handle,
@@ -105,6 +195,7 @@ export default function AnnotationsPanel({
   onClose,
   pendingAdd = null,
   onAddDone,
+  citationFactsDeps,
 }: AnnotationsPanelProps): JSX.Element {
   const headingId = `${panelId}-heading`;
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -119,6 +210,8 @@ export default function AnnotationsPanel({
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [isBusy, setIsBusy] = React.useState(false);
   const focusEditFor = React.useRef<string | null>(null);
+  const { state: limitsState } = useSharingLimits();
+  const isDeleteLimited = isLimitOn(limitsState, "permanentDeletion");
 
   const [addDraft, setAddDraft] = React.useState("");
 
@@ -155,8 +248,11 @@ export default function AnnotationsPanel({
 
   const state = handle.state;
   const annotations = state.status === "ok" ? state.annotations : [];
-  const attached = annotations.filter((a) => docView.ranges.has(a.id));
-  const detached = annotations.filter((a) => !docView.ranges.has(a.id));
+  const citationFacts = useCitationFacts(annotations, citationFactsDeps);
+  const isDetached = (a: Annotation): boolean =>
+    isDetachedAnnotation(a, docView.ranges.has(a.id));
+  const attached = annotations.filter((a) => !isDetached(a));
+  const detached = annotations.filter(isDetached);
 
   const show = (annotation: Annotation): void => {
     const range = docView.ranges.get(annotation.id);
@@ -305,8 +401,10 @@ export default function AnnotationsPanel({
   const renderItem = (annotation: Annotation, isDetached: boolean) => {
     const isEditing = editingId === annotation.id;
     const isAtCaret = docView.caretIds.includes(annotation.id);
+    const isMarkLess = isMarkLessByDesign(annotation);
     const isActive = activeId === annotation.id;
     const bodyLabelId = `${panelId}-body-${annotation.id}`;
+    const deleteReasonId = `${panelId}-delete-limit-${annotation.id}`;
     return (
       <li
         key={annotation.id}
@@ -329,6 +427,7 @@ export default function AnnotationsPanel({
             <q>{annotation.quote}</q>
           </p>
         ) : null}
+        {renderTargetLine(annotation, citationFacts.get(annotation.id))}
         {isEditing ? (
           <div className="mt-2 flex flex-col gap-2">
             <label
@@ -350,7 +449,8 @@ export default function AnnotationsPanel({
                 size="sm"
                 disabled={
                   isBusy ||
-                  draft.length < ANNOTATION_LIMITS.bodyMin ||
+                  draft.length <
+                    (annotation.target ? 0 : ANNOTATION_LIMITS.bodyMin) ||
                   draft.length > ANNOTATION_LIMITS.bodyMax
                 }
                 onClick={() => void saveEdit(annotation.id)}
@@ -375,23 +475,27 @@ export default function AnnotationsPanel({
               id={bodyLabelId}
               className="mt-1 whitespace-pre-wrap break-words text-gw-primary"
             >
-              {annotation.body}
+              {annotation.body === "" && annotation.target
+                ? "No note text."
+                : annotation.body}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {isDetached ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  aria-describedby={bodyLabelId}
-                  aria-label="Re-attach note to selected text"
-                  disabled={
-                    isBusy || docView.selection.from === docView.selection.to
-                  }
-                  onClick={() => void reattach(annotation)}
-                >
-                  Re-attach
-                </Button>
-              ) : (
+                canReattachAnnotation(annotation) ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-describedby={bodyLabelId}
+                    aria-label="Re-attach note to selected text"
+                    disabled={
+                      isBusy || docView.selection.from === docView.selection.to
+                    }
+                    onClick={() => void reattach(annotation)}
+                  >
+                    Re-attach
+                  </Button>
+                ) : null
+              ) : isMarkLess ? null : (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -416,7 +520,12 @@ export default function AnnotationsPanel({
                 variant="destructive"
                 size="sm"
                 aria-label="Delete note"
-                aria-describedby={bodyLabelId}
+                aria-describedby={
+                  isDeleteLimited
+                    ? `${bodyLabelId} ${deleteReasonId}`
+                    : bodyLabelId
+                }
+                disabled={isDeleteLimited}
                 onClick={() => {
                   setActionError(null);
                   setPendingDeleteId(annotation.id);
@@ -425,6 +534,11 @@ export default function AnnotationsPanel({
                 Delete
               </Button>
             </div>
+            {isDeleteLimited ? (
+              <LimitReason id={deleteReasonId}>
+                {PERMANENT_DELETION_LIMITED_REASON}
+              </LimitReason>
+            ) : null}
           </>
         )}
       </li>

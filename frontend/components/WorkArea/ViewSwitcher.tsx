@@ -7,7 +7,7 @@ import {
   Clock,
   Users,
   Network,
-  Trash2,
+  Library,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "../common/UI/Tabs/Tabs";
 import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
@@ -28,6 +28,16 @@ export interface ViewSwitcherProps {
    * target that carries the tooltip.
    */
   disabledReasons?: Partial<Record<ViewName, string>>;
+  /**
+   * Module-owned view tabs (Feature 103), appended after the built-in tabs.
+   * The caller passes only views whose module is on: a view that is off is
+   * absent from the list, not disabled (FR-6 (d)).
+   */
+  moduleViews?: ReadonlyArray<{
+    key: ViewName;
+    label: string;
+    icon?: ViewOption["icon"];
+  }>;
   /**
    * Overrides the label of the "edit" tab. Used to surface media resources as
    * a "Media" tab while reusing the edit view. Defaults to "Edit".
@@ -52,10 +62,6 @@ const VIEW_OPTIONS: ViewOption[] = [
   { key: "timeline", label: "Timeline", icon: Clock },
   { key: "entityRoster", label: "Entities", icon: Users },
   { key: "entityGraph", label: "Graph", icon: Network },
-  // Deliberately never added to AppShell.tsx's `disabledViews` computation —
-  // FR-1 requires the Trash tab to be reachable unconditionally, unlike
-  // Entities/Graph which are gated behind the entities feature flag.
-  { key: "trash", label: "Trash", icon: Trash2 },
 ];
 
 export default function ViewSwitcher({
@@ -64,8 +70,13 @@ export default function ViewSwitcher({
   className = "",
   disabledViews = [],
   disabledReasons = {},
+  moduleViews = [],
   editLabel = "Edit",
 }: ViewSwitcherProps): JSX.Element {
+  const options: ViewOption[] = [
+    ...VIEW_OPTIONS,
+    ...moduleViews.map((m) => ({ ...m, icon: m.icon ?? Library })),
+  ];
   const resolvedDisabledViews =
     typeof disabledViews === "function" ? disabledViews() : disabledViews;
   const hasReason = resolvedDisabledViews.some((v) => disabledReasons[v]);
@@ -120,7 +131,7 @@ export default function ViewSwitcher({
             aria-label="Work area views"
             className={`workarea-view-tabs ${className}`}
           >
-            {VIEW_OPTIONS.map((opt) => {
+            {options.map((opt) => {
               const isDisabled = resolvedDisabledViews.includes(opt.key);
               const reason = isDisabled ? disabledReasons[opt.key] : undefined;
               const trigger = (

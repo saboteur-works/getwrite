@@ -10,7 +10,9 @@
  * Failure contract (`docs/standards/failure-visibility.md`): every function
  * REJECTS on a network error, a non-2xx status (the server's refusal message
  * is the error message) or a malformed body (reported through
- * `reportTransportValidationFailure`, which never receives the body). No
+ * `reportTransportValidationFailure`, which never receives the body). A
+ * locked project (HTTP 401 or 409) is turned back into the locked-access
+ * error the native backend throws, through `locked-response.ts`. No
  * request carries a path; the file name is the browser's display name only.
  */
 import type { z } from "zod";
@@ -21,6 +23,7 @@ import {
   ReplaceAttachmentResponseSchema,
   TrashedAttachmentResponseSchema,
 } from "./schemas";
+import { lockedAccessErrorFromResponse } from "./locked-response";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 export type AttachmentEntryView = z.infer<typeof AttachmentEntryResponseSchema>;
@@ -78,11 +81,14 @@ async function errorMessage(
 
 async function parse<T>(
   callSite: string,
+  projectId: string,
   response: Response,
   schema: z.ZodType<T>,
   failureMessage: string,
 ): Promise<T> {
   if (!response.ok) {
+    const locked = lockedAccessErrorFromResponse(response, projectId);
+    if (locked) throw locked;
     throw new Error(
       await errorMessage(
         response,
@@ -120,6 +126,7 @@ const httpAttachmentTransport: AttachmentTransport = {
     const response = await fetch(`${ENDPOINT}?${query.toString()}`);
     return parse(
       "source-attachments.listAttachments",
+      projectId,
       response,
       AttachmentListResponseSchema,
       "Failed to load the attachments",
@@ -132,6 +139,7 @@ const httpAttachmentTransport: AttachmentTransport = {
     });
     return parse(
       "source-attachments.addAttachment",
+      projectId,
       response,
       AttachmentEntryResponseSchema,
       "Failed to add the attachment",
@@ -144,6 +152,7 @@ const httpAttachmentTransport: AttachmentTransport = {
     });
     return parse(
       "source-attachments.replaceAttachment",
+      projectId,
       response,
       ReplaceAttachmentResponseSchema,
       "Failed to replace the attachment",
@@ -156,6 +165,7 @@ const httpAttachmentTransport: AttachmentTransport = {
     );
     return parse(
       "source-attachments.removeAttachment",
+      projectId,
       response,
       TrashedAttachmentResponseSchema,
       "Failed to remove the attachment",
@@ -168,6 +178,7 @@ const httpAttachmentTransport: AttachmentTransport = {
     );
     return parse(
       "source-attachments.reorderAttachments",
+      projectId,
       response,
       AttachmentListResponseSchema,
       "Failed to reorder the attachments",

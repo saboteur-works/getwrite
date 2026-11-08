@@ -121,6 +121,7 @@ describe("ProjectSettingsDialog Writing Goals tab (Task 20, FR-6)", () => {
       "Spelling",
       "Noise Words",
       "Entities",
+      "Modules",
       "Project Encryption",
     ]);
   });
@@ -226,14 +227,15 @@ describe("ProjectSettingsDialog Organizer tab", () => {
 });
 
 describe("ProjectSettingsDialog Entities tab (Task 10, FR-10)", () => {
-  it("appends an Entities tab after Noise Words, before Project Encryption", async () => {
+  it("appends an Entities tab after Noise Words, before Modules and Project Encryption", async () => {
     await renderDialog();
     const names = screen
       .getAllByRole("tab")
       .map((t: HTMLElement) => (t.textContent ?? "").trim());
     expect(names[names.length - 1]).toBe("Project Encryption");
-    expect(names[names.length - 2]).toBe("Entities");
-    expect(names[names.length - 3]).toBe("Noise Words");
+    expect(names[names.length - 2]).toBe("Modules");
+    expect(names[names.length - 3]).toBe("Entities");
+    expect(names[names.length - 4]).toBe("Noise Words");
   });
 
   it("hosts the mention-highlight duration field in the Entities panel", async () => {

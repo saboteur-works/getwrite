@@ -6,7 +6,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   addAttachmentCore,
@@ -21,6 +21,16 @@ import {
   InvalidAttachmentOrderError,
   InvalidAttachmentResourceIdError,
   MAX_ATTACHMENTS_PER_SOURCE,
+} from "../../src/lib/models/source-attachments-core";
+import {
+  readAttachmentBytesCore,
+  AttachmentBytesMissingError,
+  AttachmentStoredContentError,
+  InvalidAttachmentIdError,
+} from "../../src/lib/models/source-attachment-bytes-core";
+import {
+  AttachmentNotFoundError,
+  AttachmentResourceNotFoundError,
 } from "../../src/lib/models/source-attachments-core";
 import {
   CLIENT_WRITABLE_SIDECAR_KEYS,
@@ -801,5 +811,254 @@ describe("encrypted Source: attachments, Trash and locked access (Task 26, FR-31
     expect(
       (await allFiles(`${root}/.trash`)).some((f) => f.includes("attachment-")),
     ).toBe(true);
+  });
+});
+
+describe("attachment byte read (Feature 103 Task 19, FR-18 storage half, FR-12, FR-30)", () => {
+  async function setOriginalName(
+    id: string,
+    attachmentId: string,
+    originalName: string,
+  ): Promise<void> {
+    await mutateSidecar(projectRoot, id, (current) => {
+      const sidecar = current as Record<string, MetadataValue>;
+      const list = (
+        sidecar.attachments as unknown as Array<{ id: string }>
+      ).map((e) => (e.id === attachmentId ? { ...e, originalName } : e));
+      return { ...sidecar, attachments: list as unknown as MetadataValue };
+    });
+  }
+
+  it("returns the stored bytes with the kind, mime and size of the stored entry", async () => {
+    const id = await createSource();
+    const png = await addAttachmentCore(projectId, id, pngInput());
+    const mp3 = await addAttachmentCore(projectId, id, {
+      fileName: "song.mp3",
+      mimeType: "audio/mpeg",
+      fileBytes: MP3,
+    });
+    const image = await readAttachmentBytesCore(projectId, id, png.id);
+    expect(image.kind).toBe("image");
+    expect(image.mime).toBe("image/png");
+    expect(image.size).toBe(PNG.byteLength);
+    expect(Buffer.from(image.bytes).equals(Buffer.from(PNG))).toBe(true);
+    const audio = await readAttachmentBytesCore(projectId, id, mp3.id);
+    expect(audio.kind).toBe("audio");
+    expect(audio.mime).toBe("audio/mpeg");
+    expect(Buffer.from(audio.bytes).equals(Buffer.from(MP3))).toBe(true);
+  });
+
+  it("reports the kind from the stored entry and the bytes, never from the original name", async () => {
+    const id = await createSource();
+    const mp3 = await addAttachmentCore(projectId, id, {
+      fileName: "song.mp3",
+      mimeType: "audio/mpeg",
+      fileBytes: MP3,
+    });
+    const png = await addAttachmentCore(projectId, id, pngInput());
+    await setOriginalName(id, mp3.id, "photo.png");
+    await setOriginalName(id, png.id, "voice.mp3");
+    expect((await readAttachmentBytesCore(projectId, id, mp3.id)).kind).toBe(
+      "audio",
+    );
+    expect((await readAttachmentBytesCore(projectId, id, png.id)).kind).toBe(
+      "image",
+    );
+  });
+
+  it("refuses a stored file whose bytes do not match the stored entry, rather than reporting a kind", async () => {
+    const id = await createSource();
+    const mp3 = await addAttachmentCore(projectId, id, {
+      fileName: "song.mp3",
+      mimeType: "audio/mpeg",
+      fileBytes: MP3,
+    });
+    await fs.writeFile(
+      path.join(resourceDir(id), mp3.fileName),
+      Buffer.from(PNG),
+    );
+    await expect(
+      readAttachmentBytesCore(projectId, id, mp3.id),
+    ).rejects.toBeInstanceOf(AttachmentStoredContentError);
+  });
+
+  it.each(["../x", "..\\x", "", "a/b", "/etc/passwd", "not-a-uuid"])(
+    "refuses the path-like or malformed attachment id %j with the shared message",
+    async (bad) => {
+      const id = await createSource();
+      const err = await readAttachmentBytesCore(projectId, id, bad).then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(InvalidAttachmentIdError);
+      expect((err as Error).message).toBe(
+        "An attachment id must be a valid id.",
+      );
+    },
+  );
+
+  it("refuses a malformed resource id and project id", async () => {
+    await expect(
+      readAttachmentBytesCore(projectId, "../x", generateUUID()),
+    ).rejects.toBeInstanceOf(InvalidAttachmentResourceIdError);
+    const id = await createSource();
+    await expect(
+      readAttachmentBytesCore("../x", id, generateUUID()),
+    ).rejects.toThrow("Invalid projectId");
+  });
+
+  it("refuses an unknown attachment, a missing resource and a non-Source", async () => {
+    const id = await createSource();
+    await expect(
+      readAttachmentBytesCore(projectId, id, generateUUID()),
+    ).rejects.toBeInstanceOf(AttachmentNotFoundError);
+    await expect(
+      readAttachmentBytesCore(projectId, generateUUID(), generateUUID()),
+    ).rejects.toBeInstanceOf(AttachmentResourceNotFoundError);
+    const text = await createResourceCore(projectId, {
+      type: "text",
+      name: "T",
+      text: { plainText: "x" },
+    });
+    await expect(
+      readAttachmentBytesCore(projectId, text.id, generateUUID()),
+    ).rejects.toBeInstanceOf(AttachmentResourceTypeError);
+  });
+
+  it("never reads outside the Source directory when the stored name is path-like", async () => {
+    const id = await createSource();
+    const entry = await addAttachmentCore(projectId, id, pngInput());
+    await mutateSidecar(projectRoot, id, (current) => {
+      const sidecar = current as Record<string, MetadataValue>;
+      const list = (
+        sidecar.attachments as unknown as Array<{ fileName: string }>
+      ).map((e) => ({ ...e, fileName: "../../project.json" }));
+      return { ...sidecar, attachments: list as unknown as MetadataValue };
+    });
+    await expect(
+      readAttachmentBytesCore(projectId, id, entry.id),
+    ).rejects.toBeInstanceOf(AttachmentStoredContentError);
+  });
+
+  it("reports a listed attachment whose file is gone as missing, not as empty", async () => {
+    const id = await createSource();
+    const entry = await addAttachmentCore(projectId, id, pngInput());
+    await fs.rm(path.join(resourceDir(id), entry.fileName));
+    await expect(
+      readAttachmentBytesCore(projectId, id, entry.id),
+    ).rejects.toBeInstanceOf(AttachmentBytesMissingError);
+  });
+
+  it("reads through the storage adapter, not node:fs", async () => {
+    const memory = createMemoryAdapter();
+    const readSpy = vi.spyOn(memory, "readFileBuffer");
+    const root = `/ws-bytes/${projectId}`;
+    const sid = generateUUID();
+    const context: StorageContext = {
+      tenantRoot: "/ws-bytes",
+      adapter: memory,
+      projectRoot: root,
+    };
+    const entry = await runInStorageContext(context, async () => {
+      await io.mkdir(root, { recursive: true });
+      await writeSidecar(root, sid, {
+        id: sid,
+        slug: "s",
+        type: "source",
+        name: "S",
+        orderIndex: 0,
+        folderId: null,
+        createdAt: T0,
+        updatedAt: T0,
+      } as Record<string, MetadataValue>);
+      return addAttachmentCore(projectId, sid, pngInput());
+    });
+    const saved = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = "/ws-bytes";
+    try {
+      const result = await runInStorageContext(context, () =>
+        readAttachmentBytesCore(projectId, sid, entry.id),
+      );
+      expect(Buffer.from(result.bytes).equals(Buffer.from(PNG))).toBe(true);
+    } finally {
+      process.env.GETWRITE_PROJECTS_DIR = saved;
+    }
+    expect(readSpy).toHaveBeenCalledWith(
+      `${root}/resources/${sid}/${entry.fileName}`,
+    );
+  });
+});
+
+describe("attachment byte read in an encrypted project (Feature 103 Task 19, FR-12)", () => {
+  const WORKSPACE = "/ws-task19";
+  let base: StorageAdapter;
+  let keyring: Keyring;
+  let pid: string;
+  let root: string;
+  let ctx: StorageContext;
+  let sid: string;
+  const previousAdapter = io.getStorageAdapter();
+  let savedEnv: string | undefined;
+  const locked = (err: unknown): boolean => isLockedAccessError(err);
+  const inCtx = <T>(fn: () => Promise<T>): Promise<T> =>
+    Promise.resolve(runInStorageContext(ctx, fn));
+
+  beforeEach(async () => {
+    __resetIndexerForTests();
+    savedEnv = process.env.GETWRITE_PROJECTS_DIR;
+    process.env.GETWRITE_PROJECTS_DIR = WORKSPACE;
+    base = createMemoryAdapter();
+    pid = generateUUID();
+    root = `${WORKSPACE}/${pid}`;
+    await base.mkdir(root, { recursive: true });
+    keyring = await createKeyring(
+      "correct horse battery staple",
+      TEST_ARGON2_PARAMS,
+    );
+    await keyring.addProject(pid);
+    await writeProjectMarker(root, base);
+    ctx = {
+      tenantRoot: WORKSPACE,
+      adapter: workspaceEncryptionAdapter(base, WORKSPACE, keyring),
+      projectRoot: root,
+    };
+    sid = generateUUID();
+    await inCtx(() =>
+      writeSidecar(root, sid, {
+        id: sid,
+        slug: "s",
+        type: "source",
+        name: "S",
+        orderIndex: 0,
+        folderId: null,
+        createdAt: T0,
+        updatedAt: T0,
+      } as Record<string, MetadataValue>),
+    );
+  });
+
+  afterEach(() => {
+    io.setStorageAdapter(previousAdapter);
+    if (savedEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = savedEnv;
+    __resetIndexerForTests();
+  });
+
+  it("returns the plain bytes while unlocked and raises the locked error, not missing or empty, when locked", async () => {
+    const entry = await inCtx(() => addAttachmentCore(pid, sid, pngInput()));
+    expect(
+      isEnvelope(
+        await base.readFileBuffer(`${root}/resources/${sid}/${entry.fileName}`),
+      ),
+    ).toBe(true);
+    const opened = await inCtx(() =>
+      readAttachmentBytesCore(pid, sid, entry.id),
+    );
+    expect(Buffer.from(opened.bytes).equals(Buffer.from(PNG))).toBe(true);
+
+    keyring.lock();
+    await expect(
+      inCtx(() => readAttachmentBytesCore(pid, sid, entry.id)),
+    ).rejects.toSatisfy(locked);
   });
 });

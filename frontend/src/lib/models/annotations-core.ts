@@ -154,7 +154,7 @@ export async function listAnnotationsCore(
 }
 
 /**
- * Add an annotation. `input` is `{ id, body, quote }`; the core sets both
+ * Add an annotation. `input` is `{ id, body, quote, target? }`; the core sets both
  * timestamps. Returns the stored annotation.
  *
  * @throws InvalidAnnotationError, InvalidAnnotationResourceIdError,
@@ -177,6 +177,7 @@ export async function addAnnotationCore(
     id: fields.id,
     body: fields.body,
     quote: fields.quote,
+    ...(fields.target === undefined ? {} : { target: fields.target }),
     createdAt: now,
     updatedAt: now,
   };
@@ -190,7 +191,8 @@ export async function addAnnotationCore(
 
 /**
  * Replace an annotation's body and set `updatedAt`; `quote` and `createdAt`
- * are kept. Returns the stored annotation.
+ * are kept. An empty body is accepted only when the stored annotation has a
+ * `target`. Returns the stored annotation.
  *
  * @throws as {@link addAnnotationCore}, plus AnnotationNotFoundError.
  */
@@ -201,8 +203,10 @@ export async function updateAnnotationCore(
   body: unknown,
 ): Promise<Annotation> {
   requireResourceId(resourceId);
-  const checkedBody = validateAnnotationBody(body);
-  if (!checkedBody.ok) throw new InvalidAnnotationError(checkedBody.message);
+  // Before any lock: type and upper bound only. Whether an empty body is
+  // allowed depends on the stored annotation's `target`, checked in the lock.
+  const early = validateAnnotationBody(body, true);
+  if (!early.ok) throw new InvalidAnnotationError(early.message);
   if (!UuidSchema.safeParse(annotationId).success) {
     throw new InvalidAnnotationError("An annotation id must be a valid id.");
   }
@@ -211,7 +215,13 @@ export async function updateAnnotationCore(
   await mutateAnnotations(projectId, resourceId, (list) => {
     const index = list.findIndex((a) => a.id === annotationId);
     if (index === -1) throw new AnnotationNotFoundError();
-    stored = { ...list[index]!, body: checkedBody.value, updatedAt };
+    const current = list[index]!;
+    const checkedBody = validateAnnotationBody(
+      early.value,
+      current.target !== undefined,
+    );
+    if (!checkedBody.ok) throw new InvalidAnnotationError(checkedBody.message);
+    stored = { ...current, body: checkedBody.value, updatedAt };
     return list.map((a, i) => (i === index ? (stored as Annotation) : a));
   });
   return stored as Annotation;

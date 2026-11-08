@@ -8,7 +8,7 @@ summary: Attach private notes to passages of a document, edit or delete them, re
 
 An **annotation** is a note attached to a passage of a document. The passage is highlighted in the text, and the note is kept alongside it. Annotations are for you: they are never part of the document's text, and they are left out when you [compile or export](../protect-and-finish/compiling.md).
 
-Annotations work on documents. Images and audio can't have them.
+Annotations work on documents and Sources. Images and audio can't have them.
 
 ## Add a note
 
@@ -27,6 +27,25 @@ Choose **Annotations** in the editor toolbar to open the panel below the text. I
 - **Delete** asks you to confirm, then removes the note and its highlight. The text itself is not changed.
 
 If the notes can't be read, the panel says so and offers **Try again**. That is a failure, not an empty list.
+
+## Cite a Source
+
+You can tie a passage in a document to one of your [Sources](../protect-and-finish/resources.md#sources-and-attachments). Select the passage, choose a Source under **Cite a Source**, and choose **Cite selection**. You can also pick one of the Source's attachments and say where in it the passage sits: a **Page**, **Timestamp**, **Paragraph** or **Line**, with a free-text value. A citation can have no note text. A note on any other passage needs 1 to 5000 characters.
+
+The panel shows each citation with the Source's name as it was when you cited it. Renaming the Source later does not change that name. If the Source is deleted, the citation stays and shows the Source as removed. If GetWrite cannot check the Source, the citation says so. It does not show the Source as removed or as present.
+
+## Mark an excerpt of a Source
+
+An excerpt is a passage of a Source's own text that you want to keep track of. To make one:
+
+1. Open the Source in the editor. You can choose it in the **Sources** tab or in the Resource Tree.
+2. Select the passage.
+3. If you want to record where the passage sits, choose a type under **Excerpt locator** (**Page**, **Timestamp**, **Paragraph** or **Line**) and type a value. Leave it empty to skip this.
+4. Choose **Mark as excerpt** below the text. A message says **Marked the excerpt.**
+
+The passage is highlighted in the Source. To see all of a Source's excerpts, open the **Sources** tab and choose **Excerpts** on its row. The **Sources** tab can't mark a text excerpt, because you select the text in the editor. **Mark as excerpt** appears only for a Source, and it is hidden if you clear **Enable Sources** in **Project Settings**, **Modules** tab. Excerpts you already made stay listed.
+
+An excerpt of an image or audio attachment has no passage in the text. It is listed with the other notes and is never marked as detached.
 
 ## Detached notes
 

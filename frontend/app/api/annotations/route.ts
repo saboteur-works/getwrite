@@ -10,7 +10,8 @@
  * - `PUT    { projectId, resourceId, annotationId, body }`
  * - `PATCH  { projectId, resourceId, annotationId, quote }` re-attach: replaces
  *   the quote only (FR-16).
- * - `DELETE { projectId, resourceId, annotationId }`
+ * - `DELETE { projectId, resourceId, annotationId }` limited by
+ *   `permanentDeletion` (403 `{ error, limit }` for a paired device).
  *
  * Invalid project id, resource id or body, and a non-text resource, map to
  * 400 with the core's message; a missing resource or annotation maps to 404.
@@ -33,6 +34,7 @@ import {
   reattachAnnotationCore,
   updateAnnotationCore,
 } from "../../../src/lib/models/annotations-core";
+import { checkLimit } from "../../../src/lib/sharing/limits-check";
 import { withStorageContext } from "../_tenant/with-storage-context";
 
 function failure(message: string, status: number): Response {
@@ -167,6 +169,16 @@ export const GET = withStorageContext(handleGet);
 export const POST = withStorageContext(handlePost);
 export const PUT = withStorageContext(handlePut);
 export const PATCH = withStorageContext(handlePatch);
-export const DELETE = withStorageContext(handleDelete);
+const wrappedDelete = withStorageContext(handleDelete);
+
+/**
+ * Feature 103 (FR-13, OQ-10): an annotation delete removes the note from the
+ * sidecar with no Trash, so it is `permanentDeletion` for every annotation
+ * (plain note, excerpt, citation). Checked before `withStorageContext` and
+ * before the body is parsed. GET, POST, PUT and PATCH are not limited.
+ */
+export async function DELETE(req: NextRequest): Promise<Response> {
+  return checkLimit(req, "permanentDeletion") ?? wrappedDelete(req);
+}
 
 export const dynamic = "force-dynamic";

@@ -124,7 +124,11 @@ async function seedNative(): Promise<{
 function request(method: string, body: unknown): NextRequest {
   return new NextRequest(ENDPOINT, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // The desktop window is never limited (Feature 103, FR-13).
+      "x-getwrite-classification": "window",
+    },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
@@ -143,7 +147,10 @@ function wireFetch(): void {
     return handlers[method](
       new NextRequest(`http://localhost${String(url)}`, {
         method,
-        headers: init?.headers as HeadersInit,
+        headers: {
+          ...(init?.headers as Record<string, string>),
+          "x-getwrite-classification": "window",
+        },
         body: init?.body as string | undefined,
       }),
     );

@@ -65,7 +65,7 @@ export const INTRINSIC_FIELDS: readonly IntrinsicField[] = [
     key: "type",
     label: "Type",
     type: "select",
-    options: ["text", "image", "audio", "folder"],
+    options: ["text", "image", "audio", "folder", "source"],
     source: "resource",
     read: (resource) => resource.type,
   },

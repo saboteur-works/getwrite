@@ -34,7 +34,13 @@ describe("a11y: WorkArea view switcher keyboard navigation (T036)", () => {
     function Harness(): JSX.Element {
       const [view, setView] = React.useState<ViewName>("edit");
 
-      return <ViewSwitcher view={view} onChange={setView} />;
+      return (
+        <ViewSwitcher
+          view={view}
+          onChange={setView}
+          moduleViews={[{ key: "trash", label: "Trash" }]}
+        />
+      );
     }
 
     render(<Harness />);

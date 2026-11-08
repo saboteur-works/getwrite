@@ -21,8 +21,16 @@
  */
 import type { Editor } from "@tiptap/core";
 import type { Mark } from "@tiptap/pm/model";
-import type { Annotation } from "./models/types";
+import type {
+  Annotation,
+  AnnotationLocator,
+  AnnotationTarget,
+} from "./models/types";
 import type { NewAnnotation } from "./api/annotations";
+import {
+  buildAttachmentExcerptInput,
+  buildTextExcerptInput,
+} from "./models/excerpts";
 
 /** Transaction meta key set on every annotation mark change. */
 export const ANNOTATION_TRANSACTION_META = "annotation";
@@ -65,6 +73,8 @@ export interface AddAnnotationInput {
   range: AnnotationRange;
   /** Defaults to a fresh UUID. */
   id?: string;
+  /** Feature 103: the Source this annotation cites or excerpts. */
+  target?: AnnotationTarget;
 }
 
 export type AddAnnotationResult =
@@ -139,7 +149,7 @@ export async function addAnnotationFlow(
   api: AnnotationFlowApi,
   input: AddAnnotationInput,
 ): Promise<AddAnnotationResult> {
-  const { editor, projectId, resourceId, body, range } = input;
+  const { editor, projectId, resourceId, body, range, target } = input;
   const quote = quoteAt(editor, range);
   if (range.to <= range.from || quote.length === 0) {
     return {
@@ -151,7 +161,12 @@ export async function addAnnotationFlow(
   const id = input.id ?? crypto.randomUUID();
   let annotation: Annotation;
   try {
-    annotation = await api.add(projectId, resourceId, { id, body, quote });
+    annotation = await api.add(projectId, resourceId, {
+      id,
+      body,
+      quote,
+      ...(target === undefined ? {} : { target }),
+    });
   } catch (error) {
     return {
       ok: false,
@@ -261,4 +276,105 @@ export async function removeAnnotationFlow(
     };
   }
   return { ok: true };
+}
+
+export interface AddTextExcerptInput {
+  editor: Editor;
+  projectId: string;
+  /** The Source's resource id; also the `target.sourceId`. */
+  resourceId: string;
+  range: AnnotationRange;
+  body: string;
+  sourceName?: string;
+  locator?: AnnotationLocator;
+  id?: string;
+}
+
+export type AddTextExcerptResult =
+  | AddAnnotationResult
+  | { ok: false; stage: "invalid"; message: string };
+
+/**
+ * Adds a text excerpt of a Source (FR-21): an annotation in the Source body
+ * whose target is the Source itself. The target is validated before any write;
+ * the write order and failure stages are those of {@link addAnnotationFlow}.
+ */
+export async function addTextExcerptFlow(
+  api: AnnotationFlowApi,
+  input: AddTextExcerptInput,
+): Promise<AddTextExcerptResult> {
+  const { editor, range } = input;
+  const id = input.id ?? crypto.randomUUID();
+  const built = buildTextExcerptInput({
+    id,
+    body: input.body,
+    quote: quoteAt(editor, range),
+    sourceId: input.resourceId,
+    sourceName: input.sourceName,
+    locator: input.locator,
+  });
+  if (!built.ok) {
+    // An empty selection keeps its flow-level stage and message.
+    if (range.to <= range.from || quoteAt(editor, range).length === 0) {
+      return addAnnotationFlow(api, { ...input, id });
+    }
+    return { ok: false, stage: "invalid", message: built.message };
+  }
+  return addAnnotationFlow(api, {
+    editor,
+    projectId: input.projectId,
+    resourceId: input.resourceId,
+    body: built.value.body,
+    range,
+    id,
+    target: built.value.target,
+  });
+}
+
+export interface AddAttachmentExcerptInput {
+  projectId: string;
+  sourceId: string;
+  attachmentId: string;
+  locator: AnnotationLocator;
+  sourceName?: string;
+  id?: string;
+}
+
+export type AddAttachmentExcerptResult =
+  | { ok: true; annotation: Annotation }
+  | { ok: false; stage: "invalid" | "write"; message: string };
+
+/**
+ * Records a locator-only excerpt of an image or audio attachment (FR-22,
+ * OQ-1): one annotation on the Source with an empty body and no mark by
+ * design. There is no editor step, so the only stages are invalid and write.
+ */
+export async function addAttachmentExcerptFlow(
+  api: Pick<AnnotationFlowApi, "add">,
+  input: AddAttachmentExcerptInput,
+): Promise<AddAttachmentExcerptResult> {
+  const built = buildAttachmentExcerptInput({
+    id: input.id ?? crypto.randomUUID(),
+    sourceId: input.sourceId,
+    attachmentId: input.attachmentId,
+    locator: input.locator,
+    sourceName: input.sourceName,
+  });
+  if (!built.ok) {
+    return { ok: false, stage: "invalid", message: built.message };
+  }
+  try {
+    const annotation = await api.add(
+      input.projectId,
+      input.sourceId,
+      built.value as NewAnnotation,
+    );
+    return { ok: true, annotation };
+  } catch (error) {
+    return {
+      ok: false,
+      stage: "write",
+      message: messageOf(error, "The excerpt could not be saved."),
+    };
+  }
 }

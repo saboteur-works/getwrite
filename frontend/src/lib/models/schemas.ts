@@ -380,6 +380,12 @@ export const ProjectConfigSchema = z.object({
   metadataSchema: MetadataSchemaSchema.optional(),
   metadataRevision: z.number().int().nonnegative().optional(),
   features: ProjectFeatureFlagsSchema.optional(),
+  /**
+   * Per-project module on/off flags keyed by module id (sources-module-seam,
+   * FR-5). A record, not a fixed object, so an id this build does not know is
+   * kept on write. Absent entry and absent record both parse.
+   */
+  modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: OrganizerCardBodyConfigSchema.optional(),
 });
 
@@ -519,10 +525,29 @@ export const ResourceBaseSchema = z
   })
   .extend(EntitySidecarFieldsSchema.shape);
 
+/** A locator's optional type (Feature 103, FR-21). */
+const AnnotationLocatorSchema = z.object({
+  type: z.enum(["page", "timestamp", "paragraph", "line"]).optional(),
+  value: z.string(),
+});
+
 /**
- * One annotation in a text resource's sidecar (Feature 101, FR-10). No
- * `target` field: the passage is the `annotation` mark with the same id.
- * Length limits and the per-resource count are enforced by
+ * An annotation's optional `target` (Feature 103, FR-24). Limits and the
+ * unknown-key refusal are enforced by `annotation-validation.ts` at the
+ * write boundary, not here.
+ */
+export const AnnotationTargetSchema = z.object({
+  sourceId: UUID,
+  attachmentId: UUID.optional(),
+  excerptId: UUID.optional(),
+  locator: AnnotationLocatorSchema.optional(),
+  sourceName: z.string().optional(),
+});
+
+/**
+ * One annotation in a text resource's sidecar (Feature 101, FR-10). The
+ * passage is the `annotation` mark with the same id; an optional `target`
+ * ties it to a Source (Feature 103, FR-24). Length limits and the per-resource count are enforced by
  * `annotation-validation.ts` at the write boundary, not here, so a stored
  * sidecar is never made unreadable by a limit.
  */
@@ -530,6 +555,7 @@ export const AnnotationSchema = z.object({
   id: UUID,
   body: z.string(),
   quote: z.string(),
+  target: AnnotationTargetSchema.optional(),
   createdAt: IsoDateString,
   updatedAt: IsoDateString,
 });

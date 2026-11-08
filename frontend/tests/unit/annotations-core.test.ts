@@ -330,7 +330,16 @@ describe("annotation core, refusals", () => {
       () => addAnnotationCore(projectId, resourceId, newInput({ id: "nope" })),
       () => addAnnotationCore(projectId, resourceId, newInput({ extra: 1 })),
       () => addAnnotationCore(projectId, resourceId, "string"),
-      () => updateAnnotationCore(projectId, resourceId, generateUUID(), ""),
+      // Feature 103, FR-26: whether an empty update body is allowed depends on
+      // the stored annotation's target, so it is checked in the lock; the
+      // pre-lock refusal here is the upper bound.
+      () =>
+        updateAnnotationCore(
+          projectId,
+          resourceId,
+          generateUUID(),
+          "x".repeat(5001),
+        ),
       () => updateAnnotationCore(projectId, resourceId, "bad-id", "ok"),
       () => deleteAnnotationCore(projectId, resourceId, "bad-id"),
     ];

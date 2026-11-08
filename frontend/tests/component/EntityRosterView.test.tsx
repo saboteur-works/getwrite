@@ -20,6 +20,7 @@ import {
 import { setResources } from "../../src/store/resourcesSlice";
 import { fetchEntityAliasTable } from "../../src/store/entityAliasTableSlice";
 import type { EntityAliasTable } from "../../src/lib/models/entity-alias-table";
+import { createSourceResource } from "../../src/lib/models/resource-factory";
 import type { AnyResource } from "../../src/lib/models/types";
 
 vi.mock("../../src/lib/api/entity-alias-table", () => ({
@@ -170,6 +171,42 @@ describe("EntityRosterView", () => {
       "Mikeburg",
       "Zedd",
     ]);
+  });
+
+  it("lists a Source that has an entityKind, with its kind and mention count (Feature 103 Task 24, FR-20)", async () => {
+    const source = {
+      ...createSourceResource({ name: "Archive letter" }),
+      entityKind: "document",
+    } as AnyResource;
+    const table: EntityAliasTable = {
+      entities: {
+        [source.id]: {
+          entityId: source.id,
+          entityKind: "document",
+          name: "Archive letter",
+          aliases: [],
+          terms: ["Archive letter"],
+        },
+      },
+      claimedBy: {},
+    };
+    mockedGetEntityMentionCounts.mockResolvedValue({
+      [source.id]: { mentions: 4, resources: 2 },
+    });
+
+    const store = await setupStore(table, true, [source]);
+
+    render(
+      <Provider store={store}>
+        <EntityRosterView />
+      </Provider>,
+    );
+
+    const names = await screen.findAllByTestId("entity-roster-row-name");
+    expect(names.map((el: HTMLElement) => el.textContent)).toEqual([
+      "Archive letter",
+    ]);
+    expect(screen.getByText("document")).toBeInTheDocument();
   });
 
   it("treats a missing mention-count entry the same as an explicit zero, distinguished from nonzero (FR-5)", async () => {

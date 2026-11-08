@@ -15,6 +15,10 @@ import {
   useAnnotationsPanel,
 } from "../../components/Editor/Annotations/useAnnotationsPanel";
 import AnnotationsToolbarButton from "../../components/Editor/MenuBar/AnnotationsToolbarButton";
+import {
+  StaticSharingLimitsProvider,
+  type StaticSharingLimitsValue,
+} from "../../components/Sharing/SharingLimitsContext";
 import type {
   AnnotationsHandle,
   AnnotationsState,
@@ -73,24 +77,29 @@ export function makeHandle(state: AnnotationsState): AnnotationsHandle {
 export function Harness({
   editor,
   handle,
+  limits,
 }: {
   editor: Editor;
   handle: AnnotationsHandle;
+  /** The sharing-limits answer the panel reads; the window (exempt) when omitted. */
+  limits?: StaticSharingLimitsValue;
 }): JSX.Element {
   const panel = useAnnotationsPanel("resource-1", editor);
   return (
-    <div>
-      <AnnotationsToolbarButton {...panel.control} />
-      {panel.isOpen ? (
-        <AnnotationsPanel
-          editor={editor}
-          handle={handle}
-          panelId={ANNOTATIONS_PANEL_ID}
-          onClose={panel.close}
-          pendingAdd={panel.pendingAdd}
-          onAddDone={panel.clearAdd}
-        />
-      ) : null}
-    </div>
+    <StaticSharingLimitsProvider value={limits}>
+      <div>
+        <AnnotationsToolbarButton {...panel.control} />
+        {panel.isOpen ? (
+          <AnnotationsPanel
+            editor={editor}
+            handle={handle}
+            panelId={ANNOTATIONS_PANEL_ID}
+            onClose={panel.close}
+            pendingAdd={panel.pendingAdd}
+            onAddDone={panel.clearAdd}
+          />
+        ) : null}
+      </div>
+    </StaticSharingLimitsProvider>
   );
 }

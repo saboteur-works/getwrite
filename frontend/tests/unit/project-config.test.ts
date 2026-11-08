@@ -8,7 +8,11 @@ import {
   PROJECT_FILENAME,
 } from "../../src/lib/models/project-config";
 import { normalizeProjectConfig } from "../../src/lib/models/project";
-import { ProjectConfigSchema } from "../../src/lib/models/schemas";
+import {
+  ProjectConfigSchema,
+  ProjectSchema as PersistedProjectSchema,
+} from "../../src/lib/models/schemas";
+import { ProjectSchema as ApiProjectSchema } from "../../src/lib/api/schemas";
 import {
   MAX_SPELLING_LIST_SIZE,
   MAX_SPELLING_WORD_LENGTH,
@@ -372,5 +376,79 @@ describe("ProjectConfigSchema — compileDefaults and exportDefaults (Feature 10
         exportDefaults: { excludedResourceIds: [1] },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("config.modules (sources-module-seam, FR-5, FR-14)", () => {
+  const baseProject = {
+    id: "11111111-1111-4111-8111-111111111111",
+    name: "Modules",
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  it("keeps an unknown module id through the persisted schema", () => {
+    const parsed = ProjectConfigSchema.parse({
+      modules: { sources: false, "future-module": true },
+    });
+    expect(parsed.modules).toEqual({ sources: false, "future-module": true });
+  });
+
+  it("keeps an unknown module id through the client parse round trip", () => {
+    const written = PersistedProjectSchema.parse({
+      ...baseProject,
+      config: { modules: { sources: true, "future-module": false } },
+    });
+    const wire = JSON.parse(
+      JSON.stringify({
+        ...written,
+        config: { ...written.config, editorConfig: {} },
+      }),
+    );
+    const client = ApiProjectSchema.parse(wire);
+    expect(client.config?.modules).toEqual({
+      sources: true,
+      "future-module": false,
+    });
+  });
+
+  it("rejects a non-boolean module flag", () => {
+    expect(
+      ProjectConfigSchema.safeParse({ modules: { sources: "yes" } }).success,
+    ).toBe(false);
+  });
+
+  it("parses a project with no config.modules and leaves it absent", () => {
+    const persisted = PersistedProjectSchema.parse({
+      ...baseProject,
+      config: {},
+    });
+    expect("modules" in (persisted.config ?? {})).toBe(false);
+    const client = ApiProjectSchema.parse({
+      ...baseProject,
+      config: { editorConfig: {} },
+    });
+    expect("modules" in (client.config ?? {})).toBe(false);
+  });
+
+  it("leaves all seven existing config.features flags unchanged", () => {
+    const features = {
+      timeline: true,
+      timelineView: false,
+      pov: true,
+      synopsis: false,
+      notes: true,
+      entities: false,
+      entityHighlighting: true,
+    };
+    expect(ProjectConfigSchema.parse({ features }).features).toEqual(features);
+    expect(
+      ApiProjectSchema.parse({
+        ...baseProject,
+        config: { editorConfig: {}, features },
+      }).config?.features,
+    ).toEqual(features);
+    expect(
+      ProjectConfigSchema.parse({ features: { sources: true } }).features,
+    ).toEqual({});
   });
 });
