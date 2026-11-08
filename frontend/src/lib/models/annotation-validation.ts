@@ -49,17 +49,23 @@ function refuse(message: string): { ok: false; message: string } {
   return { ok: false, message };
 }
 
-/** Validate an annotation body: a string of 1 to 5000 characters. */
+/**
+ * Validate an annotation body. Without a `target` it is 1 to 5000 characters;
+ * with one (`hasTarget`, Feature 103, FR-26) it is 0 to 5000. The upper bound
+ * is the same for both.
+ */
 export function validateAnnotationBody(
   body: unknown,
+  hasTarget = false,
 ): AnnotationValidation<string> {
+  const min = hasTarget ? 0 : ANNOTATION_LIMITS.bodyMin;
   if (
     typeof body !== "string" ||
-    body.length < ANNOTATION_LIMITS.bodyMin ||
+    body.length < min ||
     body.length > ANNOTATION_LIMITS.bodyMax
   ) {
     return refuse(
-      `An annotation body must be ${ANNOTATION_LIMITS.bodyMin} to ${ANNOTATION_LIMITS.bodyMax} characters.`,
+      `An annotation body must be ${min === 0 ? "at most" : `${min} to`} ${ANNOTATION_LIMITS.bodyMax} characters.`,
     );
   }
   return { ok: true, value: body };
@@ -209,7 +215,13 @@ export function validateNewAnnotation(
       `A resource can't have more than ${ANNOTATION_LIMITS.maxPerResource} annotations.`,
     );
   }
-  const body = validateAnnotationBody(record.body);
+  let target: AnnotationTarget | undefined;
+  if (record.target !== undefined) {
+    const checkedTarget = validateAnnotationTarget(record.target);
+    if (!checkedTarget.ok) return checkedTarget;
+    target = checkedTarget.value;
+  }
+  const body = validateAnnotationBody(record.body, target !== undefined);
   if (!body.ok) return body;
   const quote = validateAnnotationQuote(record.quote);
   if (!quote.ok) return quote;
@@ -218,10 +230,6 @@ export function validateNewAnnotation(
     body: body.value,
     quote: quote.value,
   };
-  if (record.target !== undefined) {
-    const target = validateAnnotationTarget(record.target);
-    if (!target.ok) return target;
-    value.target = target.value;
-  }
+  if (target !== undefined) value.target = target;
   return { ok: true, value };
 }
