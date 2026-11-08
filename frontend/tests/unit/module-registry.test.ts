@@ -135,18 +135,65 @@ describe("registry boundary (FR-11, OQ-12)", () => {
   });
 });
 
+/** Patterns FR-2 forbids in a registry source file (build-time only). */
+const FORBIDDEN_FR2: readonly { name: string; pattern: RegExp }[] = [
+  { name: "dynamic import()", pattern: /\bimport\s*\(/ },
+  { name: "require()", pattern: /\brequire\s*\(/ },
+  {
+    name: "store or user-data read",
+    pattern:
+      /node:fs|from\s+["']fs["']|readFile|userData|getProjectsDir|projects-dir|project-root-resolver/,
+  },
+];
+
+function fr2Violations(text: string): string[] {
+  return FORBIDDEN_FR2.filter(({ pattern }) => pattern.test(text)).map(
+    ({ name }) => name,
+  );
+}
+
+const UI_REGISTRY_FILE = path.resolve(
+  __dirname,
+  "../../components/Modules/uiRegistry.ts",
+);
+
+/** The model-side files plus the UI-side registry (Task 42). */
+const FR2_FILES: readonly { label: string; read: () => string }[] = [
+  ...FILES.map((file) => ({ label: file, read: () => source(file) })),
+  {
+    label: "components/Modules/uiRegistry.ts",
+    read: () => readFileSync(UI_REGISTRY_FILE, "utf8"),
+  },
+];
+
 describe("build-time only (FR-2) and no UI imports (FR-4)", () => {
-  it.each(FILES)(
-    "%s has no dynamic import() and no store or user-data read",
-    (file) => {
-      const text = source(file);
-      expect(text).not.toMatch(/\bimport\s*\(/);
-      expect(text).not.toMatch(/\brequire\s*\(/);
-      expect(text).not.toMatch(
-        /node:fs|from\s+["']fs["']|readFile|userData|getProjectsDir|projects-dir|project-root-resolver/,
-      );
+  it.each(FR2_FILES)(
+    "$label has no dynamic import() and no store or user-data read",
+    ({ read }) => {
+      expect(fr2Violations(read())).toEqual([]);
     },
   );
+
+  it("the FR-2 scan flags a dynamic import, a require and a store read (not vacuous)", () => {
+    expect(fr2Violations('const m = await import("x");')).toEqual([
+      "dynamic import()",
+    ]);
+    expect(fr2Violations('const m = require("x");')).toEqual(["require()"]);
+    expect(fr2Violations('import fs from "node:fs";')).toEqual([
+      "store or user-data read",
+    ]);
+    expect(fr2Violations("const dir = getProjectsDir();")).toEqual([
+      "store or user-data read",
+    ]);
+    expect(fr2Violations('import X from "../Sources/SourcesView";')).toEqual(
+      [],
+    );
+  });
+
+  it("the FR-2 scan flags a temporary copy of uiRegistry.ts with a dynamic import appended", () => {
+    const mutated = `${readFileSync(UI_REGISTRY_FILE, "utf8")}\nconst lazy = () => import("../Sources/SourcesView");\n`;
+    expect(fr2Violations(mutated)).toEqual(["dynamic import()"]);
+  });
 
   it.each(FILES)("%s imports no React, JSX or JSON", (file) => {
     const text = source(file);

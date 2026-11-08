@@ -290,7 +290,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 1
 **Notes:** Owner decision at the Wave 1 checkpoint, 2026-11-07, item 8; closes the FR-2 gap in checkpoint section 2. Depends on 38 only so the scan runs against the registry file as converted; Tasks 20 and 31 later edit that file and the test then guards them.
 **POS:** task_717c2463
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Attachments section in the Sources view and the attachments-section slot
 **What:** Build one attachments-section component with one list-reading hook, placed through a new registry slot kind, usable from the Sources view and the sidebar.
