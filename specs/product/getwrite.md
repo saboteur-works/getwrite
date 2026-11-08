@@ -317,6 +317,25 @@ with the app without hand-rewriting it (see OQ-90).
   2026-11-06; FR-102 to FR-111. Owner decisions, 2026-11-04, note_31c82491.
   This is the core part only; the Sources interface, excerpts, citations and
   the module seam are a later run, see FR-110.)
+- US-41: As a writer gathering evidence for nonfiction, true crime or folklore,
+  I want to open a place in the app that lists my Sources and shows each
+  Source's attachments, so that I work with my sources directly and not by hunting
+  through the resource tree and the metadata sidebar. [Next] (Added 2026-11-07;
+  FR-112 to FR-116, FR-136 to FR-139. Owner batching, 2026-11-04, note_31c82491, row C: the
+  Sources module UI. Feature 102 built Sources core with no interface, FR-110.)
+- US-42: As a writer working from a Source, I want to mark an excerpt of it and
+  record where it sits (a page, a timestamp, or another locator), so that I can
+  find the passage again and say exactly where it came from. [Next] (Added
+  2026-11-07; FR-117 to FR-119. Owner batching, 2026-11-04, note_31c82491, row
+  C. An excerpt is an annotation inside the Source body, OQ-156, resolved.)
+- US-43: As a writer, I want to select a passage in my text and tie it to a
+  Source, or to one of its excerpts, so that the passage shows what it rests on.
+  [Next] (Added 2026-11-07; FR-120 to FR-124, FR-140. Owner batching, 2026-11-04,
+  note_31c82491, row C. Built on annotations, FR-83 to FR-90. Compile output of
+  citations and a bibliography are a later run, row G.)
+- US-45: As a writer, I want to choose Source in the Type filter of a query, so
+  that I can find my Sources and build a smart folder of them. [Next] (Added
+  2026-11-07; FR-133. Owner decision, 2026-11-07: this fix ships in Run C.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -324,6 +343,16 @@ with the app without hand-rewriting it (see OQ-90).
   documentation, I want to take the handbook content from the GetWrite
   repository and publish it without rewriting it by hand, so that the online
   documentation and the app do not drift apart. [Later]
+
+**Maintainer adding a first-party module to GetWrite**
+
+- US-44: As a maintainer adding a first-party module to GetWrite, I want to
+  register what a module adds to the app in one internal place, built with
+  the Sources module as its first user, so that a later module does not have to
+  edit each large component by hand and the registry's shape comes from a real
+  consumer. [Next] (Added 2026-11-07; FR-125 to FR-132, FR-134, FR-135. Owner batching,
+  2026-11-04, note_31c82491, row C and Phase 2; ADR-016's condition. First-party
+  modules only, no third-party plugins.)
 
 ## Functional Requirements
 
@@ -1569,8 +1598,10 @@ with the app without hand-rewriting it (see OQ-90).
 - FR-104: A Source MUST NOT be treated as an entity: it MUST NOT be found by
   matching names in prose and MUST NOT appear in the entity roster or the entity
   graph through entity machinery. This feature MUST NOT link a Source to an entity;
-  that is deferred to the Sources module (Run C). [US-40] (Added 2026-11-06.
-  Owner decision, 2026-11-04. Resolved, OQ-151; Owner decision, 2026-11-07.)
+  that is deferred beyond Run C (FR-139). [US-40] (Added 2026-11-06.
+  Owner decision, 2026-11-04. Resolved, OQ-151; Owner decision, 2026-11-07.
+  Deferral moved from Run C to later, OQ-162, 2026-11-07. Superseded in part, 2026-11-07: a Source with `entityKind` is an entity, see
+  FR-136.)
 - FR-105: A Source's content MUST be freeform, as for other resources, and the
   structured part of a Source MUST be the metadata its sidecar carries. A
   Source's body MUST be one rich-text body plus an ordered list of attachments
@@ -1597,8 +1628,10 @@ with the app without hand-rewriting it (see OQ-90).
   the product offers a default, it MUST be overridable by the writer, and the
   compile and export dialogs MUST use the saved defaults of FR-81 and FR-82.
   New projects MUST start with Sources excluded from compile by default only;
-  export includes them; both MUST be overridable in the dialogs. No default goal
-  filter MUST exclude Sources; the goal filter remains writer-set. In this
+  export includes them; both MUST be overridable in the dialogs. The product has no
+  default goal filter, and none MUST be added to exclude Sources. The goal filter
+  remains writer-set; whether Sources count toward the project and daily word
+  goals is governed by FR-137. In this
   feature Sources MUST be treated like text documents by spell check, prose
   diagnostics and mention detection, as applicable to their body; a per-Source or
   project switch is deferred. Implementation question for the feature spec (not a
@@ -1606,7 +1639,11 @@ with the app without hand-rewriting it (see OQ-90).
   "Sources excluded by default" is a type-based rule or ids seeded when a Source
   is created is not decided here; nor is what applies to existing projects.
   [US-40] (Added 2026-11-06. Owner decision, 2026-11-04: writer's choice, not
-  hard-coded. Resolved, OQ-144, OQ-145, OQ-146; Owner decisions, 2026-11-07.)
+  hard-coded. Resolved, OQ-144, OQ-145, OQ-146; Owner decisions, 2026-11-07.
+  Edited 2026-11-07, Gate 1 evidence resolution A: the sentence "No default goal
+  filter MUST exclude Sources; the goal filter remains writer-set" was replaced
+  by the two sentences above, to match the built behaviour recorded in
+  `docs/features/sources.md` and FR-137. The owner confirmed that behaviour.)
 - FR-110: This feature MUST NOT include the Sources interface (a Sources view
   or panel), excerpts, citations or bibliography, claim handling, or the
   contribution seam for modules. A Source created by this feature MUST be
@@ -1620,6 +1657,282 @@ with the app without hand-rewriting it (see OQ-90).
   (about 10 MB/s, 100 MB cap accepted). [US-40] (Added 2026-11-06. Expected to
   behave as for image and audio; not checked, note_31c82491. OQ-149 stays open
   as an engineering verification item, verified by tests in the feature.)
+- FR-112: The product SHOULD provide a Sources interface, a project-scope Work
+  Area view, that lists every Source in the open project with its name, its
+  subtype and its number of attachments, so the writer can find and open a Source
+  without using the resource tree. [US-41] (Added 2026-11-07. Owner batching,
+  2026-11-04, note_31c82491, row C: "Sources UI". Resolved, OQ-165; Owner
+  decision, 2026-11-07: a project-scope Work Area view, not a panel. The columns
+  named here are the fields the Source sidecar already carries, FR-103 and
+  FR-106; they are not an owner-specified layout.)
+- FR-113: From the Sources interface the writer MUST be able to open a Source
+  in the editor, and SHOULD be able to create a Source and rename it. Doing so
+  MUST behave as the same action through the resource tree does, including the
+  seeding of the new Source out of compile (FR-109). [US-41] (Added 2026-11-07.
+  Scope item 1: "so the writer works with Sources other than through the
+  generic tree and sidebar".)
+- FR-114: The Sources interface MUST include an attachments section in which
+  the writer can add, remove, replace and reorder the attachments of a Source,
+  under the rules already built: image and audio only (FR-106), no revision for
+  an attachment change (FR-107), a removed or replaced file goes to the project
+  Trash and can be restored (FR-108). The section MUST read the same list as the
+  sidebar's Attachments section and MUST show a change made in either place in
+  the other without reselecting the Source. Whether the sidebar section stays or
+  moves into the Sources interface is a placement choice for the feature spec.
+  [US-41] (Added 2026-11-07. Scope item 1. Feature 102's only attachments UI is
+  the sidebar section `SourceAttachmentsSection.tsx`, `docs/features/sources.md`;
+  it has no preview or playback. The survey (note_5778291d, section 13, Shape A)
+  lists moving it to a slot; that is a reading of a candidate shape, not a
+  decision.)
+- FR-115: The writer MUST be able to see an image attachment and play an audio
+  attachment from the Sources interface. Android's measured media baseline (about
+  10 MB/s, 100 MB cap accepted) applies and MUST be checked for Source
+  attachments by a test before this requirement is treated as met (FR-111,
+  OQ-149). [US-41] (Added 2026-11-07. Resolved, OQ-166; Owner decision,
+  2026-11-07: both image preview and audio playback are in Run C, since excerpts
+  of image and audio attachments by locator, FR-118, stay in Run C.)
+- FR-116: Every control this run adds MUST work on every platform on which
+  Sources core already runs (hosted web, desktop, Android and a paired device),
+  through the existing transports, and MUST be operable by keyboard with
+  semantic roles and labels, to the WCAG 2.1 AA target of
+  `docs/standards/accessibility.md`. A control that cannot work on a platform
+  MUST say so instead of failing silently (`docs/standards/failure-visibility.md`).
+  [US-41] (Added 2026-11-07. Derived from the repository standards and
+  FR-111; not a separate owner decision. The paired-device limits apply as FR-132
+  states (Resolved, OQ-161; Owner decision, 2026-11-07).)
+- FR-117: The writer MUST be able to mark an excerpt of a Source and give it a
+  locator that says where it sits. An excerpt MUST be an annotation inside the
+  Source body (FR-83 to FR-90) and MUST keep its Source, its locator and the
+  excerpted text where the Source has text to mark. A locator MUST have an
+  optional type (page, timestamp, paragraph or line) and a free-text value, and a
+  timestamp MUST NOT be validated against the attachment. This run MUST NOT add a
+  Trash kind or an index for excerpts. [US-42] (Added 2026-11-07. Scope item 2:
+  "Excerpts with locators (page, timestamp, etc.) from a Source". Resolved,
+  OQ-156, OQ-167; Owner decisions, 2026-11-07. The rough plan, note_31c82491,
+  recommended the annotation form.)
+- FR-118: For an image or audio attachment, which has no text to mark, the
+  writer MUST be able to record an excerpt by its locator alone, using the locator
+  of FR-117. The record that holds it MUST NOT add a Trash kind or an index for
+  excerpts. [US-42] (Added 2026-11-07. note_31c82491: "For image/audio Sources
+  with no text to mark, the locator on the citation carries the place." This does
+  not lift FR-90: annotations on image and audio resources stay out of scope.
+  Resolved, OQ-156, OQ-167; Owner decisions, 2026-11-07. How a locator-only
+  excerpt is held when there is no passage in the Source body is not stated by
+  those decisions; it is a feature-spec question, and the target of FR-120
+  carries `attachmentId` and `locator`.)
+- FR-119: When the text an excerpt marks is changed or removed so that the
+  excerpt no longer finds its passage, the excerpt MUST NOT be deleted and MUST
+  be shown as not found with its saved text, as FR-85 does for an annotation, so
+  the writer can re-attach or delete it. FR-85 applies to an excerpt directly,
+  because an excerpt is an annotation. [US-42] (Added 2026-11-07. note_31c82491
+  names the risk: "editing a Source can make an excerpt's anchor stale, the same
+  problem mention offsets have". The requirement follows
+  `docs/standards/failure-visibility.md`. Resolved, OQ-156; Owner decision,
+  2026-11-07.)
+- FR-120: The writer MUST be able to select a passage of a text resource and tie
+  it to a Source, and MAY tie it to one of that Source's excerpts, one of its
+  attachments, and a locator. The tie MUST be made through annotations
+  (FR-83 to FR-90). The core annotation record MUST gain an optional `target`,
+  `{ sourceId, attachmentId?, excerptId?, locator? }`, with the locator of
+  FR-117; the annotation write check and `AnnotationSchema` MUST accept and keep
+  it, and an annotation without a `target` MUST remain valid and unchanged.
+  [US-43] (Added 2026-11-07. Scope item 3. Measured 2026-11-07: an annotation
+  held `id`, `body` and `quote` only (`NEW_ANNOTATION_KEYS`,
+  `annotation-validation.ts`), and the write check refused other keys. Resolved,
+  OQ-155; Owner decision, 2026-11-07: a core optional `target`, not a
+  module-namespaced field.)
+- FR-121: A citation MUST behave as an annotation does: it stays on its passage
+  as the writer edits (FR-84), becomes detached and is listed when its passage
+  is lost (FR-85, FR-86), is copied with new identity on paste and kept on a
+  move (FR-87), and is shown in the annotations panel with the name of its
+  Source. [US-43] (Added 2026-11-07. Scope item 3, "through annotations". The
+  panel placement is a reading of survey section 13, Shape A, "a citation
+  sub-panel in AnnotationsPanel"; it is not decided. Resolved, OQ-155; Owner
+  decision, 2026-11-07.)
+- FR-122: A citation, an annotation with a `target` (FR-120), MAY have an empty
+  body. An annotation without a `target` MUST keep the current limit of 1 to 5000
+  characters for its body, and a body of a citation MUST NOT exceed 5000
+  characters. [US-43] (Added 2026-11-07. Survey section 15 question 4: a citation
+  that only points at a Source may have nothing to say. The 1 to 5000 limit is
+  `ANNOTATION_LIMITS`, measured in code. Resolved, OQ-155; Owner decision,
+  2026-11-07: an empty body is allowed only when `target` is present. The upper
+  limit for a citation body is carried over from the existing limit; the owner did
+  not state it separately.)
+- FR-123: A citation whose Source, attachment or excerpt has been moved to
+  Trash, purged or removed MUST be shown as pointing at something missing: the
+  citation MUST keep the Source's name as it was when the citation was made, and
+  MUST show the Source as removed when it is gone. It MUST NOT be hidden, shown
+  as pointing at nothing, or deleted automatically. [US-43] (Added 2026-11-07.
+  Derived from `docs/standards/failure-visibility.md`, not an owner statement.
+  Resolved, OQ-168; Owner decision, 2026-11-07. Where the kept name is stored,
+  for example as a field of the `target` of FR-120, is a feature-spec question.
+  No index of where a Source is cited is built in Run C; it is deferred.)
+- FR-124: Citations MUST NOT appear in compile or export output by default, as
+  FR-89 requires for annotations, and this run MUST NOT produce a bibliography
+  or footnotes. [US-43] (Added 2026-11-07. Owner batching, 2026-11-04,
+  note_31c82491: "Citations / bibliography at compile" is row G, a later run.
+  FR-89's byte-identical compile test stays the way to check this and is still
+  pending, OQ-133.)
+- FR-125: The product MUST have one internal registry through which a
+  first-party module declares what it adds to the app. The registry MUST be
+  populated at build time from code in this repository. It MUST NOT load module
+  code at runtime and MUST NOT accept third-party modules. [US-44] (Added
+  2026-11-07. Owner batching, 2026-11-04, row C, "contribution registry"; the
+  plugin line, first-party modules only, ~/saboteur/notes/plugin-line-core-building-blocks-vs-first-party-modules.md.
+  Survey section 0, a measurement: no runtime registry exists today; every
+  candidate surveyed is registered by hand-written static code.)
+- FR-126: The Sources module MUST be the registry's first consumer, and the
+  registry's extension points MUST be those the Sources module needs in this
+  run, not a speculative set. The Sources interface (FR-112), the attachments
+  section (FR-114) and the citation controls (FR-120) MUST be placed through the
+  registry as thin slots (survey Shape A). The one other shared mechanism in this
+  run is a single shared rebuild list for the derived indexes, used by the three
+  importers and by `reindex` (survey Shape C, for the derived-index rebuild
+  only). Sidecar-key lifecycle and text-bodied predicate refactors MUST NOT be
+  part of this run. The Sources module MUST use per-feature routes; no generic
+  module storage channel is built, FR-131. [US-44] (Added 2026-11-07.
+  note_31c82491, Phase 2: "built alongside the first module, not ahead of it ...
+  ADR-016's condition". Resolved, OQ-160, OQ-154; Owner decisions, 2026-11-07,
+  recommended options.)
+- FR-127: The registry, including the shared rebuild list of FR-126, MUST NOT
+  make code reachable from the CLI or the Electron import workers import React or
+  JSX, and MUST NOT put Node-only code in the client bundle. The Electron worker
+  typecheck (`pnpm --filter getwrite-electron typecheck`), its worker build and
+  the CLI build MUST pass with it. [US-44] (Added 2026-11-07. Survey section 0,
+  measured: `electron/tsconfig.worker.json` has no `resolveJsonModule` and no
+  `jsx`, and commit `5894375f` was made for a model import chain that pulled JSON
+  into it. That a single registry would break one graph or the other is the
+  survey's inference, section 13, not run.)
+- FR-128: A module MUST be switchable on and off per project, by a flag in a new
+  `config.modules`. The schema for `config.modules` MUST keep module ids it does
+  not know, so a flag written by a newer build survives a write by an older build.
+  The existing `config.features` flags MUST be unchanged. While a module is off,
+  its interface MUST NOT be offered, its data MUST be kept untouched, and its
+  background work (indexing) MUST be stopped. Turning the module back on MUST be
+  caught up by a reindex path. Each of these MUST be covered by a test before the
+  requirement is treated as met: an unknown module id surviving a write that goes
+  through the schema (and, as not yet run, an older build's write), the data
+  untouched while off, background work stopped while off, and the catch-up after
+  turning on. [US-44] (Added 2026-11-07. Survey sections 0 and 1, measured:
+  enablement is read only in the client UI through Redux selectors, and `entities`
+  keeps indexing while off (`indexer-queue.ts` `runTask` has no flag check); that
+  existing behaviour is not changed by this requirement, FR-130. Resolved,
+  OQ-152, OQ-153; Owner decisions, 2026-11-07, recommended options: data kept and
+  background work stopped; a new `config.modules`.)
+- FR-129: The first cut of the registry MUST NOT: load code at runtime; let a
+  module add a resource type; add a Trash kind or purge step beyond a hook; move
+  the eight existing views (apart from the single generality check of FR-130),
+  seven flags or four compile formats into the registry; let a project type
+  switch modules on; extract the `@gw/core` package; add an importer contribution
+  kind; or add a permission model for modules. Whether the first cut may switch
+  editor schema extensions per project is not decided, OQ-170, and this run MUST
+  NOT need it unless OQ-170 is settled first. [US-44] (Added 2026-11-07. Survey
+  section 14: these are the survey's judgements, each with a stated fact behind
+  it. Resolved, OQ-169; Owner decision, 2026-11-07: the owner confirms the
+  exclusions except item 3, per-project switching of editor schema extensions,
+  which stays open as OQ-170. No runtime loading and no third-party code is the
+  owner's plugin line, FR-125.)
+- FR-130: Adding the registry MUST NOT change the behaviour of any existing view,
+  flag, compile format or setting. This run MUST include a spike that moves
+  `TrashView` behind a registry slot in a worktree and counts the AppShell lines
+  changed, and its result MUST be reported to the owner at the task-list gate. If
+  the cost is small, Trash MUST be converted as the generality check. No other
+  existing view MUST be converted. [US-44] (Added 2026-11-07. Survey section 14
+  item 5 suggests Trash, "ungated and project-wide", and section 16 proposes the
+  spike. Resolved, OQ-164; Owner decision, 2026-11-07, recommended option (c).
+  The owner did not state what counts as a small cost; the line count is reported
+  so the owner can judge it at the gate. Not run.)
+- FR-131: This run MUST NOT build a generic module storage channel (survey
+  Shape B). The Sources module MUST use per-feature routes, which keep the
+  per-route security validation, paired-device limit checks, `withStorageContext`,
+  encryption and locking behaviour that the existing per-feature routes have, and
+  each of these MUST be covered by a test for the routes this run adds. [US-44]
+  (Added 2026-11-07. Resolved, OQ-154; Owner decision, 2026-11-07, recommended
+  option (b): deferred, see Out of Scope. The trigger before any second module is
+  a spike: one route over `mutateSidecar`, then `test:sharing-smoke` and the
+  encryption tests. Survey section 13, Shape B, and section 16. Not run.)
+- FR-132: A module action that deletes or overwrites data MUST be checked
+  against the paired-device limits, `docs/features/home-network-sharing.md`, and
+  a refusal MUST be HTTP 403 `{ error, limit }` as for the five existing
+  switches. This run MUST NOT add a sixth switch. This run MUST include a check
+  that every Sources action that permanently deletes data falls under the
+  existing permanent-deletion switch, and that removing or replacing an attachment
+  goes to Trash (FR-108); the actions to cover include deleting a citation and
+  deleting an excerpt. If the check finds an action that no existing switch
+  covers, the finding MUST be returned to the owner and not decided in the feature.
+  The check MUST be completed before this requirement is treated as met. [US-44]
+  (Added 2026-11-07. Survey section 11: the five switches are a fixed set.
+  Resolved, OQ-161; Owner decision, 2026-11-07, recommended option (a), subject
+  to the check above. Not yet run.)
+- FR-133: The `type` intrinsic of the query model MUST offer "source" among its
+  value options, so that a writer can choose Source in the Type filter and build
+  a smart folder of Sources from it. The options already offered ("text",
+  "image", "audio", "folder") MUST be unchanged, and a saved query that already
+  works MUST return the same results. [US-45] (Added 2026-11-07. Owner
+  decision, 2026-11-07: this fix ships in Run C. Measured in code:
+  `query-intrinsics.ts` has `options: ["text", "image", "audio", "folder"]`.
+  Whether the omission was intended was not established; the owner has decided
+  the behaviour. Test: a project with a Source and a text document, a query
+  `type = source` returns the Source only; the picker lists Source.)
+- FR-134: When a module seeds custom fields or subtypes into a project, they MUST
+  be the writer's afterwards, editable and deletable, as `config.subtypes` seeds
+  are today. This run MUST NOT add a resource-type scope for custom fields
+  (`appliesToTypes`). A custom field of the citation kind MUST be able to apply
+  to Sources through `appliesTo` with a Source subtype where needed. [US-44]
+  (Added 2026-11-07. Survey sections 8 and 15, questions 6 and 7. Measured by code
+  reading: `MetadataField` has `appliesTo` (subtype labels) and
+  `appliesToFolders`, no resource-type scope and no owner marker. Resolved,
+  OQ-157, OQ-158; Owner decisions, 2026-11-07, recommended options; a type scope
+  is revisited if a second type needs it.)
+- FR-135: This run MUST NOT ship a project-type key that names modules. Before
+  any such key is added, whether an older build may refuse a newer saved type file
+  or the schema must become tolerant MUST be decided by the owner. [US-44] (Added
+  2026-11-07. Survey section 2, a reading of the schema: `ProjectTypeSchema` is
+  `.strict()`, so an unknown key is refused with "This project type has a setting
+  GetWrite does not recognise". Not run against an older build. Resolved, OQ-159;
+  Owner decision, 2026-11-07, recommended option (c).)
+- FR-136: A Source whose sidecar carries `entityKind` MUST be an entity, with
+  its name and aliases matched in prose, in the entity roster and in the entity
+  graph, as any entity. A Source without `entityKind` MUST NOT be matched in
+  prose. The writer MUST be able to declare a Source an entity from the sidebar
+  Entity section. [US-41] (Added 2026-11-07. Owner decision, 2026-11-07, Feature
+  102, built: `docs/features/sources.md`, "Entities". This supersedes the
+  first sentence of FR-104, which says a Source is not an entity and is not
+  found by matching names in prose. FR-104's deferral of
+  linking a Source to an entity still stands, now beyond Run C, FR-139. The decision of
+  2026-11-04 in note_31c82491 that "a Source is separate from an entity" is
+  superseded.)
+- FR-137: Sources MUST NOT count toward the project word goal or the daily word
+  goal unless the goal filter selects them, and the Data view's "Total words"
+  figure MUST continue to count them. The per-resource word-count goal MUST
+  stay unavailable for a Source. This run's interface MUST NOT change that.
+  [US-41] (Added 2026-11-07. Owner decision, 2026-11-07, built:
+  `docs/features/sources.md`, "Compile, export, goals". This refined FR-109's
+  earlier sentence "No default goal filter MUST exclude Sources", replaced
+  2026-11-07 (see FR-109): the product has no default
+  goal filter, and Sources are left out of the goals by the code path, not by
+  a filter; the owner confirmed the behaviour.)
+- FR-138: The Sources interface MUST NOT offer to create a template from a
+  Source or a Source from a template. Templates stay text-only. [US-41] (Added
+  2026-11-07. Settled: `docs/features/sources.md` states the refusal is built;
+  owner, 2026-11-04.)
+- FR-139: This run MUST NOT link a Source to an entity (for example an informant
+  or a place). Linking is deferred, see Out of Scope. [US-41] (Added 2026-11-07.
+  FR-104 deferred it to the Sources module, OQ-151. Resolved, OQ-162; Owner
+  decision, 2026-11-07, recommended option (a): later, not Run C. A Source with
+  `entityKind` is still an entity, FR-136.)
+- FR-140: The `reindex` command MUST rebuild annotation search as part of the
+  shared index rebuild of FR-126, so that after `reindex` annotation bodies are
+  findable by full-text search as they are after a save. The wording of
+  `docs/features/indexing.md` ("`reindex` keeps them", line 192) MUST be corrected
+  to match what `reindex` does. This MUST be verified before the requirement is
+  treated as met: run `reindex` on a project with annotations, with
+  `meta/index/annotations.json` present, stale, and deleted, and compare the file
+  and the search results before and after. [US-43] (Added 2026-11-07. Measured
+  2026-11-07 by code reading, not run: `cli/src/commands/reindex.ts` never calls
+  `indexAnnotationBodies`, which `indexer-queue.ts:282` calls on save, and
+  computes no diagnostics. Resolved, OQ-163; Owner decision, 2026-11-07,
+  recommended option (a): in this run.)
 
 ### Later Requirements
 
@@ -4311,7 +4624,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 (Raised 2026-11-06 for FR-93 to FR-111.)
 
 **OQ-145 (resolved): Does a new project's default goal filter (`config.goalFilter`) exclude Sources?**
-**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no default goal filter excludes Sources; the goal filter remains writer-set. Applied in FR-109.
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no default goal filter excludes Sources; the goal filter remains writer-set. Applied in FR-109, reworded 2026-11-07 (Gate 1 evidence resolution A): the product has no default goal filter and none is to be added to exclude Sources; whether Sources count toward the goals is governed by FR-137.
 **Impact:** FR-109; US-40. Open in note_31c82491. The goal filter already decides what counts toward the project and daily goals.
 **Owner:** Product owner.
 
@@ -4352,11 +4665,143 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 (Raised 2026-11-06 for FR-93 to FR-111.)
 
 **OQ-151 (resolved): Can a Source link to an entity (an informant, a place), and if so as a typed authored edge or a reference field?**
-**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no Source-to-entity linking in this feature; deferred to the Sources module (Run C). Applied in FR-104.
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): no Source-to-entity linking in this feature; deferred to the Sources module (Run C). Applied in FR-104. Updated 2026-11-07 by OQ-162: deferred beyond Run C, FR-139.
 **Impact:** FR-104; US-40. Open in note_31c82491; FR-104 only says a Source is not an entity.
 **Owner:** Product owner.
 
 (Raised 2026-11-06 for FR-93 to FR-111.)
+
+**OQ-152 (resolved): Disabled module, existing data. When a module is switched off for a project, is its data kept untouched and its background work (indexing) stopped, kept running, or is the writer asked?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). When a module is switched off for a project, its data is kept untouched and its background work (indexing) is stopped; turning the module back on is caught up by a reindex path. That the catch-up works is not yet checked and is a required test in FR-128. Applied in FR-128.
+**Impact:** FR-128, FR-126; US-44. Options from the survey (note_5778291d, section 15, question 1): (a) data kept, background work stopped; (b) data kept, background work keeps running; (c) the writer is asked at switch-off. Evidence: enablement today is read only in the client UI through Redux selectors, and `entities` keeps building the mention index on every save while off (`indexer-queue.ts:298-317`; survey sections 0 and 1, read in code).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-153 (resolved): Where do module flags live: in `config.features` alongside the existing seven, in a new `config.modules`, or declared by a project type?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). Module flags live in a new `config.modules`, with a schema that keeps unknown module ids so a newer flag survives an older build's write. The existing `config.features` flags are unchanged. Not yet run against an older build; a required test in FR-128. Applied in FR-128.
+**Impact:** FR-128, FR-135; US-44. Also open in the plugin-line note. Evidence (survey section 1, read in code): `ProjectFeatureFlagsSchema` and `ApiProjectFeatureFlagsSchema` both strip undeclared keys, so a flag written by a newer build is dropped, not refused, by an older build's next `updateFeatureConfig` write; project types do not seed `features` (no such key in `ProjectTypeSchema` or the six built-in files); adding a flag touches at least four places. Not run against an older build.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-154 (resolved): Is a generic module storage channel (survey Shape B) built now or later?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). No generic module storage channel (Shape B) in Run C; Run C uses per-feature routes. Deferred: a spike (one route over `mutateSidecar`, then `test:sharing-smoke` and the encryption tests) is the trigger before any second module. Applied in FR-131 and FR-126.
+**Impact:** FR-126, FR-131; US-44. Shape B is one namespaced storage channel (a sidecar sub-object, a config sub-object and a `meta/modules/<id>/` directory) with one core, one route and one native backend, against about 7 files per feature today (survey sections 0 and 13). The survey calls it the storage decision with the longest consequences and the least evidence behind it, and says it designs a storage API with one consumer; it also notes one dispatch route weakens per-route review, boundary validation and paired-device limit checks, and that under the core-vs-module test (rule 3) the channel is core either way. Section 16 proposes a spike (one route over `mutateSidecar`, run `test:sharing-smoke` and the encryption tests); not run.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-155 (resolved): Should the core annotation record gain a `target` field (`{ sourceId, attachmentId?, excerptId?, locator? }`) as a core change in Run C, or should the field be module-namespaced? May a citation have an empty body, given the current 1 to 5000 character limit?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). The core annotation record gains an optional `target` (`{ sourceId, attachmentId?, excerptId?, locator? }`) in Run C. An empty body is allowed only when `target` is present; otherwise the limit of 1 to 5000 characters stays. Applied in FR-120, FR-121 and FR-122.
+**Impact:** FR-120, FR-121, FR-122; US-43. Evidence: measured in code on 2026-11-07, `NEW_ANNOTATION_KEYS = ["id","body","quote"]` (`annotation-validation.ts`), so an annotation has no field that points at a Source and the write check refuses other keys; `AnnotationSchema` is `{ id, body, quote, createdAt, updatedAt }` and strips undeclared keys; the body limit is `ANNOTATION_LIMITS`, 1 to 5000. The annotations design note proposed `target?` (annotations-anchoring-storage-behaviour.md, "`target` makes it reusable"); the survey infers citing needs a core change to the annotation record before a module can use it (survey section 10). Under the core-vs-module test (rule 3) the record's storage is core.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-156 (resolved): Is an excerpt an annotation inside a Source body, or its own record?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). An excerpt is an annotation inside the Source body; no new Trash kind or index for excerpts. Applied in FR-117, FR-118, FR-119 and FR-120. Not decided by this answer: how an excerpt of an image or audio attachment, which has no passage in the Source body, is held (FR-118); a feature-spec question.
+**Impact:** FR-117, FR-118, FR-119, FR-120; US-42, US-43. This decides whether Run C needs a new Trash kind or index. The rough plan (note_31c82491) recommends an annotation inside the Source body and marks it "not yet agreed": the excerpt keeps its context and nothing is duplicated; the risk it names is a stale anchor after an edit. The survey (section 10) notes the annotation form needs no new Trash kind, and a record form would (Trash kinds are a fixed set, `trash.ts:1987-2010`, with a fixed purge step list, `trash.ts:1306-1380`; read in code). Annotations on image and audio resources are out of scope (FR-90).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-157 (resolved): When a module seeds fields or subtypes, are they the writer's afterwards (editable, deletable), or locked and owned by the module while it is on?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). Fields and subtypes a module seeds are the writer's afterwards (editable, deletable), as `config.subtypes` today. Applied in FR-134.
+**Impact:** FR-134; US-44. Same question as runway 24 for built-in subtypes. Evidence (survey section 8, read in code): `MetadataField` has no owner or origin marker; `config.subtypes` seeds are the writer's afterwards today and subtype seeding is cheap; a module-owned field would need an owner key declared in both the persisted and the response schemas; project types seed once at creation, so a module switched on later gets nothing from the type (survey section 2).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-158 (resolved): Should a resource-type scope for fields (`appliesToTypes`) be core, so citation fields can target Sources without a subtype?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). No `appliesToTypes` in Run C; use `appliesTo` with a Source subtype where needed; revisit if a second type needs it. Applied in FR-134.
+**Impact:** FR-134; US-44. Evidence (survey section 8, read in code): `MetadataField` has `appliesTo` (subtype labels) and `appliesToFolders`, and no resource-type scope; the rough plan lists a type scope as an option ("Citation fields can be scoped to those with `appliesTo`, or to the type", note_31c82491). The survey judges it a core schema change, not a seam feature.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-159 (resolved): If project types can name modules, may an older build refuse a newer saved type file, or must the schema become tolerant?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (c). Run C ships no project-type key that names modules; whether an older build may refuse a newer saved type file, or the schema becomes tolerant, is decided before any such key is added. Applied in FR-135 and FR-129.
+**Impact:** FR-135, FR-129; US-44. Evidence (survey section 2, read in code, not run): `ProjectTypeSchema` is `.strict()` and an unknown key is refused; saved types are user files in `GETWRITE_SAVED_PROJECT_TYPES_DIR`; the JSON schema `project-type.schema.json` has drifted from the Zod schema and was not found enforced outside tests (survey section 16: unknown whether tests validate against it). Section 14 item 6 recommends no project-type key that switches modules on until this is decided.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-160 (resolved): Should Run C also refactor core duplication as part of the seam (survey Shape C), or keep to Sources plus thin slots (Shape A)?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). Shape A plus Shape C for the derived-index rebuild only: one shared rebuild list used by the three importers and `reindex`, with the Electron worker graph required to stay green. Sidecar-key lifecycle and text-bodied predicate refactors are not in Run C. Applied in FR-126, FR-127 and FR-140.
+**Impact:** FR-126; US-44. The duplication named in the survey (sections 6, 9, 10; counts are grep measurements): the derived-index rebuild exists in 4 places (three importers and `reindex`); the sidecar-key lifecycle is wired by hand (`remapCopiedAnnotations` at two call sites, Source seeding after create, copy and duplicate); the text-bodied predicate is written locally at least 6 times. Shape A is the smallest change but leaves about 7 files of transport per feature and central schema declarations; Shape C is closest to ADR-016's condition, each registry justified by existing duplication, but touches the Electron worker graph; the survey says A and C are not exclusive. The survey also notes the typecheck found none of the 54 resource-type sites (zero errors after adding `"source"`).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-161 (resolved): Do module actions that delete or overwrite data need paired-device limit switches?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). No new paired-device limit switch, subject to a required check in Run C that every Sources action that permanently deletes data falls under the existing permanent-deletion switch, and that attachment removal goes to Trash. If the check finds an uncovered action, it comes back to the owner. The check has not been run. Applied in FR-132 and FR-116.
+**Impact:** FR-132, FR-116; US-44. Evidence (survey section 11, read in code): the five switches (project deletion, unlocking, locking, encryption changes, permanent deletion) are a fixed set in `lib/sharing/limits-*.ts`, and a refusal is 403 `{ error, limit }`. The Sources actions this run adds that delete or overwrite data are removing or replacing an attachment (which goes to Trash, FR-108) and deleting a citation or excerpt; whether any of them falls under an existing switch was not checked.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-162 (resolved): Is linking a Source to an entity (an informant, a place) in Run C, or later?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). Source-to-entity linking is later, not Run C; FR-139 moves to deferred. Applied in FR-139 and FR-104.
+**Impact:** FR-139; US-41. Deferred to Run C by OQ-151 and FR-104; note_31c82491 leaves open whether it is a typed authored edge or a reference field. Related, settled: a Source with `entityKind` is itself an entity (FR-136). The entity relationship model has typed, directed edges between entities (`entity-relationships.ts`); whether a Source that is not itself an entity could be an end of one was not checked.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-163 (resolved): Is making `reindex` rebuild annotation search in Run C's scope (it fits survey Shape C), or a separate fix?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). In Run C, `reindex` rebuilds annotation search as part of the shared index rebuild (OQ-160), and the `docs/features/indexing.md` wording is corrected to match. Evidence, by code reading and not run: `cli/src/commands/reindex.ts` never calls `indexAnnotationBodies` (which `frontend/src/lib/models/indexer-queue.ts:282` calls on save) and computes no diagnostics; `docs/features/indexing.md:192` ("`reindex` keeps them") contradicts the code. Whether `reindex` preserves or deletes a stale `annotations.json` is unmeasured. Applied in FR-140.
+**Impact:** FR-140; US-43. Measured 2026-11-07: a grep of `cli/src/commands/reindex.ts` finds no annotation-body or diagnostics indexing, while `indexer-queue.ts` `runTask` indexes annotation bodies (`:282`) and computes diagnostics. Cause not investigated; whether this is an omission or a decision is not established (survey sections 6 and 16). Experiment: read `reindex.ts` in full and the Feature 101 spec for reindex scope; run `reindex` on a project with annotations and compare `meta/index/annotations.json` before and after deleting it.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-164 (resolved): Which existing view, if any, does the first cut convert into a registry slot as a generality check?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (c). Run a spike in Run C: move `TrashView` behind a registry slot in a worktree and count the AppShell lines changed; if the cost is small, Trash is converted as the generality check; the result is reported to the owner at the task-list gate. No other view is converted. Applied in FR-130.
+**Impact:** FR-130; US-44. Survey section 14 item 5 suggests Trash (ungated, project-wide, no selection dependency). Unknown (survey section 16): the real cost of moving a view behind a slot, given the AppShell's shared state; the proposed spike moves `TrashView` in a worktree, counts the AppShell lines changed and runs its tests and e2e. Not run. The survey also reports AppShell reachability bugs for work-area tabs (section 4).
+**Owner:** Engineering lead.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-165 (resolved): Is the Sources interface a Work Area view or a panel, and where does it sit?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (a). The Sources interface is a project-scope Work Area view. Applied in FR-112.
+**Impact:** FR-112, FR-114; US-41. The inputs say "a Sources view or panel" and do not choose. The survey's Shape A lists a project-scope `sources` work-area view listing Sources and their excerpts (section 13), a candidate, not a decision.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-166 (resolved): Does the Sources interface show an image attachment and play an audio attachment?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (c). Image preview and audio playback are both in Run C, since excerpts of image and audio attachments by locator (FR-118) stay in Run C; the Android media baseline (about 10 MB/s, 100 MB cap, OQ-149) applies. Applied in FR-115.
+**Impact:** FR-115; US-41. Feature 102's Attachments section has no preview or playback (`docs/features/sources.md`). Whether Run C adds it is not stated in the inputs. Android's measured media baseline (about 10 MB/s, 100 MB cap accepted) applies and was not checked for Source attachments (OQ-149).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-167 (resolved): What kinds of locator does an excerpt or citation carry, and in what format?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). A locator has an optional type (page, timestamp, paragraph, line) and a free-text value; a timestamp is not validated against the attachment. Applied in FR-117, FR-118 and FR-120.
+**Impact:** FR-117, FR-118, FR-120; US-42, US-43. The inputs name "page, timestamp, etc." and the target shape has one `locator?`. Not stated: whether a locator is free text or typed (page, timestamp, paragraph, line), whether a timestamp is checked against the attachment, and whether a Source can carry more than one locator.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-168 (resolved): What does a citation keep about its Source, and how does a writer see where a Source is cited?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). A citation keeps the Source's name at the time of citing and shows the Source as removed when it is gone; no index of where a Source is cited in Run C (deferred). Applied in FR-123.
+**Impact:** FR-123, FR-121; US-43. Not in the inputs. Two parts: what a citation shows when its Source, attachment or excerpt is in Trash, purged or removed (the Source's name at the time, nothing); and whether the Sources interface lists the passages that cite a Source. The second may need an index of citations (survey section 13, Shape B and C name a derived `citations` index; a candidate, not decided).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-169 (resolved): Does the owner confirm the survey's list of what the first cut of the registry does not try to do (FR-129)?**
+**Resolution:** Resolved (Owner decision, 2026-11-07; recommended option): option (b). The owner confirms the survey section 14 exclusions except item 3 (no per-project switching of editor schema extensions), which is carried as OQ-170 until its experiment is run. Applied in FR-129.
+**Impact:** FR-129; US-44. Survey section 14 lists nine exclusions as judgements, each with its fact; none is an owner decision except the first (no runtime loading, first-party only), which is the plugin line. Items 2 (no module resource types), 3 (no per-project editor extension switching, an inference, untested: whether a document with a mark absent from the editor schema loads is an open experiment, survey section 16), 4 (no module Trash kinds) and 7 (no `@gw/core` extraction) constrain later modules.
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-112 to FR-140.)
+
+**OQ-170: Does the first cut of the registry need to switch editor schema extensions per project (survey section 14 item 3)?**
+**Impact:** FR-129; US-44. Pending an experiment, not blocking Run C unless Run C needs per-project editor-extension switching. The survey's inference is untested: build an Editor without `AnnotationMark` and `setContent` a document carrying an `annotation` mark, and do the same with `MarkdownManager.serialize`, to see whether a document with a mark absent from the editor schema loads. Split from OQ-169, where the owner confirmed the other exclusions (Owner decision, 2026-11-07).
+**Owner:** Product owner.
+
+(Raised 2026-11-07 for FR-129, from OQ-169.)
 
 ## Out of Scope (Deferred)
 
@@ -4503,5 +4948,34 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 - A per-Source or project switch for spell check, prose diagnostics and mention
   detection of Sources (FR-109, resolved: OQ-146; Owner decision, 2026-11-07):
   later.
-- Linking a Source to an entity (FR-104, resolved: OQ-151; Owner decision,
-  2026-11-07): the Sources module (Run C).
+- Linking a Source to an entity (FR-104, FR-139, resolved: OQ-151, OQ-162; Owner
+  decisions, 2026-11-07): later, not Run C.
+- A generic module storage channel, survey Shape B (FR-131, resolved: OQ-154;
+  Owner decision, 2026-11-07): deferred. The trigger before any second module is
+  a spike: one route over `mutateSidecar`, then `test:sharing-smoke` and the
+  encryption tests.
+- A citations index and a "cited in" listing of the passages that cite a Source
+  (FR-123, resolved: OQ-168; Owner decision, 2026-11-07): deferred.
+- A resource-type scope for custom fields, `appliesToTypes` (FR-134, resolved:
+  OQ-158; Owner decision, 2026-11-07): deferred; revisit if a second type needs
+  it.
+- A project-type key that names modules (FR-135, resolved: OQ-159; Owner
+  decision, 2026-11-07): deferred; whether an older build may refuse a newer
+  saved type file, or the schema becomes tolerant, is decided before any such key
+  is added.
+- Sidecar-key lifecycle and text-bodied predicate refactors, survey Shape C
+  beyond the derived-index rebuild (FR-126, resolved: OQ-160; Owner decision,
+  2026-11-07): not in Run C.
+- Citations rendered as footnotes or a bibliography in compile and export
+  (FR-124; Owner batching, 2026-11-04, note_31c82491, row G): a later run. This
+  run's citations are not compiled or exported.
+- Claim ledger, folklore variants and motifs (note_31c82491, row F): a later
+  run, built on Sources and annotations.
+- Module-contributed resource types, runtime loading of module code and
+  third-party plugins (FR-125, FR-129; plugin line, owner): not planned. Other
+  first-cut exclusions of FR-129 are confirmed by the owner (OQ-169, 2026-11-07),
+  except per-project switching of editor schema extensions, pending OQ-170.
+- Annotations on image and audio resources (FR-90, FR-118): still out of scope;
+  an excerpt of an attachment is recorded by locator alone.
+- Video attachments, a web clipper and PDF excerpt import (note_31c82491,
+  runway 13): later.
