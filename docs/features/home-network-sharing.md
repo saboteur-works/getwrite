@@ -152,13 +152,13 @@ Merged to `main` (PR #266, merge commit `fc730749`, 2026-10-10); released in 2.3
 
 **What it is.** Five switches, set on the desktop, that stop a paired device doing certain things. Each is on (restricted) by default, applies to all paired devices together (there is no per-device setting), and takes effect on the next request with no restart.
 
-| Key                 | Label in App Settings    | What a paired device cannot do when it is on                                                                                                      |
-| ------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `projectDeletion`   | Limit project deletion   | Delete a project (`POST /api/project/delete`)                                                                                                     |
-| `unlocking`         | Limit unlocking          | Unlock the workspace, or resume interrupted conversions (`unlock`, `resume` on `POST /api/encryption`)                                            |
-| `locking`           | Limit locking            | Lock the workspace (`lock`)                                                                                                                       |
-| `encryptionChanges` | Limit encryption changes | Enable encryption on a project with an existing workspace key (`enable`), or export an unencrypted copy (`export`)                                |
-| `permanentDeletion` | Limit permanent deletion | Purge from Trash or empty Trash (`POST /api/project/[project-id]/trash/purge`), delete a revision (`DELETE /api/resource/revision/[resource-id]`) |
+| Key                 | Label in App Settings    | What a paired device cannot do when it is on                                                                                                                                                        |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projectDeletion`   | Limit project deletion   | Delete a project (`POST /api/project/delete`)                                                                                                                                                       |
+| `unlocking`         | Limit unlocking          | Unlock the workspace, or resume interrupted conversions (`unlock`, `resume` on `POST /api/encryption`)                                                                                              |
+| `locking`           | Limit locking            | Lock the workspace (`lock`)                                                                                                                                                                         |
+| `encryptionChanges` | Limit encryption changes | Enable encryption on a project with an existing workspace key (`enable`), or export an unencrypted copy (`export`)                                                                                  |
+| `permanentDeletion` | Limit permanent deletion | Purge from Trash or empty Trash (`POST /api/project/[project-id]/trash/purge`), delete a revision (`DELETE /api/resource/revision/[resource-id]`), delete an annotation (`DELETE /api/annotations`) |
 
 Creating the workspace passphrase (`enable` with a non-null passphrase) from a paired device is always refused, whatever the five switches say (403, `limit: "encryptionChanges"`). The desktop window is never limited, and neither is a server with sharing off. There are no switches for sharing, pairing or device management; those are desktop-only IPC with no HTTP route (Feature 76).
 

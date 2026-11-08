@@ -12,9 +12,11 @@
  * - Routes outside the limited set do not call the check; the limits modules
  *   do not name the credential store.
  */
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
 import fs from "fs";
+import os from "os";
 import path from "path";
+import { NextRequest } from "next/server";
 
 const FRONTEND = path.resolve(__dirname, "../..");
 const APP_ROOT = path.join(FRONTEND, "app");
@@ -30,6 +32,8 @@ const LIMITED_ROUTES: Record<string, RegExp> = {
   "project/delete/route.ts": /checkLimit\(req, "projectDeletion"\) \?\? /,
   "resource/revision/[resource-id]/route.ts":
     /checkLimit\(\s*req,\s*"permanentDeletion",[^)]*\)\s*\?\? /,
+  // Feature 103, FR-13, OQ-10: an annotation delete is permanent (no Trash).
+  "annotations/route.ts": /checkLimit\(req, "permanentDeletion"\) \?\? /,
 };
 /** The read route (Task 13); allowed to exist or not. */
 const LIMITS_READ_ROUTE = "sharing/limits/route.ts";
@@ -218,4 +222,156 @@ describe("limits modules and the credential store", () => {
       expect(text).not.toMatch(/credential-store|device-credentials/);
     },
   );
+});
+
+describe("annotations DELETE and permanentDeletion (Feature 103, FR-13, OQ-10)", () => {
+  const ENDPOINT = "http://localhost/api/annotations";
+  const NOTE_ID = "3f2b8c1e-5a4d-4e6f-9b7a-1c2d3e4f5a6b";
+  const tmpDirs: string[] = [];
+  const originalProjects = process.env.GETWRITE_PROJECTS_DIR;
+  const originalSharing = process.env.GETWRITE_SHARING_DIR;
+
+  afterEach(() => {
+    for (const dir of tmpDirs.splice(0)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    if (originalProjects === undefined)
+      delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = originalProjects;
+    if (originalSharing === undefined) delete process.env.GETWRITE_SHARING_DIR;
+    else process.env.GETWRITE_SHARING_DIR = originalSharing;
+  });
+
+  function limitsText(permanentDeletion: boolean): string {
+    return JSON.stringify({
+      version: 1,
+      limits: {
+        projectDeletion: true,
+        unlocking: true,
+        locking: true,
+        encryptionChanges: true,
+        permanentDeletion,
+      },
+    });
+  }
+
+  /** A project with one text resource carrying one plain note. */
+  async function seed(
+    permanentDeletion: boolean,
+  ): Promise<{ projectId: string; resourceId: string; sidecarFile: string }> {
+    const { writeSidecar } = await import("../../src/lib/models/sidecar");
+    const { generateUUID } = await import("../../src/lib/models/uuid");
+    type MetadataValue = import("../../src/lib/models/types").MetadataValue;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gw-ann-limit-"));
+    tmpDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "sharing-limits.json"),
+      limitsText(permanentDeletion),
+    );
+    process.env.GETWRITE_SHARING_DIR = dir;
+    const projectId = generateUUID();
+    const resourceId = generateUUID();
+    const root = path.join(dir, projectId);
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "project.json"),
+      JSON.stringify({ id: projectId, name: "p", config: {} }),
+    );
+    process.env.GETWRITE_PROJECTS_DIR = dir;
+    const stamp = "1970-01-01T00:00:00.000Z";
+    const sidecar: Record<string, MetadataValue> = {
+      id: resourceId,
+      slug: "r",
+      type: "text",
+      name: "R",
+      orderIndex: 0,
+      folderId: null,
+      createdAt: stamp,
+      updatedAt: stamp,
+      wordCount: 4,
+      annotations: [
+        {
+          id: NOTE_ID,
+          body: "a plain note",
+          quote: "quoted",
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+    } as unknown as Record<string, MetadataValue>;
+    await writeSidecar(root, resourceId, sidecar);
+    return {
+      projectId,
+      resourceId,
+      sidecarFile: path.join(root, "meta", `resource-${resourceId}.meta.json`),
+    };
+  }
+
+  function deleteRequest(
+    body: { projectId: string; resourceId: string },
+    classification?: string,
+  ): NextRequest {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (classification !== undefined) {
+      headers["x-getwrite-classification"] = classification;
+    }
+    return new NextRequest(ENDPOINT, {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({ ...body, annotationId: NOTE_ID }),
+    });
+  }
+
+  const noteCount = (file: string): number =>
+    (JSON.parse(fs.readFileSync(file, "utf8")) as { annotations: unknown[] })
+      .annotations.length;
+
+  it("refuses a paired device with the limit on: 403 { error, limit }, note untouched", async () => {
+    const { projectId, resourceId, sidecarFile } = await seed(true);
+    const { DELETE } = await import("../../app/api/annotations/route");
+    const res = await DELETE(
+      deleteRequest({ projectId, resourceId }, "confirmed:d1"),
+    );
+    expect(res.status).toBe(403);
+    const json = (await res.json()) as { error: string; limit: string };
+    expect(Object.keys(json).sort()).toEqual(["error", "limit"]);
+    expect(json.limit).toBe("permanentDeletion");
+    expect(noteCount(sidecarFile)).toBe(1);
+  });
+
+  it("refuses a request with no classification header (fail closed)", async () => {
+    const { projectId, resourceId, sidecarFile } = await seed(false);
+    const { DELETE } = await import("../../app/api/annotations/route");
+    const res = await DELETE(deleteRequest({ projectId, resourceId }));
+    expect(res.status).toBe(403);
+    expect(noteCount(sidecarFile)).toBe(1);
+  });
+
+  it("deletes for the window even with the limit on", async () => {
+    const { projectId, resourceId, sidecarFile } = await seed(true);
+    const { DELETE } = await import("../../app/api/annotations/route");
+    const res = await DELETE(
+      deleteRequest({ projectId, resourceId }, "window"),
+    );
+    expect(res.status).toBe(200);
+    expect(noteCount(sidecarFile)).toBe(0);
+  });
+
+  it("deletes for a paired device when the limit is off", async () => {
+    const { projectId, resourceId, sidecarFile } = await seed(false);
+    const { DELETE } = await import("../../app/api/annotations/route");
+    const res = await DELETE(
+      deleteRequest({ projectId, resourceId }, "confirmed:d1"),
+    );
+    expect(res.status).toBe(200);
+    expect(noteCount(sidecarFile)).toBe(0);
+  });
+
+  it("leaves GET, POST, PUT and PATCH unlimited", () => {
+    const text = read(path.join(API_ROOT, "annotations/route.ts"));
+    expect(text.match(/checkLimit\(/g)).toHaveLength(1);
+    expect(text).toMatch(/export const GET = withStorageContext\(handleGet\)/);
+  });
 });

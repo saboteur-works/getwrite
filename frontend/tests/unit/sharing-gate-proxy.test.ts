@@ -674,6 +674,8 @@ describe("shared module state and import hygiene", () => {
       "app/api/sharing/limits/route.ts",
       // Feature 96: always refuses a paired caller (checkUserWordListAccess).
       "app/api/user-word-list/route.ts",
+      // Feature 103, FR-13, OQ-10: annotation DELETE is `permanentDeletion`.
+      "app/api/annotations/route.ts",
     ]);
     expect(offenders.filter((f) => !allowed.has(f))).toEqual([]);
   });
