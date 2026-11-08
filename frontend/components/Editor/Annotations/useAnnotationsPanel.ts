@@ -128,7 +128,7 @@ export interface CitationFactsDeps {
 }
 
 /** A Source in the loaded project, from the resources in the store. */
-export interface LoadedSourceRef {
+interface LoadedSourceRef {
   id: string;
   name: string;
 }
@@ -153,7 +153,7 @@ function isInTrash(listing: TrashListing, sourceId: string): boolean {
  * Attachments and excerpts are read from the Source only while it is present.
  * Any failed read resolves `unknown`.
  */
-export function createCitationFactsReader(
+function createCitationFactsReader(
   deps: CitationFactsDeps,
   projectId: string,
   sources: readonly LoadedSourceRef[],

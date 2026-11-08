@@ -19,7 +19,7 @@
 import type { AnnotationTarget } from "./types";
 
 /** Where the cited Source is now. `absent` means purged (or never existed). */
-export type CitationSourceStatus = "present" | "in-trash" | "absent";
+type CitationSourceStatus = "present" | "in-trash" | "absent";
 
 /** Plain description of what exists; the caller fills it from storage. */
 export interface CitationTargetFacts {

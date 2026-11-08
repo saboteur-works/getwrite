@@ -526,7 +526,7 @@ export const ResourceBaseSchema = z
   .extend(EntitySidecarFieldsSchema.shape);
 
 /** A locator's optional type (Feature 103, FR-21). */
-export const AnnotationLocatorSchema = z.object({
+const AnnotationLocatorSchema = z.object({
   type: z.enum(["page", "timestamp", "paragraph", "line"]).optional(),
   value: z.string(),
 });

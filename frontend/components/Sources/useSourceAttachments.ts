@@ -9,7 +9,7 @@ import {
 } from "../../src/lib/api/source-attachments";
 import { useTrashRefresh } from "../Layout/TrashRefreshContext";
 
-export type SourceAttachmentsState =
+type SourceAttachmentsState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; entries: AttachmentEntryView[] };

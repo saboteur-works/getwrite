@@ -9,7 +9,7 @@ import { isLockedAccessError } from "../../src/lib/models/locked-access";
 import { subscribeAttachmentCounts } from "./useSourceAttachments";
 
 /** One row of the Sources view. */
-export interface SourceRow {
+interface SourceRow {
   id: string;
   name: string;
   /** The Source's `resourceSubtype`, or an empty string when none. */
@@ -17,7 +17,7 @@ export interface SourceRow {
   attachmentCount: number;
 }
 
-export type SourceListState =
+type SourceListState =
   | { status: "loading" }
   | { status: "empty" }
   | { status: "ready"; rows: SourceRow[] }

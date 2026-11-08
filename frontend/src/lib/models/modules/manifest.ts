@@ -5,7 +5,7 @@
  */
 import type { ModuleManifestEntry } from "./registry";
 
-export const SOURCES_MODULE_ID = "sources";
+const SOURCES_MODULE_ID = "sources";
 
 export const MODULE_MANIFEST: readonly ModuleManifestEntry[] = [
   {

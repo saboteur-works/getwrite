@@ -29,10 +29,10 @@ export const UI_SLOT_KINDS = [
   "attachmentsSection",
   "citationControl",
 ] as const;
-export type UiSlotKind = (typeof UI_SLOT_KINDS)[number];
+type UiSlotKind = (typeof UI_SLOT_KINDS)[number];
 
 /** What the shell hands a module view when it renders it. */
-export interface UiViewRenderContext {
+interface UiViewRenderContext {
   /** Moves the shell to the editor after a resource was selected. */
   openInEditor: (resourceId: string) => void;
   /** Tells the page's project state a view created this resource (FR-16). */
@@ -52,17 +52,17 @@ export interface UiModuleViewSlot extends ModuleViewSlot {
 }
 
 /** What the Sources view hands an attachments section: the Source it shows. */
-export interface UiAttachmentsSectionContext {
+interface UiAttachmentsSectionContext {
   resource: SourceResource;
 }
 
 /** The attachments-section slot: its consumer is the Sources view (FR-17). */
-export interface UiAttachmentsSectionSlot {
+interface UiAttachmentsSectionSlot {
   render: (context: UiAttachmentsSectionContext) => ReactNode;
 }
 
 /** What the editor hands a citation control: the open text resource. */
-export interface UiCitationControlContext {
+interface UiCitationControlContext {
   editor: Editor;
   /** The text resource being edited (the citing resource). */
   resourceId: string;

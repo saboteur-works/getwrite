@@ -15,7 +15,7 @@ import type { ProjectConfig } from "../types";
 
 /** The slot kinds the registry declares. Later waves add theirs with a consumer. */
 export const MODULE_SLOT_KINDS = ["view"] as const;
-export type ModuleSlotKind = (typeof MODULE_SLOT_KINDS)[number];
+type ModuleSlotKind = (typeof MODULE_SLOT_KINDS)[number];
 
 /** Model-side view metadata: id and label only. The component is UI-side. */
 export interface ModuleViewSlot {
@@ -24,7 +24,7 @@ export interface ModuleViewSlot {
 }
 
 /** A named, module-owned derived-index step a shared rebuild can run. */
-export interface ModuleIndexStep {
+interface ModuleIndexStep {
   id: string;
   run(projectRoot: string): Promise<void>;
 }

@@ -495,7 +495,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 2
 **Notes:** Owner decision at Gate 6 (2026-11-08), from a knip comparison of HEAD against main. Task 37 waits for it. ORDERING: run after Task 45, which edits `uiRegistry.ts`, so only types it still needs stay exported. Findings already present on main are not part of this task.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x]
 
 ## Wave 4: Type filter
 
