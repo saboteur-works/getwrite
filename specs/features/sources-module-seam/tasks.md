@@ -240,7 +240,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** Satisfies FR-18 (storage half), FR-12, FR-30, and the checkpoint decision of 2026-11-07 on the attachments client (item 3). Sole editor of `source-attachments.ts` on this branch. Owner of `next.config.mjs` in Wave 2. The 100 MB device check is Task 23, owner-run; this task must be fully testable without a device and does not claim the Android baseline. Native lock parity is reasoned, not run.
 **POS:** task_f6d0e452
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 38: Convert Trash to a registry view slot (spike `1313b8bb`, adapted to HEAD)
 **What:** Bring the Task 15 spike commit `1313b8bb` (local ref `spike/sources-module-seam-trash-slot`, based on `85f882a7`) onto this branch, adapted to the current HEAD, so `TrashView` is a registry view slot.

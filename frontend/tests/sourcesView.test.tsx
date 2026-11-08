@@ -145,6 +145,34 @@ describe("SourcesView failure and empty states", () => {
     },
   );
 
+  it.each([[401], [409]])(
+    "shows the locked state, not the generic failure, when the list read returns HTTP %i over the HTTP client",
+    async (status) => {
+      const actual = await vi.importActual<
+        typeof import("../src/lib/api/source-attachments")
+      >("../src/lib/api/source-attachments");
+      listAttachments.mockImplementation(actual.listAttachments);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(
+          new Response(JSON.stringify({ error: "server refusal text" }), {
+            status,
+          }),
+        );
+      try {
+        mount([INTERVIEW]);
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(/locked/i);
+        expect(alert).not.toHaveTextContent("server refusal text");
+        expect(screen.queryByText(/no sources/i)).toBeNull();
+        expect(screen.queryByRole("table")).toBeNull();
+        expect(fetchSpy).toHaveBeenCalled();
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    },
+  );
+
   it("shows an empty state, distinct from the failure, for a project with no Sources", async () => {
     mount([CHAPTER]);
     expect(
