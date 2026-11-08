@@ -152,19 +152,25 @@ describe("useModuleEnabled under StaticModulesProvider", () => {
 });
 
 describe("UI registry shape (OQ-12, FR-11)", () => {
-  it("declares the view and attachments-section slot kinds only (Task 20)", () => {
+  it("declares the view, attachments-section and citation-control slot kinds only (Tasks 20, 31)", () => {
     expect(uiRegistryModule.UI_SLOT_KINDS).toEqual([
       "view",
       "attachmentsSection",
+      "citationControl",
     ]);
   });
 
-  it("an entry has an id, a view slot and at most an attachments-section slot", () => {
+  it("an entry has an id, a view slot and at most an attachments-section and a citation-control slot", () => {
     for (const entry of uiRegistryModule.UI_MODULE_VIEWS) {
       const keys = Object.keys(entry).sort();
       expect(["id", "view"].every((k) => keys.includes(k))).toBe(true);
       expect(
-        keys.filter((k) => !["id", "view", "attachmentsSection"].includes(k)),
+        keys.filter(
+          (k) =>
+            !["id", "view", "attachmentsSection", "citationControl"].includes(
+              k,
+            ),
+        ),
       ).toEqual([]);
     }
   });

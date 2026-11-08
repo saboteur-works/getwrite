@@ -6,21 +6,28 @@
  * `tests/unit/core-import-graph.test.ts` and `module-ui-registry.test.tsx`).
  * The model-side counterpart is `lib/models/modules/registry.ts`.
  *
- * Declares the view slot kind and the attachments-section slot kind (Task 20,
- * FR-3, FR-17). It has no field for resource types, Trash kinds, importers,
+ * Declares the view slot kind, the attachments-section slot kind (Task 20,
+ * FR-3, FR-17) and the citation-control slot kind (Task 31, FR-24, FR-25). It
+ * has no field for resource types, Trash kinds, importers,
  * permissions or project-type keys.
  */
+import type { Editor } from "@tiptap/core";
 import type { ComponentType, ReactNode } from "react";
 import React from "react";
 import type { ModuleViewSlot } from "../../src/lib/models/modules/registry";
 import type { AnyResource, SourceResource } from "../../src/lib/models/types";
 import { Library, Trash2 } from "lucide-react";
+import CitationControl from "../Editor/Citations/CitationControl";
 import SourceAttachmentsPanel from "../Sources/SourceAttachmentsPanel";
 import SourcesView from "../Sources/SourcesView";
 import TrashView from "../WorkArea/Views/TrashView/TrashView";
 
 /** The UI slot kinds declared. Later tasks add theirs with a consumer. */
-export const UI_SLOT_KINDS = ["view", "attachmentsSection"] as const;
+export const UI_SLOT_KINDS = [
+  "view",
+  "attachmentsSection",
+  "citationControl",
+] as const;
 export type UiSlotKind = (typeof UI_SLOT_KINDS)[number];
 
 /** What the shell hands a module view when it renders it. */
@@ -53,12 +60,31 @@ export interface UiAttachmentsSectionSlot {
   render: (context: UiAttachmentsSectionContext) => ReactNode;
 }
 
+/** What the editor hands a citation control: the open text resource. */
+export interface UiCitationControlContext {
+  editor: Editor;
+  /** The text resource being edited (the citing resource). */
+  resourceId: string;
+  /** Called after a citation was stored, so the host can re-read its list. */
+  onStored?: () => void;
+}
+
+/**
+ * The citation-control slot: its consumer is the editor, through
+ * `CitationControlSlot`, which renders it only while the module is on.
+ */
+export interface UiCitationControlSlot {
+  render: (context: UiCitationControlContext) => ReactNode;
+}
+
 export interface UiModuleEntry {
   /** Module id; matches the model-side manifest entry and `config.modules` key. */
   id: string;
   view: UiModuleViewSlot;
   /** Optional: the attachments section the Sources view places per Source. */
   attachmentsSection?: UiAttachmentsSectionSlot;
+  /** Optional: the control the editor offers to cite a selected passage. */
+  citationControl?: UiCitationControlSlot;
 }
 
 export interface UiModuleRegistry {
@@ -67,6 +93,8 @@ export interface UiModuleRegistry {
   getView(moduleId: string): UiModuleViewSlot | undefined;
   /** The attachments-section slot of a module, or undefined when it has none. */
   getAttachmentsSection(moduleId: string): UiAttachmentsSectionSlot | undefined;
+  /** The citation-control slot of a module, or undefined when it has none. */
+  getCitationControl(moduleId: string): UiCitationControlSlot | undefined;
 }
 
 /** Build a UI registry; a duplicate module id is a programming error. */
@@ -84,6 +112,7 @@ export function createUiModuleRegistry(
     modules,
     getView: (id) => byId.get(id)?.view,
     getAttachmentsSection: (id) => byId.get(id)?.attachmentsSection,
+    getCitationControl: (id) => byId.get(id)?.citationControl,
   };
 }
 
@@ -96,6 +125,12 @@ export function createUiModuleRegistry(
 const SOURCES_ATTACHMENTS_SECTION: UiAttachmentsSectionSlot = {
   render: ({ resource }) =>
     React.createElement(SourceAttachmentsPanel, { key: resource.id, resource }),
+};
+
+/** The Sources module's citation control, placed by the editor (FR-24). */
+const SOURCES_CITATION_CONTROL: UiCitationControlSlot = {
+  render: ({ editor, resourceId, onStored }) =>
+    React.createElement(CitationControl, { editor, resourceId, onStored }),
 };
 
 /** Registered module views: the Sources view, the first consumer (FR-3, FR-15). */
@@ -125,6 +160,7 @@ export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [
         }),
     },
     attachmentsSection: SOURCES_ATTACHMENTS_SECTION,
+    citationControl: SOURCES_CITATION_CONTROL,
   },
 ];
 
