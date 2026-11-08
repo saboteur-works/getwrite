@@ -3,6 +3,8 @@
  * resources slice plus the existing attachments list read; a failed read is a
  * failure state, never an empty project.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -20,6 +22,11 @@ import {
   MissingProjectKeyError,
   ProjectLockedError,
 } from "../src/lib/models/locked-access";
+import {
+  AttachmentEntrySchema,
+  SourceResourceSchema,
+  TextResourceSchema,
+} from "../src/lib/models/schemas";
 import type { AttachmentEntryView } from "../src/lib/api/source-attachments";
 import { runAxe } from "./a11y/helpers/axe";
 
@@ -379,6 +386,103 @@ describe("SourcesView rename (Feature 103 Task 18, FR-16, FR-19)", () => {
         "resource",
       ),
     );
+  });
+});
+
+/** Names of interactive elements in `root` that offer a template action. */
+function templateControlNames(root: HTMLElement): string[] {
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      "button, a, [role='button'], [role='menuitem'], select, option, input",
+    ),
+  )
+    .map(
+      (el) =>
+        el.getAttribute("aria-label") ??
+        el.textContent ??
+        el.getAttribute("value") ??
+        "",
+    )
+    .filter((name) => /template/i.test(name));
+}
+
+const SOURCES_DIR = path.resolve(__dirname, "../components/Sources");
+const SOURCES_VIEW_FILES = [
+  "SourcesView.tsx",
+  "SourcesViewControls.tsx",
+  "useSourceList.ts",
+];
+
+// Feature 103 Task 24 (FR-20): characterization tests, no product change.
+// They pass on the tree as it was before they were written; they pin what the
+// Sources view must not offer or link.
+describe("Sources view leaves Feature 102 unchanged (Task 24, FR-20)", () => {
+  it("offers no control to create a template from a Source or a Source from a template", async () => {
+    const { container } = mount([INTERVIEW, LETTERS]);
+    await screen.findAllByRole("row");
+    expect(templateControlNames(container)).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: "New Source" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rename Letters" }),
+    );
+    expect(templateControlNames(container)).toEqual([]);
+  });
+
+  it("the template-control scan flags a template control (not vacuous)", () => {
+    const fixture = document.createElement("div");
+    fixture.innerHTML =
+      '<button>Save as template</button><button aria-label="New Source from template">New</button><button>Rename</button>';
+    expect(templateControlNames(fixture)).toEqual([
+      "Save as template",
+      "New Source from template",
+    ]);
+  });
+
+  it("creates a Source with no template reference in the payload", async () => {
+    createResource.mockResolvedValue({
+      resource: { id: "n", name: "N", type: "source", folderId: null },
+    });
+    mount([LETTERS]);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New Source" }),
+    );
+    await userEvent.type(screen.getByLabelText("Source name"), "N");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(createResource).toHaveBeenCalledTimes(1));
+    expect(Object.keys(createResource.mock.calls[0][1]).sort()).toEqual([
+      "folderId",
+      "name",
+      "orderIndex",
+      "type",
+    ]);
+  });
+
+  it.each(SOURCES_VIEW_FILES)(
+    "%s names no template API and no Source-to-entity link",
+    (file) => {
+      const text = readFileSync(path.join(SOURCES_DIR, file), "utf8");
+      expect(text).not.toMatch(/template/i);
+      expect(text).not.toMatch(
+        /entityKind|entityId|updateSidecar|linkedEntity|setEntity|aliases/,
+      );
+    },
+  );
+
+  it("a Source has no entity-link key of its own: its schema's entity keys are a text resource's", () => {
+    const entityKeys = (shape: Record<string, unknown>): string[] =>
+      Object.keys(shape)
+        .filter((key) => /entit|alias|link/i.test(key))
+        .sort();
+    expect(entityKeys(SourceResourceSchema.shape)).toEqual(
+      entityKeys(TextResourceSchema.shape),
+    );
+    expect(entityKeys(AttachmentEntrySchema.shape)).toEqual([]);
+    const refused = AttachmentEntrySchema.safeParse({
+      ...entry("a"),
+      id: "11111111-1111-4111-8111-111111111111",
+      entityId: "22222222-2222-4222-8222-222222222222",
+    });
+    expect(refused.success).toBe(false);
   });
 });
 

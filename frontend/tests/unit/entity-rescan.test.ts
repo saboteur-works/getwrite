@@ -172,3 +172,67 @@ describe("targeted entity rescan on alias/name change (Task 6 / FR-8)", () => {
     ).toBeUndefined();
   });
 });
+
+// Feature 103 Task 24 (FR-20): characterization of Feature 102 behaviour. A
+// Source with an entityKind is matched in prose through the real indexer and
+// takes part in co-occurrence, which is what the graph's co-occurrence edges
+// read. No product change; this passes on the tree as written.
+describe("a Source with entityKind is matched in prose and co-occurs (Feature 103 Task 24, FR-20)", () => {
+  beforeEach(() => {
+    setStorageAdapter(realFsAdapter as any);
+  });
+
+  it("is detected in a chapter by name and alias and pairs with a text entity in the same chapter", async () => {
+    const projectRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-source-entity-"),
+    );
+    const { writeResourceToFile } =
+      await import("../../src/lib/models/resource");
+    const { createSourceResource } =
+      await import("../../src/lib/models/resource-factory");
+    const { writeSidecar } = await import("../../src/lib/models/sidecar");
+    const { loadMentionIndex } =
+      await import("../../src/lib/models/mention-index");
+    const { getEntityCooccurrence } =
+      await import("../../src/lib/models/mentions-core");
+    const { flushIndexer } = await import("../../src/lib/models/indexer-queue");
+
+    const letter = createSourceResource({ name: "Voss", plainText: "" });
+    await writeResourceToFile(projectRoot, letter);
+    await writeSidecar(projectRoot, letter.id, {
+      name: "Voss",
+      type: "source",
+      entityKind: "document",
+      aliases: ["the archive letter"],
+    });
+    const bram = createTextResource({ name: "Bram", plainText: "" });
+    await writeResourceToFile(projectRoot, bram);
+    await writeSidecar(projectRoot, bram.id, {
+      name: "Bram",
+      entityKind: "character",
+      aliases: [],
+    });
+
+    const chapter = createTextResource({
+      name: "Chapter One",
+      plainText: "Bram read the archive letter. Voss was signed at the end.",
+    });
+    await writeResourceToFile(projectRoot, chapter);
+    await flushIndexer(3000);
+
+    const index = await loadMentionIndex(projectRoot);
+    const sourceRecord = index[chapter.id]?.find(
+      (r) => r.entityId === letter.id,
+    );
+    expect(sourceRecord).toBeDefined();
+    expect(sourceRecord!.count).toBe(2);
+
+    const cooccurrence = await getEntityCooccurrence(projectRoot);
+    expect(cooccurrence[letter.id]).toEqual([
+      { entityId: bram.id, count: 1, resourceIds: [chapter.id] },
+    ]);
+    expect(cooccurrence[bram.id]).toEqual([
+      { entityId: letter.id, count: 1, resourceIds: [chapter.id] },
+    ]);
+  });
+});

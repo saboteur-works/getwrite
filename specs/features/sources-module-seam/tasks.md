@@ -340,7 +340,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-20.
 **POS:** task_6b45d86d
-**Done:** [ ]
+**Done:** [x]
 
 ## Wave 3: excerpts and citations
 
