@@ -223,7 +223,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 1
 **Notes:** OWNER-RUN / MANUAL: the orchestrator skips this task; the lead runs it with the owner. It needs the Pixel and adb outside the sandbox from the main checkout. No other task depends on it, so skipping it does not block the orchestrator; Tasks 19 and 21 are fully testable without a device. Satisfies FR-18 (first Wave 2 measurement duty). The spec says the first Wave 2 task measures this; it is placed as a skip-able parallel task so implementation is not blocked.
 **POS:** task_945a1e7d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Create and rename a Source from the Sources view
 **What:** Add create and rename controls to the Sources view that behave as the same action through the tree does.
@@ -333,7 +333,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 1
 **Notes:** OWNER-RUN / MANUAL: the orchestrator skips this task; the lead runs it with the owner. Needs the Pixel, adb outside the sandbox and the main checkout. Nothing depends on it, so skipping it does not block Task 37; the Feature 102 in-memory fake filesystem check was not a device run and must not stand in for it. Satisfies FR-18 (MUST per OQ-5).
 **POS:** task_72b2512a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Unchanged-behaviour tests for Feature 102 (entity, goals, templates)
 **What:** Add the tests that show the Sources view leaves Feature 102 behaviour unchanged.
@@ -484,7 +484,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16, 29, 31
 **Estimate:** 3
 **Notes:** Owner decision at Gate 6 (2026-11-08). Satisfies FR-21 (amended) and FR-6 (d) (the control is part of the module's interface). Task 37 waits for it. ORDERING: runs after Tasks 43 and 31, which also edit the slot and the toolbar; sole editor of those files until it lands.
-**POS:** none yet
+**POS:** task_2d95ccb4
 **Done:** [x]
 
 ### Task 46: Remove the unused exports and types this branch added (knip)
@@ -494,7 +494,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Depends on:** 16
 **Estimate:** 2
 **Notes:** Owner decision at Gate 6 (2026-11-08), from a knip comparison of HEAD against main. Task 37 waits for it. ORDERING: run after Task 45, which edits `uiRegistry.ts`, so only types it still needs stay exported. Findings already present on main are not part of this task.
-**POS:** none yet
+**POS:** task_d5deadf6
 **Done:** [x]
 
 ## Wave 4: Type filter

@@ -239,11 +239,34 @@ Non-vacuity: temporarily replacing the annotations `DELETE` body with `return wr
 
 ## Wave 2 Android image display
 
-Not yet recorded.
+Device Pixel 7 Pro (cheetah), Android 17, Android System WebView 156.0.8078.47. Build: HEAD 01c9c879, main checkout, unsandboxed: `pnpm build:native` (frontend/, "Native static export produced ... (18 top-level entries)"), `pnpm exec cap sync android` (android/), `./gradlew :app:installDebug` (android/android/, JAVA_HOME = Android Studio JBR; the default Java 8 failed with "Dependency requires at least JVM runtime version 11"), "Installed on 1 device". Run by the owner and lead, 2026-11-08.
+
+Method: driven through the debug WebView's DevTools protocol (adb forward to webview_devtools_remote_<pid>, Playwright connectOverCDP). Files were generated in the page (canvas PNG; WAV 16-bit mono 44.1 kHz 440 Hz tone) and handed to the app's own file inputs with DataTransfer and a change event, so the system file picker was not used; everything after the input is the app's native transport. New project "F103 device check" (blank).
+
+Task 17 (image resource display), observed:
+
+- Created image resource "Lighthouse photo" from Create Resource with a 12,376-byte PNG ("Resource created"). Stored: `resources/<id>/original.png`, 12,376 bytes, PNG signature.
+- The Media view showed "Unable to load image." (screenshot).
+- The viewer's src is `/api/resource/<id>/file?projectId=...` (`MediaView.tsx` builds it). In the WebView that URL returned HTTP 200, content-type text/html, 20,625 bytes beginning `<!DOCTYPE html>`: the app's HTML, not the image. The native export has no app/api routes (`android/CLAUDE.md`).
+- `git diff main..HEAD -- frontend/components/WorkArea/Media/` is empty, so this behaviour is from before this branch.
+- Contrast: a Source image attachment (tiny.png, 208 B, 64x40) previewed through this feature's attachment read path displayed: img src `blob:`, naturalWidth 64, naturalHeight 40.
 
 ## Wave 2 Android 100 MB baseline
 
-Not yet recorded.
+Same device, WebView and build as "Wave 2 Android image display" above. Cap: `MAX_MEDIA_FILE_BYTES` = 100*1024*1024 = 104,857,600 (`media-validation.ts`). Same method (files generated in the page, handed to the app's file inputs).
+
+Observed:
+
+- 104,857,600-byte WAV added as an attachment to Source "Keeper tape" from the Sources view attachments panel: the app process crashed. logcat: `FATAL EXCEPTION: main`, `java.lang.OutOfMemoryError: Failed to allocate a 139810152 byte allocation with 124015312 free bytes and 118MB until OOM, target footprint 268435456, growth limit 268435456`, stack in org.json.JSONTokener.nextString, com.getcapacitor.JSObject.<init>, com.getcapacitor.MessageHandler.postMessage; the process was then killed (signal 9). After relaunch: no attachment file in the Source folder, sidecar `attachments: []` (no partial state).
+- Comparison, same size as an audio resource (Create Resource, type audio, the pre-existing media path): same crash, same 139,810,152-byte allocation, same stack. The 100 MiB failure is therefore not specific to Feature 103 attachments.
+- 52,428,800-byte (50 MiB) attachment: same crash, `Failed to allocate a 72877440 byte allocation with 48484464 free bytes and 46MB until OOM`.
+- 26,214,400-byte (25 MiB) attachment: added and listed in 2,911 ms (about 8.6 MiB/s), status "Added keeper-25mib.wav."; on disk attachment-<id>.wav 26,214,400 bytes. Preview: audio src `blob:`, metadata ready about 3.0 s after Preview (click-to-ready total 4.8 s including the click), duration 297.21 s (= 26,214,356 data bytes / 88,200 B/s). Playback: from 100 s, playing, currentTime 101.96 after 2 s.
+- Measured: each failed allocation is about 4/3 of the file size (104,857,600 x 4/3 = about 139,810,134; 52,428,800 x 4/3 = about 69,905,067, observed 72,877,440).
+- The largest working size between 25 and 50 MiB was not measured.
+
+Result: the product figure (100 MB cap on Android) does NOT hold on this device: 50 MiB and 100 MiB adds crash the app; 25 MiB works. The PR must not claim the baseline.
+
+Hypothesis, not established: the bytes cross the Capacitor bridge as one base64 string inside one JSON message, which the Java side parses within a 256 MiB heap. Experiment to settle it: log the payload length of the `Filesystem.writeFile` call for a 25 MiB add, and try a chunked write (`writeFile` then `appendFile` in e.g. 4 MiB pieces) at 100 MiB.
 
 ## Not verified
 
@@ -251,7 +274,6 @@ Not yet recorded.
 - `pnpm --filter getwrite-electron typecheck` and `pnpm --filter getwrite-cli typecheck` were not run for Task 1 (the only file changed under the code tree is a frontend test; no models, `core.ts`, `cli/` or `electron/` file changed).
 - A write of project.json by an older build dropping or keeping a newer module flag: not run.
 
-- Task 17 and Task 23 (Android device checks, owner-run): pending, not run.
 - A write of `config.modules` by an older build (FR-5): not run.
 - Native lock parity with the server: reasoned from both calling the same core, not run.
 - Paired-device behaviour: not run in the app.
@@ -284,6 +306,8 @@ CI command list: re-read from `.github/workflows` with the Task 37 grep. It matc
 | root `pnpm knip` | exits 1, as on main. In the files this branch changed (`git diff --name-only cb7e2c06..HEAD`) every finding is also present on main (scratchpad `t37/knip-base.txt`); main's `ProjectSchema` and `rebuildIndexes` findings are gone. No new findings |
 
 No bare `tsc` was used as evidence.
+
+Tasks 17 and 23 (Android device checks) were run on a Pixel 7 Pro, 2026-11-08; results are under "Wave 2 Android image display" and "Wave 2 Android 100 MB baseline". Task 17: image resource shows "Unable to load image." (pre-existing, not changed by this branch). Task 23: 25 MiB attachment works; 50 MiB and 100 MiB crash the app, so the 100 MB Android baseline is not met and must not be claimed in the PR.
 
 Real-app check of Task 45: recorded under "Task 45" above. A copy fix followed (`4ee1ee14`): the Modules settings text now says switching off hides the view and its editor controls.
 
