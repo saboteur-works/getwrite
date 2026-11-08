@@ -372,17 +372,40 @@ export interface TipTapDocument {
   content: TipTapNode[];
 }
 
+/** The kinds of place a locator can name (Feature 103, FR-21). */
+export type AnnotationLocatorType = "page" | "timestamp" | "paragraph" | "line";
+
+/** Where in a Source an excerpt or citation sits: an optional type and free text. */
+export interface AnnotationLocator {
+  type?: AnnotationLocatorType;
+  value: string;
+}
+
+/**
+ * What an annotation points at (Feature 103, FR-24). `sourceName` is the
+ * Source's name when the citation was made; it is not updated on rename.
+ */
+export interface AnnotationTarget {
+  sourceId: UUID;
+  attachmentId?: UUID;
+  excerptId?: UUID;
+  locator?: AnnotationLocator;
+  sourceName?: string;
+}
+
 /**
  * A writer's note on a passage of a text resource (Feature 101, FR-10).
  * Stored in the sidecar `annotations` array and written only by the
  * annotation core through `mutateSidecar`. The passage is found by the
- * `annotation` mark carrying the same `id` in the document; there is no
- * `target` field. `quote` is the selected text when the note was added.
+ * `annotation` mark carrying the same `id` in the document. `quote` is the
+ * selected text when the note was added. The optional `target` ties the
+ * annotation to a Source (Feature 103, FR-24); absent on every other one.
  */
 export interface Annotation {
   id: UUID;
   body: string;
   quote: string;
+  target?: AnnotationTarget;
   createdAt: string;
   updatedAt: string;
 }

@@ -154,7 +154,7 @@ export async function listAnnotationsCore(
 }
 
 /**
- * Add an annotation. `input` is `{ id, body, quote }`; the core sets both
+ * Add an annotation. `input` is `{ id, body, quote, target? }`; the core sets both
  * timestamps. Returns the stored annotation.
  *
  * @throws InvalidAnnotationError, InvalidAnnotationResourceIdError,
@@ -177,6 +177,7 @@ export async function addAnnotationCore(
     id: fields.id,
     body: fields.body,
     quote: fields.quote,
+    ...(fields.target === undefined ? {} : { target: fields.target }),
     createdAt: now,
     updatedAt: now,
   };

@@ -29,18 +29,17 @@ function stored(id: string): Annotation {
 }
 
 describe("annotation shape (FR-10)", () => {
-  it("is { id, body, quote, createdAt, updatedAt } with no target field", () => {
+  it("is { id, body, quote, createdAt, updatedAt } plus an optional Source target (Feature 103); an unrelated key is stripped", () => {
     const parsed = AnnotationSchema.parse({
       ...stored(ID_A),
-      target: { from: 1, to: 2 },
+      anchor: { from: 1, to: 2 },
     });
     expect(Object.keys(parsed).sort()).toEqual(
       ["body", "createdAt", "id", "quote", "updatedAt"].sort(),
     );
   });
 
-  it("the Annotation type has no target key", () => {
-    // @ts-expect-error target is not part of the annotation shape
+  it("the Annotation type has an optional target key", () => {
     const target: Annotation["target"] = undefined;
     expect(target).toBeUndefined();
   });
@@ -70,6 +69,8 @@ describe("annotation limits (FR-11)", () => {
       bodyMax: 5000,
       quoteMax: 500,
       maxPerResource: 500,
+      locatorValueMax: 500,
+      sourceNameMax: 500,
     });
   });
 
@@ -122,9 +123,9 @@ describe("validateNewAnnotation (FR-11)", () => {
   });
 
   it("refuses an unknown key rather than storing it", () => {
-    const r = validateNewAnnotation({ ...valid, target: { from: 1 } }, []);
+    const r = validateNewAnnotation({ ...valid, anchor: { from: 1 } }, []);
     expect(r.ok).toBe(false);
-    expect(!r.ok && r.message).toContain("target");
+    expect(!r.ok && r.message).toContain("anchor");
   });
 
   it("refuses a non-object input", () => {

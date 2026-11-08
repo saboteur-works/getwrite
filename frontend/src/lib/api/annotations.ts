@@ -13,7 +13,8 @@
  */
 import { z } from "zod";
 import { createTransport } from "../../store/transport/create-transport";
-import type { Annotation } from "../models/types";
+import { AnnotationTargetSchema } from "../models/schemas";
+import type { Annotation, AnnotationTarget } from "../models/types";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 export type { Annotation };
@@ -23,6 +24,7 @@ export interface NewAnnotation {
   id: string;
   body: string;
   quote: string;
+  target?: AnnotationTarget;
 }
 
 /** The annotation operations both platforms implement. */
@@ -57,6 +59,7 @@ const AnnotationResponseSchema = z.object({
   id: z.string(),
   body: z.string(),
   quote: z.string(),
+  target: AnnotationTargetSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
