@@ -74,6 +74,39 @@ Command, run from the worktree root: `git diff --numstat -- frontend/components/
 
 Observed: 31 lines added, 1 line removed in `frontend/components/Layout/AppShell.tsx` (after `prettier --write`).
 
+### Trash slot spike (Task 15)
+
+Base commit: `85f882a7189f3e8f7b7d5bee5bc3355aa25c97a5` (worktree HEAD when the spike started; after Task 13). Ref: `spike/sources-module-seam-trash-slot`. The converted code is on that ref only (left uncommitted in the spike worktree at measurement); it is not on `feat/sources-module-seam`.
+
+All figures below are for the converted code only, measured before this section was written. `experiments.md` is excluded from every count.
+
+What the conversion did (as built): a Trash entry (`id: "trash"`) added to `UI_MODULE_VIEWS` before the Sources entry; the view slot gained two optional fields, `icon` and `alwaysEnabled`; `useModuleViews()` treats a slot with `alwaysEnabled` as enabled regardless of `config.modules`; `ViewSwitcher` no longer lists Trash in `VIEW_OPTIONS` and takes an optional `icon` per module view; `AppShell` no longer imports `TrashView` and its `view === "trash"` branch is merged with the `view === "sources"` slot branch. `TrashView.tsx` and the `TrashRefreshContext` provider were not edited. The Trash tab stays after Graph and before Sources.
+
+Commands, run from the worktree root with the conversion uncommitted:
+
+- `git diff --numstat 85f882a7 -- frontend/components/Layout/AppShell.tsx`. Observed: 5 lines added, 17 lines removed.
+- `git diff --numstat 85f882a7 | wc -l`. Observed: 6 files changed (70 lines added, 33 removed in total, from `git diff --shortstat`).
+
+Files changed (added/removed):
+
+- `frontend/components/Layout/AppShell.tsx` (5/17)
+- `frontend/components/Modules/uiRegistry.ts` (21/1)
+- `frontend/components/Modules/useEnabledModuleViews.ts` (1/1)
+- `frontend/components/WorkArea/ViewSwitcher.tsx` (6/7)
+- `frontend/tests/a11y/workarea.a11y.test.tsx` (7/1)
+- `frontend/tests/viewSwitcher.test.tsx` (30/6)
+
+Existing tests, run from `frontend/`: `npx vitest run viewSwitcher work-area-view-gating module-ui-registry TrashView trash-restore-refresh trash-view.a11y workarea.a11y structural-aria sourceAttachmentsSection appShell` (name filters; matches the TrashView component and a11y tests, `work-area-view-gating`, `viewSwitcher`, the `appShell*` files and the registry test). Before any test edit: 2 failed files, 6 failed tests of 241 (all in `tests/viewSwitcher.test.tsx` and `tests/a11y/workarea.a11y.test.tsx`). After the test edits below: 25 files passed, 241 tests passed, 0 failed.
+
+Assertions that necessarily changed (no assertion text was edited; the render call was):
+
+- `tests/viewSwitcher.test.tsx` (5 failing tests: Trash tab renders unconditionally; selecting Trash needs no selected resource; adds a module view tab after the existing ones; renders exactly the eight existing views in order; the Trash row of the per-view `it.each`) and `tests/a11y/workarea.a11y.test.tsx` (the arrow-key navigation test, which walks to the Trash tab). They render `ViewSwitcher` bare and expect a Trash tab. With Trash coming from a slot, a bare render has no Trash tab, so these renders now pass `moduleViews` carrying the Trash slot (`{ key: "trash", label: "Trash" }`). The expected tab order and labels are unchanged.
+- `tests/work-area-view-gating.test.tsx` and `tests/unit/module-ui-registry.test.tsx` needed no change.
+
+Other checks, run from `frontend/`: `pnpm typecheck` passed (no output beyond the script banner); `npx eslint` on the six touched files exited 0; `npx prettier --check` on the six touched files passed.
+
+e2e: not run (e2e and builds run only from the main checkout outside the sandbox, not from this worktree).
+
 ## Module-switch cases
 
 ### Module-switch write path choice (Task 8)
