@@ -251,9 +251,43 @@ Not yet recorded.
 - `pnpm --filter getwrite-electron typecheck` and `pnpm --filter getwrite-cli typecheck` were not run for Task 1 (the only file changed under the code tree is a frontend test; no models, `core.ts`, `cli/` or `electron/` file changed).
 - A write of project.json by an older build dropping or keeping a newer module flag: not run.
 
+- Task 17 and Task 23 (Android device checks, owner-run): pending, not run.
+- A write of `config.modules` by an older build (FR-5): not run.
+- Native lock parity with the server: reasoned from both calling the same core, not run.
+- Paired-device behaviour: not run in the app.
+- Locked-project flows in the app: not run.
+
 ## Acceptance
 
-Task 37 writes this section.
+Task 37 final suites (lead, 2026-11-08, main checkout; suite at HEAD `2048a9d6`; e2e and builds outside the command sandbox).
+
+CI command list: re-read from `.github/workflows` with the Task 37 grep. It matches the Task 37 list, plus install, playwright-install and release-upload steps that are CI setup, not checks. No difference.
+
+| Command | Result |
+| --- | --- |
+| `pnpm run format:check` (root script; it does not exist in `frontend/`) | First run failed on one uncommitted doc, `docs/user/handbook/story/metadata-queries.md`; fixed with `prettier --write`; re-run passes ("All matched files use Prettier code style!") |
+| frontend `pnpm lint` | pass |
+| frontend `pnpm run check:no-hex` | pass |
+| frontend `pnpm typecheck` | pass |
+| frontend `pnpm test:ci` | 835 files passed; 10797 passed, 7 expected fail, 1 skipped (10805) |
+| frontend `pnpm test:e2e` | 249 passed, 1 skipped |
+| `pnpm --filter getwrite-frontend build` (`next build`) | pass |
+| `pnpm build:native` | pass |
+| electron `typecheck` (both passes, incl. `tsconfig.worker.json`) | pass |
+| electron `test` | 565 passed |
+| electron `build` | pass |
+| cli `typecheck` | pass |
+| cli `test` | 164 passed |
+| cli `build` | pass |
+| cli `--help`, `doctor --help`, `prune --help` smoke commands | pass |
+| android `build` | pass |
+| root `pnpm knip` | exits 1, as on main. In the files this branch changed (`git diff --name-only cb7e2c06..HEAD`) every finding is also present on main (scratchpad `t37/knip-base.txt`); main's `ProjectSchema` and `rebuildIndexes` findings are gone. No new findings |
+
+No bare `tsc` was used as evidence.
+
+Real-app check of Task 45: recorded under "Task 45" above. A copy fix followed (`4ee1ee14`): the Modules settings text now says switching off hides the view and its editor controls.
+
+Waves: all four waves landed, plus the Gate 6 additions (Tasks 45 and 46); none stopped.
 
 ## Task 40
 
@@ -281,13 +315,13 @@ Consequences taken: `components/Sidebar/SourceAttachmentsSection.tsx` stays as a
 
 Measured before the change (real app, dev server, 2026-11-08, recorded in spec FR-21): the Sources view could not create a text excerpt. Observed in the code read for this task: `TextExcerptForm` in `ExcerptsSection.tsx` read `getActiveEditor()` only when `getActiveEditorResourceId()` equalled the Source id; the editor is a separate Work Area tab, so while the Sources view shows no Source editor is the active one.
 
-Re-check in the dev server after the change: not run. `next dev` has to run outside the sandbox from the main checkout, and this task ran in a worktree inside the sandbox, so no dev server was started. The observed value to record is therefore absent; the owner-run check is: open a Source in the editor, select text, use "Mark as excerpt", open the Sources view, expand the Source's excerpts.
+Re-check in the dev server after the change: not run in this task (it ran in a worktree inside the sandbox). Run later by the lead in Task 37 (dev server :3100, scratch project, 2026-11-08). Observed: with `sources` off, the Source opened from the Resource Tree showed no Mark as excerpt or Cite selection. After switching it on in Project Settings > Modules ("Sources is now on."), the Sources tab, Cite selection and Mark as excerpt appeared. A real selection "failed twice in the winter of 1962" with locator paragraph 1 gave the status "Marked the excerpt." and a mark in the body. The sidecar annotation held body "", the quote, and target `{ sourceId` (the Source), `locator: { paragraph, "1" }`, `sourceName: "Keeper interview 1987" }`. The Sources view Excerpts panel listed it as "failed twice in the winter of 1962 / Paragraph 1".
 
 Observed in component tests instead (jsdom, real TipTap editor with a real `TextSelection`, `activeEditorRegistry` not used; `tests/citationControl.test.tsx`, `tests/a11y/citationControl.a11y.test.tsx`): with a Source open and "Harbour" selected, "Mark as excerpt" sent `addAnnotation` one `target` of `{ sourceId, sourceName, locator: { type: "page", value: "47" } }` and the quote "Harbour"; the editor document then held an `annotation` mark; `ExcerptsSection` over the same stored list then listed one excerpt with "Page 47". With a text resource open, or the `sources` module off, the control was absent; with the module off an existing excerpt was still listed. A rejected write showed "Disk is full" in the status region, added no mark and did not call `onStored`.
 
 Decision on the Sources-view button: the "Mark selected text as excerpt" button and its locator field were removed from `ExcerptsSection`; a sentence in their place says to open the Source in the editor and use Mark as excerpt. Attachment (locator-only) excerpts, the list and Delete are unchanged. Reason: the spec's amended FR-21 requires the Sources view to keep listing excerpts and says nothing of keeping a creating control, and the measurement above is that the button could not succeed in the app, so keeping it would leave a control that always answers "Open this Source in the editor".
 
-Not verified: the real-app flow in the dev server; the Storybook stories were written but not run (Storybook and e2e are not run in this task).
+Not verified in this task: the Storybook stories were written but not run here (the Task 37 e2e run is below). The real-app flow was later run; see the re-check above.
 
 ## Task 46: knip findings added by this branch
 

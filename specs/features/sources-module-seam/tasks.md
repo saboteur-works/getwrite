@@ -519,7 +519,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** ORDERING DEPENDENCY NOT EXPRESSIBLE IN THE FIELD: this task also depends on Tasks 38, 39, 40, 41, 42, 43, 44, 45, 46 and 27 (the `sab.tasks/1` check requires a task to depend only on lower-numbered tasks; the lead may add them to a POS link). It MUST NOT start until all of them are done, and in particular it runs after Task 45 (Mark as excerpt control in the editor) and Task 46 (knip clean-up), both added at Gate 6, 2026-11-08, so that `pnpm knip` and the e2e run see their final state; also not until Task 44 (annotations panel Delete disabled on a limited device; Task 34 is ticked with it) and Task 27 (`target` survives paste) are done. LEAD-RUN: not for the orchestrator. `pnpm test:e2e`, `next build` and `pnpm build:native` run outside the sandbox from the main checkout, never a worktree, after the orchestrator lands the waves. Satisfies FR-34, FR-35, FR-36, FR-30 to FR-32 (final verification). Tasks 17 and 23 are not dependencies (they are owner-run); their results, if run, are in `experiments.md`, otherwise under "Not verified". Task 25 to Task 29 and Task 32 are covered transitively through Tasks 31, 33, 34 and 35. Task 43 (module-off fallback to Data, created Source in page state, row count refresh) is covered transitively by its own tests; its e2e coverage is part of `pnpm test:e2e` here. Task 38 (Trash conversion) is covered by e2e here: `pnpm test:e2e` must pass with Trash behind the slot, and the result is recorded as the e2e coverage for the conversion (the spike's e2e was never run).
 **POS:** task_2b5a7f61
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 46
