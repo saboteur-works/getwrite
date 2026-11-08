@@ -393,7 +393,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** Satisfies FR-21, FR-22, FR-25 (failed write). Sole editor of `annotation-flows.ts`.
 **POS:** task_77cdb616
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Excerpts interface in the Sources view
 **What:** Add excerpt creation, listing and locator entry for a Source to the Sources view.
