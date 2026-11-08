@@ -250,7 +250,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Owner decision at the Wave 1 checkpoint, 2026-11-07 (OQ-4: the spike cost is small enough; Trash converted as the FR-10 generality check). Satisfies FR-10 (conversion half) and FR-3 (view slot, second entry). Sole `AppShell.tsx`, `ViewSwitcher.tsx` and `uiRegistry.ts` editor until Task 39 starts. No other existing view is converted (FR-11). The spike ref is local and may be absent on another machine; if `1313b8bb` is not reachable, report the blocker, do not reconstruct it from memory.
 **POS:** task_affd0a39
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 39: Selection-aware fallback when the Sources module is switched off while its view is open
 **What:** Replace the always-`"edit"` fallback with the shell's existing view-reset logic, so the landing view depends on the selection and is never a type-disabled Edit tab.

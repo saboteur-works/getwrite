@@ -71,7 +71,6 @@ import DataView, { useDataViewFilteredTotal } from "../WorkArea/DataView";
 import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
-import TrashView from "../WorkArea/Views/TrashView/TrashView";
 import { useModuleViews } from "../Modules/useEnabledModuleViews";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
@@ -1431,6 +1430,7 @@ export default function AppShell({
                           moduleViews={moduleViews.enabled.map((slot) => ({
                             key: slot.id as ViewName,
                             label: slot.label,
+                            icon: slot.icon,
                           }))}
                           disabledViews={(() => {
                             const disabled: ViewName[] = [];
@@ -1671,19 +1671,6 @@ export default function AppShell({
                               ) : null;
                             }
 
-                            // Same reachability concern as the roster/graph
-                            // above: Trash is project-wide (it reads across
-                            // every soft-deleted resource, not the current
-                            // selection) and, per FR-1, is never gated
-                            // behind a feature flag or a selection, so it is
-                            // handled here, before the `!selectedResource`
-                            // guard below. `TrashView` (Feature 26 Task 15)
-                            // owns its own `listTrash` fetch and replaces
-                            // the earlier routing-only placeholder.
-                            if (view === "trash") {
-                              return <TrashView />;
-                            }
-
                             // Timeline is project-wide too (it reads every
                             // dated resource from the store). It used to sit in
                             // the post-guard `switch`, so a freshly opened
@@ -1696,10 +1683,11 @@ export default function AppShell({
                               ) : null;
                             }
 
-                            // The Sources view is project-wide and registered
+                            // Trash and Sources are project-wide and registered
                             // through the module registry; like the views above
-                            // it renders before the `!selectedResource` guard.
-                            if (view === "sources") {
+                            // they render before the `!selectedResource` guard.
+                            // Trash is always enabled (FR-1), never gated.
+                            if (view === "trash" || view === "sources") {
                               const slot = moduleViews.enabled.find(
                                 (s) => s.id === view,
                               );

@@ -9,10 +9,12 @@
  * Declares the view slot kind only. It has no field for resource types,
  * Trash kinds, importers, permissions or project-type keys.
  */
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import React from "react";
 import type { ModuleViewSlot } from "../../src/lib/models/modules/registry";
+import { Library, Trash2 } from "lucide-react";
 import SourcesView from "../Sources/SourcesView";
+import TrashView from "../WorkArea/Views/TrashView/TrashView";
 
 /** The UI slot kinds declared. Later tasks add theirs with a consumer. */
 export const UI_SLOT_KINDS = ["view"] as const;
@@ -27,6 +29,13 @@ export interface UiViewRenderContext {
 /** The model-side view metadata (id, label) plus the component to render. */
 export interface UiModuleViewSlot extends ModuleViewSlot {
   render: (context: UiViewRenderContext) => ReactNode;
+  /** Tab icon; the switcher falls back to its default when absent. */
+  icon?: ComponentType<{
+    size?: number;
+    "aria-hidden"?: boolean | "true" | "false";
+  }>;
+  /** When true the view is on whatever `config.modules` says (Trash, FR-1). */
+  alwaysEnabled?: boolean;
 }
 
 export interface UiModuleEntry {
@@ -58,10 +67,21 @@ export function createUiModuleRegistry(
 /** Registered module views: the Sources view, the first consumer (FR-3, FR-15). */
 export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [
   {
+    id: "trash",
+    view: {
+      id: "trash",
+      label: "Trash",
+      icon: Trash2,
+      alwaysEnabled: true,
+      render: () => React.createElement(TrashView),
+    },
+  },
+  {
     id: "sources",
     view: {
       id: "sources",
       label: "Sources",
+      icon: Library,
       render: ({ openInEditor }) =>
         React.createElement(SourcesView, { onOpenSource: openInEditor }),
     },

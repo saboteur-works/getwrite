@@ -27,7 +27,7 @@ export function useModuleViews(): ModuleViews {
   return useMemo(() => {
     const registered = uiModuleRegistry.modules.map((m) => m.view);
     const enabled = uiModuleRegistry.modules
-      .filter((m) => isModuleEnabled({ modules }, m.id))
+      .filter((m) => m.view.alwaysEnabled || isModuleEnabled({ modules }, m.id))
       .map((m) => m.view);
     return { registered, enabled };
   }, [modules]);

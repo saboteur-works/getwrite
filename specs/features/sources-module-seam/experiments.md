@@ -107,6 +107,19 @@ Other checks, run from `frontend/`: `pnpm typecheck` passed (no output beyond th
 
 e2e: not run (e2e and builds run only from the main checkout outside the sandbox, not from this worktree).
 
+### Task 38
+
+The Task 15 spike (`1313b8bb`) applied to HEAD `8d4e49e6` by `git apply --3way` for `frontend/components/` (all four files applied cleanly) and by `git apply` for the a11y test and the render edits in `tests/viewSwitcher.test.tsx` (applied by hand where the import hunk collided with the new test). No cherry-pick. `TrashView.tsx` and `TrashRefreshContext` not edited. Measured with the conversion uncommitted.
+
+- `git diff --numstat 8d4e49e6 -- frontend/components/Layout/AppShell.tsx`. Observed: 5 lines added, 17 removed (spike: 5 added, 17 removed).
+- `git diff HEAD --numstat` (other files, added/removed): `uiRegistry.ts` 21/1, `useEnabledModuleViews.ts` 1/1, `ViewSwitcher.tsx` 6/7, `tests/a11y/workarea.a11y.test.tsx` 7/1, `tests/viewSwitcher.test.tsx` 109/7 (the spike's render edits plus the new Task 38 tests).
+
+Test first: the new tests in `tests/viewSwitcher.test.tsx` ("useModuleViews lists Trash as an enabled registry slot with the Sources module off" and "... with no config.modules entry") failed before the conversion with `expected [] to include 'trash'` and `expected [ 'sources' ] to include 'trash'`. After: they pass.
+
+Tests, run from `frontend/`: `npx vitest run tests/viewSwitcher.test.tsx tests/work-area-view-gating.test.tsx tests/a11y/workarea.a11y.test.tsx tests/unit/module-ui-registry.test.tsx`: 4 files, 93 tests passed. The Task 15 name-filter set (`viewSwitcher work-area-view-gating module-ui-registry TrashView trash-restore-refresh trash-view.a11y workarea.a11y structural-aria sourceAttachmentsSection appShell`): 25 files, 245 tests passed. `work-area-view-gating.test.tsx` and `module-ui-registry.test.tsx` unedited.
+
+Other checks: frontend `pnpm typecheck` exit 0; `pnpm lint` exit 0 (0 errors, 427 warnings); `npx prettier --check` on the six touched code files passed; electron `pnpm run typecheck` exit 0; cli `pnpm run typecheck` exit 0. e2e: not run (Task 37, lead-run).
+
 ## Module-switch cases
 
 ### Module-switch write path choice (Task 8)

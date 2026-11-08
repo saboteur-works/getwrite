@@ -1,7 +1,18 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, renderHook } from "@testing-library/react";
 import ViewSwitcher from "../components/WorkArea/ViewSwitcher";
+import { useModuleViews } from "../components/Modules/useEnabledModuleViews";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import projectsReducer, {
+  type StoredProject,
+} from "../src/store/projectsSlice";
+import type { ViewName } from "../src/lib/models/types";
+
+// Trash is a registry view slot, so the shell hands it to the switcher as a
+// module view; a bare render no longer carries it.
+const TRASH_SLOT = [{ key: "trash" as const, label: "Trash" }];
 
 describe("ViewSwitcher", () => {
   it("renders all view buttons and calls onChange when clicked", () => {
@@ -67,7 +78,9 @@ describe("ViewSwitcher", () => {
     // No `disabledViews`/`disabledReasons` mocked either way — the Trash tab
     // must be present and enabled regardless, per FR-1 (it is deliberately
     // never added to AppShell.tsx's `disabledViews` computation).
-    render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+    render(
+      <ViewSwitcher view="edit" onChange={vi.fn()} moduleViews={TRASH_SLOT} />,
+    );
 
     const trashTab = screen.getByRole("tab", { name: /Trash/i });
     expect(trashTab).toBeTruthy();
@@ -79,7 +92,9 @@ describe("ViewSwitcher", () => {
     // confirms the tab is clickable and fires onChange from a plain render,
     // with no selection-related props supplied at all.
     const onChange = vi.fn();
-    render(<ViewSwitcher view="edit" onChange={onChange} />);
+    render(
+      <ViewSwitcher view="edit" onChange={onChange} moduleViews={TRASH_SLOT} />,
+    );
 
     const trashTab = screen.getByRole("tab", { name: /Trash/i });
     fireEvent.click(trashTab);
@@ -101,7 +116,11 @@ describe("ViewSwitcher", () => {
     it("adds a module view tab after the existing ones only when it is passed", () => {
       const onChange = vi.fn();
       const { unmount } = render(
-        <ViewSwitcher view="edit" onChange={onChange} />,
+        <ViewSwitcher
+          view="edit"
+          onChange={onChange}
+          moduleViews={TRASH_SLOT}
+        />,
       );
       expect(screen.queryByRole("tab", { name: "Sources" })).toBeNull();
       unmount();
@@ -109,7 +128,7 @@ describe("ViewSwitcher", () => {
         <ViewSwitcher
           view="edit"
           onChange={onChange}
-          moduleViews={[{ key: "sources", label: "Sources" }]}
+          moduleViews={[...TRASH_SLOT, { key: "sources", label: "Sources" }]}
         />,
       );
       const labels = screen
@@ -121,7 +140,13 @@ describe("ViewSwitcher", () => {
     });
 
     it("renders exactly the eight existing views in order", () => {
-      render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
+      render(
+        <ViewSwitcher
+          view="edit"
+          onChange={vi.fn()}
+          moduleViews={TRASH_SLOT}
+        />,
+      );
       const labels = screen
         .getAllByRole("tab")
         .map((t: HTMLElement) => t.textContent?.trim());
@@ -131,7 +156,13 @@ describe("ViewSwitcher", () => {
     it.each(EXPECTED)("%s tab reports the %s view name", (label, key) => {
       const onChange = vi.fn();
       const current = key === "edit" ? "data" : "edit";
-      render(<ViewSwitcher view={current} onChange={onChange} />);
+      render(
+        <ViewSwitcher
+          view={current}
+          onChange={onChange}
+          moduleViews={TRASH_SLOT}
+        />,
+      );
       fireEvent.click(screen.getByRole("tab", { name: label }));
       expect(onChange).toHaveBeenCalledWith(key);
     });
@@ -240,4 +271,75 @@ describe("ViewSwitcher", () => {
       restore();
     });
   });
+});
+
+describe("Trash tab through the registry (Feature 103, Task 38)", () => {
+  function storeWith(modules?: Record<string, boolean>) {
+    const project: StoredProject = {
+      id: "p1",
+      rootPath: "/p1",
+      folders: [],
+      resources: [],
+      modules,
+    };
+    return configureStore({
+      reducer: { projects: projectsReducer },
+      preloadedState: {
+        projects: { selectedProjectId: "p1", projects: { p1: project } },
+      },
+    });
+  }
+
+  function Shell({ onChange }: { onChange: (v: ViewName) => void }) {
+    const { enabled } = useModuleViews();
+    return (
+      <ViewSwitcher
+        view="edit"
+        onChange={onChange}
+        moduleViews={enabled.map((slot) => ({
+          key: slot.id as ViewName,
+          label: slot.label,
+          icon: slot.icon,
+        }))}
+      />
+    );
+  }
+
+  it.each([
+    ["the Sources module off", { sources: false }],
+    ["no config.modules entry", undefined],
+  ])("keeps the Trash tab present and reachable with %s", (_name, modules) => {
+    const onChange = vi.fn();
+    render(
+      <Provider store={storeWith(modules)}>
+        <Shell onChange={onChange} />
+      </Provider>,
+    );
+    const trashTab = screen.getByRole("tab", { name: /Trash/i });
+    expect(trashTab.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(trashTab);
+    expect(onChange).toHaveBeenCalledWith("trash");
+    const labels = screen
+      .getAllByRole("tab")
+      .map((t: HTMLElement) => t.textContent?.trim());
+    expect(labels.indexOf("Trash")).toBe(labels.indexOf("Graph") + 1);
+    expect(labels.includes("Sources")).toBe(modules === undefined);
+  });
+
+  it.each([
+    ["the Sources module off", { sources: false }],
+    ["no config.modules entry", undefined],
+  ])(
+    "useModuleViews lists Trash as an enabled registry slot with %s",
+    (_name, modules) => {
+      const { result } = renderHook(() => useModuleViews(), {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <Provider store={storeWith(modules)}>{children}</Provider>
+        ),
+      });
+      const ids = result.current.enabled.map((slot) => slot.id);
+      expect(ids).toContain("trash");
+      expect(ids.includes("sources")).toBe(modules === undefined);
+    },
+  );
 });
