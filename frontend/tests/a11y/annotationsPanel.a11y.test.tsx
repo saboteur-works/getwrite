@@ -25,6 +25,7 @@ import {
   makeEditor,
   makeHandle,
 } from "../helpers/annotations-panel-harness";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
 import { runAxe } from "./helpers/axe";
 
 vi.mock("../../src/lib/api/trash", () => ({
@@ -131,6 +132,46 @@ describe("a11y: AnnotationsPanel", () => {
     );
     fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
     expect(document.activeElement).toBe(opener);
+  });
+});
+
+/**
+ * Feature 103, Task 44 (FR-13): Delete disabled with a visible reason on a
+ * paired device whose permanent-deletion limit is on.
+ */
+describe("a11y: AnnotationsPanel Delete limited on a paired device", () => {
+  it("has no axe violations; the disabled Delete is named and described by the visible reason", async () => {
+    const editor = makeEditor();
+    editors.push(editor);
+    const { container } = render(
+      <Harness
+        editor={editor}
+        handle={makeHandle({
+          status: "ok",
+          annotations: [annotation("a", "First note", "hello")],
+        })}
+        limits={{
+          state: {
+            state: "paired",
+            limits: {
+              projectDeletion: false,
+              unlocking: false,
+              locking: false,
+              encryptionChanges: false,
+              permanentDeletion: true,
+            },
+          },
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Annotations" }));
+    const panel = screen.getByRole("region", { name: "Annotations" });
+    const button = within(panel).getByRole("button", { name: "Delete note" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(
+      expect.stringContaining(PERMANENT_DELETION_LIMITED_REASON),
+    );
+    await runAxe(container, ["region"]);
   });
 });
 

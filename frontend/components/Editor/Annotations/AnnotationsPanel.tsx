@@ -23,7 +23,9 @@
  *   or removed is shown as such with the saved name, never hidden; a check
  *   that could not be made is shown as that (FR-22, FR-25, FR-27).
  * - Edit and Delete go through the explicit, non-optimistic writes of
- *   `useAnnotations`; a refusal or failure is shown in the panel.
+ *   `useAnnotations`; a refusal or failure is shown in the panel. Delete is
+ *   disabled with a visible reason on a paired device whose permanent-deletion
+ *   limit is on (Feature 103, FR-13), as the excerpts list does.
  */
 import React from "react";
 import type { Editor } from "@tiptap/core";
@@ -31,6 +33,10 @@ import { X } from "lucide-react";
 import Button from "../../common/UI/Button/Button";
 import Textarea from "../../common/UI/Textarea/Textarea";
 import ConfirmDialog from "../../common/ConfirmDialog";
+import { useSharingLimits } from "../../Sharing/SharingLimitsContext";
+import { isLimitOn } from "../../Sharing/limit-gate";
+import LimitReason from "../../Sharing/LimitReason";
+import { PERMANENT_DELETION_LIMITED_REASON } from "../../Sharing/sharing-copy";
 import type { AnnotationsHandle } from "../../../src/hooks/useAnnotations";
 import type { Annotation } from "../../../src/lib/models/types";
 import {
@@ -204,6 +210,8 @@ export default function AnnotationsPanel({
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [isBusy, setIsBusy] = React.useState(false);
   const focusEditFor = React.useRef<string | null>(null);
+  const { state: limitsState } = useSharingLimits();
+  const isDeleteLimited = isLimitOn(limitsState, "permanentDeletion");
 
   const [addDraft, setAddDraft] = React.useState("");
 
@@ -396,6 +404,7 @@ export default function AnnotationsPanel({
     const isMarkLess = isMarkLessByDesign(annotation);
     const isActive = activeId === annotation.id;
     const bodyLabelId = `${panelId}-body-${annotation.id}`;
+    const deleteReasonId = `${panelId}-delete-limit-${annotation.id}`;
     return (
       <li
         key={annotation.id}
@@ -511,7 +520,12 @@ export default function AnnotationsPanel({
                 variant="destructive"
                 size="sm"
                 aria-label="Delete note"
-                aria-describedby={bodyLabelId}
+                aria-describedby={
+                  isDeleteLimited
+                    ? `${bodyLabelId} ${deleteReasonId}`
+                    : bodyLabelId
+                }
+                disabled={isDeleteLimited}
                 onClick={() => {
                   setActionError(null);
                   setPendingDeleteId(annotation.id);
@@ -520,6 +534,11 @@ export default function AnnotationsPanel({
                 Delete
               </Button>
             </div>
+            {isDeleteLimited ? (
+              <LimitReason id={deleteReasonId}>
+                {PERMANENT_DELETION_LIMITED_REASON}
+              </LimitReason>
+            ) : null}
           </>
         )}
       </li>

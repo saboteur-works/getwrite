@@ -14,6 +14,10 @@ import type {
 } from "../../src/hooks/useAnnotations";
 import type { CitationFactsDeps } from "../../components/Editor/Annotations/useAnnotationsPanel";
 import { Provider } from "react-redux";
+import {
+  StaticSharingLimitsProvider,
+  type StaticSharingLimitsValue,
+} from "../../components/Sharing/SharingLimitsContext";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -89,7 +93,14 @@ function storyStore(): ReturnType<typeof makeStore> {
   return store;
 }
 
-function PanelStory({ state }: { state: AnnotationsState }): JSX.Element {
+function PanelStory({
+  state,
+  limits,
+}: {
+  state: AnnotationsState;
+  /** The sharing-limits answer; the window (exempt) when omitted. */
+  limits?: StaticSharingLimitsValue;
+}): JSX.Element {
   const editor = useEditor();
   const [store] = React.useState(storyStore);
   const handle: AnnotationsHandle = {
@@ -102,15 +113,17 @@ function PanelStory({ state }: { state: AnnotationsState }): JSX.Element {
   };
   return (
     <Provider store={store}>
-      <div style={{ maxWidth: 480 }}>
-        <AnnotationsPanel
-          editor={editor}
-          handle={handle}
-          panelId={ANNOTATIONS_PANEL_ID}
-          onClose={fn()}
-          citationFactsDeps={STORY_FACTS}
-        />
-      </div>
+      <StaticSharingLimitsProvider value={limits}>
+        <div style={{ maxWidth: 480 }}>
+          <AnnotationsPanel
+            editor={editor}
+            handle={handle}
+            panelId={ANNOTATIONS_PANEL_ID}
+            onClose={fn()}
+            citationFactsDeps={STORY_FACTS}
+          />
+        </div>
+      </StaticSharingLimitsProvider>
     </Provider>
   );
 }
@@ -207,6 +220,28 @@ export const MissingTarget: Story = {
           target: { sourceId: GONE_SOURCE_ID, sourceName: "Old interview" },
         },
       ],
+    },
+  },
+};
+
+/** A paired device with permanent deletion limited: Delete is disabled and the reason is shown. */
+export const DeleteLimited: Story = {
+  args: {
+    state: {
+      status: "ok",
+      annotations: [note("a", "Check the harbour's name.", "Harbour")],
+    },
+    limits: {
+      state: {
+        state: "paired",
+        limits: {
+          projectDeletion: false,
+          unlocking: false,
+          locking: false,
+          encryptionChanges: false,
+          permanentDeletion: true,
+        },
+      },
     },
   },
 };
