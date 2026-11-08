@@ -30,6 +30,17 @@ An earlier set of 3 runs with a 46-byte `project.json` gave medians of 10.72, 10
 
 Observed: across these runs the per-save median is about 10.7 to 11.2 ms in both conditions, and the difference between the two medians within a run ranges from -0.2 to +0.4 ms. Min and max vary by run. These are values from one machine and one project size; no cause is stated for them, and the 30-run samples were not tested statistically.
 
+### Sources list data path (Task 12)
+
+Decision (reading; no timing or staleness was measured): no new list-read operation. The Source set, name and subtype come from the Redux resources slice (resources of `type: "source"`, `name`, `resourceSubtype`). The attachment count comes from the existing `listAttachments(projectId, resourceId)` in `lib/api/source-attachments.ts`, called once per Source and counted by array length.
+
+Reasons, each from reading code:
+- `getLocalResources` loads every sidecar through `validateResource`, and `SourceResourceSchema` carries `attachments`, so a loaded store Source can hold the array. The store value is not used for the count because `SourceAttachmentsSection` adds, replaces, removes and reorders through `lib/api/source-attachments` and dispatches nothing to the resources slice, so a count read from the store would not follow those changes. The list route is the source of record the sidebar section already reads.
+- The existing list operation already follows the FR-30 pair (core, route, client, native backend, web stub, alias) and rethrows locked access, so a new operation would duplicate it and `next.config.mjs` stays untouched.
+- Cost, as a consequence of the choice and not a measurement: one list request per Source on opening the view. A project with many Sources makes that many requests. If that proves too slow, a single list-read operation returning counts is the alternative; it is not built.
+- Failure rule: if any one list read rejects, the view shows a failure state and no list, never a count of 0 or an empty project.
+- Observed limit of the existing client: over HTTP it throws a plain `Error` carrying the server message for a 401/409 (it does not call `lockedAccessErrorFromResponse`), so the view recognises a locked project by `isLockedAccessError` only on the native path; over HTTP a locked project is shown as the generic failure with the server message. That client is not changed by this task.
+
 ## FR-9 reindex runs
 
 Not yet recorded.
