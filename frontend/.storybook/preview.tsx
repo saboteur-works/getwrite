@@ -22,6 +22,7 @@ import {
   StaticSharingLimitsProvider,
   type StaticSharingLimitsValue,
 } from "../components/Sharing/SharingLimitsContext";
+import { StaticModulesProvider } from "../components/Modules/ModulesContext";
 // @ts-expect-error Storybook side-effect CSS import is resolved by bundler at runtime.
 import "../app/globals.css";
 // @ts-expect-error Storybook side-effect CSS import is resolved by bundler at runtime.
@@ -250,6 +251,22 @@ const withSharingLimits = (
   );
 };
 
+/**
+ * Per-story module flags (Feature 103), read from `parameters.modules`, a
+ * `config.modules` map such as `{ sources: false }`. Absent leaves
+ * `useModuleEnabled` reading the store, where no entry means on.
+ */
+const withModules = (
+  Story: React.ComponentType,
+  context: { parameters: Record<string, unknown> },
+) => (
+  <StaticModulesProvider
+    value={context.parameters.modules as Record<string, boolean> | undefined}
+  >
+    <Story />
+  </StaticModulesProvider>
+);
+
 const preview: Preview = {
   globalTypes: {
     colorMode: {
@@ -278,7 +295,7 @@ const preview: Preview = {
       test: "todo",
     },
   },
-  decorators: [withSharingLimits, withStore],
+  decorators: [withSharingLimits, withModules, withStore],
 };
 
 export default preview;
