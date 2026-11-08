@@ -549,3 +549,73 @@ describe("reindex command — annotation search index (FR-9)", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("reindex command — locked project (Feature 103, Task 40)", () => {
+  const ID = "cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-reindex-locked-"));
+    await fs.mkdir(path.join(tmpDir, "resources", ID), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "resources", ID, "content.txt"),
+      "prose",
+    );
+    await fs.mkdir(path.join(tmpDir, "meta"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "meta", `resource-${ID}.meta.json`),
+      JSON.stringify({ id: ID, name: "Locked" }),
+    );
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    errorSpy.mockRestore();
+    logSpy.mockRestore();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["the sidecar read", `resource-${ID}.meta.json`],
+    ["the resource content read", "content."],
+  ])(
+    "fails with the locked error and reports no rebuilt index when %s is locked",
+    async (_name, marker) => {
+      const { getStorageAdapter, setStorageAdapter } =
+        await import("../../frontend/src/lib/models/io");
+      const { ProjectLockedError } =
+        await import("../../frontend/src/lib/models/locked-access");
+      const original = getStorageAdapter();
+      const locked = new ProjectLockedError("p");
+      setStorageAdapter({
+        ...original,
+        readFile: async (p: string, enc?: BufferEncoding) => {
+          if (p.includes(marker)) throw locked;
+          return original.readFile(p, enc);
+        },
+      } as typeof original);
+      const program = new Command();
+      registerReindex(program);
+      process.env.GETWRITE_CLI_TESTING = "1";
+      try {
+        await program.parseAsync(["node", "test", "reindex", tmpDir]);
+      } finally {
+        delete process.env.GETWRITE_CLI_TESTING;
+        setStorageAdapter(original);
+      }
+      expect(errorSpy).toHaveBeenCalledWith("Reindex command failed:", locked);
+      expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("Done"));
+      await expect(
+        fs.access(path.join(tmpDir, "meta", "index", "inverted.json")),
+      ).rejects.toThrow();
+    },
+  );
+});

@@ -270,7 +270,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Owner decisions at the Wave 1 checkpoint, 2026-11-07, items 4 and 5 (combined: one file, one rebuild). Checkpoint section 9, items 10 and 11 (the swallowing catches were carried verbatim from the removed importer code; the importer annotation-index rebuild had no test). This changes an observable behaviour (a locked project now fails the rebuild instead of indexing nothing); the experiments record states it. Does not edit `indexer-queue.ts`.
 **POS:** task_a8ce29a6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 41: Repair the stale text in `experiments.md` and make it pass `prettier --check`
 **What:** Fix the three stale statements in the experiments file and format it.

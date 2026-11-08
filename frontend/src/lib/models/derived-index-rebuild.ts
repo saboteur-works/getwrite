@@ -13,6 +13,10 @@
  * Annotation indexing is core, not module-owned. It does not rebuild prose
  * diagnostics (`meta/index/diagnostics.json`, OQ-11).
  *
+ * A locked-access error at any read of the rebuild is rethrown, so a locked
+ * project fails the rebuild rather than indexing nothing; the callers (the
+ * importers, the CLI's `reindex`) surface it.
+ *
  * Reachable from `core.ts`, the CLI and the Electron import workers (FR-4), so
  * it imports no React, JSX or JSON.
  */
@@ -107,16 +111,28 @@ async function indexAllResources(
       if (side && (side as Record<string, unknown>).type === "source") {
         resourceType = "source";
       }
-    } catch {
-      // no sidecar — use id as name
+    } catch (err) {
+      // A locked project is not "no sidecar": rethrow, so the rebuild fails
+      // instead of indexing every resource under its id.
+      if (isLockedAccessError(err)) throw err;
+      // Any other unreadable sidecar (corrupt JSON): index under the id, and
+      // say so, so it does not pass for a resource that has no sidecar.
+      console.error(
+        `[reindex] sidecar of ${id} unreadable: indexed under its id`,
+      );
     }
 
     let plainText: string | undefined;
     try {
       const loaded = await loadResourceContent(projectRoot, id);
       plainText = loaded.plainText ?? undefined;
-    } catch {
-      // no content — index will be empty for this resource
+    } catch (err) {
+      // A locked project is not "no content": rethrow.
+      if (isLockedAccessError(err)) throw err;
+      // `loadResourceContent` already degrades a missing or unparseable file
+      // itself; anything else leaves this resource's text unread (undefined,
+      // as `DerivedRebuildResult.plainTextById` documents).
+      console.error(`[reindex] content of ${id} unreadable: not indexed`);
     }
     plainTextById.set(id, plainText);
 

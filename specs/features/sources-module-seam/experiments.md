@@ -215,3 +215,9 @@ Not yet recorded.
 ## Acceptance
 
 Not yet recorded.
+
+## Task 40
+
+Observed behaviour change: a locked-access error (`ProjectLockedError`, `MissingProjectKeyError`) raised by the sidecar read or the resource content read in `indexAllResources` now fails `rebuildDerivedIndexes`, and so the importers' `rebuildIndexes` and the CLI's `reindex`, instead of indexing the resource under its id or with no text.
+
+Observed before the change, with the failure injected on the first sidecar read, or the first content read, of a one-resource project: `rebuildDerivedIndexes` resolved. With the failure injected on the second sidecar read (the annotation-body step), it already rejected with the locked error. A non-locked unreadable sidecar is still skipped; both steps write a stderr line.
