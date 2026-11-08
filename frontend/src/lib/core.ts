@@ -79,6 +79,9 @@ export { repairMissingInitialRevisions } from "./models/revision-repair";
 // Storage context (imperative helper for non-route entry points, e.g. the CLI)
 export { runForTenant } from "./models/io";
 
+// Shared derived-index rebuild (importers and the CLI's `reindex`, FR-8)
+export { rebuildDerivedIndexes } from "./models/derived-index-rebuild";
+
 // Entity mentions (alias table, offset detection, mention index persistence —
 // needed by the CLI's `reindex` command to rebuild meta/index/mentions.json)
 export { buildEntityAliasTable } from "./models/entity-alias-table";

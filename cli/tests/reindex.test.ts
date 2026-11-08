@@ -260,3 +260,158 @@ describe("reindex command — functional", () => {
     expect(mentions[entityId]).toBeUndefined();
   });
 });
+
+// Feature 103, Task 5 (FR-8, OQ-11): characterization of the derived files
+// `reindex` writes, captured before the shared rebuild replaced the
+// hand-written copy. Comparison is on parsed JSON (toEqual), so key order from
+// a filesystem's directory listing cannot fail it; nothing else is normalised.
+describe("reindex command — derived-file characterization (Feature 103, Task 5)", () => {
+  const ENTITY_ID = "11111111-1111-4111-8111-111111111111";
+  const SCENE_ID = "22222222-2222-4222-8222-222222222222";
+  const BETA_ID = "33333333-3333-4333-8333-333333333333";
+  const SOURCE_ID = "44444444-4444-4444-8444-444444444444";
+  const DIAGNOSTICS_SENTINEL = '{"sentinel":"diagnostics-untouched"}';
+  const INVERTED_EXPECTED: Record<string, Record<string, number>> = {
+    "1111": { [SCENE_ID]: 1 },
+    "4111": { [SCENE_ID]: 1 },
+    "8111": { [SCENE_ID]: 1 },
+    "11111111": { [SCENE_ID]: 1 },
+    aria: { [ENTITY_ID]: 10, [SCENE_ID]: 2 },
+    opening: { [SCENE_ID]: 10 },
+    scene: { [SCENE_ID]: 11, [BETA_ID]: 10 },
+    walked: { [SCENE_ID]: 1 },
+    into: { [SCENE_ID]: 1 },
+    lantern: { [SCENE_ID]: 1, [BETA_ID]: 1 },
+    room: { [SCENE_ID]: 1 },
+    vale: { [SCENE_ID]: 1 },
+    smiled: { [SCENE_ID]: 1 },
+    see: { [SCENE_ID]: 1 },
+    beta: { [SCENE_ID]: 1, [BETA_ID]: 10 },
+    "111111111111": { [SCENE_ID]: 1 },
+    burned: { [BETA_ID]: 1 },
+    low: { [BETA_ID]: 1 },
+    over: { [BETA_ID]: 1 },
+    harbour: { [BETA_ID]: 1 },
+    archive: { [SOURCE_ID]: 11 },
+    note: { [SOURCE_ID]: 10 },
+    quixotic: { [SOURCE_ID]: 1 },
+    ledger: { [SOURCE_ID]: 1 },
+  };
+  const BACKLINKS_EXPECTED: Record<string, string[]> = {
+    [ENTITY_ID]: [],
+    [SCENE_ID]: [ENTITY_ID, BETA_ID],
+    [BETA_ID]: [],
+    [SOURCE_ID]: [],
+  };
+  const MENTIONS_EXPECTED: Record<string, unknown[]> = {
+    [SCENE_ID]: [
+      {
+        entityId: ENTITY_ID,
+        resourceId: SCENE_ID,
+        count: 3,
+        offsets: [0, 35, 35],
+      },
+    ],
+  };
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-reindex-derived-"));
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    logSpy.mockRestore();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  async function seed(): Promise<void> {
+    const resources: Array<[string, string, Record<string, unknown>]> = [
+      [
+        ENTITY_ID,
+        "",
+        { name: "Aria", entityKind: "character", aliases: ["Aria Vale"] },
+      ],
+      [
+        SCENE_ID,
+        `Aria walked into the lantern room. Aria Vale smiled. See [[Beta Scene]] and ${ENTITY_ID}.`,
+        { name: "Opening Scene", type: "text" },
+      ],
+      [
+        BETA_ID,
+        "The lantern burned low over the harbour.",
+        { name: "Beta Scene" },
+      ],
+      [
+        SOURCE_ID,
+        "A quixotic ledger of the archive.",
+        { name: "Archive note", type: "source" },
+      ],
+    ];
+    await fs.mkdir(path.join(tmpDir, "meta", "index"), { recursive: true });
+    for (const [id, content, sidecar] of resources) {
+      await fs.mkdir(path.join(tmpDir, "resources", id), { recursive: true });
+      await fs.writeFile(
+        path.join(tmpDir, "resources", id, "content.txt"),
+        content,
+      );
+      await fs.writeFile(
+        path.join(tmpDir, "meta", `resource-${id}.meta.json`),
+        JSON.stringify({ id, ...sidecar }),
+      );
+    }
+    await fs.writeFile(
+      path.join(tmpDir, "meta", "index", "diagnostics.json"),
+      DIAGNOSTICS_SENTINEL,
+    );
+  }
+
+  async function runReindex(): Promise<void> {
+    const program = new Command();
+    registerReindex(program);
+    process.env.GETWRITE_CLI_TESTING = "1";
+    try {
+      await program.parseAsync(["node", "test", "reindex", tmpDir]);
+    } finally {
+      delete process.env.GETWRITE_CLI_TESTING;
+    }
+  }
+
+  async function readJson(...rel: string[]): Promise<unknown> {
+    return JSON.parse(await fs.readFile(path.join(tmpDir, ...rel), "utf8"));
+  }
+
+  it("writes the same inverted index, backlinks and mention index as before", async () => {
+    await seed();
+    await runReindex();
+    expect(await readJson("meta", "index", "inverted.json")).toEqual(
+      INVERTED_EXPECTED,
+    );
+    expect(await readJson("meta", "backlinks.json")).toEqual(
+      BACKLINKS_EXPECTED,
+    );
+    expect(await readJson("meta", "index", "mentions.json")).toEqual(
+      MENTIONS_EXPECTED,
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `[reindex] Done — indexed 4 resource(s), 1 mention(s) in ${tmpDir}`,
+    );
+  });
+
+  it("leaves meta/index/diagnostics.json as it was (OQ-11)", async () => {
+    await seed();
+    await runReindex();
+    expect(
+      await fs.readFile(
+        path.join(tmpDir, "meta", "index", "diagnostics.json"),
+        "utf8",
+      ),
+    ).toBe(DIAGNOSTICS_SENTINEL);
+  });
+});

@@ -101,21 +101,7 @@ import { writeRevision } from "../revision";
 import { appendWritingLogEntry } from "../writing-log";
 import { countWords } from "../../word-count";
 import { withIndexingSuspended } from "../indexer-queue";
-import { readSidecar } from "../sidecar";
-import {
-  listResourceIds,
-  computeBacklinks,
-  persistBacklinks,
-} from "../backlinks";
-import { indexResource } from "../inverted-index";
-import { buildEntityAliasTable } from "../entity-alias-table";
-import { findMentionOffsets } from "../entity-detection";
-import {
-  persistMentionIndex,
-  type MentionIndex,
-  type MentionRecord,
-} from "../mention-index";
-import { loadResourceContent } from "../../tiptap-utils";
+import { rebuildDerivedIndexes } from "../derived-index-rebuild";
 import { slugify } from "../../utils";
 import { getProjectType } from "../../projectTypes";
 import type { Project, TextResource, UUID } from "../types";
@@ -478,80 +464,12 @@ export async function importPlainTextProject(
 }
 
 /**
- * Rebuilds the destination project's inverted index, backlinks, and entity
- * mention index from scratch, mirroring `cli/src/commands/reindex.ts:23-60`
- * (same as `import-docx-project.ts`'s/`import-scrivener-project.ts`'s own
- * rebuild).
+ * Rebuilds the destination project's derived indexes from scratch through the
+ * shared `rebuildDerivedIndexes` (Feature 103, FR-8) and returns the imported
+ * word total.
  */
 export async function rebuildIndexes(projectRoot: string): Promise<number> {
-  const resourceIds = await listResourceIds(projectRoot);
-  const plainTextById = new Map<string, string | undefined>();
-
-  for (const id of resourceIds) {
-    let name = id;
-    try {
-      const side = await readSidecar(projectRoot, id);
-      if (side && (side as Record<string, unknown>).name) {
-        name = String((side as Record<string, unknown>).name);
-      }
-    } catch {
-      // no sidecar — use id as name
-    }
-
-    let plainText: string | undefined;
-    try {
-      const loaded = await loadResourceContent(projectRoot, id);
-      plainText = loaded.plainText ?? undefined;
-    } catch {
-      // no content — index will be empty for this resource
-    }
-    plainTextById.set(id, plainText);
-
-    const minimal: TextResource = {
-      id,
-      name,
-      type: "text",
-      folderId: undefined,
-      createdAt: new Date().toISOString(),
-      plainText,
-      tiptap: undefined,
-    } as unknown as TextResource;
-
-    await indexResource(projectRoot, minimal);
-  }
-
-  const backlinks = await computeBacklinks(projectRoot);
-  await persistBacklinks(projectRoot, backlinks);
-
-  const aliasTable = await buildEntityAliasTable(projectRoot);
-  const mentionIndex: MentionIndex = {};
-
-  for (const id of resourceIds) {
-    const plainText = plainTextById.get(id);
-    const records: MentionRecord[] = [];
-
-    for (const entity of Object.values(aliasTable.entities)) {
-      const offsets: number[] = [];
-      for (const term of entity.terms) {
-        offsets.push(...findMentionOffsets(plainText ?? "", term));
-      }
-      if (offsets.length > 0) {
-        offsets.sort((a, b) => a - b);
-        records.push({
-          entityId: entity.entityId,
-          resourceId: id,
-          count: offsets.length,
-          offsets,
-        });
-      }
-    }
-
-    if (records.length > 0) {
-      mentionIndex[id] = records;
-    }
-  }
-
-  await persistMentionIndex(projectRoot, mentionIndex);
+  const { plainTextById } = await rebuildDerivedIndexes(projectRoot);
   let totalWords = 0;
   for (const text of plainTextById.values())
     totalWords += countWords(text ?? "");
