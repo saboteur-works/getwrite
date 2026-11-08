@@ -351,7 +351,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Owner decisions after Wave 2, 2026-11-07 ("your recs"), items 1 and 2. Satisfies FR-15 (fallback), FR-16 and FR-17 (as amended). Item 3 of the same decisions (the stale "Observed limit" bullet in `experiments.md`) was applied directly to that file and is not part of this task. ORDERING: this task edits `SourcesView.tsx`, `AppShell.tsx` and `uiRegistry.ts`, so Tasks 29, 31 and 37 must wait for it (see their Notes). RUN INSTRUCTION, not a task: the orchestrator identifies which tests the full frontend suite now reports as skipped (3 at Wave 2, 1 at Wave 1) and reports them; report only, no change to any test.
 **POS:** task_c4d9be3a
-**Done:** [ ]
+**Done:** [x]
 
 ## Wave 3: excerpts and citations
 
@@ -363,7 +363,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (record), FR-21 (locator rules), FR-30. Owner of the annotation schema and validation files until Task 26 completes.
 **POS:** task_881464fc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Empty-body rule for annotations with a `target`
 **What:** Enforce in the core that an empty body is allowed only with a `target` and that no body exceeds 5000 characters.
@@ -475,7 +475,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 2
 **Notes:** Satisfies FR-29.
 **POS:** task_07c18aa3
-**Done:** [ ]
+**Done:** [x]
 
 ## All waves
 
