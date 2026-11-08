@@ -1,0 +1,161 @@
+/**
+ * Feature 103, Task 3 (FR-2, FR-3 model side, FR-11, OQ-9, OQ-12, OQ-13):
+ * the build-time model-side module registry, the static manifest with the
+ * Sources module as its first entry, and the pure `isModuleEnabled` helper.
+ */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { MODULE_MANIFEST } from "../../src/lib/models/modules/manifest";
+import {
+  MODULE_SLOT_KINDS,
+  createModuleRegistry,
+  isModuleEnabled,
+  type ModuleManifestEntry,
+} from "../../src/lib/models/modules/registry";
+
+const MODULES_DIR = path.resolve(__dirname, "../../src/lib/models/modules");
+const FILES = ["registry.ts", "manifest.ts"];
+
+function source(file: string): string {
+  return readFileSync(path.join(MODULES_DIR, file), "utf8");
+}
+
+const testModule: ModuleManifestEntry = {
+  id: "test-indexed",
+  view: { id: "test-indexed", label: "Test indexed" },
+  indexSteps: [{ id: "test-step", run: async () => undefined }],
+};
+
+describe("module manifest", () => {
+  it("is a static list whose first entry is the Sources module with no index", () => {
+    expect(Array.isArray(MODULE_MANIFEST)).toBe(true);
+    const first = MODULE_MANIFEST[0];
+    expect(first.id).toBe("sources");
+    expect(first.view).toEqual({ id: "sources", label: "Sources" });
+    expect(first.indexSteps).toEqual([]);
+  });
+
+  it("has unique module ids", () => {
+    const ids = MODULE_MANIFEST.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("isModuleEnabled", () => {
+  it("is true when config is absent, modules is absent, or the entry is absent (OQ-13)", () => {
+    expect(isModuleEnabled(undefined, "sources")).toBe(true);
+    expect(isModuleEnabled({}, "sources")).toBe(true);
+    expect(isModuleEnabled({ modules: {} }, "sources")).toBe(true);
+    expect(isModuleEnabled({ modules: { other: false } }, "sources")).toBe(
+      true,
+    );
+  });
+
+  it("is false only for an explicit false", () => {
+    expect(isModuleEnabled({ modules: { sources: false } }, "sources")).toBe(
+      false,
+    );
+    expect(isModuleEnabled({ modules: { sources: true } }, "sources")).toBe(
+      true,
+    );
+  });
+
+  it("handles an id no registered module has, without throwing", () => {
+    expect(isModuleEnabled({ modules: { ghost: false } }, "ghost")).toBe(false);
+    expect(isModuleEnabled({ modules: { ghost: true } }, "ghost")).toBe(true);
+    expect(isModuleEnabled({ modules: {} }, "ghost")).toBe(true);
+  });
+
+  it("does not read inherited object properties as entries", () => {
+    expect(isModuleEnabled({ modules: {} }, "toString")).toBe(true);
+    expect(isModuleEnabled({ modules: {} }, "__proto__")).toBe(true);
+  });
+});
+
+describe("createModuleRegistry", () => {
+  it("accepts a test-only module with an index step", () => {
+    const registry = createModuleRegistry([...MODULE_MANIFEST, testModule]);
+    expect(registry.modules.map((m) => m.id)).toEqual([
+      "sources",
+      "test-indexed",
+    ]);
+    expect(registry.getModule("test-indexed")).toBe(testModule);
+    expect(registry.getModule("missing")).toBeUndefined();
+    expect(registry.views().map((v) => v.id)).toEqual([
+      "sources",
+      "test-indexed",
+    ]);
+  });
+
+  it("lists index steps only for modules that are enabled", () => {
+    const registry = createModuleRegistry([...MODULE_MANIFEST, testModule]);
+    expect(registry.indexSteps({}).map((s) => s.id)).toEqual(["test-step"]);
+    expect(registry.indexSteps({ modules: { "test-indexed": false } })).toEqual(
+      [],
+    );
+  });
+
+  it("lists views only for enabled modules", () => {
+    const registry = createModuleRegistry([...MODULE_MANIFEST, testModule]);
+    expect(
+      registry.enabledViews({ modules: { sources: false } }).map((v) => v.id),
+    ).toEqual(["test-indexed"]);
+  });
+
+  it("rejects a duplicate module id", () => {
+    expect(() => createModuleRegistry([testModule, testModule])).toThrow(
+      /duplicate/i,
+    );
+  });
+});
+
+describe("registry boundary (FR-11, OQ-12)", () => {
+  it("declares only the view slot kind", () => {
+    expect([...MODULE_SLOT_KINDS]).toEqual(["view"]);
+  });
+
+  it("has no field for resource types, Trash kinds, importers, permissions or project-type keys", () => {
+    const registry = createModuleRegistry([testModule]);
+    const keys = [
+      ...Object.keys(registry),
+      ...Object.keys(registry.modules[0]),
+    ].join(" ");
+    for (const forbidden of [
+      /resourceType/i,
+      /trash/i,
+      /importer/i,
+      /permission/i,
+      /projectType/i,
+      /attachment/i,
+      /citation/i,
+    ]) {
+      expect(keys).not.toMatch(forbidden);
+    }
+  });
+});
+
+describe("build-time only (FR-2) and no UI imports (FR-4)", () => {
+  it.each(FILES)(
+    "%s has no dynamic import() and no store or user-data read",
+    (file) => {
+      const text = source(file);
+      expect(text).not.toMatch(/\bimport\s*\(/);
+      expect(text).not.toMatch(/\brequire\s*\(/);
+      expect(text).not.toMatch(
+        /node:fs|from\s+["']fs["']|readFile|userData|getProjectsDir|projects-dir|project-root-resolver/,
+      );
+    },
+  );
+
+  it.each(FILES)("%s imports no React, JSX or JSON", (file) => {
+    const text = source(file);
+    const specifiers = [...text.matchAll(/from\s+["']([^"']+)["']/g)].map(
+      (m) => m[1],
+    );
+    for (const spec of specifiers) {
+      expect(spec).not.toMatch(/^react($|\/)/);
+      expect(spec).not.toMatch(/\.(tsx|json)$/);
+    }
+  });
+});
