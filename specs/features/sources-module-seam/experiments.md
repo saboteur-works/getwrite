@@ -66,6 +66,14 @@ Observed: in all three cases `reindex` left `meta/index/annotations.json` as it 
 
 Not yet recorded.
 
+### Baseline: Sources view registration (Task 13)
+
+Base commit: `56e375541b00eb717eb4442e5eacd4e0868390d9` (worktree HEAD before the Task 13 edits; edits uncommitted at measurement).
+
+Command, run from the worktree root: `git diff --numstat -- frontend/components/Layout/AppShell.tsx`
+
+Observed: 31 lines added, 1 line removed in `frontend/components/Layout/AppShell.tsx` (after `prettier --write`).
+
 ## Module-switch cases
 
 ### Module-switch write path choice (Task 8)

@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  cleanup,
+  within,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 
 vi.mock("../components/Sharing/SharingLimitsContext", () => ({
@@ -44,6 +51,12 @@ vi.mock("../components/WorkArea/Views/TrashView/TrashView", () => ({
   default: () => <div data-testid="view-trash" />,
 }));
 
+vi.mock("../src/lib/api/source-attachments", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/lib/api/source-attachments")>();
+  return { ...actual, listAttachments: vi.fn(async () => []) };
+});
+
 import AppShell from "../components/Layout/AppShell";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { makeStore } from "../src/store/store";
@@ -60,7 +73,8 @@ import {
   createImageResource,
   createSourceResource,
 } from "../src/lib/models/resource-factory";
-import type { ProjectFeatureFlags } from "../src/lib/models/types";
+import type { ProjectFeatureFlags, ViewName } from "../src/lib/models/types";
+import { MODULE_MANIFEST } from "../src/lib/models/modules/manifest";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import { flushPendingEffects } from "./helpers/flushEffects";
 
@@ -102,6 +116,7 @@ const project = {
 function seedProject(
   store: ReturnType<typeof makeStore>,
   features: ProjectFeatureFlags,
+  modules?: Record<string, boolean>,
 ): void {
   store.dispatch(
     setProject({
@@ -111,6 +126,7 @@ function seedProject(
       folders: [],
       resources: [],
       features,
+      modules,
     }),
   );
 }
@@ -118,10 +134,11 @@ function seedProject(
 async function renderShell(
   features: ProjectFeatureFlags,
   selected: Pick = "none",
+  modules?: Record<string, boolean>,
 ) {
   const all = [text, source, image, audio];
   const store = makeStore();
-  seedProject(store, features);
+  seedProject(store, features, modules);
   store.dispatch(setSelectedProjectId(PROJECT_ID));
   store.dispatch(setFolders([folder] as never));
   store.dispatch(setResources(all as never));
@@ -536,6 +553,131 @@ describe("AppShell — Work Area view gating (characterization, AppShell.tsx:270
       expect(isActive("Entities")).toBe(true);
       expect(screen.queryByTestId("entity-roster-view")).toBeNull();
       expect(tab("Entities")).toBeDisabled();
+    });
+  });
+
+  describe("Sources module view (Feature 103 Task 13, FR-6 (d), FR-15)", () => {
+    const SOURCES_OFF = { sources: false };
+    const sourceRow = () =>
+      within(
+        screen.getByRole("table", { name: "Sources in this project" }),
+      ).getByRole("button", { name: "Source A" });
+    const sourcesTab = () => screen.queryByRole("tab", { name: "Sources" });
+
+    it("pins the ViewName literal to the registry view id", () => {
+      expect(MODULE_MANIFEST.find((m) => m.id === "sources")?.view?.id).toBe(
+        "sources",
+      );
+      const view: ViewName = "sources";
+      expect(view).toBe(MODULE_MANIFEST[0].view?.id);
+    });
+
+    it("offers the tab when the module has no entry (on by default) and when on", async () => {
+      await renderShell(ALL_ON, "text");
+      expect(sourcesTab()).not.toBeNull();
+      expect(tab("Sources")).not.toBeDisabled();
+      cleanup();
+      await renderShell(ALL_ON, "text", { sources: true });
+      expect(sourcesTab()).not.toBeNull();
+    });
+
+    it("leaves the tab out of the list entirely when the module is off", async () => {
+      await renderShell(ALL_ON, "text", SOURCES_OFF);
+      expect(sourcesTab()).toBeNull();
+      expect(
+        screen
+          .getAllByRole("tab")
+          .map((t: HTMLElement) => t.textContent?.trim()),
+      ).toEqual([
+        "Edit",
+        "Organizer",
+        "Data",
+        "Diff",
+        "Timeline",
+        "Entities",
+        "Graph",
+        "Trash",
+      ]);
+    });
+
+    it("is reachable with no resource selected and renders before the guard", async () => {
+      await renderShell(ALL_ON, "none");
+      expect(tab("Sources")).not.toBeDisabled();
+      await open("Sources");
+      expect(isActive("Sources")).toBe(true);
+      expect(
+        screen.getByRole("heading", { name: "Sources" }),
+      ).toBeInTheDocument();
+      expect(sourceRow()).toBeInTheDocument();
+      expect(screen.queryByText(/Resource not found/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Select a file from the resource tree/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is reachable with every optional flag off and with each selection kind", async () => {
+      for (const pick of [
+        "none",
+        "text",
+        "folder",
+        "source",
+        "image",
+        "audio",
+      ] as const) {
+        await renderShell({}, pick);
+        await open("Sources");
+        expect(isActive("Sources")).toBe(true);
+        expect(sourceRow()).toBeInTheDocument();
+        cleanup();
+      }
+    });
+
+    it("keeps the view across selections that reset other views", async () => {
+      const store = await renderShell(ALL_ON, "folder");
+      await open("Sources");
+      for (const pick of ["text", "image", "folder", "source"] as const) {
+        await select(store, pick);
+        expect(isActive("Sources")).toBe(true);
+      }
+    });
+
+    it("opening a row selects the Source and shows the editor", async () => {
+      const store = await renderShell(ALL_ON, "none");
+      await open("Sources");
+      fireEvent.click(sourceRow());
+      await flushPendingEffects();
+      expect(store.getState().resources.selectedResourceId).toBe(source.id);
+      expect(isActive("Edit")).toBe(true);
+      expect(mountedMarkers()).toEqual(["view-edit"]);
+    });
+
+    it.each(["none", "text", "folder"] as const)(
+      "falls back to edit when the module is switched off while the view is open (selection: %s)",
+      async (pick) => {
+        const store = await renderShell(ALL_ON, pick);
+        await open("Sources");
+        expect(isActive("Sources")).toBe(true);
+        act(() => seedProject(store, ALL_ON, SOURCES_OFF));
+        await flushPendingEffects();
+        expect(sourcesTab()).toBeNull();
+        expect(isActive("Edit")).toBe(true);
+      },
+    );
+
+    it("does not move another open view when the module is switched off", async () => {
+      const store = await renderShell(ALL_ON, "text");
+      await open("Data");
+      act(() => seedProject(store, ALL_ON, SOURCES_OFF));
+      await flushPendingEffects();
+      expect(isActive("Data")).toBe(true);
+    });
+
+    it("brings the tab back when the module is switched on again", async () => {
+      const store = await renderShell(ALL_ON, "text", SOURCES_OFF);
+      expect(sourcesTab()).toBeNull();
+      act(() => seedProject(store, ALL_ON, { sources: true }));
+      await flushPendingEffects();
+      expect(sourcesTab()).not.toBeNull();
     });
   });
 });

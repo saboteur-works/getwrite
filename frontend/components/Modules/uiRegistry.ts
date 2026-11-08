@@ -10,15 +10,23 @@
  * Trash kinds, importers, permissions or project-type keys.
  */
 import type { ReactNode } from "react";
+import React from "react";
 import type { ModuleViewSlot } from "../../src/lib/models/modules/registry";
+import SourcesView from "../Sources/SourcesView";
 
 /** The UI slot kinds declared. Later tasks add theirs with a consumer. */
 export const UI_SLOT_KINDS = ["view"] as const;
 export type UiSlotKind = (typeof UI_SLOT_KINDS)[number];
 
+/** What the shell hands a module view when it renders it. */
+export interface UiViewRenderContext {
+  /** Moves the shell to the editor after a resource was selected. */
+  openInEditor: (resourceId: string) => void;
+}
+
 /** The model-side view metadata (id, label) plus the component to render. */
 export interface UiModuleViewSlot extends ModuleViewSlot {
-  render: () => ReactNode;
+  render: (context: UiViewRenderContext) => ReactNode;
 }
 
 export interface UiModuleEntry {
@@ -47,11 +55,18 @@ export function createUiModuleRegistry(
   return { modules, getView: (id) => byId.get(id)?.view };
 }
 
-/**
- * Registered module views. Empty until a view component exists; Task 13
- * registers the Sources view here.
- */
-export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [];
+/** Registered module views: the Sources view, the first consumer (FR-3, FR-15). */
+export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [
+  {
+    id: "sources",
+    view: {
+      id: "sources",
+      label: "Sources",
+      render: ({ openInEditor }) =>
+        React.createElement(SourcesView, { onOpenSource: openInEditor }),
+    },
+  },
+];
 
 export const uiModuleRegistry: UiModuleRegistry =
   createUiModuleRegistry(UI_MODULE_VIEWS);

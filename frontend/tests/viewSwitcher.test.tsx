@@ -98,6 +98,28 @@ describe("ViewSwitcher", () => {
       ["Trash", "trash"],
     ];
 
+    it("adds a module view tab after the existing ones only when it is passed", () => {
+      const onChange = vi.fn();
+      const { unmount } = render(
+        <ViewSwitcher view="edit" onChange={onChange} />,
+      );
+      expect(screen.queryByRole("tab", { name: "Sources" })).toBeNull();
+      unmount();
+      render(
+        <ViewSwitcher
+          view="edit"
+          onChange={onChange}
+          moduleViews={[{ key: "sources", label: "Sources" }]}
+        />,
+      );
+      const labels = screen
+        .getAllByRole("tab")
+        .map((t: HTMLElement) => t.textContent?.trim());
+      expect(labels).toEqual([...EXPECTED.map(([label]) => label), "Sources"]);
+      fireEvent.click(screen.getByRole("tab", { name: "Sources" }));
+      expect(onChange).toHaveBeenCalledWith("sources");
+    });
+
     it("renders exactly the eight existing views in order", () => {
       render(<ViewSwitcher view="edit" onChange={vi.fn()} />);
       const labels = screen

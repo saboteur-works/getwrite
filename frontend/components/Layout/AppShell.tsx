@@ -72,6 +72,7 @@ import TimelineView from "../WorkArea/Views/TimelineView";
 import EntityRosterView from "../WorkArea/Views/EntityRosterView/EntityRosterView";
 import EntityRelationshipGraphView from "../WorkArea/Views/EntityRelationshipGraphView/EntityRelationshipGraphView";
 import TrashView from "../WorkArea/Views/TrashView/TrashView";
+import { useModuleViews } from "../Modules/useEnabledModuleViews";
 import MetadataSidebar from "../Sidebar/MetadataSidebar";
 import SearchBar from "../SearchBar/SearchBar";
 import {
@@ -310,6 +311,7 @@ export default function AppShell({
   const queryEvaluationError = useAppSelector(selectEvaluationErrorMessage);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
+  const moduleViews = useModuleViews();
   const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
 
   // Compile and export write plaintext wherever they land, so the preview
@@ -514,6 +516,15 @@ export default function AppShell({
       return selectedResource?.type === "folder" ? "organizer" : "edit";
     });
   }, [isTimelineViewEnabled, selectedResource?.type]);
+
+  // When a module is switched off, never strand the user on its (now absent)
+  // view: fall back to "edit" (Feature 103, FR-15).
+  useEffect(() => {
+    const isOff = (current: ViewName): boolean =>
+      moduleViews.registered.some((slot) => slot.id === current) &&
+      !moduleViews.enabled.some((slot) => slot.id === current);
+    setView((current) => (isOff(current) ? "edit" : current));
+  }, [moduleViews]);
 
   const isSavingRevision = useAppSelector(selectIsSavingRevision);
   const deletingRevisionId = useAppSelector(selectDeletingRevisionId);
@@ -1417,6 +1428,10 @@ export default function AppShell({
                               ? "Media"
                               : "Edit"
                           }
+                          moduleViews={moduleViews.enabled.map((slot) => ({
+                            key: slot.id as ViewName,
+                            label: slot.label,
+                          }))}
                           disabledViews={(() => {
                             const disabled: ViewName[] = [];
                             const type = selectedResource?.type;
@@ -1505,7 +1520,8 @@ export default function AppShell({
                       view === "entityRoster" ||
                       view === "entityGraph" ||
                       view === "timeline" ||
-                      view === "trash"
+                      view === "trash" ||
+                      view === "sources"
                         ? (() => {
                             if (view === "data") {
                               const queryResources =
@@ -1678,6 +1694,20 @@ export default function AppShell({
                               return isTimelineViewEnabled ? (
                                 <TimelineView />
                               ) : null;
+                            }
+
+                            // The Sources view is project-wide and registered
+                            // through the module registry; like the views above
+                            // it renders before the `!selectedResource` guard.
+                            if (view === "sources") {
+                              const slot = moduleViews.enabled.find(
+                                (s) => s.id === view,
+                              );
+                              return slot
+                                ? slot.render({
+                                    openInEditor: () => setView("edit"),
+                                  })
+                                : null;
                             }
 
                             if (!selectedResource)
