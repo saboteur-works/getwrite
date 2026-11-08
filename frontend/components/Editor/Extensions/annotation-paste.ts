@@ -225,6 +225,7 @@ async function writeCopies(
         id: newId,
         body: source.body,
         quote: source.quote,
+        ...(source.target ? { target: source.target } : {}),
       });
     } catch (error) {
       fail(newId, messageOf(error, "The note could not be copied."));
