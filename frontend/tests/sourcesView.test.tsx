@@ -28,6 +28,22 @@ vi.mock("../src/lib/api/source-attachments", () => ({
   listAttachments: (...a: unknown[]) => listAttachments(...a),
 }));
 
+const createResource = vi.fn();
+const renameResource = vi.fn();
+vi.mock("../src/lib/api/resources", () => ({
+  createResource: (...a: unknown[]) => createResource(...a),
+  renameResource: (...a: unknown[]) => renameResource(...a),
+}));
+
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
+vi.mock("../src/lib/toast-service", () => ({
+  toastService: {
+    success: (...a: unknown[]) => toastSuccess(...a),
+    error: (...a: unknown[]) => toastError(...a),
+  },
+}));
+
 const INTERVIEW = {
   ...createSourceResource({ name: "Interview" }),
   resourceSubtype: "Primary",
@@ -63,6 +79,10 @@ function mount(
 }
 
 beforeEach(() => {
+  createResource.mockReset();
+  renameResource.mockReset();
+  toastSuccess.mockReset();
+  toastError.mockReset();
   listAttachments.mockReset();
   listAttachments.mockImplementation(async (_p: string, id: string) =>
     id === INTERVIEW.id ? [entry("a"), entry("b")] : [],
@@ -145,8 +165,197 @@ describe("SourcesView failure and empty states", () => {
   });
 });
 
+describe("SourcesView create (Feature 103 Task 18, FR-16, FR-19)", () => {
+  const CREATED = {
+    id: "new-source",
+    name: "Field notes",
+    type: "source",
+    folderId: null,
+    orderIndex: 2,
+  };
+
+  async function createFromView(title: string) {
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New Source" }),
+    );
+    await userEvent.type(screen.getByLabelText("Source name"), title);
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+  }
+
+  it("creates through createResource with the tree's payload, adds the Source and selects it", async () => {
+    createResource.mockResolvedValue({ resource: CREATED });
+    const { store } = mount([INTERVIEW, LETTERS]);
+    await createFromView("Field notes");
+    await waitFor(() => expect(createResource).toHaveBeenCalledTimes(1));
+    const [projectId, payload] = createResource.mock.calls[0];
+    expect(projectId).toBe("p");
+    // The same payload shape page.tsx builds for the tree's create action.
+    expect(payload).toEqual({
+      name: "Field notes",
+      folderId: null,
+      type: "source",
+      orderIndex:
+        Math.max(INTERVIEW.orderIndex ?? 0, LETTERS.orderIndex ?? 0) + 1,
+    });
+    await waitFor(() =>
+      expect(
+        store
+          .getState()
+          .resources.resources.some((r: { id: string }) => r.id === CREATED.id),
+      ).toBe(true),
+    );
+    expect(store.getState().resources.selectedResourceId).toBe(CREATED.id);
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Resource created",
+      "Field notes created",
+    );
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("shows the create-time notice when the Source could not be left out of compile (5000-id cap)", async () => {
+    createResource.mockResolvedValue({
+      resource: CREATED,
+      notice: "The Source was created, but it is not left out of compile.",
+    });
+    mount([LETTERS]);
+    await createFromView("Field notes");
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    expect(toastError).toHaveBeenCalledWith(
+      "Source not left out of compile",
+      "The Source was created, but it is not left out of compile.",
+      { id: "source-not-excluded-from-compile" },
+    );
+  });
+
+  it("shows a failed create and adds nothing", async () => {
+    createResource.mockRejectedValue(
+      new Error("Nothing was added. Try again."),
+    );
+    const { store } = mount([LETTERS]);
+    await createFromView("Field notes");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Nothing was added. Try again.");
+    expect(store.getState().resources.resources).toHaveLength(1);
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("shows a locked failure as locked", async () => {
+    createResource.mockRejectedValue(new ProjectLockedError("p"));
+    mount([LETTERS]);
+    await createFromView("Field notes");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/locked/i);
+  });
+
+  it("does not create with a blank name and says so", async () => {
+    mount([LETTERS]);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New Source" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(createResource).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/name/i);
+  });
+
+  it("is keyboard operable: Enter submits and Escape cancels", async () => {
+    createResource.mockResolvedValue({ resource: CREATED });
+    mount([LETTERS]);
+    const trigger = await screen.findByRole("button", { name: "New Source" });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("Field notes{Enter}");
+    await waitFor(() => expect(createResource).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole("button", { name: "New Source" }));
+    expect(screen.getByLabelText("Source name")).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByLabelText("Source name")).toBeNull();
+    expect(createResource).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("SourcesView rename (Feature 103 Task 18, FR-16, FR-19)", () => {
+  async function renameFromView(rowName: string, next: string) {
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Rename ${rowName}` }),
+    );
+    const input = screen.getByLabelText(`New name for ${rowName}`);
+    await userEvent.clear(input);
+    await userEvent.type(input, next);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  }
+
+  it("renames through renameResource with the tree's arguments and updates the store", async () => {
+    renameResource.mockResolvedValue(true);
+    const { store } = mount([INTERVIEW, LETTERS]);
+    await renameFromView("Letters", "Letters, 1921");
+    await waitFor(() => expect(renameResource).toHaveBeenCalledTimes(1));
+    // AppShell's handleRenameConfirm: (resourceId, directoryId, name, "resource").
+    expect(renameResource).toHaveBeenCalledWith(
+      LETTERS.id,
+      "p",
+      "Letters, 1921",
+      "resource",
+    );
+    await waitFor(() =>
+      expect(
+        store
+          .getState()
+          .resources.resources.find((r: { id: string }) => r.id === LETTERS.id)
+          ?.name,
+      ).toBe("Letters, 1921"),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Letters, 1921" }),
+    ).toBeVisible();
+  });
+
+  it("shows a refused rename and leaves the name unchanged", async () => {
+    renameResource.mockResolvedValue(false);
+    const { store } = mount([LETTERS]);
+    await renameFromView("Letters", "Other");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /could not be renamed/i,
+    );
+    expect(store.getState().resources.resources[0].name).toBe("Letters");
+  });
+
+  it("shows a thrown rename failure", async () => {
+    renameResource.mockRejectedValue(new ProjectLockedError("p"));
+    mount([LETTERS]);
+    await renameFromView("Letters", "Other");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/locked/i);
+  });
+
+  it("is keyboard operable: Enter saves and Escape cancels", async () => {
+    renameResource.mockResolvedValue(true);
+    mount([LETTERS]);
+    const trigger = await screen.findByRole("button", {
+      name: "Rename Letters",
+    });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByLabelText("New name for Letters")).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Rename Letters" }),
+      ).toHaveFocus(),
+    );
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("{End}{Backspace}{Backspace}x{Enter}");
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith(
+        LETTERS.id,
+        "p",
+        "Lettex",
+        "resource",
+      ),
+    );
+  });
+});
+
 describe("a11y: SourcesView", () => {
-  it.each(["list", "empty", "failure"])(
+  it.each(["list", "empty", "failure", "create-open", "rename-open"])(
     "has no axe violations (%s)",
     async (state) => {
       if (state === "failure") {
@@ -158,6 +367,16 @@ describe("a11y: SourcesView", () => {
       await waitFor(() =>
         expect(screen.queryByText(/loading sources/i)).toBeNull(),
       );
+      if (state === "create-open") {
+        await userEvent.click(
+          screen.getByRole("button", { name: "New Source" }),
+        );
+      }
+      if (state === "rename-open") {
+        await userEvent.click(
+          screen.getByRole("button", { name: "Rename Letters" }),
+        );
+      }
       await runAxe(container, ["region"]);
     },
   );

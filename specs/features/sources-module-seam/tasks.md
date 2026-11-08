@@ -230,7 +230,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-16, FR-19, FR-31. Sole editor of `SourcesView.tsx` at this point (after Task 12). Reuses the existing create path; adds no storage operation.
 **POS:** task_1604ebaf
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Attachment byte-read storage operation
 **What:** Add the storage operation that returns an attachment's bytes by resource id and attachment id, on web, desktop and Android.

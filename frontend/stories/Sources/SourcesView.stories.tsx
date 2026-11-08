@@ -16,7 +16,7 @@ import {
 
 const PROJECT_ROOT = "/story/sources-view-story-project";
 
-type Scenario = "list" | "empty" | "read-fails";
+type Scenario = "list" | "empty" | "read-fails" | "create-fails";
 
 interface StoryArgs {
   scenario: Scenario;
@@ -54,6 +54,9 @@ function useAttachmentsFetch(scenario: Scenario): void {
     original.current = globalThis.fetch;
     globalThis.fetch = async (input, init) => {
       const url = typeof input === "string" ? input : String(input);
+      if (scenario === "create-fails" && url.endsWith("/api/resource")) {
+        return json({ error: "Nothing was added. Try again." }, 500);
+      }
       if (!url.includes("/api/project/source-attachments")) {
         return original.current!(input, init);
       }
@@ -131,5 +134,38 @@ export const ReadFails: Story = {
       "could not be listed",
     );
     expect(canvas.queryByText("No Sources in this project.")).toBeNull();
+  },
+};
+
+export const CreateOpen: Story = {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: "Letters, 1921" });
+    await userEvent.click(canvas.getByRole("button", { name: "New Source" }));
+    expect(canvas.getByLabelText("Source name")).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(canvas.queryByLabelText("Source name")).toBeNull();
+  },
+};
+
+export const CreateFails: Story = {
+  args: { scenario: "create-fails" },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: "Letters, 1921" });
+    await userEvent.click(canvas.getByRole("button", { name: "New Source" }));
+    await userEvent.keyboard("Field notes{Enter}");
+    expect(await canvas.findByRole("alert")).toBeVisible();
+    expect(canvas.queryByRole("button", { name: "Field notes" })).toBeNull();
+  },
+};
+
+export const RenameOpen: Story = {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Rename Letters, 1921" }),
+    );
+    expect(canvas.getByLabelText("New name for Letters, 1921")).toHaveFocus();
   },
 };

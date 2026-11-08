@@ -5,6 +5,11 @@ import { useDispatch } from "react-redux";
 import { setSelectedResourceId } from "../../src/store/resourcesSlice";
 import Button from "../common/UI/Button/Button";
 import { useSourceList } from "./useSourceList";
+import {
+  CreateSourceControl,
+  RenameSourceControl,
+  useSourceActions,
+} from "./SourcesViewControls";
 
 export interface SourcesViewProps {
   /** Called after a row selects a Source, so the shell can show the editor. */
@@ -21,12 +26,16 @@ export default function SourcesView({
 }: SourcesViewProps): JSX.Element {
   const dispatch = useDispatch();
   const { state, retry } = useSourceList();
+  const actions = useSourceActions();
 
   return (
     <section aria-labelledby="sources-view-heading" className="p-4">
       <h2 id="sources-view-heading" className="mb-3 text-sm text-gw-primary">
         Sources
       </h2>
+      <div className="mb-3">
+        <CreateSourceControl createSource={actions.createSource} />
+      </div>
       {state.status === "loading" && (
         <p role="status" className="text-gw-label text-gw-secondary">
           Loading Sources.
@@ -60,8 +69,11 @@ export default function SourcesView({
               <th scope="col" className="py-1 pr-3 font-normal">
                 Subtype
               </th>
-              <th scope="col" className="py-1 font-normal">
+              <th scope="col" className="py-1 pr-3 font-normal">
                 Attachments
+              </th>
+              <th scope="col" className="py-1 font-normal">
+                Actions
               </th>
             </tr>
           </thead>
@@ -81,8 +93,15 @@ export default function SourcesView({
                   </button>
                 </th>
                 <td className="py-1 pr-3 text-gw-secondary">{row.subtype}</td>
-                <td className="py-1 text-gw-secondary">
+                <td className="py-1 pr-3 text-gw-secondary">
                   {row.attachmentCount}
+                </td>
+                <td className="py-1">
+                  <RenameSourceControl
+                    resourceId={row.id}
+                    name={row.name}
+                    renameSource={actions.renameSource}
+                  />
                 </td>
               </tr>
             ))}
