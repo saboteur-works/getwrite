@@ -413,7 +413,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-23.
 **POS:** task_8c75dc9c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Citation controls and the citation-control slot
 **What:** Add the editor controls to tie a selected passage to a Source, optionally an excerpt, attachment and locator, placed through a new registry slot kind.
