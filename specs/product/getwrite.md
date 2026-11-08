@@ -1969,7 +1969,9 @@ with the app without hand-rewriting it (see OQ-90).
   import path was found. The write funnel today base64-encodes the whole file into
   one `Filesystem.writeFile` call. The chunked-write experiment (`writeFile` then
   `appendFile` in pieces, via the existing wrapper) is run at 100 MiB on the Pixel
-  first, OQ-171.)
+  first, OQ-171.
+  Note, 2026-11-08: Trash restore is a rename and does not pass through the
+  write funnel; see `specs/features/android-large-media-writes.md`, OQ-7.)
 - FR-142: On Android, a write of an attachment or media file that cannot complete
   MUST fail visibly, with a message the writer can read, and MUST leave no
   partial state: no attachment file, no sidecar entry and no resource directory
