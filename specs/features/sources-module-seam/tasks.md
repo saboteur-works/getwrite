@@ -403,7 +403,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** ORDERING DEPENDENCY NOT EXPRESSIBLE IN THE FIELD: THIS TASK MUST NOT START UNTIL TASK 43 IS LANDED (it edits `SourcesView.tsx`; the `sab.tasks/1` check forbids a dependency on a higher number). Satisfies FR-21, FR-22, FR-19, FR-31. Does not touch the registry.
 **POS:** task_59e4ebd7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Excerpt not-found tests (edit, delete, revision restore)
 **What:** Add the tests that an excerpt whose passage is lost is shown as not found with its saved text and is not deleted.
@@ -423,7 +423,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** ORDERING DEPENDENCY NOT EXPRESSIBLE IN THE FIELD: THIS TASK MUST NOT START UNTIL TASK 43 IS LANDED (it edits `uiRegistry.ts`, which Task 43 touches; the `sab.tasks/1` check forbids a dependency on a higher number). Satisfies FR-3 (citation slot), FR-24, FR-25, FR-11. Does not edit `AnnotationsPanel.tsx` (Task 33).
 **POS:** task_13bac3bc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Citation target state and the missing-target tests
 **What:** Add the pure function that derives whether a citation's Source, attachment or excerpt is present, in Trash, purged or removed, with the five FR-27 tests.
@@ -443,7 +443,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** Satisfies FR-22 (panel), FR-25, FR-27. Sole editor of the panel files.
 **POS:** task_aa32043a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: FR-13 permanent-deletion check, completed, and paired-device control states
 **What:** Complete the FR-13 inventory for every action Waves 2 and 3 added and test that limited controls are disabled with a visible reason.
