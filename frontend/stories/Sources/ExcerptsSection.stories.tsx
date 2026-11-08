@@ -151,16 +151,17 @@ export const ReadFails: Story = {
   },
 };
 
-export const MarkWithoutSelection: Story = {
+/** The view has no mark control: it points to the editor's Mark as excerpt. */
+export const PointsToEditorControl: Story = {
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("list", { name: "Excerpts" });
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "Open this Source in the editor",
-    );
+    expect(
+      canvas.queryByRole("button", { name: "Mark selected text as excerpt" }),
+    ).toBeNull();
+    expect(
+      canvas.getByText(/open this Source in the editor, select the text/),
+    ).toBeVisible();
   },
 };
 

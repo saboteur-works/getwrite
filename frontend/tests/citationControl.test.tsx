@@ -10,7 +10,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { Editor } from "@tiptap/core";
@@ -18,7 +24,13 @@ import { TextSelection } from "@tiptap/pm/state";
 import { baseSchemaExtensions } from "../components/Editor/editorExtensions";
 import CitationControlSlot from "../components/Editor/Citations/CitationControlSlot";
 import { StaticModulesProvider } from "../components/Modules/ModulesContext";
-import { uiModuleRegistry } from "../components/Modules/uiRegistry";
+import {
+  UI_SLOT_KINDS,
+  uiModuleRegistry,
+} from "../components/Modules/uiRegistry";
+import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
+import ExcerptsSection from "../components/Sources/ExcerptsSection";
+import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setResources } from "../src/store/resourcesSlice";
@@ -364,5 +376,192 @@ describe("refusals and failures show text and write nothing wrong", () => {
     expect(
       screen.getByRole("button", { name: "Cite selection" }),
     ).toBeEnabled();
+  });
+});
+
+/**
+ * Task 45 (FR-21, FR-6 (d)): "Mark as excerpt" in the editor while the open
+ * resource is a Source, placed through the same citation-control slot. These
+ * use a real TipTap editor and a real selection, not `activeEditorRegistry`.
+ */
+describe("Mark as excerpt for an open Source (FR-21)", () => {
+  const MARK = { name: "Mark as excerpt" };
+  const GROUP = { name: "Mark an excerpt of this Source" };
+
+  function mountFor(
+    editor: Editor,
+    resourceId: string,
+    options: {
+      modules?: Record<string, boolean>;
+      onStored?: () => void;
+      withSections?: boolean;
+    } = {},
+  ) {
+    const store = makeStore();
+    store.dispatch(setProject({ id: "p", rootPath: "/test/p" }));
+    store.dispatch(setSelectedProjectId("p"));
+    store.dispatch(setResources([INTERVIEW, LETTERS, CHAPTER]));
+    return render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <StaticSharingLimitsProvider>
+            <StaticModulesProvider value={options.modules}>
+              <CitationControlSlot
+                editor={editor}
+                resourceId={resourceId}
+                onStored={options.onStored}
+              />
+              {options.withSections ? (
+                <ExcerptsSection resource={INTERVIEW} />
+              ) : null}
+            </StaticModulesProvider>
+          </StaticSharingLimitsProvider>
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+  }
+
+  function statusOf(): HTMLElement {
+    return within(screen.getByRole("group", GROUP)).getByRole("status");
+  }
+
+  it("is present for a Source with the module on, keyboard operable, and registers no new slot kind", async () => {
+    const editor = makeEditor();
+    select(editor, 1, 8);
+    mountFor(editor, INTERVIEW.id);
+    expect(screen.getByRole("group", GROUP)).toBeInTheDocument();
+    const button = screen.getByRole("button", MARK);
+    const user = userEvent.setup();
+    for (let i = 0; i < 12 && document.activeElement !== button; i += 1) {
+      await user.tab();
+    }
+    expect(button).toHaveFocus();
+    expect(UI_SLOT_KINDS).toEqual([
+      "view",
+      "attachmentsSection",
+      "citationControl",
+    ]);
+  });
+
+  it("is absent for a non-Source resource", () => {
+    mountFor(makeEditor(), CHAPTER.id);
+    expect(screen.queryByRole("group", GROUP)).toBeNull();
+    expect(screen.queryByRole("button", MARK)).toBeNull();
+  });
+
+  it("is absent while the Sources module is off", () => {
+    mountFor(makeEditor(), INTERVIEW.id, { modules: { sources: false } });
+    expect(screen.queryByRole("group", GROUP)).toBeNull();
+    expect(screen.queryByRole("button", MARK)).toBeNull();
+  });
+
+  it("stores an annotation targeting the Source, shows the result, and the Sources view then lists it", async () => {
+    const kept: Annotation[] = [];
+    addAnnotation.mockImplementation(
+      async (_p: string, _r: string, a: Record<string, unknown>) => {
+        const note: Annotation = {
+          id: a.id as string,
+          body: a.body as string,
+          quote: a.quote as string,
+          createdAt: "t",
+          updatedAt: "t",
+          target: a.target as Annotation["target"],
+        };
+        kept.push(note);
+        return note;
+      },
+    );
+    listAnnotations.mockImplementation(async () => [...kept]);
+    const onStored = vi.fn();
+    const editor = makeEditor();
+    select(editor, 1, 8);
+    mountFor(editor, INTERVIEW.id, { onStored });
+    const user = userEvent.setup();
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Excerpt locator type" }),
+      "page",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Excerpt locator value" }),
+      "47",
+    );
+    await user.click(screen.getByRole("button", MARK));
+    await waitFor(() => expect(addAnnotation).toHaveBeenCalledTimes(1));
+    const [projectId, resourceId, sent] = addAnnotation.mock.calls[0] as [
+      string,
+      string,
+      { body: string; quote: string; target: unknown },
+    ];
+    expect(projectId).toBe("p");
+    expect(resourceId).toBe(INTERVIEW.id);
+    expect(sent.quote).toBe("Harbour");
+    expect(sent.target).toEqual({
+      sourceId: INTERVIEW.id,
+      sourceName: "Interview",
+      locator: { type: "page", value: "47" },
+    });
+    await waitFor(() =>
+      expect(statusOf()).toHaveTextContent("Marked the excerpt."),
+    );
+    expect(JSON.stringify(editor.getJSON())).toContain('"annotation"');
+    expect(onStored).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    mountFor(makeEditor(), CHAPTER.id, { withSections: true });
+    const list = await screen.findByRole("list", { name: "Excerpts" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Harbour");
+    expect(items[0]).toHaveTextContent("Page 47");
+  });
+
+  it("with the module off, an existing excerpt is still listed in the Sources view", async () => {
+    listAnnotations.mockResolvedValue([
+      {
+        ...stored("e1"),
+        target: { sourceId: INTERVIEW.id, sourceName: "Interview" },
+      },
+    ]);
+    mountFor(makeEditor(), CHAPTER.id, {
+      modules: { sources: false },
+      withSections: true,
+    });
+    const list = await screen.findByRole("list", { name: "Excerpts" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("a failed write shows the failure, adds no mark and does not refresh the list", async () => {
+    addAnnotation.mockRejectedValue(new Error("Disk is full"));
+    const onStored = vi.fn();
+    const editor = makeEditor();
+    select(editor, 1, 8);
+    mountFor(editor, INTERVIEW.id, { onStored });
+    await userEvent.click(screen.getByRole("button", MARK));
+    await waitFor(() => expect(statusOf()).toHaveTextContent("Disk is full"));
+    expect(JSON.stringify(editor.getJSON())).not.toContain('"annotation"');
+    expect(onStored).not.toHaveBeenCalled();
+  });
+
+  it("with no selection says to select text and writes nothing", async () => {
+    mountFor(makeEditor(), INTERVIEW.id);
+    await userEvent.click(screen.getByRole("button", MARK));
+    await waitFor(() =>
+      expect(statusOf()).toHaveTextContent("Select some text"),
+    );
+    expect(addAnnotation).not.toHaveBeenCalled();
+  });
+
+  it("a locator type with no value is refused with a message and writes nothing", async () => {
+    const editor = makeEditor();
+    select(editor, 1, 8);
+    mountFor(editor, INTERVIEW.id);
+    const user = userEvent.setup();
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Excerpt locator type" }),
+      "line",
+    );
+    await user.click(screen.getByRole("button", MARK));
+    expect(statusOf()).toHaveTextContent("Enter where it sits");
+    expect(addAnnotation).not.toHaveBeenCalled();
   });
 });

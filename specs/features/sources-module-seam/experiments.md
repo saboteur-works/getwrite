@@ -276,3 +276,15 @@ Observed in the code read before the change:
 - `tests/sourceAttachmentsSection.test.tsx`, `tests/a11y/sourceAttachmentsSection.a11y.test.tsx` and `stories/Sidebar/SourceAttachmentsSection.stories.tsx` import `components/Sidebar/SourceAttachmentsSection`.
 
 Consequences taken: `components/Sidebar/SourceAttachmentsSection.tsx` stays as a one-line re-export of the panel so those imports keep working. The view receives the slot as a render prop from the registry entry, which avoids the cycle. Sharing between the view and the sidebar is a module-level broadcast channel keyed by project and Source, held only while a component is subscribed, so a change in one mount is shown in the other without reselecting.
+
+## Task 45: Mark as excerpt control in the editor
+
+Measured before the change (real app, dev server, 2026-11-08, recorded in spec FR-21): the Sources view could not create a text excerpt. Observed in the code read for this task: `TextExcerptForm` in `ExcerptsSection.tsx` read `getActiveEditor()` only when `getActiveEditorResourceId()` equalled the Source id; the editor is a separate Work Area tab, so while the Sources view shows no Source editor is the active one.
+
+Re-check in the dev server after the change: not run. `next dev` has to run outside the sandbox from the main checkout, and this task ran in a worktree inside the sandbox, so no dev server was started. The observed value to record is therefore absent; the owner-run check is: open a Source in the editor, select text, use "Mark as excerpt", open the Sources view, expand the Source's excerpts.
+
+Observed in component tests instead (jsdom, real TipTap editor with a real `TextSelection`, `activeEditorRegistry` not used; `tests/citationControl.test.tsx`, `tests/a11y/citationControl.a11y.test.tsx`): with a Source open and "Harbour" selected, "Mark as excerpt" sent `addAnnotation` one `target` of `{ sourceId, sourceName, locator: { type: "page", value: "47" } }` and the quote "Harbour"; the editor document then held an `annotation` mark; `ExcerptsSection` over the same stored list then listed one excerpt with "Page 47". With a text resource open, or the `sources` module off, the control was absent; with the module off an existing excerpt was still listed. A rejected write showed "Disk is full" in the status region, added no mark and did not call `onStored`.
+
+Decision on the Sources-view button: the "Mark selected text as excerpt" button and its locator field were removed from `ExcerptsSection`; a sentence in their place says to open the Source in the editor and use Mark as excerpt. Attachment (locator-only) excerpts, the list and Delete are unchanged. Reason: the spec's amended FR-21 requires the Sources view to keep listing excerpts and says nothing of keeping a creating control, and the measurement above is that the button could not succeed in the app, so keeping it would leave a control that always answers "Open this Source in the editor".
+
+Not verified: the real-app flow in the dev server; the Storybook stories were written but not run (Storybook and e2e are not run in this task).

@@ -1,18 +1,17 @@
 /**
  * Feature 103 Task 29 (FR-19, FR-21, FR-22, FR-31): the excerpts interface in
- * the Sources view. A text excerpt is marked from the live Source editor
- * (`activeEditorRegistry`); an image or audio attachment gets a locator-only
+ * the Sources view. A text excerpt is marked from the editor control
+ * (`MarkExcerptControl`, tested in `citationControl.test.tsx`); an image or audio attachment gets a locator-only
  * excerpt. Failure and success are visible text, a delete goes through the
  * annotation delete path and is disabled with a reason on a limited paired
  * device. A new, narrowly named file so it does not collide with the Sources
  * view tests.
  */
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import type { Editor } from "@tiptap/core";
 import SourcesView from "../components/Sources/SourcesView";
 import ExcerptsSection from "../components/Sources/ExcerptsSection";
 import LocatorField, {
@@ -22,10 +21,6 @@ import LocatorField, {
 } from "../components/Sources/LocatorField";
 import { StaticSharingLimitsProvider } from "../components/Sharing/SharingLimitsContext";
 import { PERMANENT_DELETION_LIMITED_REASON } from "../components/Sharing/sharing-copy";
-import {
-  setActiveEditor,
-  setActiveEditorResourceId,
-} from "../components/Editor/activeEditorRegistry";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
@@ -33,7 +28,6 @@ import { setResources } from "../src/store/resourcesSlice";
 import { createSourceResource } from "../src/lib/models/resource-factory";
 import type { Annotation } from "../src/lib/models/types";
 import type { AttachmentEntryView } from "../src/lib/api/source-attachments";
-import { makeEditor } from "./helpers/annotations-panel-harness";
 
 const listAnnotations = vi.fn();
 const addAnnotation = vi.fn();
@@ -107,15 +101,6 @@ const OTHER_CITATION = stored({
   target: { sourceId: "33333333-3333-4333-8333-333333333333" },
 });
 
-let editor: Editor | null = null;
-
-function useEditorFor(resourceId: string): Editor {
-  editor = makeEditor();
-  setActiveEditor(editor);
-  setActiveEditorResourceId(resourceId);
-  return editor;
-}
-
 function mountSection(
   limits?: React.ComponentProps<typeof StaticSharingLimitsProvider>["value"],
 ) {
@@ -146,13 +131,6 @@ beforeEach(() => {
     OTHER_CITATION,
   ]);
   listAttachments.mockResolvedValue([IMAGE, PDF]);
-});
-
-afterEach(() => {
-  editor?.destroy();
-  editor = null;
-  setActiveEditor(null);
-  setActiveEditorResourceId(null);
 });
 
 describe("LocatorField", () => {
@@ -239,118 +217,15 @@ describe("ExcerptsSection list", () => {
 });
 
 describe("ExcerptsSection text excerpt", () => {
-  it("marks the selected text with a typed locator and shows the result", async () => {
-    const ed = useEditorFor(SOURCE.id);
-    ed.commands.setTextSelection({ from: 7, to: 12 }); // "world"
-    const selected = ed.state.doc.textBetween(7, 12, "\n");
-    addAnnotation.mockImplementation(
-      async (_p: string, _r: string, a: Record<string, unknown>) =>
-        stored({
-          id: a.id as string,
-          quote: a.quote as string,
-          body: a.body as string,
-          target: a.target as Annotation["target"],
-        }),
-    );
+  it("offers no mark control: it points to the editor control, because this view never has a selection (Task 45)", async () => {
     mountSection();
     await screen.findByRole("list", { name: "Excerpts" });
-    const user = userEvent.setup();
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Text excerpt locator type" }),
-      "page",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Text excerpt locator value" }),
-      "47",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    await waitFor(() => expect(addAnnotation).toHaveBeenCalledTimes(1));
-    const [projectId, resourceId, sent] = addAnnotation.mock.calls[0] as [
-      string,
-      string,
-      { quote: string; target: unknown },
-    ];
-    expect(projectId).toBe("p");
-    expect(resourceId).toBe(SOURCE.id);
-    expect(sent.quote).toBe(selected);
-    expect(sent.target).toEqual({
-      sourceId: SOURCE.id,
-      sourceName: SOURCE.name,
-      locator: { type: "page", value: "47" },
-    });
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Marked the excerpt.",
-    );
-    const items = within(
-      screen.getByRole("list", { name: "Excerpts" }),
-    ).getAllByRole("listitem");
-    expect(items).toHaveLength(3);
-    expect(items[2]).toHaveTextContent("Page 47");
-  });
-
-  it("a write failure is shown as an error, adds no mark and lists nothing new", async () => {
-    const ed = useEditorFor(SOURCE.id);
-    ed.commands.setTextSelection({ from: 1, to: 3 });
-    addAnnotation.mockRejectedValue(new Error("could not save"));
-    mountSection();
-    await screen.findByRole("list", { name: "Excerpts" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Error: could not save");
     expect(
-      within(screen.getByRole("list", { name: "Excerpts" })).getAllByRole(
-        "listitem",
-      ),
-    ).toHaveLength(2);
-  });
-
-  it("with no selection, says to select text and writes nothing", async () => {
-    useEditorFor(SOURCE.id);
-    mountSection();
-    await screen.findByRole("list", { name: "Excerpts" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Error: Select some text",
-    );
-    expect(addAnnotation).not.toHaveBeenCalled();
-  });
-
-  it("with another resource open in the editor, says to open this Source and writes nothing", async () => {
-    const ed = useEditorFor("some-other-resource");
-    ed.commands.setTextSelection({ from: 1, to: 3 });
-    mountSection();
-    await screen.findByRole("list", { name: "Excerpts" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Open this Source in the editor",
-    );
-    expect(addAnnotation).not.toHaveBeenCalled();
-  });
-
-  it("a locator type with no value is refused with a message and writes nothing", async () => {
-    const ed = useEditorFor(SOURCE.id);
-    ed.commands.setTextSelection({ from: 1, to: 3 });
-    mountSection();
-    await screen.findByRole("list", { name: "Excerpts" });
-    const user = userEvent.setup();
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Text excerpt locator type" }),
-      "line",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Enter where it sits",
-    );
+      screen.queryByRole("button", { name: "Mark selected text as excerpt" }),
+    ).toBeNull();
+    expect(
+      screen.getByText(/open this Source in the editor, select the text/),
+    ).toBeInTheDocument();
     expect(addAnnotation).not.toHaveBeenCalled();
   });
 });

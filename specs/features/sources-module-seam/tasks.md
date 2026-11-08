@@ -485,7 +485,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Owner decision at Gate 6 (2026-11-08). Satisfies FR-21 (amended) and FR-6 (d) (the control is part of the module's interface). Task 37 waits for it. ORDERING: runs after Tasks 43 and 31, which also edit the slot and the toolbar; sole editor of those files until it lands.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 46: Remove the unused exports and types this branch added (knip)
 **What:** Remove, or stop exporting, the knip findings present on HEAD and absent on main, with no behaviour change.

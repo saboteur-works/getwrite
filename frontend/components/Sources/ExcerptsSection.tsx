@@ -8,7 +8,6 @@ import {
 } from "../../src/lib/api/annotations";
 import {
   addAttachmentExcerptFlow,
-  addTextExcerptFlow,
   removeAnnotationFlow,
   type AnnotationFlowApi,
 } from "../../src/lib/annotation-flows";
@@ -207,77 +206,17 @@ interface FormsProps {
   onAdded: (annotation: Annotation) => void;
 }
 
-function TextExcerptForm({
-  projectId,
-  resource,
-  isBusy,
-  setNotice,
-  run,
-  onAdded,
-}: FormsProps): JSX.Element {
-  const [draft, setDraft] = React.useState<LocatorDraft>(EMPTY_LOCATOR_DRAFT);
-  const mark = (): void => {
-    const locator = locatorFromDraft(draft);
-    if (!locator.ok) {
-      setNotice({ kind: "error", text: locator.message });
-      return;
-    }
-    const editor = editorShowing(resource.id);
-    if (!editor) {
-      setNotice({
-        kind: "error",
-        text: "Open this Source in the editor and select some text, then mark it.",
-      });
-      return;
-    }
-    const { from, to } = editor.state.selection;
-    void run(async () => {
-      const result = await addTextExcerptFlow(API, {
-        editor,
-        projectId,
-        resourceId: resource.id,
-        range: { from, to },
-        body: "",
-        sourceName: resource.name,
-        ...(locator.locator ? { locator: locator.locator } : {}),
-      });
-      if (result.ok) {
-        onAdded(result.annotation);
-        setDraft(EMPTY_LOCATOR_DRAFT);
-        return { kind: "info", text: "Marked the excerpt." };
-      }
-      if (result.stage === "mark") {
-        onAdded(result.annotation);
-        return {
-          kind: "error",
-          text: `${result.message} The excerpt is listed without a highlight in the text.`,
-        };
-      }
-      return { kind: "error", text: result.message };
-    });
-  };
+/**
+ * A text excerpt is marked from the editor, not here: the editor is a separate
+ * Work Area tab, so this view never has a selection to read (measured in the
+ * real app, Task 45). The pointer says where the control is.
+ */
+function TextExcerptPointer(): JSX.Element {
   return (
-    <div className="mb-3">
-      <LocatorField
-        idPrefix={`text-excerpt-${resource.id}`}
-        legend="Text excerpt locator"
-        draft={draft}
-        onChange={setDraft}
-        disabled={isBusy}
-      />
-      <div className="mt-2">
-        <Button
-          variant="secondary"
-          size="xs"
-          aria-disabled={isBusy}
-          onClick={() => {
-            if (!isBusy) mark();
-          }}
-        >
-          Mark selected text as excerpt
-        </Button>
-      </div>
-    </div>
+    <p className="mb-3 text-gw-label text-gw-secondary">
+      To mark a text excerpt, open this Source in the editor, select the text,
+      and use Mark as excerpt. It is listed here.
+    </p>
   );
 }
 
@@ -400,9 +339,8 @@ function AttachmentExcerptForm({
  * delete. An excerpt is an annotation, so every write is the annotation flow
  * (non-optimistic: the list changes only after the write resolved).
  *
- * A text excerpt is marked from the live editor of this Source
- * (`activeEditorRegistry`); with another resource open, or no selection, the
- * control says so and writes nothing. Failure and success are text with a
+ * A text excerpt is marked from the editor (the Mark as excerpt
+ * control, `MarkExcerptControl`); this view lists it and points there. Failure and success are text with a
  * role, never colour. Delete asks first and is disabled with a visible reason
  * on a paired device whose permanent-deletion limit is on, the way the other
  * permanent deletes are.
@@ -522,7 +460,7 @@ function ExcerptsBody({
       )}
       {load.status === "ready" && (
         <>
-          <TextExcerptForm {...formProps} />
+          <TextExcerptPointer />
           <div className="mb-3">
             <AttachmentExcerptForm {...formProps} />
           </div>

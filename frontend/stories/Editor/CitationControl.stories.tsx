@@ -23,7 +23,11 @@ const INTERVIEW = createSourceResource({
 const LETTERS = createSourceResource({ name: "Letters, 1921" });
 const CHAPTER = createTextResource({ name: "Chapter One" });
 
-function CitationStory(): JSX.Element {
+function CitationStory({
+  openResourceId = CHAPTER.id,
+}: {
+  openResourceId?: string;
+}): JSX.Element {
   const [{ store, editor }] = React.useState(() => {
     const created = makeStore();
     created.dispatch(
@@ -53,7 +57,7 @@ function CitationStory(): JSX.Element {
   return (
     <Provider store={store}>
       <div style={{ maxWidth: 720 }}>
-        <CitationControlSlot editor={editor} resourceId={CHAPTER.id} />
+        <CitationControlSlot editor={editor} resourceId={openResourceId} />
       </div>
     </Provider>
   );
@@ -77,6 +81,44 @@ export const Default: Story = {
     ).toBeInTheDocument();
     await userEvent.tab();
     await expect(canvas.getByLabelText("Source")).toHaveFocus();
+  },
+};
+
+/** A text resource is open: Mark as excerpt is not offered. */
+export const NoExcerptControlForTextResource: Story = {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByRole("button", { name: "Mark as excerpt" }),
+    ).toBeNull();
+  },
+};
+
+/** A Source is open: Mark as excerpt is offered and reachable by Tab. */
+export const MarkAsExcerptForSource: Story = {
+  args: { openResourceId: INTERVIEW.id },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("group", { name: "Mark an excerpt of this Source" }),
+    ).toBeInTheDocument();
+    const button = canvas.getByRole("button", { name: "Mark as excerpt" });
+    for (let i = 0; i < 12 && document.activeElement !== button; i += 1) {
+      await userEvent.tab();
+    }
+    await expect(button).toHaveFocus();
+  },
+};
+
+/** The Sources module is off for a Source too: neither control renders. */
+export const ExcerptControlModuleOff: Story = {
+  args: { openResourceId: INTERVIEW.id },
+  parameters: { modules: { sources: false } },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByRole("button", { name: "Mark as excerpt" }),
+    ).toBeNull();
   },
 };
 

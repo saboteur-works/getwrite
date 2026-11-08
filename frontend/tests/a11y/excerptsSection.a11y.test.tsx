@@ -144,16 +144,6 @@ describe("a11y: ExcerptsSection", () => {
     await runAxe(container, ["region"]);
   });
 
-  it("has no axe violations after a refused mark shows its alert", async () => {
-    const { container } = mount();
-    await screen.findByRole("list", { name: "Excerpts" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Mark selected text as excerpt" }),
-    );
-    await screen.findByRole("alert");
-    await runAxe(container, ["region"]);
-  });
-
   it("every control is reached by Tab, in order, and the group is named", async () => {
     mount();
     const group = await screen.findByRole("group", {
@@ -169,9 +159,6 @@ describe("a11y: ExcerptsSection", () => {
       await user.tab();
     }
     expect(names).toEqual([
-      "Text excerpt locator type",
-      "Text excerpt locator value",
-      "Mark selected text as excerpt",
       "Attachment to excerpt",
       "Attachment excerpt locator type",
       "Attachment excerpt locator value",

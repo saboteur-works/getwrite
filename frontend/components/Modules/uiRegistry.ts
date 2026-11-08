@@ -18,6 +18,7 @@ import type { ModuleViewSlot } from "../../src/lib/models/modules/registry";
 import type { AnyResource, SourceResource } from "../../src/lib/models/types";
 import { Library, Trash2 } from "lucide-react";
 import CitationControl from "../Editor/Citations/CitationControl";
+import MarkExcerptControl from "../Editor/Citations/MarkExcerptControl";
 import SourceAttachmentsPanel from "../Sources/SourceAttachmentsPanel";
 import SourcesView from "../Sources/SourcesView";
 import TrashView from "../WorkArea/Views/TrashView/TrashView";
@@ -127,10 +128,19 @@ const SOURCES_ATTACHMENTS_SECTION: UiAttachmentsSectionSlot = {
     React.createElement(SourceAttachmentsPanel, { key: resource.id, resource }),
 };
 
-/** The Sources module's citation control, placed by the editor (FR-24). */
+/**
+ * The Sources module's editor controls, placed by the editor (FR-24, FR-21):
+ * Cite selection, and Mark as excerpt, which renders only for a Source. Both
+ * sit in the one citation-control slot, so the module switch hides both.
+ */
 const SOURCES_CITATION_CONTROL: UiCitationControlSlot = {
   render: ({ editor, resourceId, onStored }) =>
-    React.createElement(CitationControl, { editor, resourceId, onStored }),
+    React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(CitationControl, { editor, resourceId, onStored }),
+      React.createElement(MarkExcerptControl, { editor, resourceId, onStored }),
+    ),
 };
 
 /** Registered module views: the Sources view, the first consumer (FR-3, FR-15). */

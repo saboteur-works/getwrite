@@ -40,7 +40,7 @@ afterEach(() => {
   while (editors.length) editors.pop()?.destroy();
 });
 
-function mount(): Editor {
+function mount(resourceId = "chapter"): Editor {
   const editor = new Editor({
     element: document.createElement("div"),
     extensions: baseSchemaExtensions,
@@ -61,7 +61,7 @@ function mount(): Editor {
   store.dispatch(setResources([SOURCE]));
   render(
     <Provider store={store}>
-      <CitationControlSlot editor={editor} resourceId="chapter" />
+      <CitationControlSlot editor={editor} resourceId={resourceId} />
     </Provider>,
   );
   return editor;
@@ -85,6 +85,24 @@ describe("CitationControl accessibility", () => {
     await runAxe(screen.getByRole("group", { name: "Cite a Source" }), [
       "region",
     ]);
+  });
+
+  it("Mark as excerpt (Source open): no axe violations at rest and showing a failure, named, focus-visible-reachable by Tab, failure is text", async () => {
+    mount(SOURCE.id);
+    const group = screen.getByRole("group", {
+      name: "Mark an excerpt of this Source",
+    });
+    await runAxe(group, ["region"]);
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Mark as excerpt" });
+    for (let i = 0; i < 12 && document.activeElement !== button; i += 1) {
+      await user.tab();
+    }
+    expect(button).toHaveFocus();
+    await user.keyboard("{Enter}");
+    const status = await screen.findByText(/Disk is full/);
+    expect(status).toHaveAttribute("role", "status");
+    await runAxe(group, ["region"]);
   });
 
   it("labels every field and reaches the button by Tab", async () => {
