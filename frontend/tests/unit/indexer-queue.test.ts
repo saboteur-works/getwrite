@@ -7,6 +7,9 @@ import { setStorageAdapter } from "../../src/lib/models/io";
 import { createTextResource } from "../../src/lib/models/resource";
 import { createRevision } from "../../src/lib/models/revision-manager";
 import { search } from "../../src/lib/models/inverted-index";
+import { createModuleRegistry } from "../../src/lib/models/modules/registry";
+import { rebuildDerivedIndexes } from "../../src/lib/models/derived-index-rebuild";
+import { ProjectLockedError } from "../../src/lib/models/locked-access";
 import {
   enqueueIndex,
   flushIndexer,
@@ -14,6 +17,7 @@ import {
   shutdownIndexer,
   withIndexingSuspended,
   __resetIndexerForTests,
+  __setIndexerModuleRegistryForTests,
 } from "../../src/lib/models/indexer-queue";
 
 async function waitForIndex(
@@ -486,5 +490,261 @@ describe("indexer queue per-save time with an isExtra project.json read (F103 Ta
     expect(without).toHaveLength(RUNS_PER_CONDITION);
     expect(withRead).toHaveLength(RUNS_PER_CONDITION);
     await fs.rm(projectRoot, { recursive: true, force: true });
+  });
+});
+
+/**
+ * Feature 103, Task 7 (FR-6 b and c, FR-35): module-owned index steps run per
+ * save only while the module is on for the project, on a module registered
+ * only here (the Sources module owns no index, OQ-9). The test module's derived
+ * data is `meta/index/testmod.json`, the sorted ids of every resource, so an
+ * incremental run and a from-scratch rebuild are comparable.
+ */
+describe("indexer queue module gating (F103 Task 7)", () => {
+  const MODULE_ID = "testmod";
+  const INDEX_FILE = path.join("meta", "index", "testmod.json");
+  const realFsAdapter = {
+    mkdir: async (p: string, o?: any) => {
+      await fs.mkdir(p, o);
+    },
+    writeFile: (p: string, d: any, o?: any) => fs.writeFile(p, d, o),
+    readFile: (p: string, e?: any) =>
+      fs.readFile(p, e ?? "utf8") as unknown as Promise<string>,
+    readdir: (p: string, o?: any) => fs.readdir(p, o) as any,
+    stat: (p: string) => fs.stat(p) as any,
+    rm: (p: string, o?: any) => fs.rm(p, o),
+    rename: (a: string, b: string) => fs.rename(a, b),
+  };
+  let stepRuns = 0;
+  const testRegistry = createModuleRegistry([
+    {
+      id: MODULE_ID,
+      indexSteps: [
+        {
+          id: "testmod-index",
+          run: async (projectRoot: string) => {
+            stepRuns += 1;
+            const ids = (
+              await fs.readdir(path.join(projectRoot, "resources"))
+            ).sort();
+            await fs.mkdir(path.join(projectRoot, "meta", "index"), {
+              recursive: true,
+            });
+            await fs.writeFile(
+              path.join(projectRoot, INDEX_FILE),
+              JSON.stringify(ids),
+            );
+          },
+        },
+      ],
+    },
+  ]);
+
+  async function makeProject(
+    modules?: Record<string, boolean>,
+  ): Promise<{ projectRoot: string; resourceId: string }> {
+    // Writing a resource enqueues indexing in the background; settle that with
+    // no module steps registered so only the saves a test makes are counted.
+    __setIndexerModuleRegistryForTests(createModuleRegistry([]));
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gw-mod-"));
+    const { writeResourceToFile } =
+      await import("../../src/lib/models/resource");
+    const res = createTextResource({ name: "R", plainText: "module text" });
+    await writeResourceToFile(projectRoot, res);
+    const config = modules ? { modules } : {};
+    await fs.writeFile(
+      path.join(projectRoot, "project.json"),
+      JSON.stringify({ id: "p", name: "P", config }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    await waitForDrain(2000);
+    __setIndexerModuleRegistryForTests(testRegistry);
+    stepRuns = 0;
+    return { projectRoot, resourceId: res.id };
+  }
+
+  async function save(projectRoot: string, id: string): Promise<void> {
+    await enqueueIndex(projectRoot, id);
+    await waitForDrain(2000);
+  }
+
+  beforeEach(() => {
+    setStorageAdapter(realFsAdapter as any);
+    __resetIndexerForTests();
+    __setIndexerModuleRegistryForTests(testRegistry);
+    stepRuns = 0;
+  });
+  afterEach(() => {
+    __setIndexerModuleRegistryForTests(undefined);
+    vi.restoreAllMocks();
+  });
+
+  it("runs the module step on a save when config.modules has no entry", async () => {
+    const { projectRoot, resourceId } = await makeProject();
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(1);
+    expect(
+      JSON.parse(await fs.readFile(path.join(projectRoot, INDEX_FILE), "utf8")),
+    ).toEqual([resourceId]);
+  });
+
+  it("runs the module step on a save when the module is explicitly on", async () => {
+    const { projectRoot, resourceId } = await makeProject({
+      [MODULE_ID]: true,
+    });
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(1);
+  });
+
+  it("runs the module step when project.json is missing (default on)", async () => {
+    const { projectRoot, resourceId } = await makeProject();
+    await fs.rm(path.join(projectRoot, "project.json"));
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(1);
+  });
+
+  it("(b) runs no module step and writes no module data while the module is off, but core indexing still runs", async () => {
+    const { projectRoot, resourceId } = await makeProject({
+      [MODULE_ID]: false,
+    });
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(0);
+    await expect(
+      fs.access(path.join(projectRoot, INDEX_FILE)),
+    ).rejects.toBeDefined();
+    expect(await search(projectRoot, "module")).toContain(resourceId);
+  });
+
+  it("(c) after switching the module on, the reindex catch-up equals a from-scratch rebuild", async () => {
+    const { projectRoot, resourceId } = await makeProject({
+      [MODULE_ID]: false,
+    });
+    const { writeResourceToFile } =
+      await import("../../src/lib/models/resource");
+    const second = createTextResource({ name: "R2", plainText: "later text" });
+    await writeResourceToFile(projectRoot, second);
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(0);
+
+    const projectJson = path.join(projectRoot, "project.json");
+    const stored = JSON.parse(await fs.readFile(projectJson, "utf8"));
+    stored.config.modules[MODULE_ID] = true;
+    await fs.writeFile(projectJson, JSON.stringify(stored));
+
+    await rebuildDerivedIndexes(projectRoot, { registry: testRegistry });
+    const caughtUp = await fs.readFile(
+      path.join(projectRoot, INDEX_FILE),
+      "utf8",
+    );
+
+    await fs.rm(path.join(projectRoot, INDEX_FILE));
+    await rebuildDerivedIndexes(projectRoot, { registry: testRegistry });
+    const fromScratch = await fs.readFile(
+      path.join(projectRoot, INDEX_FILE),
+      "utf8",
+    );
+    expect(caughtUp).toBe(fromScratch);
+    expect(JSON.parse(caughtUp)).toEqual([resourceId, second.id].sort());
+  });
+
+  it("reads config.modules with a plain read: project.json is never written or locked", async () => {
+    const { projectRoot, resourceId } = await makeProject({
+      [MODULE_ID]: true,
+    });
+    const writes: string[] = [];
+    const reads: string[] = [];
+    setStorageAdapter({
+      ...realFsAdapter,
+      readFile: (p: string, e?: any) => {
+        reads.push(String(p));
+        return realFsAdapter.readFile(p, e);
+      },
+      writeFile: (p: string, d: any, o?: any) => {
+        writes.push(String(p));
+        return realFsAdapter.writeFile(p, d, o);
+      },
+    } as any);
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(1);
+    expect(reads.some((p) => p.endsWith("project.json"))).toBe(true);
+    expect(writes.some((p) => p.includes("project.json"))).toBe(false);
+  });
+
+  it("does not read project.json when no registered module owns an index step", async () => {
+    const { projectRoot, resourceId } = await makeProject();
+    __setIndexerModuleRegistryForTests(createModuleRegistry([]));
+    const reads: string[] = [];
+    setStorageAdapter({
+      ...realFsAdapter,
+      readFile: (p: string, e?: any) => {
+        reads.push(String(p));
+        return realFsAdapter.readFile(p, e);
+      },
+    } as any);
+    await save(projectRoot, resourceId);
+    expect(reads.some((p) => p.endsWith("project.json"))).toBe(false);
+  });
+
+  it("a locked project is not read around the lock: the step does not run and the failure is logged", async () => {
+    const { projectRoot, resourceId } = await makeProject();
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    setStorageAdapter({
+      ...realFsAdapter,
+      readFile: (p: string, e?: any) =>
+        String(p).endsWith("project.json")
+          ? Promise.reject(new ProjectLockedError("p"))
+          : realFsAdapter.readFile(p, e),
+    } as any);
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(0);
+    expect(errors).toHaveBeenCalledWith(
+      "[indexer-queue] task failed:",
+      expect.any(ProjectLockedError),
+    );
+  });
+
+  it("an unreadable project.json (not missing, not locked) is not read as default on", async () => {
+    const { projectRoot, resourceId } = await makeProject();
+    await fs.writeFile(path.join(projectRoot, "project.json"), "{not json");
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    await save(projectRoot, resourceId);
+    expect(stepRuns).toBe(0);
+    expect(errors).toHaveBeenCalledWith(
+      "[indexer-queue] config.modules read failed:",
+      expect.anything(),
+    );
+  });
+
+  it("entities indexing still runs while the entities feature flag is off", async () => {
+    const { projectRoot } = await makeProject();
+    await fs.writeFile(
+      path.join(projectRoot, "project.json"),
+      JSON.stringify({
+        id: "p",
+        name: "P",
+        config: { features: { entities: false } },
+      }),
+    );
+    const { writeResourceToFile } =
+      await import("../../src/lib/models/resource");
+    const { writeSidecar } = await import("../../src/lib/models/sidecar");
+    const { loadMentionIndex } =
+      await import("../../src/lib/models/mention-index");
+    const entity = createTextResource({ name: "Aria", plainText: "" });
+    await writeResourceToFile(projectRoot, entity);
+    await writeSidecar(projectRoot, entity.id, {
+      name: "Aria",
+      entityKind: "character",
+    });
+    const mentioning = createTextResource({
+      name: "Ch",
+      plainText: "Aria walked in.",
+    });
+    await writeResourceToFile(projectRoot, mentioning);
+    await save(projectRoot, mentioning.id);
+    const index = await loadMentionIndex(projectRoot);
+    expect(index[mentioning.id]?.some((r) => r.entityId === entity.id)).toBe(
+      true,
+    );
   });
 });
