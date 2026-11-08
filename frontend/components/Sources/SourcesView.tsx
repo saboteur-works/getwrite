@@ -10,6 +10,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import type { AnyResource, SourceResource } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
+import ExcerptsSection from "./ExcerptsSection";
 import { useSourceList } from "./useSourceList";
 import {
   CreateSourceControl,
@@ -47,6 +48,9 @@ export default function SourcesView({
   const [openAttachmentsId, setOpenAttachmentsId] = React.useState<
     string | null
   >(null);
+  const [openExcerptsId, setOpenExcerptsId] = React.useState<string | null>(
+    null,
+  );
 
   return (
     <section aria-labelledby="sources-view-heading" className="p-4">
@@ -104,6 +108,7 @@ export default function SourcesView({
                   resource.id === row.id && resource.type === "source",
               );
               const isOpen = openAttachmentsId === row.id;
+              const isExcerptsOpen = openExcerptsId === row.id;
               return (
                 <React.Fragment key={row.id}>
                   <tr className="border-t border-gw-border">
@@ -132,6 +137,20 @@ export default function SourcesView({
                           name={row.name}
                           renameSource={actions.renameSource}
                         />
+                        {source && (
+                          <Button
+                            variant="secondary"
+                            size="xs"
+                            aria-expanded={isExcerptsOpen}
+                            aria-controls={`source-excerpts-${row.id}`}
+                            aria-label={`${isExcerptsOpen ? "Hide" : "Show"} excerpts of ${row.name}`}
+                            onClick={() =>
+                              setOpenExcerptsId(isExcerptsOpen ? null : row.id)
+                            }
+                          >
+                            Excerpts
+                          </Button>
+                        )}
                         {renderAttachments && source && (
                           <Button
                             variant="secondary"
@@ -157,6 +176,17 @@ export default function SourcesView({
                         className="pb-3 pl-4"
                       >
                         {renderAttachments(source)}
+                      </td>
+                    </tr>
+                  )}
+                  {source && isExcerptsOpen && (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        id={`source-excerpts-${row.id}`}
+                        className="pb-3 pl-4"
+                      >
+                        <ExcerptsSection key={source.id} resource={source} />
                       </td>
                     </tr>
                   )}
