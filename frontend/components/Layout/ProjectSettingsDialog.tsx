@@ -13,6 +13,7 @@ import {
   CalendarClock,
   LayoutGrid,
   SpellCheck,
+  Puzzle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
@@ -40,6 +41,7 @@ import RelationshipTypesSettings from "../preferences/RelationshipTypesSettings"
 import SubtypesSettings from "../preferences/SubtypesSettings";
 import StatusesSettings from "../preferences/StatusesSettings";
 import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
+import ModuleSwitchSection from "../Modules/ModuleSwitchSection";
 import TimelineViewToggle from "../preferences/TimelineViewToggle";
 import OrganizerCardBodySettings from "../preferences/OrganizerCardBodySettings";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
@@ -108,6 +110,7 @@ type ProjectSettingsTab =
   | "spelling"
   | "noise-words"
   | "entities"
+  | "modules"
   | "encryption";
 
 interface ProjectSettingsTabOption {
@@ -144,6 +147,7 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "spelling", label: "Spelling", icon: SpellCheck },
   { value: "noise-words", label: "Noise Words", icon: Ban },
   { value: "entities", label: "Entities", icon: Users },
+  { value: "modules", label: "Modules", icon: Puzzle },
   { value: "encryption", label: "Project Encryption", icon: Lock },
 ];
 
@@ -359,6 +363,10 @@ export default function ProjectSettingsDialog({
                   />
                 </>
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="modules" forceMount className={PANEL_CLASS}>
+              {projectId ? <ModuleSwitchSection projectId={projectId} /> : null}
             </TabsContent>
 
             <TabsContent value="encryption" forceMount className={PANEL_CLASS}>
