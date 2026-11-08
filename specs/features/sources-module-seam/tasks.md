@@ -383,7 +383,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 5
 **Notes:** Satisfies FR-24 (survival), FR-25 (copy with new identity, kept on move). Sole editor of `trash.ts` on this branch. Owner decision at Gate 5 (2026-11-07, "your recs"): `annotation-paste.ts` is added to the Files. A prior attempt is on local branch `w34-t27` (commit 9a400de9) and may be reused.
 **POS:** task_b42da1b5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Excerpt operations and "no mark by design" logic
 **What:** Add the model and flow logic for creating text excerpts and locator-only attachment excerpts, and treat a target with an attachment and no passage as normal, not detached.
@@ -453,7 +453,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 3
 **Notes:** Satisfies FR-13, FR-19. Owner decision at Gate 5 (2026-11-07): overwriting an annotation, excerpt or citation body or quote (PUT/PATCH `/api/annotations`, re-attach) is covered by no paired-device switch and annotations keep no prior text; the owner accepts this (see FR-13 in the spec); the inventory records it as an accepted finding, not an open one. The clause "a limited control is disabled with a visible reason" is met for the annotations panel Delete button only when Task 44 lands, so Task 34 is ticked once Task 44 lands.
 **POS:** task_8f84b520
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 44: Annotations panel Delete is disabled with a visible reason on a limited paired device
 **What:** Disable the Delete button in the annotations panel, with a visible reason, on a paired device where `permanentDeletion` is limited, using the sharing limits context the way `ExcerptsSection` already does.
@@ -463,7 +463,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 2
 **Notes:** Owner decision at Gate 5 (2026-11-07, "your recs"), item 3. Satisfies FR-13 (a limited control is disabled with a visible reason). Task 34 is ticked once this task lands. Task 37 waits for it. ORDERING: Task 33 is the sole editor of the panel files until this task.
 **POS:** task_a4b4d846
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: Citations do not change compile or export output
 **What:** Extend the compile and export tests so a document carrying a citation compiles and exports byte-identically to one without, in txt, md, docx and pdf.
