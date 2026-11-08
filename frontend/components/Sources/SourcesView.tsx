@@ -8,7 +8,7 @@ import {
   selectResources,
   setSelectedResourceId,
 } from "../../src/store/resourcesSlice";
-import type { SourceResource } from "../../src/lib/models/types";
+import type { AnyResource, SourceResource } from "../../src/lib/models/types";
 import Button from "../common/UI/Button/Button";
 import { useSourceList } from "./useSourceList";
 import {
@@ -26,6 +26,8 @@ export interface SourcesViewProps {
    * none, rows offer no attachments toggle.
    */
   renderAttachments?: (resource: SourceResource) => ReactNode;
+  /** Called after a Source is created here, so the page can record it too. */
+  onSourceCreated?: (resource: AnyResource) => void;
 }
 
 /**
@@ -36,10 +38,11 @@ export interface SourcesViewProps {
 export default function SourcesView({
   onOpenSource,
   renderAttachments,
+  onSourceCreated,
 }: SourcesViewProps): JSX.Element {
   const dispatch = useDispatch();
   const { state, retry } = useSourceList();
-  const actions = useSourceActions();
+  const actions = useSourceActions(onSourceCreated);
   const resources = useAppSelector((s) => selectResources(s.resources));
   const [openAttachmentsId, setOpenAttachmentsId] = React.useState<
     string | null

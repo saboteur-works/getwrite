@@ -41,9 +41,13 @@ export interface SourceActions {
  * store the way the tree's handlers do (`page.tsx` create, `AppShell`
  * `handleRenameConfirm`); no storage operation is added. A new Source is
  * seeded out of compile inside `createResource`'s core (Feature 102, FR-27);
- * its create-time notice is shown here as the tree shows it.
+ * its create-time notice is shown here as the tree shows it. `onSourceCreated`
+ * lets the page add the Source to its own project state, as the tree's create
+ * does (Task 43, FR-16).
  */
-export function useSourceActions(): SourceActions {
+export function useSourceActions(
+  onSourceCreated?: (resource: AnyResource) => void,
+): SourceActions {
   const dispatch = useDispatch<AppDispatch>();
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
   const resources = useAppSelector((s) => selectResources(s.resources));
@@ -74,6 +78,7 @@ export function useSourceActions(): SourceActions {
         const created: AnyResource = body.resource;
         dispatch(addResource(created));
         dispatch(setSelectedResourceId(created.id));
+        onSourceCreated?.(created);
         toastService.success("Resource created", `${name} created`);
         if (body.notice !== undefined) {
           toastService.error("Source not left out of compile", body.notice, {
@@ -85,7 +90,7 @@ export function useSourceActions(): SourceActions {
         return failureMessage(error, "The Source could not be created.");
       }
     },
-    [dispatch, folders, projectId, resources],
+    [dispatch, folders, onSourceCreated, projectId, resources],
   );
 
   const renameSource = useCallback(

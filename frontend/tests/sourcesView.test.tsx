@@ -7,10 +7,18 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import SourcesView from "../components/Sources/SourcesView";
+import { uiModuleRegistry } from "../components/Modules/uiRegistry";
+import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { makeStore } from "../src/store/store";
 import { setProject, setSelectedProjectId } from "../src/store/projectsSlice";
 import { setResources } from "../src/store/resourcesSlice";
@@ -31,8 +39,12 @@ import type { AttachmentEntryView } from "../src/lib/api/source-attachments";
 import { runAxe } from "./a11y/helpers/axe";
 
 const listAttachments = vi.fn();
+const addAttachment = vi.fn();
+const removeAttachment = vi.fn();
 vi.mock("../src/lib/api/source-attachments", () => ({
   listAttachments: (...a: unknown[]) => listAttachments(...a),
+  addAttachment: (...a: unknown[]) => addAttachment(...a),
+  removeAttachment: (...a: unknown[]) => removeAttachment(...a),
 }));
 
 const createResource = vi.fn();
@@ -91,6 +103,8 @@ beforeEach(() => {
   toastSuccess.mockReset();
   toastError.mockReset();
   listAttachments.mockReset();
+  addAttachment.mockReset();
+  removeAttachment.mockReset();
   listAttachments.mockImplementation(async (_p: string, id: string) =>
     id === INTERVIEW.id ? [entry("a"), entry("b")] : [],
   );
@@ -483,6 +497,71 @@ describe("Sources view leaves Feature 102 unchanged (Task 24, FR-20)", () => {
       entityId: "22222222-2222-4222-8222-222222222222",
     });
     expect(refused.success).toBe(false);
+  });
+});
+
+describe("SourcesView row count follows its attachments panel (Task 43, FR-17)", () => {
+  const countOf = (name: string): string | null =>
+    within(screen.getByRole("button", { name }).closest("tr")!).getAllByRole(
+      "cell",
+    )[1].textContent;
+
+  function mountWithPanel() {
+    const store = makeStore();
+    store.dispatch(setProject({ id: "p", rootPath: "/test/p" }));
+    store.dispatch(setSelectedProjectId("p"));
+    store.dispatch(setResources([INTERVIEW, LETTERS]));
+    const slot = uiModuleRegistry.getAttachmentsSection("sources");
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <SourcesView
+            renderAttachments={(resource) => slot?.render({ resource })}
+          />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+  }
+
+  async function openPanel() {
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Show attachments of Interview",
+      }),
+    );
+    await screen.findByText("a.pdf");
+  }
+
+  it("updates after the panel adds an attachment, with no reselect and no reopen", async () => {
+    const added = { ...entry("c"), mime: "image/png", fileName: "c.png" };
+    addAttachment.mockResolvedValue(added);
+    mountWithPanel();
+    await screen.findByRole("button", { name: "Interview" });
+    await waitFor(() => expect(countOf("Interview")).toBe("2"));
+    await openPanel();
+    const readsBefore = listAttachments.mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Add attachment file"), {
+      target: { files: [new File(["x"], "c.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(countOf("Interview")).toBe("3"));
+    expect(countOf("Letters")).toBe("0");
+    expect(
+      screen.getByRole("button", { name: "Hide attachments of Interview" }),
+    ).toBeInTheDocument();
+    expect(listAttachments.mock.calls.length).toBe(readsBefore);
+  });
+
+  it("updates after the panel removes an attachment, with no reselect and no reopen", async () => {
+    removeAttachment.mockResolvedValue({ trashId: "t1" });
+    mountWithPanel();
+    await screen.findByRole("button", { name: "Interview" });
+    await waitFor(() => expect(countOf("Interview")).toBe("2"));
+    await openPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Remove a.pdf" }));
+    await waitFor(() => expect(countOf("Interview")).toBe("1"));
+    expect(
+      screen.getByRole("button", { name: "Hide attachments of Interview" }),
+    ).toBeInTheDocument();
   });
 });
 

@@ -13,7 +13,7 @@
 import type { ComponentType, ReactNode } from "react";
 import React from "react";
 import type { ModuleViewSlot } from "../../src/lib/models/modules/registry";
-import type { SourceResource } from "../../src/lib/models/types";
+import type { AnyResource, SourceResource } from "../../src/lib/models/types";
 import { Library, Trash2 } from "lucide-react";
 import SourceAttachmentsPanel from "../Sources/SourceAttachmentsPanel";
 import SourcesView from "../Sources/SourcesView";
@@ -27,6 +27,8 @@ export type UiSlotKind = (typeof UI_SLOT_KINDS)[number];
 export interface UiViewRenderContext {
   /** Moves the shell to the editor after a resource was selected. */
   openInEditor: (resourceId: string) => void;
+  /** Tells the page's project state a view created this resource (FR-16). */
+  onResourceCreated?: (resource: AnyResource) => void;
 }
 
 /** The model-side view metadata (id, label) plus the component to render. */
@@ -114,9 +116,10 @@ export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [
       id: "sources",
       label: "Sources",
       icon: Library,
-      render: ({ openInEditor }) =>
+      render: ({ openInEditor, onResourceCreated }) =>
         React.createElement(SourcesView, {
           onOpenSource: openInEditor,
+          onSourceCreated: onResourceCreated,
           renderAttachments: (resource: SourceResource) =>
             SOURCES_ATTACHMENTS_SECTION.render({ resource }),
         }),

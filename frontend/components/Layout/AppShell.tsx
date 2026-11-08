@@ -216,6 +216,11 @@ export interface AppShellProps {
     resourceId?: string,
     opts?: AppShellResourceActionOptions,
   ) => Promise<void>;
+  /**
+   * Called after a module view (the Sources view) created a resource, so the
+   * owner of the project state can add it as its own create path does.
+   */
+  onResourceCreated?: (resource: AnyResource) => void;
   /** Closes the active project and returns to the start page. */
   onCloseProject?: () => void;
   /**
@@ -286,6 +291,7 @@ export default function AppShell({
   onChangeStoryDuration,
   onChangeStoryEndDate,
   onResourceAction,
+  onResourceCreated,
   onCloseProject,
   onProjectGoalSaved,
   onMediaCreateConfirmed,
@@ -529,9 +535,12 @@ export default function AppShell({
   // When a module is switched off, never strand the user on its (now absent)
   // view: apply the selection reset above from Edit, so the landing view is
   // the one enabled for the selection (Feature 103, FR-15). With no selection
-  // the reset has no landing view, so the view is left as it is.
+  // Edit is type-disabled, so the landing view is Data.
   useEffect(() => {
     const selectedType = selectedResource?.type;
+    const isOff = (current: ViewName): boolean =>
+      moduleViews.registered.some((slot) => slot.id === current) &&
+      !moduleViews.enabled.some((slot) => slot.id === current);
     if (
       selectedType !== "text" &&
       selectedType !== "source" &&
@@ -539,11 +548,9 @@ export default function AppShell({
       selectedType !== "image" &&
       selectedType !== "audio"
     ) {
+      setView((current) => (isOff(current) ? "data" : current));
       return;
     }
-    const isOff = (current: ViewName): boolean =>
-      moduleViews.registered.some((slot) => slot.id === current) &&
-      !moduleViews.enabled.some((slot) => slot.id === current);
     setView((current) =>
       isOff(current) ? viewForSelection("edit", selectedType) : current,
     );
@@ -1718,6 +1725,7 @@ export default function AppShell({
                               return slot
                                 ? slot.render({
                                     openInEditor: () => setView("edit"),
+                                    onResourceCreated,
                                   })
                                 : null;
                             }

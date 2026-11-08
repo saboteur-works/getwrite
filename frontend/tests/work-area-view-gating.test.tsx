@@ -651,10 +651,12 @@ describe("AppShell — Work Area view gating (characterization, AppShell.tsx:270
       expect(mountedMarkers()).toEqual(["view-edit"]);
     });
 
-    // Task 39: the landing view is the one the shell's existing selection
-    // reset produces from Edit (AppShell.tsx view reset, Task 11 cases "view
-    // reset on selection change"); the shell has no landing for no selection.
+    // Task 39 and Task 43: the landing view is the one the shell's existing
+    // selection reset produces from Edit (Task 11 cases "view reset on
+    // selection change"); with no selection it is Data, the one project-wide
+    // view that is enabled for no selection (FR-15, owner decision after Wave 2).
     it.each([
+      ["none", "Data", "view-data"],
       ["text", "Edit", "view-edit"],
       ["source", "Edit", "view-edit"],
       ["folder", "Organizer", "view-organizer"],
@@ -671,27 +673,16 @@ describe("AppShell — Work Area view gating (characterization, AppShell.tsx:270
         expect(sourcesTab()).toBeNull();
         expect(isActive(landing)).toBe(true);
         expect(tab(landing)).not.toBeDisabled();
+        expect(
+          screen
+            .getAllByRole("tab")
+            .filter(
+              (t: HTMLElement) => t.getAttribute("aria-selected") === "true",
+            ),
+        ).toHaveLength(1);
         expect(mountedMarkers()).toEqual([marker]);
       },
     );
-
-    it("does not land on the type-disabled Edit tab with no selection (selection: none lands on no tab)", async () => {
-      const store = await renderShell(ALL_ON, "none");
-      await open("Sources");
-      expect(isActive("Sources")).toBe(true);
-      act(() => seedProject(store, ALL_ON, SOURCES_OFF));
-      await flushPendingEffects();
-      expect(sourcesTab()).toBeNull();
-      expect(tab("Edit")).toBeDisabled();
-      expect(isActive("Edit")).toBe(false);
-      expect(
-        screen
-          .getAllByRole("tab")
-          .filter(
-            (t: HTMLElement) => t.getAttribute("aria-selected") === "true",
-          ),
-      ).toEqual([]);
-    });
 
     it("does not move another open view when the module is switched off", async () => {
       const store = await renderShell(ALL_ON, "text");

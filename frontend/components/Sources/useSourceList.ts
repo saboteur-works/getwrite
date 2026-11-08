@@ -6,6 +6,7 @@ import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { selectResources } from "../../src/store/resourcesSlice";
 import { listAttachments } from "../../src/lib/api/source-attachments";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
+import { subscribeAttachmentCounts } from "./useSourceAttachments";
 
 /** One row of the Sources view. */
 export interface SourceRow {
@@ -97,6 +98,20 @@ export function useSourceList(): SourceListResult {
       isCurrent = false;
     };
   }, [projectId, idKey, attempt]);
+
+  // A panel's add or remove changes one row's count without a new read.
+  useEffect(
+    () =>
+      subscribeAttachmentCounts((changedProjectId, sourceId, count) => {
+        if (changedProjectId !== projectId) return;
+        setCounts((previous) =>
+          previous === null || previous[sourceId] === undefined
+            ? previous
+            : { ...previous, [sourceId]: count },
+        );
+      }),
+    [projectId],
+  );
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 

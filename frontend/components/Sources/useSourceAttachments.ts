@@ -30,8 +30,34 @@ export interface SourceAttachmentsResult {
 const LOADING: SourceAttachmentsState = { status: "loading" };
 
 interface Channel {
+  projectId: string;
+  sourceId: string;
   state: SourceAttachmentsState;
   listeners: Set<() => void>;
+}
+
+/** Called with the new count whenever a Source's list becomes known. */
+export type AttachmentCountListener = (
+  projectId: string,
+  sourceId: string,
+  count: number,
+) => void;
+
+const countListeners = new Set<AttachmentCountListener>();
+
+/**
+ * Subscribes to the attachment count of every Source a panel reads or
+ * changes, so a list that shows counts (the Sources view rows) follows an add
+ * or a remove made in a panel without reading again (Feature 103, FR-17).
+ * Returns the unsubscribe function.
+ */
+export function subscribeAttachmentCounts(
+  listener: AttachmentCountListener,
+): () => void {
+  countListeners.add(listener);
+  return () => {
+    countListeners.delete(listener);
+  };
 }
 
 /**
@@ -46,19 +72,33 @@ function channelKey(projectId: string, sourceId: string): string {
   return `${projectId}\u0000${sourceId}`;
 }
 
-function ensureChannel(key: string): Channel {
+function ensureChannel(
+  key: string,
+  projectId: string,
+  sourceId: string,
+): Channel {
   let channel = channels.get(key);
   if (!channel) {
-    channel = { state: LOADING, listeners: new Set() };
+    channel = { projectId, sourceId, state: LOADING, listeners: new Set() };
     channels.set(key, channel);
   }
   return channel;
 }
 
-function setChannelState(key: string, state: SourceAttachmentsState): void {
-  const channel = ensureChannel(key);
+function setChannelState(
+  key: string,
+  projectId: string,
+  sourceId: string,
+  state: SourceAttachmentsState,
+): void {
+  const channel = ensureChannel(key, projectId, sourceId);
   channel.state = state;
   channel.listeners.forEach((listener) => listener());
+  if (state.status === "ready") {
+    countListeners.forEach((listener) =>
+      listener(projectId, sourceId, state.entries.length),
+    );
+  }
 }
 
 function errorText(error: unknown): string {
@@ -82,8 +122,8 @@ export function useSourceAttachments(
   const key = projectId === null ? null : channelKey(projectId, sourceId);
   const subscribe = useCallback(
     (listener: () => void): (() => void) => {
-      if (key === null) return () => undefined;
-      const channel = ensureChannel(key);
+      if (key === null || projectId === null) return () => undefined;
+      const channel = ensureChannel(key, projectId, sourceId);
       channel.listeners.add(listener);
       return () => {
         channel.listeners.delete(listener);
@@ -92,7 +132,7 @@ export function useSourceAttachments(
         }
       };
     },
-    [key],
+    [key, projectId, sourceId],
   );
   const getSnapshot = useCallback(
     (): SourceAttachmentsState =>
@@ -105,16 +145,23 @@ export function useSourceAttachments(
   useEffect(() => {
     if (projectId === null || key === null) return;
     let isCurrent = true;
-    if (ensureChannel(key).state.status !== "ready") {
-      setChannelState(key, LOADING);
+    if (ensureChannel(key, projectId, sourceId).state.status !== "ready") {
+      setChannelState(key, projectId, sourceId, LOADING);
     }
     listAttachments(projectId, sourceId).then(
       (entries) => {
-        if (isCurrent) setChannelState(key, { status: "ready", entries });
+        if (isCurrent)
+          setChannelState(key, projectId, sourceId, {
+            status: "ready",
+            entries,
+          });
       },
       (error: unknown) => {
         if (isCurrent) {
-          setChannelState(key, { status: "error", message: errorText(error) });
+          setChannelState(key, projectId, sourceId, {
+            status: "error",
+            message: errorText(error),
+          });
         }
       },
     );
@@ -126,9 +173,11 @@ export function useSourceAttachments(
   const retry = useCallback(() => setAttempt((n) => n + 1), [setAttempt]);
   const publish = useCallback(
     (entries: AttachmentEntryView[]) => {
-      if (key !== null) setChannelState(key, { status: "ready", entries });
+      if (key !== null && projectId !== null) {
+        setChannelState(key, projectId, sourceId, { status: "ready", entries });
+      }
     },
-    [key],
+    [key, projectId, sourceId],
   );
   return { projectId, state, retry, publish };
 }
