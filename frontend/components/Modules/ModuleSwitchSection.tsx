@@ -120,7 +120,8 @@ export default function ModuleSwitchSection({
       <h2 className="text-sm font-semibold text-gw-primary">Modules</h2>
       <p className="mt-1 text-sm text-gw-secondary">
         Turn a module on or off for this project. Switching a module off hides
-        its view; its data stays on disk and is there when you turn it back on.
+        its view and its editor controls; its data stays on disk and is there
+        when you turn it back on.
       </p>
       <div className="mt-4 flex flex-col gap-4">
         {MODULE_MANIFEST.map((module) => (
