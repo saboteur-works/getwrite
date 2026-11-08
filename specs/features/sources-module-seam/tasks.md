@@ -280,7 +280,7 @@ Hot files and the only tasks allowed to edit them (tasks named for one file neve
 **Estimate:** 1
 **Notes:** Owner decision at the Wave 1 checkpoint, 2026-11-07, item 6. Depends on 38, 39 and 40 only so the FR-10 section and its pointers are final before the repair; it must not run concurrently with any other task that appends to `experiments.md`.
 **POS:** task_1d04e43d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 42: FR-2 no-dynamic-import test also scans `uiRegistry.ts`
 **What:** Extend the FR-2 source-text test so `frontend/components/Modules/uiRegistry.ts` is scanned for a dynamic `import()` and for a read of module code from the project store or user data.

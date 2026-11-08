@@ -21,10 +21,10 @@ Method as built. `runTask` in `frontend/src/lib/models/indexer-queue.ts` is not 
 Project size: 40 text resources of 400 words each (`content.txt` plus sidecar), no entities, no backlinks authored; `project.json` 5252 bytes (200 statuses and 200 subtypes in `config`). Runs: 30 saves per condition per test run. The test was run 3 times in the same invocation shape (three test processes), giving these lines, with per-run median, min and max over 30 saves (milliseconds):
 
 | Test run | Without extra read (median / min / max) | With one extra project.json read (median / min / max) |
-| --- | --- | --- |
-| 1 | 10.76 / 9.36 / 19.75 | 11.11 / 10.13 / 19.82 |
-| 2 | 11.10 / 10.20 / 12.51 | 10.92 / 9.68 / 12.28 |
-| 3 | 10.94 / 10.12 / 20.39 | 11.18 / 9.62 / 19.68 |
+| -------- | --------------------------------------- | ----------------------------------------------------- |
+| 1        | 10.76 / 9.36 / 19.75                    | 11.11 / 10.13 / 19.82                                 |
+| 2        | 11.10 / 10.20 / 12.51                   | 10.92 / 9.68 / 12.28                                  |
+| 3        | 10.94 / 10.12 / 20.39                   | 11.18 / 9.62 / 19.68                                  |
 
 An earlier set of 3 runs with a 46-byte `project.json` gave medians of 10.72, 10.89, 10.92 ms without and 11.06, 10.82, 10.77 ms with the read; an intermediate set of 3 runs at 5252 bytes gave medians of 11.06, 11.22, 11.15 ms without and 10.97, 11.11, 11.04 ms with it.
 
@@ -64,7 +64,7 @@ Observed: in all three cases `reindex` left `meta/index/annotations.json` as it 
 
 ## FR-10 spike
 
-Not yet recorded.
+Recorded in the subsections below: "Trash slot spike (Task 15)" and "Task 38".
 
 ### Baseline: Sources view registration (Task 13)
 
@@ -145,24 +145,24 @@ The Sources module owns no index (its manifest `indexSteps` is empty, OQ-9), so 
 
 Where the read happens: `runModuleIndexSteps` in `indexer-queue.ts`, called at the end of `runTask` inside the `runForTenant` scope, using the same `readModulesConfig` helper as `rebuildDerivedIndexes` (a plain `readFile` of `project.json`, not `updateProjectJson`). It reads only when some registered module owns an index step; with the real manifest no save pays the extra read.
 
-| Case | Test name | Observed |
-| --- | --- | --- |
-| (b) module off | "(b) runs no module step and writes no module data while the module is off, but core indexing still runs" | Step ran 0 times, `meta/index/testmod.json` absent, core inverted-index search for the saved text still returns the resource. |
-| (b) no entry | "runs the module step on a save when config.modules has no entry" | Step ran once, file lists the resource. |
-| (b) explicit true | "runs the module step on a save when the module is explicitly on" | Step ran once. |
-| (b) no project.json | "runs the module step when project.json is missing (default on)" | Step ran once. |
-| (c) catch-up | "(c) after switching the module on, the reindex catch-up equals a from-scratch rebuild" | A resource added while the module was off; after setting the entry true and running `rebuildDerivedIndexes(root, { registry })`, `testmod.json` is byte-equal to the file from a second rebuild after deleting it, and lists both resources. |
-| plain read | "reads config.modules with a plain read: project.json is never written or locked" | `project.json` read through the adapter, no write path containing `project.json`. |
-| no step, no read | "does not read project.json when no registered module owns an index step" | No `project.json` read during a save. |
-| locked project | "a locked project is not read around the lock: the step does not run and the failure is logged" | `ProjectLockedError` on the `project.json` read: step ran 0 times, `[indexer-queue] task failed:` logged with the error. |
-| other read failure | "an unreadable project.json (not missing, not locked) is not read as default on" | Corrupt `project.json`: step ran 0 times, `[indexer-queue] config.modules read failed:` logged. |
-| `entities` unchanged | "entities indexing still runs while the entities feature flag is off" | With `config.features.entities` false, the save wrote the mention record for the declared entity, as before the change. |
+| Case                 | Test name                                                                                                 | Observed                                                                                                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (b) module off       | "(b) runs no module step and writes no module data while the module is off, but core indexing still runs" | Step ran 0 times, `meta/index/testmod.json` absent, core inverted-index search for the saved text still returns the resource.                                                                                                                |
+| (b) no entry         | "runs the module step on a save when config.modules has no entry"                                         | Step ran once, file lists the resource.                                                                                                                                                                                                      |
+| (b) explicit true    | "runs the module step on a save when the module is explicitly on"                                         | Step ran once.                                                                                                                                                                                                                               |
+| (b) no project.json  | "runs the module step when project.json is missing (default on)"                                          | Step ran once.                                                                                                                                                                                                                               |
+| (c) catch-up         | "(c) after switching the module on, the reindex catch-up equals a from-scratch rebuild"                   | A resource added while the module was off; after setting the entry true and running `rebuildDerivedIndexes(root, { registry })`, `testmod.json` is byte-equal to the file from a second rebuild after deleting it, and lists both resources. |
+| plain read           | "reads config.modules with a plain read: project.json is never written or locked"                         | `project.json` read through the adapter, no write path containing `project.json`.                                                                                                                                                            |
+| no step, no read     | "does not read project.json when no registered module owns an index step"                                 | No `project.json` read during a save.                                                                                                                                                                                                        |
+| locked project       | "a locked project is not read around the lock: the step does not run and the failure is logged"           | `ProjectLockedError` on the `project.json` read: step ran 0 times, `[indexer-queue] task failed:` logged with the error.                                                                                                                     |
+| other read failure   | "an unreadable project.json (not missing, not locked) is not read as default on"                          | Corrupt `project.json`: step ran 0 times, `[indexer-queue] config.modules read failed:` logged.                                                                                                                                              |
+| `entities` unchanged | "entities indexing still runs while the entities feature flag is off"                                     | With `config.features.entities` false, the save wrote the mention record for the declared entity, as before the change.                                                                                                                      |
 
 `project-json-lock-scan.test.ts` passes unchanged (no `updateProjectJson` added). Removing the call to `runModuleIndexSteps` fails 6 of the new tests; replacing the config read with `indexSteps(undefined)` fails 5 (the off, catch-up, plain-read, locked and unreadable cases): observed by temporary edit, reverted.
 
 Per-save cost of the read: cited from "Wave 1 config.modules read cost (FR-6)" above, not re-measured. Task 1 recorded per-save medians of about 10.7 to 11.2 ms with and without one extra plain `project.json` read, with the difference between medians within a run from -0.2 to +0.4 ms (40 resources, 30 saves per condition, 5252-byte `project.json`). No cause is stated for those values.
 
-Cases (a) is Task 8's (recorded above). Case (d): recorded by Task 13.
+Cases (a) is Task 8's (recorded above). Case (d): covered by tests/work-area-view-gating.test.tsx, describe "Sources module view (Feature 103 Task 13, FR-6 (d), FR-15)", cases "leaves the tab out of the list entirely when the module is off", "offers the tab when the module has no entry (on by default) and when on" and "brings the tab back when the module is switched on again".
 
 ## FR-13 inventory
 
@@ -214,7 +214,7 @@ Not yet recorded.
 
 ## Acceptance
 
-Not yet recorded.
+Task 37 writes this section.
 
 ## Task 40
 
