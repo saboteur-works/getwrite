@@ -51,7 +51,10 @@ import {
 import { getLocalResources } from "../../src/lib/models/resource-persistence";
 import { listResourceIds } from "../../src/lib/models/backlinks";
 import { mutateSidecar, readSidecar } from "../../src/lib/models/sidecar";
-import { ATTACHMENT_MESSAGES } from "../../src/lib/models/media-validation";
+import {
+  ATTACHMENT_MESSAGES,
+  MAX_MEDIA_FILE_BYTES,
+} from "../../src/lib/models/media-validation";
 import { AttachmentListSchema } from "../../src/lib/models/schemas";
 import { ResourceResponseSchema } from "../../src/lib/api/schemas";
 import * as io from "../../src/lib/models/io";
@@ -517,6 +520,35 @@ describe("revisions cover the body only (FR-25)", () => {
     expect(sidecarAfter.attachments).toEqual(
       (JSON.parse(sidecarBefore) as Record<string, unknown>).attachments,
     );
+  });
+});
+
+describe("size cap before any lock or write (Feature 104 Task 5)", () => {
+  async function treeListing(dir: string): Promise<string[]> {
+    const entries = await fs.readdir(dir, { recursive: true });
+    return entries.sort();
+  }
+
+  it("refuses a file one byte over the cap and leaves the project tree unchanged", async () => {
+    const id = await createSource();
+    // createSource enqueues a background index write (mentions.json via a
+    // .tmp file); settle it so it cannot land between the two listings.
+    await flushIndexer();
+    const before = await treeListing(projectRoot);
+    const oversized = new Uint8Array(MAX_MEDIA_FILE_BYTES + 1);
+    oversized.set(PNG);
+    await expect(
+      addAttachmentCore(projectId, id, {
+        fileName: "big.png",
+        mimeType: "image/png",
+        fileBytes: oversized,
+      }),
+    ).rejects.toMatchObject({
+      reason: "file-too-large",
+      message: "File exceeds the 100 MB limit.",
+    });
+    await flushIndexer();
+    expect(await treeListing(projectRoot)).toEqual(before);
   });
 });
 

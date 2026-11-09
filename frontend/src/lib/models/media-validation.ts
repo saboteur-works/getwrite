@@ -2,10 +2,21 @@
  * Validation for image/audio uploads: classifies a file as an image or audio
  * resource by extension/MIME, and enforces the per-file size cap.
  */
+import { resolveRuntime } from "../../store/transport/runtime";
 import type { ResourceType } from "./types";
 
 /** Maximum accepted media file size in bytes (100 MB). */
 export const MAX_MEDIA_FILE_BYTES = 100 * 1024 * 1024;
+
+/** The Android per-file cap: 104,857,600 bytes, the size the chunked write passed on the device. */
+export const ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES = 104_857_600;
+
+/** The per-file cap for the running runtime: the Android cap on native, else `MAX_MEDIA_FILE_BYTES`. */
+export function maxMediaFileBytes(): number {
+  return resolveRuntime() === "native"
+    ? ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES
+    : MAX_MEDIA_FILE_BYTES;
+}
 
 /** Accepted image extensions mapped to their canonical MIME type. */
 export const IMAGE_EXTENSION_MIME: Readonly<Record<string, string>> = {
@@ -146,13 +157,12 @@ export function validateMediaFile(
     };
   }
 
-  if (file.size > MAX_MEDIA_FILE_BYTES) {
+  const cap = maxMediaFileBytes();
+  if (file.size > cap) {
     return {
       ok: false,
       reason: "file-too-large",
-      message: `File exceeds the ${
-        MAX_MEDIA_FILE_BYTES / (1024 * 1024)
-      } MB limit.`,
+      message: `File exceeds the ${cap / (1024 * 1024)} MB limit.`,
     };
   }
 

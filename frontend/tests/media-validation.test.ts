@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AUDIO_EXTENSION_MIME,
   IMAGE_EXTENSION_MIME,
   ATTACHMENT_MESSAGES,
+  ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES,
   MAX_MEDIA_FILE_BYTES,
+  maxMediaFileBytes,
   validateAttachmentFile,
   validateMediaFile,
 } from "../src/lib/models/media-validation";
@@ -251,5 +253,66 @@ describe("validateAttachmentFile", () => {
     const result = validateMediaFile({ ext: "png", size: 10 });
     expect(result.ok).toBe(true);
     expect(validateMediaFile({ ext: "mp4", size: 10 }).ok).toBe(false);
+  });
+});
+
+describe("maxMediaFileBytes", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("keeps the exported constant at 104,857,600", () => {
+    expect(MAX_MEDIA_FILE_BYTES).toBe(104_857_600);
+    expect(ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES).toBe(104_857_600);
+  });
+
+  it("returns 104,857,600 outside the native runtime", () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "web");
+    expect(maxMediaFileBytes()).toBe(104_857_600);
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "");
+    expect(maxMediaFileBytes()).toBe(104_857_600);
+  });
+
+  it("non-native validators accept 104,857,600 and refuse 104,857,601 with today's result", () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "web");
+    expect(validateMediaFile({ ext: "wav", size: 104_857_600 }).ok).toBe(true);
+    expect(validateMediaFile({ ext: "wav", size: 104_857_601 })).toEqual({
+      ok: false,
+      reason: "file-too-large",
+      message: "File exceeds the 100 MB limit.",
+    });
+    expect(
+      validateAttachmentFile({
+        ext: "png",
+        size: 104_857_601,
+        bytes: PNG_BYTES,
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "file-too-large",
+      message: "File exceeds the 100 MB limit.",
+    });
+  });
+
+  it("returns the Android cap on the native runtime and validators use it", () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    const cap = ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES;
+    expect(maxMediaFileBytes()).toBe(cap);
+    expect(validateMediaFile({ ext: "wav", size: cap }).ok).toBe(true);
+    expect(validateMediaFile({ ext: "wav", size: cap + 1 })).toEqual({
+      ok: false,
+      reason: "file-too-large",
+      message: `File exceeds the ${cap / (1024 * 1024)} MB limit.`,
+    });
+    expect(
+      validateAttachmentFile({ ext: "png", size: cap, bytes: PNG_BYTES }).ok,
+    ).toBe(true);
+    const refused = validateAttachmentFile({
+      ext: "png",
+      size: cap + 1,
+      bytes: PNG_BYTES,
+    });
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.reason).toBe("file-too-large");
   });
 });
