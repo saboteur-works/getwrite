@@ -90,7 +90,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3, 5
 **Estimate:** 5
 **Notes:** Satisfies FR-4, FR-8 (code), FR-11, FR-12 (editor), OQ-3, OQ-4, OQ-9, OQ-10. First node view in the repo: the jsdom tests are not evidence that it works on the device (Task 13). Hot file `GetWriteImage.ts` is edited by this task only.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 7: Picker lazy loading, "too large" placeholder, and picker visibility at phone width
 **What:** Make the image picker read each entry's picture only near the viewport through the shared cache, show the placeholder for a refused or failed entry, and keep every entry listed and insertable. Also (owner decision 2026-11-09, after the Task 1 baseline) make the picker visible, tappable and fully inside the viewport at phone width, without changing the desktop look.
