@@ -1,5 +1,10 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
+import projectReducer from "../../src/store/projectsSlice";
+import type { StoredProject } from "../../src/store/projectsSlice";
+import resourcesReducer from "../../src/store/resourcesSlice";
 import ResourceTree from "../../components/ResourceTree/ResourceTree";
 import type { ResourceContextAction } from "../../components/ResourceTree/ResourceContextMenu";
 import {
@@ -79,6 +84,84 @@ export const Reorderable: Story = {
     onResourceAction: (action: ResourceContextAction, resourceId?: string) =>
       console.log("action", action, resourceId),
   },
+};
+
+/** A store whose project names an Inbox folder, with `itemCount` captured notes. */
+function makeInboxStore(itemCount: number) {
+  const now = new Date().toISOString();
+  const folders = [
+    {
+      id: "inbox-folder",
+      slug: "inbox",
+      name: "Inbox",
+      orderIndex: 0,
+      type: "folder" as const,
+      createdAt: now,
+      parentId: null,
+    },
+    {
+      id: "other-folder",
+      slug: "drafts",
+      name: "Drafts",
+      orderIndex: 1,
+      type: "folder" as const,
+      createdAt: now,
+      parentId: null,
+    },
+  ];
+  const resources = Array.from({ length: itemCount }, (_, i) => ({
+    id: `note-${i}`,
+    slug: `note-${i}`,
+    name: `Captured note ${i + 1}`,
+    orderIndex: i,
+    type: "text" as const,
+    folderId: "inbox-folder",
+    createdAt: now,
+  }));
+  return configureStore({
+    reducer: { projects: projectReducer, resources: resourcesReducer },
+    preloadedState: {
+      projects: {
+        selectedProjectId: "inbox-proj",
+        projects: {
+          "inbox-proj": {
+            id: "inbox-proj",
+            name: "Inbox Project",
+            rootPath: "/inbox-project",
+            folders: [],
+            resources: [],
+            inboxFolderId: "inbox-folder",
+          } as StoredProject,
+        },
+      },
+      resources: {
+        selectedResourceId: null,
+        resources,
+        folders,
+        suppressNextViewAutoSwitch: false,
+      },
+    } as unknown as Parameters<typeof configureStore>[0]["preloadedState"],
+  });
+}
+
+export const InboxWithCount: Story = {
+  render: (args: React.ComponentProps<typeof ResourceTree>) => (
+    <Provider store={makeInboxStore(3)}>
+      <ResourceTree {...args} />
+    </Provider>
+  ),
+  args: { onResourceAction: () => {} },
+  parameters: { a11y: { test: "error" } },
+};
+
+export const InboxEmpty: Story = {
+  render: (args: React.ComponentProps<typeof ResourceTree>) => (
+    <Provider store={makeInboxStore(0)}>
+      <ResourceTree {...args} />
+    </Provider>
+  ),
+  args: { onResourceAction: () => {} },
+  parameters: { a11y: { test: "error" } },
 };
 
 export const Icons: Story = {

@@ -68,6 +68,10 @@ import {
   ROOT_ITEM_ID,
 } from "./buildResourceTree";
 import { useResourceReorder } from "./useResourceReorder";
+import {
+  computeInboxSubtree,
+  countInboxItems,
+} from "../../src/lib/models/inbox-membership";
 
 /** Horizontal pixel offset applied per nesting level when rendering tree items. */
 const INDENTATION_WIDTH = 14;
@@ -191,6 +195,23 @@ export default function ResourceTree({
   const selectedResourceId = useAppSelector(
     (s) => s.resources.selectedResourceId,
   );
+
+  // Feature 106 FR-14: count of resources in the Inbox subtree, walked over
+  // the store's folders and resources (no request). The id is the store
+  // project's flat `inboxFolderId` (`StoredProject`), not `config.inboxFolderId`.
+  // Zero (no badge) when unset, empty, or the folder data is malformed.
+  const inboxFolderId = currentProject?.inboxFolderId;
+  const inboxCount = useMemo(() => {
+    if (!inboxFolderId) return 0;
+    const computed = computeInboxSubtree(
+      rawResources.filter((r) => r.type === "folder"),
+      inboxFolderId,
+    );
+    return computed.ok ? countInboxItems(computed.subtree, rawResources) : 0;
+  }, [rawResources, inboxFolderId]);
+
+  const isInboxRow = (item: ItemInstance<ResourceItemData>): boolean =>
+    inboxCount > 0 && item.getId() === inboxFolderId;
 
   const transformedResourceData = useMemo(
     () => buildResourceTree(rawResources),
@@ -377,6 +398,13 @@ export default function ResourceTree({
             <div
               {...item.getProps()}
               onClick={(e) => handleClick(e, item)}
+              {...(isInboxRow(item)
+                ? {
+                    // The count joins the row's accessible name; the visible
+                    // badge is aria-hidden so it is not read twice.
+                    "aria-label": `${item.getItemName()}, ${inboxCount} ${inboxCount === 1 ? "item" : "items"}`,
+                  }
+                : {})}
               className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >
               {item.isFolder() && (
@@ -403,6 +431,15 @@ export default function ResourceTree({
               >
                 {renderResourceIcon(item)}
                 <div className="truncate">{item.getItemName()}</div>
+                {isInboxRow(item) ? (
+                  <span
+                    data-testid="inbox-count"
+                    aria-hidden="true"
+                    className="resource-tree-count"
+                  >
+                    {inboxCount}
+                  </span>
+                ) : null}
               </div>
               <ResourceRowMenu
                 resourceId={item.getId()}

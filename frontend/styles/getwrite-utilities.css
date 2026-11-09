@@ -938,6 +938,17 @@ html.gw-theme-dark {
     padding-left: 8px;
   }
 
+  /* Inbox item count (Feature 106 FR-14): quiet, neutral, never red. */
+  .resource-tree-count {
+    flex: none;
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border: 1px solid var(--color-gw-border-md);
+    border-radius: 9999px;
+    color: var(--color-gw-secondary);
+  }
+
   .resource-tree-item-row--drag-target {
     background-color: var(--color-gw-chrome2);
     outline: 1px dashed var(--color-gw-border-md);
