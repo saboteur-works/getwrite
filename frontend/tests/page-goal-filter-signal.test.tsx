@@ -7,6 +7,7 @@ import { setSelectedResourceId as setResourceId } from "../src/store/resourcesSl
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import { openProject } from "../src/lib/api/projects";
+import { LAST_OPENED_PROJECT_STORAGE_KEY } from "../src/lib/capture-preferences";
 
 /**
  * Feature 98 Task 24 (FR-33): a resolved sidecar field save from the page's
@@ -157,5 +158,54 @@ describe("page.tsx sidecar field save signals the footer (Feature 98 Task 24, FR
     await editMood(GOAL_FILTER);
     await new Promise((r) => setTimeout(r, 20));
     expect(notifyMock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature 106, Task 20 (FR-12): `handleOpen` records the opened project's
+ * directory id as the most recently opened project. The restore and
+ * import-complete paths call `handleOpen`, so this exercises the same write
+ * through the Start screen open.
+ */
+describe("page.tsx handleOpen records the most recently opened project (Feature 106, Task 20)", () => {
+  async function renderPage(): Promise<ReturnType<typeof makeStore>> {
+    vi.mocked(openProject).mockResolvedValue(payload());
+    const { default: Page } = await import("../app/(app)/page");
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <Page />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    return store;
+  }
+
+  it("writes the directory id to the last-opened key", async () => {
+    window.localStorage.removeItem(LAST_OPENED_PROJECT_STORAGE_KEY);
+    await renderPage();
+    await waitFor(() =>
+      expect(window.localStorage.getItem(LAST_OPENED_PROJECT_STORAGE_KEY)).toBe(
+        "proj-dir-id",
+      ),
+    );
+  });
+
+  it("still opens the project when the localStorage write throws", async () => {
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("quota", "QuotaExceededError");
+      });
+    try {
+      const store = await renderPage();
+      await waitFor(() =>
+        expect(store.getState().resources.resources.length).toBe(1),
+      );
+      expect(setItem).toHaveBeenCalled();
+    } finally {
+      setItem.mockRestore();
+    }
   });
 });

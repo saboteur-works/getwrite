@@ -58,6 +58,7 @@ import ShellSettingsMenu, {
   type SettingsMenuAction,
 } from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
+import CaptureBoxHost from "../Capture/CaptureBoxHost";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -312,6 +313,16 @@ export default function AppShell({
   const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
   const [isResourcePaletteOpen, setIsResourcePaletteOpen] =
     useState<boolean>(false);
+  const [isCaptureBoxOpen, setIsCaptureBoxOpen] = useState<boolean>(false);
+  // The host (one instance, never unmounted once shown) is first rendered on
+  // the first open, so a shell that never opens Capture reads no sharing-limits
+  // context and fetches nothing for it.
+  const [hasCaptureBoxBeenOpened, setHasCaptureBoxBeenOpened] =
+    useState<boolean>(false);
+  // The key handler below is registered once, so it reads the open project
+  // through a ref rather than closing over a stale value.
+  const isProjectOpenRef = React.useRef<boolean>(Boolean(project));
+  isProjectOpenRef.current = Boolean(project);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] =
     useState<boolean>(false);
@@ -915,11 +926,21 @@ export default function AppShell({
 
   useEffect(() => {
     const onDocumentKeyDown = (event: KeyboardEvent) => {
-      const isCommandPaletteShortcut =
+      const isKShortcut =
         (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
 
-      if (isCommandPaletteShortcut) {
+      if (isKShortcut && event.shiftKey) {
+        // Capture works with or without an open project (Feature 106, FR-11).
         event.preventDefault();
+        setIsSettingsMenuOpen(false);
+        setHasCaptureBoxBeenOpened(true);
+        setIsCaptureBoxOpen(true);
+        return;
+      }
+
+      if (isKShortcut) {
+        event.preventDefault();
+        if (!isProjectOpenRef.current) return;
         setIsSettingsMenuOpen(false);
         setIsResourcePaletteOpen(true);
         return;
@@ -1197,6 +1218,12 @@ export default function AppShell({
     <div
       className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
     >
+      {hasCaptureBoxBeenOpened ? (
+        <CaptureBoxHost
+          isOpen={isCaptureBoxOpen}
+          onClose={() => setIsCaptureBoxOpen(false)}
+        />
+      ) : null}
       <ShellLayoutProvider>
         <UpdateNotice />
 
