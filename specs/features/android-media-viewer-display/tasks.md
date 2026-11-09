@@ -81,7 +81,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (cache, late read), FR-4 (no blank or endless state), OQ-5, OQ-9. The fallback for a missing observer is a stated decision, not an open question.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 6: Native-only node view on `GetWriteImage`
 **What:** Add `addNodeView` to `GetWriteImage`, active only on native, that creates the `<img>`, shows an inline placeholder while reading, sets `img.src` from the shared cache, and shows the refusal or failure placeholder.
