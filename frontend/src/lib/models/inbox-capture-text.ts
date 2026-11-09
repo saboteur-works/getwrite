@@ -7,6 +7,7 @@
  * `node:*`, so the native build and the capture core can both import it.
  * A refusal is a returned value, never a thrown error (OQ-4, OQ-8).
  */
+import { CAPTURED_LINK_MAX_LENGTH } from "./schemas";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
 import type { TipTapDocument } from "./types";
 
@@ -16,8 +17,11 @@ export const CAPTURE_TEXT_MAX_LENGTH = 50_000;
 /** Longest item name; the cut has no word-boundary rule (OQ-8). */
 export const CAPTURE_TITLE_MAX_LENGTH = 80;
 
-/** Longest accepted link, counted after trimming (FR-22). */
-export const CAPTURE_LINK_MAX_LENGTH = 2048;
+/**
+ * Longest accepted link, counted after trimming (FR-22). Re-exported from
+ * the schema constant so there is one source of truth.
+ */
+export const CAPTURE_LINK_MAX_LENGTH: number = CAPTURED_LINK_MAX_LENGTH;
 
 /** Name used when the text has no non-empty line. */
 export const CAPTURE_FALLBACK_TITLE = "Captured note";
