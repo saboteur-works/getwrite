@@ -198,7 +198,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 4, 6, 7
 **Estimate:** 2
 **Notes:** Orchestrator task. Owner decision at Gate 5 (2026-11-09) from the Several-images run. Satisfies FR-4. Detection by message text is the owner's choice. Unit tests with fakes are not evidence about memory.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ## Summary
 - Total tasks: 18
