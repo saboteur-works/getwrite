@@ -75,7 +75,38 @@ Not measured: a larger or deeper tree, the read on an encrypted project, the obj
 
 ## FR-13 shortcut checks
 
-Not yet run, recorded by Task 26.
+### Run 1: Playwright engine builds, synthetic key input (lead, 2026-11-09)
+
+Commit `55becfec` (`feat/inbox-quick-capture`, main checkout), `pnpm exec next dev -p 3123` from `frontend/` (Next.js 16.2.6, Turbopack, dev build, outside the command sandbox), macOS Darwin 25.5.0, Start screen with no project open. Probe: a throwaway Node script (deleted after the run) using `@playwright/test`'s `chromium`, `firefox` and `webkit` launchers, headless. Per engine it waited for `.appshell-shell`, pressed Escape to close the startup unlock dialog, and added a document `keydown` listener registered after the app's, which recorded `metaKey`, `shiftKey` and `defaultPrevented`. It then pressed `Meta+Shift+K`, Escape, then `Meta+K`, listing the open `[role=dialog]` elements after each.
+
+| Engine (Playwright build) | Version | Meta+Shift+K: dialog opened | `defaultPrevented` | Meta+K: dialog opened | `defaultPrevented` |
+|---|---|---|---|---|---|
+| Chromium | 148.0.7778.96 | Capture ("Enter saves the text to the Inbox of the project...") | true | Open Resource, first row "Capture" ("ENTER TO OPEN CAPTURE BOX") | true |
+| Firefox | 150.0.2 | Capture | true | Open Resource with the Capture row | true |
+| WebKit | 26.4 | Capture | true | Open Resource with the Capture row | true |
+
+Each keypress produced exactly one `keydown` with key `k` at the listener. No dialog was open before the first keypress.
+
+Limit of this run (a statement about the method, not a result): Playwright delivers key input to the page through the engine's automation protocol. These are Playwright's engine builds, not the installed Google Chrome, Safari or Firefox apps. So this run shows that the page handler receives the keys and calls `preventDefault`. It does not show whether a real browser's own menu shortcut or the OS takes Cmd+Shift+K before the page. That needs a physical keypress in each real browser.
+
+### Electron menu accelerator (READ)
+
+`grep -rn "Menu\.\|setApplicationMenu\|accelerator\|globalShortcut" electron/src` (tests excluded) returned no match, so the shell defines no custom menu, accelerator or global shortcut. READ. Whether Electron's default macOS application menu binds Cmd+Shift+K was not read from Electron's source and not run.
+
+### Run 2: physical keypress by the owner (2026-11-09)
+
+Same dev server and commit as Run 1 (`55becfec`, `http://localhost:3123`), macOS, Start screen with no project open. Browser versions were not recorded. As reported by the owner:
+
+- **Google Chrome (macOS):** Cmd+K opened the palette with the Capture row. Cmd+Shift+K opened the Capture box directly. The result was the same with the unlock dialog open and with it closed.
+- **The VS Code built-in browser (macOS):** same result as Chrome, including with the unlock dialog open and closed.
+
+Whether `defaultPrevented` was true was not read in this run, because no listener was attached. The browser did nothing of its own that the owner reported.
+
+### Not run
+
+- Real Safari and Firefox with a physical keypress (macOS).
+- The Electron desktop shell (`pnpm electron:dev` or packaged).
+- Firefox on Windows or Linux (known candidate clash: Ctrl+Shift+K, the Web Console). Not run; not stated as fact.
 
 ## Writing-log and goal figures
 
@@ -87,8 +118,7 @@ Not yet measured. Appended by the tasks that touch the writing log and goal figu
 - Hosted web against a real tenant.
 - The Android entry (Feature 107).
 - A locked-project capture in the real unlock flow.
-- Chrome, Safari, Firefox and Electron key delivery (until Task 26 records them).
-- FR-1(d), until Task 2 records it.
+- Cmd/Ctrl+Shift+K with a physical keypress in Safari, Firefox (macOS) and the Electron shell; Firefox on Windows or Linux (FR-13 checks above record Chrome and the VS Code browser only, plus synthetic input in three engines).
 - The `plainText`-only create path in (a), a built-output check of (c), and (e) at sizes other than the one stated.
 
 ## Acceptance

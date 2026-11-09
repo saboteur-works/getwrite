@@ -287,7 +287,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 20
 **Estimate:** 3
 **Notes:** LEAD-RUN, not an implementor task: the lead or owner runs the real app outside the sandbox from the main checkout (`pnpm start` for the browsers, `pnpm electron:dev` or the packaged shell for Electron). Satisfies FR-13, FR-18. Unit tests with fakes (Task 20) are not evidence about browsers.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Documentation updates for the Inbox and Capture box
 **What:** List and apply the documentation changes FR-21 requires, with the scribe stage writing the prose, so that no document states an unmeasured result as fact.
