@@ -8,7 +8,7 @@
  * colours (no red). Task 7 reuses it for picker entries.
  */
 
-export const MEDIA_PLACEHOLDER_CLASS = "editor-image-picker-thumb-placeholder";
+const MEDIA_PLACEHOLDER_CLASS = "editor-image-picker-thumb-placeholder";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

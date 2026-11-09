@@ -36,7 +36,7 @@ export interface ResourceBlobCacheDeps {
 }
 
 /** Default bound on one read; far above the measured device read times. */
-export const DEFAULT_READ_TIMEOUT_MS = 60_000;
+const DEFAULT_READ_TIMEOUT_MS = 60_000;
 
 /** One holder's view of a cache entry. */
 export interface ResourceBlobHolder {

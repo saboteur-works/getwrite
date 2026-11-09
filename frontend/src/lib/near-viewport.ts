@@ -8,7 +8,7 @@
  */
 
 /** How far outside the viewport still counts as near. */
-export const NEAR_VIEWPORT_ROOT_MARGIN = "400px";
+const NEAR_VIEWPORT_ROOT_MARGIN = "400px";
 
 /**
  * Calls `onNear` at most once. Returns a release function that disconnects

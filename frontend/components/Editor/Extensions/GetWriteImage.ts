@@ -21,7 +21,7 @@ interface GetWriteImageAttrs {
   resourceId?: string | null;
 }
 
-export interface GetWriteImageOptions extends Partial<ImageOptions> {
+interface GetWriteImageOptions extends Partial<ImageOptions> {
   /**
    * Returns the active project's on-disk directory basename (the `projectId`
    * every tenant-scoped resource route, ADR-017/018, expects — see

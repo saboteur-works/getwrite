@@ -38,8 +38,6 @@ import {
   mediaTooLargeToShowMessage,
 } from "./media-validation";
 
-export { InvalidProjectIdCoreError };
-
 /** The resource id is not a well-formed id. Map to HTTP 400. */
 export class InvalidResourceBytesIdError extends Error {
   constructor() {

@@ -4,17 +4,11 @@ import React from "react";
 import { readResourceBytes } from "../../src/lib/api/resource-bytes";
 import {
   RESOURCE_FAILED_STATE,
-  RESOURCE_LOCKED_MESSAGE,
-  RESOURCE_READ_FAILED_MESSAGE,
   resourceErrorState,
   type ResourceObjectUrlState,
 } from "../../src/lib/resource-object-url-state";
 
-export {
-  RESOURCE_LOCKED_MESSAGE,
-  RESOURCE_READ_FAILED_MESSAGE,
-  type ResourceObjectUrlState,
-};
+export { type ResourceObjectUrlState };
 
 const FAILED: ResourceObjectUrlState = RESOURCE_FAILED_STATE;
 
