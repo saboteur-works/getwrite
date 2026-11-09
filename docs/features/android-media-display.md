@@ -17,7 +17,7 @@ The native build is a static export with no `/api` routes (ADR-021), so the file
 - `components/Sources/useResourceObjectUrl.ts`: the hook the viewers use; it returns a state from `lib/resource-object-url-state.ts` (`resourceErrorState`).
 - `lib/resource-blob-cache.ts`: a per-resource, ref-counted cache shared by nodes and the picker, so one loaded file serves every acquirer. Concurrent acquires join one in-flight read. A read that does not settle is bounded at 60 s (`DEFAULT_READ_TIMEOUT_MS`). The object URL is revoked when the last holder releases, and a read that resolves after release creates none.
 - `GetWriteImage.ts`: a native-only node view (`addNodeView`), the first in the repository. The web `renderHTML` and `resolveGetWriteImageSrc` are unchanged. `components/Editor/Extensions/media-placeholder.ts` builds the loading and message placeholder.
-- `components/Editor/MenuBar/ImagePickerSubmenu.tsx` and `ImagePickerThumb.tsx`: thumbnails read only near the viewport. The picker is rendered in a portal so it opens fully on screen at phone width. `src/lib/react-dom-portal.d.ts` is an ambient shim for `createPortal`, because `@types/react-dom` is not a dependency.
+- `components/Editor/MenuBar/ImagePickerSubmenu.tsx` and `ImagePickerThumb.tsx`: thumbnails read only near the viewport. The picker is rendered in a portal so it opens fully on screen at phone width.
 
 ## Size limit
 
