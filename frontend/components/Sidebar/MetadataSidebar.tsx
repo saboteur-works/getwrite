@@ -32,6 +32,7 @@ import EntityMentionsProvider from "./EntityMentionsContext";
 import EntityRelationshipsRefreshProvider from "./EntityRelationshipsRefreshContext";
 import ProseDiagnosticsSection from "./ProseDiagnosticsSection";
 import SubtypeSection from "./SubtypeSection";
+import CapturedSection from "./CapturedSection";
 import FolderMetadataSection from "./FolderMetadataSection";
 import SourceAttachmentsSection from "./SourceAttachmentsSection";
 import { isFieldVisibleForSubtype } from "../../src/lib/models/field-subtype-scope";
@@ -525,6 +526,7 @@ export default function MetadataSidebar({
                 />
               </CollapsibleSection>
             )}
+            <CapturedSection resource={editableResource} />
             <CollapsibleSection title="Subtype" variant="sidebar">
               <SubtypeSection />
             </CollapsibleSection>
