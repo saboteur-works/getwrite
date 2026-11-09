@@ -35,6 +35,14 @@ import type { Dirent, Stats } from "node:fs";
 import type { ReaddirResult, StorageAdapter } from "./io";
 import type { CapacitorFilesystemLike } from "./capacitor-filesystem";
 
+/**
+ * Piece size of a chunked write: 4 MiB. A buffer at or below this is one
+ * `writeFile`; a larger one is `writeFile` of the first piece then `appendFile`
+ * per remaining piece. The chunked write passed at 104,857,600 bytes on the
+ * Pixel 7 Pro (specs/features/android-large-media-writes/experiments.md).
+ */
+export const CAPACITOR_WRITE_PIECE_BYTES = 4_194_304;
+
 /** Builds a coded error matching the `node:fs` / model-layer convention. */
 function coded(code: string, message: string): Error {
   return Object.assign(new Error(`${code}: ${message}`), { code });
@@ -136,11 +144,28 @@ export function capacitorFsAdapter(
       // All writes go through base64 so a single path handles text and binary
       // identically; readFile/readFileBuffer pick their own encoding on the way
       // out. This keeps the atomicWriteFile temp-file dance encoding-agnostic.
+      // A buffer larger than one piece is written as the first piece, then one
+      // append per remaining piece, each base64-encoded on its own.
+      const buffer = toBuffer(data);
+      const pluginPath = toPluginPath(p);
+      const first = buffer.subarray(0, CAPACITOR_WRITE_PIECE_BYTES);
       await fs.writeFile({
-        path: toPluginPath(p),
-        data: toBuffer(data).toString("base64"),
+        path: pluginPath,
+        data: first.toString("base64"),
         recursive: true,
       });
+      for (
+        let offset = CAPACITOR_WRITE_PIECE_BYTES;
+        offset < buffer.length;
+        offset += CAPACITOR_WRITE_PIECE_BYTES
+      ) {
+        await fs.appendFile({
+          path: pluginPath,
+          data: buffer
+            .subarray(offset, offset + CAPACITOR_WRITE_PIECE_BYTES)
+            .toString("base64"),
+        });
+      }
     },
 
     readFile: async (p, encoding) => {
