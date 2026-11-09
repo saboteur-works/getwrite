@@ -99,7 +99,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 5, 6
 **Estimate:** 8
 **Notes:** Satisfies FR-3 (picker), FR-4, FR-10 (including picker visibility and placement at phone width), FR-11, FR-12, OQ-5, OQ-8, OQ-10. Estimate raised from 5 to 8 for the visibility work (owner decision 2026-11-09). `getwrite-utilities.css` is a hot file this task owns. Read `ImagePickerSubmenu.tsx` source and stories before using any prop.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 8: Drop path inserts a node that renders and stores the web URL
 **What:** Check and, where needed, adjust the `MediaDropExtension` insert so that on native the inserted node stores the web serving URL and renders through the node view.
