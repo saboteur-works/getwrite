@@ -189,7 +189,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 6, 8
 **Estimate:** 5
 **Notes:** Orchestrator task. Owner decision at Gate 5 (2026-11-09) from the Task 13 drop runs. Satisfies FR-4, FR-8, FR-9, FR-11. Edits `GetWriteImage.ts`, so run it serially with Task 18.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 18: Out-of-memory read failure says so
 **What:** When a read on native fails with an allocation or out-of-memory error, show "Not enough memory on this device to show this file." instead of the generic "This file cannot be shown." on the viewer, the in-document placeholder and the picker entry.
