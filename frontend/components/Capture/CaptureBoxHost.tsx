@@ -39,6 +39,7 @@ import type {
   CaptureResult,
   InboxTrashChoice,
 } from "../../src/lib/api/inbox-capture-types";
+import { isEncryptedProjectCaptureRefusal } from "../../src/lib/api/encrypted-project-refusal";
 import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 import { writeLastCapturedProjectId } from "../../src/lib/capture-preferences";
 import { CAPTURE_TEXT_MAX_LENGTH } from "../../src/lib/models/inbox-capture-text";
@@ -100,6 +101,9 @@ function refusalIssue(notices: CaptureNotice[]): CaptureBoxIssue {
  * error, never as success.
  */
 function classifyError(error: unknown): CaptureBoxIssue {
+  if (isEncryptedProjectCaptureRefusal(error)) {
+    return { kind: "encryptedRefused", message: error.message };
+  }
   if (isLimitRefusalError(error)) return { kind: "pairedRefused" };
   if (error instanceof TypeError) return { kind: "network" };
   const message = error instanceof Error ? error.message : "";

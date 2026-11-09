@@ -21,6 +21,7 @@ import {
 } from "../../components/Sharing/SharingLimitsContext";
 import { runAxe } from "../a11y/helpers/axe";
 import { LAST_CAPTURED_PROJECT_STORAGE_KEY } from "../../src/lib/capture-preferences";
+import { EncryptedProjectCaptureRefusedError } from "../../src/lib/api/encrypted-project-refusal";
 import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
 import {
   MissingProjectKeyError,
@@ -263,6 +264,19 @@ describe("CaptureBoxHost", () => {
     submit();
     expect(await screen.findByRole("alert")).toHaveTextContent("50,000");
     expect(box.value).toBe("long");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("shows the typed encrypted-project refusal as its own message and keeps the text", async () => {
+    const refusal = new EncryptedProjectCaptureRefusedError("encrypted");
+    const capture = vi.fn<CaptureFn>().mockRejectedValue(refusal);
+    const { onClose } = await setup(capture);
+    const box = type("keep me");
+    submit();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(refusal.message);
+    expect(alert).not.toHaveTextContent("the app reported an error");
+    expect(box.value).toBe("keep me");
     expect(onClose).not.toHaveBeenCalled();
   });
 

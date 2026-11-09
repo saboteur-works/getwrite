@@ -300,6 +300,10 @@ const nextConfig = {
           // src/lib/api/ — same rule as above.
           "../../store/transport/native-inbox-capture-backend":
             "./src/store/transport/native-inbox-capture-backend.web-stub",
+          // Feature 107 Task 4: lib/api/inbox-image-capture.ts also lives in
+          // src/lib/api/ — same rule as above.
+          "../../store/transport/native-inbox-image-capture-backend":
+            "./src/store/transport/native-inbox-image-capture-backend.web-stub",
           // Feature 107 Task 6: lib/api/share-in.ts also lives in src/lib/api/
           // — same rule as above.
           "../../store/transport/native-share-in-plugin":
