@@ -126,7 +126,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 6, 8
 **Estimate:** 2
 **Notes:** Satisfies FR-14, OQ-4. If the picker insertion stored a non-web value, the failing test returns to the owner as a defect of Task 7.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 11: LEAD-RUN: viewers on the Pixel 7 Pro (image and audio under 1 MiB)
 **What:** On the Pixel 7 Pro, open an image resource and an audio resource of under 1 MiB and record the result.
