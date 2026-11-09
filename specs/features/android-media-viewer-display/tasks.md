@@ -63,7 +63,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-2, FR-5, FR-12 (no web call), OQ-1. Precedent `source-attachment-bytes.ts:78-84`. Do not run `pnpm build:native` (LEAD-RUN only).
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 4: `useResourceObjectUrl` hook and the `MediaView` wrapper
 **What:** Add the native-only hook that reads through Task 3 and makes and revokes a blob URL, and a wrapper in `MediaView` that chooses the source and renders loading, refusal, read-failure and locked states before the viewer mounts.
