@@ -14,6 +14,10 @@ export const RESOURCE_LOCKED_MESSAGE =
 /** Shown for any read failure that is not a size refusal or a lock. */
 export const RESOURCE_READ_FAILED_MESSAGE = "This file cannot be shown.";
 
+/** Shown when the read failed for lack of memory on the device. */
+export const RESOURCE_OUT_OF_MEMORY_MESSAGE =
+  "Not enough memory on this device to show this file.";
+
 /** What the viewer knows about one media resource's bytes. */
 export type ResourceObjectUrlState =
   | { status: "loading" }
@@ -36,6 +40,27 @@ function isTooLargeRefusal(error: unknown): error is Error {
   return error instanceof Error && error.name === "ResourceBytesTooLargeError";
 }
 
+/**
+ * An allocation failure is recognised by its message text (owner's choice):
+ * the native bridge reports it as a plain failure, so "Failed to allocate" or
+ * "OutOfMemory" in the text is the only signal there is.
+ */
+function isOutOfMemoryFailure(error: unknown): boolean {
+  let text: string;
+  if (typeof error === "string") {
+    text = error;
+  } else if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error
+  ) {
+    text = String((error as { message: unknown }).message);
+  } else {
+    return false;
+  }
+  return text.includes("Failed to allocate") || text.includes("OutOfMemory");
+}
+
 /** Maps a rejected read to the message state shown in its place. */
 export function resourceErrorState(error: unknown): ResourceObjectUrlState {
   if (isLockedAccessError(error)) {
@@ -43,6 +68,9 @@ export function resourceErrorState(error: unknown): ResourceObjectUrlState {
   }
   if (isTooLargeRefusal(error)) {
     return { status: "refused", message: error.message };
+  }
+  if (isOutOfMemoryFailure(error)) {
+    return { status: "failed", message: RESOURCE_OUT_OF_MEMORY_MESSAGE };
   }
   return RESOURCE_FAILED_STATE;
 }

@@ -245,6 +245,20 @@ describe("ImagePickerSubmenu native lazy reads (Feature 105 Task 7)", () => {
     });
   });
 
+  it("shows the out-of-memory message in the picker entry", async () => {
+    readMock.mockRejectedValue(
+      new Error(
+        "Couldn't load the attachment. 'readFile' failed with: Failed to allocate a 83886092 byte allocation with 4194304 free bytes and 68MB until OOM, target footprint 268435456, growth limit 268435456",
+      ),
+    );
+    await openPicker();
+    act(() => makeNear());
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      "Not enough memory on this device to show this file.",
+    );
+  });
+
   it("shows the failure placeholder on a read failure and stays insertable", async () => {
     readMock.mockRejectedValue(new Error("boom"));
     await openPicker();

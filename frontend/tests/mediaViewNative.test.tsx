@@ -206,6 +206,20 @@ describe("MediaView on native", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("says so when a read fails for lack of memory", async () => {
+    readResourceBytes.mockRejectedValue(
+      new Error(
+        "Couldn't load the attachment. 'readFile' failed with: Failed to allocate a 83886092 byte allocation with 4194304 free bytes and 68MB until OOM, target footprint 268435456, growth limit 268435456",
+      ),
+    );
+    render(view(IMAGE_RESOURCE));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Not enough memory on this device to show this file.",
+    );
+    expect(alert).not.toHaveTextContent("This file cannot be shown.");
+  });
+
   it("treats empty bytes as a failure, not a success", async () => {
     readResourceBytes.mockResolvedValue({
       ...pngBytes(),

@@ -187,6 +187,24 @@ describe("GetWriteImage node view on native", () => {
     expect(box?.getAttribute("role")).toBe("alert");
   });
 
+  it("shows the out-of-memory message in the placeholder", async () => {
+    const f = fakes();
+    const editor = mount(f.cache, [{ resourceId: RES_A, src: STORED_A }]);
+    await flush();
+    f.reads[0].reject(
+      new Error(
+        "Couldn't load the attachment. 'readFile' failed with: Failed to allocate a 83886092 byte allocation with 4194304 free bytes and 68MB until OOM, target footprint 268435456, growth limit 268435456",
+      ),
+    );
+    await flush();
+    const box = dom(editor).querySelector(
+      ".editor-image-picker-thumb-placeholder",
+    );
+    expect(box?.textContent).toContain(
+      "Not enough memory on this device to show this file.",
+    );
+  });
+
   it("shows the failure placeholder when the blob does not decode", async () => {
     const f = fakes();
     const editor = mount(f.cache, [{ resourceId: RES_A, src: STORED_A }]);
