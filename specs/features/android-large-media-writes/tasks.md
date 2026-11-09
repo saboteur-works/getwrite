@@ -51,7 +51,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-3 (funnel, threshold), OQ-10. Unit tests prove ordering and byte equality only, not memory. Task 3 edits the same file next.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 3: Adapter cleanup when a piece fails
 **What:** Make the chunked `writeFile` best-effort delete its target when any piece fails, swallowing only the cleanup error and rethrowing the original.
@@ -81,7 +81,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-6, OQ-6, OQ-11 (wording). Confirmation (a) of Task 1 records that the native build inlines the runtime variable in this shared module; if it does not, stop and return to the owner. The Android cap value is a single constant named in the file with a comment-free name that says it is the device-verified value; do not state any other size.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 6: Refuse an oversized file before reading it into memory
 **What:** Move the size check before `await file.arrayBuffer()` in the native Source-attachment backend and the equivalent native resource-upload backend, using the resolver, and fix any file picker Task 1 found reading before checking.
