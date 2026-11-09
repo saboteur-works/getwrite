@@ -36,6 +36,7 @@ import {
   exists,
   readdir,
   readFile,
+  rm,
   stat,
   writeFile,
 } from "./io";
@@ -47,7 +48,11 @@ import {
   writeResourceToFile,
   type CreateResourceOpts,
 } from ".";
-import { isPlainFileName, validateMediaFile } from "./media-validation";
+import {
+  isPlainFileName,
+  MediaUploadValidationError,
+  validateMediaFile,
+} from "./media-validation";
 import { extractAudioMetadata, extractImageMetadata } from "./media-metadata";
 import { listRevisions } from "./revision";
 import {
@@ -208,14 +213,7 @@ export class InvalidResourceFileNameCoreError extends Error {
 }
 
 /** Thrown by {@link uploadMediaResourceCore} when the file fails validation. */
-export class MediaUploadValidationError extends Error {
-  reason: string;
-  constructor(message: string, reason: string) {
-    super(message);
-    this.name = "MediaUploadValidationError";
-    this.reason = reason;
-  }
-}
+export { MediaUploadValidationError };
 
 /**
  * Plain-argument input for {@link uploadMediaResourceCore}: raw bytes plus
@@ -302,9 +300,31 @@ export async function uploadMediaResourceCore(
   // writeResourceToFile serializes its sidecar write via the per-project
   // meta lock internally, so no outer lock is needed here (and adding one
   // would deadlock, since the lock is non-reentrant).
-  await writeResourceToFile(projectPath, resource, { binary: bytes });
+  // Only a directory this run creates is removed on failure: a binary write
+  // that throws part-way must not leave a resource directory behind.
+  const resourceDir = path.join(projectPath, "resources", resource.id);
+  const isDirCreatedByRun = !(await exists(resourceDir));
+  try {
+    await writeResourceToFile(projectPath, resource, { binary: bytes });
+  } catch (err) {
+    if (isDirCreatedByRun) await removeCreatedDirBestEffort(resourceDir);
+    throw err;
+  }
 
   return resource;
+}
+
+/**
+ * Best-effort removal of a directory the failed run created. Only the removal
+ * call is guarded and only its own failure is swallowed: the caller rethrows
+ * the original error, which a cleanup error must never replace.
+ */
+async function removeCreatedDirBestEffort(dir: string): Promise<void> {
+  try {
+    await rm(dir, { recursive: true, force: true });
+  } catch {
+    // Intentionally ignored: cleanup is best-effort; see the doc comment.
+  }
 }
 
 // ---------------------------------------------------------------------------

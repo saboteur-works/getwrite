@@ -21,7 +21,9 @@
  * web/desktop builds.
  */
 import { createNativeRunner, type NativeBackendDeps } from "./native-runner";
+import { validateAttachmentFile } from "../../lib/models/media-validation";
 import {
+  AttachmentValidationError,
   addAttachmentCore,
   listAttachmentsCore,
   removeAttachmentCore,
@@ -35,7 +37,25 @@ import {
 } from "../../lib/models/resource-id";
 import type { AttachmentTransport } from "../../lib/api/source-attachments";
 
+/**
+ * Refuses a file the core would refuse on name, type, video or size, before
+ * its bytes are read into memory. Runs the core's own validator with an empty
+ * head and lets only the content check (which needs the bytes) through.
+ */
+function refuseBeforeRead(file: File): void {
+  const result = validateAttachmentFile({
+    mime: file.type || undefined,
+    ext: file.name,
+    size: file.size,
+    bytes: new Uint8Array(0),
+  });
+  if (!result.ok && result.reason !== "content-mismatch") {
+    throw new AttachmentValidationError(result.message, result.reason);
+  }
+}
+
 async function toInput(file: File): Promise<AddAttachmentInput> {
+  refuseBeforeRead(file);
   return {
     fileName: file.name,
     mimeType: file.type || undefined,

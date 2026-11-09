@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import * as io from "../../src/lib/models/io";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 
@@ -113,5 +116,27 @@ describe("atomicWriteFile", () => {
     await io.atomicWriteFile("/p/data.json", "new");
     const content = await io.readFile("/p/data.json", "utf8");
     expect(content).toBe("new");
+  });
+});
+
+describe("Node adapter writeFile does not chunk (Android chunking must not leak)", () => {
+  it("calls the underlying fs.writeFile exactly once for a 10 MiB buffer, with no append", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-node-write-"));
+    const nodeAdapter = io.getStorageAdapter();
+    const writeSpy = vi.spyOn(fs, "writeFile");
+    const appendSpy = vi.spyOn(fs, "appendFile");
+    try {
+      const big = Buffer.alloc(10 * 1024 * 1024, 7);
+      const target = path.join(dir, "big.bin");
+      await nodeAdapter.writeFile(target, big);
+      expect(writeSpy).toHaveBeenCalledTimes(1);
+      expect(writeSpy.mock.calls[0][1]).toBe(big);
+      expect(appendSpy).not.toHaveBeenCalled();
+      expect((await fs.stat(target)).size).toBe(big.length);
+    } finally {
+      writeSpy.mockRestore();
+      appendSpy.mockRestore();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 });

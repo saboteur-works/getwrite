@@ -15,6 +15,7 @@ You can rename a resource or move it to another folder, and links to it from oth
 - **Document:** a rich-text document you write in the [editor](../write/editor.md). It opens in the **Edit** tab, with a toolbar for **Bold**, **Italic**, **Underline**, **Strikethrough**, **Inline code**, **Heading 1** to **Heading 6**, **Bullet list**, **Ordered list** and **Blockquote**.
 - **Image:** selecting it shows the picture in the **Media** tab. The sidebar's **Image** section shows its size in pixels, and the camera make and model when the file holds them.
 - **Audio:** selecting it shows a **Play** button, which reads **Pause** while the clip plays, and a **Seek** slider. The sidebar's **Audio** section shows the format, such as MP3, and the length.
+- **Image and audio files:** an image or audio file can be up to 100 MB. On Android the limit is 30 MB, and a larger file is refused with the message "File exceeds the 30 MB limit."
 - **Source:** a document for research you want to keep beside your writing, such as notes on a book or an interview, with files attached to it. You write its text in the same editor as a document. See [Sources and attachments](#sources-and-attachments).
 - **Folder:** groups other resources. Selecting a folder opens the **Organizer** tab, with one card for each item in it. Selecting a folder also shows its own notes, subtype and fields in the sidebar. See [Folder notes, subtype and fields](../story/metadata.md#folder-notes-subtype-and-fields).
 
@@ -35,7 +36,7 @@ To hide the **Sources** tab, **Cite selection** and **Mark as excerpt**, clear *
 
 If **Entities** is switched on in **Project Settings**, a Source can be an entity like a document: fill in **Entity Kind** (and any aliases) in the **Entity** section of its sidebar. GetWrite then finds the Source's name in your writing. A Source with no Entity Kind is not found by name. See [Metadata](../story/metadata.md).
 
-An attachment can be an image or an audio file, up to 100 MB each. A Source holds up to 500 attachments. A file of any other kind, such as a video, is refused, and a message in the section says why. The list shows each file's name and size. Choose **Preview** beside an image or audio file to see the image or play the audio, and **Hide** to close it.
+An attachment can be an image or an audio file, up to 100 MB each. On Android the limit is 30 MB each, and a larger file is refused with the message "File exceeds the 30 MB limit." The Android limit may be raised in a later release. A Source holds up to 500 attachments. A file of any other kind, such as a video, is refused, and a message in the section says why. The list shows each file's name and size. Choose **Preview** beside an image or audio file to see the image or play the audio, and **Hide** to close it.
 
 When you create a Source, GetWrite leaves it out of [compile](compiling.md) by default. It stays in export. You can change both, as [Compiling Projects](compiling.md#sources-in-compile-and-export) explains. A Source's words do not count toward the project or daily word goal unless your goal filter selects them. See [Daily writing log](../write/writing-log.md).
 

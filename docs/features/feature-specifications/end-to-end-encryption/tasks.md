@@ -852,6 +852,11 @@ bridge figure that FR28's argument rests on — since AES-GCM measured
 2,500–4,500 MB/s on desktop, the throughput half of FR28 is safe by inference.
 What remains unmeasured is `crypto.subtle` availability and unlock latency.
 
+Note, 2026-11-08: the ~10 MB/s figure is the Phase 2 measurement at small file
+sizes only; the earlier "100 MB cap" is not a current claim. The Android media
+cap is 30 MB, verified on a Pixel 7 Pro
+(`specs/features/android-large-media-writes/experiments.md`).
+
 ### Task 22: Desktop adoption and end-to-end verification
 
 **What:** Encryption verified end to end on the packaged Electron build.

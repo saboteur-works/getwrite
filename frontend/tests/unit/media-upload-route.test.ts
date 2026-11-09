@@ -150,6 +150,43 @@ describe("POST /api/resource/upload (projectId-based)", () => {
     });
   });
 
+  it("accepts a file of exactly 104,857,600 bytes and refuses 104,857,601 off Android (no Android cap leaks)", async () => {
+    const { projectsDir, projectId, projectPath } = await makeTmpProjectsDir();
+    await withProjectsDirEnv(projectsDir, async () => {
+      const atCap = new FormData();
+      atCap.append(
+        "file",
+        new File([buildWav(104_857_600 - 44)], "big.wav", {
+          type: "audio/wav",
+        }),
+      );
+      atCap.append("projectId", projectId);
+      const accepted = await POST(uploadRequest(atCap));
+      expect(accepted.status).toBe(200);
+      const { resource } = (await accepted.json()) as { resource: AnyResource };
+      expect(resource.type).toBe("audio");
+      const stored = await fs.stat(
+        path.join(projectPath, "resources", resource.id, "original.wav"),
+      );
+      expect(stored.size).toBe(104_857_600);
+
+      const overCap = new FormData();
+      overCap.append(
+        "file",
+        new File([new Uint8Array(104_857_601)], "over.wav", {
+          type: "audio/wav",
+        }),
+      );
+      overCap.append("projectId", projectId);
+      const refused = await POST(uploadRequest(overCap));
+      expect(refused.status).toBe(400);
+      expect(await refused.json()).toEqual({
+        error: "File exceeds the 100 MB limit.",
+        reason: "file-too-large",
+      });
+    });
+  }, 60_000);
+
   it("derives the name from the filename when no title is given", async () => {
     const { projectsDir, projectId } = await makeTmpProjectsDir();
     await withProjectsDirEnv(projectsDir, async () => {
