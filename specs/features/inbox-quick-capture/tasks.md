@@ -125,7 +125,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 4, 6, 7
 **Estimate:** 5
 **Notes:** Satisfies FR-2, FR-5, FR-6, FR-9 (core), FR-22 (server write). Unlike a Source, a failed seeding must not remove the item (`source-seeding.ts:59` is the contrast). Task 9 extends this file; keep the function structured with a clear step list so the writing-log step slots in.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Capture core: writing-log entry and the import-graph pin
 **What:** Add the writing-log step to the capture core (typed words as additions, shared text as an import) and a test that pins the core's import graph.
@@ -188,7 +188,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 14
 **Estimate:** 3
 **Notes:** Satisfies FR-23 (visible message), FR-15 (failed move message), FR-17 (visibility). Edits `resourcesSlice.ts` and `useResourceReorder.ts` only; not `ResourceTree.tsx` (Tasks 22 and 23). Read the toast or notice component's source and stories before using any prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Capture box dialog component
 **What:** Build the presentational Capture box dialog with a text area, a project choice slot, keyboard handling, focus management and accessible messages.
