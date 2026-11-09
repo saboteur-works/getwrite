@@ -16,8 +16,12 @@ vi.mock("../../src/lib/api/resources", async (importOriginal) => {
 
 const toastError = vi.fn();
 vi.mock("../../src/lib/toast-service", () => ({
-  toastService: { error: (...args: unknown[]) => toastError(...args) },
+  toastService: {
+    error: (...args: unknown[]) => toastError(...args),
+    info: (...args: unknown[]) => toastInfo(...args),
+  },
 }));
+const toastInfo = vi.fn();
 
 import { makeStore } from "../../src/store/store";
 import { persistReorder } from "../../src/store/resourcesSlice";
@@ -32,6 +36,7 @@ const payload = {
 afterEach(() => {
   reorderResources.mockReset();
   toastError.mockReset();
+  toastInfo.mockReset();
 });
 
 describe("persistReorder", () => {
@@ -54,5 +59,41 @@ describe("persistReorder", () => {
     await store.dispatch(persistReorder(payload));
 
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("shows the compile-default notice as its own message, not the failure message (FR-23)", async () => {
+    const notice =
+      "The item was moved, but its saved compile default was not cleared.";
+    reorderResources.mockResolvedValue({ notice });
+    const store = makeStore();
+
+    const result = await store.dispatch(persistReorder(payload));
+
+    expect(result.type).toBe("projects/persistReorder/fulfilled");
+    expect(toastInfo).toHaveBeenCalledTimes(1);
+    expect(toastInfo.mock.calls[0][0]).toBe(
+      `Compile default not cleared\n${notice}`,
+    );
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("shows nothing new when the response has no notice", async () => {
+    reorderResources.mockResolvedValue({});
+    const store = makeStore();
+
+    await store.dispatch(persistReorder(payload));
+
+    expect(toastInfo).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("a failed move shows the failure message and no notice", async () => {
+    reorderResources.mockRejectedValue(new Error("boom"));
+    const store = makeStore();
+
+    await store.dispatch(persistReorder(payload));
+
+    expect(toastError.mock.calls[0][0]).toBe("Order not saved");
+    expect(toastInfo).not.toHaveBeenCalled();
   });
 });

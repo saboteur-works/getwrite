@@ -214,8 +214,8 @@ export interface ResourcesTransport {
   /**
    * Persists a folder/resource reorder for a project. The native backend
    * resolves `{ notice }` when clearing a moved item's Inbox compile default
-   * failed (Feature 106 FR-23); the HTTP transport does not read the notice
-   * yet (Task 15).
+   * failed (Feature 106 FR-23); the HTTP transport reads it from the route's
+   * 200 body.
    */
   reorder(
     projectId: string,
@@ -476,6 +476,15 @@ export const httpResourcesTransport: ResourcesTransport = {
     });
     if (!response.ok) {
       throw new Error(`Failed to save the new order (${response.status})`);
+    }
+    // The move already succeeded; an unreadable body carries no notice.
+    try {
+      const body = (await response.json()) as { notice?: unknown };
+      return typeof body.notice === "string" && body.notice.length > 0
+        ? { notice: body.notice }
+        : {};
+    } catch {
+      return {};
     }
   },
 };
@@ -758,7 +767,7 @@ export async function patchRevisionContent(
 export async function reorderResources(
   projectId: string,
   payload: ReorderPayload,
-): Promise<void> {
+): Promise<{ notice?: string }> {
   const transport = await resolveResourcesTransport();
-  await transport.reorder(projectId, payload);
+  return (await transport.reorder(projectId, payload)) ?? {};
 }
