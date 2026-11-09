@@ -19,6 +19,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 ## Write
 
 - [Rich Text Editor](write/editor.md) — The text editor you write in, with toolbar formatting, keyboard shortcuts and a live word count in the footer.
+- [Inbox and Capture](write/inbox-and-capture.md) — Save a quick note to a project's Inbox from anywhere in GetWrite, without opening the project, and file it later.
 - [Daily Writing Log](write/writing-log.md) — How GetWrite records the words you write each day, shows today's figure against an optional goal, and what it counts.
 - [Headings](write/headings.md) — Apply heading levels in the editor and set how each level looks for a project.
 - [Editor Appearance](write/editor-appearance.md) — What sets the look of the writing surface and the body text and heading settings you can change in a project.

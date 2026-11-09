@@ -81,3 +81,14 @@ To export, open a document's or folder's menu in the [resource tree](../organize
 - A ticked Source counts towards "resource(s) selected" and **Compile (n)**, and its text is in the file.
 - [Annotations](../write/annotations.md) are not part of a compiled or exported file, in any format.
 - On Android, PDF compile works without a network connection and uses the same IBM Plex fonts.
+
+## Coming in the next release
+
+### Inbox notes in compile and export
+
+A note saved by [Capture](../write/inbox-and-capture.md) is added to the saved default for the **Compile Project** dialog. It starts unticked there. It is not added to the **Export** default, so it starts ticked in the **Export** dialog.
+
+- **Include a note in one compile:** tick it in the **Compile Project** dialog. Nothing is saved.
+- **Leave a note out of one export:** untick it in the **Export** dialog. Nothing is saved.
+
+Filing a note out of the Inbox removes it from the saved compile default, even if you had left it out yourself. It is then ticked in the **Compile Project** dialog.

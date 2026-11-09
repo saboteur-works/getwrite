@@ -296,7 +296,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 11, 12, 13, 21, 23, 24, 26
 **Estimate:** 3
 **Notes:** Satisfies FR-21. Prose is the scribe stage's job; the orchestrator passes it the files and the facts above. Do not name a cause in any document.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: LEAD-RUN: final suites exactly as CI runs them
 **What:** Run every CI command from the places the workflows run them, record each as run or not run, and write the acceptance record including the "Not verified" list.
