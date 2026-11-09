@@ -17,9 +17,26 @@
  *   - `no-match`: the filter selected no live text resource; total is 0;
  *   - `unavailable`: the figure could not be computed.
  *
+ * `evaluateGoalTotal` (Feature 106, FR-7) adds the unfiltered server figure:
+ * with a filter stored it is `evaluateGoalFilteredTotal` unchanged (the filter
+ * alone decides, as for Sources); with none it sums text resources outside the
+ * Inbox folder and its descendants. The folder tree is read once per call.
+ *
  * Nothing is cached: every call re-reads membership and sidecars (FR-14). An
  * unrecognised error is rethrown, not converted into a result.
  */
+import path from "node:path";
+import { readFolderTree } from "./folder-utils";
+import {
+  computeInboxSubtree,
+  isInInbox,
+  type InboxFolderNode,
+  type InboxSubtree,
+} from "./inbox-membership";
+import { listResourceIdsStrict } from "./list-resource-ids-strict";
+import { readFile } from "./io";
+import { PROJECT_FILENAME } from "./project-config";
+import { ProjectConfigSchema } from "./schemas";
 import {
   evaluateGoalMembership,
   type GoalMembershipReadCause,
@@ -104,4 +121,88 @@ export async function evaluateGoalFilteredTotal(
     }
   }
   return { status: "total", total };
+}
+
+/** Folder descriptors as the membership walk needs them (id is required). */
+function toFolderNodes(raw: readonly unknown[]): InboxFolderNode[] {
+  const nodes: InboxFolderNode[] = [];
+  for (const entry of raw) {
+    const f = entry as Record<string, unknown> | null;
+    if (f === null || typeof f !== "object" || typeof f.id !== "string") {
+      continue;
+    }
+    nodes.push({
+      id: f.id,
+      parentId: typeof f.parentId === "string" ? f.parentId : null,
+    });
+  }
+  return nodes;
+}
+
+/**
+ * `config.inboxFolderId` read from `project.json` as stored: `loadProjectConfig`
+ * passes the config through `normalizeProjectConfig`, which does not carry this
+ * key, so it is read here. A malformed config is a `ZodError` (`corrupt`).
+ */
+async function readInboxFolderId(
+  projectRoot: string,
+): Promise<string | undefined> {
+  const raw = await readFile(path.join(projectRoot, PROJECT_FILENAME), "utf8");
+  const parsed = JSON.parse(raw) as { config?: unknown } | null;
+  return ProjectConfigSchema.parse(parsed?.config ?? {}).inboxFolderId;
+}
+
+/** The Inbox subtree, or a `read-failed` result when the walk hit a cycle. */
+async function readInboxSubtree(
+  projectRoot: string,
+): Promise<InboxSubtree | GoalFilteredTotalResult> {
+  const inboxFolderId = await readInboxFolderId(projectRoot);
+  const folders = await readFolderTree(path.join(projectRoot, "folders"));
+  const computed = computeInboxSubtree(toFolderNodes(folders), inboxFolderId);
+  return computed.ok ? computed.subtree : readFailed("corrupt");
+}
+
+/** Sum of text sidecars outside the Inbox subtree, or a failure result. */
+async function sumOutsideInbox(
+  projectRoot: string,
+): Promise<GoalFilteredTotalResult> {
+  const subtree = await readInboxSubtree(projectRoot);
+  if ("status" in subtree) return subtree;
+  let total = 0;
+  for (const id of await listResourceIdsStrict(projectRoot)) {
+    const sidecar = await readSidecar(projectRoot, id);
+    if (sidecar === null) return readFailed("missing-sidecar");
+    if (sidecar.type !== "text") continue;
+    const folderId =
+      typeof sidecar.folderId === "string" ? sidecar.folderId : null;
+    if (isInInbox(subtree, { id, type: "text", folderId })) continue;
+    total += sidecarWordCount(sidecar);
+  }
+  return { status: "total", total };
+}
+
+/**
+ * The project total word count for the goal on the server. With a goal filter
+ * stored the result is {@link evaluateGoalFilteredTotal}'s. With none, text
+ * resources in the Inbox folder or any descendant folder are left out
+ * (Feature 106, FR-7), and a Source or non-text resource is not counted.
+ *
+ * @param projectRoot - Absolute path to the project root.
+ * @param evaluationTime - Fixed evaluation time carried into the evaluator.
+ * @returns A {@link GoalFilteredTotalResult}; `unavailable` carries no number.
+ * @throws Any error that is not a known read problem.
+ */
+export async function evaluateGoalTotal(
+  projectRoot: string,
+  evaluationTime: Date,
+): Promise<GoalFilteredTotalResult> {
+  const filtered = await evaluateGoalFilteredTotal(projectRoot, evaluationTime);
+  if (filtered.status !== "not-filtered") return filtered;
+  try {
+    return await sumOutsideInbox(projectRoot);
+  } catch (err) {
+    const cause = classifyReadError(err);
+    if (cause === null) throw err;
+    return readFailed(cause);
+  }
 }
