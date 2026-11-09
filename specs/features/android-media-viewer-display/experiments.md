@@ -125,16 +125,53 @@ Task 14, 2026-11-09, debug install of branch tip `2c35b666`, same device and set
 
 ## Not verified
 
-Seed, to be completed by Task 16:
-
 - Compile and export of images on Android.
 - A paired-device run.
 - A second device.
 - Touch drag and drop (drops were programmatic).
 - Video or any other media type.
-- Any size above 31,457,280 bytes.
+- Any size above 31,457,280 bytes, beyond the refusal run.
+- The drop insert position.
 - Any embedded path not run.
+- After commit 7a1b312e (it only removes `export` keywords): the builds (`frontend build`, electron build, cli build, android build, `build:native`), `test:e2e`, electron `test` and cli `test` were not re-run.
+
+## Final suites
+
+Task 16, 2026-11-09, main checkout, outside the sandbox.
+
+CI command list re-read with `grep -hE "^\s+(- )?run:" .github/workflows/*.yml | sort -u`: no difference from Feature 104's list. Setup and release steps not run: `pnpm install --frozen-lockfile`, `pnpm exec playwright install --with-deps chromium`, `pnpm build`, `gh release upload`.
+
+At commit 1804d511:
+
+| Command | Result |
+| --- | --- |
+| root `pnpm run format:check` | pass |
+| frontend `pnpm lint` | 0 errors, 432 warnings |
+| frontend `pnpm run check:no-hex` | pass |
+| frontend `pnpm typecheck` | pass |
+| frontend `pnpm test:ci` | 847 files; 10,982 passed, 7 expected fail, 1 skipped |
+| frontend `pnpm test:e2e` | 249 passed, 1 skipped |
+| `pnpm --filter getwrite-frontend build` | pass |
+| electron `typecheck` (both tsc passes) | pass |
+| electron `test` | 37 files, 565 passed |
+| electron `build` | pass |
+| cli `typecheck` | pass |
+| cli `test` | 23 files, 164 passed |
+| cli `build` and the three `--help` smokes (root, `doctor`, `prune`) | pass |
+| android `build` | pass |
+| root `pnpm build:native` | pass |
+| root `pnpm knip` | exit 1 |
+
+Knip compared to main: findings in files this branch touched included seven unused exports the branch added: `DEFAULT_READ_TIMEOUT_MS`, `GetWriteImageOptions`, the `InvalidProjectIdCoreError` re-export from `resource-bytes-core.ts`, `MEDIA_PLACEHOLDER_CLASS`, `NEAR_VIEWPORT_ROOT_MARGIN`, `RESOURCE_LOCKED_MESSAGE`, `RESOURCE_READ_FAILED_MESSAGE`. `MediaResourceType`, `MediaRejectionReason` and `MediaValidationError` are pre-existing on main.
+
+Commit 7a1b312e removed the seven exports (no behaviour change). At 7a1b312e: `pnpm knip` reports none of the seven (exit 1 remains, from findings that exist on main); frontend `typecheck` pass, `lint` 0 errors / 432 warnings, `test:ci` 847 files, 10,982 passed, 7 expected fail, 1 skipped; electron and cli `typecheck` pass (implementor run). The commands listed under "Not verified" were not re-run after 7a1b312e.
 
 ## Acceptance
 
-Pending Task 16.
+- The Android read threshold is 31,457,280 bytes (`ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES`), verified on a Pixel 7 Pro only.
+- On device: the image and audio viewers, the embedded render, the picker (real tap) and programmatic drop were verified. Refusal above the threshold was verified.
+- Several near-threshold images in one document: some fail with "Not enough memory on this device to show this file." This is a known limit.
+- The first drop run's stuck "Loading..." was not reproduced after Task 17; its cause is not established.
+- No bare `tsc` was used as evidence.
+- Unit tests with fakes are not evidence about memory.
+- Items not verified are listed under "Not verified" above.

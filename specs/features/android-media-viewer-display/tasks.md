@@ -180,7 +180,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 9, 10, 15
 **Estimate:** 3
 **Notes:** LEAD-RUN: not for the orchestrator. `pnpm test:e2e`, `next build` and `pnpm build:native` run outside the sandbox from the main checkout, never a worktree. Satisfies FR-16, FR-18. Tasks 2 to 8 and 11 to 14 are covered transitively through Tasks 9, 10 and 15.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 17: Dropped images never stay loading
 **What:** On native, an image node inserted by drop after the document is open showed "Loading..." indefinitely on screen (2 of 3 drops, no OutOfMemoryError; `experiments.md` FR-9 drop runs). Investigate first, then fix so every image node reaches a final state.
