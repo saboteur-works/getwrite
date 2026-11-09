@@ -70,6 +70,19 @@ describe("updateFeatureConfig (Task 4)", () => {
     }
   });
 
+  it("preserves config.inboxFolderId (Feature 106)", async () => {
+    const inboxFolderId = "55555555-5555-4555-8555-555555555555";
+    const dir = await makeTmpProject({ editorConfig: {}, inboxFolderId });
+    try {
+      await updateFeatureConfig(dir, { features: { timeline: true } });
+      expect((await readProject(dir)).config?.inboxFolderId).toBe(
+        inboxFolderId,
+      );
+    } finally {
+      await removeDirRetry(dir);
+    }
+  });
+
   it("persists config.organizerCardBody to project.json", async () => {
     const dir = await makeTmpProject();
     try {

@@ -63,4 +63,17 @@ describe("models: normalizeProjectConfig", () => {
     });
     expect(normalized.subtypes).toEqual(["Scene", "Beat"]);
   });
+
+  it("carries inboxFolderId through, and omits the key when absent", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const normalized = normalizeProjectConfig({
+      editorConfig: {},
+      inboxFolderId: id,
+    });
+    expect(normalized.inboxFolderId).toBe(id);
+    expect("inboxFolderId" in normalizeProjectConfig()).toBe(false);
+    expect(
+      "inboxFolderId" in normalizeProjectConfig({ editorConfig: {} }),
+    ).toBe(false);
+  });
 });
