@@ -13,7 +13,7 @@ Capture saves a thought, a quote or a link as a note in a project's Inbox. You d
 ### Capture a note
 
 1. Press **Cmd+Shift+K** on a Mac or **Ctrl+Shift+K** on Windows or Linux. Or press **Cmd+K** or **Ctrl+K** and choose **Capture...**, the first row in the list.
-2. In the **Capture** window, check the **Project**. It starts as the project you last captured into. If that project is gone, it starts as the project you opened most recently, and otherwise as the first project in the list.
+2. In the **Capture** window, check the **Project**. It starts as the project you have open. With no project open, it starts as the project you last captured into. If that project is gone, it starts as the project you opened most recently, and otherwise as the first project in the list.
 3. Type your note in **Text to capture**.
 4. Press **Enter**. Press **Shift+Enter** to start a new line instead.
 
