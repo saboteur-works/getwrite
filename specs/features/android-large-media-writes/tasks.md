@@ -71,7 +71,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-5, FR-11, OQ-3. READ: `writeResourceToFile` writes the binary at `resource-persistence.ts:188-191` before the sidecar at `:195`, so a binary-write throw leaves a directory today. The cleanup removes only what this run created.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 5: Platform-aware cap resolver
 **What:** Add a pure resolver beside `MAX_MEDIA_FILE_BYTES` that returns the Android cap on the native runtime and 104,857,600 otherwise, and make `validateMediaFile`, `validateAttachmentFile` and the refusal message read it.
