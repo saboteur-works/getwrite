@@ -69,6 +69,7 @@ PROBE_C_RAW    {"rawEqualsInput":true,"isEnvelope":false}
 
 - Convention (READ): the raw comparison `process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native"` is used at `components/native/NativeBootstrap.tsx:56` (as `!== "native"`), `app/layout.tsx:42`, and `src/store/transport/runtime.ts:24-26` (`resolveRuntime()`, the shared helper). The native build sets it through `scripts/build-native-static.mjs`.
 - 0-occurrence grep under `frontend/out/_next/static`: TO RUN in Task 13. `frontend/out` does not exist in this worktree; no build was run and nothing is claimed.
+- Task 13 (lead, 2026-11-09, commit `1e05b39f`, main checkout, outside the sandbox): `pnpm build:native` in `frontend/` exited 0 (16.4 s wall). `grep -rl "NEXT_PUBLIC_GETWRITE_RUNTIME" frontend/out/_next/static | wc -l` printed 0. MEASURED.
 
 ### (e) Where a share listener can be added
 
@@ -86,6 +87,16 @@ In the chosen design (custom Java plugin that only reports URI, MIME type and si
 Reason (READ of the design in `spec` and `tasks.md`, not of code that exists yet): the plugin has no copy step (Task 5 done-when forbids `openInputStream`, `openFileOutput`, `getCacheDir`, `getFilesDir`); the reader (Task 7) writes nothing to storage; text is passed in memory to `captureToInboxCore`; the only write is the core's own, after the project is chosen. The `uploadMediaResourceCore` failure path removes a resource directory the run created (READ, `resource-crud-core.ts:~308-316`).
 
 Re-check: Task 14 (device run). Unit tests with fakes are not evidence for this.
+
+### Task 13: build, sync, Gradle compile (lead, 2026-11-09)
+
+Commit `1e05b39f` (`feat/android-share-capture`), main checkout, outside the sandbox, macOS Darwin 25.5.0. Logs kept in the session scratchpad.
+
+- `pnpm build:native` (frontend): exit 0; `frontend/out` produced (18 top-level entries); runtime-variable grep 0 (see (d)).
+- `pnpm sync` (android, `cap sync android`): exit 0; "Found 1 Capacitor plugin for android: @capacitor/filesystem@8.1.2". `git status --short` afterwards printed nothing: no tracked file changed (no `capacitor.build.gradle`, `package.json`, lockfile or Gradle change). `ShareInPlugin` is registered in `MainActivity` by hand, so it is not in the plugin list and needs none.
+- `./gradlew :app:assembleDebug` with `JAVA_HOME` set to Android Studio's JBR: `BUILD SUCCESSFUL in 9s` (91 tasks, 28 executed). `:app:compileDebugJavaWithJavac` executed (not up to date); no error or warning lines in the log. `works/saboteur/getwrite/ShareInPlugin.class` present under `app/build/intermediates/javac/debug/`. APK `app/build/outputs/apk/debug/app-debug.apk`, 10,811,867 bytes.
+- So the Capacitor 8.4.2 signatures the Task 5 implementor assumed (`load()`, `handleOnNewIntent(Intent)`, `notifyListeners(String, JSObject, boolean)`, the SDK 33 `getParcelableExtra(String, Class)` forms) compile against the installed Capacitor. Compiling says nothing about their behaviour on the device.
+- `./gradlew :app:installDebug`: not yet run; paused by the owner (device run deferred). Recorded with Task 14.
 
 ## Device run
 
