@@ -62,7 +62,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-1 (a, b, c, e), FR-18 (record). The sandbox may block a real build; record (c) as READ then. If (a) shows `CreateResourceOpts` cannot carry the body, stop and return to the owner: FR-5 assumes it can. The finding for (b) tells Task 7 where folder creation lives.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: LEAD-RUN: FR-1(d), AppShell is not mounted when no project is open
 **What:** In the running app, observe that `AppShell` (and so its Cmd/Ctrl+K handler) is absent on the Start screen with no project open, and record it.
