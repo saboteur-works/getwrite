@@ -242,7 +242,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 20
 **Estimate:** 3
 **Notes:** Satisfies FR-24. Edits `ShellModalCoordinator.tsx` and `AppShell.tsx` after Task 20 for wiring only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Inbox count in the resource tree
 **What:** Show a count of the items in the Inbox on its tree row, computed in the client from the store, exposed in the row's accessible name.
