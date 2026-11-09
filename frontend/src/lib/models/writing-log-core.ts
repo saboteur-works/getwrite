@@ -17,6 +17,15 @@ import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { loadProjectConfig } from "./project-config";
 import { readWritingLogEntries } from "./writing-log";
+import path from "node:path";
+import { readFolderTree } from "./folder-utils";
+import {
+  computeInboxSubtree,
+  isInInbox,
+  type InboxFolderNode,
+  type InboxSubtree,
+} from "./inbox-membership";
+import { classifyGoalReadError } from "./goal-read-error";
 import {
   evaluateGoalMembership,
   type GoalMembershipResult,
@@ -185,27 +194,104 @@ function isImportEntry(e: WritingLogEntry): boolean {
   return "source" in e && e.source !== undefined;
 }
 
+/** Folder descriptors as the Inbox walk needs them; entries without an id are skipped. */
+function toFolderNodes(raw: readonly unknown[]): InboxFolderNode[] {
+  const nodes: InboxFolderNode[] = [];
+  for (const entry of raw) {
+    const f = entry as Record<string, unknown> | null;
+    if (f === null || typeof f !== "object" || typeof f.id !== "string") {
+      continue;
+    }
+    nodes.push({
+      id: f.id,
+      parentId: typeof f.parentId === "string" ? f.parentId : null,
+    });
+  }
+  return nodes;
+}
+
+/**
+ * The Inbox subtree, or `null` when no Inbox is set. The folder tree is read
+ * once. A parent cycle through the Inbox is malformed data, so the figure is
+ * unavailable rather than counted as "not in the Inbox".
+ * @throws GoalFilteredFigureUnavailableError on a cycle.
+ */
+async function readInboxSubtree(
+  projectRoot: string,
+  config: ProjectConfig,
+): Promise<InboxSubtree | null> {
+  if (!config.inboxFolderId) return null;
+  const folders = await readFolderTree(path.join(projectRoot, "folders"));
+  const computed = computeInboxSubtree(
+    toFolderNodes(folders),
+    config.inboxFolderId,
+  );
+  if (!computed.ok) {
+    throw new GoalFilteredFigureUnavailableError({
+      status: "failure",
+      reason: "read-failed",
+      cause: "corrupt",
+    });
+  }
+  return computed.subtree;
+}
+
+/**
+ * Reads one sidecar. A recognised read failure becomes the unavailable error;
+ * a locked-access error and any unrecognised error are rethrown unchanged.
+ */
+async function readSidecarForFigure(
+  projectRoot: string,
+  id: string,
+): Promise<Awaited<ReturnType<typeof readSidecar>>> {
+  try {
+    return await readSidecar(projectRoot, id);
+  } catch (err) {
+    const cause = classifyGoalReadError(err, "writing-log-core");
+    if (cause === null || cause === "locked") throw err;
+    throw new GoalFilteredFigureUnavailableError({
+      status: "failure",
+      reason: "read-failed",
+      cause,
+    });
+  }
+}
+
 /**
  * With no goal filter: the ids among the window's entries whose document is a
- * Source (Owner decision, 2026-11-07, FR-28). Only ids the window names are
- * read. A document with no sidecar (deleted) is not a Source here, so its
- * entries count as they did before; a failed read rejects, never counts as
- * "not a Source".
+ * Source (Owner decision, 2026-11-07, FR-28) or is filed in the Inbox folder
+ * or a descendant of it (Feature 106, FR-7). Membership is read now, so a
+ * document moved out of the Inbox counts again. Only ids the window names are
+ * read. A document with no sidecar (deleted) is not excluded, so its entries
+ * count as they did before; a failed read never counts as "not excluded".
+ * @throws GoalFilteredFigureUnavailableError on an unreadable sidecar or a
+ *   parent cycle through the Inbox.
  */
-async function findSourceDocumentIds(
+async function findExcludedDocumentIds(
   projectRoot: string,
+  config: ProjectConfig,
   entries: readonly WritingLogEntry[],
 ): Promise<Set<string>> {
   const ids = new Set<string>();
   for (const e of entries) {
     if (!isImportEntry(e) && e.documentId !== undefined) ids.add(e.documentId);
   }
-  const sources = new Set<string>();
+  const excluded = new Set<string>();
+  if (ids.size === 0) return excluded;
+  const subtree = await readInboxSubtree(projectRoot, config);
   for (const id of ids) {
-    const sidecar = await readSidecar(projectRoot, id);
-    if (sidecar !== null && sidecar.type === "source") sources.add(id);
+    const sidecar = await readSidecarForFigure(projectRoot, id);
+    if (sidecar === null) continue;
+    const folderId =
+      typeof sidecar.folderId === "string" ? sidecar.folderId : null;
+    if (
+      sidecar.type === "source" ||
+      (subtree !== null && isInInbox(subtree, { id, type: "text", folderId }))
+    ) {
+      excluded.add(id);
+    }
   }
-  return sources;
+  return excluded;
 }
 
 /** Root-keyed aggregation (re-validates the window). Exported for tests. */
@@ -222,7 +308,7 @@ async function aggregateForRoot(
   const memberIds = await resolveFilterMembers(projectRoot, config);
   const sourceIds =
     memberIds === null
-      ? await findSourceDocumentIds(projectRoot, entries)
+      ? await findExcludedDocumentIds(projectRoot, config, entries)
       : new Set<string>();
   let isIncomplete = false;
   for (const e of entries) {
@@ -231,7 +317,7 @@ async function aggregateForRoot(
       e.documentId !== undefined &&
       sourceIds.has(e.documentId)
     ) {
-      // No filter: a Source's words and markers are outside the daily figure.
+      // No filter: a Source's or an Inbox item's words and markers are outside the daily figure.
       continue;
     }
     if ("skipped" in e) {
