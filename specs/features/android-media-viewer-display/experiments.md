@@ -81,6 +81,16 @@ Task 13, 2026-11-09, build `2da96e2d`. Touch drag-and-drop is not available on t
 - **Defect observed (open):** in the same session the three dropped nodes showed the "Loading..." placeholder. After scrolling them into view, one loaded (blob URL, 640 wide) and two stayed on "Loading..." for over 30 s (several minutes in total), with 0 OutOfMemoryError lines. That is an indefinite loading state, which FR-4 forbids. Returned to the owner.
 - Cause: not established. Experiment that would settle it: instrument the node view's read and the cache acquire and release for a node inserted by drop after the document is open, and check whether the same happens for a small dropped image.
 
+## FR-9 drop runs - re-run after Tasks 17 and 18
+
+Task 13, 2026-11-09, debug install of branch tip `2c35b666` (`pnpm build:native`; `NEXT_PUBLIC_GETWRITE_RUNTIME` 0 occurrences under `frontend/out/_next/static`), same device and setup, fresh launch. Drops were programmatic (touch drag-and-drop not available).
+
+- New text document "F105 drop doc 2". Three drops (DragEvent with DataTransfer, clientX/clientY near the top-left of the editor): a 120,000-byte PNG, then two 31,457,280-byte PNGs. Each was uploaded and inserted; the node appeared 177 ms, 3,825 ms and 4,552 ms after the drop.
+- Timeline: at the end of the third drop the small image's node showed "Loading..." and both 30 MiB images were displayed (blob URL, 640 wide). 5 s later all three were displayed.
+- 0 "Throwing OutOfMemoryError" lines; no crash.
+- The stuck "Loading..." from the first drop run was not reproduced in this run. This is one run. The cause of the earlier state is not established. Task 17 found, under jsdom, that a node view reused for a different resource released an in-flight read and a second read started (a duplicate read), and fixed it with a shared in-flight read and a 60 s read bound; whether that was the device cause is not established. Experiment that would settle it: per-resource acquire, release and read logging on the device.
+- Insert position: not re-measured. Task 17 found the drop code unchanged from `main`, and `resolveDropPos` uses `view.posAtCoords`. Whether the first run's synthetic drops explain the top insert is unverified. Recorded as pre-existing and out of scope.
+
 ## FR-10 picker runs
 
 Task 13, 2026-11-09, build `2da96e2d`. Passed.
@@ -100,6 +110,13 @@ Task 14, 2026-11-09, build `2da96e2d`. After a force-stop and fresh launch, "F10
 - logcat: 8 "Throwing OutOfMemoryError" lines (allocations: 41,943,052 x1, 83,886,092 x4, 83,886,096 x3 bytes). No FATAL EXCEPTION. The app process stayed up (PSS about 354 MB).
 - So in this run, with several 30 MiB images in one document, reads after the first ones failed with allocation errors and were shown as messages. No "safe number" of images is claimed; no cause of which reads failed is stated.
 - The picker listing several near-threshold images was not run as a separate several-images run (the FR-10 picker run held two at or under the threshold).
+
+## Several-images run - re-run after Tasks 17 and 18
+
+Task 14, 2026-11-09, debug install of branch tip `2c35b666`, same device and setup. After a force-stop and fresh launch, "F105 baseline doc" was opened (5 images: four of 31,457,280 bytes, one 640x400 small PNG). After waiting and scrolling to the end:
+
+- Two images displayed; three showed "Not enough memory on this device to show this file."; none stayed loading.
+- logcat: 7 "Throwing OutOfMemoryError" lines; no FATAL EXCEPTION; the app stayed up.
 
 ## Known limits
 

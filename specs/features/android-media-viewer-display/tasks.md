@@ -152,8 +152,8 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** A build of the branch with Tasks 2 to 10 landed is installed and "FR-8 embedded render runs" records a document embedding one image resource and a document embedding more than one, each as what was shown (picture, placeholder or blank), with build, device and sizes. "FR-9 drop runs" records how the drop was made and that the inserted image rendered, or records that no drop could be made on the device as not verified and not claimed. "FR-10 picker runs" records, for a project with at least two image resources, that every entry's picture shows and that an entry over the threshold shows the "too large" placeholder and is still insertable, and that a chosen entry was inserted and rendered. Any path not run is listed under "Not verified". The first-node-view device check (Task 6) is stated as passed or failed.
 **Depends on:** 6, 7, 8, 10
 **Estimate:** 5
-**Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-8, FR-9, FR-10, FR-16. A failure returns to the owner with the recorded result; no code change here. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner. Re-run after Tasks 17 and 18 (owner, Gate 5, 2026-11-09; ordering is by sequence, because the schema allows only earlier tasks as dependencies): the drop check is repeated, including a small dropped image.
-**Done:** [ ]
+**Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-8, FR-9, FR-10, FR-16. A failure returns to the owner with the recorded result; no code change here. Device run recorded 2026-11-09; the first drop run left images loading (returned to the owner). Re-run after Tasks 17 and 18 recorded 2026-11-09 (see experiments.md FR-9 drop runs re-run): three drops including a small image, all displayed, stuck state not reproduced in that one run.
+**Done:** [x] 2026-11-09 (re-run after Tasks 17 and 18)
 
 ### Task 14: LEAD-RUN: several near-threshold images in one document and in the picker
 **What:** On the Pixel 7 Pro, load several near-threshold images in one document and in the picker and record crash, out-of-memory warnings and time.
@@ -161,8 +161,8 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** "Several-images run" records, as observed values with build, device and per-image sizes, a document embedding several images at or near 31,457,280 bytes and the picker listing several, with, for each: the number of images, time to show, whether an out-of-memory warning was logged, whether the app crashed, and what the writer saw; no "safe number" is stated and no cause is named. A failure is recorded as a measurement and returns to the owner.
 **Depends on:** 13
 **Estimate:** 3
-**Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-10 (record), FR-13, FR-16, OQ-5. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner. Re-run after Tasks 17 and 18 (owner, Gate 5, 2026-11-09): the several-images run is repeated to observe the new out-of-memory message.
-**Done:** [ ]
+**Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-10 (record), FR-13, FR-16, OQ-5. Device run recorded 2026-11-09. Re-run after Task 18 recorded 2026-11-09 (see experiments.md Several-images run re-run): three of five images showed the out-of-memory message, none stayed loading, no crash.
+**Done:** [x] 2026-11-09 (re-run after Task 18)
 
 ### Task 15: Documentation updates for the viewers and embedded images
 **What:** List and apply the documentation changes FR-19 requires, with the scribe stage writing the prose, so that no document states an Android size that no device run verified.
@@ -171,7 +171,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 12, 13, 14
 **Estimate:** 3
 **Notes:** Satisfies FR-13, FR-15, FR-19. Prose is the scribe stage's job; the orchestrator passes it the files and the facts above. Do not name a cause in any document.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 16: LEAD-RUN: final suites exactly as CI runs them
 **What:** Run every CI command from the places the workflows run them, record each as run or not run, and write the acceptance record including the "Not verified" list.
