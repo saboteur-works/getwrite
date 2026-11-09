@@ -43,8 +43,13 @@ export const persistReorder = createAsyncThunk(
     const { folderOrder, resourceOrder, projectId } = payload;
     // `projectId` here is the project's on-disk directory basename (see
     // `selectActiveProjectDirectoryId`), used for the route's URL segment.
+    let notice: string | undefined;
     try {
-      await reorderResources(projectId, { folderOrder, resourceOrder });
+      const outcome = await reorderResources(projectId, {
+        folderOrder,
+        resourceOrder,
+      });
+      notice = outcome?.notice;
     } catch (err) {
       // The new order is already on screen; a failed save used to leave it
       // there with no message, and it was gone after a reload (note_51c813c1).
@@ -53,6 +58,11 @@ export const persistReorder = createAsyncThunk(
         "The new order could not be saved. Reload to see the saved order.",
       );
       throw err;
+    }
+    // The move stands; a failed compile-default clearing is told, not hidden
+    // (Feature 106 FR-23). Toasts render in a `role="status"` live region.
+    if (notice) {
+      toastService.info(`Compile default not cleared\n${notice}`);
     }
     return { folderOrder, resourceOrder };
   },

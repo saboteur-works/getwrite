@@ -304,6 +304,32 @@ describe("resources.ts CRUD functions (T9c regression)", () => {
     ).rejects.toThrow();
   });
 
+  it("reorderResources returns the notice the route carries on a 200", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ok: true, notice: "not cleared" }),
+    );
+    await expect(
+      reorderResources(directoryUuid, { folderOrder: [], resourceOrder: [] }),
+    ).resolves.toEqual({ notice: "not cleared" });
+  });
+
+  it("reorderResources returns no notice when the response has none or no readable body", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+    await expect(
+      reorderResources(directoryUuid, { folderOrder: [], resourceOrder: [] }),
+    ).resolves.toEqual({});
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError("no body");
+      },
+    } as unknown as Response);
+    await expect(
+      reorderResources(directoryUuid, { folderOrder: [], resourceOrder: [] }),
+    ).resolves.toEqual({});
+  });
+
   it("setNoiseTermDismissed posts the term to the noise-term route and returns the stored list", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ dismissedNoiseTerms: ["will", "case"] }),

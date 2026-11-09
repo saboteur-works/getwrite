@@ -13,8 +13,18 @@ vi.mock("../../src/lib/models/io", async (importOriginal) => {
   return { ...actual, readFile: vi.fn(actual.readFile) };
 });
 
+vi.mock("../../src/lib/models/folder-utils", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/models/folder-utils")>();
+  return { ...actual, readFolderTree: vi.fn(actual.readFolderTree) };
+});
+
 import * as io from "../../src/lib/models/io";
-import { evaluateGoalFilteredTotal } from "../../src/lib/models/goal-filtered-total-core";
+import * as folderUtils from "../../src/lib/models/folder-utils";
+import {
+  evaluateGoalFilteredTotal,
+  evaluateGoalTotal,
+} from "../../src/lib/models/goal-filtered-total-core";
 import { ProjectLockedError } from "../../src/lib/models/locked-access";
 
 const NOW = new Date("2026-06-01T00:00:00.000Z");
@@ -273,5 +283,145 @@ describe("evaluateGoalFilteredTotal", () => {
     vi.mocked(io.readFile).mockImplementation((() =>
       Promise.reject(odd)) as typeof io.readFile);
     await expect(evaluateGoalFilteredTotal(root, NOW)).rejects.toThrow("odd");
+  });
+});
+
+describe("evaluateGoalTotal (Feature 106 FR-7, server total)", () => {
+  const INBOX = "11111111-1111-4111-8111-111111111111";
+  const SUB = "22222222-2222-4222-8222-222222222222";
+  const OTHER = "33333333-3333-4333-8333-333333333333";
+
+  async function seedFolder(id: string, parentId?: string): Promise<void> {
+    const dir = path.join(root, "folders", id);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "folder.json"),
+      JSON.stringify({ id, name: id, parentId }),
+    );
+  }
+
+  async function seedInboxProject(
+    config: Record<string, unknown> = {},
+  ): Promise<void> {
+    await seedProject({ inboxFolderId: INBOX, ...config });
+    await seedFolder(INBOX);
+    await seedFolder(SUB, INBOX);
+    await seedFolder(OTHER);
+  }
+
+  const total = (): ReturnType<typeof evaluateGoalTotal> =>
+    evaluateGoalTotal(root, NOW);
+
+  it("with no filter, skips text in the Inbox and in a descendant folder, and counts one outside", async () => {
+    await seedInboxProject();
+    await seedResource("in", { wordCount: 100, folderId: INBOX });
+    await seedResource("deep", { wordCount: 200, folderId: SUB });
+    await seedResource("out", { wordCount: 7, folderId: OTHER });
+    await seedResource("root", { wordCount: 3 });
+    expect(await total()).toEqual({ status: "total", total: 10 });
+  });
+
+  it("with no filter, keeps skipping a Source and non-text as before", async () => {
+    await seedInboxProject();
+    await seedResource("t", { wordCount: 4 });
+    await seedResource("s", { type: "source", wordCount: 50 });
+    await seedResource("img", { type: "image", wordCount: 60 });
+    expect(await total()).toEqual({ status: "total", total: 4 });
+  });
+
+  it("with a filter that selects the Inbox by the Folder intrinsic, the Inbox items count", async () => {
+    await seedInboxProject({
+      goalFilter: { op: "eq", field: "folderId", value: INBOX },
+    });
+    await seedResource("in", { wordCount: 100, folderId: INBOX });
+    await seedResource("out", { wordCount: 7, folderId: OTHER });
+    expect(await total()).toEqual({ status: "total", total: 100 });
+  });
+
+  it("with a filter that does not mention the Inbox, the filter alone decides", async () => {
+    await seedInboxProject({ goalFilter: typeText });
+    await seedResource("in", { wordCount: 100, folderId: INBOX });
+    await seedResource("out", { wordCount: 7, folderId: OTHER });
+    expect(await total()).toEqual({ status: "total", total: 107 });
+  });
+
+  it("counts the words once the item is moved out", async () => {
+    await seedInboxProject();
+    await seedResource("a", { wordCount: 100, folderId: INBOX });
+    await seedResource("b", { wordCount: 5, folderId: OTHER });
+    expect(await total()).toEqual({ status: "total", total: 5 });
+    await seedResource("a", { wordCount: 100, folderId: OTHER });
+    expect(await total()).toEqual({ status: "total", total: 105 });
+  });
+
+  it("counts everything when no Inbox is configured", async () => {
+    await seedProject({});
+    await seedResource("a", { wordCount: 2 });
+    expect(await total()).toEqual({ status: "total", total: 2 });
+  });
+
+  it("reads the folder tree once for many resources", async () => {
+    await seedInboxProject();
+    for (let i = 0; i < 12; i += 1) {
+      await seedResource(`r${i}`, { wordCount: 1, folderId: OTHER });
+    }
+    vi.mocked(folderUtils.readFolderTree).mockClear();
+    expect(await total()).toEqual({ status: "total", total: 12 });
+    expect(folderUtils.readFolderTree).toHaveBeenCalledTimes(1);
+  });
+
+  it("is unavailable, never 0, when the folder tree cannot be read", async () => {
+    await seedInboxProject();
+    await seedResource("a", { wordCount: 1 });
+    vi.mocked(folderUtils.readFolderTree).mockRejectedValueOnce(
+      Object.assign(new Error("denied"), { code: "EACCES" }),
+    );
+    const result = await total();
+    expect(result).toMatchObject({
+      status: "unavailable",
+      reason: "read-failed",
+      cause: "unreadable",
+    });
+    expect("total" in result).toBe(false);
+  });
+
+  it("is unavailable when the folders form a cycle through the Inbox", async () => {
+    await seedProject({ inboxFolderId: INBOX });
+    await seedFolder(INBOX, SUB);
+    await seedFolder(SUB, INBOX);
+    await seedResource("a", { wordCount: 1, folderId: SUB });
+    const result = await total();
+    expect(result).toMatchObject({
+      status: "unavailable",
+      reason: "read-failed",
+    });
+    expect("total" in result).toBe(false);
+  });
+
+  it("is unavailable, never 0, when a sidecar is missing or corrupt", async () => {
+    await seedInboxProject();
+    await seedResource("a", { wordCount: 1 });
+    await seedResource("bare", null);
+    expect(await total()).toMatchObject({
+      status: "unavailable",
+      cause: "missing-sidecar",
+    });
+    await fs.rm(path.join(root, "resources", "bare"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, "meta", "resource-a.meta.json"),
+      "{not json",
+    );
+    expect(await total()).toMatchObject({
+      status: "unavailable",
+      cause: "corrupt",
+    });
+  });
+
+  it("passes a filter's unavailable result through", async () => {
+    await seedProject({ goalFilter: { op: "ref", id: "q1" } });
+    expect(await total()).toMatchObject({
+      status: "unavailable",
+      reason: "invalid-filter",
+    });
   });
 });

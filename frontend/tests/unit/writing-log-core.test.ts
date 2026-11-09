@@ -497,6 +497,130 @@ describe("filtered daily figure (Feature 98 Task 20)", () => {
     expect((await read()).totals).toEqual({ added: 7, deleted: 1, net: 6 });
   });
 
+  describe("Inbox exclusion (Feature 106, FR-7)", () => {
+    const INBOX = "11111111-aaaa-4aaa-8aaa-111111111111";
+    const SUB = "22222222-aaaa-4aaa-8aaa-222222222222";
+    const OTHER = "33333333-aaaa-4aaa-8aaa-333333333333";
+    const IN_DOC = "44444444-aaaa-4aaa-8aaa-444444444444";
+    const SUB_DOC = "55555555-aaaa-4aaa-8aaa-555555555555";
+
+    async function seedFolder(id: string, parentId?: string): Promise<void> {
+      const dir = parentId
+        ? `${ROOT}/folders/${parentId}/${id}`
+        : `${ROOT}/folders/${id}`;
+      await mkdir(dir, { recursive: true });
+      await writeFile(
+        `${dir}/folder.json`,
+        JSON.stringify({ id, name: id, ...(parentId ? { parentId } : {}) }),
+        "utf8",
+      );
+    }
+    async function seedFiled(id: string, folderId: string): Promise<void> {
+      await mkdir(`${ROOT}/resources/${id}`, { recursive: true });
+      await writeFile(
+        `${ROOT}/meta/resource-${id}.meta.json`,
+        JSON.stringify({ id, type: "text", folderId, userMetadata: {} }),
+        "utf8",
+      );
+    }
+    async function seedInbox(): Promise<void> {
+      await seedFolder(INBOX);
+      await seedFolder(SUB, INBOX);
+      await seedFolder(OTHER);
+      await seedFiled(IN_DOC, INBOX);
+      await seedFiled(SUB_DOC, SUB);
+      await seedFiled(DOC_C, OTHER);
+    }
+    const entries = () => [
+      word(10, 2, { documentId: IN_DOC }),
+      word(5, 1, { documentId: SUB_DOC }),
+      word(7, 1, { documentId: DOC_C }),
+    ];
+
+    beforeEach(async () => {
+      await seedInbox();
+      await seedDay(entries());
+    });
+
+    it("with no filter, entries of the Inbox folder and a descendant folder are left out", async () => {
+      await setConfig({ inboxFolderId: INBOX });
+      expect((await read()).totals).toEqual({ added: 7, deleted: 1, net: 6 });
+    });
+
+    it("the entries stay in the writing log itself", async () => {
+      await setConfig({ inboxFolderId: INBOX });
+      await read();
+      const day = JSON.parse(await readFile(DAY_FILE, "utf8")) as {
+        entries: unknown[];
+      };
+      expect(day.entries).toHaveLength(3);
+    });
+
+    it("a skipped-save marker of an Inbox document does not mark the figure incomplete", async () => {
+      await setConfig({ inboxFolderId: INBOX });
+      await seedDay([
+        {
+          skipped: true,
+          timestamp: "2026-09-26T01:00:00.000Z",
+          documentId: IN_DOC,
+        },
+      ]);
+      expect((await read()).incomplete).toBe(false);
+    });
+
+    it("with no Inbox set nothing is left out", async () => {
+      await setConfig({});
+      expect((await read()).totals).toEqual({ added: 22, deleted: 4, net: 18 });
+    });
+
+    it("a goal filter that selects the Inbox by the Folder intrinsic counts its entries, and the filter alone decides", async () => {
+      await setConfig({
+        inboxFolderId: INBOX,
+        goalFilter: { op: "eq", field: "folderId", value: INBOX },
+      });
+      expect((await read()).totals).toEqual({ added: 10, deleted: 2, net: 8 });
+    });
+
+    it("after the document is moved out its entries count", async () => {
+      await setConfig({ inboxFolderId: INBOX });
+      await seedFiled(IN_DOC, OTHER);
+      expect((await read()).totals).toEqual({ added: 17, deleted: 3, net: 14 });
+    });
+
+    it("import entries stay excluded from the daily total", async () => {
+      await setConfig({});
+      await seedDay([
+        word(40, 0, { source: "docx" }),
+        word(7, 1, { documentId: DOC_C }),
+      ]);
+      const agg = await read();
+      expect(agg.totals).toEqual({ added: 7, deleted: 1, net: 6 });
+      expect(agg.imported.added).toBe(40);
+    });
+
+    it("a corrupt sidecar makes the figure unavailable, not a number", async () => {
+      await setConfig({ inboxFolderId: INBOX });
+      await writeFile(`${ROOT}/meta/resource-${DOC_C}.meta.json`, "{broken");
+      expect(await outcome()).toBeInstanceOf(
+        GoalFilteredFigureUnavailableError,
+      );
+    });
+
+    it("a parent cycle through the Inbox makes the figure unavailable, not a number", async () => {
+      await setConfig({ inboxFolderId: INBOX });
+      const dup = `${ROOT}/folders/${INBOX}/${SUB}/${INBOX}`;
+      await mkdir(dup, { recursive: true });
+      await writeFile(
+        `${dup}/folder.json`,
+        JSON.stringify({ id: INBOX, name: INBOX, parentId: SUB }),
+        "utf8",
+      );
+      expect(await outcome()).toBeInstanceOf(
+        GoalFilteredFigureUnavailableError,
+      );
+    });
+  });
+
   it("sums only entries of matching live documents; no documentId is left out", async () => {
     await seedDay([
       word(10, 2, { documentId: DOC_A }),

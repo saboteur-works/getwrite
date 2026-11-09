@@ -12,6 +12,7 @@ import {
   readFile,
   writeFile,
   mkdir,
+  type StorageAdapter,
 } from "../../src/lib/models/io";
 import {
   setCompileDefaultsCore,
@@ -20,6 +21,10 @@ import {
   InvalidProjectIdCoreError,
   SAVED_DEFAULTS_MAX_IDS,
   SAVED_DEFAULTS_MESSAGES,
+  CAPTURE_NOT_EXCLUDED_MESSAGES,
+  seedCompileExclusion,
+  seedSourceCompileExclusion,
+  removeCompileExclusions,
 } from "../../src/lib/models/saved-defaults-core";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { createKeyring } from "../../src/lib/models/crypto/keyring";
@@ -201,5 +206,157 @@ describe.each(CASES)("saved-defaults core: $key", ({ key, other, set }) => {
     await writeFile(`${ROOT}/project.json`, projectJson(), "utf8");
     await set(PID, [A]);
     expect(probe.lockKeysAtWrite.slice(-1)).toEqual([1]);
+  });
+});
+
+describe("compile-exclusion seeding and removal for a non-Source item (Feature 106, Task 6)", () => {
+  const prevEnv = process.env.GETWRITE_PROJECTS_DIR;
+  const C = generateUUID();
+  let isArmed = false;
+  const setup = async (config: Record<string, unknown> = {}) => {
+    process.env.GETWRITE_PROJECTS_DIR = TENANT;
+    setStorageAdapter(createMemoryAdapter());
+    await mkdir(ROOT, { recursive: true });
+    await writeFile(`${ROOT}/project.json`, projectJson(config), "utf8");
+  };
+  beforeEach(async () => {
+    isArmed = false;
+    await setup();
+  });
+  afterEach(() => {
+    if (prevEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = prevEnv;
+  });
+  /** An adapter that fails project.json reads or writes once `isArmed`. */
+  const failing = (op: "readFile" | "writeFile"): StorageAdapter => {
+    const base = createMemoryAdapter();
+    return {
+      ...base,
+      [op]: async (p: string, ...rest: unknown[]) => {
+        if (p.includes("project.json") && isArmed) throw new Error("disk boom");
+        return (base[op] as (...a: unknown[]) => Promise<unknown>)(p, ...rest);
+      },
+    } as StorageAdapter;
+  };
+  const withFailing = async (
+    op: "readFile" | "writeFile",
+    config: Record<string, unknown>,
+    run: () => Promise<unknown>,
+  ): Promise<void> => {
+    setStorageAdapter(failing(op));
+    await mkdir(ROOT, { recursive: true });
+    isArmed = false;
+    await writeFile(`${ROOT}/project.json`, projectJson(config), "utf8");
+    isArmed = true;
+    await expect(run()).rejects.toThrow("disk boom");
+    isArmed = false;
+  };
+
+  it("seeds a non-Source id under compileDefaults, never exportDefaults", async () => {
+    expect(
+      await seedCompileExclusion(ROOT, C, CAPTURE_NOT_EXCLUDED_MESSAGES),
+    ).toEqual({});
+    const config = await readConfig();
+    expect(config.compileDefaults).toEqual({ excludedResourceIds: [C] });
+    expect(config.exportDefaults).toBeUndefined();
+  });
+
+  it("keeps the Source seeding behaviour", async () => {
+    expect(await seedSourceCompileExclusion(ROOT, C)).toEqual({});
+    expect((await readConfig()).compileDefaults).toEqual({
+      excludedResourceIds: [C],
+    });
+  });
+
+  it("returns a notice at the cap and writes nothing", async () => {
+    const ids = Array.from({ length: SAVED_DEFAULTS_MAX_IDS }, () =>
+      generateUUID(),
+    );
+    await setup({ compileDefaults: { excludedResourceIds: ids } });
+    const r = await seedCompileExclusion(
+      ROOT,
+      C,
+      CAPTURE_NOT_EXCLUDED_MESSAGES,
+    );
+    expect(r.notice).toBe(CAPTURE_NOT_EXCLUDED_MESSAGES.atCap);
+    expect((await readConfig()).compileDefaults).toEqual({
+      excludedResourceIds: ids,
+    });
+  });
+
+  it("returns a notice for an unusable stored shape and leaves it", async () => {
+    await setup({ compileDefaults: { excludedResourceIds: "nope" } });
+    const r = await seedCompileExclusion(
+      ROOT,
+      C,
+      CAPTURE_NOT_EXCLUDED_MESSAGES,
+    );
+    expect(r.notice).toBe(CAPTURE_NOT_EXCLUDED_MESSAGES.unreadable);
+    expect((await readConfig()).compileDefaults).toEqual({
+      excludedResourceIds: "nope",
+    });
+  });
+
+  it("seeding throws on a read failure and on a write failure", async () => {
+    for (const op of ["readFile", "writeFile"] as const) {
+      await withFailing(op, {}, () =>
+        seedCompileExclusion(ROOT, C, CAPTURE_NOT_EXCLUDED_MESSAGES),
+      );
+    }
+  });
+
+  it("removal deletes present ids, keeps others and exportDefaults", async () => {
+    await setup({
+      compileDefaults: { excludedResourceIds: [A, C, B] },
+      exportDefaults: { excludedResourceIds: [C] },
+      goalFilter: { x: 1 },
+    });
+    await removeCompileExclusions(ROOT, [C, A]);
+    const config = await readConfig();
+    expect(config.compileDefaults).toEqual({ excludedResourceIds: [B] });
+    expect(config.exportDefaults).toEqual({ excludedResourceIds: [C] });
+    expect(config.goalFilter).toEqual({ x: 1 });
+  });
+
+  it("removal removes an id the writer set deliberately", async () => {
+    await setCompileDefaultsCore(PID, [C]);
+    await removeCompileExclusions(ROOT, [C]);
+    expect((await readConfig()).compileDefaults).toEqual({
+      excludedResourceIds: [],
+    });
+  });
+
+  it("removal is a no-op and writes nothing for an absent id or no compileDefaults", async () => {
+    const raw1 = await readFile(`${ROOT}/project.json`, "utf8");
+    await removeCompileExclusions(ROOT, [C]);
+    expect(await readFile(`${ROOT}/project.json`, "utf8")).toBe(raw1);
+    await setup({ compileDefaults: { excludedResourceIds: [A] } });
+    const raw2 = await readFile(`${ROOT}/project.json`, "utf8");
+    await removeCompileExclusions(ROOT, [C]);
+    await removeCompileExclusions(ROOT, []);
+    expect(await readFile(`${ROOT}/project.json`, "utf8")).toBe(raw2);
+  });
+
+  it("removal writes project.json inside the per-file lock", async () => {
+    const probe = createProjectJsonWriteProbe();
+    setStorageAdapter(probe.adapter);
+    await mkdir(ROOT, { recursive: true });
+    await writeFile(
+      `${ROOT}/project.json`,
+      projectJson({ compileDefaults: { excludedResourceIds: [C] } }),
+      "utf8",
+    );
+    await removeCompileExclusions(ROOT, [C]);
+    expect(probe.lockKeysAtWrite.slice(-1)).toEqual([1]);
+  });
+
+  it("removal throws on a read failure and on a write failure", async () => {
+    for (const op of ["readFile", "writeFile"] as const) {
+      await withFailing(
+        op,
+        { compileDefaults: { excludedResourceIds: [C] } },
+        () => removeCompileExclusions(ROOT, [C]),
+      );
+    }
   });
 });

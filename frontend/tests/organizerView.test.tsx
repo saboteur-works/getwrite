@@ -1692,3 +1692,51 @@ describe("OrganizerView folder browsing survives an in-folder title click (Task 
     expect(screen.queryByText("Organizer")).toBeNull();
   });
 });
+
+describe("OrganizerView lists an Inbox item as any resource (Feature 106, FR-16)", () => {
+  it("shows a text resource filed in the configured Inbox folder as a card, and does not show one filed elsewhere", () => {
+    const INBOX_ID = "44444444-4444-4444-8444-444444444444";
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "",
+        folders: [],
+        resources: [],
+        config: { inboxFolderId: INBOX_ID },
+      } as any),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_ID));
+    store.dispatch(
+      setFolders([
+        makeFolder(INBOX_ID, "Inbox"),
+        makeFolder(FOLDER_ID, "Folder A"),
+      ] as any),
+    );
+    store.dispatch(
+      setResources([
+        createTextResource({
+          name: "Captured note",
+          plainText: "a thought",
+          folderId: INBOX_ID,
+        }),
+        createTextResource({
+          name: "Elsewhere note",
+          plainText: "another thought",
+          folderId: FOLDER_ID,
+        }),
+      ] as any),
+    );
+    store.dispatch(setSelectedResourceId(INBOX_ID));
+
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody={false} />
+      </Provider>,
+    );
+
+    expect(screen.getByText("Captured note")).toBeTruthy();
+    expect(screen.queryByText("Elsewhere note")).toBeNull();
+  });
+});

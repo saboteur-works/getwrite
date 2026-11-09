@@ -29,3 +29,8 @@ The tree holds [resources](../protect-and-finish/resources.md) of several kinds:
 ## Good to know
 
 - In the browser, documents, images and audio that you create one after another can show in a different order after you reload the page. Drag them into the order you want. GetWrite keeps that order.
+
+## Coming in the next release
+
+- The folder where [Capture](../write/inbox-and-capture.md) saves notes is named **Inbox**. It shows the number of notes inside it, including notes in its subfolders.
+- Choose **File to…** in an item's options menu or right-click menu to pick a folder for it without dragging. It opens the same folder picker as **Move to…**.

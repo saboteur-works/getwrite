@@ -348,6 +348,33 @@ describe("route and page enumeration", () => {
     }
   });
 
+  it("enumerates POST /api/project/capture by walking, refuses it unconfirmed and lets a paired device through (Feature 106, FR-10)", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const capture = entries.filter((e) => e.url === "/api/project/capture");
+    expect(capture.map(label)).toEqual(["POST /api/project/capture"]);
+    expect(isException(capture[0])).toBe(false);
+    const origin = "http://10.0.0.5:3000";
+    const unpaired = await proxy(
+      makeRequest(capture[0], { headers: { origin } }),
+    );
+    expect(isRefusal(unpaired)).toBe(true);
+    const token = await pairInto(dir);
+    const paired = await proxy(
+      makeRequest(capture[0], {
+        headers: { cookie: `${DEVICE_COOKIE}=${token}`, origin },
+      }),
+    );
+    expect(isPassThrough(paired)).toBe(true);
+  });
+
+  it("adds no paired-device limit switch or route guard to the capture route (Feature 106, FR-10)", async () => {
+    const route = await readFile(
+      path.join(APP_DIR, "api", "project", "capture", "route.ts"),
+      "utf8",
+    );
+    expect(route).not.toMatch(/checkLimit|limits-check|refusalFor/);
+  });
+
   it("counts the documented exceptions", () => {
     expect(ENUMERATED_EXCEPTIONS.length + 1).toBe(EXCEPTION_COUNT);
     expect(STATIC_EXCEPTION).toBe("/_next/static/");

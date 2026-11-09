@@ -110,3 +110,36 @@ export const Filtered: Story = {
     await userEvent.type(input, "chapter");
   },
 };
+
+export const WithCapture: Story = {
+  args: {
+    isOpen: true,
+    resources: sampleResources,
+    onClose: () => console.log("close"),
+    onSelectResource: (resourceId: string) =>
+      console.log("selected", resourceId),
+    onCapture: () => console.log("capture"),
+  },
+};
+
+export const CapturePrefix: Story = {
+  args: WithCapture.args,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await userEvent.type(
+      canvas.getByPlaceholderText("Search resources..."),
+      "cap",
+    );
+  },
+};
+
+export const CaptureNoMatch: Story = {
+  args: WithCapture.args,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await userEvent.type(
+      canvas.getByPlaceholderText("Search resources..."),
+      "zzz",
+    );
+  },
+};

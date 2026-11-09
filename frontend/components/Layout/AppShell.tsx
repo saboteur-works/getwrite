@@ -58,6 +58,7 @@ import ShellSettingsMenu, {
   type SettingsMenuAction,
 } from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
+import CaptureBoxHost from "../Capture/CaptureBoxHost";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -312,6 +313,12 @@ export default function AppShell({
   const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
   const [isResourcePaletteOpen, setIsResourcePaletteOpen] =
     useState<boolean>(false);
+  const [isCaptureBoxOpen, setIsCaptureBoxOpen] = useState<boolean>(false);
+  // The host (one instance, never unmounted once shown) is first rendered on
+  // the first open, so a shell that never opens Capture reads no sharing-limits
+  // context and fetches nothing for it.
+  const [hasCaptureBoxBeenOpened, setHasCaptureBoxBeenOpened] =
+    useState<boolean>(false);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] =
     useState<boolean>(false);
@@ -340,6 +347,12 @@ export default function AppShell({
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const queryEvaluationError = useAppSelector(selectEvaluationErrorMessage);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
+  // The `project` prop is the page's copy from open time; a first capture
+  // writes the Inbox id to the store entry only (Feature 106 FR-7).
+  const storeInboxFolderId = useAppSelector(
+    (s) =>
+      s.projects.projects[s.projects.selectedProjectId ?? ""]?.inboxFolderId,
+  );
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
   const moduleViews = useModuleViews();
   const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
@@ -915,10 +928,19 @@ export default function AppShell({
 
   useEffect(() => {
     const onDocumentKeyDown = (event: KeyboardEvent) => {
-      const isCommandPaletteShortcut =
+      const isKShortcut =
         (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
 
-      if (isCommandPaletteShortcut) {
+      if (isKShortcut && event.shiftKey) {
+        // Capture works with or without an open project (Feature 106, FR-11).
+        event.preventDefault();
+        setIsSettingsMenuOpen(false);
+        setHasCaptureBoxBeenOpened(true);
+        setIsCaptureBoxOpen(true);
+        return;
+      }
+
+      if (isKShortcut) {
         event.preventDefault();
         setIsSettingsMenuOpen(false);
         setIsResourcePaletteOpen(true);
@@ -1197,6 +1219,12 @@ export default function AppShell({
     <div
       className={`appshell-shell ${isDarkMode ? "appshell-theme-dark" : ""}`}
     >
+      {hasCaptureBoxBeenOpened ? (
+        <CaptureBoxHost
+          isOpen={isCaptureBoxOpen}
+          onClose={() => setIsCaptureBoxOpen(false)}
+        />
+      ) : null}
       <ShellLayoutProvider>
         <UpdateNotice />
 
@@ -1339,6 +1367,10 @@ export default function AppShell({
                     }
                     isResourcePaletteOpen={isResourcePaletteOpen}
                     setIsResourcePaletteOpen={setIsResourcePaletteOpen}
+                    onOpenCapture={() => {
+                      setHasCaptureBoxBeenOpened(true);
+                      setIsCaptureBoxOpen(true);
+                    }}
                     isProjectTypesLoading={isProjectTypesLoading}
                     projectTypesLoadError={projectTypesLoadError}
                     projectTypesNotice={projectTypesNotice}
@@ -1617,6 +1649,7 @@ export default function AppShell({
                                     statusRollupResources={liveResources}
                                     statuses={projectStatuses}
                                     project={project ?? undefined}
+                                    inboxFolderId={storeInboxFolderId}
                                     filteredGoalTotal={filteredGoalTotal}
                                     folders={liveFolders}
                                     folderRows={folderRows}

@@ -86,6 +86,24 @@ describe("module-config-core (Feature 103 Task 8)", () => {
     ).toEqual({ future: true, other: false, sources: true });
   });
 
+  it("preserves config.inboxFolderId (Feature 106)", async () => {
+    const inboxFolderId = "55555555-5555-4555-8555-555555555555";
+    await writeFile(
+      `${ROOT}/project.json`,
+      projectJson({ inboxFolderId }),
+      "utf8",
+    );
+    await setModuleEnabledCore({
+      projectId: PID,
+      moduleId: "sources",
+      enabled: false,
+    });
+    expect(
+      ((await readProject()).config as { inboxFolderId: unknown })
+        .inboxFolderId,
+    ).toBe(inboxFolderId);
+  });
+
   it("does not bump updatedAt or metadataRevision", async () => {
     await setModuleEnabledCore({
       projectId: PID,

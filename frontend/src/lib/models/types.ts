@@ -156,6 +156,12 @@ export interface ProjectConfig {
   modules?: Record<string, boolean>;
   /** Configures what Organizer cards render as their body text. */
   organizerCardBody?: OrganizerCardBodyConfig;
+  /**
+   * Id of the project's Inbox folder (Feature 106, FR-3). The Inbox is
+   * identified by this id alone, not by name or the `special` flag. Absent
+   * until something is first captured. Written only by the capture core.
+   */
+  inboxFolderId?: UUID;
 }
 
 /** Allowed field types for user-defined metadata fields. */
@@ -325,6 +331,17 @@ export interface ResourceBase {
    * `normalizeNoiseTerm`.
    */
   dismissedNoiseTerms?: string[];
+  /**
+   * Full ISO UTC timestamp of a capture (Feature 106, FR-22). Written only
+   * by the capture core; not client-writable.
+   */
+  capturedAt?: string;
+  /**
+   * Link supplied with a capture (Feature 106, FR-22), at most
+   * `CAPTURED_LINK_MAX_LENGTH` characters. Written only by the capture core;
+   * not client-writable.
+   */
+  capturedLink?: string;
   /** User-set key/value metadata stored in sidecar (distinct from system fields like sizeBytes, createdAt, orderIndex). */
   userMetadata?: Record<string, MetadataValue>;
   /** Creation timestamp (ISO 8601). */

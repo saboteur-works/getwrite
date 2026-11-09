@@ -64,3 +64,7 @@ Each day is a file in the `meta/writing-log` folder inside your project folder. 
 
 - If the footer says "Today's count may be incomplete", GetWrite couldn't compare a save with the document's previous text, so it didn't count that save. Your text is still saved.
 - If the footer says "Today's count is unavailable", GetWrite couldn't read today's record. It shows this message instead of a zero.
+
+## Coming in the next release
+
+- **Notes in the Inbox.** Words in notes in a project's Inbox stay out of today's goal figure and the whole-project goal, unless your goal filter selects them. When you file a note out of the Inbox, all its words count from then on, including words captured earlier, so today's figure can jump. See [Inbox and Capture](inbox-and-capture.md).

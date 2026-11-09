@@ -7,10 +7,28 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { readSidecar, writeSidecar } from "../../src/lib/models/sidecar";
 import { removeDirRetry } from "./helpers/fs-utils";
+
+const removalControl = vi.hoisted(() => ({ fail: false }));
+
+vi.mock("../../src/lib/models/saved-defaults-core", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../src/lib/models/saved-defaults-core")
+    >();
+  return {
+    ...actual,
+    removeCompileExclusions: (
+      ...args: Parameters<typeof actual.removeCompileExclusions>
+    ) =>
+      removalControl.fail
+        ? Promise.reject(new Error("disk full"))
+        : actual.removeCompileExclusions(...args),
+  };
+});
 
 const tmpDirs: string[] = [];
 const originalEnv = process.env.GETWRITE_PROJECTS_DIR;
@@ -113,5 +131,120 @@ describe("POST /api/projects/[projectId]/reorder", () => {
       resourceOrder: [],
     });
     expect(res.status).toBe(404);
+  });
+
+  describe("Inbox compile exclusion clearing (Feature 106 FR-23)", () => {
+    async function inboxProject(): Promise<{
+      projectId: string;
+      projectPath: string;
+      inbox: string;
+      other: string;
+      item: string;
+      sub: string;
+      inSub: string;
+    }> {
+      const { projectId, projectPath } = await makeProject();
+      const [inbox, other, sub] = [
+        generateUUID(),
+        generateUUID(),
+        generateUUID(),
+      ];
+      const [item, inSub] = [generateUUID(), generateUUID()];
+      const writeFolder = async (
+        parts: string[],
+        id: string,
+        parentId: string | null,
+      ): Promise<void> => {
+        const dir = path.join(projectPath, "folders", ...parts);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(
+          path.join(dir, "folder.json"),
+          JSON.stringify({ id, name: id, parentId, orderIndex: 0 }),
+        );
+      };
+      await writeFolder([inbox], inbox, null);
+      await writeFolder([inbox, sub], sub, inbox);
+      await writeFolder([other], other, null);
+      for (const [id, folderId] of [
+        [item, inbox],
+        [inSub, sub],
+      ]) {
+        await fs.mkdir(path.join(projectPath, "resources", id), {
+          recursive: true,
+        });
+        await writeSidecar(projectPath, id, { name: id, folderId });
+      }
+      await fs.writeFile(
+        path.join(projectPath, "project.json"),
+        JSON.stringify({
+          id: projectId,
+          name: "Reorder",
+          config: {
+            inboxFolderId: inbox,
+            compileDefaults: { excludedResourceIds: [item, inSub] },
+          },
+        }),
+      );
+      return { projectId, projectPath, inbox, other, item, sub, inSub };
+    }
+
+    const excluded = async (projectPath: string): Promise<string[]> =>
+      (
+        JSON.parse(
+          await fs.readFile(path.join(projectPath, "project.json"), "utf8"),
+        ) as { config: { compileDefaults: { excludedResourceIds: string[] } } }
+      ).config.compileDefaults.excludedResourceIds;
+
+    it("clears the id of a resource moved out of the Inbox and sends no notice", async () => {
+      const p = await inboxProject();
+      const res = await post(p.projectId, {
+        folderOrder: [],
+        resourceOrder: [{ id: p.item, orderIndex: 0, folderId: p.other }],
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(await excluded(p.projectPath)).toEqual([p.inSub]);
+    });
+
+    it("clears every contained resource id when a folder is moved out", async () => {
+      const p = await inboxProject();
+      const res = await post(p.projectId, {
+        folderOrder: [{ id: p.sub, orderIndex: 0, folderId: p.other }],
+        resourceOrder: [],
+      });
+      expect(res.status).toBe(200);
+      expect(await excluded(p.projectPath)).toEqual([p.item]);
+    });
+
+    it("leaves ids for a move within the Inbox subtree", async () => {
+      const p = await inboxProject();
+      await post(p.projectId, {
+        folderOrder: [],
+        resourceOrder: [{ id: p.item, orderIndex: 0, folderId: p.sub }],
+      });
+      expect((await excluded(p.projectPath)).sort()).toEqual(
+        [p.item, p.inSub].sort(),
+      );
+    });
+
+    it("answers 200 with a notice when the clearing fails and the move stands", async () => {
+      const p = await inboxProject();
+      removalControl.fail = true;
+      try {
+        const res = await post(p.projectId, {
+          folderOrder: [],
+          resourceOrder: [{ id: p.item, orderIndex: 0, folderId: p.other }],
+        });
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { ok: boolean; notice?: string };
+        expect(body.ok).toBe(true);
+        expect(body.notice).toMatch(/compile default was not cleared/);
+        expect((await readSidecar(p.projectPath, p.item))?.folderId).toBe(
+          p.other,
+        );
+      } finally {
+        removalControl.fail = false;
+      }
+    });
   });
 });

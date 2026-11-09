@@ -45,6 +45,7 @@ import type { Folder, AnyResource } from "../../src/lib/models";
 import type { MetadataValue, ResourceRef } from "../../src/lib/models/types";
 import { toStartPageEntry } from "../../components/Start/list-entry-view";
 import { listProjects, openProject } from "../../src/lib/api/projects";
+import { writeLastOpenedProjectId } from "../../src/lib/capture-preferences";
 import {
   checkWorkspaceLock,
   isSerializedLimitRefusal,
@@ -337,6 +338,10 @@ export default function Home(): JSX.Element {
    */
   const handleOpen = async (id: string) => {
     const p = await openProject(id);
+    // Remember it for the Capture box's default project (Feature 106, FR-12).
+    // Returns false rather than throwing on a storage failure, so a failed
+    // write never stops the project opening.
+    writeLastOpenedProjectId(id);
     const storedProject = buildStoredProject(p.project, p.folders, p.resources);
     // Dispatch the load-flavored thunks (rather than the plain `setProject`
     // / `setResources` actions) so opening a project also triggers the

@@ -7,7 +7,7 @@ import DataView, {
 import type { FilteredGoalTotal } from "../src/hooks/useFilteredGoalTotal";
 import { createTextResource } from "../src/lib/models/resource";
 import { createSourceResource } from "../src/lib/models/resource-factory";
-import type { AnyResource, Project } from "../src/lib/models/types";
+import type { AnyResource, Folder, Project } from "../src/lib/models/types";
 
 vi.mock("../src/lib/api/goal-filtered-total", () => ({
   getGoalFilteredTotal: vi.fn(),
@@ -230,5 +230,98 @@ describe("DataView goal bar with no goal filter (Feature 102 FR-28)", () => {
       />,
     );
     expect(screen.getByText(/^17 \/ 1,000 words/)).toBeInTheDocument();
+  });
+});
+
+describe("DataView goal bar and the Inbox (Feature 106 FR-7, client total)", () => {
+  const INBOX = "11111111-1111-4111-8111-111111111111";
+  const SUB = "22222222-2222-4222-8222-222222222222";
+  const OTHER = "33333333-3333-4333-8333-333333333333";
+  const folder = (id: string, parentId: string | null): Folder =>
+    ({ id, name: id, type: "folder", parentId }) as unknown as Folder;
+  const inInbox = (id: string): AnyResource =>
+    createTextResource({
+      name: "Captured",
+      plainText: "w ".repeat(7),
+      folderId: id,
+    } as never);
+  const projectWithInbox = (inboxFolderId: string): Project =>
+    ({
+      ...makeProject(1000),
+      config: { wordCountGoal: 1000, inboxFolderId },
+    }) as Project;
+  const folders = [
+    folder(INBOX, null),
+    folder(SUB, INBOX),
+    folder(OTHER, null),
+  ];
+
+  it("leaves words of a text resource in the Inbox subtree out of the total", () => {
+    render(
+      <DataView
+        project={projectWithInbox(INBOX)}
+        folders={folders}
+        resources={[...resourcesOf(10), inInbox(INBOX), inInbox(SUB)]}
+      />,
+    );
+    expect(screen.getByText(/^10 \/ 1,000 words/)).toBeInTheDocument();
+  });
+
+  it("uses the store's inboxFolderId when the project object predates the Inbox", () => {
+    render(
+      <DataView
+        project={makeProject(1000)}
+        inboxFolderId={INBOX}
+        folders={folders}
+        resources={[...resourcesOf(10), inInbox(INBOX)]}
+      />,
+    );
+    expect(screen.getByText(/^10 \/ 1,000 words/)).toBeInTheDocument();
+  });
+
+  it("counts the words once the item is filed outside the Inbox", () => {
+    render(
+      <DataView
+        project={projectWithInbox(INBOX)}
+        folders={folders}
+        resources={[...resourcesOf(10), inInbox(OTHER)]}
+      />,
+    );
+    expect(screen.getByText(/^17 \/ 1,000 words/)).toBeInTheDocument();
+  });
+
+  it("counts everything when the project has no Inbox", () => {
+    render(
+      <DataView
+        project={makeProject(1000)}
+        folders={folders}
+        resources={[...resourcesOf(10), inInbox(INBOX)]}
+      />,
+    );
+    expect(screen.getByText(/^17 \/ 1,000 words/)).toBeInTheDocument();
+  });
+
+  it("with a goal filter the supplied filtered total alone decides", () => {
+    render(
+      <DataView
+        project={projectWithInbox(INBOX)}
+        folders={folders}
+        resources={[...resourcesOf(10), inInbox(INBOX)]}
+        filteredGoalTotal={filtered({ status: "total", total: 17 })}
+      />,
+    );
+    expect(screen.getByText(/^17 \/ 1,000 words/)).toBeInTheDocument();
+  });
+
+  it("a parent cycle through the Inbox does not hang and shows unavailable, not 0", () => {
+    render(
+      <DataView
+        project={projectWithInbox(INBOX)}
+        folders={[folder(INBOX, null), folder(SUB, INBOX), folder(INBOX, SUB)]}
+        resources={[...resourcesOf(10), inInbox(SUB)]}
+      />,
+    );
+    expect(screen.getByText(UNAVAILABLE)).toBeInTheDocument();
+    expect(screen.queryByText(/ \/ 1,000 words/)).toBeNull();
   });
 });

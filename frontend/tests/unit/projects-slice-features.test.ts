@@ -750,6 +750,23 @@ describe("buildStoredProject", () => {
     expect(stored.organizerCardBody).toBeUndefined();
   });
 
+  it("carries inboxFolderId, and a project with no Inbox never gains the key", () => {
+    const id = "6f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f";
+    expect(
+      buildStoredProject(
+        makeProject({ editorConfig: {}, inboxFolderId: id }),
+        [],
+        [],
+      ).inboxFolderId,
+    ).toBe(id);
+    expect(
+      buildStoredProject(makeProject({ editorConfig: {} }), [], []),
+    ).not.toHaveProperty("inboxFolderId");
+    expect(buildStoredProject(makeProject(), [], [])).not.toHaveProperty(
+      "inboxFolderId",
+    );
+  });
+
   it("maps resources to the minimal ResourceMeta shape with defaults", () => {
     const stored = buildStoredProject(
       makeProject({ editorConfig: {} }),

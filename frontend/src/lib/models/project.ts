@@ -43,6 +43,11 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     ...(config?.spellingIgnoredWords !== undefined
       ? { spellingIgnoredWords: config.spellingIgnoredWords }
       : {}),
+    // Feature 106, FR-3: omitted when absent, so a project with no Inbox
+    // never gains the key.
+    ...(config?.inboxFolderId !== undefined
+      ? { inboxFolderId: config.inboxFolderId }
+      : {}),
     autoPrune: config?.autoPrune ?? true,
     editorConfig: config?.editorConfig ?? {},
     defaultRevisionName: config?.defaultRevisionName,

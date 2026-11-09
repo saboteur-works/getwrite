@@ -68,6 +68,29 @@ describe("models/project-config", () => {
     }
   });
 
+  it("preserves inboxFolderId through loadProject and loadProjectConfig", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pcfg-"));
+    try {
+      const inboxFolderId = generateUUID();
+      await fs.writeFile(
+        path.join(tmp, PROJECT_FILENAME),
+        JSON.stringify({
+          id: generateUUID(),
+          name: "InboxCfg",
+          createdAt: new Date().toISOString(),
+          config: { editorConfig: {}, inboxFolderId },
+        }),
+        "utf8",
+      );
+      expect((await loadProject(tmp)).config?.inboxFolderId).toBe(
+        inboxFolderId,
+      );
+      expect((await loadProjectConfig(tmp)).inboxFolderId).toBe(inboxFolderId);
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
+
   it("throws when project.json is invalid JSON", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-pcfg-"));
     try {

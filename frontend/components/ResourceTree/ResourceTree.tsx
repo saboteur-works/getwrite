@@ -68,6 +68,10 @@ import {
   ROOT_ITEM_ID,
 } from "./buildResourceTree";
 import { useResourceReorder } from "./useResourceReorder";
+import {
+  computeInboxSubtree,
+  countInboxItems,
+} from "../../src/lib/models/inbox-membership";
 
 /** Horizontal pixel offset applied per nesting level when rendering tree items. */
 const INDENTATION_WIDTH = 14;
@@ -192,6 +196,23 @@ export default function ResourceTree({
     (s) => s.resources.selectedResourceId,
   );
 
+  // Feature 106 FR-14: count of resources in the Inbox subtree, walked over
+  // the store's folders and resources (no request). The id is the store
+  // project's flat `inboxFolderId` (`StoredProject`), not `config.inboxFolderId`.
+  // Zero (no badge) when unset, empty, or the folder data is malformed.
+  const inboxFolderId = currentProject?.inboxFolderId;
+  const inboxCount = useMemo(() => {
+    if (!inboxFolderId) return 0;
+    const computed = computeInboxSubtree(
+      rawResources.filter((r) => r.type === "folder"),
+      inboxFolderId,
+    );
+    return computed.ok ? countInboxItems(computed.subtree, rawResources) : 0;
+  }, [rawResources, inboxFolderId]);
+
+  const isInboxRow = (item: ItemInstance<ResourceItemData>): boolean =>
+    inboxCount > 0 && item.getId() === inboxFolderId;
+
   const transformedResourceData = useMemo(
     () => buildResourceTree(rawResources),
     [rawResources],
@@ -245,13 +266,46 @@ export default function ResourceTree({
         dispatch(updateResources(payload.resourceOrder));
       }
       if (currentProject && projectDirectoryId) {
-        dispatch(
+        // A move that could not be saved is put back (the thunk has already
+        // shown its message), so the item is left where it was.
+        const before = rawResources;
+        void dispatch(
           persistReorder({
             projectId: projectDirectoryId,
             folderOrder: payload.folderOrder,
             resourceOrder: payload.resourceOrder,
           }),
-        );
+        ).then((result) => {
+          if (result.meta.requestStatus !== "rejected") return;
+          const original = (id: string) => before.find((r) => r.id === id);
+          dispatch(
+            updateFolders(
+              payload.folderOrder.flatMap(({ id }) => {
+                const o = original(id) as Folder | undefined;
+                return o
+                  ? [
+                      {
+                        id,
+                        orderIndex: o.orderIndex,
+                        parentId: o.parentId,
+                        folderId: o.folderId,
+                      },
+                    ]
+                  : [];
+              }),
+            ),
+          );
+          dispatch(
+            updateResources(
+              payload.resourceOrder.flatMap(({ id }) => {
+                const o = original(id);
+                return o
+                  ? [{ id, orderIndex: o.orderIndex, folderId: o.folderId }]
+                  : [];
+              }),
+            ),
+          );
+        });
       }
     }
     setMoveTarget(null);
@@ -348,6 +402,14 @@ export default function ResourceTree({
           resourceId={item.getId()}
           resourceName={item.getItemName()}
           onAction={(action, resourceId) => {
+            // "File to…" opens the same picker as "Move to…"; it is handled
+            // here and never reaches the host's action callback.
+            if (action === "file-to") {
+              if (resourceId) {
+                setMoveTarget({ id: resourceId, name: item.getItemName() });
+              }
+              return;
+            }
             onResourceAction?.(action, resourceId, item.getItemName());
           }}
           onClose={() => {}}
@@ -377,6 +439,13 @@ export default function ResourceTree({
             <div
               {...item.getProps()}
               onClick={(e) => handleClick(e, item)}
+              {...(isInboxRow(item)
+                ? {
+                    // The count joins the row's accessible name; the visible
+                    // badge is aria-hidden so it is not read twice.
+                    "aria-label": `${item.getItemName()}, ${inboxCount} ${inboxCount === 1 ? "item" : "items"}`,
+                  }
+                : {})}
               className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >
               {item.isFolder() && (
@@ -403,6 +472,15 @@ export default function ResourceTree({
               >
                 {renderResourceIcon(item)}
                 <div className="truncate">{item.getItemName()}</div>
+                {isInboxRow(item) ? (
+                  <span
+                    data-testid="inbox-count"
+                    aria-hidden="true"
+                    className="resource-tree-count"
+                  >
+                    {inboxCount}
+                  </span>
+                ) : null}
               </div>
               <ResourceRowMenu
                 resourceId={item.getId()}

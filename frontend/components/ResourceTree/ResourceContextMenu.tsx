@@ -7,6 +7,7 @@ import {
   Download,
   Pencil,
   Search,
+  FolderInput,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -27,13 +28,19 @@ export type ResourceContextAction =
   | "export"
   | "smart-folder";
 
+/**
+ * Actions the right-click menu emits: the host-handled {@link ResourceContextAction}s
+ * plus "file-to", which `ResourceTree` handles itself (opens the folder picker).
+ */
+export type ResourceMenuAction = ResourceContextAction | "file-to";
+
 export interface ResourceContextMenuProps {
   resourceId?: string;
   /** Prefer `resourceName` (canonical). `resourceTitle` kept for backwards compatibility. */
   resourceName?: string;
   resourceTitle?: string;
   onClose?: () => void;
-  onAction?: (action: ResourceContextAction, resourceId?: string) => void;
+  onAction?: (action: ResourceMenuAction, resourceId?: string) => void;
   className?: string;
   children: ReactNode;
 }
@@ -49,7 +56,7 @@ export default function ResourceContextMenu({
 }: ResourceContextMenuProps) {
   const menuTitle = resourceName ?? resourceTitle;
 
-  const handle = (action: ResourceContextAction) => {
+  const handle = (action: ResourceMenuAction) => {
     onAction?.(action, resourceId);
   };
 
@@ -105,6 +112,13 @@ export default function ResourceContextMenu({
         >
           <Pencil size={14} className="resource-context-menu-item-icon" />
           Rename
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="resource-context-menu-item"
+          onSelect={() => handle("file-to")}
+        >
+          <FolderInput size={14} className="resource-context-menu-item-icon" />
+          File to…
         </ContextMenuItem>
         <ContextMenuItem
           className="resource-context-menu-item"

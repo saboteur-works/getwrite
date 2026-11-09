@@ -129,17 +129,35 @@ export const SOURCE_NOT_EXCLUDED_MESSAGES = {
     "The Source was created, but it is not left out of compile by default: the saved compile default could not be read, so it was left unchanged. Leave the Source out in the Compile dialog.",
 } as const;
 
+/** The two notice texts `seedCompileExclusion` can return. */
+export interface CompileExclusionMessages {
+  readonly atCap: string;
+  readonly unreadable: string;
+}
+
 /**
- * Add a new Source's id to `config.compileDefaults.excludedResourceIds`
- * (Feature 102, FR-27), keeping the `{ excludedResourceIds }` shape. Never
- * touches `exportDefaults`. Returns a notice, not an error, when the list is
+ * The visible messages when a captured Inbox item cannot be added to the
+ * saved compile exclusions (Feature 106, FR-6). The item itself is still
+ * created.
+ */
+export const CAPTURE_NOT_EXCLUDED_MESSAGES: CompileExclusionMessages = {
+  atCap: `The note was captured, but it is not left out of compile by default: the saved compile default is full (${SAVED_DEFAULTS_MAX_IDS} resources). Clear or shorten the saved default, or leave the note out in the Compile dialog.`,
+  unreadable:
+    "The note was captured, but it is not left out of compile by default: the saved compile default could not be read, so it was left unchanged. Leave the note out in the Compile dialog.",
+};
+
+/**
+ * Add a resource id to `config.compileDefaults.excludedResourceIds`, keeping
+ * the `{ excludedResourceIds }` shape. Never touches `exportDefaults`.
+ * Returns a notice (the caller's `messages`), not an error, when the list is
  * at the cap or its stored shape is unusable (the stored value is left
  * unchanged); a read or write failure is thrown, and locked-access errors
  * propagate unchanged. `projectRoot` is a resolved root, never client input.
  */
-export async function seedSourceCompileExclusion(
+export async function seedCompileExclusion(
   projectRoot: string,
   resourceId: string,
+  messages: CompileExclusionMessages,
 ): Promise<{ notice?: string }> {
   return withMetaLock(projectRoot, async () =>
     updateProjectJson<{ notice?: string }>(
@@ -158,7 +176,7 @@ export async function seedSourceCompileExclusion(
             !ids.every((id) => typeof id === "string")
           ) {
             return {
-              result: { notice: SOURCE_NOT_EXCLUDED_MESSAGES.unreadable },
+              result: { notice: messages.unreadable },
               shouldWrite: false,
             };
           }
@@ -168,16 +186,70 @@ export async function seedSourceCompileExclusion(
           return { result: {}, shouldWrite: false };
         }
         if (current.length >= SAVED_DEFAULTS_MAX_IDS) {
-          return {
-            result: { notice: SOURCE_NOT_EXCLUDED_MESSAGES.atCap },
-            shouldWrite: false,
-          };
+          return { result: { notice: messages.atCap }, shouldWrite: false };
         }
         config.compileDefaults = {
           excludedResourceIds: [...current, resourceId],
         };
         project.config = config as unknown as ProjectConfig;
         return { result: {} };
+      },
+      { durable: process.env.GETWRITE_DURABLE_META === "1" },
+    ),
+  );
+}
+
+/**
+ * Add a new Source's id to `config.compileDefaults.excludedResourceIds`
+ * (Feature 102, FR-27). See `seedCompileExclusion`.
+ */
+export function seedSourceCompileExclusion(
+  projectRoot: string,
+  resourceId: string,
+): Promise<{ notice?: string }> {
+  return seedCompileExclusion(
+    projectRoot,
+    resourceId,
+    SOURCE_NOT_EXCLUDED_MESSAGES,
+  );
+}
+
+/**
+ * Remove ids from `config.compileDefaults.excludedResourceIds` (Feature 106,
+ * FR-23), including an id the writer set deliberately (owner decision). An
+ * absent id, an empty list and a project with no `compileDefaults` are
+ * no-ops that write nothing; other ids and `exportDefaults` are unchanged.
+ * Runs inside `withMetaLock`; the callback takes no lock. A read or write
+ * failure is thrown, and locked-access errors propagate unchanged.
+ */
+export async function removeCompileExclusions(
+  projectRoot: string,
+  resourceIds: readonly string[],
+): Promise<void> {
+  if (resourceIds.length === 0) return;
+  const toRemove = new Set(resourceIds);
+  await withMetaLock(projectRoot, async () =>
+    updateProjectJson<void>(
+      projectRoot,
+      (project) => {
+        const stored = project.config?.compileDefaults as
+          | { excludedResourceIds?: unknown }
+          | undefined;
+        const ids = stored?.excludedResourceIds;
+        if (!Array.isArray(ids)) {
+          return { result: undefined, shouldWrite: false };
+        }
+        const kept = ids.filter(
+          (id) => !(typeof id === "string" && toRemove.has(id)),
+        );
+        if (kept.length === ids.length) {
+          return { result: undefined, shouldWrite: false };
+        }
+        project.config = {
+          ...project.config,
+          compileDefaults: { excludedResourceIds: kept },
+        } as ProjectConfig;
+        return { result: undefined };
       },
       { durable: process.env.GETWRITE_DURABLE_META === "1" },
     ),
