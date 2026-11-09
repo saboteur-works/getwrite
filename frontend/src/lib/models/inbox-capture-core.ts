@@ -6,7 +6,7 @@
  * no React; the route and native backend call it, so a second capture
  * surface (Feature 107) can reuse it.
  *
- * Steps, in order (a later step slots in after step 5):
+ * Steps, in order:
  *   1. Validate the project id and derive the root from the storage context.
  *   2. Validate the text and link; a refusal returns before any write, so no
  *      Inbox is created for it.
@@ -19,6 +19,10 @@
  *   6. Seed the compile exclusion. Unlike a Source, a failure here keeps the
  *      item: a cap or unusable-shape notice and a thrown error both come back
  *      as a `seeding` notice.
+ *   7. Append the writing-log entry (FR-8): typed words as additions tagged
+ *      with the item's id; shared text as an import entry (a `source`, no
+ *      document id). A failure keeps the item and returns a `writing-log`
+ *      notice.
  *
  * A locked-access error propagates unchanged from every step.
  */
@@ -35,6 +39,8 @@ import {
   CAPTURE_NOT_EXCLUDED_MESSAGES,
 } from "./saved-defaults-core";
 import { mutateSidecar } from "./sidecar";
+import { appendWritingLogEntry } from "./writing-log";
+import { countWords } from "../word-count";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { isLockedAccessError } from "./locked-access";
@@ -51,6 +57,10 @@ export { InvalidProjectIdCoreError };
 /** Shown when seeding the compile exclusion threw; the item is kept. */
 export const CAPTURE_SEEDING_FAILED_MESSAGE =
   "The note was captured, but it could not be left out of compile by default because saving the compile default failed. Leave the note out in the Compile dialog.";
+
+/** Shown when the writing-log entry could not be written; the item is kept. */
+export const CAPTURE_WRITING_LOG_FAILED_MESSAGE =
+  "The note was captured, but today's writing log was not updated, so its words are missing from the log.";
 
 /** Test seam: the clock `capturedAt` is taken from. */
 export interface CaptureCoreOptions {
@@ -98,6 +108,39 @@ async function seedExclusion(
       code: "seeding",
       severity: "error",
       message: `${CAPTURE_SEEDING_FAILED_MESSAGE} (${errorText(err)})`,
+    };
+  }
+}
+
+/**
+ * Records the captured words. Typed text is an additions entry tagged with
+ * the item's id (so the read-time Inbox exclusion applies); shared text is an
+ * import entry, which carries a `source` and no document id and is never
+ * compared with the daily goal. Pasted and typed text are logged the same.
+ */
+async function logCapturedWords(
+  projectRoot: string,
+  resourceId: string,
+  origin: CaptureRequest["origin"],
+  capture: PreparedCapture,
+): Promise<CaptureNotice | null> {
+  const added = countWords(capture.plainText);
+  if (added === 0) return null;
+  try {
+    await appendWritingLogEntry(
+      projectRoot,
+      origin === "shared"
+        ? { added, deleted: 0, source: "plaintext" }
+        : { added, deleted: 0, documentId: resourceId },
+      capture.capturedAt,
+    );
+    return null;
+  } catch (err: unknown) {
+    if (isLockedAccessError(err)) throw err;
+    return {
+      code: "writing-log",
+      severity: "error",
+      message: `${CAPTURE_WRITING_LOG_FAILED_MESSAGE} (${errorText(err)})`,
     };
   }
 }
@@ -203,6 +246,14 @@ export async function captureToInboxCore(
 
   const seeding = await seedExclusion(projectRoot, resourceId);
   if (seeding !== null) notices.push(seeding);
+
+  const logNotice = await logCapturedWords(
+    projectRoot,
+    resourceId,
+    input.origin,
+    capture,
+  );
+  if (logNotice !== null) notices.push(logNotice);
 
   return {
     status: "created",

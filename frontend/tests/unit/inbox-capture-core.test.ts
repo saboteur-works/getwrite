@@ -3,6 +3,7 @@
  * against an in-memory adapter, with no HTTP.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { createMemoryAdapter } from "../../src/lib/models/memoryAdapter";
 import {
@@ -32,6 +33,8 @@ import { softDeleteFolder } from "../../src/lib/models/trash";
 import { createKeyring } from "../../src/lib/models/crypto/keyring";
 import { writeProjectMarker } from "../../src/lib/models/crypto/project-marker";
 import { workspaceEncryptionAdapter } from "../../src/lib/models/crypto/workspace-adapter";
+import * as writingLog from "../../src/lib/models/writing-log";
+import { getWritingLogAggregateCore } from "../../src/lib/models/writing-log-core";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
 import { InvalidProjectIdCoreError } from "../../src/lib/models/project-id-core-error";
 import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
@@ -390,5 +393,215 @@ describe("captureToInboxCore: failures and access", () => {
 describe("link limit single source of truth", () => {
   it("text helper re-exports the schema constant", () => {
     expect(CAPTURE_LINK_MAX_LENGTH).toBe(CAPTURED_LINK_MAX_LENGTH);
+  });
+});
+
+const FROM = "2026-11-09T00:00:00.000Z";
+const TO = "2026-11-10T00:00:00.000Z";
+const readLogEntries = async (): Promise<
+  Array<{
+    added: number;
+    deleted: number;
+    net: number;
+    timestamp: string;
+    source?: string;
+    documentId?: string;
+  }>
+> => {
+  const all = await writingLog.readWritingLogEntries(ROOT, FROM, TO);
+  return all.flatMap((e) => ("skipped" in e ? [] : [e]));
+};
+
+describe("captureToInboxCore: writing log (FR-8)", () => {
+  it("logs a typed capture's word count as additions on the capture day", async () => {
+    const r = await captureToInboxCore(
+      { projectId: PID, text: "one two three\nfour", origin: "typed" },
+      opts,
+    );
+    if (r.status !== "created") throw new Error("not created");
+    const entries = await readLogEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      added: 4,
+      deleted: 0,
+      net: 4,
+      documentId: r.resourceId,
+      timestamp: NOW.toISOString(),
+    });
+    expect(entries[0].source).toBeUndefined();
+    expect(r.notices.find((n) => n.code === "writing-log")).toBeUndefined();
+  });
+
+  it("writes no entry for any other project", async () => {
+    const OTHER = "77777777-7777-4777-8777-777777777777";
+    await mkdir(`${TENANT}/${OTHER}`, { recursive: true });
+    await captureToInboxCore(
+      { projectId: PID, text: "a b", origin: "typed" },
+      opts,
+    );
+    expect(
+      await writingLog.readWritingLogEntries(`${TENANT}/${OTHER}`, FROM, TO),
+    ).toEqual([]);
+  });
+
+  it("logs pasted-looking and typed text the same way", async () => {
+    await captureToInboxCore(
+      { projectId: PID, text: "alpha beta", origin: "typed" },
+      opts,
+    );
+    await captureToInboxCore(
+      { projectId: PID, text: "alpha beta\n\n\ngamma", origin: "typed" },
+      opts,
+    );
+    const entries = await readLogEntries();
+    expect(entries.map((e) => e.added)).toEqual([2, 3]);
+  });
+
+  it("logs a shared capture as an import that the daily goal does not count", async () => {
+    const r = await captureToInboxCore(
+      { projectId: PID, text: "shared words here", origin: "shared" },
+      opts,
+    );
+    if (r.status !== "created") throw new Error("not created");
+    const entries = await readLogEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("plaintext");
+    expect(entries[0].added).toBe(3);
+    expect(entries[0].documentId).toBeUndefined();
+    const agg = await getWritingLogAggregateCore(PID, FROM, TO);
+    expect(agg.totals.net).toBe(0);
+    expect(agg.imported.added).toBe(3);
+  });
+
+  it("keeps the item and returns a distinct notice when the entry cannot be written", async () => {
+    vi.spyOn(writingLog, "appendWritingLogEntry").mockRejectedValueOnce(
+      new Error("log disk full"),
+    );
+    const r = await captureToInboxCore(
+      { projectId: PID, text: "kept anyway", origin: "typed" },
+      opts,
+    );
+    if (r.status !== "created") throw new Error("not created");
+    expect(await readV1(r.resourceId)).toContain("kept anyway");
+    const n = r.notices.filter((x) => x.code === "writing-log");
+    expect(n).toHaveLength(1);
+    expect(n[0].severity).toBe("error");
+    expect(n[0].message).toMatch(/writing log/i);
+    expect(r.notices.find((x) => x.code === "seeding")).toBeUndefined();
+    expect(n[0].message).not.toBe(CAPTURE_SEEDING_FAILED_MESSAGE);
+  });
+
+  it("rethrows a locked-access error from the log write", async () => {
+    const { ProjectLockedError } =
+      await import("../../src/lib/models/locked-access");
+    vi.spyOn(writingLog, "appendWritingLogEntry").mockRejectedValueOnce(
+      new ProjectLockedError(PID),
+    );
+    await expect(
+      captureToInboxCore(
+        { projectId: PID, text: "x y", origin: "typed" },
+        opts,
+      ),
+    ).rejects.toSatisfy(isLockedAccessError);
+  });
+
+  it("writes no entry for a refused capture", async () => {
+    await captureToInboxCore(
+      { projectId: PID, text: "  ", origin: "typed" },
+      opts,
+    );
+    expect(await readLogEntries()).toEqual([]);
+  });
+});
+
+describe("inbox-capture-core import graph (FR-2 pin)", () => {
+  const FRONTEND = path.resolve(__dirname, "../..");
+  const ENTRY = path.join(FRONTEND, "src/lib/models/inbox-capture-core.ts");
+  /**
+   * `node:path` is shimmed for the native build (`next.config.mjs`
+   * `turbopack.resolveAlias`), so it may appear anywhere. The other `node:*`
+   * imports below are the ones the measured graph holds today; each is
+   * shimmed too. A new `node:*` import anywhere else fails this test.
+   */
+  const ANYWHERE = new Set(["node:path"]);
+  const ALLOWED_BY_FILE: Record<string, string[]> = {
+    "src/lib/models/io.ts": ["node:fs/promises"],
+    "src/lib/models/schemas.ts": ["node:fs/promises"],
+    "src/lib/projectTypes.ts": ["node:fs/promises"],
+    "src/lib/models/storage-context.ts": ["node:async_hooks"],
+    "src/lib/models/write-barrier.ts": ["node:async_hooks"],
+    "src/lib/models/backlinks-watcher.ts": ["node:fs"],
+  };
+  const PATTERN =
+    /\b(?:import|export)\s+(?!type\b)(?:[^"';]*?\s+from\s+)?["']([^"']+)["']|\bimport\(\s*["']([^"']+)["']\s*\)/g;
+
+  function resolveLocal(from: string, spec: string): string | null {
+    const base = spec.startsWith("@/")
+      ? path.join(FRONTEND, "src", spec.slice(2))
+      : path.resolve(path.dirname(from), spec);
+    for (const c of [
+      base,
+      `${base}.ts`,
+      `${base}.tsx`,
+      path.join(base, "index.ts"),
+    ]) {
+      if (existsSync(c) && statSync(c).isFile()) return c;
+    }
+    return null;
+  }
+
+  function walkGraph(entry: string): {
+    files: Set<string>;
+    violations: string[];
+  } {
+    const files = new Set<string>();
+    const violations: string[] = [];
+    const visit = (file: string): void => {
+      if (files.has(file)) return;
+      files.add(file);
+      const rel = path.relative(FRONTEND, file).split(path.sep).join("/");
+      if (/\.(tsx|jsx)$/.test(file)) violations.push(`${rel} is a JSX file`);
+      const src = readFileSync(file, "utf8");
+      for (const m of src.matchAll(PATTERN)) {
+        const spec = m[1] ?? m[2];
+        if (spec.startsWith(".") || spec.startsWith("@/")) {
+          const next = resolveLocal(file, spec);
+          if (next) visit(next);
+          continue;
+        }
+        if (
+          spec === "react" ||
+          spec.startsWith("react/") ||
+          spec.startsWith("react-dom")
+        ) {
+          violations.push(`${rel} imports ${spec}`);
+        }
+        if (spec.startsWith("node:") && !ANYWHERE.has(spec)) {
+          if (!(ALLOWED_BY_FILE[rel] ?? []).includes(spec)) {
+            violations.push(`${rel} imports ${spec}`);
+          }
+        }
+      }
+    };
+    visit(entry);
+    return { files, violations };
+  }
+
+  it("reaches no React import and no unlisted node:* import", () => {
+    const { files, violations } = walkGraph(ENTRY);
+    expect(files.size).toBeGreaterThan(10);
+    expect(
+      files.has(path.join(FRONTEND, "src/lib/models/writing-log.ts")),
+    ).toBe(true);
+    expect(violations).toEqual([]);
+  });
+
+  it("fails on a synthetic react or unlisted node:* import", () => {
+    const specs = [
+      ..."import fs from 'node:fs';\nimport React from 'react';".matchAll(
+        PATTERN,
+      ),
+    ].map((m) => m[1]);
+    expect(specs).toEqual(["node:fs", "react"]);
   });
 });
