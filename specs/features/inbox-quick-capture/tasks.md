@@ -116,7 +116,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 8
 **Notes:** Satisfies FR-3, FR-4, FR-9 (propagation), OQ-2, OQ-17. The race guarantee is in-process only; write that as a code comment and do not claim cross-process safety. The largest and riskiest core task: if the folder-creation path from Task 1(b) cannot be called inside a held `withMetaLock` callback without taking a lock, stop and report. Estimate may move if the folder-creation path is entangled with route code.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Capture core: create the item, seed the exclusion, write the sidecar keys
 **What:** Create `inbox-capture-core.ts`, which resolves the Inbox, creates one text resource with its whole body in one call, seeds its compile exclusion, and writes `capturedAt` and `capturedLink`, returning the resource, the Inbox folder id and notices.
@@ -152,7 +152,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3, 5
 **Estimate:** 3
 **Notes:** Satisfies FR-7 (server total). Hot file: Task 11 only. Do not edit `writing-log-core.ts` (Task 12) or `DataView.tsx` (Task 13).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Goal exclusion: daily aggregate in the writing log
 **What:** Exclude Inbox items from the daily goal figure computed by `aggregateForRoot` when there is no goal filter.
@@ -161,7 +161,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3, 5
 **Estimate:** 3
 **Notes:** Satisfies FR-7 (daily goal). Hot file: Task 12 only. The documented consequence that a filed-out item makes all its words count so today's figure can jump is stated in docs (Task 27), not in this task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Goal exclusion: client-side project total in the Data view
 **What:** Exclude Inbox items from the client-computed project total in `DataView.tsx` unless a goal filter is set.
@@ -170,7 +170,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3, 5
 **Estimate:** 2
 **Notes:** Satisfies FR-7 (client total). Hot file: Task 13 only. Read `DataView.tsx` and its stories before using any prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Clear the compile exclusion on a move out of the Inbox: core, route and native backend
 **What:** After a move out of the Inbox subtree, remove the moved item's id (and for a folder every contained resource's id) from `compileDefaults`, in both the reorder route and the native backend, and return a notice when the clearing fails.
@@ -179,7 +179,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 5, 6
 **Estimate:** 5
 **Notes:** Satisfies FR-23, FR-15 (same result through the existing move path), OQ-3. The "move route" is the reorder route used by `persistReorder` (`components/ResourceTree/moveResource.ts` builds its payload); confirm that is the single move path, including `MoveResourceModal`, and record any other writer found. Do not edit `resourcesSlice.ts` (Task 15).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Show the message when the compile default was not cleared
 **What:** Carry the notice of Task 14 through the move action to a visible message, so a failed clearing is never silent.
@@ -197,7 +197,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (box behaviour), FR-17, FR-19. Read `ConfirmDialog` or the existing modal component's source and stories first and reuse its focus trap; do not use a prop before opening its source. The project choice is a slot or prop filled by Task 17's output and Task 18.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Capture project choice: list, default and remembered keys
 **What:** Add the hook and the small preferences module that read the project list when the box opens, pick the default project, and remember the last-captured and most-recently-opened project ids in `localStorage`.
@@ -206,7 +206,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-12 (all), OQ-14, OQ-15, OQ-18. The write of the most-recently-opened key in `handleOpen` is Task 20, not this task. Read the project listing client's source before using it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Capture box host: submit, notices and status
 **What:** Add the host component that fills the dialog with the project choice, calls the capture client, shows each returned notice and error, and closes with a confirmation on success.
@@ -269,7 +269,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Satisfies FR-22 (read-only display). A link opened from the sidebar must not make a network request on render (capture itself makes none). Read `MetadataSidebar.tsx` source and stories before using any prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: FR-16 pins: search, smart folders, Data view queries, Organizer and export treat an Inbox item as ordinary
 **What:** Add the tests that show an Inbox item is found by search and a smart folder query and is included in export by default, with no special case in those modules.
@@ -278,7 +278,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 3
 **Notes:** Satisfies FR-16. Tests only; adds to existing test files where a fit exists, a new file only for a path with no existing test. Runs in parallel with Tasks 7 and 11 to 14 because it touches different test files; if a file conflict with Task 6's saved-defaults test appears, this task uses its own file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: LEAD-RUN: Cmd/Ctrl+Shift+K in Chrome, Safari, Firefox and the Electron shell
 **What:** Run the real app in each of Chrome, Safari, Firefox and the Electron desktop shell and record whether the page's handler receives Cmd/Ctrl+Shift+K with `preventDefault` taking effect.
