@@ -350,6 +350,14 @@ with the app without hand-rewriting it (see OQ-90).
   FR-150. Owner request, POS task_fed2906c. Measured, Pixel 7 Pro: opening an
   image resource shows "Unable to load image." and an audio resource shows
   "Unable to load audio.")
+- US-48: As a writer, I want to capture a thought, a link or a photo in a few
+  seconds into an Inbox in my project, without opening the project or deciding
+  where it belongs, and to file it later, so that a fragment is not lost while I
+  am doing something else and does not clutter my manuscript before I have
+  sorted it. [Next] (Added 2026-11-09; FR-151 to FR-162. Owner decisions,
+  2026-11-04, note_a0e40319; Run D of note_31c82491's batching, which depends on
+  the saved defaults of FR-81 and FR-82. Read 2026-11-09, not run: no capture
+  path exists today; see FR-151.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -2072,6 +2080,161 @@ with the app without hand-rewriting it (see OQ-90).
   claimed to work on Android unless a device run showed it. [US-47] (Added
   2026-11-08. Scope fixed by OQ-177, resolved. Triage found no Organizer card
   thumbnail that loads the file URL.)
+- FR-151: Each project MUST be able to have an Inbox: an ordinary folder
+  identified by an id held in the project's config (for example
+  `config.inboxFolderId`), not by its name and not by the deprecated `special`
+  folder flag, created the first time something is captured into the project. An
+  item in the Inbox MUST be an ordinary resource of an existing type (text, image
+  or audio); capture MUST NOT add a resource type. The `special` flag MUST NOT be
+  given any meaning. [US-48] (Added 2026-11-09. Owner decisions, 2026-11-04,
+  note_a0e40319, items 1 and 2: per-project Inbox, identified by a config id,
+  created on first capture. Read 2026-11-09, not run: a grep of `electron/src`,
+  `android/`, `frontend/src` and `frontend/components` found no capture command,
+  global shortcut or Android share-intent handling, and the Android manifest has
+  only the launcher intent filter
+  (`android/android/app/src/main/AndroidManifest.xml`); `special` is accepted and
+  propagated but "assigns no special semantics"
+  (`frontend/src/lib/models/types.ts:342`). Constraints already say no folder
+  carries application semantics or is protected from rename, delete or move, so
+  the id is the only thing that makes a folder the Inbox; what happens when it
+  is deleted or trashed is open, OQ-179, FR-162.)
+- FR-152: The product MUST provide a Capture box that the writer opens with a
+  keyboard shortcut and from the command palette: the writer types text, presses
+  Enter, and is back where they were, with the text saved as a text resource in
+  the chosen project's Inbox. The box MUST ask which project, defaulting to the
+  one last captured into, and MUST work without that project being open. "Last
+  used" MUST be remembered per origin in `localStorage`, like the spelling
+  switch, not in `project.json`. If the last-used project is gone, the box MUST
+  default to the most recently opened project; with no projects, capture MUST be
+  unavailable and MUST say a project is needed. It MUST be available on
+  desktop, hosted web and a paired device. On hosted web the Capture box is the
+  only capture entry: there is no web share target (OQ-186, resolved). [US-48] (Added
+  2026-11-09. Owner decision, 2026-11-04, note_a0e40319, items 1 and 3. Where
+  "last used" is remembered, and its behaviour when that project is gone or
+  locked, are for the feature spec. A project listing for a project that is
+  locked: OQ-180, resolved, FR-160. A writer with no project: OQ-187, resolved.)
+- FR-153: A captured item MUST carry the time it was captured, the shared link
+  when the capture came with one, in a field the writer can see on the resource,
+  and a title taken from the first line of the captured text. A link-only share
+  MUST become a text resource whose body is the link, titled from the first line
+  (the link), with the link also in the field. The product MUST NOT fetch a page
+  title or any other content from the network as a default or required part of
+  capture (`docs/standards/security.md` section 8); that could only be a later
+  opt-in. [US-48] (Added
+  2026-11-09. From the note's "What a captured item carries", a proposal not
+  listed among the owner's decided items; written as a requirement because it
+  has no open question of its own. A link-only share: OQ-185, resolved, below.)
+- FR-154: On Android, the product MUST provide a capture button, and MUST be
+  offered by the Android share sheet as a target for text, links and images. A
+  shared image MUST become an image resource and shared text a text resource, in
+  the Inbox of a project the writer chooses, with the project defaulting as in
+  FR-152. The share target MUST accept text, links and images only; nothing else
+  is offered by the share sheet. Several items in one share MUST each become
+  their own resource, and an image over the media cap MUST be refused
+  individually with the FR-148 message without stopping the others. [US-48] (Added 2026-11-09. Owner decision, 2026-11-04, note_a0e40319,
+  item 3. Accepted shared types: OQ-184, resolved. Capture on hosted web
+  through a browser share target: OQ-186, resolved, none.)
+- FR-155: The Android capture button and share target MUST be verified on a
+  physical Pixel 7 Pro, or an equivalent recorded run through the real Capacitor
+  bridge, once for shared text and once for a shared image, with the build,
+  device and file size recorded in the feature's experiments file as a
+  measurement, and MUST NOT be claimed to work otherwise. A shared image larger
+  than the Android media cap MUST be refused with the plain message FR-148
+  requires and MUST NOT crash the app or lose the writer's other captures.
+  Capture on Android MUST use the in-process data layer, not an `/api` route
+  (ADR-021: the native build is a static export). [US-48] (Added 2026-11-09. The
+  Android media cap is 30 MiB, 31,457,280 bytes (FR-141, FR-148); a shared image
+  is a write of a media file under FR-142. The manifest declares `launchMode`
+  `singleTask`; whether the app receives a share while already running is not
+  measured and is part of the device run.)
+- FR-156: Words typed into the Capture box (FR-152) and the Android capture
+  button MUST be recorded in the writing log as written words, as additions on
+  the capture day. Text shared in from another app (FR-154) MUST be logged as an
+  import, with the `source` field FR-48 defines, so it stays on its separate
+  line and never counts toward the daily goal. The typed-capture log record
+  stands, but those words MUST NOT count toward the project total goal or the
+  daily goal by default, because Inbox items are excluded from both (FR-159)
+  unless the goal filter selects them. A capture MUST NOT write an entry for a
+  project other than the one it was captured into, and a failure to write the
+  entry MUST be visible, never silent (`docs/standards/failure-visibility.md`).
+  [US-48] (Added 2026-11-09. Owner decision, 2026-11-04, note_a0e40319, item 4;
+  reconciled with FR-159 by OQ-182, resolved, Gate 1, 2026-11-09. Read
+  2026-11-09, not run: `appendWritingLogEntry` is called from the save path
+  (`revision-core.ts`) and from the docx, Scrivener and plain-text importers
+  only, not from resource creation, so typed capture needs a log call the
+  creation path does not make today. Images carry no words.)
+- FR-157: The Inbox MUST be left out of compile by default, through the saved
+  defaults of FR-81 and FR-82: every resource in the Inbox, including one
+  captured after the default was first applied, MUST start unticked in the
+  compile dialog, shown as a default that can be overridden (FR-82), and a
+  resource filed out of the Inbox (FR-158) MUST then follow the dialog's
+  defaults for its new place. Export MUST include the Inbox (only compile
+  leaves it out by default), and both the compile and export defaults MUST be
+  overridable per run. [US-48]
+  (Added 2026-11-09. Owner decision, 2026-11-04, note_a0e40319, item 5, "runway
+  25"; export scope resolved from evidence, confirmed by owner at Gate 1,
+  2026-11-09, OQ-183. Saved defaults store resource ids only
+  (`saved-defaults-core.ts`), so a capture's id is added to `compileDefaults` at
+  capture time, as Sources do (`seedSourceCompileExclusion`); whether a
+  filed-out item loses its saved exclusion is a feature-spec mechanism, not a
+  product question.)
+- FR-158: The writer MUST be able to move an item out of the Inbox by the
+  existing tree move, and MUST be able to do the same with a "File to..." action
+  that picks the destination folder without dragging. The Inbox MUST show a count
+  of the items in it in the resource tree. [US-48] (Added 2026-11-09. From the
+  note's proposed design; moving resources is an existing tree operation (read,
+  not run). The count is a visibility aid, not a notification. Converting an item
+  to a Source and combining several items into one are deferred, see Out of
+  Scope.)
+- FR-159: An Inbox item MUST be found by search and by smart folders, Data view
+  queries and the Organizer as any other resource of its type is, with no
+  special case in them. The one exception is the goals: Inbox items MUST be
+  excluded by default from the project total word-count goal and the daily goal
+  (FR-47), as Sources are, unless the goal filter (FR-79) selects them; this
+  includes words typed into the Capture box (FR-156), which are still logged.
+  Moving an item out of the Inbox (FR-158) ends the exclusion. [US-48] (Added
+  2026-11-09. Owner decision, Gate 1, 2026-11-09, OQ-182, option (b). The Sources
+  exclusion is a type rule (`writing-log-core.ts:206`); the query builder has an
+  exact-match "Folder" intrinsic (`query-intrinsics.ts:72-81`), so a goal filter
+  can select the Inbox.)
+- FR-160: A capture into a locked or encrypted project MUST fail closed: it MUST
+  NOT write the captured content, or any part of it, unencrypted anywhere, and it
+  MUST tell the writer plainly that nothing was captured and why, never report
+  success. A capture into a locked or encrypted project MUST show the
+  existing unlock prompt and hold the captured content in memory only while the
+  prompt is open. If unlock is declined, or unlocking is limited on a paired
+  device, nothing MUST be written and the writer MUST be told. Accepted
+  consequence: the held content is lost if the app is killed while the prompt is
+  open. [US-48] (Added 2026-11-09. Owner decision, Gate 1, 2026-11-09, OQ-180,
+  option (b). The Android share sheet case is the note's "revisit at spec time"
+  item. The existing
+  encrypted-project constraint and `docs/standards/failure-visibility.md` apply;
+  a locked project raises the locked error today (`locked-access.ts`).)
+- FR-161: Capture MUST NOT widen what a client may do. On hosted web, a capture
+  MUST write only into a project of the signed-in tenant and the Capture box MUST
+  list only that tenant's projects. For a paired device, the capture route MUST
+  be classified and checked as every other route is (the shared limit check
+  fails closed on a missing classification), and MUST NOT let a paired device do
+  what its limits refuse. Capture MUST NOT have a paired-device limit switch of its
+  own; it is allowed wherever creating a resource already is. [US-48] (Added
+  2026-11-09. Owner decision, Gate 1, 2026-11-09, OQ-181, option (a); option (c)
+  is not definable because limits are global, not per project (resolved from
+  evidence). Read, not run:
+  `frontend/src/lib/sharing/limits-check.ts` decides over the forwarded
+  classification and exempts the desktop window; the five existing limits are
+  project deletion, unlocking, locking, encryption changes and permanent
+  deletion, and none is creating a resource.)
+- FR-162: If the id in the project's config does not name a live folder, because
+  the Inbox was deleted, trashed or purged, a capture MUST NOT fail silently,
+  MUST NOT drop the captured content, and MUST NOT leave an item that is neither
+  in a live folder nor reported. Three states MUST be covered. Live: capture goes
+  into it. In Trash: capture MUST offer "restore it" or "make a new one".
+  Purged, or the id names no folder: a new Inbox MUST be created silently and the
+  config id repointed. [US-48] (Added 2026-11-09. Owner decision, Gate 1,
+  2026-11-09, OQ-179, options (b) and (a). The note's first "revisit at spec
+  time" item. Trash carries a folder with its contents and can
+  restore it with the same id; restoring the trashed Inbox is offered before a new one is made, so the two
+  do not both exist by default.)
 
 ### Later Requirements
 
@@ -5008,6 +5171,78 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 (Raised 2026-11-08 for FR-146 to FR-150.)
 
+**OQ-179 (resolved): What happens when the project's Inbox folder is deleted, trashed or purged?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): options (b) and (a). If the configured Inbox folder is in Trash, capture offers to restore it or make a new one; if it was purged or the id names no folder, a new Inbox is created silently and the config id repointed. Three states covered: live, in Trash, purged or unknown. Applied in FR-162.
+**Options:** (a) Recreate a fresh Inbox on the next capture and point the config id at it; consequence: capture never fails, but a restore of the trashed Inbox from Trash then leaves two folders and the config names only the new one. (b) The next capture tells the writer the Inbox is in Trash and offers to restore it, or to make a new one; consequence: no duplicate, one more step at the moment capture is meant to be instant. (c) The id points at nothing and capture asks the writer to choose a folder, which becomes the Inbox; consequence: no silent creation, but the writer must decide during capture. (d) Protect the Inbox from delete and trash; consequence: simplest to reason about, but it reverses the constraint that no folder is protected, and that constraint states it is not planned to return.
+**Impact:** FR-151, FR-162; US-48; the folder-protection constraint; Trash restore.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-151 to FR-162. From note_a0e40319, "Revisit at spec time".)
+
+**OQ-180 (resolved): What does a capture do when the target project is locked or encrypted, in particular from the Android share sheet?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): option (b). Capture into a locked or encrypted project shows the existing unlock prompt and holds the captured content in memory only while it is open; if unlock is declined, or unlocking is limited on a paired device, nothing is written and the writer is told. FR-160 fail-closed stands. Accepted consequence: the content is lost if the app is killed while the prompt is open. Applied in FR-160.
+**Options:** (a) Refuse with a plain message and keep nothing; consequence: safe, but a shared item is lost and the writer must share again. (b) Show the unlock prompt first, then complete the capture, holding the shared content in memory only while the prompt is open; consequence: nothing is lost in the normal case, and the content is gone if the app is killed. (c) List only unlocked projects in the capture target; consequence: simple, but a locked project is never a target, and the writer is not told why. (d) Hold captures for locked projects in a pending store and file them on unlock; consequence: nothing is lost, but the pending store has to be encrypted, and no such store exists.
+**Impact:** FR-152, FR-160; US-48; the encrypted-project constraint.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-151 to FR-162. From note_a0e40319, "Revisit at spec time".)
+
+**OQ-181 (resolved): May a paired device capture into a project its limits restrict, and does capture need a paired-device limit switch?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): option (a). No new paired-device limit switch; capture is allowed wherever creating a resource already is; the route must still be classified. Option (c) is not definable because limits are global, not per project (resolved from evidence). Applied in FR-161.
+**Options:** (a) Capture needs no switch and is allowed wherever the device can already create resources; a locked project stays out of reach because the device cannot unlock it; consequence: no new setting, but a paired device writes into a project the host did not choose. (b) A sixth switch, on by default, that stops capture from paired devices; consequence: the host controls it, at the cost of one more setting for the Sharing screen. (c) Capture from a paired device is refused for any project that has a limit applied to it; consequence: not defined today, since limits are global to all paired devices and not per project.
+**Impact:** FR-161; US-48; paired-device limits (Feature 77).
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-151 to FR-162. From note_a0e40319, "Revisit at spec time". Limits are global, not per project, so the note's "a project the device's limits restrict" needs the owner to say which limit is meant.)
+
+**OQ-182 (resolved): Do Inbox items count toward the project word-count goal, the daily goal and the goal filter?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): option (b). Inbox items are excluded from the project total goal and the daily goal by default, like Sources, unless the goal filter selects them. Typed capture still writes words to the writing log (FR-156 stands as a log record) but those words do not count toward the goals by default. Evidence: the Sources exclusion is a type rule (`writing-log-core.ts:206`); the query builder has an exact-match "Folder" intrinsic (`query-intrinsics.ts:72-81`). Applied in FR-156 and FR-159, which no longer pull against each other.
+**Options:** (a) They count like any text document until filed, with no special case; consequence: a writer's raw fragments raise the total and (typed capture) the daily figure. (b) The Inbox is left out of both goals by default, as Sources are, unless the goal filter selects it; consequence: goals track the manuscript, but a product rule must tell the goal filter about the Inbox. (c) Left to the writer through the goal filter alone; consequence: nothing new to build, but the filter has no condition for "in a folder" unless the query builder offers one, which was not checked.
+**Impact:** FR-159, FR-156; US-48; FR-47, FR-79. Typed capture is logged as written words (FR-156), so with (a) it raises today's figure.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-151 to FR-162.)
+
+**OQ-183 (resolved): Is the Inbox also left out of export by default, or only of compile?**
+**Resolution:** Resolved from evidence, confirmed by owner at Gate 1, 2026-11-09: option (a). Compile only; export includes the Inbox; both overridable. Saved defaults store resource ids only (`saved-defaults-core.ts`), so a capture's id is added to `compileDefaults` at capture time like Sources (`seedSourceCompileExclusion`); whether a filed-out item loses its saved exclusion is a feature-spec mechanism, not a product question. Applied in FR-157.
+**Options:** (a) Compile only, as the owner's item 5 says; export includes the Inbox; consequence: matches the decision as written, but an export sends raw fragments. (b) Both compile and export; consequence: nothing leaves the project by accident, and it follows FR-81's two dialogs. (c) Compile by default, with export left to the writer's saved default; consequence: same as (a) for new projects.
+**Impact:** FR-157; US-48. Owner decision 5 names compile only; export was not discussed. OQ-144 chose compile only for Sources.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-157.)
+
+**OQ-184 (resolved): Which other kinds of shared content, if any, does the Android share target accept?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): option (a). Text, links and images only. Several items in one share each become their own resource; an image over the 30 MiB cap is refused individually with the FR-148 message and does not stop the others. Applied in FR-154 and FR-155.
+**Options:** (a) Only text, links and images as decided; anything else is not offered by the share sheet; consequence: smallest. (b) Also audio, as an audio resource, within the media cap; consequence: matches the existing resource types, one more device check. (c) Also a PDF or other file as a Source attachment; consequence: crosses into the Sources module, which can be off. Also open: several items in one share, and an image larger than the cap (FR-155 refuses it).
+**Impact:** FR-154, FR-155; US-48.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-154.)
+
+**OQ-185 (resolved): What does a shared link become?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): option (a). A link-only share becomes a text resource whose body is the link, titled from the first line, with the link also in the field. Fetching a page title from the network is ruled out as a default or required path by `docs/standards/security.md` section 8 (resolved from evidence); it could only be a later opt-in. Applied in FR-153.
+**Options:** (a) A text resource whose body is the link and whose link field holds it, titled from the first line as FR-153 says; consequence: the link is visible and searchable, and the field is redundant. (b) A text resource with an empty body and the link only in the field; consequence: the field is the single place, but an empty body makes it a stub ("Needs content"). (c) As (a), with the page title fetched from the network; consequence: a better title, but a network call in a local-first app and a failure path.
+**Impact:** FR-153, FR-154; US-48.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-153.)
+
+**OQ-186 (resolved): Does hosted web get a browser share target, and what is the Capture box's scope there?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): option (a). Hosted web gets the in-app Capture box only; no web share target; the web clipper (already deferred) is the later path. Applied in FR-152.
+**Options:** (a) No: on hosted web only the in-app Capture box exists, as decided; consequence: nothing new. (b) A web share target for an installed web app; consequence: parity with Android, but it needs a hosted-only route and was not scoped. (c) Wait for the web clipper (runway 13); consequence: one browser-side mechanism, later.
+**Impact:** FR-152, FR-154, FR-161; US-48.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-152.)
+
+**OQ-187 (resolved): What does the Capture box do for a writer with no project, or whose last-used project is gone?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-09): options (c) and (a), the evidence part resolved from evidence. If the last-used project is gone, the Capture box defaults to the most recently opened project; with no projects, capture is unavailable and says a project is needed. "Last used" is stored per origin in `localStorage`, like the spelling switch (detail for the feature spec). Applied in FR-152.
+**Options:** (a) Disable capture and say a project is needed; consequence: simple, a first-run dead end. (b) Offer to create a project, then capture into its Inbox; consequence: no dead end, a larger first-run flow. (c) For a missing last-used project only, fall back to the most recently opened one; consequence: needs no prompt.
+**Impact:** FR-152; US-48.
+**Owner:** Product owner.
+
+(Raised 2026-11-09 for FR-152.)
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -5127,7 +5362,8 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   2026-11-04): later.
 - Rich-text annotation bodies (FR-83; Owner decision, 2026-11-04): the
   body is plain text at launch.
-- Sources and an Inbox folder, which are expected to be excluded from compile
+- (The Inbox moved into scope 2026-11-09; see US-48 and FR-151 to FR-162.)
+  Sources and an Inbox folder, which are expected to be excluded from compile
   by default through FR-81 and FR-82, are separate features and not part of
   this work (Owner direction, 2026-11-04).
 - Margin notes beside the text for annotations (FR-84, resolved: OQ-135; Owner
@@ -5188,3 +5424,17 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   show "Unable to load image." on Android (POS task_fed2906c;
   `specs/features/sources-module-seam/experiments.md`, "Wave 2 Android image
   display"): a separate, pre-existing failure, not part of FR-141 to FR-145.
+- A desktop global shortcut for capture (FR-152; Owner decision, 2026-11-04,
+  note_a0e40319): later. On Windows and Linux closing the window quits the app (no
+  tray), and macOS keeps running only with `keepRunningWhenWindowClosed`, which
+  limits what a global shortcut can do.
+- `getwrite-cli capture` (FR-152; Owner decision, 2026-11-04, note_a0e40319):
+  later. Today's CLI commands are doctor, project, prune, qa, reindex,
+  repair-revisions, screenshots and templates.
+- A web clipper (FR-154; Owner decision, 2026-11-04, note_a0e40319, runway 13):
+  later.
+- Convert an Inbox item to a Source (FR-158; Owner decision, 2026-11-04,
+  note_a0e40319): later. A Source is its own resource type, and a type
+  conversion does not exist today.
+- Combine several Inbox fragments into one (FR-158; Owner decision, 2026-11-04,
+  note_a0e40319): later, after merge (runway 2).
