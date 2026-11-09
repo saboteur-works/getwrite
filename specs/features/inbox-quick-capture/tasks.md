@@ -143,7 +143,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 9
 **Estimate:** 5
 **Notes:** Satisfies FR-10, FR-9 (both transports), FR-2 (module reached through route, client and backend), OQ-1, OQ-5. Do not run `pnpm build:native` or `next build` (LEAD-RUN, Task 28). Fakes for tenancy and the gate are not evidence about a real tenant or a paired device; those stay under "Not verified".
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Goal exclusion: server goal-filtered total
 **What:** Exclude Inbox items from the server-computed project total goal unless a goal filter is set.
@@ -260,7 +260,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 22
 **Estimate:** 3
 **Notes:** Satisfies FR-15. "File to..." and the tree move must give the same result including the end of the goal exclusion (read time) and the clearing of the compile exclusion.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Sidebar block for capture time and link
 **What:** Show `capturedAt` and `capturedLink` read-only in a small metadata block in the sidebar for a captured item.
