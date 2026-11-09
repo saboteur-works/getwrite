@@ -343,6 +343,13 @@ with the app without hand-rewriting it (see OQ-90).
   2026-11-08; FR-141 to FR-145. Owner request, POS task_46ea6fe1. Measured, Pixel
   7 Pro, `specs/features/sources-module-seam/experiments.md`: 50 MiB and 100 MiB
   adds crash the app, 25 MiB works.)
+- US-47: As a writer using GetWrite on Android, I want to open an image resource
+  and see it, and open an audio resource and play it, so that the media I keep in
+  my project is usable on my phone and not only on the desktop, and to be told
+  plainly when a file cannot be shown. [Next] (Added 2026-11-08; FR-146 to
+  FR-150. Owner request, POS task_fed2906c. Measured, Pixel 7 Pro: opening an
+  image resource shows "Unable to load image." and an audio resource shows
+  "Unable to load audio.")
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -2006,6 +2013,65 @@ with the app without hand-rewriting it (see OQ-90).
   attachment routes, and their success and refusal results MUST stay as they are
   today on those platforms, which a test MUST pin. [US-46] (Added 2026-11-08.
   Owner request, POS task_46ea6fe1.)
+- FR-146: On Android, opening an image resource MUST display the image, and
+  opening an audio resource MUST play the audio, for a file up to the size FR-147
+  states. This MUST be verified on a physical Pixel 7 Pro, or an equivalent
+  recorded run through the real Capacitor bridge, once for an image resource and
+  once for an audio resource, with the build, device and file size recorded in
+  the feature's experiments file as a measurement. Only image and audio resources
+  are in scope (OQ-178, resolved). The file MUST be supplied by reading it in
+  process and handing the viewer a blob URL, through a resource-level variant of
+  Feature 103's byte read (OQ-175, resolved). [US-47] (Added 2026-11-08. Owner request, POS task_fed2906c.
+  Measured, Pixel 7 Pro: opening an image resource shows "Unable to load image."
+  and an audio resource shows "Unable to load audio.", first in the Feature 103
+  run (`specs/features/sources-module-seam/experiments.md`, "Wave 2 Android image
+  display") and again in the Feature 104 runs, 2026-11-08, for 30 MiB and 100 MiB
+  image and audio resources. Read in code, not run on device:
+  `frontend/components/WorkArea/Media/MediaView.tsx` (about line 28) builds
+  `/api/resource/<id>/file?projectId=...` for `ImageViewer.tsx` and
+  `AudioPlayer.tsx`; the native build is a static export with no `/api` routes
+  (ADR-021). In the Feature 103 record the WebView answered that URL with the
+  app's HTML. Source attachments preview and play correctly on Android through
+  Feature 103's byte-read path, which reads the file in process and hands the
+  viewer a blob URL (`frontend/src/lib/api/source-attachment-bytes.ts`,
+  `frontend/src/lib/models/source-attachment-bytes-core.ts`). Whether the
+  resource viewers take that path is resolved: they do, through a resource-level
+  variant (OQ-175).)
+- FR-147: The size up to which the Android viewers are stated to work MUST be one
+  a device run verified, and the product, its documentation and its messages
+  MUST NOT state a larger one. Reading back was verified on Android at 30 MiB
+  (audio playback and image preview of attachments) and fails above about 35 MiB
+  with an allocation error. [US-47] (Added 2026-11-08. The Android media cap is 30
+  MB (31,457,280 bytes), temporary (Feature 104). Reading the 30 MiB resource
+  viewers back is not yet measured; it is part of FR-146's device run.)
+- FR-148: On Android, an image or audio resource larger than 30 MiB (31,457,280
+  bytes, equal to `maxMediaFileBytes()` on native) MUST be refused before its
+  file is read, with a plain message that it is too large to show on this device
+  and its size; no load MUST be attempted. This includes resources created before
+  Feature 104, which can be up to 100 MB (OQ-176, resolved). A read failure for a
+  resource at or under that size MUST NOT crash the app, MUST NOT leave a blank
+  area or an indefinite loading state, and MUST show a message the writer can
+  read that says the file cannot be shown. [US-47] (Added 2026-11-08. A resource created before Feature 104 can be
+  up to 100 MB on disk, the old cap, so a viewer can meet a file larger than the
+  current Android cap. Reading above about 35 MiB failed with an allocation error
+  for attachments; whether that failure crashes the app or is caught in the
+  resource viewers was not measured.)
+- FR-149: The Android change MUST NOT alter behaviour on desktop, hosted web or a
+  paired device: the viewers MUST keep loading the file through
+  `/api/resource/<id>/file` there, and its success and refusal results MUST stay
+  as they are today, which a test MUST pin. [US-47] (Added 2026-11-08. Desktop
+  and hosted web use that route today and work.)
+- FR-150: On Android, editor-embedded images MUST show, through the same
+  in-process read as FR-146, in these paths: rendering an image in a document
+  (`GetWriteImage.ts`, `resolveGetWriteImageSrc`), insert by drop
+  (`MediaDropExtension.ts`), and the image picker and its thumbnails
+  (`ImagePickerSubmenu.tsx`). Each path MUST have its own device check. The blob
+  URLs these paths and the viewers create MUST have their lifetime managed: each
+  is revoked when it is no longer shown. Compile and export of images on Android
+  MUST be listed in the feature's documentation as not verified, and MUST NOT be
+  claimed to work on Android unless a device run showed it. [US-47] (Added
+  2026-11-08. Scope fixed by OQ-177, resolved. Triage found no Organizer card
+  thumbnail that loads the file URL.)
 
 ### Later Requirements
 
@@ -4910,6 +4976,38 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 (Raised 2026-11-08 for FR-141 to FR-145.)
 
+**OQ-175 (resolved): Does the Android image and audio viewer reuse Feature 103's in-process byte read (blob URL), or another route?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-08): option (a). Reuse Feature 103's in-process byte read, handing the viewer a blob URL. It needs a resource-level variant, because `readAttachmentBytesCore` (`frontend/src/lib/models/source-attachment-bytes-core.ts:100-165`) serves Source attachments only; the pattern to follow is `frontend/components/Sources/useAttachmentObjectUrl.ts`. The blob path holds the whole file in WebView memory; reads passed at 30 and 35 MiB and failed at 40 MiB (`specs/features/android-large-media-writes/experiments.md`). A Capacitor file URL (`convertFileSrc`, unused in the repository) is a possible later experiment if a larger size is wanted; it is not part of this feature. Applied in FR-146 to FR-148.
+**Options:** (a) Reuse the byte read (`source-attachment-bytes.ts`, `source-attachment-bytes-core.ts`), which hands the viewer a blob URL; consequence: one reading path, already device-verified for attachments at 25 MiB and 30 MiB, but the whole file is held in WebView memory, which fails above about 35 MiB. (b) A Capacitor file URL (for example `convertFileSrc`); consequence: the file is not copied into WebView memory, but it has not been tried in this app and whether it serves audio with seeking was not checked. (c) Another route; consequence: not described in the inputs.
+**Impact:** FR-146, FR-147, FR-148; US-47.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-146 to FR-150.)
+
+**OQ-176 (resolved): What does the viewer show for a resource over the verified read size, and are resources over the current cap (created before Feature 104, up to 100 MB) in scope?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-08): option (a). On Android, a resource above 30 MiB (31,457,280 bytes, equal to `maxMediaFileBytes()` on native) is refused before reading, with a plain message that it is too large to show on this device and its size; no load is attempted. Resources created before Feature 104 (up to 100 MB) are in scope as refused-with-message. Applied in FR-148.
+**Options:** (a) A plain message that the file is too large to show on this device, with the size, and no attempt to load; consequence: no crash, but a file that might have loaded is refused. (b) Attempt the load and show a message if it fails; consequence: a file over the verified size may crash the app before the message shows, which FR-148 forbids unless a device run shows it does not. (c) Out of scope: only resources up to the current cap are handled, and larger ones are listed as not verified; consequence: smallest, and FR-148 would then not be met for them.
+**Impact:** FR-147, FR-148; US-47.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-146 to FR-150.)
+
+**OQ-177 (resolved): Which other places that load a resource file by URL are in scope on Android?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-08): option (b), corrected by triage. In scope are the two viewers (`MediaView.tsx` to `ImageViewer.tsx`, and `AudioPlayer.tsx`) plus editor-embedded images: their rendering in a document (`components/Editor/Extensions/GetWriteImage.ts`, `resolveGetWriteImageSrc` about lines 47-58, render about line 106), insert by drop (`MediaDropExtension.ts:68`), and the image picker and its thumbnails (`components/Editor/MenuBar/ImagePickerSubmenu.tsx:70, 120`). Triage found no Organizer card thumbnail that loads the file URL, so that item is removed from FR-150. Compile and export of images on Android are not verified; they are listed, not claimed. Applied in FR-150, which is unblocked.
+**Options:** (a) The two viewers only (`ImageViewer.tsx`, `AudioPlayer.tsx`); the rest listed as not verified; consequence: smallest, matches the measured failure. (b) The viewers plus editor-embedded media and Organizer card thumbnails; consequence: wider, each needs its own device check. (c) Case (b) plus compile and export of images; consequence: widest, and compile and export at large sizes are already listed as not verified (OQ-173).
+**Impact:** FR-150; US-47.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-146 to FR-150.)
+
+**OQ-178 (resolved): Are video or other media types relevant to this change?**
+**Resolution:** Resolved (owner, Gate 1, 2026-11-08): option (a). Image and audio only. Evidence: `ResourceType = "text" | "image" | "audio" | "source" | "folder"` (`frontend/src/lib/models/types.ts:242`); no video resource type exists. Applied in FR-146.
+**Options:** (a) No: only image and audio resources, the types of FR-146; consequence: smallest. (b) Yes, any other media type the viewers load by the same URL; consequence: not established that any exists. Likely (a); video attachments are already deferred.
+**Impact:** FR-146; US-47.
+**Owner:** Product owner.
+
+(Raised 2026-11-08 for FR-146 to FR-150.)
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -5086,6 +5184,7 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   an excerpt of an attachment is recorded by locator alone.
 - Video attachments, a web clipper and PDF excerpt import (note_31c82491,
   runway 13): later.
-- Image resources show "Unable to load image." on Android (POS task_fed2906c;
+- (Moved into scope 2026-11-08; see US-47 and FR-146 to FR-150.) Image resources
+  show "Unable to load image." on Android (POS task_fed2906c;
   `specs/features/sources-module-seam/experiments.md`, "Wave 2 Android image
   display"): a separate, pre-existing failure, not part of FR-141 to FR-145.
