@@ -46,12 +46,15 @@ import {
   fetchResourceContentCore,
   renameFolderCore,
   renameResourceSidecarCore,
-  reorderResourcesCore,
   softDeleteFolderCore,
   setNoiseTermDismissedCore,
   updateSidecarCore,
   uploadMediaResourceCore,
 } from "../../lib/models/resource-crud-core";
+import {
+  reorderResourcesClearingInboxExclusions,
+  type ReorderOutcome,
+} from "../../lib/models/inbox-move-core";
 import type { CreateResourceOpts } from "../../lib/models/resource-factory";
 import type { AnyResource } from "../../lib/models/types";
 import {
@@ -227,9 +230,9 @@ export function createNativeResourcesTransport(
       });
     },
 
-    async reorder(projectId, payload) {
-      await run(async () => {
-        await reorderResourcesCore(projectId, {
+    async reorder(projectId, payload): Promise<ReorderOutcome> {
+      return run(async () => {
+        return reorderResourcesClearingInboxExclusions(projectId, {
           folderOrder: payload.folderOrder.map((f) => ({
             id: f.id,
             orderIndex: f.orderIndex ?? 0,

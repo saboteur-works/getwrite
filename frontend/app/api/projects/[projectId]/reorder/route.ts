@@ -3,8 +3,11 @@ import {
   InvalidProjectIdCoreError,
   ReorderProjectNotFoundError,
   ReorderSaveError,
-  reorderResourcesCore,
 } from "../../../../../src/lib/models/resource-crud-core";
+import {
+  reorderResourcesClearingInboxExclusions,
+  type ReorderOutcome,
+} from "../../../../../src/lib/models/inbox-move-core";
 import { respondInvalidProjectId } from "../../../../../src/lib/models/project-path";
 import { withStorageContext } from "../../../_tenant/with-storage-context";
 import {
@@ -46,8 +49,12 @@ async function reorder(
     return respondInvalidResourceId();
   }
 
+  let outcome: ReorderOutcome;
   try {
-    await reorderResourcesCore(projectId, { folderOrder, resourceOrder });
+    outcome = await reorderResourcesClearingInboxExclusions(projectId, {
+      folderOrder,
+      resourceOrder,
+    });
   } catch (err) {
     if (err instanceof InvalidProjectIdCoreError) {
       return respondInvalidProjectId();
@@ -66,7 +73,15 @@ async function reorder(
     throw err;
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  // The move stands even when clearing the Inbox compile default failed: the
+  // notice rides on a 200 so the client shows it without treating it as a
+  // failed move.
+  return new Response(
+    JSON.stringify(
+      outcome.notice ? { ok: true, notice: outcome.notice } : { ok: true },
+    ),
+    { status: 200 },
+  );
 }
 
 export const POST = withStorageContext(reorder);

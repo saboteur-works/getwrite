@@ -211,8 +211,16 @@ export interface ResourcesTransport {
     revisionId: string,
     content: string,
   ): Promise<PatchRevisionContentResult>;
-  /** Persists a folder/resource reorder for a project. */
-  reorder(projectId: string, payload: ReorderPayload): Promise<void>;
+  /**
+   * Persists a folder/resource reorder for a project. The native backend
+   * resolves `{ notice }` when clearing a moved item's Inbox compile default
+   * failed (Feature 106 FR-23); the HTTP transport does not read the notice
+   * yet (Task 15).
+   */
+  reorder(
+    projectId: string,
+    payload: ReorderPayload,
+  ): Promise<{ notice?: string } | void>;
 }
 
 /** True when a sidecar 404 body carries the route's resource-gone code. */

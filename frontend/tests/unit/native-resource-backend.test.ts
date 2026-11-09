@@ -571,6 +571,117 @@ describe("native resources transport — in-process backend reuses the shared re
     // No throw == success; the underlying core swallows per-item failures.
   });
 
+  describe("Inbox compile exclusion clearing on reorder (Feature 106 FR-23)", () => {
+    async function setup(): Promise<{
+      fs: ReturnType<typeof createFakeCapacitorFilesystem>;
+      projectId: string;
+      transport: ReturnType<typeof createNativeResourcesTransport>;
+      inbox: string;
+      sub: string;
+      other: string;
+      item: string;
+      inSub: string;
+    }> {
+      const fs = createFakeCapacitorFilesystem();
+      const projectId = await makeProject(fs);
+      const transport = createNativeResourcesTransport({
+        fs,
+        projectsDir: PROJECTS_DIR,
+      });
+      const folder = async (name: string): Promise<string> =>
+        (await transport.create(projectId, { type: "folder", name })).resource
+          .id;
+      const [inbox, sub, other] = [
+        await folder("Inbox"),
+        await folder("Sub"),
+        await folder("Other"),
+      ];
+      await transport.reorder(projectId, {
+        folderOrder: [{ id: sub, orderIndex: 0, folderId: inbox }],
+        resourceOrder: [],
+      });
+      const text = async (name: string, folderId: string): Promise<string> =>
+        (
+          await transport.create(projectId, {
+            type: "text",
+            name,
+            folderId,
+            text: { plainText: name },
+          })
+        ).resource.id;
+      const item = await text("item", inbox);
+      const inSub = await text("inSub", sub);
+      const adapter = capacitorFsAdapter(fs);
+      const file = path.join(PROJECTS_DIR, projectId, "project.json");
+      const project = JSON.parse(await adapter.readFile(file, "utf8")) as {
+        config?: Record<string, unknown>;
+      };
+      project.config = {
+        ...(project.config ?? {}),
+        inboxFolderId: inbox,
+        compileDefaults: { excludedResourceIds: [item, inSub] },
+      };
+      await adapter.writeFile(file, JSON.stringify(project));
+      return { fs, projectId, transport, inbox, sub, other, item, inSub };
+    }
+
+    async function excluded(
+      fs: ReturnType<typeof createFakeCapacitorFilesystem>,
+      projectId: string,
+    ): Promise<string[]> {
+      const raw = await capacitorFsAdapter(fs).readFile(
+        path.join(PROJECTS_DIR, projectId, "project.json"),
+        "utf8",
+      );
+      return (
+        JSON.parse(raw as string) as {
+          config: { compileDefaults: { excludedResourceIds: string[] } };
+        }
+      ).config.compileDefaults.excludedResourceIds;
+    }
+
+    it("clears a resource's id when it moves out of the Inbox", async () => {
+      const t = await setup();
+      const out = await t.transport.reorder(t.projectId, {
+        folderOrder: [],
+        resourceOrder: [{ id: t.item, orderIndex: 0, folderId: t.other }],
+      });
+      expect(out).toEqual({});
+      expect(await excluded(t.fs, t.projectId)).toEqual([t.inSub]);
+    });
+
+    it("clears the ids inside a folder moved out of the Inbox", async () => {
+      const t = await setup();
+      await t.transport.reorder(t.projectId, {
+        folderOrder: [{ id: t.sub, orderIndex: 0, folderId: t.other }],
+        resourceOrder: [],
+      });
+      expect(await excluded(t.fs, t.projectId)).toEqual([t.item]);
+    });
+
+    it("keeps every id for a move within the Inbox subtree and for a move into it", async () => {
+      const t = await setup();
+      const outsideId = (
+        await t.transport.create(t.projectId, {
+          type: "text",
+          name: "o",
+          folderId: t.other,
+          text: { plainText: "o" },
+        })
+      ).resource.id;
+      await t.transport.reorder(t.projectId, {
+        folderOrder: [],
+        resourceOrder: [
+          { id: t.item, orderIndex: 0, folderId: t.sub },
+          { id: outsideId, orderIndex: 1, folderId: t.inbox },
+        ],
+      });
+      expect((await excluded(t.fs, t.projectId)).sort()).toEqual(
+        [t.item, t.inSub].sort(),
+      );
+    });
+  });
+
   it("uploadMedia validates and persists an image resource from raw bytes, with no multipart/File involved", async () => {
     const fs = createFakeCapacitorFilesystem();
     const projectId = await makeProject(fs);
