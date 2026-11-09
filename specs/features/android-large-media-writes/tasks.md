@@ -61,7 +61,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-5 (adapter cleanup), FR-11, OQ-3: delete-on-failure, not temporary-name-and-rename. A replace of an existing target by a failed chunked write deletes the target; the core's catch restores the previous attachment (Task 4 tests this). The OQ-4 orphan after a process kill is accepted, not handled here.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 4: Create-path cleanup and core-level failure tests for add, replace and create
 **What:** Make `uploadMediaResourceCore` remove the run-created resource directory when `writeResourceToFile` throws, and add core-level tests that a failed write through a failing fake plugin leaves no file, sidecar entry or resource directory.
@@ -91,7 +91,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-5 (refusal before the write starts), FR-6, OQ-11. Reads Task 1's confirmation (b); if it records that the backend already checks first, the task is reduced to the add backend and records that.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 7: Unchanged-behaviour pins for desktop, hosted web and paired devices
 **What:** Add the tests that fail if the Android cap or chunking leaks to a non-Android platform.
@@ -101,7 +101,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-9. No device work; may run any time after Task 5. A route test that needs a new fixture adds to the existing route test file before creating one.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 8: LEAD-RUN: per-path device checks at the cap and one size above
 **What:** On the Pixel 7 Pro, run attachment add, attachment replace, audio and image resource create and Trash restore of a large item at the Android cap and at one size above it, and record each result.
