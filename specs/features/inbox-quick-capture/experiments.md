@@ -120,7 +120,47 @@ Not yet measured. Appended by the tasks that touch the writing log and goal figu
 - A locked-project capture in the real unlock flow.
 - Cmd/Ctrl+Shift+K with a physical keypress in Safari, Firefox (macOS) and the Electron shell; Firefox on Windows or Linux (FR-13 checks above record Chrome and the VS Code browser only, plus synthetic input in three engines).
 - The `plainText`-only create path in (a), a built-output check of (c), and (e) at sizes other than the one stated.
+- The project list in the owner's workspace returned no entry for its encrypted project (`GET /api/projects`, 14 entries, none `isLocked`), so the Capture picker's "Locked project" row was not seen in the real app.
+- The Data view goal total after a first capture (the `inboxFolderId` prop fix in 923dcfac) was checked by a component test only, not in the real app.
+- Capture into a project whose list entry has a `rootPath` that does not match its directory (seen for "Encryption Test (unencrypted copy)": directory `5f4021e2-...`, `rootPath` basename `53fed8fc-...`): not run.
+- Electron desktop shell run of capture (`pnpm electron:dev` or packaged).
 
 ## Acceptance
 
-Not yet recorded, appended by Task 28.
+### Real-app run (Stage 6.5, lead, 2026-11-09)
+
+`pnpm exec next dev -p 3123` from `frontend/` (dev build, outside the sandbox), Playwright MCP Chromium, macOS, owner's local workspace. Throwaway project "F106 capture check" (directory `a25a4405-...`, manifest id `87691dd3-...`) created for the run and left in place.
+
+- At HEAD `b4540586`, Enter in the Capture box showed "Nothing was captured: the app reported an error. Try again."; the text stayed in the box. Server: `POST /api/project/capture 500`, ENOENT on `projects/87691dd3-.../project.json`. The box sent the manifest id; routes take the directory basename (READ: `src/lib/api/projects.ts:195-201`). In this workspace 13 of 14 directories differ from their manifest id. Fixed in `923dcfac` (owner: resolve).
+- At HEAD `923dcfac`, from the Start screen with no project open: Cmd+Shift+K opened Capture; the project was chosen; "Idea: the lighthouse keeper", Shift+Enter, "keeps a second log", Enter. The box closed with the status "Captured to F106 capture check". On disk: `folders/inbox/folder.json` (name "Inbox", `parentId` null), `config.inboxFolderId` set to it; one text resource named "Idea: the lighthouse keeper", `content.txt` holding both lines, revisions `v-1` only; sidecar `capturedAt` 2026-11-09T20:16:57.524Z, no `capturedLink`; `config.compileDefaults.excludedResourceIds` = [the item], `exportDefaults` absent; `meta/writing-log/2026-11-09.json` one entry, added 8, net 8.
+- After opening the project: tree item "Inbox, 1 item"; the editor showed both lines; the metadata sidebar showed "CAPTURED 11/9/2026, 1:16:57 PM".
+- "File to..." on the item opened the move dialog (title "Move ..."); choosing Notes and Move: `POST .../reorder 200`, the item's folder became Notes, `compileDefaults.excludedResourceIds` = []; the tree's Inbox item then read "Inbox" with no count.
+- Cmd+Shift+K with the project open: the picker defaulted to "F106 capture check".
+
+### CI commands (Task 28, lead, 2026-11-09)
+
+HEAD `923dcfac1e785711c55d0b973d33b896855b67fc`, main checkout, outside the sandbox, one script running each command in turn. `grep -hE "^\s+(- )?run:" .github/workflows/*.yml` matched the Task 28 list (frontend-checks runs `pnpm build` in `frontend/`, run here as `pnpm --filter getwrite-frontend build`).
+
+| Command | Result |
+|---|---|
+| `pnpm run format:check` (root) | exit 0 |
+| `pnpm lint` (frontend) | exit 0 |
+| `pnpm run check:no-hex` (frontend) | exit 0 |
+| `pnpm typecheck` (frontend) | exit 0 |
+| `pnpm test:ci` (frontend) | exit 1: 860 files passed, 1 failed; 11358 tests passed, 1 failed, 7 expected fail, 1 skipped. The failure: `tests/unit/indexer-queue.test.ts` "records per-save time with and without one isExtra unlocked project.json read (F103 Task 1)", timed out at 5000 ms. Rerun alone (`pnpm exec vitest run tests/unit/indexer-queue.test.ts`): 25 of 25 passed. That file is not changed on this branch. |
+| `pnpm --filter getwrite-frontend build` | exit 0 |
+| `pnpm --filter getwrite-electron typecheck` (both tsc passes) | exit 0 |
+| `pnpm --filter getwrite-electron test` | exit 0, 37 files, 565 tests |
+| `pnpm --filter getwrite-electron build` | exit 0 |
+| `pnpm --filter getwrite-cli typecheck` | exit 0 |
+| `pnpm --filter getwrite-cli test` | exit 0, 23 files, 164 tests |
+| `pnpm --filter getwrite-cli build` | exit 0 |
+| `node cli/dist/bin/getwrite-cli.cjs --help`, `doctor --help`, `prune --help` | exit 0 each |
+| `pnpm --filter getwrite-android build` | exit 0 |
+| `pnpm build:native` (frontend) | exit 0 |
+| `pnpm test:e2e` (frontend) | exit 0, 249 passed, 1 skipped |
+| `pnpm knip` (root, not a CI command) | exit 1 on HEAD and exit 1 on main (`0a0a3524`, run in a temporary worktree with linked node_modules, removed afterwards) |
+
+knip compared with main (`--reporter compact`, sorted diff): on HEAD and absent on main, 7 findings, all in files added or changed by this feature: `CaptureBox.tsx: CaptureBoxIssueSeverity`, `useCaptureProjectChoice.ts: CAPTURE_PROJECTS_FAILED_MESSAGE`, `useCaptureProjectChoice.ts: CaptureProjectChoiceStatus`, `inbox-capture-types.ts: CaptureRefused`, `inbox-capture-core.ts: CAPTURE_WRITING_LOG_FAILED_MESSAGE`, `inbox-folder-core.ts: InboxResolved`, `inbox-membership.ts: InboxMembershipFailure` (unused exports 97 to 99, unused exported types 79 to 84). On main and absent on HEAD: the android unused-dependency line changed from `@capacitor/android, @capacitor/core, @capacitor/filesystem` to `@capacitor/filesystem`.
+
+No bare `tsc` was used as evidence. Unit and component tests with fakes are not evidence about browsers, devices or a real tenant. No cause is named here that an experiment did not separate; the indexer-queue timeout's cause is not established (a rerun of the file alone, which passed, does not separate one).

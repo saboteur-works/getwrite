@@ -305,7 +305,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 25, 27
 **Estimate:** 5
 **Notes:** LEAD-RUN: not for the orchestrator. `pnpm test:e2e`, `next build` and `pnpm build:native` run outside the sandbox from the main checkout, never a worktree. Satisfies FR-20, FR-18. `pnpm knip` is not in `.github/workflows` today; the owner asked for it, so it is run and compared with main. All other tasks are covered transitively through Tasks 25 and 27 (the dependency graph reaches every task).
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 28
