@@ -51,7 +51,16 @@ READ: `frontend/src/store/transport/create-transport.ts:49` is `if (process.env.
 
 ### (d) AppShell is not mounted when no project is open
 
-Not yet run, recorded by Task 2.
+Run by the lead (Task 2), 2026-11-09. Commit `84a2e145554204bb4e3bb979010c333e07ca9382` (`feat/inbox-quick-capture`, main checkout, clean tree), `pnpm exec next dev -p 3123` from `frontend/` (Next.js 16.2.6, Turbopack, dev build, outside the command sandbox), Chromium driven by the Playwright MCP, local workspace with 13 projects and no project open.
+
+**Result: the statement does not hold. `AppShell` IS mounted on the Start screen.**
+
+- `document.querySelectorAll('.appshell-shell').length` = 1 and `.appshell-body` = 1 on `/` with the Start page showing ("LOCAL-FIRST WRITING STUDIO", "13 ACTIVE PROJECTS"). `.appshell-shell` is the root element of `AppShell` (`components/Layout/AppShell.tsx:1196`).
+- Pressing Meta+K on the Start screen opened the `AppShell` resource palette (dialog "Open Resource", "No resources match your search."), so `AppShell`'s document keydown handler (`AppShell.tsx:916-926`) is live with no project open. An "Unlock your encrypted projects" dialog was also open (one encrypted project in the workspace).
+- Source agreeing with the run (READ): `app/(app)/page.tsx` returns `<AppShell showSidebars={Boolean(selectedProject)} ...>` unconditionally (around line 1111) and passes `<StartPage ...>` as its child when `!selectedProject` (around line 1132). The doc comment at `page.tsx:131` ("Renders StartPage when no project is open, and AppShell once the user has opened a project") does not match that code.
+- Console during the run: 404 for `/favicon.ico` and `/api/auth/get-session` (hosted auth not configured), Radix "Missing Description" warnings for the dialogs; no error from the shell.
+
+Consequence for the spec (not a cause claim): the Gate 3 reading "AppShell is not mounted on the Start screen" in the spec's triage note, OQ-6 and FR-1(d) is contradicted by this run. Returned to the owner before Task 20.
 
 ### (e) Time cost of the folder-tree read and the client `parentId` walk
 
