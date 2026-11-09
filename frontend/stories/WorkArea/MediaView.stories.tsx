@@ -3,7 +3,9 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { within, expect } from "storybook/test";
-import MediaView from "../../components/WorkArea/Media/MediaView";
+import MediaView, {
+  MediaStatusMessage,
+} from "../../components/WorkArea/Media/MediaView";
 import projectsReducer from "../../src/store/projectsSlice";
 import { createImageResource, createAudioResource } from "../../src/lib/models";
 import type { StoredProject } from "../../src/store/projectsSlice";
@@ -83,6 +85,41 @@ export const AudioResourceView: Story = {
         })}
       />
     </Provider>
+  ),
+};
+
+type StatusStory = StoryObj<typeof MediaStatusMessage>;
+
+export const NativeLoading: StatusStory = {
+  render: () => <MediaStatusMessage />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    expect(within(canvasElement).getByRole("status")).toBeInTheDocument();
+  },
+};
+
+export const NativeTooLarge: StatusStory = {
+  render: () => (
+    <MediaStatusMessage message="This file is 40.0 MB. It is too large to show on this device (limit 30 MB)." />
+  ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    expect(within(canvasElement).getByRole("alert")).toHaveTextContent(
+      "too large to show",
+    );
+  },
+};
+
+export const NativeReadFailed: StatusStory = {
+  render: () => <MediaStatusMessage message="This file cannot be shown." />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    expect(within(canvasElement).getByRole("alert")).toHaveTextContent(
+      "This file cannot be shown.",
+    );
+  },
+};
+
+export const NativeLocked: StatusStory = {
+  render: () => (
+    <MediaStatusMessage message="This project is locked. Unlock it, then try again." />
   ),
 };
 

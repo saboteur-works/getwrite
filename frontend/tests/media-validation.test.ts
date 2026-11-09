@@ -4,6 +4,8 @@ import {
   IMAGE_EXTENSION_MIME,
   ATTACHMENT_MESSAGES,
   ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES,
+  ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES,
+  mediaTooLargeToShowMessage,
   MAX_MEDIA_FILE_BYTES,
   maxMediaFileBytes,
   validateAttachmentFile,
@@ -338,6 +340,32 @@ describe("maxMediaFileBytes", () => {
     // Just under the cap is also accepted: no smaller cap applies off Android.
     expect(validateMediaFile({ ext: "wav", size: 104_857_600 - 1 }).ok).toBe(
       true,
+    );
+  });
+});
+
+describe("Android read threshold (Feature 105, FR-3, OQ-11)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is 31,457,280 bytes", () => {
+    expect(ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES).toBe(31_457_280);
+  });
+
+  it("is not exceeded by the native write cap, so a stored file is always readable", () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    expect(maxMediaFileBytes()).toBeLessThanOrEqual(
+      ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES,
+    );
+  });
+
+  it("words the refusal with the size in MiB to one decimal place", () => {
+    expect(mediaTooLargeToShowMessage(31_457_281)).toBe(
+      "This file is 30.0 MB. It is too large to show on this device (limit 30 MB).",
+    );
+    expect(mediaTooLargeToShowMessage(45_000_000)).toBe(
+      "This file is 42.9 MB. It is too large to show on this device (limit 30 MB).",
     );
   });
 });

@@ -60,6 +60,7 @@ Attachment files and the folder sidecar go through the storage adapter (`io.ts`)
 ## Not verified
 
 - Android: an attachment of the largest accepted size was added and read through the native transport on an in-memory fake filesystem in Node (experiments.md, "Part 2 FR-31 (d)"). That is not a device run. Note, 2026-11-08: the Android per-file cap is now 30 MB (31,457,280 bytes), verified on a Pixel 7 Pro for writing and reading back in Feature 104 (`specs/features/android-large-media-writes/experiments.md`); the earlier "100 MB cap" Phase 3 baseline is no longer stated as a current claim, and no throughput figure for large writes is stated here.
+- Viewing image and audio resources on Android (not attachments) is Feature 105: see [android-media-display.md](android-media-display.md).
 - Native lock parity (native backends against the server's locks): reasoned, not run, on a device or otherwise.
 - Not measured: the Trash tab (including its unlock prompt) and the Attachments section in a running app, a real encrypted project through the HTTP routes end to end, and a restore or purge interrupted midway.
 - `pnpm test:e2e` (until Task 39 reports) and `pnpm build:native`: not run for this page.
