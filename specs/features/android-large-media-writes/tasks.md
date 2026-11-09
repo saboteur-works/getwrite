@@ -41,7 +41,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 8
 **Notes:** LEAD-RUN, not for the orchestrator: `pnpm build:native`, `cap sync`, `gradlew :app:installDebug` with `JAVA_HOME` = Android Studio's JBR, `adb` outside the sandbox, main checkout, owner on the Pixel. Satisfies FR-1, FR-2, FR-10 (record), FR-12 (device procedure); settles OQ-1, OQ-2, OQ-8. No funnel, validation or message change is committed before this result is recorded. Task 1 may be judged complete only when a cap value exists; if none, it returns to the owner and Tasks 2 to 11 do not start. The restore path is single-path (hook-safe); do not use a whole-tree restore.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 2: Chunked write in `capacitorFsAdapter.writeFile`
 **What:** Make the adapter's `writeFile` write a buffer larger than one piece as `fs.writeFile` of the first piece then `fs.appendFile` per remaining piece, using the piece size Task 1 recorded, and leave writes at or below one piece as exactly one `fs.writeFile`.
