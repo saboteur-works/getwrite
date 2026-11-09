@@ -10,6 +10,13 @@
  * ends in a refused, locked or failed state, never in loading or an empty
  * URL. A failure is cached for current holders only; once every holder has
  * released, the next acquire reads again.
+ *
+ * Two bounds keep a node from staying on loading (Feature 105, Task 17):
+ * a read that has not settled after `readTimeoutMs` ends in the failed state
+ * (a late result is dropped), and a read still in flight when its last holder
+ * releases stays in the cache, so a holder that acquires the same resource
+ * meanwhile joins it instead of starting a second read. When that read
+ * settles with no holder, the entry is dropped and no URL is created.
  */
 import { readResourceBytes } from "./api/resource-bytes";
 import type { ResourceBytes } from "./api/resource-bytes";
@@ -24,7 +31,12 @@ export interface ResourceBlobCacheDeps {
   read(projectId: string, resourceId: string): Promise<ResourceBytes>;
   createObjectUrl(blob: Blob): string;
   revokeObjectUrl(url: string): void;
+  /** Longest a read may stay unsettled before it counts as failed. */
+  readTimeoutMs?: number;
 }
+
+/** Default bound on one read; far above the measured device read times. */
+export const DEFAULT_READ_TIMEOUT_MS = 60_000;
 
 /** One holder's view of a cache entry. */
 export interface ResourceBlobHolder {
@@ -89,17 +101,30 @@ export function createResourceBlobCache(
   }
 
   function startRead(key: string, entry: Entry, p: string, r: string): void {
+    let isSettled = false;
+    const finish = (compute: () => ResourceObjectUrlState): void => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timer);
+      if (entries.get(key) !== entry) return;
+      if (entry.listeners.size === 0) {
+        entries.delete(key);
+        return;
+      }
+      settle(entry, compute());
+    };
+    const timer = setTimeout(
+      () => finish(() => RESOURCE_FAILED_STATE),
+      deps.readTimeoutMs ?? DEFAULT_READ_TIMEOUT_MS,
+    );
     deps.read(p, r).then(
-      (result) => {
-        if (entries.get(key) !== entry) return;
-        const { state, url } = readyState(result, deps);
-        entry.url = url;
-        settle(entry, state);
-      },
-      (error: unknown) => {
-        if (entries.get(key) !== entry) return;
-        settle(entry, resourceErrorState(error));
-      },
+      (result) =>
+        finish(() => {
+          const built = readyState(result, deps);
+          entry.url = built.url;
+          return built.state;
+        }),
+      (error: unknown) => finish(() => resourceErrorState(error)),
     );
   }
 
@@ -127,6 +152,8 @@ export function createResourceBlobCache(
           isReleased = true;
           held.listeners.delete(listener);
           if (held.listeners.size > 0) return;
+          // A read still in flight stays so a later holder can join it.
+          if (held.state.status === "loading") return;
           entries.delete(key);
           if (held.url !== null) deps.revokeObjectUrl(held.url);
           held.url = null;

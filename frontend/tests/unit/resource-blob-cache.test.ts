@@ -2,7 +2,7 @@
  * Feature 105 Task 5: the shared ref-counted blob cache. A fake read function
  * and counters of created and revoked object URLs stand in for the platform.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   createResourceBlobCache,
   type ResourceBlobCacheDeps,
@@ -102,18 +102,16 @@ describe("resource blob cache", () => {
     expect(revoked).toEqual([]);
   });
 
-  it("ignores a stale read when the resource is re-acquired after release", async () => {
+  it("a resource re-acquired after release while still loading joins the in-flight read (Task 17)", async () => {
     const { cache, reads, created } = setup();
     cache.acquire("p", "r").release();
     const b = cache.acquire("p", "r");
-    expect(reads).toHaveLength(2);
+    expect(reads).toHaveLength(1);
+    expect(b.getState()).toEqual({ status: "loading" });
     reads[0].resolve(BYTES);
     await flush();
-    expect(created).toEqual([]);
-    expect(b.getState()).toEqual({ status: "loading" });
-    reads[1].resolve(BYTES);
-    await flush();
     expect(created).toHaveLength(1);
+    expect(b.getState().status).toBe("ready");
   });
 
   it("caches a failure for current holders, leaves no URL, and re-reads after all release", async () => {
@@ -182,5 +180,60 @@ describe("resource blob cache", () => {
     await flush();
     expect(seen).toEqual([]);
     other.release();
+  });
+});
+
+describe("in-flight reads and the read timeout (Task 17)", () => {
+  function pendingDeps(readTimeoutMs?: number) {
+    const reads: Deferred[] = [];
+    const created: string[] = [];
+    const deps: ResourceBlobCacheDeps = {
+      read: () =>
+        new Promise<ResourceBytes>((resolve, reject) => {
+          reads.push({ resolve, reject });
+        }),
+      createObjectUrl: () => {
+        created.push("blob:x");
+        return "blob:x";
+      },
+      revokeObjectUrl: () => {},
+      readTimeoutMs,
+    };
+    return { reads, created, cache: createResourceBlobCache(deps) };
+  }
+  const wait = (ms: number): Promise<void> =>
+    new Promise((r) => setTimeout(r, ms));
+
+  it("a holder that acquires while an orphaned read is in flight joins it", async () => {
+    const f = pendingDeps();
+    f.cache.acquire("p", "r").release();
+    const second = f.cache.acquire("p", "r");
+    expect(f.reads).toHaveLength(1);
+    f.reads[0].resolve(BYTES);
+    await wait(0);
+    expect(second.getState().status).toBe("ready");
+  });
+
+  it("a read that settles with no holder creates no URL and is forgotten", async () => {
+    const f = pendingDeps();
+    f.cache.acquire("p", "r").release();
+    f.reads[0].resolve(BYTES);
+    await wait(0);
+    expect(f.created).toHaveLength(0);
+    f.cache.acquire("p", "r");
+    expect(f.reads).toHaveLength(2);
+  });
+
+  it("a read unsettled after the timeout ends failed and drops a late result", async () => {
+    const f = pendingDeps(20);
+    const onChange = vi.fn();
+    const h = f.cache.acquire("p", "r", onChange);
+    await wait(60);
+    expect(h.getState().status).toBe("failed");
+    expect(onChange).toHaveBeenCalledTimes(1);
+    f.reads[0].resolve(BYTES);
+    await wait(0);
+    expect(f.created).toHaveLength(0);
+    expect(h.getState().status).toBe("failed");
   });
 });
