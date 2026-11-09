@@ -215,7 +215,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 10, 16, 17
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (capture from the box), FR-2 (notices shown), FR-17. The locked-project and Inbox-in-Trash flows are Task 19; this task leaves them as a clearly named unhandled branch that returns an error message, not a silent success. Hot file: Task 18 creates `CaptureBoxHost.tsx`, Task 19 extends it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Capture box host: locked project unlock flow and Inbox-in-Trash choice
 **What:** Handle a locked project by showing the existing unlock prompt and retrying once, and handle the Inbox-in-Trash needs-choice result by offering "restore it" or "make a new one".
