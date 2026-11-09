@@ -267,6 +267,18 @@ describe("DataView goal bar and the Inbox (Feature 106 FR-7, client total)", () 
     expect(screen.getByText(/^10 \/ 1,000 words/)).toBeInTheDocument();
   });
 
+  it("uses the store's inboxFolderId when the project object predates the Inbox", () => {
+    render(
+      <DataView
+        project={makeProject(1000)}
+        inboxFolderId={INBOX}
+        folders={folders}
+        resources={[...resourcesOf(10), inInbox(INBOX)]}
+      />,
+    );
+    expect(screen.getByText(/^10 \/ 1,000 words/)).toBeInTheDocument();
+  });
+
   it("counts the words once the item is filed outside the Inbox", () => {
     render(
       <DataView

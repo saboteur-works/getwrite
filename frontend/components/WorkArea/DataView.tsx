@@ -151,6 +151,11 @@ export interface DataViewProps {
    * alert in place of every result row, never as stale or empty results.
    */
   evaluationError?: string;
+  /**
+   * Inbox folder id from the store's active project. `project` can be an
+   * older copy that predates the first capture, so this wins when set.
+   */
+  inboxFolderId?: string;
   className?: string;
 }
 
@@ -164,6 +169,7 @@ type SortOrder = "lastEdited" | "name";
 export default function DataView({
   projects,
   project,
+  inboxFolderId: inboxFolderIdProp,
   view,
   resources,
   statusRollupResources,
@@ -275,7 +281,7 @@ export default function DataView({
   // request of its own). With a filter set, `filteredGoalTotal` alone decides.
   // Malformed folder data (a parent cycle) makes the figure `null`, shown as
   // unavailable, never as 0.
-  const inboxFolderId = project?.config?.inboxFolderId;
+  const inboxFolderId = inboxFolderIdProp ?? project?.config?.inboxFolderId;
   const goalWords: number | null = React.useMemo(() => {
     const computed = computeInboxSubtree(folders ?? [], inboxFolderId);
     if (!computed.ok) return null;

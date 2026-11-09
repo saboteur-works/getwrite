@@ -605,3 +605,45 @@ describe("inbox-capture-core import graph (FR-2 pin)", () => {
     expect(specs).toEqual(["node:fs", "react"]);
   });
 });
+
+describe("captureToInboxCore: directory basename differs from project.json id", () => {
+  const DIR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const MANIFEST_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const DIR_ROOT = `${TENANT}/${DIR}`;
+
+  beforeEach(async () => {
+    await mkdir(DIR_ROOT, { recursive: true });
+    await writeFile(
+      `${DIR_ROOT}/project.json`,
+      JSON.stringify({
+        id: MANIFEST_ID,
+        name: "Renamed on import",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        config: {},
+      }),
+      "utf8",
+    );
+  });
+
+  it("captures when given the directory id", async () => {
+    const r = await captureToInboxCore(
+      { projectId: DIR, text: "kept", origin: "typed" },
+      opts,
+    );
+    expect(r.status).toBe("created");
+    if (r.status !== "created") return;
+    const config = JSON.parse(
+      await readFile(`${DIR_ROOT}/project.json`, "utf8"),
+    ).config;
+    expect(config.inboxFolderId).toBe(r.inboxFolderId);
+  });
+
+  it("fails with ENOENT for the project.json id, which names no directory (the 500 measured in next dev)", async () => {
+    await expect(
+      captureToInboxCore(
+        { projectId: MANIFEST_ID, text: "lost?", origin: "typed" },
+        opts,
+      ),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});

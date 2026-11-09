@@ -347,6 +347,12 @@ export default function AppShell({
   const isQueryEvaluating = useAppSelector(selectIsEvaluating);
   const queryEvaluationError = useAppSelector(selectEvaluationErrorMessage);
   const metadataSchema = useAppSelector(selectActiveProjectMetadataSchema);
+  // The `project` prop is the page's copy from open time; a first capture
+  // writes the Inbox id to the store entry only (Feature 106 FR-7).
+  const storeInboxFolderId = useAppSelector(
+    (s) =>
+      s.projects.projects[s.projects.selectedProjectId ?? ""]?.inboxFolderId,
+  );
   const isTimelineViewEnabled = useAppSelector(selectTimelineViewEnabled);
   const moduleViews = useModuleViews();
   const isEntitiesEnabled = useAppSelector(selectEntitiesEnabled);
@@ -1643,6 +1649,7 @@ export default function AppShell({
                                     statusRollupResources={liveResources}
                                     statuses={projectStatuses}
                                     project={project ?? undefined}
+                                    inboxFolderId={storeInboxFolderId}
                                     filteredGoalTotal={filteredGoalTotal}
                                     folders={liveFolders}
                                     folderRows={folderRows}

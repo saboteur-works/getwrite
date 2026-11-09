@@ -86,6 +86,12 @@ describe("chooseDefaultProjectId", () => {
   it("prefers the last-captured project", () => {
     expect(chooseDefaultProjectId([ID_A, ID_B], ID_B, ID_A)).toBe(ID_B);
   });
+  it("prefers the open project over last-captured and last-opened", () => {
+    expect(chooseDefaultProjectId([ID_A, ID_B], ID_A, ID_A, ID_B)).toBe(ID_B);
+  });
+  it("ignores an open project that is not listed", () => {
+    expect(chooseDefaultProjectId([ID_A], ID_A, null, ID_B)).toBe(ID_A);
+  });
   it("falls back to the most recently opened when last-captured is gone", () => {
     expect(chooseDefaultProjectId([ID_A], ID_B, ID_A)).toBe(ID_A);
   });

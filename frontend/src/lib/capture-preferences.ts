@@ -67,19 +67,25 @@ export function writeLastOpenedProjectId(projectId: string): boolean {
 }
 
 /**
- * Picks the default project: last-captured, else most recently opened, else
- * the first listed. A remembered id not in `listedIds` is treated as gone.
+ * Picks the default project: the project open now, else last-captured, else
+ * most recently opened, else the first listed. An id not in `listedIds` is
+ * treated as gone. Every id is a project directory basename.
  *
  * @param listedIds - Ids of the projects offered, in display order.
  * @param lastCaptured - The remembered last-captured id, or `null`.
  * @param lastOpened - The remembered most-recently-opened id, or `null`.
+ * @param openProjectId - The directory id of the project open now, or `null`.
  * @returns The default id, or `null` when nothing is offered.
  */
 export function chooseDefaultProjectId(
   listedIds: readonly string[],
   lastCaptured: string | null,
   lastOpened: string | null,
+  openProjectId: string | null = null,
 ): string | null {
+  if (openProjectId !== null && listedIds.includes(openProjectId)) {
+    return openProjectId;
+  }
   if (lastCaptured !== null && listedIds.includes(lastCaptured)) {
     return lastCaptured;
   }

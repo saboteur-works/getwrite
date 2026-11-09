@@ -68,6 +68,59 @@ describe("useCaptureProjectChoice", () => {
     ]);
   });
 
+  describe("directory basename differs from project.json id", () => {
+    const DIR_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const DIR_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const withRoot = (dir: string, manifestId: string, name: string) => ({
+      project: {
+        id: manifestId,
+        name,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        rootPath: `/ws/projects/${dir}`,
+      },
+      folders: [],
+      resources: [],
+    });
+    const list = () => [
+      withRoot(DIR_A, ID_A, "Alpha"),
+      withRoot(DIR_B, ID_B, "Beta"),
+    ];
+
+    it("offers the directory basename, not the project.json id", async () => {
+      listProjects.mockResolvedValue(list());
+      const { result } = renderHook(() => useCaptureProjectChoice(true));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(result.current.options.map((o: { id: string }) => o.id)).toEqual([
+        DIR_A,
+        DIR_B,
+      ]);
+    });
+
+    it("matches a stored directory id for last-captured and last-opened", async () => {
+      window.localStorage.setItem(LAST_CAPTURED_PROJECT_STORAGE_KEY, DIR_B);
+      listProjects.mockResolvedValue(list());
+      const { result } = renderHook(() => useCaptureProjectChoice(true));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(result.current.defaultProjectId).toBe(DIR_B);
+    });
+
+    it("prefers the open project over last-captured", async () => {
+      window.localStorage.setItem(LAST_CAPTURED_PROJECT_STORAGE_KEY, DIR_A);
+      listProjects.mockResolvedValue(list());
+      const { result } = renderHook(() => useCaptureProjectChoice(true, DIR_B));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(result.current.defaultProjectId).toBe(DIR_B);
+    });
+
+    it("ignores an open project that is not listed", async () => {
+      window.localStorage.setItem(LAST_CAPTURED_PROJECT_STORAGE_KEY, DIR_A);
+      listProjects.mockResolvedValue(list());
+      const { result } = renderHook(() => useCaptureProjectChoice(true, ID_C));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(result.current.defaultProjectId).toBe(DIR_A);
+    });
+  });
+
   it("falls back to last-opened when last-captured is gone", async () => {
     window.localStorage.setItem(LAST_CAPTURED_PROJECT_STORAGE_KEY, ID_C);
     window.localStorage.setItem(LAST_OPENED_PROJECT_STORAGE_KEY, ID_A);

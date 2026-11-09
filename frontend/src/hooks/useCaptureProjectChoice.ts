@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { listProjects } from "../lib/api/projects";
+import { getProjectDirectoryId } from "../store/projectsSlice";
 import {
   chooseDefaultProjectId,
   readLastCapturedProjectId,
@@ -43,30 +44,48 @@ export const CAPTURE_PROJECTS_FAILED_MESSAGE =
 
 type ListEntry = Awaited<ReturnType<typeof listProjects>>[number];
 
+/**
+ * The id every route expects: the project's on-disk directory basename.
+ * A locked or unusable entry's `project.id` already is that name; a listed
+ * project's `project.id` is the manifest id, which can differ, so it is taken
+ * from `rootPath` (as `StartPage` does). Without a `rootPath` there is nothing
+ * better to use, and `project.id` is the fallback.
+ */
+function directoryIdOf(entry: ListEntry): string {
+  const rootPath = (entry.project as { rootPath?: string }).rootPath;
+  const fromRoot = rootPath ? getProjectDirectoryId(rootPath) : "";
+  return fromRoot || entry.project.id;
+}
+
 function toOption(entry: ListEntry): CaptureProjectOption | null {
   if ("isUnusable" in entry && entry.isUnusable) return null;
   if (entry.isLocked === true) {
     return {
       kind: "locked",
-      id: entry.project.id,
+      id: directoryIdOf(entry),
       label: "Locked project",
       encryptedAt: entry.project.createdAt,
     };
   }
   const name = (entry.project as { name?: string }).name;
-  return { kind: "named", id: entry.project.id, label: name ?? "Untitled" };
+  return { kind: "named", id: directoryIdOf(entry), label: name ?? "Untitled" };
 }
 
 /**
  * Reads the project list each time the Capture box opens (tenant-scoped, via
  * `listProjects`; the store's list is never used) and picks the default:
- * last-captured, else most recently opened, else the first listed. A failed
+ * the open project, else last-captured, else most recently opened, else the
+ * first listed. Every id is the project's directory basename. A failed
  * read is `failed` with a retry, never an empty picker. Unusable projects are
  * not offered; locked ones are, without a name.
  *
  * @param isOpen - Whether the box is open; nothing is read while it is closed.
+ * @param openProjectId - Directory id of the project open now, if any.
  */
-export function useCaptureProjectChoice(isOpen: boolean): CaptureProjectChoice {
+export function useCaptureProjectChoice(
+  isOpen: boolean,
+  openProjectId: string | null = null,
+): CaptureProjectChoice {
   const [status, setStatus] = useState<CaptureProjectChoiceStatus>("loading");
   const [options, setOptions] = useState<CaptureProjectOption[]>([]);
   const [defaultProjectId, setDefaultProjectId] = useState<string | null>(null);
@@ -93,6 +112,7 @@ export function useCaptureProjectChoice(isOpen: boolean): CaptureProjectChoice {
             offered.map((o) => o.id),
             readLastCapturedProjectId(),
             readLastOpenedProjectId(),
+            openProjectId,
           ),
         );
         setStatus("ready");
@@ -106,7 +126,7 @@ export function useCaptureProjectChoice(isOpen: boolean): CaptureProjectChoice {
     return () => {
       isCurrent = false;
     };
-  }, [isOpen, attempt]);
+  }, [isOpen, attempt, openProjectId]);
 
   const retry = useCallback((): void => setAttempt((n) => n + 1), []);
 

@@ -11,6 +11,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import projectsReducer, {
   setProject,
+  setSelectedProjectId,
   type StoredProject,
 } from "../../src/store/projectsSlice";
 import CaptureBoxHost from "../../components/Capture/CaptureBoxHost";
@@ -126,6 +127,83 @@ describe("CaptureBoxHost", () => {
     window.localStorage.clear();
   });
   afterEach(() => vi.restoreAllMocks());
+
+  describe("directory basename differs from project.json id", () => {
+    const DIR_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const DIR_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const listed = (dir: string, manifestId: string, name: string) => ({
+      project: {
+        id: manifestId,
+        name,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        rootPath: `/ws/projects/${dir}`,
+      },
+      folders: [],
+      resources: [],
+    });
+    const storedWithRoot = (dir: string, manifestId: string): StoredProject =>
+      ({
+        id: manifestId,
+        name: dir === DIR_A ? "Alpha" : "Beta",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        rootPath: `/ws/projects/${dir}`,
+        folders: [],
+        resources: [],
+      }) as unknown as StoredProject;
+
+    beforeEach(() => {
+      listProjects.mockResolvedValue([
+        listed(DIR_A, ID_A, "Alpha"),
+        listed(DIR_B, ID_B, "Beta"),
+      ]);
+    });
+
+    it("sends the directory id and remembers it", async () => {
+      const capture = vi.fn<CaptureFn>().mockResolvedValue(created());
+      const { onClose } = await setup(capture);
+      fireEvent.change(screen.getByLabelText("Project"), {
+        target: { value: DIR_B },
+      });
+      type("a thought");
+      submit();
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(capture).toHaveBeenCalledWith(
+        expect.objectContaining({ projectId: DIR_B }),
+      );
+      expect(
+        window.localStorage.getItem(LAST_CAPTURED_PROJECT_STORAGE_KEY),
+      ).toBe(DIR_B);
+    });
+
+    it("defaults the picker to the open project", async () => {
+      const store = makeStore();
+      store.dispatch(setProject(storedWithRoot(DIR_A, ID_A)));
+      store.dispatch(setProject(storedWithRoot(DIR_B, ID_B)));
+      store.dispatch(setSelectedProjectId(ID_B));
+      await setup(vi.fn<CaptureFn>().mockResolvedValue(created()), { store });
+      expect(
+        (screen.getByLabelText("Project") as HTMLSelectElement).value,
+      ).toBe(DIR_B);
+    });
+
+    it("lands the new inboxFolderId on the open project's store entry", async () => {
+      const store = makeStore();
+      store.dispatch(setProject(storedWithRoot(DIR_A, ID_A)));
+      store.dispatch(setProject(storedWithRoot(DIR_B, ID_B)));
+      store.dispatch(setSelectedProjectId(ID_B));
+      const capture = vi
+        .fn<CaptureFn>()
+        .mockResolvedValue(created([], "new-inbox"));
+      const { onClose } = await setup(capture, { store });
+      type("a thought");
+      submit();
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      const projects = store.getState().projects.projects;
+      expect(projects[ID_B]?.inboxFolderId).toBe("new-inbox");
+      expect(projects[ID_A]?.inboxFolderId).toBeUndefined();
+      expect(projects[DIR_B]).toBeUndefined();
+    });
+  });
 
   it("captures typed text once, remembers the project, closes and confirms", async () => {
     const capture = vi.fn<CaptureFn>().mockResolvedValue(created());

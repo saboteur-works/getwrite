@@ -43,7 +43,12 @@ import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 import { writeLastCapturedProjectId } from "../../src/lib/capture-preferences";
 import { CAPTURE_TEXT_MAX_LENGTH } from "../../src/lib/models/inbox-capture-text";
 import { isLockedAccessError } from "../../src/lib/models/crypto/locked-errors";
-import { setProject } from "../../src/store/projectsSlice";
+import {
+  getProjectDirectoryId,
+  selectActiveProjectDirectoryId,
+  setProject,
+  type StoredProject,
+} from "../../src/store/projectsSlice";
 import type { RootState } from "../../src/store/store";
 
 export interface CaptureBoxHostProps {
@@ -117,6 +122,23 @@ function optionText(option: CaptureProjectOption): string {
 }
 
 /**
+ * The store keys projects by `StoredProject.id` (the manifest id), while the
+ * Capture box names a project by its directory basename, so the entry is found
+ * through `rootPath`. An entry with no `rootPath` is matched by its key, the
+ * same fallback the project choice uses.
+ */
+function findStoredByDirectoryId(
+  projects: Record<string, StoredProject>,
+  directoryId: string,
+): StoredProject | undefined {
+  return Object.values(projects).find((p) =>
+    p.rootPath
+      ? getProjectDirectoryId(p.rootPath) === directoryId
+      : p.id === directoryId,
+  );
+}
+
+/**
  * Hosts the Capture box: fills in the project choice, calls the capture
  * client, shows each notice and failure, and closes with a confirmation on
  * success. The typed text lives in component state only.
@@ -129,7 +151,8 @@ export default function CaptureBoxHost({
 }: CaptureBoxHostProps): JSX.Element {
   const store = useStore<RootState>();
   const dispatch = useAppDispatch();
-  const choice = useCaptureProjectChoice(isOpen);
+  const openProjectId = useAppSelector(selectActiveProjectDirectoryId);
+  const choice = useCaptureProjectChoice(isOpen, openProjectId);
   const {
     state: limitsState,
     hasDesktopBridge,
@@ -168,7 +191,10 @@ export default function CaptureBoxHost({
     choice.options.find((o) => o.id === choice.defaultProjectId);
 
   function refreshStoredInbox(result: CaptureCreated, projectId: string): void {
-    const stored = store.getState().projects?.projects?.[projectId];
+    const stored = findStoredByDirectoryId(
+      store.getState().projects?.projects ?? {},
+      projectId,
+    );
     if (!stored || stored.inboxFolderId === result.inboxFolderId) return;
     store.dispatch(
       setProject({ ...stored, inboxFolderId: result.inboxFolderId }),
