@@ -112,6 +112,14 @@ export default function ResourceRowMenu({
         <button
           type="button"
           className="resource-context-menu-item"
+          onClick={() => run(() => onMove(resourceId))}
+        >
+          <FolderInput size={14} className="resource-context-menu-item-icon" />
+          File to…
+        </button>
+        <button
+          type="button"
+          className="resource-context-menu-item"
           onClick={() => run(() => onAction("copy", resourceId))}
         >
           <Copy size={14} className="resource-context-menu-item-icon" />

@@ -266,13 +266,46 @@ export default function ResourceTree({
         dispatch(updateResources(payload.resourceOrder));
       }
       if (currentProject && projectDirectoryId) {
-        dispatch(
+        // A move that could not be saved is put back (the thunk has already
+        // shown its message), so the item is left where it was.
+        const before = rawResources;
+        void dispatch(
           persistReorder({
             projectId: projectDirectoryId,
             folderOrder: payload.folderOrder,
             resourceOrder: payload.resourceOrder,
           }),
-        );
+        ).then((result) => {
+          if (result.meta.requestStatus !== "rejected") return;
+          const original = (id: string) => before.find((r) => r.id === id);
+          dispatch(
+            updateFolders(
+              payload.folderOrder.flatMap(({ id }) => {
+                const o = original(id) as Folder | undefined;
+                return o
+                  ? [
+                      {
+                        id,
+                        orderIndex: o.orderIndex,
+                        parentId: o.parentId,
+                        folderId: o.folderId,
+                      },
+                    ]
+                  : [];
+              }),
+            ),
+          );
+          dispatch(
+            updateResources(
+              payload.resourceOrder.flatMap(({ id }) => {
+                const o = original(id);
+                return o
+                  ? [{ id, orderIndex: o.orderIndex, folderId: o.folderId }]
+                  : [];
+              }),
+            ),
+          );
+        });
       }
     }
     setMoveTarget(null);
@@ -369,6 +402,14 @@ export default function ResourceTree({
           resourceId={item.getId()}
           resourceName={item.getItemName()}
           onAction={(action, resourceId) => {
+            // "File to…" opens the same picker as "Move to…"; it is handled
+            // here and never reaches the host's action callback.
+            if (action === "file-to") {
+              if (resourceId) {
+                setMoveTarget({ id: resourceId, name: item.getItemName() });
+              }
+              return;
+            }
             onResourceAction?.(action, resourceId, item.getItemName());
           }}
           onClose={() => {}}
