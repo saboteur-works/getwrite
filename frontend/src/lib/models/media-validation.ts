@@ -16,6 +16,25 @@ export const MAX_MEDIA_FILE_BYTES = 100 * 1024 * 1024;
  */
 export const ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES = 31_457_280;
 
+/**
+ * The largest media file, in bytes (30 MiB), the Android app reads whole to
+ * show or play. Separate from {@link maxMediaFileBytes}: that is the write
+ * cap, this is the read threshold, and the write cap must not exceed it
+ * (Feature 105, OQ-11). Verified on the Pixel 7 Pro at this size only.
+ */
+export const ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES = 31_457_280;
+
+/**
+ * The refusal text for a file over {@link ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES}.
+ * The size is shown in MiB (1024 * 1024 bytes) to one decimal place; the limit
+ * is the threshold in whole MiB.
+ */
+export function mediaTooLargeToShowMessage(sizeBytes: number): string {
+  const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(1);
+  const limitMb = ANDROID_VERIFIED_MAX_MEDIA_READ_BYTES / (1024 * 1024);
+  return `This file is ${sizeMb} MB. It is too large to show on this device (limit ${limitMb} MB).`;
+}
+
 /** The per-file cap for the running runtime: the Android cap on native, else `MAX_MEDIA_FILE_BYTES`. */
 export function maxMediaFileBytes(): number {
   return resolveRuntime() === "native"

@@ -54,7 +54,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Satisfies FR-2, FR-3 (unit level), FR-4 (core errors), FR-17. The threshold constant is separate from `maxMediaFileBytes()` (OQ-11). The spec's `sizeBytes` sidecar field (`types.ts:295`) is not used for the gate. Hot file `media-validation.ts` is edited by this task only.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 3: Client module, native backend and web stub
 **What:** Add `resource-bytes.ts` resolving through `createTransport` with a native backend loaded by literal dynamic import and a `.web-stub.ts` alias, following `source-attachment-bytes.ts`.
