@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -11,6 +11,11 @@ vi.mock("../components/TipTapEditor", () => ({
   __esModule: true,
   default: () => <textarea data-testid="tiptap-mock" />,
 }));
+
+const startShareListener = vi.hoisted(() =>
+  vi.fn(async () => ({ stop: async () => undefined })),
+);
+vi.mock("../src/lib/api/share-in", () => ({ startShareListener }));
 
 import AppShell from "../components/Layout/AppShell";
 import { makeStore } from "../src/store/store";
@@ -274,5 +279,46 @@ describe("AppShell: Capture top-bar entry on a native runtime (Feature 107, Task
     await renderShell(true);
 
     expect(screen.queryByRole("button", { name: "Capture" })).toBeNull();
+  });
+});
+
+/**
+ * Feature 107, Task 12 (FR-3): the share host is mounted in AppShell on a
+ * native runtime only, so its listener exists at shell mount, before any
+ * Capture open. jsdom with a fake wrapper: not evidence about the bridge.
+ */
+describe("AppShell: share listener mount (Feature 107, Task 12)", () => {
+  setupAppShellFetchStub();
+
+  beforeEach(() => {
+    startShareListener.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("adds the share listener at mount on a native runtime, with no Capture open", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    await renderShell(false);
+
+    expect(startShareListener).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "Capture" })).toBeNull();
+  });
+
+  it("adds it once even after the Capture box is opened", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    await renderShell(true);
+    fireEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await screen.findByRole("dialog", { name: "Capture" });
+
+    expect(startShareListener).toHaveBeenCalledTimes(1);
+  });
+
+  it("is not mounted and never calls the plugin on a non-native runtime", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "");
+    await renderShell(true);
+
+    expect(startShareListener).not.toHaveBeenCalled();
   });
 });
