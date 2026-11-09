@@ -81,7 +81,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-7 (in-process, no `/api` route), FR-11 (refusal on the encrypted marker), FR-17. The estimate rose from 3 to 5 after Task 1 found native writes are not encrypted (FR-1(c)); the guard is the owner's decision (refuse and document). Making native storage encrypting is a separate feature and is not done here. Inlining of the new module is checked by the lead in Task 13. Hot file `next.config.mjs`: Task 6 edits it in an earlier wave; re-read it before editing.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Java share-in plugin, manifest filters and MainActivity registration
 **What:** Write the custom Capacitor plugin in Java that reports each shared item's MIME type and size before any copy, delivers cold-start and later intents through `handleOnNewIntent` with retained events, and clears the consumed intent, plus the three manifest filters and the registration.
@@ -180,7 +180,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 2
 **Notes:** Satisfies FR-9, FR-10. Tests only; if a test fails because the shipped Feature 106 behaves differently, report it and do not change product source in this task.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Documentation updates for the Android entry and share target
 **What:** List and apply the documentation changes FR-18 requires, with the scribe stage writing the prose, so that no document states an unmeasured result as fact.
