@@ -9,6 +9,10 @@ import type { FolderRow } from "../../src/lib/folder-data-rows";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
 import StatusRollup from "./StatusRollup";
+import {
+  computeInboxSubtree,
+  isInInbox,
+} from "../../src/lib/models/inbox-membership";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import {
   useFilteredGoalTotal,
@@ -265,11 +269,24 @@ export default function DataView({
   // Owner decision, 2026-11-07 (Feature 102, FR-28): with no goal filter the
   // project goal total leaves out Sources. A goal filter that selects Sources
   // counts them through `filteredGoalTotal`; "Total words" above is unchanged.
-  const goalWords = flatResources.reduce(
-    (acc: number, r: AnyResource) =>
-      r.type === "source" ? acc : acc + getWordCount(r),
-    0,
-  );
+  //
+  // Feature 106 FR-7: with no goal filter it also leaves out resources in the
+  // Inbox subtree, found by a `parentId` walk over the store's folders (no
+  // request of its own). With a filter set, `filteredGoalTotal` alone decides.
+  // Malformed folder data (a parent cycle) makes the figure `null`, shown as
+  // unavailable, never as 0.
+  const inboxFolderId = project?.config?.inboxFolderId;
+  const goalWords: number | null = React.useMemo(() => {
+    const computed = computeInboxSubtree(folders ?? [], inboxFolderId);
+    if (!computed.ok) return null;
+    return flatResources.reduce(
+      (acc: number, r: AnyResource) =>
+        r.type === "source" || isInInbox(computed.subtree, r)
+          ? acc
+          : acc + getWordCount(r),
+      0,
+    );
+  }, [flatResources, folders, inboxFolderId]);
 
   return (
     <div className={`mt-4 space-y-6 px-4 ${className}`}>
@@ -307,6 +324,10 @@ export default function DataView({
               filteredGoalTotal={filteredGoalTotal}
               goal={wordCountGoal}
             />
+          ) : goalWords === null ? (
+            <p role="alert" className="font-mono text-[10px] text-gw-secondary">
+              {GOAL_TOTAL_UNAVAILABLE}
+            </p>
           ) : (
             <WordCountProgressBar current={goalWords} goal={wordCountGoal} />
           )}
