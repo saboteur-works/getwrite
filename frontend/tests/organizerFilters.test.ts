@@ -352,3 +352,36 @@ describe("filterChildren", () => {
     });
   });
 });
+
+describe("filterChildren treats an Inbox item as any resource (Feature 106, FR-16)", () => {
+  const INBOX_ID = "inbox-folder";
+  const item = makeText("captured", {
+    name: "Captured note",
+    folderId: INBOX_ID,
+    userMetadata: { status: "Draft" },
+  });
+  const other = makeText("other", {
+    name: "Other",
+    userMetadata: { status: "Final" },
+  });
+
+  it("keeps the item with every filter inactive", () => {
+    const out = filterChildren([item, other], initialOrganizerFilterState, []);
+    expect(out.map((r) => r.id)).toEqual(["captured", "other"]);
+  });
+
+  it("filters the item by status exactly as it filters any other", () => {
+    const state: OrganizerFilterState = {
+      ...initialOrganizerFilterState,
+      status: "Draft",
+    };
+    expect(filterChildren([item, other], state, []).map((r) => r.id)).toEqual([
+      "captured",
+    ]);
+    expect(
+      filterChildren([item, other], { ...state, status: "Final" }, []).map(
+        (r) => r.id,
+      ),
+    ).toEqual(["other"]);
+  });
+});

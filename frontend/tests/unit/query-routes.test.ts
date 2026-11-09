@@ -537,6 +537,75 @@ describe("executeEvaluate — folder source (Feature 102 FR-13)", () => {
   });
 });
 
+describe("executeEvaluate — Inbox item is an ordinary resource (Feature 106, FR-16)", () => {
+  /**
+   * A project whose `config.inboxFolderId` names a folder on disk, with one
+   * text resource filed in that folder and one outside it. The module under
+   * test is given no Inbox flag.
+   */
+  async function seedInboxProject(): Promise<{
+    root: string;
+    inboxId: string;
+    itemId: string;
+    otherId: string;
+  }> {
+    const root = await makeTmpProject();
+    const inbox = createFolderResource({ name: "Inbox" });
+    await writeResourceToFile(root, inbox);
+    const projectPath = path.join(root, PROJECT_FILENAME);
+    const project = JSON.parse(await fs.readFile(projectPath, "utf8")) as {
+      config?: Record<string, unknown>;
+    };
+    project.config = { ...(project.config ?? {}), inboxFolderId: inbox.id };
+    await fs.writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
+    const itemId = await addResource(root, {
+      type: "text",
+      name: "Captured note",
+      folderId: inbox.id,
+    });
+    const otherId = await addResource(root, {
+      type: "text",
+      name: "Loose scene",
+    });
+    return { root, inboxId: inbox.id, itemId, otherId };
+  }
+
+  it("a Data view query on a field the item has matches it, with a control outside the Inbox left out", async () => {
+    const { root, itemId, otherId } = await seedInboxProject();
+    const ids = await executeEvaluate(root, {
+      op: "eq",
+      field: "name",
+      value: "Captured note",
+    });
+    expect(ids).toEqual([itemId]);
+    expect(ids).not.toContain(otherId);
+  });
+
+  it("a Data view query on the Inbox folder id matches the filed item like any folder", async () => {
+    const { root, inboxId, itemId, otherId } = await seedInboxProject();
+    const ids = await executeEvaluate(root, {
+      op: "eq",
+      field: "folderId",
+      value: inboxId,
+    });
+    expect(ids).toEqual([itemId]);
+    expect(ids).not.toContain(otherId);
+  });
+
+  it("a smart folder (saved query, reached by ref) returns the item", async () => {
+    const { root, itemId, otherId } = await seedInboxProject();
+    const saved: SavedQuery = {
+      id: "7a1c0d9e-3b5f-4e21-8c44-0f6a2b9d1e77",
+      name: "Captured notes",
+      definition: { op: "eq", field: "name", value: "Captured note" },
+    };
+    await writeQuery(root, saved);
+    const ids = await executeEvaluate(root, { op: "ref", id: saved.id });
+    expect(ids).toEqual([itemId]);
+    expect(ids).not.toContain(otherId);
+  });
+});
+
 describe("executeEvaluate — error cases", () => {
   it("throws when a ref target does not exist", async () => {
     const root = await makeTmpProject();

@@ -196,6 +196,36 @@ describe("executeSearch — happy path", () => {
   });
 });
 
+describe("executeSearch — Inbox item is an ordinary resource (Feature 106, FR-16)", () => {
+  it("finds a word in a text resource filed in the configured Inbox folder, and not in a resource that lacks it", async () => {
+    const projectsDir = await makeTmpProjectsDir();
+    const { projectRoot } = await createTestProject(projectsDir);
+    const inboxFolderId = generateUUID();
+    const projectPath = path.join(projectRoot, PROJECT_FILENAME);
+    const project = JSON.parse(await fs.readFile(projectPath, "utf8")) as {
+      config?: Record<string, unknown>;
+    };
+    project.config = { ...(project.config ?? {}), inboxFolderId };
+    await fs.writeFile(projectPath, JSON.stringify(project, null, 2), "utf8");
+
+    const itemId = await addTestResource(projectRoot, {
+      name: "Captured note",
+      content: "A lighthouse keeper hears a bell under the water.",
+      folderId: inboxFolderId,
+    });
+    const otherId = await addTestResource(projectRoot, {
+      name: "Loose scene",
+      content: "The market opens at dawn.",
+    });
+
+    const results = await executeSearch(projectRoot, "lighthouse", {}, 50);
+
+    expect(results.map((r) => r.resourceId)).toEqual([itemId]);
+    expect(results.map((r) => r.resourceId)).not.toContain(otherId);
+    expect(results[0]!.folderId).toBe(inboxFolderId);
+  });
+});
+
 describe("executeSearch — proximity scoring", () => {
   it("ranks phrase matches above scattered term matches for multi-term queries", async () => {
     const projectsDir = await makeTmpProjectsDir();
