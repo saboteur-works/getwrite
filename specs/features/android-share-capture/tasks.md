@@ -72,7 +72,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1, 2
 **Estimate:** 5
 **Notes:** Satisfies FR-7 (core, cap), FR-9, FR-10 (no log entry for images), FR-17 (import graph). If `resolveInboxFolder` or the seeding needs a change, stop and return to the owner; the text core's validation stays unchanged. The first-capture race guarantee is inherited from `resolveInboxFolder` and is in-process only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Native encrypted-project guard, image-capture native backend, web stub and client
 **What:** Add the native guard that refuses a project carrying the encrypted marker before any write, apply it to the text and image capture backends, and expose `captureImageToInboxCore` through an in-process native backend, a `.web-stub.ts` alias and a `lib/api` client, with no route.
@@ -90,7 +90,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-2 (filters), FR-3 (delivery, no copy), FR-14 (consume), FR-16 (custom plugin, no dependency, registered before `super.onCreate`). Cannot be verified by the orchestrator: behaviour, compilation and whether Android offers the app need Gradle and a device (Tasks 13 and 14). Java only; no Kotlin Gradle plugin. A provider that omits the size sends the item without `size` (the JS side then does a counted read, Task 7). If a Gradle or `package.json` change appears needed, stop and return to the owner.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: TypeScript plugin wrapper, web stub and contract test
 **What:** Add the typed `registerPlugin('ShareIn')` wrapper loaded by a literal dynamic import, with a web stub, and test its contract against a fake plugin.
@@ -99,7 +99,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-3, FR-14 (acknowledge), FR-16 (wrapper and stub). Whether the real bridge replays a retained event to this listener is not tested by a fake; it is Task 14's observation. Hot file `next.config.mjs`: Task 6 then Task 4.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: content:// reader with size check and cap
 **What:** Add the module that reads a shared image's bytes from its `content://` URI after the project is chosen, refusing over the cap by reported size or by a counted chunked read.
@@ -108,7 +108,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-7 (bytes after choice, cap), FR-11 (no staging write). The repository's filesystem wrapper is fixed to `Directory.Data` (spike), so this module calls `@capacitor/filesystem` directly through the same dynamic-import pattern. If `readFileInChunks` cannot be called this way, stop and return to the owner; no staging copy is added by any task (OQ-3). The counted-read path is not measured on a device.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Share runner: capture every item and build the per-share result
 **What:** Add the runner that, given a share and a chosen project, captures each item in order (text through `captureToInbox` with origin `shared`, images through the reader and the image backend) and returns one result naming each refused or failed item.
@@ -126,7 +126,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (cancel, no write before choice), FR-11 (refusal, queue and count, discard on decline), FR-13 (no project). The in-memory duplicate guard is not a substitute for the native consume (FR-14): it only guards the same `shareId` within one process.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Capture entry in the AppShell top bar or menu on Android
 **What:** Add a "Capture" entry to the `AppShell` top bar or menu on a native runtime, on the Start screen and inside a project, that opens the Feature 106 Capture box.
@@ -144,7 +144,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-4, FR-8, FR-13, FR-17 (accessibility, stories). Presentational only: props in, callbacks out; the host in Task 12 supplies behaviour.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: ShareCaptureHost: listener, encrypted refusal and Trash flows, mounted in AppShell
 **What:** Add the host that registers the share listener on a native runtime, drives the session reducer, the runner, the encrypted-project refusal and the Inbox-in-Trash choice, and is mounted in `AppShell`.
