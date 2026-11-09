@@ -224,7 +224,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 18
 **Estimate:** 5
 **Notes:** Satisfies FR-9 (interface), FR-4 (interface choice), FR-17, OQ-180, OQ-179. A real unlock flow is not exercised here and stays under "Not verified". Read `UnlockModal.tsx` source and stories before using any prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Mount the box above the Start screen and AppShell, move the key handler, record the last-opened project
 **What:** Mount the Capture box once above both the Start screen and `AppShell`, move the Cmd/Ctrl+K handler there with the missing `shiftKey` check fixed, add the Cmd/Ctrl+Shift+K handler, and write the most-recently-opened key in `handleOpen`.
