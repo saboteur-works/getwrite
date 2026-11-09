@@ -300,6 +300,10 @@ const nextConfig = {
           // src/lib/api/ — same rule as above.
           "../../store/transport/native-inbox-capture-backend":
             "./src/store/transport/native-inbox-capture-backend.web-stub",
+          // Feature 107 Task 6: lib/api/share-in.ts also lives in src/lib/api/
+          // — same rule as above.
+          "../../store/transport/native-share-in-plugin":
+            "./src/store/transport/native-share-in-plugin.web-stub",
           // compile-defaults-annotations-native-pdf Task 4:
           // lib/api/compile-defaults.ts and export-defaults.ts also live in
           // src/lib/api/, so their dynamic import specifiers are
