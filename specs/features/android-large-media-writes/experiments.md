@@ -75,6 +75,25 @@ Owner decision (2026-11-08, after the ladder): the Android cap is 31,457,280 byt
 
 ## FR-4 per-path runs
 
+### Re-run at the 31,457,280-byte cap (Task 8, final)
+
+Pixel 7 Pro, Android 17, WebView 156. Debug install of branch `fix/android-large-media-writes` at commit `d613f043` (cap commit `4b50c916`), fresh launch; the screen was kept on with `adb shell svc power stayon usb`. Cap = 31,457,280 bytes; "over" = 31,457,281 bytes. Logcat for the whole run: 0 "Throwing OutOfMemoryError", 0 FATAL EXCEPTION; the app process stayed up.
+
+| Path | Size | Result | Duration | Stored | Left behind |
+| --- | --- | --- | --- | --- | --- |
+| Attachment add | 31,457,280 | "Added t8b-add-cap.wav." | 4,850 ms | 31,457,280 (sidecar size) | none |
+| Attachment add | 31,457,281 | "Error: File exceeds the 30 MB limit." | 51 ms | none | no attachment file or sidecar entry |
+| Attachment replace (of lad-30-r1.wav) | 31,457,280 | "Replaced lad-30-r1.wav with t8b-rep-cap.wav. The old file is in Trash." | 4,503 ms | 31,457,280 | none |
+| Attachment replace (of tiny.png) | 31,457,281 | "Error: File exceeds the 30 MB limit." | 51 ms | none | tiny.png unchanged at 208 bytes |
+| Audio resource create | 31,457,280 | dialog closed, "Resource created T8b audio-cap" | 4,227 ms | `original.wav` 31,457,280 | none |
+| Audio resource create | 31,457,281 | refused in dialog: "File exceeds the 30 MB limit." | 170 ms | none | no new resource directory |
+| Image resource create | 31,457,280 | "Resource created T8b image-cap" | 4,603 ms | `original.png` 31,457,280 | none |
+| Image resource create | 31,457,281 | refused in dialog: "File exceeds the 30 MB limit." | 168 ms | none | no new resource directory |
+
+Trash restore on this build: the replaced lad-30-r1.wav (31,457,280 bytes, inode 1841664) restored from the Trash tab, "1 of 1 restored." in 346 ms; the same inode 1841664 was in the resource directory afterwards (rename). The large media-resource restore was measured on the earlier build `8053699d` (inode preserved, 104,857,600 bytes) and not repeated on this build; the restore code did not change between the two builds (the cap commit touched only `media-validation.ts` and tests).
+
+### Earlier run at the previous cap (104,857,600 bytes; kept as history)
+
 Task 8, run by the lead on 2026-11-08. Pixel 7 Pro, Android 17, WebView 156. Debug install built from branch `fix/android-large-media-writes` at commit `8053699d` (Tasks 2 to 7 landed, no experiment patch) with `pnpm build:native`, `cap sync android`, `gradlew :app:installDebug`. After the build, the string `NEXT_PUBLIC_GETWRITE_RUNTIME` occurs 0 times under `frontend/out/_next/static`.
 
 Project "F103 device check". Cap = 104,857,600 bytes; "over" = 104,857,601 bytes. Files were generated in the page (16-bit mono WAV; PNG = a 640x400 canvas PNG padded with a private ancillary chunk with a valid CRC to the exact size) and handed to the file input. Stored sizes were read with `adb shell run-as ... ls -l`. Leftovers were checked by listing the resource directories and the Source's sidecar before and after. No crash and no FATAL EXCEPTION in logcat for any Task 8 run; the app process stayed up.
@@ -110,7 +129,9 @@ Run once, with large trashed items. The Task 1 trace found a rename; this run me
 
 ## FR-5 failure observation
 
-The observed failure of a write that cannot complete is the refusal above the cap. At 104,857,601 bytes each of the four write paths refused before writing (50 to 242 ms) with "File exceeds the 100 MB limit." (attachment panel: "Error: File exceeds the 100 MB limit."). The app stayed up, and no file, sidecar entry or resource directory was left.
+At the new cap (31,457,281 bytes) the refusal was observed on all four paths with "File exceeds the 30 MB limit." (attachment panel: "Error: File exceeds the 30 MB limit."), in 51 to 170 ms, with nothing left behind.
+
+Earlier run: the observed failure of a write that cannot complete is the refusal above the cap. At 104,857,601 bytes each of the four write paths refused before writing (50 to 242 ms) with "File exceeds the 100 MB limit." (attachment panel: "Error: File exceeds the 100 MB limit."). The app stayed up, and no file, sidecar entry or resource directory was left.
 
 A failure mid-funnel (a piece failing after writing has started) was not produced on the device. It is covered only by the Task 3 and Task 4 unit tests with a failing fake plugin.
 
@@ -143,7 +164,6 @@ Re-run at the lowered cap (2026-11-08): the owner chose to run the FR-1 ladder t
 - A 25 MiB single-write payload length log (FR-2): not run.
 - 45 MiB (47,185,920 bytes): not run; the ladder stopped at the first failure (40 MiB run 1). 40 MiB run 2 was not run.
 - Read between 30 MiB and 35 MiB beyond the two runs at each of those two sizes: not run.
-- The per-path checks (FR-4) at 31,457,280 bytes and at 31,457,281 bytes: pending a re-run of Task 8 (the recorded FR-4 runs are at 104,857,600 and 104,857,601 bytes).
 - A second device (F104-2: Pixel 7 Pro only).
 
 ## Acceptance
@@ -151,5 +171,5 @@ Re-run at the lowered cap (2026-11-08): the owner chose to run the FR-1 ladder t
 From the runs above, as values a run passed:
 
 - Piece size: 4 MiB (4,194,304 bytes). The chunked write passed at 104,857,600 bytes in two runs.
-- Android cap: 31,457,280 bytes (30 MiB), temporary, an owner decision of 2026-11-08 with the reason recorded under "FR-1 ladder runs"; write and read were verified at that size twice, on a Pixel 7 Pro only. Writes passed at 104,857,600 bytes on all four paths, but preview and playback failed at that size. The per-path checks (FR-4) at the new cap and one byte above are pending a re-run of Task 8; the FR-4 table above is at 104,857,600 and 104,857,601 bytes.
+- Android cap: 31,457,280 bytes (30 MiB), temporary, an owner decision of 2026-11-08 with the reason recorded under "FR-1 ladder runs"; write and read were verified at that size twice, on a Pixel 7 Pro only. Writes passed at 104,857,600 bytes on all four paths, but preview and playback failed at that size. Per-path checks passed at 31,457,280 bytes and every path refused 31,457,281 bytes (FR-4 re-run above).
 - The 100 MiB runs went through the Source attachment add, which includes the whole-file `Buffer.from(input.fileBytes)` copy at `source-attachments-core.ts:284`. The runs did not isolate that copy. Task 8 then ran attachment replace (`:469`) and audio and image resource create (`resource-persistence.ts:188-191`) at 104,857,600 bytes; each passed.

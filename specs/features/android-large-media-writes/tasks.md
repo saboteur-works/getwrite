@@ -111,7 +111,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 5
 **Notes:** LEAD-RUN, not for the orchestrator: `pnpm build:native`, `cap sync`, `gradlew :app:installDebug` (`JAVA_HOME` = Android Studio's JBR), `adb` outside the sandbox, main checkout, owner on the Pixel. Satisfies FR-4, FR-5 (device observation), FR-12, FR-14 (cap recorded as verified on this device only). Task 7 is not a dependency (no device input) but must be green before the PR. If a path fails at the cap, the cap is not changed here: return to the owner with the recorded result.
 **POS:** none yet
-**Done:** [ ] (re-run at 31,457,280 after the cap change; the 2026-11-08 runs were at 104,857,600)
+**Done:** [x] 2026-11-08 (re-run at 31,457,280)
 
 ### Task 9: LEAD-RUN: preview and playback at the cap (the read check)
 **What:** On the Pixel 7 Pro, preview and play back a stored attachment or media file at the Android cap and record the result.
@@ -131,7 +131,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-13, FR-14, OQ-12. Prose is the scribe stage's job; the orchestrator passes it the list of files and the facts above. Do not edit any document in a way that names a cause. User docs state the Android cap as 30 MB (31,457,280 bytes) and that it may be raised later; the cap is temporary (POS task_bdf70699), and no throughput figure is stated.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ### Task 11: LEAD-RUN: final suites exactly as CI runs them
 **What:** Run every CI command from the places the workflows run them, record each as run or not run, and write the acceptance record including the "Not verified" list.

@@ -35,6 +35,11 @@ media baseline measured the Capacitor base64 filesystem bridge at ~10 MB/s.
 AES-GCM runs two to three orders of magnitude faster, so crypto is well under 1%
 of a native-path write. The budget's real risk was never the cipher.
 
+Note, 2026-11-08: the ~10 MB/s figure above is the Phase 2 measurement at small
+file sizes only. It is not a statement about large media writes on Android, and
+the earlier "100 MB cap" is not a current claim; the Android media cap is 30 MB,
+verified on a Pixel 7 Pro (`specs/features/android-large-media-writes/experiments.md`).
+
 ## 2. KDF: Argon2id, and the two implementations agree
 
 WebCrypto offers only PBKDF2. Measured PBKDF2 cost on this machine:
