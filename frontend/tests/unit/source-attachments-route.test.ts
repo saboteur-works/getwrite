@@ -305,6 +305,37 @@ describe("attachment routes: boundary refusals", () => {
     expect(files.filter((f) => f.startsWith("attachment-"))).toEqual([]);
   });
 
+  it("accepts an attachment of exactly 104,857,600 bytes and refuses 104,857,601 off Android (no Android cap leaks)", async () => {
+    const id = await createSource();
+    const atCap = new Uint8Array(104_857_600);
+    atCap.set(PNG);
+    const accepted = await POST(
+      multipart(
+        "POST",
+        form({ projectId, resourceId: id }, pngFile("big.png", atCap)),
+      ),
+    );
+    expect(accepted.status).toBe(200);
+    const entry = (await accepted.json()) as { id: string; fileName: string };
+    const stored = await fs.stat(
+      path.join(projectRoot, "resources", id, entry.fileName),
+    );
+    expect(stored.size).toBe(104_857_600);
+    expect(await ids(id)).toEqual([entry.id]);
+
+    const overCap = new Uint8Array(104_857_601);
+    overCap.set(PNG);
+    const refused = await POST(
+      multipart(
+        "POST",
+        form({ projectId, resourceId: id }, pngFile("over.png", overCap)),
+      ),
+    );
+    expect(refused.status).toBe(400);
+    expect((await refused.json()).error).toBe("File exceeds the 100 MB limit.");
+    expect(await ids(id)).toEqual([entry.id]);
+  }, 60_000);
+
   it("refuses the 501st add and stores nothing", async () => {
     const id = await createSource();
     const entries = Array.from(

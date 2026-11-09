@@ -315,4 +315,28 @@ describe("maxMediaFileBytes", () => {
     expect(refused.ok).toBe(false);
     if (!refused.ok) expect(refused.reason).toBe("file-too-large");
   });
+
+  it("non-native: success result at 104,857,600 is the full pre-change shape, for both validators", () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "web");
+    const expected = {
+      ok: true,
+      type: "audio",
+      extension: "wav",
+      mime: "audio/wav",
+    };
+    expect(validateMediaFile({ ext: "wav", size: 104_857_600 })).toEqual(
+      expected,
+    );
+    expect(
+      validateAttachmentFile({
+        ext: "png",
+        size: 104_857_600,
+        bytes: PNG_BYTES,
+      }),
+    ).toEqual({ ok: true, type: "image", extension: "png", mime: "image/png" });
+    // Just under the cap is also accepted: no smaller cap applies off Android.
+    expect(validateMediaFile({ ext: "wav", size: 104_857_600 - 1 }).ok).toBe(
+      true,
+    );
+  });
 });

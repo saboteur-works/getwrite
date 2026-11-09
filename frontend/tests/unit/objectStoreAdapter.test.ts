@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { objectStoreAdapter } from "../../src/lib/models/objectStoreAdapter";
 import {
   createMemoryObjectStore,
@@ -186,5 +186,19 @@ describe("objectStoreAdapter — file-onto-directory guard", () => {
     // The directory and the source file are both left intact.
     expect((await adapter.stat("/p/dir")).isDirectory()).toBe(true);
     expect(await adapter.readFile("/p/file.txt")).toBe("x");
+  });
+});
+
+describe("objectStoreAdapter — writeFile does not chunk (Android chunking must not leak)", () => {
+  it("puts a 10 MiB buffer in the store in exactly one call, with no append", async () => {
+    const { adapter, store } = makeAdapter();
+    const putSpy = vi.spyOn(store, "put");
+    const big = Buffer.alloc(10 * 1024 * 1024, 7);
+    await adapter.writeFile("/p/big.bin", big);
+    expect(putSpy).toHaveBeenCalledTimes(1);
+    expect(putSpy.mock.calls[0][1].length).toBe(big.length);
+    expect((await adapter.readFileBuffer("/p/big.bin")).length).toBe(
+      big.length,
+    );
   });
 });
