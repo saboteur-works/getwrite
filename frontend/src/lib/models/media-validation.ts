@@ -8,8 +8,13 @@ import type { ResourceType } from "./types";
 /** Maximum accepted media file size in bytes (100 MB). */
 export const MAX_MEDIA_FILE_BYTES = 100 * 1024 * 1024;
 
-/** The Android per-file cap: 104,857,600 bytes, the size the chunked write passed on the device. */
-export const ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES = 104_857_600;
+/**
+ * The Android per-file cap: 31,457,280 bytes (30 MiB), the largest size where
+ * both the write and the read (preview/playback) passed twice on the Pixel 7
+ * Pro. Temporary, pending the read-memory investigation (POS task_bdf70699);
+ * see specs/features/android-large-media-writes/experiments.md.
+ */
+export const ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES = 31_457_280;
 
 /** The per-file cap for the running runtime: the Android cap on native, else `MAX_MEDIA_FILE_BYTES`. */
 export function maxMediaFileBytes(): number {

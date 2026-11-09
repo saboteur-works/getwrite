@@ -5,8 +5,8 @@
  * runtime is native. The non-native path keeps its order (read, then the
  * server validates).
  *
- * The cap (104,857,600) is reached with a small real `File` whose `size`
- * getter is overridden and whose `arrayBuffer` is spied, so no 100 MiB buffer
+ * The native cap (31,457,280) is reached with a small real `File` whose `size`
+ * getter is overridden and whose `arrayBuffer` is spied, so no 30 MiB buffer
  * is allocated.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -42,7 +42,8 @@ const { uploadMediaResource } = await import("../../src/lib/api/resources");
 
 const PROJECTS_DIR = "/projects";
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const TOO_LARGE = "File exceeds the 100 MB limit.";
+const TOO_LARGE = "File exceeds the 30 MB limit.";
+const TOO_LARGE_NON_NATIVE = "File exceeds the 100 MB limit.";
 
 function fileOfSize(name: string, type: string, size: number) {
   const file = new File([new Uint8Array(PNG_SIGNATURE)], name, { type });
@@ -175,14 +176,19 @@ describe("uploadMediaResource (non-native runtime)", () => {
       .mockResolvedValue({
         ok: false,
         status: 400,
-        json: async () => ({ error: TOO_LARGE, reason: "file-too-large" }),
+        json: async () => ({
+          error: TOO_LARGE_NON_NATIVE,
+          reason: "file-too-large",
+        }),
       } as Response);
     const { file, arrayBuffer } = fileOfSize(
       "a.png",
       "image/png",
       100 * 1024 * 1024 + 1,
     );
-    await expect(uploadMediaResource("p", file)).rejects.toThrow(TOO_LARGE);
+    await expect(uploadMediaResource("p", file)).rejects.toThrow(
+      TOO_LARGE_NON_NATIVE,
+    );
     expect(arrayBuffer).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fetchMock.mockRestore();

@@ -261,9 +261,9 @@ describe("maxMediaFileBytes", () => {
     vi.unstubAllEnvs();
   });
 
-  it("keeps the exported constant at 104,857,600", () => {
+  it("keeps MAX_MEDIA_FILE_BYTES at 104,857,600 and the Android cap at 31,457,280", () => {
     expect(MAX_MEDIA_FILE_BYTES).toBe(104_857_600);
-    expect(ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES).toBe(104_857_600);
+    expect(ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES).toBe(31_457_280);
   });
 
   it("returns 104,857,600 outside the native runtime", () => {
@@ -296,13 +296,14 @@ describe("maxMediaFileBytes", () => {
 
   it("returns the Android cap on the native runtime and validators use it", () => {
     vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
-    const cap = ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES;
+    const cap = 31_457_280;
+    expect(ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES).toBe(cap);
     expect(maxMediaFileBytes()).toBe(cap);
     expect(validateMediaFile({ ext: "wav", size: cap }).ok).toBe(true);
     expect(validateMediaFile({ ext: "wav", size: cap + 1 })).toEqual({
       ok: false,
       reason: "file-too-large",
-      message: `File exceeds the ${cap / (1024 * 1024)} MB limit.`,
+      message: "File exceeds the 30 MB limit.",
     });
     expect(
       validateAttachmentFile({ ext: "png", size: cap, bytes: PNG_BYTES }).ok,
