@@ -119,6 +119,11 @@ export interface StoredProject {
    * case, so this field is left as-is here rather than defaulted.
    */
   mentionHighlightDurationSeconds?: number;
+  /**
+   * Id of the project's Inbox folder (`config.inboxFolderId`, Feature 106).
+   * Present only once an Inbox exists; a project with none never gains the key.
+   */
+  inboxFolderId?: string;
 }
 
 /**
@@ -172,6 +177,9 @@ export function buildStoredProject(
     organizerCardBody: project.config?.organizerCardBody,
     mentionHighlightDurationSeconds:
       project.config?.mentionHighlightDurationSeconds,
+    ...(project.config?.inboxFolderId
+      ? { inboxFolderId: project.config.inboxFolderId }
+      : {}),
   };
 }
 
