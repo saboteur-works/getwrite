@@ -11,6 +11,7 @@ import {
 import type { CapacitorFilesystemLike } from "../../src/lib/models/capacitor-filesystem";
 import { createFakeCapacitorFilesystem } from "../../src/lib/models/capacitor-filesystem";
 import * as io from "../../src/lib/models/io";
+import { createFailingCapacitorFs } from "../helpers/failing-capacitor-fs";
 
 runStorageAdapterConformance(
   "capacitor filesystem plugin (in-memory fake)",
@@ -112,6 +113,92 @@ describe("capacitorFsAdapter chunked writeFile", () => {
     await adapter.writeFile("/a.bin", data);
     const stored = await fake.readFile({ path: "a.bin" });
     expect(Buffer.from(stored.data, "base64").equals(data)).toBe(true);
+  });
+});
+
+describe("capacitorFsAdapter chunked writeFile failure cleanup", () => {
+  class PieceError extends RangeError {}
+  const data = Buffer.alloc(CAPACITOR_WRITE_PIECE_BYTES * 3 - 10, 7);
+
+  async function fileExists(
+    fs: CapacitorFilesystemLike,
+    path: string,
+  ): Promise<boolean> {
+    try {
+      await fs.readFile({ path });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  it.each([
+    ["first", 1],
+    ["middle", 2],
+    ["last", 3],
+  ])(
+    "removes the target and rethrows the original error when the %s piece fails",
+    async (_label, failAtPiece) => {
+      const error = new PieceError("piece failed");
+      const { fs, inner, deleteAttempts } = createFailingCapacitorFs({
+        failAtPiece,
+        error,
+      });
+      const adapter = capacitorFsAdapter(fs);
+      const thrown = await adapter.writeFile("/d/a.bin", data).catch((e) => e);
+      expect(thrown).toBe(error);
+      expect(thrown).toBeInstanceOf(PieceError);
+      expect((thrown as Error).message).toBe("piece failed");
+      expect(deleteAttempts()).toBe(1);
+      expect(await fileExists(inner, "d/a.bin")).toBe(false);
+    },
+  );
+
+  it("surfaces the original error when the cleanup delete also fails", async () => {
+    const error = new PieceError("piece failed");
+    const deleteError = new Error("delete failed");
+    const { fs, deleteAttempts } = createFailingCapacitorFs({
+      failAtPiece: 3,
+      error,
+      deleteError,
+    });
+    const thrown = await capacitorFsAdapter(fs)
+      .writeFile("/d/a.bin", data)
+      .catch((e) => e);
+    expect(thrown).toBe(error);
+    expect((thrown as Error).message).not.toBe("delete failed");
+    expect(deleteAttempts()).toBe(1);
+  });
+
+  it("does not delete an unrelated pre-existing file when the first piece fails", async () => {
+    const error = new PieceError("piece failed");
+    const { fs, inner } = createFailingCapacitorFs({
+      failAtPiece: 1,
+      error,
+      targetPath: "d/a.bin",
+    });
+    await inner.writeFile({
+      path: "d/other.bin",
+      data: Buffer.from("keep").toString("base64"),
+      recursive: true,
+    });
+    await expect(
+      capacitorFsAdapter(fs).writeFile("/d/a.bin", data),
+    ).rejects.toBe(error);
+    const kept = await inner.readFile({ path: "d/other.bin" });
+    expect(Buffer.from(kept.data, "base64").toString()).toBe("keep");
+  });
+
+  it("leaves a single-piece write failure as before: original error, no delete", async () => {
+    const error = new PieceError("piece failed");
+    const { fs, deleteAttempts } = createFailingCapacitorFs({
+      failAtPiece: 1,
+      error,
+    });
+    await expect(
+      capacitorFsAdapter(fs).writeFile("/a.bin", Buffer.from("small")),
+    ).rejects.toBe(error);
+    expect(deleteAttempts()).toBe(0);
   });
 });
 

@@ -118,6 +118,23 @@ function toBuffer(data: string | Buffer): Buffer {
 }
 
 /**
+ * Best-effort delete of a partially written target. Only the `deleteFile` call
+ * is guarded and only its own failure is swallowed (the target may not exist
+ * when the first piece failed, or the delete itself may fail); the caller
+ * rethrows the original piece error, which a cleanup error must never replace.
+ */
+async function removePartialTarget(
+  fs: CapacitorFilesystemLike,
+  pluginPath: string,
+): Promise<void> {
+  try {
+    await fs.deleteFile({ path: pluginPath });
+  } catch {
+    // Intentionally ignored: cleanup is best-effort; see the doc comment.
+  }
+}
+
+/**
  * Creates a {@link StorageAdapter} backed by a {@link CapacitorFilesystemLike}
  * plugin (real on-device, or the in-memory fake in the spike gate).
  *
@@ -149,22 +166,30 @@ export function capacitorFsAdapter(
       const buffer = toBuffer(data);
       const pluginPath = toPluginPath(p);
       const first = buffer.subarray(0, CAPACITOR_WRITE_PIECE_BYTES);
-      await fs.writeFile({
-        path: pluginPath,
-        data: first.toString("base64"),
-        recursive: true,
-      });
-      for (
-        let offset = CAPACITOR_WRITE_PIECE_BYTES;
-        offset < buffer.length;
-        offset += CAPACITOR_WRITE_PIECE_BYTES
-      ) {
-        await fs.appendFile({
+      const isChunked = buffer.length > CAPACITOR_WRITE_PIECE_BYTES;
+      try {
+        await fs.writeFile({
           path: pluginPath,
-          data: buffer
-            .subarray(offset, offset + CAPACITOR_WRITE_PIECE_BYTES)
-            .toString("base64"),
+          data: first.toString("base64"),
+          recursive: true,
         });
+        for (
+          let offset = CAPACITOR_WRITE_PIECE_BYTES;
+          offset < buffer.length;
+          offset += CAPACITOR_WRITE_PIECE_BYTES
+        ) {
+          await fs.appendFile({
+            path: pluginPath,
+            data: buffer
+              .subarray(offset, offset + CAPACITOR_WRITE_PIECE_BYTES)
+              .toString("base64"),
+          });
+        }
+      } catch (err) {
+        // A failed piece of a multi-piece write would leave a truncated file at
+        // the target; remove it. A single-piece failure is unchanged.
+        if (isChunked) await removePartialTarget(fs, pluginPath);
+        throw err;
       }
     },
 
