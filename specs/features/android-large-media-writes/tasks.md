@@ -111,7 +111,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 5
 **Notes:** LEAD-RUN, not for the orchestrator: `pnpm build:native`, `cap sync`, `gradlew :app:installDebug` (`JAVA_HOME` = Android Studio's JBR), `adb` outside the sandbox, main checkout, owner on the Pixel. Satisfies FR-4, FR-5 (device observation), FR-12, FR-14 (cap recorded as verified on this device only). Task 7 is not a dependency (no device input) but must be green before the PR. If a path fails at the cap, the cap is not changed here: return to the owner with the recorded result.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [ ] (re-run at 31,457,280 after the cap change; the 2026-11-08 runs were at 104,857,600)
 
 ### Task 9: LEAD-RUN: preview and playback at the cap (the read check)
 **What:** On the Pixel 7 Pro, preview and play back a stored attachment or media file at the Android cap and record the result.
@@ -121,7 +121,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 8. Satisfies FR-8, FR-10, FR-14, OQ-5. If the cap changes here, Tasks 5 and 8 are re-run for the new size (the lead returns to the owner first).
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08 (at 31,457,280 bytes; read failed at 104,857,600 and 41,943,040)
 
 ### Task 10: Documentation updates for the limit and the removed claim
 **What:** List and apply the documentation changes FR-7 and FR-13 require, with the scribe stage writing the prose, so that no document states an Android cap or throughput that no device run measured.
@@ -129,7 +129,7 @@ Hot files and the only tasks allowed to edit them:
 **Done when:** Each file above is checked, and where it repeats the "100 MB cap accepted" claim as a current claim it is replaced by the Android cap from Task 9's Acceptance stated as "verified on a Pixel 7 Pro", with the dated notes that record the earlier claim left in place; the throughput figure appears only for measured sizes (about 9 to 11 MB/s write up to 8 MiB, 25 MiB at about 8.6 MiB/s) and no throughput figure for chunked writes appears in user documentation (durations stay in `experiments.md`); `docs/features/sources.md` and the handbook state the Android size limit and the refusal message "File exceeds the N MB limit." in each page's existing style, in plain language and without test-run wording; the `frontend/CLAUDE.md` Code Map is updated only if Tasks 2 to 6 added a file or seam, otherwise the task records that none was added; `prettier --check` passes on every touched file.
 **Depends on:** 9
 **Estimate:** 3
-**Notes:** Satisfies FR-7, FR-13, FR-14, OQ-12. Prose is the scribe stage's job; the orchestrator passes it the list of files and the facts above. Do not edit any document in a way that names a cause.
+**Notes:** Satisfies FR-7, FR-13, FR-14, OQ-12. Prose is the scribe stage's job; the orchestrator passes it the list of files and the facts above. Do not edit any document in a way that names a cause. User docs state the Android cap as 30 MB (31,457,280 bytes) and that it may be raised later; the cap is temporary (POS task_bdf70699), and no throughput figure is stated.
 **POS:** none yet
 **Done:** [ ]
 
