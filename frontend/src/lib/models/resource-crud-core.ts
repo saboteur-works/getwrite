@@ -47,7 +47,11 @@ import {
   writeResourceToFile,
   type CreateResourceOpts,
 } from ".";
-import { isPlainFileName, validateMediaFile } from "./media-validation";
+import {
+  isPlainFileName,
+  MediaUploadValidationError,
+  validateMediaFile,
+} from "./media-validation";
 import { extractAudioMetadata, extractImageMetadata } from "./media-metadata";
 import { listRevisions } from "./revision";
 import {
@@ -208,14 +212,7 @@ export class InvalidResourceFileNameCoreError extends Error {
 }
 
 /** Thrown by {@link uploadMediaResourceCore} when the file fails validation. */
-export class MediaUploadValidationError extends Error {
-  reason: string;
-  constructor(message: string, reason: string) {
-    super(message);
-    this.name = "MediaUploadValidationError";
-    this.reason = reason;
-  }
-}
+export { MediaUploadValidationError };
 
 /**
  * Plain-argument input for {@link uploadMediaResourceCore}: raw bytes plus

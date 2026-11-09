@@ -18,6 +18,20 @@ export function maxMediaFileBytes(): number {
     : MAX_MEDIA_FILE_BYTES;
 }
 
+/**
+ * Thrown when an upload is refused by validation. Lives here (not in
+ * `resource-crud-core.ts`) so the shared client can raise the same error the
+ * native core would, without importing node-only code.
+ */
+export class MediaUploadValidationError extends Error {
+  reason: string;
+  constructor(message: string, reason: string) {
+    super(message);
+    this.name = "MediaUploadValidationError";
+    this.reason = reason;
+  }
+}
+
 /** Accepted image extensions mapped to their canonical MIME type. */
 export const IMAGE_EXTENSION_MIME: Readonly<Record<string, string>> = {
   png: "image/png",

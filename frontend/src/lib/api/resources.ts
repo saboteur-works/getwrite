@@ -1,5 +1,10 @@
 import type { AnyResource, Folder, TipTapDocument } from "../models/types";
 import { createTransport } from "../../store/transport/create-transport";
+import { resolveRuntime } from "../../store/transport/runtime";
+import {
+  MediaUploadValidationError,
+  validateMediaFile,
+} from "../models/media-validation";
 import {
   CreateResourceResponseSchema,
   PatchRevisionContentResponseSchema,
@@ -512,6 +517,21 @@ export async function uploadMediaResource(
   opts?: UploadMediaResourceOpts,
 ): Promise<{ resource: AnyResource }> {
   const transport = await resolveResourcesTransport();
+  // Native only: refuse before the file is read into memory, with the error
+  // the core would raise. Other runtimes keep the server route's ordering.
+  if (resolveRuntime() === "native") {
+    const validation = validateMediaFile({
+      mime: file.type || undefined,
+      ext: file.name,
+      size: file.size,
+    });
+    if (!validation.ok) {
+      throw new MediaUploadValidationError(
+        validation.message,
+        validation.reason,
+      );
+    }
+  }
   const fileBytes = new Uint8Array(await file.arrayBuffer());
   return transport.uploadMedia(projectId, {
     fileBytes,
