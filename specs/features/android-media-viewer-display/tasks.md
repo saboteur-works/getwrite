@@ -21,6 +21,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 - The shared cache and viewport helper (new files): Task 5 only.
 - `frontend/src/**/GetWriteImage.ts` (path located by the task) and the shared placeholder component: Task 6 only; Task 7 and Task 8 read the placeholder and must not edit `GetWriteImage.ts`.
 - `ImagePickerSubmenu.tsx` and its story: Task 7 only.
+- `frontend/styles/getwrite-utilities.css` (the `.editor-menubar` mask and picker placement) and the editor menubar component hosting the picker: Task 7 only.
 - `MediaDropExtension.ts`: Task 8 only.
 - `tests/unit/get-write-image-src.test.ts`: Task 6 (adds node view tests in a new file, not this one), Task 9 (adds pins), Task 10 (adds serialization pins in a different test file or section; if the same file, Task 10 runs after Task 9).
 - `tests/unit/media-file-route.test.ts`: Task 9 only.
@@ -44,7 +45,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 3
 **Notes:** LEAD-RUN, not for the orchestrator: `pnpm build:native`, `cap sync`, `gradlew :app:installDebug` with `JAVA_HOME` = Android Studio's JBR, `adb` outside the sandbox, main checkout, owner on the Pixel. Satisfies FR-1, FR-16 (record). If the native build does not inline the variable in a module the feature adds, stop and return to the owner.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 2: Resource-level read core, size refusal and the read-threshold constant
 **What:** Add the core that returns an image or audio resource's own file bytes, MIME and kind, refusing by size before any read, plus the exported read-threshold constant and the refusal message.
@@ -91,13 +92,13 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Notes:** Satisfies FR-4, FR-8 (code), FR-11, FR-12 (editor), OQ-3, OQ-4, OQ-9, OQ-10. First node view in the repo: the jsdom tests are not evidence that it works on the device (Task 13). Hot file `GetWriteImage.ts` is edited by this task only.
 **Done:** [ ]
 
-### Task 7: Picker lazy loading and "too large" placeholder
-**What:** Make the image picker read each entry's picture only near the viewport through the shared cache, show the placeholder for a refused or failed entry, and keep every entry listed and insertable.
-**Files:** `ImagePickerSubmenu.tsx` (path located by the task), its stories, existing picker tests under `frontend/tests/`
-**Done when:** Tests first, then green: on native an entry near the viewport reads once through the cache and shows an `<img>` with the blob URL; an entry far from the viewport reads nothing (a spy shows zero reads) until it becomes near; an entry over the threshold shows the "too large" placeholder (Task 6 placeholder, `editor-image-picker-thumb-placeholder` style) with the refusal message, is still listed, and choosing it still inserts the node with the stored web `src`; a read failure shows the failure placeholder and stays insertable; which resources the picker lists is unchanged (list test passes unchanged); closing the picker or a list change releases entries and every created URL is revoked (counter assertion), and a late read creates none; on web the entry `<img>` still uses `resolveGetWriteImageSrc` and the in-process read is not called. Stories updated for the new states. `pnpm typecheck` and `pnpm lint` run.
+### Task 7: Picker lazy loading, "too large" placeholder, and picker visibility at phone width
+**What:** Make the image picker read each entry's picture only near the viewport through the shared cache, show the placeholder for a refused or failed entry, and keep every entry listed and insertable. Also (owner decision 2026-11-09, after the Task 1 baseline) make the picker visible, tappable and fully inside the viewport at phone width, without changing the desktop look.
+**Files:** `ImagePickerSubmenu.tsx` (path located by the task), its stories, existing picker tests under `frontend/tests/`, `frontend/styles/getwrite-utilities.css` (hot file, Task 7 only), the editor menubar component that hosts the picker if the picker is moved out of the masked element (located by the task)
+**Done when:** Tests first, then green: on native an entry near the viewport reads once through the cache and shows an `<img>` with the blob URL; an entry far from the viewport reads nothing (a spy shows zero reads) until it becomes near; an entry over the threshold shows the "too large" placeholder (Task 6 placeholder, `editor-image-picker-thumb-placeholder` style) with the refusal message, is still listed, and choosing it still inserts the node with the stored web `src`; a read failure shows the failure placeholder and stays insertable; which resources the picker lists is unchanged (list test passes unchanged); closing the picker or a list change releases entries and every created URL is revoked (counter assertion), and a late read creates none; on web the entry `<img>` still uses `resolveGetWriteImageSrc` and the in-process read is not called. Stories updated for the new states. Picker visibility at phone width (first, before the layout change): the labelled hypothesis from `experiments.md` FR-1 baseline item 3 is tested, namely whether the phone/tablet-only `mask-image` on `.editor-menubar` (`frontend/styles/getwrite-utilities.css`) clips or covers the fixed-position `.editor-image-picker`; the result is recorded in the task report as a READ or test finding, not as a cause claim. Then, at 411 CSS px viewport width, the picker is visible, tappable and fully inside the viewport (no entry centre beyond the viewport edge), shown by a test or a Storybook check at 390 px that `elementFromPoint` at an entry's centre returns the picker entry (the picker is the top element) and that the picker's bounding box fits the viewport; a desktop-unchanged check (same placement and styles at a desktop width, by test or story) passes. The real-device proof is not part of this task: Task 13 records that a real `adb shell input tap` on an entry inserts the image. `pnpm typecheck` and `pnpm lint` run.
 **Depends on:** 5, 6
-**Estimate:** 5
-**Notes:** Satisfies FR-3 (picker), FR-4, FR-10, FR-11, FR-12, OQ-5, OQ-8, OQ-10. Read `ImagePickerSubmenu.tsx` source and stories before using any prop.
+**Estimate:** 8
+**Notes:** Satisfies FR-3 (picker), FR-4, FR-10 (including picker visibility and placement at phone width), FR-11, FR-12, OQ-5, OQ-8, OQ-10. Estimate raised from 5 to 8 for the visibility work (owner decision 2026-11-09). `getwrite-utilities.css` is a hot file this task owns. Read `ImagePickerSubmenu.tsx` source and stories before using any prop.
 **Done:** [ ]
 
 ### Task 8: Drop path inserts a node that renders and stores the web URL
@@ -183,7 +184,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 
 ## Summary
 - Total tasks: 16
-- Total estimated effort: 59 story points (3 + 5 + 3 + 5 + 5 + 5 + 5 + 2 + 2 + 2 + 3 + 5 + 5 + 3 + 3 + 3)
+- Total estimated effort: 62 story points (3 + 5 + 3 + 5 + 5 + 5 + 8 + 2 + 2 + 2 + 3 + 5 + 5 + 3 + 3 + 3)
 - Critical path: Tasks 1 → 2 → 3 → 5 → 6 → 7 → 13 → 14 → 15 → 16
 - Risks: Task 1 (baseline and the inlining record; if the native build does not inline the variable in a new module the work returns to the owner); Task 6 (first ProseMirror node view in the repo; jsdom tests are not evidence it works on the device, so Task 13 gates it); Task 5 (shared cache and lazy loading carry the memory risk; no experiment has loaded several images yet, Task 14 records it and claims no safe number); Task 12 (a read failure at 31,457,280 bytes returns to the owner as a lower threshold or a new read path, and no threshold is changed here); Task 13 (a drop may not be possible on the device, recorded as not verified); Tasks 4, 6, 7 (shared placeholder and `MediaView` hot files, wave planning must keep them serial or on separate files as listed); Task 16 (e2e and builds only run from the main checkout outside the sandbox).
 
