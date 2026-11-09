@@ -72,7 +72,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3
 **Estimate:** 5
 **Notes:** Satisfies FR-4, FR-5, FR-11 (viewers), FR-12 (viewers), OQ-1, OQ-12, OQ-13. Pattern `useAttachmentObjectUrl.ts:32-75`. The hook must be called only on native without breaking the rules of hooks (split into two components, not a conditional hook call). Hot file `MediaView.tsx` is edited by this task only.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 5: Shared ref-counted blob cache and near-viewport helper
 **What:** Add a per-resource ref-counted cache that reads once per distinct resource and revokes its blob URL when the last user releases it, and a helper that reports when an element is near the viewport.

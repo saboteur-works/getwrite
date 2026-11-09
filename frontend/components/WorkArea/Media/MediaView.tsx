@@ -3,6 +3,7 @@
 import React from "react";
 import ImageViewer from "./ImageViewer";
 import AudioPlayer from "./AudioPlayer";
+import { useResourceObjectUrl } from "../../Sources/useResourceObjectUrl";
 import useAppSelector from "../../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../../src/store/projectsSlice";
 import type {
@@ -52,17 +53,99 @@ export default function MediaView({
     );
   }
 
-  const src = mediaFileUrl(resource.id, projectId);
+  if (process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native") {
+    return (
+      <NativeMediaView
+        resource={resource}
+        projectId={projectId}
+        className={className}
+      />
+    );
+  }
 
+  return (
+    <MediaViewer
+      resource={resource}
+      src={mediaFileUrl(resource.id, projectId)}
+      className={className}
+    />
+  );
+}
+
+interface MediaViewerProps {
+  resource: ImageResource | AudioResource;
+  src: string;
+  className: string;
+}
+
+/** Mounts the image viewer or audio player for an already-resolved `src`. */
+function MediaViewer({
+  resource,
+  src,
+  className,
+}: MediaViewerProps): JSX.Element {
   if (resource.type === "image") {
     return <ImageViewer src={src} alt={resource.name} className={className} />;
   }
-
   return (
     <AudioPlayer
       src={src}
       durationSeconds={resource.durationSeconds}
       className={className}
     />
+  );
+}
+
+interface NativeMediaViewProps {
+  resource: ImageResource | AudioResource;
+  projectId: string;
+  className: string;
+}
+
+/**
+ * Native only (a separate component so the hook is never called
+ * conditionally): reads the file in process and mounts the viewer with the
+ * blob URL, or shows loading, the refusal, the lock or the failure message.
+ */
+function NativeMediaView({
+  resource,
+  projectId,
+  className,
+}: NativeMediaViewProps): JSX.Element {
+  const state = useResourceObjectUrl(projectId, resource.id);
+
+  if (state.status === "ready") {
+    return (
+      <MediaViewer resource={resource} src={state.url} className={className} />
+    );
+  }
+  if (state.status === "loading") return <MediaStatusMessage />;
+  return <MediaStatusMessage message={state.message} />;
+}
+
+export interface MediaStatusMessageProps {
+  /** A refusal, lock or failure message (role="alert"). Omit for loading. */
+  message?: string;
+}
+
+/**
+ * The native read's non-media states, shown before a viewer mounts: a
+ * loading line, or a message announced as an alert.
+ */
+export function MediaStatusMessage({
+  message,
+}: MediaStatusMessageProps): JSX.Element {
+  return (
+    <div className="flex h-full min-h-0 w-full items-center justify-center px-4">
+      {message === undefined ? (
+        <p role="status" className="text-sm text-gw-secondary">
+          Loading…
+        </p>
+      ) : (
+        <p role="alert" className="text-sm text-gw-secondary">
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
