@@ -22,11 +22,21 @@ export type { ImageCaptureRequest, ImageCaptureResult };
 /** The image capture operation the native backend implements. */
 export interface InboxImageCaptureTransport {
   capture(request: ImageCaptureRequest): Promise<ImageCaptureResult>;
+  /**
+   * Runs the encrypted-project guard alone, before any image bytes are read
+   * (FR-11). Rejects with the typed refusal; resolves with nothing written.
+   */
+  assertAllowed(projectId: string): Promise<void>;
 }
 
 /** Non-native stand-in: image capture has no HTTP path. */
 const nativeOnlyTransport: InboxImageCaptureTransport = {
   capture(): Promise<ImageCaptureResult> {
+    return Promise.reject(
+      new Error("Image capture is native-only: it is not available here."),
+    );
+  },
+  assertAllowed(): Promise<void> {
     return Promise.reject(
       new Error("Image capture is native-only: it is not available here."),
     );
@@ -58,4 +68,19 @@ export async function captureImageToInbox(
 ): Promise<ImageCaptureResult> {
   const transport = await resolveInboxImageCaptureTransport();
   return transport.capture(request);
+}
+
+/**
+ * Checks that a project may receive a captured image, before any image bytes
+ * are read (native only). Rejects with the typed encrypted-project refusal
+ * when the project carries the encrypted marker or its marker cannot be read;
+ * writes nothing.
+ *
+ * @param projectId - The on-disk project directory id.
+ */
+export async function assertImageCaptureAllowed(
+  projectId: string,
+): Promise<void> {
+  const transport = await resolveInboxImageCaptureTransport();
+  return transport.assertAllowed(projectId);
 }

@@ -30,5 +30,7 @@ export function createNativeInboxImageCaptureTransport(
         await assertProjectNotEncrypted(request.projectId);
         return captureImageToInboxCore(request);
       }),
+    assertAllowed: (projectId) =>
+      run(() => assertProjectNotEncrypted(projectId)),
   };
 }

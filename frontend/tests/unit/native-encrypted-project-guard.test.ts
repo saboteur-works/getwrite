@@ -12,7 +12,10 @@ import * as imageWebStub from "../../src/store/transport/native-inbox-image-capt
 import * as textBackend from "../../src/store/transport/native-inbox-capture-backend";
 import * as imageCore from "../../src/lib/models/inbox-image-capture-core";
 import * as textCore from "../../src/lib/models/inbox-capture-core";
-import { captureImageToInbox } from "../../src/lib/api/inbox-image-capture";
+import {
+  assertImageCaptureAllowed,
+  captureImageToInbox,
+} from "../../src/lib/api/inbox-image-capture";
 import {
   EncryptedProjectCaptureRefusedError,
   isEncryptedProjectCaptureRefusal,
@@ -325,6 +328,51 @@ describe("image capture client", () => {
       /native-only/,
     );
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("image capture pre-check (Feature 107 Task 8)", () => {
+  it("the backend pre-check refuses a marked project with no write and no read beyond the marker", async () => {
+    const rec = await recordedFs("valid");
+    const core = vi.spyOn(imageCore, "captureImageToInboxCore");
+    const err = await imageBackend
+      .createNativeInboxImageCaptureTransport({
+        fs: rec.fs,
+        projectsDir: PROJECTS_DIR,
+      })
+      .assertAllowed(PROJECT_ID)
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(isEncryptedProjectCaptureRefusal(err)).toBe(true);
+    expect(rec.writes).toEqual([]);
+    expect(
+      rec.reads.filter((p) => !p.endsWith(PROJECT_MARKER_FILENAME)),
+    ).toEqual([]);
+    expect(core).not.toHaveBeenCalled();
+  });
+
+  it("the backend pre-check resolves for an unmarked project without calling the core", async () => {
+    const rec = await recordedFs("none");
+    const core = vi.spyOn(imageCore, "captureImageToInboxCore");
+    await expect(
+      imageBackend
+        .createNativeInboxImageCaptureTransport({
+          fs: rec.fs,
+          projectsDir: PROJECTS_DIR,
+        })
+        .assertAllowed(PROJECT_ID),
+    ).resolves.toBeUndefined();
+    expect(core).not.toHaveBeenCalled();
+    expect(rec.writes).toEqual([]);
+  });
+
+  it("the client pre-check rejects as native-only on a non-native runtime", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "web");
+    await expect(assertImageCaptureAllowed(PROJECT_ID)).rejects.toThrow(
+      /native-only/,
+    );
   });
 });
 
