@@ -117,7 +117,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 4, 7
 **Estimate:** 5
 **Notes:** Satisfies FR-5, FR-6, FR-7, FR-8. One project choice for the whole share (OQ-5). The needs-choice resume applies the one choice to the remaining items.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Share session state: queue, count, refusal and discard
 **What:** Add the pure reducer for the share flow: receive, queue behind an open unlock prompt with a count, choose a project, run, finish, cancel or discard.
