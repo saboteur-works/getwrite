@@ -63,7 +63,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-6, FR-7 (size outcomes, message), FR-3 (contract shape), FR-17 (validation). The plugin contract defined here is the one Tasks 5 and 6 implement on each side; it includes an `acknowledge({ shareId })` method for FR-14. If the existing messages cannot be imported without pulling in a non-bundlable module, stop and report. Hot files: Task 2 only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: captureImageToInboxCore
 **What:** Add `captureImageToInboxCore`, which resolves the Inbox, writes one image through the media funnel, records `capturedAt`, seeds the compile exclusion and writes no writing-log entry.
@@ -135,7 +135,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-12 (US-2). The runtime check follows the repo convention (the raw `NEXT_PUBLIC_GETWRITE_RUNTIME` comparison). Read `AppShell.tsx` around the Capture host mount (the handler near line 935 and `onOpenCapture` near line 1370) and the shell's stories before editing. Hot file `AppShell.tsx`: Task 10 then Task 12.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: ShareSheet: picker, progress and result UI
 **What:** Add the presentational share sheet: one project picker for the whole share, a cancel control, the queued count, and the one result that names each refused or failed item.
