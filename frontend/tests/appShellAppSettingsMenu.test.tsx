@@ -127,13 +127,30 @@ describe("AppShell: Capture box host and key handling (Feature 106, Task 20)", (
     },
   );
 
-  it.each([...PLAIN_COMBOS, ...SHIFT_COMBOS])(
-    "$name with no project open does not open the palette",
+  it.each(PLAIN_COMBOS)(
+    "$name opens only the palette with no project open",
     async ({ init }) => {
       await renderShell(false);
       fireEvent.keyDown(document, init);
-      await flushPendingEffects();
 
+      expect(
+        await screen.findByRole("dialog", { name: "Open Resource" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Capture" })).toBeNull();
+    },
+  );
+
+  it.each(PLAIN_COMBOS)(
+    "$name with no project open shows the Capture... row, and selecting it opens Capture and closes the palette",
+    async ({ init }) => {
+      await renderShell(false);
+      fireEvent.keyDown(document, init);
+      const row = await screen.findByRole("option", { name: /Capture\.\.\./ });
+      fireEvent.click(row);
+
+      expect(
+        await screen.findByRole("dialog", { name: "Capture" }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("dialog", { name: "Open Resource" }),
       ).toBeNull();

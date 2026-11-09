@@ -319,10 +319,6 @@ export default function AppShell({
   // context and fetches nothing for it.
   const [hasCaptureBoxBeenOpened, setHasCaptureBoxBeenOpened] =
     useState<boolean>(false);
-  // The key handler below is registered once, so it reads the open project
-  // through a ref rather than closing over a stale value.
-  const isProjectOpenRef = React.useRef<boolean>(Boolean(project));
-  isProjectOpenRef.current = Boolean(project);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] =
     useState<boolean>(false);
@@ -940,7 +936,6 @@ export default function AppShell({
 
       if (isKShortcut) {
         event.preventDefault();
-        if (!isProjectOpenRef.current) return;
         setIsSettingsMenuOpen(false);
         setIsResourcePaletteOpen(true);
         return;
