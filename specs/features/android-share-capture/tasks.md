@@ -153,7 +153,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 6, 8, 9, 10, 11
 **Estimate:** 8
 **Notes:** Satisfies FR-3 (listener place), FR-4, FR-5, FR-11 (refusal, no unlock on native), FR-13. The unlock flow of Feature 106's Capture box stays in `CaptureBoxHost` and is unchanged here. The largest UI task: if `AppShell` cannot host a second listener without changing the existing Capture mount, stop and report rather than restructuring it. Whether a cold-start share reaches a listener added at `AppShell` mount on the device is Task 14's observation, not claimed here. Hot file `AppShell.tsx`: after Task 10.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: LEAD-RUN: build, Gradle compile and install
 **What:** From the main checkout, outside the sandbox, build the native app, compile the Java plugin and install the debug build on the Pixel 7 Pro, recording each result.
