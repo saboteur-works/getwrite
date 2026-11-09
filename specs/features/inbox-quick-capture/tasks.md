@@ -233,7 +233,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 19
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (mount, shortcut, shiftKey fix), FR-12 (recent-project write), OQ-6 (amended 2026-11-09). Hot files `page.tsx`, `AppShell.tsx`: Task 20 then Task 21 only. Task 2 measured `AppShell` mounted on the Start screen, so no handler moves to `page.tsx`. The key-combination unit test is not evidence that any browser or the Electron shell delivers the key; that is Task 26.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: "Capture..." row in the resource command palette
 **What:** Add a "Capture..." row to `ResourceCommandPalette.tsx`, shown first for an empty query or a prefix of "capture", hidden otherwise, that opens the Capture box.
