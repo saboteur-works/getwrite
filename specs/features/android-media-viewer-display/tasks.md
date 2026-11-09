@@ -108,7 +108,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 6
 **Estimate:** 2
 **Notes:** Satisfies FR-9 (code), FR-14, FR-12. Device check is Task 13.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 9: FR-12 unchanged-behaviour pins for desktop, hosted web and paired devices
 **What:** Add the tests that fail if the Android in-process read leaks to a non-native runtime.
