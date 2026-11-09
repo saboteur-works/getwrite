@@ -1366,6 +1366,10 @@ export default function AppShell({
                     }
                     isResourcePaletteOpen={isResourcePaletteOpen}
                     setIsResourcePaletteOpen={setIsResourcePaletteOpen}
+                    onOpenCapture={() => {
+                      setHasCaptureBoxBeenOpened(true);
+                      setIsCaptureBoxOpen(true);
+                    }}
                     isProjectTypesLoading={isProjectTypesLoading}
                     projectTypesLoadError={projectTypesLoadError}
                     projectTypesNotice={projectTypesNotice}

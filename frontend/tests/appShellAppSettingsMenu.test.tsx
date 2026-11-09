@@ -164,4 +164,16 @@ describe("AppShell: Capture box host and key handling (Feature 106, Task 20)", (
 
     expect(preventDefault).toHaveBeenCalledTimes(1);
   });
+
+  it("the palette's Capture... row closes the palette and opens the Capture box (Task 21)", async () => {
+    await renderShell(true);
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    const row = await screen.findByRole("option", { name: /Capture\.\.\./ });
+    fireEvent.click(row);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Capture" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Open Resource" })).toBeNull();
+  });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { PenLine, Search } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Input from "./UI/Input/Input";
@@ -17,6 +17,25 @@ interface ResourceCommandPaletteProps {
   resources: AnyResource[];
   onClose: () => void;
   onSelectResource: (resourceId: string) => void;
+  /**
+   * Opens the Capture box (Feature 106, FR-24). When given, a "Capture..." row
+   * leads the list for an empty query or a prefix of "capture"; the palette
+   * closes itself after calling it. Without it the row is not shown.
+   */
+  onCapture?: () => void;
+}
+
+/** A palette row: the Capture action or an openable resource. */
+type PaletteRow =
+  | { kind: "capture" }
+  | { kind: "resource"; resource: AnyResource };
+
+const CAPTURE_ROW_LABEL = "Capture...";
+const CAPTURE_ROW_VALUE = "palette-action:capture";
+
+/** True for an empty query or a case-insensitive prefix of "capture". */
+function matchesCaptureRow(normalizedQuery: string): boolean {
+  return "capture".startsWith(normalizedQuery);
 }
 
 function getResourceName(resource: AnyResource): string {
@@ -47,6 +66,7 @@ export default function ResourceCommandPalette({
   resources,
   onClose,
   onSelectResource,
+  onCapture,
 }: ResourceCommandPaletteProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState<string>("");
@@ -56,19 +76,22 @@ export default function ResourceCommandPalette({
     return resources.filter((resource) => resource.type !== "folder");
   }, [resources]);
 
-  const filteredResources = useMemo(() => {
+  const rows = useMemo((): PaletteRow[] => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.length === 0) {
-      return openableResources.slice(0, 50);
-    }
-
-    return openableResources
-      .filter((resource) => {
-        const name = getResourceName(resource).toLowerCase();
-        return name.includes(normalizedQuery);
-      })
-      .slice(0, 50);
-  }, [openableResources, query]);
+    const matching =
+      normalizedQuery.length === 0
+        ? openableResources
+        : openableResources.filter((resource) => {
+            const name = getResourceName(resource).toLowerCase();
+            return name.includes(normalizedQuery);
+          });
+    const resourceRows: PaletteRow[] = matching
+      .slice(0, 50)
+      .map((resource) => ({ kind: "resource", resource }));
+    return onCapture && matchesCaptureRow(normalizedQuery)
+      ? [{ kind: "capture" }, ...resourceRows]
+      : resourceRows;
+  }, [openableResources, query, onCapture]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -80,26 +103,38 @@ export default function ResourceCommandPalette({
   }, [isOpen]);
 
   useEffect(() => {
-    if (highlightedIndex <= filteredResources.length - 1) {
+    if (highlightedIndex <= rows.length - 1) {
       return;
     }
 
-    setHighlightedIndex(Math.max(filteredResources.length - 1, 0));
-  }, [filteredResources, highlightedIndex]);
+    setHighlightedIndex(Math.max(rows.length - 1, 0));
+  }, [rows, highlightedIndex]);
 
-  const handleSelect = (resourceId: string): void => {
-    onSelectResource(resourceId);
+  const handleSelectRow = (row: PaletteRow | undefined): void => {
+    if (!row) return;
+    if (row.kind === "capture") {
+      onCapture?.();
+    } else {
+      onSelectResource(row.resource.id);
+    }
     onClose();
+  };
+
+  const handleSelectValue = (value: string): void => {
+    handleSelectRow(
+      rows.find((row) =>
+        row.kind === "capture"
+          ? value === CAPTURE_ROW_VALUE
+          : row.resource.id === value,
+      ),
+    );
   };
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setHighlightedIndex((previous) => {
-        return Math.min(
-          previous + 1,
-          Math.max(filteredResources.length - 1, 0),
-        );
+        return Math.min(previous + 1, Math.max(rows.length - 1, 0));
       });
       return;
     }
@@ -112,10 +147,7 @@ export default function ResourceCommandPalette({
 
     if (event.key === "Enter") {
       event.preventDefault();
-      const highlightedResource = filteredResources[highlightedIndex];
-      if (highlightedResource) {
-        handleSelect(highlightedResource.id);
-      }
+      handleSelectRow(rows[highlightedIndex]);
       return;
     }
   };
@@ -143,7 +175,11 @@ export default function ResourceCommandPalette({
             <Search size={16} aria-hidden="true" />
             <span>Open Resource</span>
           </div>
-          <span className="resource-palette-hint">Enter to open</span>
+          <span className="resource-palette-hint">
+            {rows[highlightedIndex]?.kind === "capture"
+              ? "Enter to open Capture box"
+              : "Enter to open"}
+          </span>
         </div>
 
         <div className="resource-palette-input-row">
@@ -162,16 +198,25 @@ export default function ResourceCommandPalette({
           />
         </div>
 
-        {filteredResources.length > 0 ? (
+        {rows.length > 0 ? (
           <Listbox
-            options={filteredResources.map((r) => ({
-              value: r.id,
-              label: getResourceName(r),
-              icon: getResourceTypeIcon(r),
-              meta: getResourceTypeLabel(r),
-            }))}
+            options={rows.map((row) =>
+              row.kind === "capture"
+                ? {
+                    value: CAPTURE_ROW_VALUE,
+                    label: CAPTURE_ROW_LABEL,
+                    icon: <PenLine size={16} aria-hidden="true" />,
+                    meta: "Action",
+                  }
+                : {
+                    value: row.resource.id,
+                    label: getResourceName(row.resource),
+                    icon: getResourceTypeIcon(row.resource),
+                    meta: getResourceTypeLabel(row.resource),
+                  },
+            )}
             highlightedIndex={highlightedIndex}
-            onSelect={handleSelect}
+            onSelect={handleSelectValue}
             onHighlightChange={setHighlightedIndex}
             anchored={false}
             aria-label="Resources"
