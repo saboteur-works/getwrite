@@ -2098,8 +2098,9 @@ with the app without hand-rewriting it (see OQ-90).
   carries application semantics or is protected from rename, delete or move, so
   the id is the only thing that makes a folder the Inbox; what happens when it
   is deleted or trashed is open, OQ-179, FR-162.)
-- FR-152: The product MUST provide a Capture box that the writer opens with a
-  keyboard shortcut and from the command palette: the writer types text, presses
+- FR-152: The product MUST provide a Capture box that the writer opens with the
+  in-app keyboard shortcut Cmd/Ctrl+Shift+K and from a "Capture..." entry in
+  the resource command palette (Cmd/Ctrl+K): the writer types text, presses
   Enter, and is back where they were, with the text saved as a text resource in
   the chosen project's Inbox. The box MUST ask which project, defaulting to the
   one last captured into, and MUST work without that project being open. "Last
@@ -2109,7 +2110,8 @@ with the app without hand-rewriting it (see OQ-90).
   unavailable and MUST say a project is needed. It MUST be available on
   desktop, hosted web and a paired device. On hosted web the Capture box is the
   only capture entry: there is no web share target (OQ-186, resolved). [US-48] (Added
-  2026-11-09. Owner decision, 2026-11-04, note_a0e40319, items 1 and 3. Where
+  2026-11-09. Owner decision, 2026-11-04, note_a0e40319, items 1 and 3. Shortcut
+  and palette entry: Owner decision, Gate 2, 2026-11-09 (F106-2). Where
   "last used" is remembered, and its behaviour when that project is gone or
   locked, are for the feature spec. A project listing for a project that is
   locked: OQ-180, resolved, FR-160. A writer with no project: OQ-187, resolved.)
