@@ -20,11 +20,7 @@ export type CaptureProjectOption =
     };
 
 /** Read state of the project choice. `empty` means the read succeeded and found nothing usable. */
-export type CaptureProjectChoiceStatus =
-  | "loading"
-  | "ready"
-  | "empty"
-  | "failed";
+type CaptureProjectChoiceStatus = "loading" | "ready" | "empty" | "failed";
 
 /** What {@link useCaptureProjectChoice} returns. */
 export interface CaptureProjectChoice {
@@ -39,7 +35,7 @@ export interface CaptureProjectChoice {
 }
 
 /** Shown when the project list cannot be read. */
-export const CAPTURE_PROJECTS_FAILED_MESSAGE =
+const CAPTURE_PROJECTS_FAILED_MESSAGE =
   "Could not load your projects. Check your connection and try again.";
 
 type ListEntry = Awaited<ReturnType<typeof listProjects>>[number];

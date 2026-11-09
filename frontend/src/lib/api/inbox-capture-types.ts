@@ -54,7 +54,7 @@ export interface CaptureNeedsChoice {
 }
 
 /** The capture was refused before any write. */
-export interface CaptureRefused {
+interface CaptureRefused {
   status: "refused";
   notices: CaptureNotice[];
 }

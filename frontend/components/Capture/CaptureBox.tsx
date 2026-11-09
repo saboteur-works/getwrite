@@ -30,7 +30,7 @@ export type CaptureBoxIssue =
   | { kind: "pairedRefused" };
 
 /** How an issue is announced: `alert` for a failure, `status` for a notice. */
-export type CaptureBoxIssueSeverity = "alert" | "status";
+type CaptureBoxIssueSeverity = "alert" | "status";
 
 export interface CaptureBoxIssueView {
   severity: CaptureBoxIssueSeverity;

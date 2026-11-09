@@ -28,7 +28,7 @@ export interface InboxSubtree {
 }
 
 /** Malformed folder data that stopped the subtree walk. */
-export interface InboxMembershipFailure {
+interface InboxMembershipFailure {
   ok: false;
   reason: "parent-cycle";
   folderId: string;

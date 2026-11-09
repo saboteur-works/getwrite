@@ -59,7 +59,7 @@ export const CAPTURE_SEEDING_FAILED_MESSAGE =
   "The note was captured, but it could not be left out of compile by default because saving the compile default failed. Leave the note out in the Compile dialog.";
 
 /** Shown when the writing-log entry could not be written; the item is kept. */
-export const CAPTURE_WRITING_LOG_FAILED_MESSAGE =
+const CAPTURE_WRITING_LOG_FAILED_MESSAGE =
   "The note was captured, but today's writing log was not updated, so its words are missing from the log.";
 
 /** Test seam: the clock `capturedAt` is taken from. */

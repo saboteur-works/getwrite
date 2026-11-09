@@ -47,7 +47,7 @@ export { InvalidProjectIdCoreError };
 export const INBOX_FOLDER_NAME = "Inbox";
 
 /** The Inbox is a folder id, with what a restore did, if one ran. */
-export interface InboxResolved {
+interface InboxResolved {
   status: "resolved";
   inboxFolderId: string;
   /** True when this call created the folder. */
