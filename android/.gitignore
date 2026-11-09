@@ -5,8 +5,11 @@ node_modules/
 www/harness.bundle.js
 www/harness.bundle.js.map
 
-# Capacitor-generated native Android project (created by `npx cap add android`)
-android/
+# Capacitor-generated native Android project (created by `npx cap add android`).
+# Tracked since Feature 107 (owner decision 2026-11-09: native code lives here).
+# Its own android/.gitignore excludes build output, synced web assets and local.properties.
+android/.kotlin/
+android/.claude/
 
 # Gradle / build output
 *.iml
