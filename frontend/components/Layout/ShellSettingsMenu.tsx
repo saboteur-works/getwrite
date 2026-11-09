@@ -14,6 +14,7 @@ import {
   Archive,
   FileSliders,
   MonitorCog,
+  PenLine,
 } from "lucide-react";
 import MenuItemButton from "../common/MenuItemButton";
 import Button from "../common/UI/Button/Button";
@@ -58,6 +59,12 @@ export interface ShellSettingsMenuProps {
   leadingSlot?: React.ReactNode;
   /** Rendered at the start of the right-hand button cluster (e.g. the mobile metadata toggle). */
   trailingSlot?: React.ReactNode;
+  /**
+   * Opens the Capture box (Feature 107, FR-12). When given, a "Capture" icon
+   * button is rendered in the top bar, with or without an open project;
+   * `AppShell` passes it only on a native runtime. Omitted, no entry renders.
+   */
+  onCapture?: () => void;
 }
 
 /** Menu items that only appear when a project is open, in display order. */
@@ -88,6 +95,7 @@ export default function ShellSettingsMenu({
   isAuthenticated = false,
   leadingSlot,
   trailingSlot,
+  onCapture,
 }: ShellSettingsMenuProps): JSX.Element {
   const { containerRef: settingsMenuRef } = useDismissableMenu({
     isOpen,
@@ -122,6 +130,16 @@ export default function ShellSettingsMenu({
 
       <div className="flex items-center gap-1">
         {trailingSlot}
+        {onCapture ? (
+          <Button
+            variant="icon"
+            aria-label="Capture"
+            title="Capture"
+            onClick={onCapture}
+          >
+            <PenLine size={18} aria-hidden="true" />
+          </Button>
+        ) : null}
         {hasProject ? (
           <div className="appshell-topbar-menu" ref={projectMenuRef}>
             <Button

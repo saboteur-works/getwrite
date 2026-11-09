@@ -1247,6 +1247,15 @@ export default function AppShell({
           trailingSlot={
             showSidebars ? <ShellSidebarToggle side="right" /> : undefined
           }
+          onCapture={
+            process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native"
+              ? () => {
+                  setIsSettingsMenuOpen(false);
+                  setHasCaptureBoxBeenOpened(true);
+                  setIsCaptureBoxOpen(true);
+                }
+              : undefined
+          }
         />
 
         <ShellLayoutController>

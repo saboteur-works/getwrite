@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 
 vi.mock("next/navigation", () => ({
@@ -192,5 +193,86 @@ describe("AppShell: Capture box host and key handling (Feature 106, Task 20)", (
       await screen.findByRole("dialog", { name: "Capture" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Open Resource" })).toBeNull();
+  });
+});
+
+/**
+ * Feature 107, Task 10 (FR-12, US-2): a "Capture" entry in the top bar on a
+ * native runtime, with and without an open project. It opens the same
+ * Capture box host as Cmd/Ctrl+Shift+K. jsdom only: not evidence about the
+ * device.
+ */
+describe("AppShell: Capture top-bar entry on a native runtime (Feature 107, Task 10)", () => {
+  setupAppShellFetchStub();
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([false, true])(
+    "renders a Capture button in the top bar (project open: %s)",
+    async (withProject) => {
+      vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+      await renderShell(withProject);
+
+      const header = screen.getByRole("banner");
+      expect(
+        within(header).getByRole("button", { name: "Capture" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it.each([false, true])(
+    "clicking it opens one Capture box (project open: %s)",
+    async (withProject) => {
+      vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+      await renderShell(withProject);
+
+      fireEvent.click(screen.getByRole("button", { name: "Capture" }));
+
+      expect(
+        await screen.findByRole("dialog", { name: "Capture" }),
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole("dialog", { name: "Capture" })).toHaveLength(
+        1,
+      );
+      expect(
+        screen.queryByRole("dialog", { name: "Open Resource" }),
+      ).toBeNull();
+    },
+  );
+
+  it("opens from the keyboard (Enter on the focused entry)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    await renderShell(true);
+
+    const user = userEvent.setup();
+    const entry = screen.getByRole("button", { name: "Capture" });
+    entry.focus();
+    expect(entry).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("dialog", { name: "Capture" }),
+    ).toBeInTheDocument();
+  });
+
+  it("uses the same host as the shortcut: entry then shortcut leaves one dialog", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+    await renderShell(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await screen.findByRole("dialog", { name: "Capture" });
+    fireEvent.keyDown(document, { key: "K", metaKey: true, shiftKey: true });
+    await flushPendingEffects();
+
+    expect(screen.getAllByRole("dialog", { name: "Capture" })).toHaveLength(1);
+  });
+
+  it("is absent on a non-native runtime", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "");
+    await renderShell(true);
+
+    expect(screen.queryByRole("button", { name: "Capture" })).toBeNull();
   });
 });
