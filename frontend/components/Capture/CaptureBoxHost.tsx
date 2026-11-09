@@ -2,6 +2,24 @@
 
 import React from "react";
 import { useStore } from "react-redux";
+import UnlockModal from "../common/UnlockModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "../common/UI/Dialog";
+import {
+  useDeclareUnlockPromptMounted,
+  useSharingLimits,
+} from "../Sharing/SharingLimitsContext";
+import {
+  isUnlockingLimited,
+  isUnlockPromptAllowed,
+} from "../Sharing/unlock-prompt-gate";
+import { useAppDispatch, useAppSelector } from "../../src/store/hooks";
+import { unlockWorkspace } from "../../src/store/cryptoSlice";
 import CaptureBox, {
   captureConfirmationMessage,
   describeCaptureIssue,
@@ -19,6 +37,7 @@ import type {
   CaptureNotice,
   CaptureRequest,
   CaptureResult,
+  InboxTrashChoice,
 } from "../../src/lib/api/inbox-capture-types";
 import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 import { writeLastCapturedProjectId } from "../../src/lib/capture-preferences";
@@ -34,7 +53,24 @@ export interface CaptureBoxHostProps {
   onClose: () => void;
   /** The capture call; defaults to the real client. Tests pass a fake. */
   capture?: (request: CaptureRequest) => Promise<CaptureResult>;
+  /**
+   * Unlocks the workspace with a passphrase; rejects on failure. Defaults to
+   * the crypto slice's `unlockWorkspace` thunk. Tests and stories pass a fake.
+   */
+  unlock?: (passphrase: string) => Promise<void>;
 }
+
+/** The capture the writer submitted, held in memory while a prompt is open. */
+interface HeldCapture {
+  project: CaptureProjectOption;
+  text: string;
+}
+
+type PromptKind = "unlock" | "choice" | null;
+
+const CHOICE_TITLE = "This project's Inbox is in Trash";
+const CHOICE_DESCRIPTION =
+  "Restore the Inbox from Trash and add this item to it, or make a new Inbox. Cancel to keep your text and capture nothing.";
 
 /** Notice codes that mean the item was captured but something else failed. */
 const NOTICE_ISSUES: Partial<Record<CaptureNotice["code"], CaptureBoxIssue>> = {
@@ -59,7 +95,6 @@ function refusalIssue(notices: CaptureNotice[]): CaptureBoxIssue {
  * error, never as success.
  */
 function classifyError(error: unknown): CaptureBoxIssue {
-  if (isLockedAccessError(error)) return lockedProjectIssue();
   if (isLimitRefusalError(error)) return { kind: "pairedRefused" };
   if (error instanceof TypeError) return { kind: "network" };
   const message = error instanceof Error ? error.message : "";
@@ -68,16 +103,6 @@ function classifyError(error: unknown): CaptureBoxIssue {
     return { kind: "projectNotFound" };
   }
   return { kind: "server" };
-}
-
-/** The unlock flow is not handled here: report the locked project as a failure. */
-function lockedProjectIssue(): CaptureBoxIssue {
-  return { kind: "lockedDeclined" };
-}
-
-/** The Inbox-in-Trash choice is not handled here: report it as a failure. */
-function needsChoiceIssue(): CaptureBoxIssue {
-  return { kind: "inboxInTrash" };
 }
 
 function optionText(option: CaptureProjectOption): string {
@@ -100,16 +125,34 @@ export default function CaptureBoxHost({
   isOpen,
   onClose,
   capture = captureToInbox,
+  unlock,
 }: CaptureBoxHostProps): JSX.Element {
   const store = useStore<RootState>();
+  const dispatch = useAppDispatch();
   const choice = useCaptureProjectChoice(isOpen);
+  const {
+    state: limitsState,
+    hasDesktopBridge,
+    refresh: refreshLimits,
+  } = useSharingLimits();
+  const encryptedProjectCount = useAppSelector(
+    (s) => s.crypto?.encryptedProjectIds.length ?? 0,
+  );
   const [text, setText] = React.useState<string>("");
   const [chosenId, setChosenId] = React.useState<string | null>(null);
   const [issue, setIssue] = React.useState<CaptureBoxIssue | undefined>();
   const [confirmation, setConfirmation] = React.useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
+  const [prompt, setPrompt] = React.useState<PromptKind>(null);
+  const [isUnlocking, setIsUnlocking] = React.useState<boolean>(false);
+  const [unlockError, setUnlockError] = React.useState<string | undefined>();
   const inFlight = React.useRef<boolean>(false);
   const wasOpen = React.useRef<boolean>(false);
+  const held = React.useRef<HeldCapture | null>(null);
+
+  const isUnlockPromptShown =
+    prompt === "unlock" && isUnlockPromptAllowed(limitsState, hasDesktopBridge);
+  useDeclareUnlockPromptMounted(isUnlockPromptShown);
 
   React.useEffect(() => {
     if (isOpen && !wasOpen.current) {
@@ -132,6 +175,15 @@ export default function CaptureBoxHost({
     );
   }
 
+  /** Ends the attempt with nothing captured: the text stays in the box. */
+  function fail(next: CaptureBoxIssue): void {
+    held.current = null;
+    setPrompt(null);
+    setIssue(next);
+    inFlight.current = false;
+    setIsSubmitting(false);
+  }
+
   function finishCreated(
     result: CaptureCreated,
     project: CaptureProjectOption,
@@ -151,12 +203,69 @@ export default function CaptureBoxHost({
       [captureConfirmationMessage(project.label), ...otherMessages].join(". "),
     );
     setText("");
+    held.current = null;
+    setPrompt(null);
+    inFlight.current = false;
+    setIsSubmitting(false);
     if (noticeIssues.length > 0) {
       setIssue(noticeIssues[0]);
       return;
     }
     setIssue(undefined);
     onClose();
+  }
+
+  /**
+   * Decides whether the unlock prompt may open, from a fresh read of the
+   * limits, and opens it or ends the attempt with the reason.
+   */
+  async function beginUnlock(capturing: HeldCapture): Promise<void> {
+    held.current = capturing;
+    const fresh = await refreshLimits();
+    if (isUnlockingLimited(fresh)) {
+      fail({ kind: "lockedLimited" });
+      return;
+    }
+    if (!isUnlockPromptAllowed(fresh, hasDesktopBridge)) {
+      fail({ kind: "lockedDeclined" });
+      return;
+    }
+    setUnlockError(undefined);
+    setPrompt("unlock");
+  }
+
+  /**
+   * Sends the held capture. A locked project opens the unlock prompt unless
+   * this send already follows an unlock, so there is never a second retry.
+   */
+  async function send(
+    capturing: HeldCapture,
+    options: { inboxChoice?: InboxTrashChoice; afterUnlock?: boolean } = {},
+  ): Promise<void> {
+    try {
+      const result = await capture({
+        projectId: capturing.project.id,
+        text: capturing.text,
+        origin: "typed",
+        ...(options.inboxChoice ? { inboxChoice: options.inboxChoice } : {}),
+      });
+      if (result.status === "created") {
+        finishCreated(result, capturing.project);
+      } else if (result.status === "refused") {
+        fail(refusalIssue(result.notices));
+      } else {
+        held.current = capturing;
+        setPrompt("choice");
+      }
+    } catch (error) {
+      if (isLockedAccessError(error) && !options.afterUnlock) {
+        await beginUnlock(capturing);
+        return;
+      }
+      fail(
+        isLockedAccessError(error) ? { kind: "server" } : classifyError(error),
+      );
+    }
   }
 
   async function handleSubmit(): Promise<void> {
@@ -169,46 +278,147 @@ export default function CaptureBoxHost({
     setIsSubmitting(true);
     setIssue(undefined);
     setConfirmation(undefined);
-    try {
-      const result = await capture({
-        projectId: selected.id,
-        text,
-        origin: "typed",
-      });
-      if (result.status === "created") finishCreated(result, selected);
-      else if (result.status === "refused") {
-        setIssue(refusalIssue(result.notices));
-      } else setIssue(needsChoiceIssue());
-    } catch (error) {
-      setIssue(classifyError(error));
-    } finally {
-      inFlight.current = false;
-      setIsSubmitting(false);
+    const capturing: HeldCapture = { project: selected, text };
+    if (selected.kind === "locked") {
+      await beginUnlock(capturing);
+      return;
     }
+    await send(capturing);
   }
 
+  async function runUnlock(passphrase: string): Promise<void> {
+    if (unlock) return unlock(passphrase);
+    await dispatch(unlockWorkspace(passphrase)).unwrap();
+  }
+
+  async function submitUnlock(passphrase: string): Promise<void> {
+    const capturing = held.current;
+    if (!capturing) return;
+    setIsUnlocking(true);
+    const fresh = await refreshLimits();
+    if (!isUnlockPromptAllowed(fresh, hasDesktopBridge)) {
+      setIsUnlocking(false);
+      fail({
+        kind: isUnlockingLimited(fresh) ? "lockedLimited" : "lockedDeclined",
+      });
+      return;
+    }
+    try {
+      await runUnlock(passphrase);
+    } catch (error) {
+      setUnlockError(unlockFailureMessage(error));
+      setIsUnlocking(false);
+      return;
+    }
+    setIsUnlocking(false);
+    setPrompt(null);
+    await send(capturing, { afterUnlock: true });
+  }
+
+  function chooseInbox(inboxChoice: InboxTrashChoice): void {
+    const capturing = held.current;
+    if (!capturing) return;
+    setPrompt(null);
+    void send(capturing, { inboxChoice });
+  }
+
+  // The limits can change while the prompt is open (the shared read polls);
+  // when unlocking becomes limited the prompt unmounts, so end the attempt.
+  React.useEffect(() => {
+    if (prompt !== "unlock" || isUnlockPromptShown) return;
+    fail({
+      kind: isUnlockingLimited(limitsState)
+        ? "lockedLimited"
+        : "lockedDeclined",
+    });
+    // `fail` only sets state; it is not a dependency.
+  }, [prompt, isUnlockPromptShown, limitsState]);
+
   return (
-    <CaptureBox
-      isOpen={isOpen}
-      text={text}
-      onTextChange={setText}
-      onSubmit={() => void handleSubmit()}
-      onClose={onClose}
-      isSubmitting={isSubmitting}
-      isProjectNeeded={choice.status === "empty"}
-      issue={issue}
-      confirmation={confirmation}
-      projectChoice={
-        <ProjectChoice
-          status={choice.status}
-          options={choice.options}
-          selectedId={selected?.id}
-          onSelect={setChosenId}
-          errorMessage={choice.errorMessage}
-          onRetry={choice.retry}
+    <>
+      <CaptureBox
+        isOpen={isOpen}
+        text={text}
+        onTextChange={setText}
+        onSubmit={() => void handleSubmit()}
+        onClose={onClose}
+        isSubmitting={isSubmitting}
+        isProjectNeeded={choice.status === "empty"}
+        issue={issue}
+        confirmation={confirmation}
+        projectChoice={
+          <ProjectChoice
+            status={choice.status}
+            options={choice.options}
+            selectedId={selected?.id}
+            onSelect={setChosenId}
+            errorMessage={choice.errorMessage}
+            onRetry={choice.retry}
+          />
+        }
+      />
+      {isUnlockPromptShown ? (
+        <UnlockModal
+          isOpen
+          encryptedProjectCount={Math.max(1, encryptedProjectCount)}
+          isBusy={isUnlocking}
+          errorMessage={unlockError}
+          onUnlock={(passphrase) => void submitUnlock(passphrase)}
+          onDecline={() => fail({ kind: "lockedDeclined" })}
         />
-      }
-    />
+      ) : null}
+      <InboxChoiceDialog
+        isOpen={prompt === "choice"}
+        onChoose={chooseInbox}
+        onCancel={() => fail({ kind: "inboxInTrash" })}
+      />
+    </>
+  );
+}
+
+function unlockFailureMessage(error: unknown): string {
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message: unknown }).message;
+    if (typeof message === "string" && message.length > 0) return message;
+  }
+  return "Could not unlock this workspace.";
+}
+
+interface InboxChoiceDialogProps {
+  isOpen: boolean;
+  onChoose: (choice: InboxTrashChoice) => void;
+  onCancel: () => void;
+}
+
+/** Asks whether to restore the Inbox from Trash or make a new one. */
+function InboxChoiceDialog({
+  isOpen,
+  onChoose,
+  onCancel,
+}: InboxChoiceDialogProps): JSX.Element {
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <DialogContent maxWidth="max-w-[480px]" className="p-6">
+        <DialogTitle>{CHOICE_TITLE}</DialogTitle>
+        <DialogDescription>{CHOICE_DESCRIPTION}</DialogDescription>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="outline" onClick={() => onChoose("new")}>
+            Make a new one
+          </Button>
+          <Button variant="outline" onClick={() => onChoose("restore")}>
+            Restore it
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

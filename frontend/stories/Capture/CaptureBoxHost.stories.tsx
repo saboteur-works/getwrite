@@ -1,7 +1,8 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { fn, userEvent, within } from "storybook/test";
 import CaptureBoxHost from "../../components/Capture/CaptureBoxHost";
+import { ProjectLockedError } from "../../src/lib/models/crypto/locked-errors";
 import { LimitRefusalError } from "../../src/lib/api/limit-refusal";
 import type {
   CaptureRequest,
@@ -158,9 +159,54 @@ export const PairedDeviceRefused: Story = {
   },
 };
 
-/** The Inbox is in Trash: reported as a failure until the choice flow exists. */
-export const InboxInTrashNotYetHandled: Story = {
+/** The Inbox is in Trash: submitting opens the restore / make-a-new-one choice. */
+export const InboxInTrashChoice: Story = {
   args: {
     capture: fakeCapture({ status: "needs-choice", state: "inbox-in-trash" }),
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.type(await body.findByLabelText("Text to capture"), "Note");
+    await userEvent.click(body.getByRole("button", { name: "Capture" }));
+    await body.findByRole("button", { name: "Restore it" });
+  },
+};
+
+/** The project is locked: submitting opens the existing unlock prompt. */
+export const LockedProjectPrompt: Story = {
+  args: {
+    capture: fakeCapture(new ProjectLockedError("novel-1")),
+    unlock: async () => undefined,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.type(await body.findByLabelText("Text to capture"), "Note");
+    await userEvent.click(body.getByRole("button", { name: "Capture" }));
+    await body.findByLabelText("Passphrase");
+  },
+};
+
+/** Locked, on a paired device with unlocking limited: no prompt, nothing captured. */
+export const LockedUnlockingLimited: Story = {
+  args: { capture: fakeCapture(new ProjectLockedError("novel-1")) },
+  parameters: {
+    sharingLimits: {
+      state: {
+        state: "paired",
+        limits: {
+          projectDeletion: true,
+          unlocking: true,
+          locking: true,
+          encryptionChanges: true,
+          permanentDeletion: true,
+        },
+      },
+    },
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.type(await body.findByLabelText("Text to capture"), "Note");
+    await userEvent.click(body.getByRole("button", { name: "Capture" }));
+    await body.findByRole("alert");
   },
 };
