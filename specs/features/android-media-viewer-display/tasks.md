@@ -152,7 +152,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** A build of the branch with Tasks 2 to 10 landed is installed and "FR-8 embedded render runs" records a document embedding one image resource and a document embedding more than one, each as what was shown (picture, placeholder or blank), with build, device and sizes. "FR-9 drop runs" records how the drop was made and that the inserted image rendered, or records that no drop could be made on the device as not verified and not claimed. "FR-10 picker runs" records, for a project with at least two image resources, that every entry's picture shows and that an entry over the threshold shows the "too large" placeholder and is still insertable, and that a chosen entry was inserted and rendered. Any path not run is listed under "Not verified". The first-node-view device check (Task 6) is stated as passed or failed.
 **Depends on:** 6, 7, 8, 10
 **Estimate:** 5
-**Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-8, FR-9, FR-10, FR-16. A failure returns to the owner with the recorded result; no code change here. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner.
+**Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-8, FR-9, FR-10, FR-16. A failure returns to the owner with the recorded result; no code change here. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner. Re-run after Tasks 17 and 18 (owner, Gate 5, 2026-11-09; ordering is by sequence, because the schema allows only earlier tasks as dependencies): the drop check is repeated, including a small dropped image.
 **Done:** [ ]
 
 ### Task 14: LEAD-RUN: several near-threshold images in one document and in the picker
@@ -161,7 +161,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** "Several-images run" records, as observed values with build, device and per-image sizes, a document embedding several images at or near 31,457,280 bytes and the picker listing several, with, for each: the number of images, time to show, whether an out-of-memory warning was logged, whether the app crashed, and what the writer saw; no "safe number" is stated and no cause is named. A failure is recorded as a measurement and returns to the owner.
 **Depends on:** 13
 **Estimate:** 3
-**Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-10 (record), FR-13, FR-16, OQ-5. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner.
+**Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-10 (record), FR-13, FR-16, OQ-5. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner. Re-run after Tasks 17 and 18 (owner, Gate 5, 2026-11-09): the several-images run is repeated to observe the new out-of-memory message.
 **Done:** [ ]
 
 ### Task 15: Documentation updates for the viewers and embedded images
@@ -182,11 +182,29 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Notes:** LEAD-RUN: not for the orchestrator. `pnpm test:e2e`, `next build` and `pnpm build:native` run outside the sandbox from the main checkout, never a worktree. Satisfies FR-16, FR-18. Tasks 2 to 8 and 11 to 14 are covered transitively through Tasks 9, 10 and 15.
 **Done:** [ ]
 
+### Task 17: Dropped images never stay loading
+**What:** On native, an image node inserted by drop after the document is open showed "Loading..." indefinitely on screen (2 of 3 drops, no OutOfMemoryError; `experiments.md` FR-9 drop runs). Investigate first, then fix so every image node reaches a final state.
+**Files:** `frontend/components/Editor/Extensions/GetWriteImage.ts`, `frontend/src/lib/resource-blob-cache.ts`, `frontend/src/lib/near-viewport.ts`, `MediaDropExtension.ts` as needed, tests under `frontend/tests/`
+**Done when:** Investigation first: the node view's read path, the near-viewport trigger and the shared cache acquire and release are instrumented or tested for a node created after the editor mounted, and for a node created while a read of a different resource is in flight; the result is reported as a finding (what was observed), not as an asserted cause. A failing test that reproduces the stuck state is written first, then goes green after the fix. A test shows a node inserted after mount and scrolled into view reaches a final state (image, refusal or message) and never stays loading once on screen. If the investigation shows the insert at the top of the document instead of the drop position is part of this feature's code, the node is inserted at the drop position (tested); otherwise it is recorded as pre-existing and out of scope. The FR-12 web pins (Task 9) stay green. `pnpm typecheck`, `pnpm lint` and `pnpm test:ci` run.
+**Depends on:** 6, 8
+**Estimate:** 5
+**Notes:** Orchestrator task. Owner decision at Gate 5 (2026-11-09) from the Task 13 drop runs. Satisfies FR-4, FR-8, FR-9, FR-11. Edits `GetWriteImage.ts`, so run it serially with Task 18.
+**Done:** [ ]
+
+### Task 18: Out-of-memory read failure says so
+**What:** When a read on native fails with an allocation or out-of-memory error, show "Not enough memory on this device to show this file." instead of the generic "This file cannot be shown." on the viewer, the in-document placeholder and the picker entry.
+**Files:** `frontend/src/lib/resource-object-url-state.ts` (or where `resourceErrorState` lives), the hook, the node view and the picker placeholder text, tests under `frontend/tests/`
+**Done when:** Tests first, then green: a classifier detects an out-of-memory failure by error message text containing "Failed to allocate" or "OutOfMemory", tested with fakes carrying the measured device text ("'readFile' failed with: Failed to allocate a 83886092 byte allocation ..."); unit tests for each surface (viewer wrapper, in-document placeholder, picker entry) show "Not enough memory on this device to show this file." for such an error; any other failure keeps "This file cannot be shown."; the locked message and the refusal message are unchanged. The FR-12 web pins stay green. `pnpm typecheck`, `pnpm lint` and `pnpm test:ci` run.
+**Depends on:** 4, 6, 7
+**Estimate:** 2
+**Notes:** Orchestrator task. Owner decision at Gate 5 (2026-11-09) from the Several-images run. Satisfies FR-4. Detection by message text is the owner's choice. Unit tests with fakes are not evidence about memory.
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 16
-- Total estimated effort: 62 story points (3 + 5 + 3 + 5 + 5 + 5 + 8 + 2 + 2 + 2 + 3 + 5 + 5 + 3 + 3 + 3)
-- Critical path: Tasks 1 → 2 → 3 → 5 → 6 → 7 → 13 → 14 → 15 → 16
-- Risks: Task 1 (baseline and the inlining record; if the native build does not inline the variable in a new module the work returns to the owner); Task 6 (first ProseMirror node view in the repo; jsdom tests are not evidence it works on the device, so Task 13 gates it); Task 5 (shared cache and lazy loading carry the memory risk; no experiment has loaded several images yet, Task 14 records it and claims no safe number); Task 12 (a read failure at 31,457,280 bytes returns to the owner as a lower threshold or a new read path, and no threshold is changed here); Task 13 (a drop may not be possible on the device, recorded as not verified); Tasks 4, 6, 7 (shared placeholder and `MediaView` hot files, wave planning must keep them serial or on separate files as listed); Task 16 (e2e and builds only run from the main checkout outside the sandbox).
+- Total tasks: 18
+- Total estimated effort: 69 story points (3 + 5 + 3 + 5 + 5 + 5 + 8 + 2 + 2 + 2 + 3 + 5 + 5 + 3 + 3 + 3 + 5 + 2)
+- Critical path: Tasks 1 → 2 → 3 → 5 → 6 → 7 → 18 → 13 → 14 → 15 → 16
+- Risks: Task 1 (baseline and the inlining record; if the native build does not inline the variable in a new module the work returns to the owner); Task 6 (first ProseMirror node view in the repo; jsdom tests are not evidence it works on the device, so Task 13 gates it); Task 5 (shared cache and lazy loading carry the memory risk; no experiment has loaded several images yet, Task 14 records it and claims no safe number); Task 12 (a read failure at 31,457,280 bytes returns to the owner as a lower threshold or a new read path, and no threshold is changed here); Task 13 (a drop may not be possible on the device, recorded as not verified); Tasks 4, 6, 7 (shared placeholder and `MediaView` hot files, wave planning must keep them serial or on separate files as listed); Tasks 17 and 18 (both edit the node view; run serially; Task 17 finds its cause by investigation, so its estimate may move); Task 16 (e2e and builds only run from the main checkout outside the sandbox).
 
 ## Open Questions
 None. OQ-1 to OQ-13 of the feature spec are resolved at Gate 3 (2026-11-08) and folded into the tasks above.

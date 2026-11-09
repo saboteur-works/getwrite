@@ -103,7 +103,7 @@ Task 14, 2026-11-09, build `2da96e2d`. After a force-stop and fresh launch, "F10
 
 ## Known limits
 
-- Several near-threshold images in one document: some fail to load and show "This file cannot be shown." (measured in the Several-images run; owner decision pending on whether to accept or change).
+- Several near-threshold images in one document: some fail with an out-of-memory message and the app does not crash (measured in the Several-images run; accepted by the owner at Gate 5, 2026-11-09). Raising it goes with POS task_bdf70699.
 - The refusal reads "30.0 MB ... (limit 30 MB)" for a file just over the limit.
 
 ## Not verified
