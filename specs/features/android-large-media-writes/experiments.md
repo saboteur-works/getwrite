@@ -156,8 +156,8 @@ Re-run at the lowered cap (2026-11-08): the owner chose to run the FR-1 ladder t
 
 ## Not verified
 
-- Encrypted projects on native: not bound on Android, so not exercised.
-- Compile and export at large sizes (FR-8).
+- Encrypted projects on native: not bound on Android, so not exercised. An encrypted project on Android (reading only): not run.
+- Compile and export of large media on Android (FR-8).
 - Paired-device behaviour (Task 7).
 - A mid-write piece failure on the device (FR-5): not produced; covered only by unit tests with a failing fake plugin.
 - Playback and preview between 25 MiB and 100 MiB beyond the ladder sizes: not run. Preview worked at 25 MiB, 30 MiB and 35 MiB and failed at 40 MiB (audio) and 104,857,600 bytes.
@@ -165,6 +165,8 @@ Re-run at the lowered cap (2026-11-08): the owner chose to run the FR-1 ladder t
 - 45 MiB (47,185,920 bytes): not run; the ladder stopped at the first failure (40 MiB run 1). 40 MiB run 2 was not run.
 - Read between 30 MiB and 35 MiB beyond the two runs at each of those two sizes: not run.
 - A second device (F104-2: Pixel 7 Pro only).
+- The OQ-4 orphan after a process kill: not run (accepted known limit, see "Known limits").
+- A paired-device run: not run.
 
 ## Acceptance
 
@@ -173,3 +175,34 @@ From the runs above, as values a run passed:
 - Piece size: 4 MiB (4,194,304 bytes). The chunked write passed at 104,857,600 bytes in two runs.
 - Android cap: 31,457,280 bytes (30 MiB), temporary, an owner decision of 2026-11-08 with the reason recorded under "FR-1 ladder runs"; write and read were verified at that size twice, on a Pixel 7 Pro only. Writes passed at 104,857,600 bytes on all four paths, but preview and playback failed at that size. Per-path checks passed at 31,457,280 bytes and every path refused 31,457,281 bytes (FR-4 re-run above).
 - The 100 MiB runs went through the Source attachment add, which includes the whole-file `Buffer.from(input.fileBytes)` copy at `source-attachments-core.ts:284`. The runs did not isolate that copy. Task 8 then ran attachment replace (`:469`) and audio and image resource create (`resource-persistence.ts:188-191`) at 104,857,600 bytes; each passed.
+- Final Android cap: 31,457,280 bytes (temporary, POS task_bdf70699). Piece size: 4,194,304 bytes. Verified on a Pixel 7 Pro only.
+- No bare `tsc` was used as evidence; the package `typecheck` scripts were run (see "Final suites (Task 11)").
+- Unit tests with the in-memory fake plugin prove chunking, ordering and cleanup; they are not evidence about memory. Only the device runs are.
+
+## Final suites (Task 11)
+
+Measured 2026-11-08 at branch commit fb0f019d, from the main checkout, outside the sandbox.
+
+CI command list re-read with `grep -hE "^\s+(- )?run:" .github/workflows/*.yml | sort -u`: no difference from Task 11's list. The workflow also has `pnpm install --frozen-lockfile`, `pnpm exec playwright install --with-deps chromium`, `pnpm build` and `gh release upload`; these are setup or release steps and were not run.
+
+| Command | Result |
+| --- | --- |
+| root `pnpm run format:check` | pass |
+| frontend `pnpm lint` | exit 0, 0 errors, 431 warnings |
+| frontend `pnpm run check:no-hex` | pass |
+| frontend `pnpm typecheck` | pass |
+| frontend `pnpm test:ci` | 837 files; 10,838 passed, 7 expected fail, 1 skipped |
+| frontend `pnpm test:e2e` | 249 passed, 1 skipped |
+| `pnpm --filter getwrite-frontend build` | pass |
+| electron `typecheck` (script, both passes incl. worker tsconfig) | pass |
+| electron `test` | 37 files, 565 passed |
+| electron `build` | pass |
+| cli `typecheck` | pass |
+| cli `test` | 23 files, 164 passed |
+| cli `build` | pass |
+| `node cli/dist/bin/getwrite-cli.cjs --help`, `doctor --help`, `prune --help` | pass |
+| `pnpm --filter getwrite-android build` | pass |
+| frontend `pnpm build:native` | pass |
+| root `pnpm knip` | exit 1, as on main (see below) |
+
+knip compared to main: findings in files this branch touched are `resolveResourcesTransport` (lib/api/resources.ts); `MediaResourceType`, `MediaRejectionReason`, `MediaValidationError` (media-validation.ts); `ReorderFolderEntry`, `ReorderResourceEntry` (resource-crud-core.ts). All exist on main (checked with `git show main:<path>`). None of this branch's new exports (`CAPACITOR_WRITE_PIECE_BYTES`, `ANDROID_DEVICE_VERIFIED_MAX_MEDIA_FILE_BYTES`, `maxMediaFileBytes`, `MediaUploadValidationError`) is reported. No knip finding on HEAD is absent on main.

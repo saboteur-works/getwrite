@@ -141,7 +141,7 @@ Hot files and the only tasks allowed to edit them:
 **Estimate:** 3
 **Notes:** LEAD-RUN: not for the orchestrator. `pnpm test:e2e`, `next build` and `pnpm build:native` run outside the sandbox from the main checkout, never a worktree. Satisfies FR-11, FR-12 (final verification), FR-10 (Not verified list). Tasks 2, 3, 5 and 8 are covered transitively through Tasks 4, 6, 9 and 10.
 **POS:** none yet
-**Done:** [ ]
+**Done:** [x] 2026-11-08
 
 ## Summary
 - Total tasks: 11
