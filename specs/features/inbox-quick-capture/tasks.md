@@ -80,7 +80,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-3 (field), FR-22 (keys and validation), FR-2 (result shape), FR-19. `frontend/CLAUDE.md` says `lib/api/schemas.ts` strips undeclared keys, so the field must be declared there. Hot files: Task 3 only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Pure capture text helpers
 **What:** Add the pure functions that validate the captured text and link, derive the title, and build the body, with no I/O.
@@ -89,7 +89,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-2 (refusals as returned notices), FR-5 (title and body), FR-22 (validation), FR-19. Refusals are returned values, not thrown errors (OQ-4, OQ-8). The TipTap shape must match what `createResourceCore` expects (`resource-factory.ts:239-254`, per Task 1(a)).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Inbox membership helper
 **What:** Add a pure helper that, from a folder list and the Inbox folder id, returns the Inbox subtree (the folder and all its descendant folders) and whether a resource or folder is in it, usable by the client and the server.
@@ -98,7 +98,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 2
 **Notes:** Satisfies FR-7 (membership), FR-14 (count basis), FR-23 (move classification), OQ-9. The client walk and the server `readFolderTree` result both feed it as plain lists; it does no reading itself. Task 1(e) records the cost; if the measured cost is not acceptable, report it and do not change the semantics.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Compile-exclusion seeding for a captured item and removal on a move out
 **What:** Make the compile-exclusion seeding mechanism callable for a text item and add a removal function that deletes ids from `config.compileDefaults.excludedResourceIds`.
@@ -107,7 +107,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-6 (mechanism), FR-23 (removal), OQ-3, OQ-4. Hot file: Task 6 only. Task 8 calls the seeding, Task 14 calls the removal.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Inbox folder resolution core
 **What:** Add the core that resolves a project's Inbox in its three states (live, in Trash, purged or unknown), creating the folder and writing the config id in one locked step.
