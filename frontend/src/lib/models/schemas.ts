@@ -387,6 +387,8 @@ export const ProjectConfigSchema = z.object({
    */
   modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: OrganizerCardBodyConfigSchema.optional(),
+  /** Inbox folder id (Feature 106, FR-3); a UUID, absent until first capture. */
+  inboxFolderId: UUID.optional(),
 });
 
 /**
@@ -503,6 +505,9 @@ export const EntitySidecarFieldsSchema = z.object({
   dismissedNoiseTerms: z.array(z.string().min(1)).optional(),
 });
 
+/** Longest `capturedLink` accepted, in characters (Feature 106, FR-22). */
+export const CAPTURED_LINK_MAX_LENGTH = 2048;
+
 /**
  * Shared base schema for resource records regardless of subtype.
  */
@@ -520,6 +525,9 @@ export const ResourceBaseSchema = z
     /** At most one subtype label (Feature 72, FR-5); independent of entity fields. */
     resourceSubtype: z.string().trim().min(1).optional(),
     userMetadata: z.record(z.string(), MetadataValue).optional(),
+    /** Capture time and link (Feature 106, FR-22); server-written only. */
+    capturedAt: IsoDateString.optional(),
+    capturedLink: z.string().max(CAPTURED_LINK_MAX_LENGTH).optional(),
     createdAt: IsoDateString,
     updatedAt: IsoDateString.optional(),
   })

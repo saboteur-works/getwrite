@@ -217,6 +217,8 @@ const ApiProjectConfigSchema = z.object({
   // project load strips it; unknown ids are kept.
   modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: ApiOrganizerCardBodyConfigSchema.optional(),
+  // Inbox folder id (Feature 106, FR-3). Declared or a project load strips it.
+  inboxFolderId: z.string().uuid().optional(),
   // Missing here meant a normal project load (GET /api/projects) silently
   // stripped this field before it ever reached Redux — Zod drops unknown
   // keys by default — even though the server always sent it correctly and
