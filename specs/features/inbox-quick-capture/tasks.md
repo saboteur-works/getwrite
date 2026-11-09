@@ -134,7 +134,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-8, FR-2 (import-graph pin for Feature 107 reuse). Read `writing-log.ts` first; the spec says the entry shapes exist (product FR-48). Do not touch the writing-log read-time aggregation (Task 12).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Route, client, native backend, web stub and sharing-gate tests
 **What:** Expose the capture core through `POST /api/project/capture`, a `lib/api` client resolved through `createTransport`, and a native in-process backend with a `.web-stub.ts` alias.
@@ -251,7 +251,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 5, 15
 **Estimate:** 3
 **Notes:** Satisfies FR-14. Hot file `ResourceTree.tsx`: Task 22 then Task 23. Read the row component's source and stories before using any prop. The Inbox config id must reach the tree from the store; if it is not exposed by the project slice, adding a selector is in scope, a store change beyond that is not.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: "File to..." action on a tree item
 **What:** Add a "File to..." entry to the item row menu and context menu that opens the existing folder picker and moves the item through the existing move path.
