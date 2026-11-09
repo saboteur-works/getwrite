@@ -135,7 +135,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 4
 **Estimate:** 3
 **Notes:** LEAD-RUN, not for the orchestrator: `pnpm build:native`, `cap sync`, `gradlew :app:installDebug` (`JAVA_HOME` = Android Studio's JBR), `adb` outside the sandbox, main checkout, owner on the Pixel. Satisfies FR-6, FR-16.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 12: LEAD-RUN: threshold runs at 31,457,280 and 31,457,281 bytes
 **What:** On the Pixel 7 Pro, open an image and an audio resource of exactly 31,457,280 bytes and of 31,457,281 bytes, twice each, and one pre-Feature-104 resource above the threshold if one can be made.
@@ -144,7 +144,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 11
 **Estimate:** 5
 **Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-3, FR-4, FR-7, FR-13, FR-16.
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 13: LEAD-RUN: embedded render, drop and picker on the device
 **What:** On the Pixel 7 Pro, record an image rendering in a document (one and more than one), an image inserted by drop, and the picker with at least two image resources.
@@ -152,7 +152,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** A build of the branch with Tasks 2 to 10 landed is installed and "FR-8 embedded render runs" records a document embedding one image resource and a document embedding more than one, each as what was shown (picture, placeholder or blank), with build, device and sizes. "FR-9 drop runs" records how the drop was made and that the inserted image rendered, or records that no drop could be made on the device as not verified and not claimed. "FR-10 picker runs" records, for a project with at least two image resources, that every entry's picture shows and that an entry over the threshold shows the "too large" placeholder and is still insertable, and that a chosen entry was inserted and rendered. Any path not run is listed under "Not verified". The first-node-view device check (Task 6) is stated as passed or failed.
 **Depends on:** 6, 7, 8, 10
 **Estimate:** 5
-**Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-8, FR-9, FR-10, FR-16. A failure returns to the owner with the recorded result; no code change here.
+**Notes:** LEAD-RUN, not for the orchestrator; same device procedure as Task 11. Satisfies FR-8, FR-9, FR-10, FR-16. A failure returns to the owner with the recorded result; no code change here. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner.
 **Done:** [ ]
 
 ### Task 14: LEAD-RUN: several near-threshold images in one document and in the picker
@@ -161,7 +161,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** "Several-images run" records, as observed values with build, device and per-image sizes, a document embedding several images at or near 31,457,280 bytes and the picker listing several, with, for each: the number of images, time to show, whether an out-of-memory warning was logged, whether the app crashed, and what the writer saw; no "safe number" is stated and no cause is named. A failure is recorded as a measurement and returns to the owner.
 **Depends on:** 13
 **Estimate:** 3
-**Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-10 (record), FR-13, FR-16, OQ-5.
+**Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-10 (record), FR-13, FR-16, OQ-5. Device run recorded 2026-11-09; open defect (drop leaves images loading) returned to the owner.
 **Done:** [ ]
 
 ### Task 15: Documentation updates for the viewers and embedded images
