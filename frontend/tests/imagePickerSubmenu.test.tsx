@@ -34,6 +34,14 @@ vi.mock("../src/lib/api/resource-bytes", () => ({
   readResourceBytes: vi.fn(),
 }));
 
+const nativeBackendLoads = vi.fn();
+vi.mock("../src/store/transport/native-resource-bytes-backend", () => {
+  nativeBackendLoads();
+  return {
+    createNativeResourceBytesTransport: () => ({ readResourceBytes: vi.fn() }),
+  };
+});
+
 // FR12 fixture: the project's internal `id` (project.json) and its on-disk
 // directory basename (the trailing segment of `rootPath`) are independently
 // generated UUIDs and must never be conflated.
@@ -300,6 +308,40 @@ describe("ImagePickerSubmenu native lazy reads (Feature 105 Task 7)", () => {
     expect(FakeIntersectionObserver.instances).toHaveLength(0);
   });
 });
+
+describe.each(["", "web", "electron"])(
+  "ImagePickerSubmenu, runtime %j (not native), Feature 105 Task 9 (FR-12)",
+  (runtime) => {
+    beforeEach(() => {
+      readMock.mockReset();
+      nativeBackendLoads.mockClear();
+      FakeIntersectionObserver.instances = [];
+      vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver);
+      vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", runtime);
+    });
+
+    afterEach(() => {
+      cleanup();
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    });
+
+    it("keeps the literal web src, makes zero in-process reads even when near the viewport, and loads no native backend", async () => {
+      render(
+        <Provider store={makeStore()}>
+          <ImagePickerSubmenu editor={editorDouble} />
+        </Provider>,
+      );
+      await userEvent.click(screen.getByLabelText("Insert image"));
+      makeNear();
+      expect(screen.getByAltText("Cover art").getAttribute("src")).toBe(
+        "/api/resource/resource-1/file?projectId=aaaaaaaa-1111-4111-8111-111111111111",
+      );
+      expect(readMock).not.toHaveBeenCalled();
+      expect(nativeBackendLoads).not.toHaveBeenCalled();
+    });
+  },
+);
 
 describe("ImagePickerSubmenu placement (Feature 105 Task 7)", () => {
   const editor = {} as unknown as Editor;

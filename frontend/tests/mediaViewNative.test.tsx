@@ -9,7 +9,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import MediaView from "../components/WorkArea/Media/MediaView";
+import MediaView, {
+  mediaFileUrl,
+} from "../components/WorkArea/Media/MediaView";
 import projectsReducer, {
   type StoredProject,
 } from "../src/store/projectsSlice";
@@ -21,6 +23,16 @@ const readResourceBytes = vi.fn();
 vi.mock("../src/lib/api/resource-bytes", () => ({
   readResourceBytes: (...a: unknown[]) => readResourceBytes(...a),
 }));
+
+const nativeBackendLoads = vi.fn();
+vi.mock("../src/store/transport/native-resource-bytes-backend", () => {
+  nativeBackendLoads();
+  return {
+    createNativeResourceBytesTransport: () => ({
+      readResourceBytes: (...a: unknown[]) => readResourceBytes(...a),
+    }),
+  };
+});
 
 const DIRECTORY_BASENAME = "aaaaaaaa-1111-4111-8111-111111111111";
 
@@ -264,13 +276,50 @@ describe("MediaView on native", () => {
   });
 });
 
-describe("MediaView off native", () => {
-  it("keeps mediaFileUrl and never calls the in-process read", () => {
-    render(view(IMAGE_RESOURCE));
-    const img = screen.getByAltText("Cover art");
-    expect(img.getAttribute("src")).toBe(
-      `/api/resource/resource-1/file?projectId=${encodeURIComponent(DIRECTORY_BASENAME)}`,
-    );
-    expect(readResourceBytes).not.toHaveBeenCalled();
-  });
-});
+describe.each(["", "web", "electron"])(
+  "MediaView, runtime %j (not native), Feature 105 Task 9 (FR-12)",
+  (runtime) => {
+    beforeEach(() => {
+      vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", runtime);
+      nativeBackendLoads.mockClear();
+    });
+
+    it("mediaFileUrl returns the same literal strings", () => {
+      expect(mediaFileUrl("resource-1", DIRECTORY_BASENAME)).toBe(
+        "/api/resource/resource-1/file?projectId=aaaaaaaa-1111-4111-8111-111111111111",
+      );
+      expect(mediaFileUrl("res-1", "a b/c")).toBe(
+        "/api/resource/res-1/file?projectId=a%20b%2Fc",
+      );
+    });
+
+    it("an image takes the file route src with zero in-process reads and no native backend load", () => {
+      render(view(IMAGE_RESOURCE));
+      expect(screen.getByAltText("Cover art").getAttribute("src")).toBe(
+        "/api/resource/resource-1/file?projectId=aaaaaaaa-1111-4111-8111-111111111111",
+      );
+      expect(screen.queryByRole("status")).toBeNull();
+      expect(readResourceBytes).not.toHaveBeenCalled();
+      expect(nativeBackendLoads).not.toHaveBeenCalled();
+    });
+
+    it("audio takes the file route src with zero in-process reads and no native backend load", () => {
+      const { container } = render(view(AUDIO_RESOURCE));
+      expect(container.querySelector("audio")?.getAttribute("src")).toBe(
+        "/api/resource/audio-1/file?projectId=aaaaaaaa-1111-4111-8111-111111111111",
+      );
+      expect(readResourceBytes).not.toHaveBeenCalled();
+      expect(nativeBackendLoads).not.toHaveBeenCalled();
+    });
+
+    it("the real client rejects as unsupported and never loads the native backend", async () => {
+      const actual = await vi.importActual<
+        typeof import("../src/lib/api/resource-bytes")
+      >("../src/lib/api/resource-bytes");
+      await expect(
+        actual.readResourceBytes(DIRECTORY_BASENAME, "resource-1"),
+      ).rejects.toBeInstanceOf(actual.ResourceBytesUnsupportedError);
+      expect(nativeBackendLoads).not.toHaveBeenCalled();
+    });
+  },
+);

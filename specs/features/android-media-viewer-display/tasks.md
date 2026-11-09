@@ -117,7 +117,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 4, 6, 7
 **Estimate:** 2
 **Notes:** Satisfies FR-12, OQ-2. May run at any time after Tasks 4, 6 and 7. Edits `get-write-image-src.test.ts` and `media-file-route.test.ts` only here (Task 10 must use a different file or run after this task).
-**Done:** [ ]
+**Done:** [x] 2026-11-09
 
 ### Task 10: FR-14 serialization pins: no blob URL in stored content or Markdown
 **What:** Add the tests that serialize a document with an embedded image on the native runtime and assert no `blob:` URL reaches stored content or Markdown.
