@@ -109,6 +109,32 @@ describe("MainActivity registration", () => {
     expect(register).toBeGreaterThan(-1);
     expect(superCreate).toBeGreaterThan(register);
   });
+
+  it("neutralises a launch intent already handled, before super.onCreate", () => {
+    const superCreate = mainActivity.indexOf("super.onCreate(");
+    const check = mainActivity.indexOf("savedInstanceState != null");
+    const neutralise = mainActivity.indexOf("setIntent(");
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(superCreate);
+    expect(neutralise).toBeGreaterThan(check);
+    expect(neutralise).toBeLessThan(superCreate);
+    expect(mainActivity).toMatch(/setAction\(\s*Intent\.ACTION_MAIN\s*\)/);
+    expect(mainActivity).toMatch(/removeExtra\(\s*Intent\.EXTRA_TEXT\s*\)/);
+    expect(mainActivity).toMatch(/removeExtra\(\s*Intent\.EXTRA_STREAM\s*\)/);
+  });
+
+  it("logs saved-state presence, action and flags for the device run", () => {
+    expect(mainActivity).toMatch(/TAG\s*=\s*"ShareIn"/);
+    expect(mainActivity).toMatch(/Log\.d\(\s*TAG/);
+    expect(mainActivity).toContain("savedInstanceState != null");
+    expect(mainActivity).toMatch(
+      /Integer\.toHexString\(\s*getIntent\(\)\.getFlags\(\)/,
+    );
+  });
+
+  it("keeps the LAUNCHED_FROM_HISTORY check in the plugin", () => {
+    expect(plugin).toContain("FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY");
+  });
 });
 
 describe("ShareInPlugin source", () => {
