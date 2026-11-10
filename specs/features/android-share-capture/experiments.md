@@ -100,11 +100,26 @@ Commit `1e05b39f` (`feat/android-share-capture`), main checkout, outside the san
 
 ## Device run
 
-Not run. Task 14 appends here.
+Task 14 (lead with the owner, 2026-11-10). Pixel 7 Pro (`29121FDH300EP7`, over Wi-Fi debugging), Android 17, Android System WebView 157.0.8103.50. Debug APK built from the main checkout outside the sandbox (`pnpm build:native`, `pnpm sync`, `./gradlew :app:assembleDebug`, JAVA_HOME = Android Studio JBR), installed with `adb install -r` (app data kept). The run began at c56e210c (APK 11,175,650 bytes); each defect below was fixed, rebuilt and re-run, and the last APK was built from ec48f44a's tree (Java) and 8c7141e4's web bundle. Evidence: `adb logcat` (Capacitor bridge calls), `run-as` reads of the app's files, and DOM reads through the WebView DevTools socket. Shared text came from Chrome; images from Google Photos.
+
+Package manager: `pm query-activities` resolves `MainActivity` for `SEND text/plain`, `SEND image/png` and `SEND_MULTIPLE image/jpeg`, and not for `SEND video/mp4`.
+
+| Run | Observed | Defect found and fix |
+|---|---|---|
+| Text share, app not running (cold) | App offered in Chrome's share sheet; sheet opened; Capture wrote the Inbox (`inboxFolderId` created), item, sidecar, `v-1` into "F99 check". | One share produced two `shareReceived` events (two shareIds, same text) and a second sheet. Read: Capacitor 8.4.2 `BridgeActivity.load()` calls `onNewIntent(getIntent())`, so the launch intent reached `deliver` twice. Fixed 9f58c52d (skip the intent object already reported). Re-run: one event, one sheet; Cancel wrote nothing (only the startup `mkdir projects`). |
+| Text share, app in background | One sheet, item summary line shown, "1 of 1 item became a resource"; F99 check Inbox showed 2 items. | none |
+| Text share into the open project, no Inbox yet | Picker defaulted to the open project; item and Inbox written on disk. | Tree did not show the Inbox until reopen (nothing refreshed the page's project state). Fixed c104198e (`useRefreshOpenProjectTree`, both hosts). Re-run in a new project "Foo": Inbox and item appeared at once. |
+| Capture entry (top bar) into Foo | Typed capture landed in Foo's Inbox. | none |
+| Single image share (Photos) into Foo | — | Sheet stayed on "Capturing…"; log: `"Filesystem.then()" is not implemented on android` before any `content://` read; nothing written. Likely cause: the reader resolved a promise with the plugin proxy. Fixed c8e20205 (plain wrapper). Re-run: captured, in the Inbox, opens. **The `content://` grant still allowed the read after the project picker.** |
+| Two images, one over the cap | Reported sizes 36,005,813 (`f107-over-cap.png`, a generated PNG pushed by the lead, since deleted) and 199,672 bytes. Result "1 captured, 1 refused" with "34.4 MB, limit 30 MB". Only one `content://` `readFile` in the log: the over-cap image was refused from its reported size, never read. Foo then held 2 images; nothing partial. | none |
+| Encrypted-marked project | Marker placed by hand (`.encrypted.json`, version 1) in Foo, since native cannot create an encrypted project; removed afterwards. Share: Foo listed as "Locked project", share refused with a warning, nothing written (resource count unchanged at 8). | Capture box opened the passphrase prompt (the spec's reading that no unlock prompt can occur on native is disproved). Fixed 8c7141e4 (native: encryptedRefused, no prompt). Re-run: refused, no prompt. |
+| Excluded type | Owner: GetWrite is not in the share list for a video. | none |
+| Relaunch from Recents | With a launcher-rooted task: no redelivery. With a share-rooted task (Recents `baseIntent act=SEND flg=0x13000001`), process killed in the background (`am kill`), reopened from Recents: the share was delivered again as a new share. | Diagnostic log on that relaunch: `savedState=true action=SEND flags=0x13000001` (no `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`). Fixed ec48f44a (`MainActivity` neutralises the launch intent when saved state is present). Re-run: no `shareReceived`, start page. |
+| Item summary on a cold-start sheet | Owner saw only "1 item shared" on the first cold-start sheet (before 9f58c52d). Not reproduced: later cold-start and background sheets showed the "Text: …" line (DOM read: 337 × 20 px, then 20 px on a cold start). Cause not established. | none |
 
 ## Not verified
 
-- Java plugin behaviour and compilation; whether the manifest makes Android offer the app; the real Capacitor bridge delivery in each app state; the `content://` read in the real WebView; the `NEXT_PUBLIC_GETWRITE_RUNTIME` inlining in `frontend/out`; whether a native device can hold an encrypted project. Task 17 appends the final list.
+- After the device run (2026-11-10): a relaunch from Recents after a device reboot (saved state may be absent); a shared image while the app is not running or in the foreground (images were shared to the running app only); the Capture box into an encrypted project other than by the hand-placed marker; a second device or Android version; Cancel or an escape while a capture never settles (Cancel is disabled while capturing, so a stuck capture needs the app closed). Task 17 appends the final list.
 
 ## Acceptance
 
