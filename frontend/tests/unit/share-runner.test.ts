@@ -100,6 +100,46 @@ function harness(over: Overrides = {}): Harness {
 }
 
 describe("runShare: capturing every item", () => {
+  it("a captured text item and a captured image item carry the Inbox folder id the capture returned", async () => {
+    const h = harness({
+      captureText: async () => ({
+        status: "created",
+        resourceId: "rt",
+        inboxFolderId: "inbox-from-text",
+        notices: [],
+      }),
+      captureImage: async () => ({
+        status: "created",
+        resourceId: "ri",
+        inboxFolderId: "inbox-from-image",
+        notices: [],
+      }),
+    });
+    const outcome = await runShare(
+      share([text("a thought"), image("one.png", 3)]),
+      DIR_ID,
+      {},
+      h.deps,
+    );
+    if (outcome.status !== "done") throw new Error("expected done");
+    expect(outcome.result.items).toEqual([
+      {
+        status: "captured",
+        index: 0,
+        kind: "text",
+        resourceId: "rt",
+        inboxFolderId: "inbox-from-text",
+      },
+      {
+        status: "captured",
+        index: 1,
+        kind: "image",
+        resourceId: "ri",
+        inboxFolderId: "inbox-from-image",
+      },
+    ]);
+  });
+
   it("captures a text, a link-only item and two images in delivered order", async () => {
     const h = harness();
     const outcome = await runShare(
@@ -343,7 +383,13 @@ describe("runShare: needs-choice and resume", () => {
         inboxChoice: "new",
         progress: {
           results: [
-            { status: "captured", index: 0, kind: "text", resourceId: "r0" },
+            {
+              status: "captured",
+              index: 0,
+              kind: "text",
+              resourceId: "r0",
+              inboxFolderId: "inbox",
+            },
           ],
         },
       },

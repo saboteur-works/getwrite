@@ -45,12 +45,12 @@ import { writeLastCapturedProjectId } from "../../src/lib/capture-preferences";
 import { CAPTURE_TEXT_MAX_LENGTH } from "../../src/lib/models/inbox-capture-text";
 import { isLockedAccessError } from "../../src/lib/models/crypto/locked-errors";
 import {
-  getProjectDirectoryId,
   selectActiveProjectDirectoryId,
   setProject,
   type StoredProject,
 } from "../../src/store/projectsSlice";
 import type { RootState } from "../../src/store/store";
+import { findStoredByDirectoryId } from "./stored-project-inbox";
 
 export interface CaptureBoxHostProps {
   /** Whether the Capture box is open. */
@@ -123,23 +123,6 @@ function optionText(option: CaptureProjectOption): string {
     return `${option.label}${when}`;
   }
   return option.label;
-}
-
-/**
- * The store keys projects by `StoredProject.id` (the manifest id), while the
- * Capture box names a project by its directory basename, so the entry is found
- * through `rootPath`. An entry with no `rootPath` is matched by its key, the
- * same fallback the project choice uses.
- */
-function findStoredByDirectoryId(
-  projects: Record<string, StoredProject>,
-  directoryId: string,
-): StoredProject | undefined {
-  return Object.values(projects).find((p) =>
-    p.rootPath
-      ? getProjectDirectoryId(p.rootPath) === directoryId
-      : p.id === directoryId,
-  );
 }
 
 /**

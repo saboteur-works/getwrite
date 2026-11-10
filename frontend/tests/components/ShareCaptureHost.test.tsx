@@ -96,6 +96,7 @@ function doneResult(share: ShareReceivedEvent): ShareRunOutcome {
       index,
       kind: item.kind,
       resourceId: `r${index}`,
+      inboxFolderId: "inbox-new",
     })),
     capturedCount: share.items.length,
   };
@@ -425,13 +426,60 @@ describe("ShareCaptureHost", () => {
     expect(alert.textContent).toMatch(/failed/);
   });
 
+  it("a captured share sets the stored project's inboxFolderId, found by directory id", async () => {
+    const store = makeStore();
+    store.dispatch(setProject(stored(DIR_A, ID_A, "Alpha")));
+    store.dispatch(setProject(stored(DIR_B, ID_B, "Beta")));
+    const run = vi.fn<RunFn>(async (share) => doneResult(share));
+    const listener = makeListener();
+    renderHost(listener, run, store);
+    await waitFor(() => expect(listener.start).toHaveBeenCalled());
+    await listener.deliver(SHARE_1);
+    const select = await screen.findByLabelText("Project");
+    fireEvent.change(select, { target: { value: DIR_A } });
+    fireEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await screen.findByRole("button", { name: "Done" });
+
+    const projects = store.getState().projects.projects;
+    expect(projects[ID_A]?.inboxFolderId).toBe("inbox-new");
+    expect(projects[ID_B]?.inboxFolderId).toBeUndefined();
+  });
+
+  it("leaves the stored project unchanged when nothing was captured", async () => {
+    const store = makeStore();
+    store.dispatch(setProject(stored(DIR_A, ID_A, "Alpha")));
+    const run = vi.fn<RunFn>(async () => ({
+      status: "stopped",
+      error: new Error("disk exploded"),
+      held: SHARE_1.items,
+      results: [],
+    }));
+    const listener = makeListener();
+    renderHost(listener, run, store);
+    await waitFor(() => expect(listener.start).toHaveBeenCalled());
+    await listener.deliver(SHARE_1);
+    await screen.findByLabelText("Project");
+    fireEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await screen.findByRole("alert");
+
+    expect(
+      store.getState().projects.projects[ID_A]?.inboxFolderId,
+    ).toBeUndefined();
+  });
+
   it("a run stopped by a locked error names the uncaptured items as failed and shows no unlock prompt", async () => {
     const run = vi.fn<RunFn>(async () => ({
       status: "stopped",
       error: new ProjectLockedError("locked"),
       held: [SHARE_1.items[1]!],
       results: [
-        { status: "captured", index: 0, kind: "text", resourceId: "r0" },
+        {
+          status: "captured",
+          index: 0,
+          kind: "text",
+          resourceId: "r0",
+          inboxFolderId: "inbox-new",
+        },
       ],
     }));
     const listener = makeListener();

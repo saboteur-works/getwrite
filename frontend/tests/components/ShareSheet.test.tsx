@@ -5,7 +5,13 @@
  */
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ShareSheet, {
   type ShareSheetProps,
@@ -189,15 +195,44 @@ describe("ShareSheet picking", () => {
 });
 
 describe("ShareSheet pending", () => {
-  it("disables confirm while capturing and still allows cancel", async () => {
+  it("disables confirm and Cancel while capturing", async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
     const onConfirm = vi.fn();
     render(sheet({ phase: "pending", onCancel, onConfirm }));
     expect(screen.getByRole("button", { name: "Capturing…" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel).toBeDisabled();
+    await user.click(cancel);
+    expect(onCancel).not.toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("Escape while capturing does not call onCancel and keeps the dialog open", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const onDone = vi.fn();
+    render(sheet({ phase: "pending", onCancel, onDone }));
+    await user.keyboard("{Escape}");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: /share to getwrite/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("an outside click while capturing does not call onCancel", () => {
+    const onCancel = vi.fn();
+    render(sheet({ phase: "pending", onCancel }));
+    fireEvent.pointerDown(document.body);
+    fireEvent.pointerUp(document.body);
+    fireEvent.click(document.body);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("Cancel is enabled again while choosing", () => {
+    render(sheet({ phase: "picking" }));
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 });
 
@@ -207,9 +242,27 @@ describe("ShareSheet result", () => {
       sheet({
         phase: "result",
         result: result([
-          { status: "captured", index: 0, kind: "text", resourceId: "r1" },
-          { status: "captured", index: 1, kind: "text", resourceId: "r2" },
-          { status: "captured", index: 2, kind: "image", resourceId: "r3" },
+          {
+            status: "captured",
+            index: 0,
+            kind: "text",
+            resourceId: "r1",
+            inboxFolderId: "i",
+          },
+          {
+            status: "captured",
+            index: 1,
+            kind: "text",
+            resourceId: "r2",
+            inboxFolderId: "i",
+          },
+          {
+            status: "captured",
+            index: 2,
+            kind: "image",
+            resourceId: "r3",
+            inboxFolderId: "i",
+          },
         ]),
       }),
     );
@@ -224,7 +277,13 @@ describe("ShareSheet result", () => {
       sheet({
         phase: "result",
         result: result([
-          { status: "captured", index: 0, kind: "text", resourceId: "r1" },
+          {
+            status: "captured",
+            index: 0,
+            kind: "text",
+            resourceId: "r1",
+            inboxFolderId: "i",
+          },
           {
             status: "refused",
             index: 2,
@@ -268,7 +327,13 @@ describe("ShareSheet result", () => {
         onDone,
         onCancel,
         result: result([
-          { status: "captured", index: 0, kind: "text", resourceId: "r1" },
+          {
+            status: "captured",
+            index: 0,
+            kind: "text",
+            resourceId: "r1",
+            inboxFolderId: "i",
+          },
         ]),
         items: [ITEMS[0]],
       }),

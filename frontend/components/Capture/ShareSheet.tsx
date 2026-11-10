@@ -38,7 +38,11 @@ export interface ShareSheetProps {
   onRetry: () => void;
   /** Called once with the chosen project's directory id. */
   onConfirm: (projectId: string) => void;
-  /** Called on Cancel or Escape while choosing or capturing. Writes nothing. */
+  /**
+   * Called on Cancel or Escape while choosing. Writes nothing. Never called
+   * while capturing: a write in progress cannot be stopped, so Cancel is
+   * disabled and Escape and outside clicks are ignored in that phase.
+   */
   onCancel: () => void;
   /** Called on Done or Escape in the result view. */
   onDone: () => void;
@@ -109,12 +113,14 @@ export default function ShareSheet({
       : (defaultProjectId ?? options[0]?.id ?? "");
   const canConfirm = phase === "picking" && status === "ready" && !!selectedId;
   const isResult = phase === "result";
+  const isPending = phase === "pending";
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (open) return;
+        if (isPending) return;
         if (isResult) onDone();
         else onCancel();
       }}
@@ -173,7 +179,11 @@ export default function ShareSheet({
             </Button>
           ) : (
             <>
-              <Button variant="secondary" onClick={onCancel}>
+              <Button
+                variant="secondary"
+                disabled={isPending}
+                onClick={onCancel}
+              >
                 Cancel
               </Button>
               <Button

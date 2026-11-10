@@ -39,7 +39,15 @@ const received = (id: string): ShareSessionAction => ({
 function resultFor(id: string): ShareResult {
   return {
     shareId: id,
-    items: [{ status: "captured", index: 0, kind: "text", resourceId: "r1" }],
+    items: [
+      {
+        status: "captured",
+        index: 0,
+        kind: "text",
+        resourceId: "r1",
+        inboxFolderId: "i",
+      },
+    ],
     capturedCount: 1,
   };
 }

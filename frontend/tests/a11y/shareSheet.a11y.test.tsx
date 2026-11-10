@@ -76,7 +76,13 @@ describe("a11y: ShareSheet", () => {
           shareId: "s",
           capturedCount: 1,
           items: [
-            { status: "captured", index: 0, kind: "text", resourceId: "r" },
+            {
+              status: "captured",
+              index: 0,
+              kind: "text",
+              resourceId: "r",
+              inboxFolderId: "i",
+            },
             { status: "refused", index: 1, kind: "image", message: "Too big." },
           ],
         },
@@ -90,8 +96,20 @@ describe("a11y: ShareSheet", () => {
           shareId: "s",
           capturedCount: 2,
           items: [
-            { status: "captured", index: 0, kind: "text", resourceId: "r" },
-            { status: "captured", index: 1, kind: "image", resourceId: "q" },
+            {
+              status: "captured",
+              index: 0,
+              kind: "text",
+              resourceId: "r",
+              inboxFolderId: "i",
+            },
+            {
+              status: "captured",
+              index: 1,
+              kind: "image",
+              resourceId: "q",
+              inboxFolderId: "i",
+            },
           ],
         },
       }),

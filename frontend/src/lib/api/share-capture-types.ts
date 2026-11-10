@@ -69,6 +69,8 @@ export interface ShareItemCaptured {
   index: number;
   kind: ShareItem["kind"];
   resourceId: string;
+  /** The project's Inbox folder id after the capture (it may have just been created). */
+  inboxFolderId: string;
 }
 
 /** An item refused by a rule (for example the size cap); nothing was written. */

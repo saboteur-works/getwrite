@@ -166,6 +166,7 @@ async function captureTextItem(
       index,
       kind: "text",
       resourceId: result.resourceId,
+      inboxFolderId: result.inboxFolderId,
     },
   };
 }
@@ -223,6 +224,7 @@ async function captureImageItem(
       index,
       kind: "image",
       resourceId: result.resourceId,
+      inboxFolderId: result.inboxFolderId,
     },
   };
 }

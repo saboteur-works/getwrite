@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useStore } from "react-redux";
 import { useAppSelector } from "../../src/store/hooks";
 import Button from "../common/UI/Button/Button";
 import {
@@ -32,7 +33,12 @@ import {
   type ShareRunOutcome,
   type ShareRunProgress,
 } from "../../src/lib/share-runner";
-import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
+import {
+  selectActiveProjectDirectoryId,
+  setProject,
+} from "../../src/store/projectsSlice";
+import type { RootState } from "../../src/store/store";
+import { findStoredByDirectoryId } from "./stored-project-inbox";
 import type {
   ShareListenerOptions,
   ShareListenerSession,
@@ -110,6 +116,7 @@ interface PendingChoice {
  * share reads the project list afresh and never shows a stale list state.
  */
 function ShareFlow({ share, state, dispatch, run }: FlowProps): JSX.Element {
+  const store = useStore<RootState>();
   const openProjectId = useAppSelector(selectActiveProjectDirectoryId);
   const choice = useCaptureProjectChoice(true, openProjectId);
   const [pendingChoice, setPendingChoice] =
@@ -124,8 +131,33 @@ function ShareFlow({ share, state, dispatch, run }: FlowProps): JSX.Element {
     }
   }, [choice.status, choice.options, dispatch]);
 
+  /**
+   * A share may have created the Inbox; the store's copy of the project is
+   * updated so the tree and Data view see it (as `CaptureBoxHost` does).
+   * Uses the Inbox id of the last captured item.
+   */
+  function refreshStoredInbox(projectId: string, result: ShareResult): void {
+    const captured = result.items.filter(
+      (i): i is Extract<ShareItemResult, { status: "captured" }> =>
+        i.status === "captured",
+    );
+    const last = captured[captured.length - 1];
+    if (!last) return;
+    const stored = findStoredByDirectoryId(
+      store.getState().projects?.projects ?? {},
+      projectId,
+    );
+    if (!stored || stored.inboxFolderId === last.inboxFolderId) return;
+    store.dispatch(
+      setProject({ ...stored, inboxFolderId: last.inboxFolderId }),
+    );
+  }
+
   function settle(projectId: string, result: ShareResult): void {
-    if (result.capturedCount > 0) writeLastCapturedProjectId(projectId);
+    if (result.capturedCount > 0) {
+      writeLastCapturedProjectId(projectId);
+      refreshStoredInbox(projectId, result);
+    }
     dispatch({ type: "finished", result });
   }
 
@@ -211,7 +243,10 @@ function ShareFlow({ share, state, dispatch, run }: FlowProps): JSX.Element {
     });
   }
 
-  /** A write in progress cannot be stopped, so Cancel only acts while choosing. */
+  /**
+   * A write in progress cannot be stopped, so Cancel only acts while choosing.
+   * The sheet disables Cancel while capturing; this guard is defence in depth.
+   */
   function cancel(): void {
     if (state.phase === "choosing" || state.phase === "needs-project") {
       dispatch({ type: "cancel" });

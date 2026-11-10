@@ -59,7 +59,13 @@ export const PartialFailure: Story = {
       shareId: "s1",
       capturedCount: 1,
       items: [
-        { status: "captured", index: 0, kind: "text", resourceId: "r1" },
+        {
+          status: "captured",
+          index: 0,
+          kind: "text",
+          resourceId: "r1",
+          inboxFolderId: "i",
+        },
         {
           status: "failed",
           index: 1,
@@ -85,9 +91,27 @@ export const AllSuccess: Story = {
       shareId: "s2",
       capturedCount: 3,
       items: [
-        { status: "captured", index: 0, kind: "text", resourceId: "r1" },
-        { status: "captured", index: 1, kind: "text", resourceId: "r2" },
-        { status: "captured", index: 2, kind: "image", resourceId: "r3" },
+        {
+          status: "captured",
+          index: 0,
+          kind: "text",
+          resourceId: "r1",
+          inboxFolderId: "i",
+        },
+        {
+          status: "captured",
+          index: 1,
+          kind: "text",
+          resourceId: "r2",
+          inboxFolderId: "i",
+        },
+        {
+          status: "captured",
+          index: 2,
+          kind: "image",
+          resourceId: "r3",
+          inboxFolderId: "i",
+        },
       ],
     },
   },

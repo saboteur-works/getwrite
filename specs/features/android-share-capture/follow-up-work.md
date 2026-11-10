@@ -5,5 +5,7 @@
 **Context:** The host only acts on cancel in the `choosing` and `needs-project` phases (`cancel` in `ShareCaptureHost.tsx`). Either disable Cancel while `phase === "pending"` or add an abort check between items in `runShare`.
 **Relates to:** Task 8, Task 11, Task 12
 **Raised:** 2026-11-09
-**Resolved:** [ ]
-**Resolved on:**
+**Resolved:** [x]
+**Resolved on:** 2026-11-09
+
+Resolved: `ShareSheet` now disables Cancel while capturing and ignores Escape and outside-close in that phase; no abort was added to `runShare`.
