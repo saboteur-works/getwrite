@@ -157,4 +157,4 @@ Task 17 (lead, 2026-11-10). Main checkout, outside the sandbox. The CI command l
 - Gone on the branch: `@capacitor/android` and `@capacitor/core` as unused devDependencies of `android/package.json`.
 - Duplicate exports 14 (main 14).
 
-FR-16: no `package.json`, lockfile or Gradle file changed on the branch (`git diff --stat main..HEAD`).
+FR-16: no `package.json` or lockfile changed on the branch. `git diff --stat main..HEAD` lists six Gradle files under `android/android/` (129 insertions); `git log main..HEAD` shows the only commit touching them is a9311ff9, which began tracking the stock Capacitor project (owner decision after Task 1). No later commit edits a Gradle file.
