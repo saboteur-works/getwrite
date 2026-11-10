@@ -9,3 +9,13 @@
 **Resolved on:** 2026-11-09
 
 Resolved: `ShareSheet` now disables Cancel while capturing and ignores Escape and outside-close in that phase; no abort was added to `runShare`.
+
+---
+### FU-2: A capture that never settles cannot be cancelled
+
+**What:** While capturing, Cancel is disabled (FU-1 resolution), so if a capture never settles (as the image read did before c8e20205) the only way out is closing the app.
+**Why deferred:** Owner decision 2026-11-10: recorded as a known limit, not fixed.
+**Context:** Option for later: a time limit that ends the wait and reports what was saved.
+**Relates to:** Task 8, Task 11, Task 12
+**Raised:** 2026-11-10
+**Resolved:** [ ]
