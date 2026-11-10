@@ -747,6 +747,52 @@ describe("CaptureBoxHost", () => {
       expect(capture.mock.calls[0][0].text).toBe("for locked");
     });
 
+    describe("runtime", () => {
+      const lockedProject = () =>
+        listProjects.mockResolvedValue([
+          {
+            project: { id: ID_A, createdAt: "2026-02-03T00:00:00.000Z" },
+            folders: [],
+            resources: [],
+            isLocked: true,
+            isEncrypted: true,
+          },
+        ]);
+
+      afterEach(() => vi.unstubAllEnvs());
+
+      it("on native refuses a chosen locked project as encrypted, with no prompt, no capture and the text kept", async () => {
+        vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
+        lockedProject();
+        const capture = vi.fn<CaptureFn>().mockResolvedValue(created());
+        const { onClose } = await setup(capture);
+        expect(
+          screen.getByRole("option", { name: /Locked project/ }),
+        ).toBeTruthy();
+        const box = type("keep me");
+        submit();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(
+          new EncryptedProjectCaptureRefusedError("encrypted").message,
+        );
+        expect(screen.queryByLabelText("Passphrase")).toBeNull();
+        expect(capture).not.toHaveBeenCalled();
+        expect(box.value).toBe("keep me");
+        expect(onClose).not.toHaveBeenCalled();
+      });
+
+      it("off native still opens the unlock prompt for a chosen locked project", async () => {
+        vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "web");
+        lockedProject();
+        const capture = vi.fn<CaptureFn>().mockResolvedValue(created());
+        await setup(capture);
+        type("for locked");
+        submit();
+        expect(await screen.findByLabelText("Passphrase")).toBeTruthy();
+        expect(capture).not.toHaveBeenCalled();
+      });
+    });
+
     it("has no axe violations and the prompt is keyboard reachable", async () => {
       await openPrompt(lockedCapture());
       await runAxe(document.body);

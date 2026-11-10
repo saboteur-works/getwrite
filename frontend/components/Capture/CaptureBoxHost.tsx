@@ -39,7 +39,10 @@ import type {
   CaptureResult,
   InboxTrashChoice,
 } from "../../src/lib/api/inbox-capture-types";
-import { isEncryptedProjectCaptureRefusal } from "../../src/lib/api/encrypted-project-refusal";
+import {
+  EncryptedProjectCaptureRefusedError,
+  isEncryptedProjectCaptureRefusal,
+} from "../../src/lib/api/encrypted-project-refusal";
 import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 import { writeLastCapturedProjectId } from "../../src/lib/capture-preferences";
 import { CAPTURE_TEXT_MAX_LENGTH } from "../../src/lib/models/inbox-capture-text";
@@ -295,6 +298,14 @@ export default function CaptureBoxHost({
     setConfirmation(undefined);
     const capturing: HeldCapture = { project: selected, text };
     if (selected.kind === "locked") {
+      if (process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native") {
+        // Native has no encryption layer and no unlock prompt: refuse the
+        // encrypted-marked project exactly as the share sheet does.
+        fail(
+          classifyError(new EncryptedProjectCaptureRefusedError("encrypted")),
+        );
+        return;
+      }
       await beginUnlock(capturing);
       return;
     }
